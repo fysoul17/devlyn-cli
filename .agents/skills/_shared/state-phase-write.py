@@ -149,13 +149,16 @@ def process_evidence_module():
     return _PROCESS_EVIDENCE_MODULE
 
 
-def bind_implement_process_evidence(
-    state: dict, verdict: str | None, work: pathlib.Path | None,
+def bind_process_evidence(
+    state: dict, phase: str, verdict: str | None,
+    devlyn: pathlib.Path | None, work: pathlib.Path | None,
 ) -> None:
-    if verdict not in {"PASS", "PASS_WITH_ISSUES"}:
+    if phase == "implement" and verdict not in {"PASS", "PASS_WITH_ISSUES"}:
+        return
+    if phase not in {"implement", "build_gate"}:
         return
     source = state.get("source")
-    if work is None:
+    if work is None or devlyn is None:
         if isinstance(source, dict) and source.get("type") == "spec":
             raise SystemExit(
                 "BLOCKED:process-evidence-invalid: worktree is required for spec evidence validation"
@@ -164,17 +167,54 @@ def bind_implement_process_evidence(
         return
     runner = process_evidence_module()
     try:
-        obligations = runner.declared_obligations(work, state, "implement")
-        if not obligations:
-            state.setdefault("process_evidence", None)
-            return
-        run_id = state.get("run_id")
-        round_ = runner.phase_round(state, "implement")
-        manifest_path = runner.manifest_relative_path(state, "implement")
-        carrier = runner.validate_manifest(
-            work, manifest_path, run_id, "implement", round_, obligations,
-        )
-    except runner.EvidenceError as exc:
+        if phase == "implement":
+            obligations = runner.declared_obligations(work, state, phase)
+            if not obligations:
+                state.setdefault("process_evidence", None)
+                return
+            round_ = runner.phase_round(state, phase)
+            manifest_path = runner.manifest_relative_path(state, phase)
+            carrier = runner.validate_manifest(
+                work, manifest_path, state.get("run_id"), phase, round_, obligations,
+            )
+        else:
+            results_path = devlyn / "spec-verify.results.json"
+            if not results_path.is_file():
+                raise runner.EvidenceError(
+                    "spec-verify.results.json is missing for BUILD_GATE completion"
+                )
+            results = loads_strict_json(results_path.read_text(encoding="utf-8"))
+            if not isinstance(results, dict):
+                raise runner.EvidenceError(
+                    "spec-verify.results.json must contain a JSON object"
+                )
+            commands = results.get("commands")
+            if not isinstance(commands, list):
+                raise runner.EvidenceError(
+                    "spec-verify.results.json commands must be an array"
+                )
+            carrier = results.get("process_evidence")
+            if carrier is None:
+                if commands:
+                    raise runner.EvidenceError(
+                        "BUILD_GATE commands exist without a process-evidence carrier"
+                    )
+                state.setdefault("process_evidence", None)
+                return
+            round_ = runner.phase_round(state, phase)
+            manifest = carrier.get("manifest") if isinstance(carrier, dict) else None
+            if (
+                not isinstance(carrier, dict)
+                or carrier.get("phase") != phase
+                or carrier.get("round") != round_
+                or not isinstance(manifest, dict)
+                or manifest.get("path") != runner.manifest_relative_path(state, phase)
+            ):
+                raise runner.EvidenceError(
+                    "BUILD_GATE process-evidence carrier does not match the active run/round"
+                )
+            runner.validate_bound_carrier(work, carrier)
+    except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
         raise SystemExit(f"BLOCKED:process-evidence-invalid: {exc}") from exc
     existing = state.get("process_evidence")
     if existing is None:
@@ -194,7 +234,7 @@ def bind_implement_process_evidence(
     ):
         raise SystemExit(
             "BLOCKED:process-evidence-invalid: duplicate state carrier for "
-            f"implement round {carrier['round']}"
+            f"{phase} round {carrier['round']}"
         )
     state["process_evidence"] = [*existing, carrier]
 
@@ -1518,8 +1558,7 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             raise SystemExit("error: phases.plan completion cannot replace spawn engine")
         if model is not None and model != entry["model_requested"]:
             raise SystemExit("error: phases.plan completion cannot replace requested model")
-    if phase == "implement":
-        bind_implement_process_evidence(state, verdict, work)
+    bind_process_evidence(state, phase, verdict, devlyn, work)
     started = parse_iso(entry["started_at"])
     now = now_ms()
     entry["completed_at"] = now_iso(now)
@@ -1987,6 +2026,77 @@ def self_test() -> int:
         assert sealed_state["phases"]["implement"]["verdict"] == "PASS"
         assert sealed_state["phases"]["build_gate"]["started_at"] is not None
         print("PASS iter-0111 process evidence: completion/transition gate and state digest binding")
+
+        # Gate-discovered iter-0111 regression: BUILD_GATE MECHANICAL emitted
+        # sealed process evidence, but completion left it outside the state
+        # binding and archive_run.py correctly rejected the orphaned files.
+        def build_gate_state_cli(
+            event: str, *event_args: str,
+        ) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [
+                    sys.executable, evidence_script, "--devlyn-dir", ".devlyn",
+                    "--phase", "build_gate", event, *event_args,
+                ],
+                cwd=evidence_work, capture_output=True, text=True, check=False,
+            )
+
+        results_path = evidence_devlyn / "spec-verify.results.json"
+        results_path.write_text(json.dumps({
+            "commands": [{"pass": True}], "process_evidence": None,
+        }) + "\n", encoding="utf-8")
+        before = evidence_state_path.read_bytes()
+        missing = build_gate_state_cli("complete", "--verdict", "PASS")
+        assert missing.returncode != 0
+        assert "commands exist without a process-evidence carrier" in missing.stderr
+        assert evidence_state_path.read_bytes() == before
+
+        runner = process_evidence_module()
+
+        def write_build_gate_results() -> dict:
+            current = read_state(evidence_state_path)
+            round_ = runner.phase_round(current, "build_gate")
+            obligation = runner.normalize_obligation({
+                "id": "verification-command-0001",
+                "phase": "build_gate",
+                "argv": [sys.executable, "-c", "print('sealed build gate')"],
+            })
+            relative = runner.manifest_relative_path(current, "build_gate")
+            runner.capture_process(
+                evidence_work, evidence_work / relative, current["run_id"],
+                "build_gate", round_, obligation,
+            )
+            build_carrier = runner.validate_manifest(
+                evidence_work, relative, current["run_id"], "build_gate", round_,
+                [obligation], require_expectations=False,
+            )
+            results_path.write_text(json.dumps({
+                "commands": [{"pass": True}], "process_evidence": build_carrier,
+            }) + "\n", encoding="utf-8")
+            return build_carrier
+
+        build_carrier_0 = write_build_gate_results()
+        completed = build_gate_state_cli("complete", "--verdict", "PASS")
+        assert completed.returncode == 0, completed.stderr
+        completed_state = read_state(evidence_state_path)
+        assert completed_state["process_evidence"] == [carrier, build_carrier_0]
+
+        spawned = build_gate_state_cli(
+            "spawn", "--round", "1", "--triggered-by", "build_gate",
+        )
+        assert spawned.returncode == 0, spawned.stderr
+        build_carrier_1 = write_build_gate_results()
+        transitioned = build_gate_state_cli(
+            "transition", "--verdict", "PASS", "--next-phase", "cleanup",
+            "--next-round", "0",
+        )
+        assert transitioned.returncode == 0, transitioned.stderr
+        build_bound_state = read_state(evidence_state_path)
+        assert build_bound_state["process_evidence"] == [
+            carrier, build_carrier_0, build_carrier_1,
+        ]
+        assert build_bound_state["phases"]["cleanup"]["started_at"] is not None
+        print("PASS iter-0111 BUILD_GATE evidence: completion/transition state binding")
 
         # complete() before spawn() must fail loudly, not silently invent data.
         write_state(state_path, {"phases": {}})

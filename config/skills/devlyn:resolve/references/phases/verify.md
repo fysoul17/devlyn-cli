@@ -11,19 +11,28 @@ Independent quality layer. You answer one question: did the diff deliver what th
 - `spec.expected.json` — the mechanical acceptance contract per `_shared/expected.schema.json`.
 - The cumulative diff against `state.base_ref.sha`.
 - The source hash (`state.source.spec_sha256` for spec mode, `state.source.criteria_sha256` for generated free-form mode) — re-read the source contract from disk and confirm the hash matches; if it does not, write `state.phases.verify.verdict: "BLOCKED"` with reason `source_sha256_mismatch` and stop.
+- `.devlyn/spec-verify.results.json` plus the validated VERIFY
+  process-evidence manifest and raw stdout/stderr streams named by its
+  `process_evidence` carrier. These are immutable MECHANICAL results; rehash
+  every named byte before JUDGE spawn and again during merge.
 
-You do NOT receive: PLAN, IMPLEMENT's reasoning, BUILD_GATE's findings, CLEANUP's allowlist negotiations. Reading those would compromise independence.
+You do NOT receive: PLAN, IMPLEMENT's reasoning, BUILD_GATE's findings, CLEANUP's allowlist negotiations. Reading those would compromise independence. You also do not receive command-execution tools; executable verification belongs exclusively to MECHANICAL.
 </input>
 
 <sub_phases>
 
 ### MECHANICAL (deterministic)
 
-Re-run the mechanical checks fresh, independent of BUILD_GATE's earlier run:
+The orchestrator completes these checks before spawning either JUDGE,
+independent of BUILD_GATE's earlier run:
 
-1. `SPEC_VERIFY_PHASE=verify_mechanical SPEC_VERIFY_FINDINGS_FILE=verify-mechanical.findings.jsonl SPEC_VERIFY_FINDING_PREFIX=VERIFY-MECH python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --include-risk-probes` against the post-CLEANUP code. In spec mode, sibling `spec.expected.json` wins; a malformed sibling is CRITICAL, not a fallback. When `state.risk_profile.risk_probes_enabled == true`, missing `.devlyn/risk-probes.jsonl` is also CRITICAL. The script also checks `forbidden_patterns`, `required_files`, `forbidden_files`, and `max_deps_added`.
+1. `SPEC_VERIFY_PHASE=verify_mechanical SPEC_VERIFY_FINDINGS_FILE=verify-mechanical.findings.jsonl SPEC_VERIFY_FINDING_PREFIX=VERIFY-MECH python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --include-risk-probes` against the post-CLEANUP code. In spec mode, sibling `spec.expected.json` wins; a malformed sibling is CRITICAL, not a fallback. When `state.risk_profile.risk_probes_enabled == true`, missing `.devlyn/risk-probes.jsonl` is also CRITICAL. The script also checks `forbidden_patterns`, `required_files`, `forbidden_files`, and `max_deps_added`, and writes `.devlyn/spec-verify.results.json` with a VERIFY process-evidence carrier.
 
-Emit findings to `.devlyn/verify-mechanical.findings.jsonl`. Each match = one finding. Severity from the pattern's `severity` field (disqualifier → CRITICAL, warning → MEDIUM).
+2. Validate the carrier and every named raw stream. A missing, altered,
+escaping, duplicate, or expectation-mismatched record is a CRITICAL mechanical
+blocker. Freeze the validated results, manifest, and streams as JUDGE inputs.
+
+Emit findings to `.devlyn/verify-mechanical.findings.jsonl`. Each match = one finding. Severity from the pattern's `severity` field (disqualifier → CRITICAL, warning → MEDIUM). A verdict-binding MECHANICAL result skips both JUDGEs.
 
 ### JUDGE (fresh-context grading)
 
@@ -63,14 +72,14 @@ stdout/stderr contract, or auth/idempotency + duplicate/replay ordering. If the
 implementation only passes isolated examples but fails the combined scenario,
 emit a HIGH finding tied to all relevant spec clauses.
 
-For high-complexity specs, execute at least one combined adversarial check with
-the repo's existing CLI/API/test runner before declaring PASS. Use a temporary
-script or inline command that leaves no tracked files behind. The check must
-cross two or more explicit verification bullets, not merely repeat the visible
-acceptance command. If the command exposes a mismatch, emit a HIGH finding with
-the command, expected output/state, and actual output/state.
+JUDGE does not execute literal verification, lint, test, build, risk-probe, or
+newly invented interaction commands. For high-complexity behavior, executable
+coverage must already be declared in sibling `spec.expected.json` or derived
+risk probes and present in the sealed MECHANICAL evidence. Missing coverage is
+a verdict-binding finding; review the implementation's clause and code order
+without inventing a replacement command.
 
-**Coverage check**: before declaring done, confirm you have evidence for every spec axis. If you could not exercise an axis (the spec asks for behavior X but the diff does not touch the code that produces X), set `state.verify.coverage_failed: true` and surface the missing-evidence finding rather than passing on assumption.
+**Coverage check**: before declaring done, confirm you have sealed evidence and code-order support for every spec axis. If an axis lacks declared MECHANICAL coverage, or the diff does not touch the code that produces it, set `state.verify.coverage_failed: true` and surface the missing-evidence finding rather than passing on assumption.
 
 **Verdict-binding severity check**: HIGH/CRITICAL findings are always
 verdict-binding. A MEDIUM finding is also verdict-binding when it identifies a
@@ -99,7 +108,8 @@ round and merge by worst source verdict without vote counting. An orchestrator
 without foreground parallel dispatch runs the same two required judges
 sequentially, with no flag or extra state marker. This is a dispatch-shape
 fallback, not outcome-dependent escalation; the primary cannot skip the pair.
-Prefer read-only checks and serialize probes requiring exclusive shared state.
+Both JUDGEs inspect the same immutable evidence; neither runs probes or mutates
+shared state.
 
 Keep these reasons as telemetry; they no longer gate the second spawn:
 `mode.pair-verify`, `mode.verify-only`, `complexity.high`,
@@ -157,62 +167,56 @@ When eligible and the orchestrator spawns a second VERIFY agent with the OTHER e
 - Other lower-severity disagreements are logged but do not change the verdict.
 - The orchestrator handles merge; you only emit your own findings.
 - The second judge's job is adversarial complement, not a duplicate summary:
-  prioritize the two highest-risk explicit `## Verification` bullets that cross
+  review the two highest-risk explicit `## Verification` bullets that cross
   state mutation, all-or-nothing rollback, ordering, idempotency, auth, or
   error-priority clauses. The primary judge owns broad coverage; the pair judge
   is a bounded adversarial complement. Do not read `.claude/skills`,
   `.codex/skills`, `CLAUDE.md`, `AGENTS.md`, or other harness docs unless the
   orchestrator pasted a specific excerpt into the prompt. Use only the spec,
-  diff, implementation files, tests, and the repo's CLI/API/test runner.
-  Execute at most two targeted probes before first output. Pair-JUDGE output: emit JSONL findings then a bare terminal verdict line, or emit only `PASS` when clean. `_shared/judge-output-parser.py` is the single acceptance rule for pair output: JSONL findings, then a `# SUMMARY {json}` line or a bare verdict line (`PASS` alone when clean); it ignores bare code-fence lines and unwraps the registered Codex JSON envelope including its narrated-preamble recovery (iter-0082), and binds a whole-message NDJSON capture only through its uniquely attested terminal `end_turn` assistant message (iter-0106); every other non-empty line blocks the pair source. Do not continue exhaustive exploration.
-  If the spec includes a solo-headroom hypothesis, one of the two targeted
-  probes must exercise that hypothesis with the visible command/input shape and
-  compare the full externally visible result. The probe must use the
-  hypothesis's backticked observable command as its command anchor before adding
-  bounded input variations. Do not substitute a neighboring easier edge case;
-  the pair judge exists to test the stated expected solo miss.
-  A targeted probe must compare the full externally visible result
-  (stdout/stderr/exit and full parsed output object, including accepted/scheduled
-  rows, rejected rows, and remaining state when present), not just a single
-  property. The mandatory dominance-loss anchor must run as a single command
-  with no shell chain operators. Chains used only to re-capture exit status are
-  forbidden because the tool result already carries it; this does not ban
-  compound shell generally or multi-step probes issued as separate tool calls.
-  When the spec names exact keys, row shapes, JSON object shape, or an
-  exact error body, compare parsed key sets/deep equality so aliased keys,
-  missing keys, and extra keys are verdict-binding failures. Use the spec's
-  visible input key names literally when constructing the probe input. For
-  priority/stateful specs, at least one probe must include an earlier input
-  entity that would succeed under input-order processing, a later higher-priority
-  entity that consumes or blocks the critical resource, and a
-  failure/blocked/rollback edge that determines a later entity's state. This is
-  the minimum compound shape for priority + failure/state-mutation bugs.
-  Scope qualifiers are binding for the pair judge too: do not reinterpret
-  `inside a warehouse`, `per resource`, or line-scoped rules as global rules.
-  If a candidate finding depends on that widening, emit PASS for that probe and
-  use the second bounded probe for a different explicit clause.
-  When both priority ordering and rollback/blocked-interval behavior appear in
-  the spec, this dominance-loss probe is mandatory and comes before any other
-  probe: an earlier lower-priority entity that would succeed alone or under
-  input-order processing must lose because a later higher-priority entity is
-  processed first; a failed/blocked middle entity must not corrupt later state;
-  and the assertion must cover the complete output ordering for both accepted
-  (or scheduled) and rejected rows.
+  diff, implementation files, tests, and sealed MECHANICAL evidence. Complete at
+  most two targeted reviews before first output and execute no commands.
+  Pair-JUDGE output: emit JSONL findings then a bare terminal verdict line, or
+  emit only `PASS` when clean. `_shared/judge-output-parser.py` is the single
+  acceptance rule for pair output: JSONL findings, then a `# SUMMARY {json}`
+  line or a bare verdict line (`PASS` alone when clean); it ignores bare
+  code-fence lines and unwraps the registered Codex JSON envelope including its
+  narrated-preamble recovery (iter-0082), and binds a whole-message NDJSON
+  capture only through its uniquely attested terminal `end_turn` assistant
+  message (iter-0106); every other non-empty line blocks the pair source.
+  If the spec includes a solo-headroom hypothesis, one targeted review must use
+  the hypothesis's backticked observable command as its exact anchor and inspect
+  the complete sealed result (stdout/stderr/exit plus the full parsed output
+  object). Missing matching evidence is a coverage finding; do not substitute or
+  run a neighboring edge case. When the spec names exact keys, row shapes, JSON
+  object shape, or an exact error body, compare the sealed parsed key sets/deep
+  equality so aliased keys, missing keys, and extra keys are verdict-binding
+  failures. For priority/stateful specs, trace implementation code order for an
+  earlier input entity that would succeed under input-order processing, a later
+  higher-priority entity that consumes or blocks the critical resource, and a
+  failure/blocked/rollback edge that determines a later entity's state. Scope
+  qualifiers are binding for the pair judge too: do not reinterpret `inside a
+  warehouse`, `per resource`, or line-scoped rules as global rules. When both
+  priority ordering and rollback/blocked-interval behavior appear, perform this
+  dominance-loss code-order review first and confirm the sealed evidence covers
+  complete accepted/scheduled and rejected output ordering.
 
-The resolved pair-JUDGE is read-only. Codex keeps the monitored
+Both resolved JUDGEs are read-only. Capture the primary reply as
+`.devlyn/<primary-engine>-judge.stdout` and its stderr sibling; never write the
+generic `.devlyn/verify-judge.stdout`. Codex pair-JUDGE keeps the monitored
 `codex-monitored.sh` route with
 `CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600` and
 `-c model_reasoning_effort=medium`; isolation blocks user config, AGENTS.md,
 hooks, and project rules from hidden context/tool side effects. Do not pipe it
 to `tail`, `head`, `grep`, `sed`, or `awk`; capture stdout/stderr directly.
 Every other resolved OTHER engine follows `_shared/adapters/<name>.md`
-`## Invocation`. Capture the result as `.devlyn/<name>-judge.stdout`, then run
+`## Invocation`. Capture the pair reply as `.devlyn/<other-engine>-judge.stdout`, then run
 `python3 "$DEVLYN_SHARED_DIR/collect-codex-findings.py" --devlyn-dir
-"<abs repo>/.devlyn" --stdout-file <name>-judge.stdout` before merge.
+"<abs repo>/.devlyn" --stdout-file <other-engine>-judge.stdout` before merge.
 The orchestrator writes the canonical `.devlyn/verify.pair.findings.jsonl`.
-The pair prompt must include a bounded-output contract: no harness-doc reads,
-maximum two targeted probes before first output, stop on the first
-verdict-binding finding, and emit PASS immediately after the bounded checks pass.
+The pair prompt must include a bounded-output contract: no harness-doc reads or
+command execution, maximum two targeted reviews before first output, stop on
+the first verdict-binding finding, and emit PASS immediately after the bounded
+reviews pass.
 Raw stdout is diagnostic-only. A non-zero collector exit must write no
 canonical findings file: set the pair source to `BLOCKED` for
 `verify.pair.emission-contract`, and do not merge as though unparsed stdout were
@@ -258,6 +262,7 @@ VERIFY to `BLOCKED`; do not synthesize merge artifacts in prose.
 
 <output>
 - `.devlyn/verify-mechanical.findings.jsonl` — MECHANICAL findings.
+- `.devlyn/spec-verify.results.json` plus its sealed VERIFY process-evidence manifest/raw streams — immutable JUDGE inputs.
 - `.devlyn/verify.findings.jsonl` — JUDGE findings.
 - `.devlyn/verify-merged.findings.jsonl` and `.devlyn/verify-merge.summary.json` — deterministic merge artifacts.
 - `phases.verify.{verdict, sub_verdicts, merged}` are written by `verify-merge-findings.py --write-state`, never by you (VERIFY agents have no code-mutation tools). `completed_at`/`duration_ms`/`artifacts` are recorded by the orchestrator via `state-phase-write.py` after this phase returns. `PASS` requires zero CRITICAL/HIGH findings, zero verdict-binding MEDIUM regressions, and coverage met.
@@ -265,6 +270,7 @@ VERIFY to `BLOCKED`; do not synthesize merge artifacts in prose.
 
 <quality_bar>
 - Independence is structural (fresh context) and behavioral (no code mutation). Both must hold.
+- MECHANICAL is the sole executor; JUDGE performs sealed-evidence and clause/code-order review only.
 - Quote, do not paraphrase. Findings without quoted file:line evidence are excluded.
 - Coverage > confidence. Missing-evidence findings outrank a confident "looks fine."
 </quality_bar>
