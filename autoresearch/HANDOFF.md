@@ -29,16 +29,28 @@ smaller (ctxprobe: sonnet-5 41,203 / opus-5 29,993 / opus-4-8 29,022 —
 receipts on disk since 09:00, read by all three seats, connected by
 nobody) nor (2) the footprint overestimate (measured 11,611/task vs
 12,288). Successor ranking A first ×2: re-derive T from per-engine
-geometry, everything else unchanged; fable's candidate **T = 64,000**
-(derivation + falsifier OUTCOME-RETUNING in the iteration file § Launch
-record). **RESUME RECIPE (after the user rules A/B/C)**: register
-AMENDMENT 3 (terra byte list = AMENDMENT 2's shape; trio freeze; also
-"boundary-4 peak" wording + probe provenance) → FRESH run root + run id
-(abort terminals sticky) → quiet account, outside 23:00–01:00 KST →
-`launch-detached-0110.py --sweep 1 …` (gate block alone first) → **sweeps
-2–5 into the SAME `--out` and `--run-id`** (scorer reads one manifest for
-all 120 sessions) → `score-0110.py --results-root <root>` → trio verify →
-record. Receipts `~/.local/share/nx01/iter0110/launch/` (ADJUDICATIONS.md
+geometry, everything else unchanged. **User ruled A ("추천대로") →
+AMENDMENT 3 REGISTERED + double-FROZEN the same evening: T = 64,000**
+(rule floor₁₀₀₀((31,527 − 971) + 4×9,724 − 1,074 − 4,096); trio R0 sol
+AMEND ×3 folded + grok ADOPT; terra T-r11 5 files +29/−16; fable verify
+self-tests ×2 / pins 11/11 / dry-run; re-freeze `FREEZE-0110-AMEND3-SOL:
+bc85bde2` + `FREEZE-0110-AMEND3-GROK: bc85bde2`, pin file
+`bc85bde2c19774ecdc0d3d4a69708e41a34a0d4481ba2d325da273d4703cfa99`;
+falsifiers OUTCOME-RETUNING + restated P-0110-2; iteration file
+§ AMENDMENT 3). **RESUME RECIPE (relaunch)**: (1) reproducibility receipts
+— 2-token probes for opus-5 / opus-4-8 through the pinned CLI (exe sha256
+`013a1cf1…`), argv + env recorded in `launch/ADJUDICATIONS.md`; BLOCK
+unless 29,993 / 29,022 reproduce exactly (mismatch ⇒ new amendment, never
+silent substitution); (2) account quiet (no `claude --print` workers,
+peer sessions idle, pyx-memory-v1 X31 all-clear received), outside
+23:00–01:00 KST; (3) FRESH run root + run id `m2-<utcstamp>`:
+`python3 ~/.local/share/nx01/iter0110/launch/launch-detached-0110.py
+--sweep 1 --run-id m2-<utcstamp> --out
+~/.local/share/nx01/iter0110/matrix/m2-<utcstamp> --pin-sha256
+bc85bde2c19774ecdc0d3d4a69708e41a34a0d4481ba2d325da273d4703cfa99` (gate
+block alone first) → **sweeps 2–5 into the SAME `--out` and `--run-id`**
+(scorer reads one manifest for all 120 sessions) → `score-0110.py
+--results-root <root>` → trio verify → record. Receipts `~/.local/share/nx01/iter0110/launch/` (ADJUDICATIONS.md
 18:08 block, packet + pins, gate-sol/grok logs) and
 `~/.local/share/nx01/iter0110/matrix/s1-20260826T085326Z/`.
 

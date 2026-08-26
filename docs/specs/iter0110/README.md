@@ -14,9 +14,9 @@ exits 2; unscored structural or infrastructure input exits 3.
 G0 evaluates every criterion at each correlation-envelope member (ρ = 0,
 0.25, 0.5); the empirical worst member decides. The smallest passing scale is
 five independently stageable sweeps: 120 sessions and 960 task attempts total
-(24 and 192 per sweep). Phase A runs the first sweep-1 block alone, one
+(24 and 192 per sweep). Sweeps 2–5 are fired into the SAME `--out` and `--run-id` as sweep 1 — the launcher resumes that manifest and the scorer reads one manifest for all 120 sessions. Phase A runs the first sweep-1 block alone, one
 session at a time in schedule order, and persists A5 after each clean matrix
-session. A5 requires unbroken custody plus the registered 90,000-token horizon threshold by boundary
+session. A5 requires unbroken custody plus the registered 64,000-token horizon threshold (AMENDMENT 3: re-derived from the opus-5 gate-session ledger + per-engine overhead; boundary-4 PEAK) by boundary
 4 (strictly before the first LATE position 5); a clean subject below threshold writes `FAIL_FAST_THRESHOLD_UNREACHED`; a completed gate block lacking a clean matrix subject writes `A5_SUBJECT_UNAVAILABLE`. Once both
 matrix engines have passing A5 records, Phase B runs the remaining block work:
 each block stays serial on one lane to preserve its ABBA matrix unit, while

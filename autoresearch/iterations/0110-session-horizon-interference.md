@@ -1,6 +1,6 @@
 ---
 title: "Session-horizon interference cell — opus-5 vs opus-4-8 under accumulated-context horizon"
-status: REGISTERED-FROZEN 2026-08-25 (double FREEZE on r4 — sol 9f3c7a1d + grok b8e4c1a3) + AMENDMENT 1 double ADOPT + APPARATUS TRIO-FROZEN 2026-08-26 (final double FREEZE a7b8eab7 sol+grok on identical bytes; launch USER-GATED) + AMENDMENT 2 2026-08-26 (launch preflight)
+status: REGISTERED-FROZEN 2026-08-25 (double FREEZE on r4 — sol 9f3c7a1d + grok b8e4c1a3) + AMENDMENT 1 double ADOPT + APPARATUS TRIO-FROZEN 2026-08-26 (final double FREEZE a7b8eab7 sol+grok on identical bytes; launch USER-GATED) + AMENDMENT 2 2026-08-26 (launch preflight) + AMENDMENT 3 2026-08-26 (threshold re-derived 64,000 after the A5 gate FAIL_FAST; double FREEZE sol+grok bc85bde2; relaunch USER-GATED → scheduled after 01:00 KST 08-27)
 depends_on: ["0109-decoy-parity-pilot", "0103-opus-line-regression-cell", "0102-executor-quality-discovery-corpus"]
 ---
 
@@ -132,8 +132,7 @@ be narrated as closing "H1 design quality at long horizon" in full.
   recorded id-rotation link) and recorded as a marker; the stream
   `compact_boundary` event is the ALTERNATE-shape attestor.
 - **Thresholds**: the registered horizon threshold is the sole absolute
-  effective-context threshold (90,000, derived at apparatus time from measured
-  early-boundary values); the context-window-fraction leg is RETIRED by
+  effective-context threshold (64,000 by AMENDMENT 3, re-derived from the opus-5 gate-session ledger + per-engine overhead; tested on the boundary-4 PEAK at any prior boundary); the context-window-fraction leg is RETIRED by
   AMENDMENT 2 (encoded `context_window_fraction_threshold: 0.0` = retired,
   NOT 0 % occupancy); denominators are recorded measured `contextWindow`
   values (1,000,000 for all three engines), no longer gate inputs.
@@ -421,7 +420,7 @@ registered-params.json,scripts.sha256,README.md}`.
   smallest S passing all four G0 criteria at EVERY envelope member
   (worst member ρ=0: P(C|S-large)=.517, P(R|S-null)=.5385, coverage
   .928, false-C 0); δH=0.15; G1 tolerances .115/.100/.110; horizon
-  thresholds 90,000 abs (fraction leg retired by AMENDMENT 2; measured window
+  thresholds 64,000 abs (AMENDMENT 3; 90,000 fired FAIL_FAST at the gate; fraction leg retired by AMENDMENT 2; measured window
   1,000,000 ×3 recorded) (operator window attestation required at launch); G2
   crossing strictly at a PRIOR boundary; G3 ≥47 non-tied
   pairs/engine (S=5 grid, conservative p2.5); launcher = serial A5 gate
@@ -451,9 +450,7 @@ registered-params.json,scripts.sha256,README.md}`.
   grok `FREEZE-0110-AMEND2-GROK: 7e67c1cd` (pin file sha256
   `7e67c1cdcecb368ce54201eb8214d17e502374fc4905dddd561d8b59df7b73b8`).
 - **Pre-registered predictions** (before freeze): P-0110-1 G1 passes all
-  engines; P-0110-2 every custody-unbroken session crosses the registered 90,000 threshold
-  before the first LATE position (A5 never fires; riskiest — rests on the
-  12,288-token corpus-footprint estimate); P-0110-3 the pilot does NOT emit
+  engines; P-0110-2 (restated by AMENDMENT 3; the 90,000 form was FALSIFIED at the gate 2026-08-26) every custody-unbroken matrix session crosses 64,000 at a boundary ≤ 4 — A5 never fires and G2 threshold-unreached exclusions = 0; P-0110-3 the pilot does NOT emit
   CONFIRMED (0102/0103 lineage).
 - **Deviation disclosed**: terra T-r3 attempt 1 routed the fold through a
   nested worker that cannot initialize under the wrapper sandbox → honest
@@ -486,3 +483,13 @@ Docs precision (grok D5): the derivation projected the LATE-1 *first request*; t
 **Successor — AMENDMENT 3 (user-gated; relaunch needs a fresh run root + run id, ~11 h quiet account).** Trio ranking under SUCCESSOR MINIMALITY: **A first ×2** — re-derive the absolute threshold from per-engine measured geometry, everything else unchanged (k=8, schedule, G0, S=5, G2 prior-boundary attestation; byte list = AMENDMENT 2's shape: params, this registration, README, launcher self-test literals, scorer PARAMS pin, three inventory digests). Registered falsifier for A: OUTCOME-RETUNING — any consultation of per-task outcomes while deriving T invalidates it. B (keep 90k, LATE = 6–8) and C (keep 90k, k=16) re-derive G0/S/schedule/position classes; D (filler preamble) contradicts §(a). Fable's candidate derivation for A, to be trio-frozen at registration: T = min-engine baseline (opus-4-8 29,022 + ~1.5k prompt) + 4 × min observed per-task footprint (9,832) − 4,096 margin ≈ 65,800 → **64,000** (rounded DOWN); 72,000 is unsafe under task-mix variance (four ~9.8k tasks ⇒ boundary-4 ≈ 70.9k) and G2 excludes every session below T, not only the gate session. The claim's substance is carried by the recorded ledgers (LATE positions measured at 78k→135k); T is the floor attestation. AMENDMENT 3 must also (i) say "boundary-4 peak" and (ii) attest probe provenance or derive the baseline from driver-attested ledgers only.
 
 Operator contract corrected at the bytes: sweeps 2–5 are fired into the SAME `--out`/`--run-id` as sweep 1 (`load_manifest` run-id equality; `a5-gate-requires-sweep-one`; scorer reads one manifest for all 120 sessions) — HANDOFF "sweeps 2–5 likewise" was under-specified. Deviation disclosed: the first grok verification invocation was misprompted as the SOL seat (zsh `${var/pat/rep}` glob-group parsing), killed at 19 s, relaunched with the GROK prompt (`gate-grok.misprompted.log` kept).
+
+## AMENDMENT 3 (2026-08-26, after the A5 gate FAIL_FAST — sol AMEND + grok ADOPT, fable adjudication; user ruled option A)
+
+Cause: § Launch record (two-factor: sonnet-smoke baseline applied to opus subjects + footprint overestimate, against a 2,177 margin).
+Rule (context geometry only): T = floor₁₀₀₀((opus-5 gate first request 31,527 − opus-4-8 overhead delta 971) + 4 × min first-to-first footprint 9,724 − boundary-4 tail 1,074 − margin 4,096) = floor₁₀₀₀(64,282) = **64,000**; "first request" = the boundary's first `usage_entries` value (the ledger's `.requests` list is sorted by request id, `boundary-ledger-0110.py:180-183`). The worst matrix engine with four minimum-footprint tasks projects a boundary-4 PEAK of 68,378 ≥ 64,000. The gate (`launch-0110.py:264-296`) and G2 (`score-0110.py:388-396`) test the boundary-4 PEAK at any prior boundary; EARLY/LATE remain position classes (`sh-driver-0110.py:139-144`).
+Rejected 72,000 (cleaner p4-first 66,390 < T < p5-first 79,046 separation): cosmetic — no registered claim conditions EARLY on context — and unsafe under task-mix variance (8/32 footprints known) → decisive criterion G2 EXCLUSION SAFETY (trio AGREE ×2).
+Reproducibility receipts (sol A4, fail-closed): before the relaunch the operator re-runs the 2-token probe for `claude-opus-5` and `claude-opus-4-8` through the pinned CLI (executable sha256 013a1cf17df5ff1dcc189d5d6fd3fdd5f097ddc3cd41aa9992e99805574febbe), recording exact argv, executable digest and environment in `launch/ADJUDICATIONS.md`; the launch is BLOCKED unless they reproduce 29,993 / 29,022 (Δ 971) exactly — a mismatch is never a silent substitution: it is a new amendment from the attested numbers.
+Falsifiers: OUTCOME-RETUNING (no per-task outcome field of the gate session was opened by fable or either seat; any evidence otherwise voids this amendment); P-0110-2 restated above — a second FAIL_FAST or any G2 threshold-unreached exclusion falsifies the re-derivation.
+Byte list applied (terra T-r11): registered-params.json (threshold, descriptors, derivation), scorer PARAMS pin, two inventory digests, README, this registration. Launcher, driver, ledger collector, schedule, window attestation values untouched (attestation prose updated by the operator). Relaunch: fresh run root + run id, quiet account, outside 23:00–01:00 KST, after the pyx-memory-v1 X31 all-clear; sweeps 2–5 same `--out`/`--run-id`.
+Re-freeze on the final bytes (2026-08-26 20:0x KST, both seats F1 exact byte list / F2 confirmed / F3 NONE): `FREEZE-0110-AMEND3-SOL: bc85bde2` · `FREEZE-0110-AMEND3-GROK: bc85bde2` (pin file sha256 `bc85bde2c19774ecdc0d3d4a69708e41a34a0d4481ba2d325da273d4703cfa99`; receipts `~/.local/share/nx01/iter0110/launch/refreeze-amend3-{sol,grok}.log`).

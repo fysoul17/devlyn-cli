@@ -70,17 +70,23 @@
   },
   "effective_context": {
     "smoke_margin_tokens": 4096,
-    "smoke_first_request_baseline_tokens": 43025,
     "smoke_enlarged_task_footprint_tokens": 17662,
-    "conservative_corpus_task_footprint_estimate_tokens": 12288,
-    "absolute_threshold_tokens": 90000,
+    "amendment3_inputs": {
+      "opus5_gate_first_request_tokens": 31527,
+      "opus48_baseline_delta_tokens": 971,
+      "min_first_to_first_footprint_tokens": 9724,
+      "boundary4_tail_tokens": 1074,
+      "first_request_definition": "first usage_entries effective_context of the boundary (chronological; .requests is sorted by request id)",
+      "source": "gate session ~/.local/share/nx01/iter0110/matrix/s1-20260826T085326Z/claude-opus-5.s01-b01-claude-opus-5-fwd.r1/boundary-ledger.json (exact-ID opus-5, custody unbroken; first requests p1..p5 31527/43949/56666/66390/79046; boundary-4 peak 77972); engine delta from ~/.local/share/nx01/iter0110/launch/ctxprobe/probe-claude-opus-{5,4-8}.json cacheCreationInputTokens 29993/29022, reproduced fail-closed by the pre-launch reproducibility receipts (AMENDMENT 3)"
+    },
+    "absolute_threshold_tokens": 64000,
     "context_window_denominator_tokens": {
       "claude-opus-5": 1000000,
       "claude-opus-4-8": 1000000,
       "claude-sonnet-5": 1000000
     },
     "context_window_fraction_threshold": 0.0,
-    "derivation": "12,288 is three smoke margins and remains below the observed 17,662 enlarged-smoke footprint. At the first LATE position of k=8, four such early footprints project 43,025 + 4*12,288 = 92,177 effective tokens, above 90,000. The baseline alone is below the registered threshold. The fraction leg is retired (0.0 = retired). 1,000,000 is the measured modelUsage.contextWindow of pinned CLI 2.1.226 for claude-opus-5, claude-opus-4-8, and claude-sonnet-5 (the registered smoke and ctxprobe receipts); it is recorded, not a gate input."
+    "derivation": "AMENDMENT 3 (2026-08-26): the AMENDMENT 2 threshold 90,000 (sonnet-smoke baseline 43,025 + 4*12,288, margin 2,177) fired FAIL_FAST_THRESHOLD_UNREACHED on the first clean opus-5 gate session (boundary-4 peak 77,972; crossed at boundary 5) because the pinned-CLI overhead is engine-dependent (sonnet 41,203 / opus-5 29,993 / opus-4-8 29,022 cacheCreation tokens on a 2-token prompt) and the measured footprint (11,611 mean) was below 12,288. Re-derived from context geometry only: T = floor_1000((31,527 - 971) + 4*9,724 - 1,074 - 4,096) = 64,000, i.e. the worst matrix engine with four minimum-footprint tasks still reaches a boundary-4 PEAK >= 64,000 with the registered 4,096 margin. The gate and G2 test the boundary-4 PEAK (any prior boundary), not the LATE-1 first request. The fraction leg stays retired (0.0 = retired). 1,000,000 is the measured modelUsage.contextWindow of pinned CLI 2.1.226 for the three engines; recorded, not a gate input."
   },
   "frozen_source_sha256": {
     "mx_driver": "e683a00d529a6427683399e5f36f218db59f4e654f92bc3da2ed74d036e857c3",
