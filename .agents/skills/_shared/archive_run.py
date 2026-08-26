@@ -151,8 +151,8 @@ def prune(runs_dir: pathlib.Path, keep: int = 10) -> int:
         except ValueError:
             # Can't decide flight-state safely; skip (never prune)
             continue
-        verdict = s.get("phases", {}).get("final_report", {}).get("verdict")
-        if verdict is None:
+        final_report = s.get("phases", {}).get("final_report")
+        if not isinstance(final_report, dict) or final_report.get("verdict") is None:
             continue  # in-flight
         candidates.append(d)
     over = len(candidates) - keep
@@ -241,6 +241,23 @@ def self_test() -> int:
             assert not (devlyn / name).exists(), name
         assert global_rollout.is_file(), "engine-global session files must stay untouched"
         assert not (devlyn / "runs" / run_id / global_rollout.name).exists()
+
+        null_run = devlyn / "runs" / "run-0-null"
+        null_run.mkdir()
+        (null_run / "pipeline.state.json").write_text(
+            json.dumps({"phases": {"final_report": None}}) + "\n",
+            encoding="utf-8",
+        )
+        newest_run = devlyn / "runs" / "run-2"
+        newest_run.mkdir()
+        (newest_run / "pipeline.state.json").write_text(
+            json.dumps({"phases": {"final_report": {"verdict": "PASS"}}}) + "\n",
+            encoding="utf-8",
+        )
+        assert prune(devlyn / "runs", keep=1) == 1
+        assert null_run.is_dir(), "null final_report archive must not be pruned"
+        assert not (devlyn / "runs" / run_id).exists(), "oldest completed archive must be pruned"
+        assert newest_run.is_dir(), "newest completed archive must remain"
 
         bad = pathlib.Path(tmp) / "bad"
         bad.mkdir()
