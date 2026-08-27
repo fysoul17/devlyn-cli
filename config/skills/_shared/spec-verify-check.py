@@ -1909,6 +1909,32 @@ def run_self_test() -> int:
     # (observed 2026-08-03, iter-0089 canary).
     os.environ.pop("BENCH_WORKDIR", None)
     script_path = str(Path(__file__).resolve())
+    with tempfile.TemporaryDirectory() as help_tmp:
+        for help_flag in ("--help", "-h"):
+            help_result = subprocess.run(
+                [sys.executable, script_path, help_flag],
+                cwd=help_tmp,
+                capture_output=True,
+                text=True,
+            )
+            if help_result.returncode != 0 or "usage:" not in help_result.stdout:
+                print(f"{help_flag} did not return usage successfully", file=sys.stderr)
+                return 1
+            if (Path(help_tmp) / ".devlyn").exists():
+                print(f"{help_flag} mutated .devlyn", file=sys.stderr)
+                return 1
+        unknown_result = subprocess.run(
+            [sys.executable, script_path, "--not-a-real-option"],
+            cwd=help_tmp,
+            capture_output=True,
+            text=True,
+        )
+        if unknown_result.returncode != 2 or "unknown argument" not in unknown_result.stderr:
+            print("unknown option did not fail closed", file=sys.stderr)
+            return 1
+        if (Path(help_tmp) / ".devlyn").exists():
+            print("unknown option mutated .devlyn", file=sys.stderr)
+            return 1
     runner = process_evidence_module()
     try:
         mechanical_evidence_identity({"version": "3.0", "phases": {}}, runner)
@@ -4434,6 +4460,14 @@ def run_self_test() -> int:
 
 
 def main() -> int:
+    if "--help" in sys.argv[1:] or "-h" in sys.argv[1:]:
+        print(
+            "usage: spec-verify-check.py [-h | --help | --include-risk-probes | "
+            "--validate-risk-probes | --print-risk-probes-digest | "
+            "--print-authorized-surface | --write-untracked-baseline | "
+            "--check <markdown-path> | --check-expected <json-path> | --self-test]"
+        )
+        return 0
     include_risk_probes = False
     validate_risk_probes_only = False
     print_risk_probes_digest = False
@@ -4469,6 +4503,10 @@ def main() -> int:
             print("usage: spec-verify-check.py --check-expected <json-path>", file=sys.stderr)
             return 2
         return run_check_expected_mode(Path(sys.argv[2]))
+
+    if len(sys.argv) != 1:
+        print(f"unknown argument(s): {' '.join(sys.argv[1:])}", file=sys.stderr)
+        return 2
 
     bench_mode = "BENCH_WORKDIR" in os.environ
     work = Path(os.environ.get("BENCH_WORKDIR") or os.getcwd())

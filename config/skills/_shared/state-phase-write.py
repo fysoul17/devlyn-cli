@@ -3529,7 +3529,7 @@ def self_test() -> int:
             receipt_work, receipt_path, receipt_state["run_id"], "implement", 0,
             str(receipt_prompt), str(receipt_session),
             ["-C", str(receipt_work), "-s", "workspace-write", "-m", receipt_model,
-             "implement exactly"],
+             "-c", "sandbox_workspace_write.network_access=false", "implement exactly"],
         )
         receipt_runner.finish_receipt(receipt_work, receipt_path, 0)
         assert do_complete(
@@ -3564,7 +3564,8 @@ def self_test() -> int:
             receipt_work, plan_path, plan_state["run_id"], "plan", 0,
             str(plan_prompt), str(plan_session),
             ["--json", "-C", str(receipt_work), "-s", "workspace-write",
-             "-m", plan_model, "plan exactly"],
+             "-m", plan_model, "-c",
+             "sandbox_workspace_write.network_access=false", "plan exactly"],
         )
         receipt_runner.finish_receipt(receipt_work, plan_path, 0)
         assert do_complete(
@@ -3596,7 +3597,8 @@ def self_test() -> int:
             receipt_work, plan_path_1, plan_state["run_id"], "plan", 1,
             str(plan_prompt_1), str(plan_session_1),
             ["--json", "-C", str(receipt_work), "-s", "workspace-write",
-             "-m", plan_model, "replan exactly"],
+             "-m", plan_model, "-c",
+             "sandbox_workspace_write.network_access=false", "replan exactly"],
         )
         receipt_runner.finish_receipt(receipt_work, plan_path_1, 0)
         assert do_complete(

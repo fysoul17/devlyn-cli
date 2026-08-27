@@ -485,6 +485,8 @@ else
   bad "invocation-receipt.py self-test failed"
 fi
 if ! grep -Fq 'sandbox must remain workspace-write' config/skills/_shared/invocation-receipt.py \
+  || ! grep -Fq 'SCHEMA_VERSION = "2.0"' config/skills/_shared/invocation-receipt.py \
+  || ! grep -Fq 'sandbox_workspace_write.network_access' config/skills/_shared/invocation-receipt.py \
   || ! grep -Fq 'forbidden Codex bypass flag' config/skills/_shared/invocation-receipt.py \
   || ! grep -Fq 'forbidden Codex sandbox: danger-full-access' config/skills/_shared/codex-monitored.sh \
   || ! grep -Fq 'DEVLYN_INVOCATION_RECEIPT' config/skills/_shared/codex-monitored.sh; then

@@ -258,7 +258,8 @@ def dynamic_invocation_artifacts(devlyn: pathlib.Path, state: dict) -> list[path
             if receipt is None:
                 continue
             if not isinstance(receipt, dict) or set(receipt) != {
-                "path", "sha256", "sandbox", "argv_sha256", "exit_code",
+                "path", "sha256", "sandbox", "sandbox_network_access",
+                "argv_sha256", "exit_code",
             }:
                 raise ArchiveError(f"phases.{phase_name} invocation receipt binding is invalid")
             relative_text = receipt["path"]
@@ -285,13 +286,27 @@ def dynamic_invocation_artifacts(devlyn: pathlib.Path, state: dict) -> list[path
             if receipt["sha256"] != hashlib.sha256(raw).hexdigest():
                 raise ArchiveError(f"bound invocation receipt digest mismatch: {relative_text}")
             try:
-                _document, receipt_file, prompt_file, session_file = (
+                document, receipt_file, prompt_file, session_file = (
                     invocation_receipt_module()["validate_receipt_artifacts"](
                         work, source, run_id=state["run_id"], phase=phase_name,
                     )
                 )
             except (OSError, UnicodeError, ValueError) as exc:
                 raise ArchiveError(f"invalid bound invocation receipt: {exc}") from exc
+            if (
+                not isinstance(receipt["sandbox"], str)
+                or type(receipt["sandbox_network_access"]) is not bool
+                or not isinstance(receipt["argv_sha256"], str)
+                or isinstance(receipt["exit_code"], bool)
+                or not isinstance(receipt["exit_code"], int)
+                or receipt["sandbox"] != document["sandbox"]
+                or receipt["sandbox_network_access"] is not document["sandbox_network_access"]
+                or receipt["argv_sha256"] != document["argv_sha256"]
+                or receipt["exit_code"] != document["exit_code"]
+            ):
+                raise ArchiveError(
+                    f"bound invocation receipt fields mismatch sealed file: {relative_text}"
+                )
             for artifact in (receipt_file, prompt_file, session_file):
                 if artifact in found:
                     raise ArchiveError(
@@ -413,7 +428,9 @@ def self_test() -> int:
         invocation["start_receipt"](
             work, prior_receipt, "run-1", "build_gate", 1,
             str(prior_prompt), str(prior_session),
-            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test", "verify prior archive"],
+            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
+             "-c", "sandbox_workspace_write.network_access=true",
+             "verify prior archive"],
         )
         invocation["finish_receipt"](work, prior_receipt, 0)
         prior_binding = invocation["validate_receipt"](
@@ -429,7 +446,8 @@ def self_test() -> int:
         invocation["start_receipt"](
             work, build_receipt, "run-1", "build_gate", 2,
             str(build_prompt), str(build_session),
-            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test", "verify archive"],
+            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
+             "-c", "sandbox_workspace_write.network_access=true", "verify archive"],
         )
         invocation["finish_receipt"](work, build_receipt, 0)
         receipt_binding = invocation["validate_receipt"](
@@ -446,7 +464,8 @@ def self_test() -> int:
             work, plan_receipt, "run-1", "plan", 0,
             str(plan_prompt), str(plan_session),
             ["--json", "-C", str(work), "-s", "workspace-write",
-             "-m", "gpt-test", "plan archive"],
+             "-m", "gpt-test", "-c",
+             "sandbox_workspace_write.network_access=false", "plan archive"],
         )
         invocation["finish_receipt"](work, plan_receipt, 0)
         plan_binding = invocation["validate_receipt"](
@@ -539,6 +558,14 @@ def self_test() -> int:
         else:
             raise AssertionError("archive accepted a mutated invocation worker session")
         build_session.write_bytes(original_session)
+        receipt_binding["sandbox_network_access"] = False
+        try:
+            archive_plan(devlyn, devlyn / "runs" / run_id, state)
+        except ArchiveError as exc:
+            assert "fields mismatch sealed file" in str(exc)
+        else:
+            raise AssertionError("archive accepted a falsified invocation receipt binding")
+        receipt_binding["sandbox_network_access"] = True
 
         escape = work / "archive-escape"
         escape.mkdir()

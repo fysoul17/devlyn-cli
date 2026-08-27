@@ -12,11 +12,12 @@ import subprocess
 import tempfile
 
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "2.0"
 PHASES = {"plan", "implement", "build_gate", "cleanup"}
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 DANGEROUS_FLAGS = {"--dangerously-bypass-approvals-and-sandbox", "--yolo"}
+NETWORK_ACCESS_CONFIG = "sandbox_workspace_write.network_access"
 
 
 class ReceiptError(ValueError):
@@ -76,7 +77,7 @@ def relative_file(work: pathlib.Path, raw_path: str, label: str, *, require: boo
     return resolved, relative
 
 
-def option_value(argv: list[str], short: str, long: str) -> str | None:
+def option_values(argv: list[str], short: str, long: str) -> list[str]:
     values = []
     index = 0
     while index < len(argv):
@@ -89,10 +90,32 @@ def option_value(argv: list[str], short: str, long: str) -> str | None:
             continue
         if token.startswith(long + "="):
             values.append(token.split("=", 1)[1])
+        elif token.startswith(short + "="):
+            values.append(token.split("=", 1)[1])
         index += 1
+    return values
+
+
+def option_value(argv: list[str], short: str, long: str) -> str | None:
+    values = option_values(argv, short, long)
     if len(values) > 1:
         raise ReceiptError(f"duplicate {long} option")
     return values[0] if values else None
+
+
+def sandbox_network_access(argv: list[str], phase: str) -> bool:
+    enabled = phase == "build_gate"
+    expected = f"{NETWORK_ACCESS_CONFIG}={'true' if enabled else 'false'}"
+    related = [
+        raw for raw in option_values(argv, "-c", "--config")
+        if "sandbox_workspace_write" in raw or "network_access" in raw
+    ]
+    if related != [expected]:
+        raise ReceiptError(
+            f"Codex {phase} requires exactly one -c {expected}; "
+            "alternate, table, missing, and duplicate network overrides are forbidden"
+        )
+    return enabled
 
 
 def start_receipt(
@@ -145,6 +168,7 @@ def start_receipt(
         raise ReceiptError(
             f"Codex {phase} sandbox must remain workspace-write, got {sandbox}"
         )
+    network_access = sandbox_network_access(argv, phase)
     if not invocation_workdir:
         raise ReceiptError("Codex invocation requires an explicit workdir")
     try:
@@ -187,6 +211,7 @@ def start_receipt(
         "engine": "codex",
         "model": model,
         "sandbox": sandbox,
+        "sandbox_network_access": network_access,
         "prompt": {"path": prompt_relative, "sha256": sha256(prompt_raw)},
         "session": {"path": session_relative, "sha256": None, "bytes": None},
         "argv_sha256": sha256(json.dumps(argv, separators=(",", ":")).encode("utf-8")),
@@ -239,7 +264,8 @@ def validate_receipt_artifacts(
     receipt = read_receipt(receipt_file)
     if set(receipt) != {
         "schema_version", "run_id", "phase", "round", "engine", "model",
-        "sandbox", "prompt", "session", "argv_sha256", "status", "exit_code",
+        "sandbox", "sandbox_network_access", "prompt", "session", "argv_sha256",
+        "status", "exit_code",
     }:
         raise ReceiptError("invocation receipt has an invalid shape")
     round_ = receipt.get("round")
@@ -259,6 +285,9 @@ def validate_receipt_artifacts(
         raise ReceiptError("invocation receipt model is invalid")
     if receipt["sandbox"] != "workspace-write":
         raise ReceiptError("invocation receipt sandbox must be workspace-write")
+    expected_network_access = phase == "build_gate"
+    if receipt["sandbox_network_access"] is not expected_network_access:
+        raise ReceiptError("invocation receipt sandbox network-access capability mismatch")
     if not isinstance(receipt["exit_code"], int) or isinstance(receipt["exit_code"], bool):
         raise ReceiptError("invocation receipt exit_code is invalid")
     if not isinstance(receipt["argv_sha256"], str) or SHA256_RE.fullmatch(receipt["argv_sha256"]) is None:
@@ -326,6 +355,7 @@ def validate_receipt(
         "path": receipt_file.relative_to(work.resolve()).as_posix(),
         "sha256": sha256(receipt_file.read_bytes()),
         "sandbox": receipt["sandbox"],
+        "sandbox_network_access": receipt["sandbox_network_access"],
         "argv_sha256": receipt["argv_sha256"],
         "exit_code": receipt["exit_code"],
     }
@@ -341,7 +371,10 @@ def self_test() -> int:
         session = devlyn / "implement.worker-session.0.jsonl"
         session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
         receipt = devlyn / "implement.invocation.0.json"
-        argv = ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test", "do the task"]
+        argv = [
+            "-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
+            "-c", "sandbox_workspace_write.network_access=false", "do the task",
+        ]
         start_receipt(work, receipt, "rs-receipt", "implement", 0, str(prompt), str(session), argv)
         finish_receipt(work, receipt, 0)
         bound = validate_receipt(
@@ -356,7 +389,8 @@ def self_test() -> int:
         plan_receipt = devlyn / "plan.invocation.0.json"
         plan_argv = [
             "--json", "-C", str(work), "-s", "workspace-write",
-            "-m", "gpt-plan", "plan exactly",
+            "-m", "gpt-plan", "-c",
+            "sandbox_workspace_write.network_access=false", "plan exactly",
         ]
         start_receipt(
             work, plan_receipt, "rs-receipt", "plan", 0,
@@ -392,6 +426,28 @@ def self_test() -> int:
             start_receipt(
                 work, devlyn / "cleanup.invocation.0.json", "rs-receipt", "cleanup", 0,
                 str(cleanup_prompt), str(devlyn / "cleanup.worker-session.0.jsonl"),
+                ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
+                 "do the task"],
+            )
+        except ReceiptError as exc:
+            assert "requires exactly one -c sandbox_workspace_write.network_access=false" in str(exc)
+        else:
+            raise AssertionError("Codex cleanup accepted implicit network capability")
+        try:
+            start_receipt(
+                work, devlyn / "cleanup.invocation.0.json", "rs-receipt", "cleanup", 0,
+                str(cleanup_prompt), str(devlyn / "cleanup.worker-session.0.jsonl"),
+                ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
+                 "-c", "sandbox_workspace_write.network_access=true", "do the task"],
+            )
+        except ReceiptError as exc:
+            assert "requires exactly one -c sandbox_workspace_write.network_access=false" in str(exc)
+        else:
+            raise AssertionError("Codex cleanup accepted enabled network capability")
+        try:
+            start_receipt(
+                work, devlyn / "cleanup.invocation.0.json", "rs-receipt", "cleanup", 0,
+                str(cleanup_prompt), str(devlyn / "cleanup.worker-session.0.jsonl"),
                 ["-s", "danger-full-access", "-m", "gpt-test", "do the task"],
             )
         except ReceiptError as exc:
@@ -402,7 +458,8 @@ def self_test() -> int:
             start_receipt(
                 work, devlyn / "cleanup.invocation.0.json", "rs-receipt", "cleanup", 0,
                 str(cleanup_prompt), str(devlyn / "cleanup.worker-session.0.jsonl"),
-                ["-C", str(devlyn), "-s", "workspace-write", "-m", "gpt-test", "do the task"],
+                ["-C", str(devlyn), "-s", "workspace-write", "-m", "gpt-test",
+                 "-c", "sandbox_workspace_write.network_access=false", "do the task"],
             )
         except ReceiptError as exc:
             assert "workdir does not match" in str(exc)
@@ -423,6 +480,63 @@ def self_test() -> int:
         build_prompt.write_text("verify the task\n", encoding="utf-8")
         build_session = devlyn / "build_gate.worker-session.0.jsonl"
         build_receipt = devlyn / "build_gate.invocation.0.json"
+        try:
+            start_receipt(
+                work, build_receipt, "rs-wrapper", "build_gate", 0,
+                str(build_prompt), str(build_session),
+                ["-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
+                 "verify the task"],
+            )
+        except ReceiptError as exc:
+            assert "requires exactly one -c sandbox_workspace_write.network_access=true" in str(exc)
+        else:
+            raise AssertionError("Codex build_gate accepted missing network capability")
+        try:
+            start_receipt(
+                work, build_receipt, "rs-wrapper", "build_gate", 0,
+                str(build_prompt), str(build_session),
+                ["-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
+                 "-c", "sandbox_workspace_write.network_access=true",
+                 "-c", "sandbox_workspace_write.network_access=false",
+                 "verify the task"],
+            )
+        except ReceiptError as exc:
+            assert "duplicate network overrides are forbidden" in str(exc)
+        else:
+            raise AssertionError("Codex build_gate accepted duplicate network capabilities")
+        for alternate in (
+            "sandbox_workspace_write={network_access=true}",
+            '"sandbox_workspace_write".network_access=true',
+        ):
+            try:
+                start_receipt(
+                    work, build_receipt, "rs-wrapper", "build_gate", 0,
+                    str(build_prompt), str(build_session),
+                    ["-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
+                     "-c", "sandbox_workspace_write.network_access=true",
+                     "--config=" + alternate, "verify the task"],
+                )
+            except ReceiptError as exc:
+                assert "alternate, table, missing, and duplicate" in str(exc)
+            else:
+                raise AssertionError(f"Codex build_gate accepted alternate override: {alternate}")
+        glued_prompt = devlyn / "build_gate.prompt.1"
+        glued_prompt.write_text("verify glued config\n", encoding="utf-8")
+        glued_session = devlyn / "build_gate.worker-session.1.jsonl"
+        glued_session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
+        glued_receipt = devlyn / "build_gate.invocation.1.json"
+        start_receipt(
+            work, glued_receipt, "rs-glued", "build_gate", 1,
+            str(glued_prompt), str(glued_session),
+            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
+             "-c=sandbox_workspace_write.network_access=true", "verify glued config"],
+        )
+        finish_receipt(work, glued_receipt, 0)
+        assert validate_receipt(
+            work, glued_receipt, run_id="rs-glued", phase="build_gate", round_=1,
+            model="gpt-wrapper", prompt_sha256=sha256(glued_prompt.read_bytes()),
+            session_path=glued_session,
+        )["sandbox_network_access"] is True
         fake_codex = work / "fake-codex"
         fake_codex.write_text(
             "#!/usr/bin/env bash\n"
@@ -461,7 +575,8 @@ def self_test() -> int:
             wrapped = subprocess.run(
                 [
                     "bash", str(wrapper), "-C", str(work), "-s", "workspace-write",
-                    "-m", "gpt-wrapper", "verify the task",
+                    "-m", "gpt-wrapper", "-c",
+                    "sandbox_workspace_write.network_access=true", "verify the task",
                 ],
                 cwd=work,
                 env=env,
@@ -476,6 +591,7 @@ def self_test() -> int:
             session_path=build_session,
         )
         assert wrapper_bound["exit_code"] == 0
+        assert wrapper_bound["sandbox_network_access"] is True
 
         wrapped_plan_prompt = devlyn / "plan.prompt.1"
         wrapped_plan_prompt.write_text("plan through wrapper\n", encoding="utf-8")
@@ -498,6 +614,7 @@ def self_test() -> int:
                 [
                     "bash", str(wrapper), "--json", "-C", str(work),
                     "-s", "workspace-write", "-m", "gpt-plan-wrapper",
+                    "-c", "sandbox_workspace_write.network_access=false",
                     "plan through wrapper",
                 ],
                 cwd=work,
@@ -518,7 +635,8 @@ def self_test() -> int:
         assert plan_wrapper_bound["exit_code"] == 0
         print(
             "PASS invocation receipt identity, prompt/session digest, bypass guard, "
-            "and monitored-wrapper integration including PLAN"
+            "phase-scoped BUILD_GATE network capability, and monitored-wrapper "
+            "integration including PLAN"
         )
     return 0
 

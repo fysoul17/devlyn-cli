@@ -38,6 +38,20 @@ CODEX_MONITORED_ISOLATED=1 bash "$CODEX_MONITORED_PATH" \
 bash "$CODEX_MONITORED_PATH" \
   -C <project-root> \
   -s workspace-write \
+  -c sandbox_workspace_write.network_access=false \
+  -c model_reasoning_effort=xhigh \
+  "<inlined-prompt>"
+```
+
+**CI-equivalent BUILD_GATE** keeps the same write sandbox and enables general
+outbound network access inside that sandbox, including the loopback servers and
+network-backed test gates that CI may exercise:
+
+```bash
+bash "$CODEX_MONITORED_PATH" \
+  -C <project-root> \
+  -s workspace-write \
+  -c sandbox_workspace_write.network_access=true \
   -c model_reasoning_effort=xhigh \
   "<inlined-prompt>"
 ```
@@ -45,6 +59,7 @@ bash "$CODEX_MONITORED_PATH" \
 Notes:
 - `-C` — project root so Codex's working directory matches.
 - `-s read-only` / `-s workspace-write` — sandbox policy. Use workspace-write for implementation/probe phases that write tracked files or `.devlyn` artifacts.
+- `-c sandbox_workspace_write.network_access=<true|false>` — required and receipt-bound for mutation phases: `true` only for BUILD_GATE, `false` for PLAN, IMPLEMENT, and CLEANUP. This allows CI-equivalent loopback/network tests without widening to `danger-full-access` and prevents user configuration from silently changing other phases.
 - `-c model_reasoning_effort=xhigh` — config override for reasoning depth. Required for deep critique; skills may choose `high` or `medium` when thoroughness doesn't warrant xhigh.
 - **Omit `-m <model>`** — Codex CLI uses its configured flagship (currently `gpt-5.5`, automatically whatever ships next). This is the zero-touch mechanism. Only name `-m` when a role explicitly needs a different model (e.g., `gpt-5.3-codex` for SWE-bench-heavy coding tasks, `gpt-5.3-codex-spark` for speed).
 - `CODEX_MONITORED_ISOLATED=1` — required for bounded read-only critique/probe/judge calls. The wrapper adds `--ignore-user-config --ignore-rules --ephemeral --disable codex_hooks --disable hooks` so user config, AGENTS.md, hooks, and project rules cannot add hidden context, tool calls, or transcript side effects. Do not set it for workspace-write implementation phases.
@@ -69,4 +84,4 @@ The local Codex CLI (fronted by `codex-monitored.sh`) is the primary (and only) 
 
 Skills write the invocation as a Bash command the runtime executes. Example shape from `/devlyn:resolve` PHASE 2 IMPLEMENT when routed to Codex:
 
-> Run `bash "$CODEX_MONITORED_PATH" -C <state.base_ref.repo_root> -s workspace-write -c model_reasoning_effort=xhigh "<IMPLEMENT prompt>"`. Omit `-m` so the CLI flagship is auto-selected. Capture stdout as the IMPLEMENT reply; non-zero exit → treat as subagent failure. The wrapper emits `[codex-monitored]` heartbeat and lifecycle lines on **stderr** — stdout stays clean for Codex output, so the orchestrator can parse the reply without filtering. Heartbeat-on-stderr keeps the orchestrator's combined-output stream non-silent (defeats the iter-0008 byte-watchdog kill) without polluting the codex-reply view of stdout. Do not pipe the wrapper; direct capture or file redirection preserves streaming and avoids the pipe-refusal exit.
+> Run `bash "$CODEX_MONITORED_PATH" -C <state.base_ref.repo_root> -s workspace-write -c sandbox_workspace_write.network_access=false -c model_reasoning_effort=xhigh "<IMPLEMENT prompt>"`. Omit `-m` so the CLI flagship is auto-selected. Capture stdout as the IMPLEMENT reply; non-zero exit → treat as subagent failure. The wrapper emits `[codex-monitored]` heartbeat and lifecycle lines on **stderr** — stdout stays clean for Codex output, so the orchestrator can parse the reply without filtering. Heartbeat-on-stderr keeps the orchestrator's combined-output stream non-silent (defeats the iter-0008 byte-watchdog kill) without polluting the codex-reply view of stdout. Do not pipe the wrapper; direct capture or file redirection preserves streaming and avoids the pipe-refusal exit.
