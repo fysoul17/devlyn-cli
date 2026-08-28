@@ -1222,7 +1222,13 @@ def stage_from_expected(
     return (True, True, None, expected_path, data)
 
 
-def write_malformed_finding(devlyn_dir: Path, error: str, source_path: Path | None) -> None:
+def write_malformed_finding(
+    devlyn_dir: Path,
+    error: str,
+    source_path: Path | None,
+    *,
+    fix_hint: str | None = None,
+) -> None:
     """Emit a single CRITICAL finding for a malformed verification carrier."""
     devlyn_dir.mkdir(parents=True, exist_ok=True)
     findings_path = devlyn_dir / output_findings_name()
@@ -1238,7 +1244,7 @@ def write_malformed_finding(devlyn_dir: Path, error: str, source_path: Path | No
         "line": 1,
         "phase": output_phase(),
         "criterion_ref": "spec-verify://carrier",
-        "fix_hint": (
+        "fix_hint": fix_hint if fix_hint is not None else (
             "Fix the sibling `spec.expected.json` file or the `## Verification` "
             "```json``` block: a JSON object with a non-empty `verification_commands` array of "
             "{cmd, exit_code?, stdout_contains?, stdout_not_contains?} "
@@ -3383,8 +3389,15 @@ def run_self_test() -> int:
             or ".devlyn/external-diff.patch" not in external_diff_free_form_findings
             or "free-form" not in external_diff_free_form_findings
             or "verify-only" not in external_diff_free_form_findings
+            or "Remove `.devlyn/external-diff.patch` for ordinary runs"
+            not in external_diff_free_form_findings
+            or "only when intentionally verifying an external patch"
+            not in external_diff_free_form_findings
         ):
-            print("non-verify-only external diff did not emit the named CRITICAL finding", file=sys.stderr)
+            print(
+                "non-verify-only external diff did not emit the named CRITICAL finding and remediation",
+                file=sys.stderr,
+            )
             print(external_diff_free_form_findings, file=sys.stderr)
             return 1
         if external_diff_verify_only.returncode != 0:
@@ -4657,7 +4670,16 @@ def main() -> int:
             f"'verify-only'; actual mode is {state.get('mode')!r}"
         )
         print(f"[spec-verify] carrier malformed: {error}", file=sys.stderr)
-        write_malformed_finding(devlyn_dir, error, external_diff)
+        write_malformed_finding(
+            devlyn_dir,
+            error,
+            external_diff,
+            fix_hint=(
+                "Remove `.devlyn/external-diff.patch` for ordinary runs, or use "
+                "`/devlyn:resolve --verify-only <diff-or-PR-ref> --spec <path>` only when "
+                "intentionally verifying an external patch."
+            ),
+        )
         return 1
     integrity_error = source_integrity_error(src_type, state, source_md)
     if integrity_error:
