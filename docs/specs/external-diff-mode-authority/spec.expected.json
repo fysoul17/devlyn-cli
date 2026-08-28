@@ -1,0 +1,24 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "python3 config/skills/_shared/spec-verify-check.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 300
+    },
+    {
+      "cmd": "diff -q config/skills/_shared/spec-verify-check.py .agents/skills/_shared/spec-verify-check.py && diff -q config/skills/devlyn:resolve/references/state-schema.md .agents/skills/devlyn:resolve/references/state-schema.md",
+      "exit_code": 0
+    },
+    {
+      "cmd": "bash scripts/lint-skills.sh",
+      "exit_code": 0,
+      "timeout_sec": 600
+    },
+    {
+      "cmd": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "max_deps_added": 0
+}
+
