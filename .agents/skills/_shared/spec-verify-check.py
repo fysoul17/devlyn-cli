@@ -3302,6 +3302,96 @@ def run_self_test() -> int:
             print(expected_nan_json.stderr, file=sys.stderr)
             return 1
 
+        external_diff_root = work / "external-diff-mode-authority"
+        external_diff_root.mkdir()
+        external_diff_devlyn = external_diff_root / ".devlyn"
+        external_diff_devlyn.mkdir()
+        external_diff_spec = external_diff_root / "spec.md"
+        external_diff_spec.write_text(
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
+            "- external diff remains verify-only.\n",
+            encoding="utf-8",
+        )
+        (external_diff_root / "spec.expected.json").write_text(json.dumps({
+            "verification_commands": [
+                {"cmd": "printf external-diff-ok", "stdout_contains": ["external-diff-ok"]}
+            ]
+        }) + "\n", encoding="utf-8")
+        (external_diff_root / "external-only.txt").write_text("base\n", encoding="utf-8")
+        (external_diff_root / "outside.txt").write_text("base\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q"], cwd=external_diff_root, check=True)
+        subprocess.run(["git", "add", "-A"], cwd=external_diff_root, check=True)
+        subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "base"],
+            cwd=external_diff_root,
+            check=True,
+        )
+        external_diff_base_sha = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=external_diff_root, text=True,
+        ).strip()
+        (external_diff_root / "outside.txt").write_text("worktree-only\n", encoding="utf-8")
+        (external_diff_devlyn / "external-diff.patch").write_text(
+            "diff --git a/external-only.txt b/external-only.txt\n"
+            "--- a/external-only.txt\n"
+            "+++ b/external-only.txt\n"
+            "@@ -1 +1 @@\n"
+            "-base\n"
+            "+external\n",
+            encoding="utf-8",
+        )
+        (external_diff_devlyn / "plan.md").write_text(
+            "<!-- devlyn:authorized-surface -->\n## Files to touch\n\n"
+            "```json\n{\"authorized_surface\": [\"external-only.txt\"]}\n```\n",
+            encoding="utf-8",
+        )
+        (external_diff_devlyn / "untracked.baseline").write_text("", encoding="utf-8")
+        external_diff_state = {
+            "mode": "free-form",
+            "source": {"type": "spec", "spec_path": str(external_diff_spec)},
+            "base_ref": {"sha": external_diff_base_sha},
+        }
+        external_diff_state_path = external_diff_devlyn / "pipeline.state.json"
+        external_diff_state_path.write_text(json.dumps(external_diff_state) + "\n")
+        external_diff_free_form = subprocess.run(
+            [sys.executable, script_path],
+            cwd=external_diff_root,
+            capture_output=True,
+            text=True,
+        )
+        external_diff_findings_path = external_diff_devlyn / output_findings_name()
+        external_diff_free_form_findings = (
+            external_diff_findings_path.read_text()
+            if external_diff_findings_path.is_file()
+            else ""
+        )
+        external_diff_state["mode"] = "verify-only"
+        external_diff_state_path.write_text(json.dumps(external_diff_state) + "\n")
+        external_diff_verify_only = subprocess.run(
+            [sys.executable, script_path],
+            cwd=external_diff_root,
+            capture_output=True,
+            text=True,
+        )
+        if external_diff_free_form.returncode != 1:
+            print("non-verify-only mode accepted .devlyn/external-diff.patch", file=sys.stderr)
+            print(external_diff_free_form.stderr, file=sys.stderr)
+            return 1
+        if (
+            '"rule_id": "correctness.spec-verify-malformed"'
+            not in external_diff_free_form_findings
+            or '"severity": "CRITICAL"' not in external_diff_free_form_findings
+            or ".devlyn/external-diff.patch" not in external_diff_free_form_findings
+            or "free-form" not in external_diff_free_form_findings
+            or "verify-only" not in external_diff_free_form_findings
+        ):
+            print("non-verify-only external diff did not emit the named CRITICAL finding", file=sys.stderr)
+            print(external_diff_free_form_findings, file=sys.stderr)
+            return 1
+        if external_diff_verify_only.returncode != 0:
+            print("verify-only external diff was rejected or not consumed", file=sys.stderr)
+            print(external_diff_verify_only.stderr, file=sys.stderr)
+            return 1
+
         spec_integrity = work / "spec-integrity"
         spec_integrity.mkdir()
         spec_integrity_devlyn = spec_integrity / ".devlyn"
@@ -4560,6 +4650,15 @@ def main() -> int:
     trust_bench_staged = bench_mode and pre_staged
     src_type, source_md = read_source(work, devlyn_dir)
     state = read_state(devlyn_dir)
+    external_diff = devlyn_dir / "external-diff.patch"
+    if external_diff.is_file() and state.get("mode") != "verify-only":
+        error = (
+            ".devlyn/external-diff.patch requires pipeline.state.json mode "
+            f"'verify-only'; actual mode is {state.get('mode')!r}"
+        )
+        print(f"[spec-verify] carrier malformed: {error}", file=sys.stderr)
+        write_malformed_finding(devlyn_dir, error, external_diff)
+        return 1
     integrity_error = source_integrity_error(src_type, state, source_md)
     if integrity_error:
         print(f"[spec-verify] carrier malformed: {integrity_error}", file=sys.stderr)
