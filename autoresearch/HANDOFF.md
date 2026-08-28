@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 + APPARATUS TRIO-FROZEN 2026-08-26; AMENDMENTS 3–5 trio-frozen, T=48,000, pin `981c4c83`; m3 + m4 roots both lost to shared-account session limits with the A5 gate PASSING ×2 each — design not falsified; next = m5 LAUNCH per START-HERE recipe, USER-GATED). Most recent closed: [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED) + 0108/0107/0106/0105. Older context in the iteration index + `DECISIONS.md`.
+5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 + APPARATUS TRIO-FROZEN 2026-08-26; AMENDMENTS 3–5 trio-frozen, T=48,000, pin `981c4c83`; m3 + m4 roots both lost to shared-account session limits with the A5 gate PASSING ×2 each — design not falsified; next = m5 LAUNCH per START-HERE recipe, USER-GATED). Most recent closed: [`iterations/0111-external-diff-mode-authority.md`](iterations/0111-external-diff-mode-authority.md) (SHIPPED) and [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED). Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,7 +14,18 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-28 (session 13)
+## 🚦 START-HERE — state after 2026-08-28 (session 14)
+
+**iter-0111 external-diff mode authority SHIPPED (`c9faf27` +
+`bd9ff22`).** Non-verify runs now fail closed when
+`.devlyn/external-diff.patch` exists; verify-only still consumes the exact
+artifact. The named CRITICAL path and caller-specific operator remediation are
+covered by subprocess RED/GREEN evidence. Resolve run
+`rs-20260828T084352Z-8962c24cf41c` ended PASS; exact Opus 5 found no product
+blocker (three LOW advisories), exact isolated grok 4.6 returned PASS with zero
+findings. HX-2 required no code: current spec-amendment reversion and bare-PASS
+collector behavior are already correct. This maintenance lane did not change
+iter-0110; the next product action remains the USER-GATED m5 launch below.
 
 **iter-0110: m4 (fresh root, pin `981c4c83…`) passed the serial A5
 gate ×2 and completed the three DAY sweeps clean — 72/72 sessions,

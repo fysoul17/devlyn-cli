@@ -2,7 +2,7 @@
 id: "0111-external-diff-mode-authority"
 title: "Fail-closed authority for verify-only external diffs"
 kind: product-fix
-status: REGISTERED 2026-08-28 — implementation pending
+status: CLOSED / SHIPPED 2026-08-28
 complexity: medium
 depends_on: ["harness-artifact-integrity-seal"]
 ---
@@ -59,6 +59,41 @@ and bare `PASS` already has a passing collector regression.
 
 No design branch remains open before implementation.
 
+## Outcome — SHIPPED
+
+Commits `c9faf27` + `bd9ff22` close the observed authority escalation.
+`spec-verify-check.py` now rejects any present `.devlyn/external-diff.patch`
+unless `pipeline.state.json.mode == "verify-only"`, immediately after state read
+and before either patch consumer. The existing
+`correctness.spec-verify-malformed` CRITICAL path is retained; this caller alone
+receives actionable guidance to remove the artifact for ordinary runs or use the
+explicit verify-only route. All other malformed carriers retain their prior
+guidance.
+
+The subprocess fixture uses a real temporary git repository. Its non-verify
+case fails closed with the named CRITICAL finding; its verify-only control
+authorizes only the patch path while the worktree diff contains an out-of-scope
+file, so a worktree fallback fails under the shipped BUILD_GATE acceptance path.
+Pre-production RED/GREEN captures were preserved in resolve run
+`rs-20260828T084352Z-8962c24cf41c`.
+
+Final evidence:
+
+- `/devlyn:resolve` terminal `PASS`; VERIFY MECHANICAL 4/4, fresh primary JUDGE
+  PASS, merged findings 0, finish gate PASS.
+- `bash scripts/lint-skills.sh`, exact config/.agents parity, verifier self-test,
+  and `git diff --check` PASS.
+- Exact Opus 5: product PASS with three LOW advisories (two test-hardening notes
+  and this then-pending iteration closeout).
+- Exact isolated grok 4.6: 11-turn `end_turn`, findings 0, PASS.
+- HX-2 closed with no product change: source amendment/reversion behavior is the
+  current fail-closed contract and bare terminal `PASS` collection already has
+  a passing regression.
+
+Claim boundary: this seals single-run external-diff authority. It does not
+change bootstrap cleanup, archive inventory, iter-0110, or generic verification
+carrier semantics.
+
 ## Authorized surface
 
 <!-- devlyn:authorized-surface -->
@@ -100,4 +135,3 @@ No design branch remains open before implementation.
 - Worldclass / production ready — invalid mode/artifact state is explicit and blocking.
 - Best practice — authority derives from state, not ambient file existence.
 - Optimized — no extra model turn or runtime subprocess.
-
