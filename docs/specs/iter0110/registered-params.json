@@ -68,6 +68,21 @@
     "claude-opus-5": 0.1,
     "claude-opus-4-8": 0.11
   },
+  "amendment6": {
+    "eligibility_class": "driver structural transport only: infra_invalid true (429/529)",
+    "grain": "complete 6-session block (replicate_id)",
+    "cap_replacement_blocks_per_root": 2,
+    "fresh_window_max_age_minutes": 15,
+    "fresh_api_window_fields": [
+      "source",
+      "observed_at",
+      "resets_at",
+      "value",
+      "attested_by"
+    ],
+    "designation_rule": "first complete transport-clean attempt, mechanically and outcome-blind",
+    "p0110_4_falsifier": "REPLACEMENT_CAP_EXCEEDED rejects the shared-account path as a measurement venue; D becomes mandatory or the iteration closes VENUE_REJECTED"
+  },
   "effective_context": {
     "smoke_margin_tokens": 4096,
     "smoke_enlarged_task_footprint_tokens": 17662,

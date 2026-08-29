@@ -8,6 +8,8 @@ import hashlib
 import importlib.util
 import json
 import pathlib
+import shutil
+import subprocess
 import sys
 import tempfile
 from collections import Counter, defaultdict
@@ -20,7 +22,7 @@ DEFAULT_PARAMS = REPO / "docs/specs/iter0110/registered-params.json"
 G0_PATH = HERE / "g0-power-0110.py"
 G0_SHA256 = "b1be2b31243806fbcb2575aa04580eb4847d1cb5e679b896f11e2b3c1977ab0e"
 SCHEDULE_SHA256 = "3b319cf6324e4a19d6b42c74d14b915f4e11d500c35456ce5008ce7802044554"
-PARAMS_SHA256 = "4b6676ba7b99c734c024facdfd72a3b49e079b7421debe02c32db01cb818684d"
+PARAMS_SHA256 = "e30b8a8b2f31089ddaac9afaa3f2162379b9414c5590d8a766ace3b4cb8f07df"
 LAUNCH_MANIFEST_NAME = "launch-manifest-0110.json"
 MATRIX_ENGINES = ("claude-opus-5", "claude-opus-4-8")
 ENGINES = (*MATRIX_ENGINES, "claude-sonnet-5")
@@ -171,31 +173,20 @@ def load_registration(schedule_path: pathlib.Path, params_path: pathlib.Path) ->
     require(isinstance(schedule_spec, dict), "params-schedule-missing")
     require(schedule_spec.get("sessions") == len(schedule["sessions"]), "params-session-count-mismatch")
     require(expected_digest == SCHEDULE_SHA256, "schedule-digest-mismatch")
+    amendment = params.get("amendment6")
+    require(isinstance(amendment, dict) and type(amendment.get("cap_replacement_blocks_per_root")) is int and amendment["cap_replacement_blocks_per_root"] >= 0, "params-replacement-cap-invalid")
     return schedule, params
 
 
-def session_directory(root: pathlib.Path, session: dict[str, object]) -> pathlib.Path:
-    return root / f"{session['engine']}.{session['session_label']}.r{session['replicate_index']}"
+def session_directory(root: pathlib.Path, session: dict[str, object], attempt_id: str) -> pathlib.Path:
+    return root / "attempts" / attempt_id / f"{session['engine']}.{session['session_label']}.r{session['replicate_index']}"
 
 
-def load_launch_manifest(
-    results_root: pathlib.Path, schedule_path: pathlib.Path, params_path: pathlib.Path
-) -> dict[str, object]:
-    manifest = read_json(results_root / LAUNCH_MANIFEST_NAME)
-    require(isinstance(manifest, dict), "launch-manifest-not-object")
-    require(manifest.get("schema") == "iter0110-launch-manifest-v1", "launch-manifest-schema-mismatch")
-    require(manifest.get("schedule_sha256") == sha256(schedule_path), "launch-manifest-schedule-mismatch")
-    require(manifest.get("params_sha256") == sha256(params_path), "launch-manifest-params-mismatch")
-    require(isinstance(manifest.get("sessions"), dict), "launch-manifest-sessions-invalid")
-    return manifest
+def replacement_cap(params: dict[str, object]) -> int:
+    return params["amendment6"]["cap_replacement_blocks_per_root"]
 
 
-def verify_session_artifacts(
-    manifest: dict[str, object], directory: pathlib.Path, label: str
-) -> None:
-    sessions = manifest["sessions"]
-    status = sessions.get(label)
-    require(isinstance(status, dict), f"launch-manifest-session-missing:{label}")
+def verify_session_artifacts(status: dict[str, object], directory: pathlib.Path, label: str) -> None:
     require(status.get("status") == "completed", f"launch-session-not-complete:{label}")
     for filename, field in (
         ("rows.jsonl", "rows_sha256"),
@@ -208,6 +199,112 @@ def verify_session_artifacts(
         except OSError as exc:
             raise ScoreViolation(f"launch-artifact-unreadable:{label}:{filename}") from exc
         require(actual == expected, f"launch-artifact-digest-mismatch:{label}:{filename}")
+
+
+def sessions_by_block(schedule: dict[str, object]) -> dict[str, list[dict[str, object]]]:
+    blocks: dict[str, list[dict[str, object]]] = {}
+    for session in schedule["sessions"]:
+        blocks.setdefault(str(session["replicate_id"]), []).append(session)
+    return blocks
+
+
+def attempt_census(rows: list[object]) -> dict[str, int]:
+    typed = [row for row in rows if isinstance(row, dict)]
+    return {
+        "rows": len(typed),
+        "infra_invalid_rows": sum(row.get("infra_invalid") is True for row in typed),
+        "aup_catastrophic_rows": sum(row.get("infra_invalid") is False and row.get("catastrophic") is True for row in typed),
+        "aup_custody_broken_rows": sum(row.get("infra_invalid") is False and row.get("custody_broken") is True for row in typed),
+    }
+
+
+def add_census(total: Counter[str], value: dict[str, int]) -> None:
+    for key, count in value.items():
+        total[key] += count
+
+
+def designated_sessions(
+    manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object], root: pathlib.Path
+) -> tuple[dict[str, tuple[dict[str, object], pathlib.Path]], dict[str, dict[str, int]]]:
+    """Verify v2 provenance and return only mechanically designated sessions."""
+    require(manifest.get("schema") == "iter0110-launch-manifest-v2", "launch-manifest-schema-mismatch")
+    require(manifest.get("schedule_sha256") == sha256(DEFAULT_SCHEDULE), "launch-manifest-schedule-mismatch")
+    require(manifest.get("params_sha256") == sha256(DEFAULT_PARAMS), "launch-manifest-params-mismatch")
+    blocks = manifest.get("blocks")
+    by_block = sessions_by_block(schedule)
+    require(isinstance(blocks, dict) and set(blocks) == set(by_block), "launch-manifest-blocks-invalid")
+    all_census: Counter[str] = Counter()
+    designated_census: Counter[str] = Counter()
+    selected: dict[str, tuple[dict[str, object], pathlib.Path]] = {}
+    void_count = 0
+    for replicate_id, sessions in by_block.items():
+        block = blocks[replicate_id]
+        require(isinstance(block, dict) and block.get("replicate_id") == replicate_id, f"launch-manifest-block-invalid:{replicate_id}")
+        attempts = block.get("attempts")
+        require(isinstance(attempts, list), f"launch-manifest-attempts-invalid:{replicate_id}")
+        clean_ids: list[str] = []
+        clean_attempt: dict[str, object] | None = None
+        for index, attempt in enumerate(attempts, 1):
+            attempt_id = f"{replicate_id}.a{index}"
+            require(isinstance(attempt, dict) and set(attempt) == {"attempt_id", "replacement_of", "transport_state", "unrun_suffix", "sessions"}, f"launch-manifest-attempt-invalid:{attempt_id}")
+            require(attempt.get("attempt_id") == attempt_id and attempt.get("replacement_of") == (None if index == 1 else f"{replicate_id}.a{index - 1}"), f"launch-manifest-provenance-invalid:{attempt_id}")
+            statuses = attempt.get("sessions")
+            require(isinstance(statuses, dict), f"launch-manifest-attempt-sessions-invalid:{attempt_id}")
+            labels = {str(session["session_label"]) for session in sessions}
+            require(set(statuses) <= labels, f"launch-manifest-attempt-session-invalid:{attempt_id}")
+            actual_infra = False
+            for session in sessions:
+                label = str(session["session_label"])
+                status = statuses.get(label)
+                if status is None:
+                    continue
+                require(isinstance(status, dict), f"launch-manifest-session-invalid:{attempt_id}:{label}")
+                require(status.get("engine") == session["engine"] and status.get("replicate_id") == session["replicate_id"] and status.get("session_label") == label, f"launch-manifest-session-provenance-invalid:{attempt_id}:{label}")
+                relative = status.get("artifact_dir")
+                require(isinstance(relative, str) and relative == str(session_directory(root, session, attempt_id).relative_to(root)) and not pathlib.PurePath(relative).is_absolute() and ".." not in pathlib.PurePath(relative).parts, f"launch-manifest-artifact-path-invalid:{attempt_id}:{label}")
+                directory = root / relative
+                verify_session_artifacts(status, directory, label)
+                stored_rows = read_jsonl(directory / "rows.jsonl")
+                add_census(all_census, attempt_census(stored_rows))
+                actual_infra = actual_infra or any(isinstance(row, dict) and row.get("infra_invalid") is True for row in stored_rows)
+                require((status.get("infra_affected") is True) == any(isinstance(row, dict) and row.get("infra_invalid") is True for row in stored_rows), f"launch-manifest-infra-provenance-invalid:{attempt_id}:{label}")
+            state = attempt.get("transport_state")
+            require(state in {"VOID", "CLEAN", "RUNNING", "STRUCTURAL_FAILURE"}, f"launch-manifest-attempt-state-invalid:{attempt_id}")
+            if state == "VOID":
+                require(actual_infra, f"launch-manifest-void-without-infra:{attempt_id}")
+                first_infra = next(index for index, session in enumerate(sessions) if isinstance(statuses.get(str(session["session_label"])), dict) and statuses[str(session["session_label"])].get("infra_affected") is True)
+                require(attempt.get("unrun_suffix") == [str(session["session_label"]) for session in sessions[first_infra + 1:]] and not any(label in statuses for label in attempt["unrun_suffix"]), f"launch-manifest-void-suffix-invalid:{attempt_id}")
+                void_count += 1
+            if state == "CLEAN":
+                require(set(statuses) == labels and not actual_infra and all(statuses[str(session["session_label"])].get("status") == "completed" for session in sessions), f"launch-manifest-clean-invalid:{attempt_id}")
+                require(index == len(attempts), f"launch-manifest-clean-attempt-followed:{attempt_id}")
+                clean_ids.append(attempt_id)
+                if clean_attempt is None:
+                    clean_attempt = attempt
+            if index > 1:
+                require(attempts[index - 2].get("transport_state") == "VOID", f"launch-manifest-replacement-without-void:{attempt_id}")
+        require(block.get("designated_attempt") == (clean_ids[0] if clean_ids else None), f"launch-manifest-designation-invalid:{replicate_id}")
+        if clean_attempt is not None:
+            for session in sessions:
+                label = str(session["session_label"])
+                status = clean_attempt["sessions"][label]
+                require(status.get("infra_affected") is False, f"designated-infra-invalid:{replicate_id}:{label}")
+                directory = root / status["artifact_dir"]
+                selected[label] = (status, directory)
+                add_census(designated_census, attempt_census(read_jsonl(directory / "rows.jsonl")))
+    require(void_count <= replacement_cap(params), "replacement-cap-exceeded")
+    require(manifest.get("terminal") == "LAUNCH_COMPLETE", "launch-not-complete")
+    require(len(selected) == len(schedule["sessions"]), "undesignated-void-block")
+    return selected, {"all_attempts": dict(all_census), "designated_attempts": dict(designated_census)}
+
+
+def load_launch_manifest(results_root: pathlib.Path, schedule_path: pathlib.Path, params_path: pathlib.Path) -> dict[str, object]:
+    manifest = read_json(results_root / LAUNCH_MANIFEST_NAME)
+    require(isinstance(manifest, dict), "launch-manifest-not-object")
+    require(manifest.get("schema") == "iter0110-launch-manifest-v2", "launch-manifest-schema-mismatch")
+    require(manifest.get("schedule_sha256") == sha256(schedule_path), "launch-manifest-schedule-mismatch")
+    require(manifest.get("params_sha256") == sha256(params_path), "launch-manifest-params-mismatch")
+    return manifest
 
 
 def expected_positions(session: dict[str, object]) -> dict[int, dict[str, object]]:
@@ -328,6 +425,7 @@ def score(results_root: pathlib.Path, schedule_path: pathlib.Path, params_path: 
     schedule, params = load_registration(schedule_path, params_path)
     launch_manifest = load_launch_manifest(results_root, schedule_path, params_path)
     report = new_report(schedule_path, params_path, results_root)
+    designated, attempt_censuses = designated_sessions(launch_manifest, schedule, params, results_root)
     expected_root_rows: list[dict[str, object]] = []
     values: dict[tuple[str, str, str, str], float] = {}
     raw_late: list[tuple[str, str, str, int, float, bool, list[str]]] = []
@@ -344,8 +442,8 @@ def score(results_root: pathlib.Path, schedule_path: pathlib.Path, params_path: 
     for session in schedule["sessions"]:
         require(isinstance(session, dict), "schedule-session-invalid")
         label = str(session["session_label"])
-        directory = session_directory(results_root, session)
-        verify_session_artifacts(launch_manifest, directory, label)
+        status, directory = designated[label]
+        verify_session_artifacts(status, directory, label)
         rows = [validate_row(row, session, expected_positions(session)) for row in read_jsonl(directory / "rows.jsonl")]
         require(len(rows) == G0.K, f"session-row-count-mismatch:{label}")
         by_position = {int(row["position_index"]): row for row in rows}
@@ -409,10 +507,11 @@ def score(results_root: pathlib.Path, schedule_path: pathlib.Path, params_path: 
     report["diagnostics"] = {
         "compaction_marker_counts": {engine: compaction[engine] for engine in ENGINES},
         "end_of_session_reoracle_damage": {"count": reoracle_count, "instances": sorted(reoracle_examples)},
+        "attempt_censuses": attempt_censuses,
     }
 
     if taxonomy["infra_invalid"]:
-        report.update({"terminal": "UNSCORED", "reason": "infra_invalid", "exit_mapping": "3=unscored/structural-or-infrastructure"})
+        report.update({"terminal": "UNSCORED", "reason": "designated-infra-invalid", "exit_mapping": "3=unscored/structural-or-infrastructure"})
         return report, 3
 
     anchors = params["g0"]["published_marginal_anchors"]
@@ -552,21 +651,31 @@ def finish(report: dict[str, object], exit_code: int, root: pathlib.Path) -> int
 
 
 def write_synthetic_manifest(root: pathlib.Path, schedule: dict[str, object]) -> None:
-    sessions = {}
-    for session in schedule["sessions"]:
-        directory = session_directory(root, session)
-        sessions[str(session["session_label"])] = {
-            "status": "completed",
-            "rows_sha256": sha256(directory / "rows.jsonl"),
-            "boundary_ledger_sha256": sha256(directory / "boundary-ledger.json"),
+    blocks = {}
+    for replicate_id, sessions in sessions_by_block(schedule).items():
+        attempt_id = f"{replicate_id}.a1"
+        statuses = {}
+        for session in sessions:
+            directory = session_directory(root, session, attempt_id)
+            statuses[str(session["session_label"])] = {
+                "engine": session["engine"], "replicate_id": replicate_id, "session_label": session["session_label"],
+                "status": "completed", "infra_affected": False,
+                "rows_sha256": sha256(directory / "rows.jsonl"),
+                "boundary_ledger_sha256": sha256(directory / "boundary-ledger.json"),
+                "artifact_dir": str(directory.relative_to(root)),
+            }
+        blocks[replicate_id] = {
+            "replicate_id": replicate_id,
+            "attempts": [{"attempt_id": attempt_id, "replacement_of": None, "transport_state": "CLEAN", "unrun_suffix": [], "sessions": statuses}],
+            "designated_attempt": attempt_id,
         }
     (root / LAUNCH_MANIFEST_NAME).write_bytes(
         canonical_bytes(
             {
-                "schema": "iter0110-launch-manifest-v1",
+                "schema": "iter0110-launch-manifest-v2",
                 "schedule_sha256": sha256(DEFAULT_SCHEDULE),
                 "params_sha256": sha256(DEFAULT_PARAMS),
-                "sessions": sessions,
+                "blocks": blocks,
                 "terminal": "LAUNCH_COMPLETE",
             }
         )
@@ -583,7 +692,7 @@ def synthetic_root(root: pathlib.Path, variant: str) -> None:
         for index, task in enumerate(sorted(block["task_ids"]))
     }
     for session in schedule["sessions"]:
-        directory = session_directory(root, session)
+        directory = session_directory(root, session, f"{session['replicate_id']}.a1")
         directory.mkdir(parents=True)
         rows = []
         links = []
@@ -644,6 +753,98 @@ def synthetic_root(root: pathlib.Path, variant: str) -> None:
     write_synthetic_manifest(root, schedule)
 
 
+def add_void_replacement(root: pathlib.Path, schedule: dict[str, object]) -> None:
+    """Make a real on-disk void attempt whose clean successor is designated."""
+    manifest = read_json(root / LAUNCH_MANIFEST_NAME)
+    assert isinstance(manifest, dict)
+    replicate_id = str(schedule["blocks"][0]["replicate_id"])
+    sessions = sessions_by_block(schedule)[replicate_id]
+    block = manifest["blocks"][replicate_id]
+    original = block["attempts"][0]
+    assert isinstance(original, dict)
+    replacement_id = f"{replicate_id}.a2"
+    for session in sessions:
+        source = session_directory(root, session, f"{replicate_id}.a1")
+        target = session_directory(root, session, replacement_id)
+        shutil.copytree(source, target)
+    replacement_statuses = {}
+    for session in sessions:
+        directory = session_directory(root, session, replacement_id)
+        replacement_statuses[str(session["session_label"])] = {
+            "engine": session["engine"], "replicate_id": replicate_id, "session_label": session["session_label"],
+            "status": "completed", "infra_affected": False,
+            "rows_sha256": sha256(directory / "rows.jsonl"), "boundary_ledger_sha256": sha256(directory / "boundary-ledger.json"),
+            "artifact_dir": str(directory.relative_to(root)),
+        }
+    first = sessions[0]
+    original_directory = session_directory(root, first, f"{replicate_id}.a1")
+    first_rows = read_jsonl(original_directory / "rows.jsonl")
+    assert isinstance(first_rows[0], dict)
+    first_rows[0]["infra_invalid"] = True
+    (original_directory / "rows.jsonl").write_bytes(b"".join(canonical_bytes(row) for row in first_rows))
+    void_status = dict(original["sessions"][str(first["session_label"])])
+    void_status["infra_affected"] = True
+    void_status["rows_sha256"] = sha256(original_directory / "rows.jsonl")
+    original.update({"transport_state": "VOID", "unrun_suffix": [str(session["session_label"]) for session in sessions[1:]], "sessions": {str(first["session_label"]): void_status}})
+    block["attempts"].append({"attempt_id": replacement_id, "replacement_of": f"{replicate_id}.a1", "transport_state": "CLEAN", "unrun_suffix": [], "sessions": replacement_statuses})
+    block["designated_attempt"] = replacement_id
+    selected_rows = b""
+    for rid, block_sessions_for_id in sorted(sessions_by_block(schedule).items()):
+        selected_id = manifest["blocks"][rid]["designated_attempt"]
+        selected_attempt = next(attempt for attempt in manifest["blocks"][rid]["attempts"] if attempt["attempt_id"] == selected_id)
+        for session in block_sessions_for_id:
+            selected_rows += (root / selected_attempt["sessions"][str(session["session_label"])]["artifact_dir"] / "rows.jsonl").read_bytes()
+    (root / "ledger.jsonl").write_bytes(selected_rows)
+    (root / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
+
+
+def add_cap_exceeded(root: pathlib.Path, schedule: dict[str, object]) -> None:
+    """Turn one synthetic block into three real, consecutive void attempts."""
+    manifest = read_json(root / LAUNCH_MANIFEST_NAME)
+    assert isinstance(manifest, dict)
+    replicate_id = str(schedule["blocks"][0]["replicate_id"])
+    sessions = sessions_by_block(schedule)[replicate_id]
+    block = manifest["blocks"][replicate_id]
+    original = block["attempts"][0]
+    assert isinstance(original, dict)
+    first = sessions[0]
+    source = session_directory(root, first, f"{replicate_id}.a1")
+
+    def void_status(attempt_id: str, directory: pathlib.Path) -> dict[str, object]:
+        stored_rows = read_jsonl(directory / "rows.jsonl")
+        assert isinstance(stored_rows[0], dict)
+        stored_rows[0]["infra_invalid"] = True
+        directory.joinpath("rows.jsonl").write_bytes(b"".join(canonical_bytes(row) for row in stored_rows))
+        status = dict(original["sessions"][str(first["session_label"])])
+        status.update({
+            "infra_affected": True,
+            "rows_sha256": sha256(directory / "rows.jsonl"),
+            "boundary_ledger_sha256": sha256(directory / "boundary-ledger.json"),
+            "artifact_dir": str(directory.relative_to(root)),
+        })
+        return status
+
+    original.update({
+        "transport_state": "VOID",
+        "unrun_suffix": [str(session["session_label"]) for session in sessions[1:]],
+        "sessions": {str(first["session_label"]): void_status(f"{replicate_id}.a1", source)},
+    })
+    for number in (2, 3):
+        attempt_id = f"{replicate_id}.a{number}"
+        directory = session_directory(root, first, attempt_id)
+        shutil.copytree(source, directory)
+        block["attempts"].append({
+            "attempt_id": attempt_id,
+            "replacement_of": f"{replicate_id}.a{number - 1}",
+            "transport_state": "VOID",
+            "unrun_suffix": [str(session["session_label"]) for session in sessions[1:]],
+            "sessions": {str(first["session_label"]): void_status(attempt_id, directory)},
+        })
+    block["designated_attempt"] = None
+    manifest["terminal"] = "REPLACEMENT_CAP_EXCEEDED"
+    (root / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
+
+
 def self_test() -> None:
     schedule, _params = load_registration(DEFAULT_SCHEDULE, DEFAULT_PARAMS)
     scenarios = {
@@ -672,7 +873,7 @@ def self_test() -> None:
             synthetic_root(fixture, variant)
             if variant == "confirmed":
                 first_session = schedule["sessions"][0]
-                rows_path = session_directory(fixture, first_session) / "rows.jsonl"
+                rows_path = session_directory(fixture, first_session, f"{first_session['replicate_id']}.a1") / "rows.jsonl"
                 original = rows_path.read_bytes()
                 rows_path.write_bytes(original + b" ")
                 try:
@@ -701,7 +902,7 @@ def self_test() -> None:
         late_position = root / "late-position-crossing"
         synthetic_root(late_position, "confirmed")
         for session in schedule["sessions"]:
-            ledger_path = session_directory(late_position, session) / "boundary-ledger.json"
+            ledger_path = session_directory(late_position, session, f"{session['replicate_id']}.a1") / "boundary-ledger.json"
             ledger = read_json(ledger_path)
             ledger["boundaries"][3]["peak_effective_context"] = 1000
             ledger["boundaries"][4]["peak_effective_context"] = 100000
@@ -712,7 +913,20 @@ def self_test() -> None:
             raise AssertionError("late-position threshold crossing was accepted")
         if not any("threshold-unreached" in key for key in report["g2_horizon_attestation"]["excluded_late_reasons"]):
             raise AssertionError("late-position threshold crossing was not excluded")
-    print("SELF_TEST_OK: frozen dependencies, launch digest tamper, G1 transport, G2 prior-boundary exclusion, G3 support, saturation, strict terminals, G0 shared-path consistency, determinism")
+        designated_only = root / "designated-only"
+        synthetic_root(designated_only, "confirmed")
+        add_void_replacement(designated_only, schedule)
+        report, exit_code = score(designated_only, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
+        censuses = report["diagnostics"]["attempt_censuses"]
+        if exit_code != 0 or censuses["all_attempts"]["infra_invalid_rows"] != 1 or censuses["designated_attempts"].get("infra_invalid_rows", 0) != 0:
+            raise AssertionError("T6 void rows entered the designated score join")
+        cap_exceeded = root / "cap-exceeded"
+        synthetic_root(cap_exceeded, "confirmed")
+        add_cap_exceeded(cap_exceeded, schedule)
+        completed = subprocess.run([sys.executable, str(HERE / "score-0110.py"), "--results-root", str(cap_exceeded)], capture_output=True, text=True)
+        if completed.returncode != 3 or "TERMINAL: UNSCORED" not in completed.stdout or "replacement-cap-exceeded" not in completed.stdout:
+            raise AssertionError(f"T2 cap-exceeded exit: {completed.returncode}")
+    print("SELF_TEST_OK: frozen dependencies, launch digest tamper, G1/G2/G3, strict terminals, G0 consistency, determinism, T2 cap exit 3, T6 designated-only join")
 
 
 def main() -> int:

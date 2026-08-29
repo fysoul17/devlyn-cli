@@ -14,7 +14,40 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-28 (session 14)
+## 🚦 START-HERE — state after 2026-08-29 (session 15)
+
+**iter-0110 m5 DEAD — third root death; AMENDMENT 6 registered; lane
+in flight.** m5 sweep 1 clean (24/24, A5 PASS ×2 — third consecutive);
+sweep 2 (fired 11:33 KST 08-29) died 12:53 to the shared-account
+session limit (block s02-b04, 6 infra rows, "resets 2:50pm") →
+`INFRA_ABORT`, unscoreable. Lineage m3+m4+m5 = 157 clean sessions
+banked/unscoreable, 11 infra rows, ONE class. Operator error disclosed:
+fable dated the window reset from a machine-local transcript chain
+(R=11:32) — the receipt proves the key was ≈09:50; **window-key evidence
+is API-level ONLY (a 429 "resets HH:MM" or the interactive `/usage`
+readout); never override a peer's disclosed first-call time with
+inference.** Co-tenant hold cannot cover the user's own interactive
+sessions (moonmaker 4 sessions/473 turns in flight). Trio CONVERGENT
+`CONFIRM OPTION B` (sol+grok, `m5infra-{sol,grok}.log`) → **AMENDMENT 6**
+(iteration file § AMENDMENT 6: block-grain replacement of 429-void blocks,
+cap 2 blocks/root, structural outcome-blindness, manifest v2,
+`REPLACEMENT_PENDING` resumable, ONE-PIN-PER-ROOT ⇒ fresh m6, m5 never
+resumed; P-0110-4 falsifier `REPLACEMENT_CAP_EXCEEDED` ⇒ venue
+rejected). **Lane**: terra implements (`launch/packet-amend6-terra.md`,
+log `amend6-terra.log`; byte list = launch-0110.py, score-0110.py,
+README, registered-params.json, scripts.sha256) → re-freeze round 1
+REVISE ×2 (rule-7 gate existed but was unreachable behind the
+attestation byte-pin — verify REACHABILITY, not existence) → fold →
+**round 2 DOUBLE FREEZE `1315091b`** (pin file sha256
+`1315091bcf2f64c126c4e57c7d9e2c81e5eb4cbec3275fb9a94e39cdadc943d2`)
+→ committed → **m6 launch USER-GATED + user
+decision D** (matrix arms under a login no interactive session shares —
+both seats rank B+D strongest; B is necessary under any tenancy).
+Staging hygiene kept (day window, exclusivity, co-tenant hold, A4
+attestation, drift manifests, AUP-CENSUS-FINALITY) as replacement-rate
+reducers, not survival rules. Chronicle: iteration file §§ Launch record
+m5 + AMENDMENT 6; receipts `~/.local/share/nx01/iter0110/launch/ADJUDICATIONS.md`
+2026-08-29 entries. Seat recipes + gotchas below still bind.
 
 **iter-0111 external-diff mode authority SHIPPED (`c9faf27` +
 `bd9ff22`).** Non-verify runs now fail closed when
@@ -27,78 +60,25 @@ findings. HX-2 required no code: current spec-amendment reversion and bare-PASS
 collector behavior are already correct. This maintenance lane did not change
 iter-0110; the next product action remains the USER-GATED m5 launch below.
 
-**iter-0110: m4 (fresh root, pin `981c4c83…`) passed the serial A5
-gate ×2 and completed the three DAY sweeps clean — 72/72 sessions,
-infra 0 (fired 08:38 / 14:10 / 19:45 KST 08-27). The NIGHT sweep 4
-(fired 01:12 KST 08-28 after a quiet-hold) died at 02:55 in a
-7-second ALL-LANE 429 burst ("You've hit your session limit · resets
-5:10am"): 4 `infra_invalid` rows (one per session, s04-b04) →
-manifest terminal `INFRA_ABORT` (sticky) → the frozen scorer
-unscores the root (score-0110.py:414-415); sweep 5 never fired.
-m3+m4 = two roots (≈220 sessions) lost to the same shared-account
-limit class; the gate/threshold design has now PASSED twice and is
-not the bottleneck. Trio CONVERGENT (sol+grok `CONFIRM OPTION
-A-PRIME`, `m4infra-{sol,grok}.log`): no apparatus change, successor
-= fresh root m5, USER-GATED.** Chronicle: iteration file §§ Launch
-records (s1/m2 FAIL_FASTs + AMENDMENTS 3–5 + m3 + m4) + receipts
-`~/.local/share/nx01/iter0110/launch/ADJUDICATIONS.md`.
-
-**LAUNCH RECIPE (m5; USER-GATED; zero apparatus change)**:
-0. Trio-adopted staging rules (2026-08-28, operator-level only):
-   - Sweeps fire ONLY within 08:00–22:00 KST. Empirics: day fires
-     3/3 clean at full ≈180-call volume, night fires 0/2 (m3 02:09,
-     m4-s4 01:12). Registered drop-condition: one top-of-window
-     quiet NIGHT fire surviving ≥150 calls retires this clause.
-   - WINDOW-KEY EXCLUSIVITY: each sweep's first matrix call must be
-     the FIRST shared-account Claude call after a limit reset
-     (attestation probes immediately before are fine; an hour of
-     orchestrator/other-project usage before the fire is not — that
-     keyed m4-s4's window at ~00:10–00:17 and starved it).
-   - Co-tenant hold covers PARENT codex sessions (the spawner, not
-     just its bounded `claude --print` children); peer no-X-unit
-     windows agreed BEFORE firing; orchestrator token discipline
-     while a sweep is in flight.
-   - OPERATOR HALT on the first `infra_invalid`/429 (kept, knowing a
-     7 s all-lane burst outruns it); monitor per-session `is_error`
-     + manifest `infra_affected`.
-   - AUP-CENSUS-FINALITY: at each sweep terminal rescan every
-     `cli.stdout` for `anthropic.com/legal/aup` — m4 terminal census
-     16 receipts (all 3 engines, task-clustered BD8×6/BD7×3/UA7×3/
-     AF3×2/BD2/AF4; taxonomy: catastrophic+custody_broken,
-     `infra_invalid:false`). Record-step measurement-validity
-     annotation for the scored root, NOT an abort class; never carry
-     forward interim monitor counts.
-1. Quiet account (no headless workers; 3 quiet minutes) inside the
-   day window.
-2. AMENDMENT 4 prefix attestation: probe recipe + driver-exact shape
-   in ADJUDICATIONS 23:05 08-26 entry. Launch iff opus-5 prefix ≥
-   29,993 AND opus-4-8 ≥ 29,022, else BLOCK → new amendment.
-3. Drift manifest → `launch/drift-manifest-launch.txt`.
-4. FRESH run root + run id (abort terminals sticky; s1/m2/m3/m4 all
-   dead):
-   `python3 ~/.local/share/nx01/iter0110/launch/launch-detached-0110.py
-   --sweep 1 --run-id m5-<utcstamp> --out
-   ~/.local/share/nx01/iter0110/matrix/m5-<utcstamp> --pin-sha256
-   981c4c834ca907bce2a7347b1980c7cf798d5c8a32092635904b9726449791f3`
-   (gate block runs alone first; A5 PASS ×2 expected — proven on m3
-   and m4).
-5. Sweeps 2–5 **into the SAME `--out` and `--run-id`** (scorer reads
-   ONE manifest for all 120 sessions; ≈2.3 h/sweep, 3 lanes), each
-   fired per rule 0. Feasible: day 1 ≈08:30/13:45/19:00 (sweeps 1–3),
-   day 2 ≈08:30/13:45 (sweeps 4–5).
-6. End: drift manifest again (`drift-manifest-end.txt`) →
-   `score-0110.py --results-root <root>` → trio verify (sol+grok;
-   report per-engine LATE-cell qualifying-boundary peak distributions
-   from the pinned ledgers + the AUP census annotation) → record
-   (iteration file DECISION + DECISIONS.md + memory).
-A THIRD root death under these staging rules licenses OPTION B
-(recoverability amendment) or a redesign — registered in the m4
-launch record.
-Operational gotchas (bound this lane): seat prompts = literal strings
-only (zsh `${var/pat/rep}` glob-group silently no-ops — misprompted grok
-twice); watch seat completion via the wrapper's final
-`[codex-monitored] codex exited` line, not token strings (seats echo the
-packet).
+**m6 LAUNCH RECIPE (after the AMENDMENT 6 re-freeze; USER-GATED)**:
+the m4/m5 recipe (ADJUDICATIONS 08-28 10:12 entry: quiet account →
+A4 prefix attestation via `launch/ctxprobe-m5.py` ≥ 29,993 / 29,022 →
+drift manifest → `launch-detached-0110.py --sweep N --run-id
+m6-<utcstamp> --out …/matrix/m6-<utcstamp> --pin-sha256 <NEW PIN>`,
+sweeps 2–5 into the same root/run-id, ≈2.3 h/sweep, 3 lanes) with
+these deltas: the pin is the AMENDMENT 6 freeze pin (NOT `981c4c83`);
+a 429-void block terminalizes `REPLACEMENT_PENDING` and is replayed
+whole by re-invoking the launcher with `--fresh-api-window <json>`
+(operator-authored `{source: usage|429-reset, observed_at, resets_at,
+value, attested_by}`; launch iff now ≥ resets_at and age ≤ 15 min;
+consume-once — rule 7 mechanized after the re-freeze REVISE ×2);
+operator halt is no longer fatal — the halt is the block stop; end = `score-0110.py --results-root` (designated attempts only)
+→ trio verify → record. Seat gotchas bound to this lane: seat prompts
+= literal strings only (zsh `${var/pat/rep}` glob-group silently
+no-ops); watch seat completion via the wrapper's final
+`[codex-monitored] codex exited` line, not token strings (seats echo
+the packet); background waiters cap at 10 min — use a persistent
+Monitor for seat/terra runs.
 
 **iter-0110 AMENDMENT 2 double-FROZEN 2026-08-26 (session 10)** — the
 registered 200,000 context-window denominator was FALSE at the bytes
