@@ -5,7 +5,7 @@
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25 + APPARATUS TRIO-FROZEN 2026-08-26; AMENDMENTS 3–5 trio-frozen, T=48,000, pin `981c4c83`; m3 + m4 roots both lost to shared-account session limits with the A5 gate PASSING ×2 each — design not falsified; next = m5 LAUNCH per START-HERE recipe, USER-GATED). Most recent closed: [`iterations/0111-external-diff-mode-authority.md`](iterations/0111-external-diff-mode-authority.md) (SHIPPED) and [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED). Older context in the iteration index + `DECISIONS.md`.
+5. Next: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (REGISTERED-FROZEN 2026-08-25; AMENDMENT 6 pin `1315091b`; m3–m6 all four roots lost to shared-account limit events with the A5 gate PASSING each time — design never falsified; m6 terminal `REPLACEMENT_CAP_EXCEEDED` fired P-0110-4 ⇒ venue rejected; next = USER GATE: decision D or close `VENUE_REJECTED`). Most recent closed: [`iterations/0111-external-diff-mode-authority.md`](iterations/0111-external-diff-mode-authority.md) (SHIPPED) and [`iterations/0109-decoy-parity-pilot.md`](iterations/0109-decoy-parity-pilot.md) (TERMINAL PROXIMITY_PARITY_REJECTED). Older context in the iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
@@ -14,40 +14,43 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-29 (session 15)
+## 🚦 START-HERE — state after 2026-08-31 (session 17)
 
-**iter-0110 m5 DEAD — third root death; AMENDMENT 6 registered; lane
-in flight.** m5 sweep 1 clean (24/24, A5 PASS ×2 — third consecutive);
-sweep 2 (fired 11:33 KST 08-29) died 12:53 to the shared-account
-session limit (block s02-b04, 6 infra rows, "resets 2:50pm") →
-`INFRA_ABORT`, unscoreable. Lineage m3+m4+m5 = 157 clean sessions
-banked/unscoreable, 11 infra rows, ONE class. Operator error disclosed:
-fable dated the window reset from a machine-local transcript chain
-(R=11:32) — the receipt proves the key was ≈09:50; **window-key evidence
-is API-level ONLY (a 429 "resets HH:MM" or the interactive `/usage`
-readout); never override a peer's disclosed first-call time with
-inference.** Co-tenant hold cannot cover the user's own interactive
-sessions (moonmaker 4 sessions/473 turns in flight). Trio CONVERGENT
-`CONFIRM OPTION B` (sol+grok, `m5infra-{sol,grok}.log`) → **AMENDMENT 6**
-(iteration file § AMENDMENT 6: block-grain replacement of 429-void blocks,
-cap 2 blocks/root, structural outcome-blindness, manifest v2,
-`REPLACEMENT_PENDING` resumable, ONE-PIN-PER-ROOT ⇒ fresh m6, m5 never
-resumed; P-0110-4 falsifier `REPLACEMENT_CAP_EXCEEDED` ⇒ venue
-rejected). **Lane**: terra implements (`launch/packet-amend6-terra.md`,
-log `amend6-terra.log`; byte list = launch-0110.py, score-0110.py,
-README, registered-params.json, scripts.sha256) → re-freeze round 1
-REVISE ×2 (rule-7 gate existed but was unreachable behind the
-attestation byte-pin — verify REACHABILITY, not existence) → fold →
-**round 2 DOUBLE FREEZE `1315091b`** (pin file sha256
-`1315091bcf2f64c126c4e57c7d9e2c81e5eb4cbec3275fb9a94e39cdadc943d2`)
-→ committed → **m6 launch USER-GATED + user
-decision D** (matrix arms under a login no interactive session shares —
-both seats rank B+D strongest; B is necessary under any tenancy).
-Staging hygiene kept (day window, exclusivity, co-tenant hold, A4
-attestation, drift manifests, AUP-CENSUS-FINALITY) as replacement-rate
-reducers, not survival rules. Chronicle: iteration file §§ Launch record
-m5 + AMENDMENT 6; receipts `~/.local/share/nx01/iter0110/launch/ADJUDICATIONS.md`
-2026-08-29 entries. Seat recipes + gotchas below still bind.
+**iter-0110 m6 DEAD — `REPLACEMENT_CAP_EXCEEDED`; P-0110-4 FALSIFIER
+FIRED ⇒ the shared account is REJECTED as a measurement venue. USER
+GATE (binary, open): decision D — one newly registered root under a
+login used exclusively by the matrix — or close iter-0110
+`VENUE_REJECTED`.** Root `~/.local/share/nx01/iter0110/matrix/
+m6-20260830T001654Z` (pin `1315091b`; fired 09:16:54 KST 08-30, user
+ruled B-only, D not taken). Sweeps 1–3 ran clean: 72/72 sessions, 576
+rows, infra 0, replacement 0, A5 PASS ×2 (fourth consecutive), 12/12
+blocks designated `.a1`. Sweep 4 (fired 20:08 KST 08-31) died at
+20:26 — all three lanes hit the account **WEEKLY limit** (429 "resets
+Sep 5 at 8am (Asia/Seoul)") within 3 s → 3 simultaneous block voids >
+cap 2 → sticky terminal, mechanical (launch-0110.py:440-443); s04-b04
++ sweep 5 never launched. Frozen scorer: exit 3 ×2 byte-identical,
+`UNSCORED`, reason `replacement-cap-exceeded` (sha `02b24315…`).
+Lineage m3–m6: ≈233 transport-clean sessions unscoreable, 4 root
+deaths = 4 distinct shared-account limit events; **the A5 design gate
+PASSED in all four roots — the design was never falsified, the venue
+was.** Trio verify 08-31: sol V1/V3/V5 CONFIRM + V2/V4 packet
+corrections adopted (weekly reset = days-slow recovery, not
+impossible; canonical ledger 576 vs attempt-local 632); sol
+recommendation = D for exactly ONE root, fired at a verified weekly
+reset with max headroom; a second cap-exceed on the dedicated login ⇒
+close `VENUE_REJECTED`, no further amendments (counter recorded: D
+does not remove provider weekly caps). **grok seat 402 (balance
+exhausted; receipt `m6cap-grok-skip.log`) — explicit-skip taken; a
+grok re-verify of `packet-m6cap-verify.md` is owed once the user
+restores the seat.** m6 is sticky/immutable — no resume, no m7 on
+this account; salvaging its 12 designated blocks = a NEW registration
+question only. No account launches before the weekly reset
+**2026-09-05 08:00 KST** regardless. Full record: iteration file
+§ Launch record m6; `launch/ADJUDICATIONS.md` 2026-08-30/31 entries
+(AUP census 12, C-RC ×4, C-NET ×12, latency episode); successor
+inputs (sol V5): AUP-prone corpus + estimand ruling on policy
+refusals, persist per-task CLI rc, pre-register network-failure
+disposition.
 
 **iter-0111 external-diff mode authority SHIPPED (`c9faf27` +
 `bd9ff22`).** Non-verify runs now fail closed when
@@ -60,25 +63,15 @@ findings. HX-2 required no code: current spec-amendment reversion and bare-PASS
 collector behavior are already correct. This maintenance lane did not change
 iter-0110; the next product action remains the USER-GATED m5 launch below.
 
-**m6 LAUNCH RECIPE (after the AMENDMENT 6 re-freeze; USER-GATED)**:
-the m4/m5 recipe (ADJUDICATIONS 08-28 10:12 entry: quiet account →
-A4 prefix attestation via `launch/ctxprobe-m5.py` ≥ 29,993 / 29,022 →
-drift manifest → `launch-detached-0110.py --sweep N --run-id
-m6-<utcstamp> --out …/matrix/m6-<utcstamp> --pin-sha256 <NEW PIN>`,
-sweeps 2–5 into the same root/run-id, ≈2.3 h/sweep, 3 lanes) with
-these deltas: the pin is the AMENDMENT 6 freeze pin (NOT `981c4c83`);
-a 429-void block terminalizes `REPLACEMENT_PENDING` and is replayed
-whole by re-invoking the launcher with `--fresh-api-window <json>`
-(operator-authored `{source: usage|429-reset, observed_at, resets_at,
-value, attested_by}`; launch iff now ≥ resets_at and age ≤ 15 min;
-consume-once — rule 7 mechanized after the re-freeze REVISE ×2);
-operator halt is no longer fatal — the halt is the block stop; end = `score-0110.py --results-root` (designated attempts only)
-→ trio verify → record. Seat gotchas bound to this lane: seat prompts
-= literal strings only (zsh `${var/pat/rep}` glob-group silently
-no-ops); watch seat completion via the wrapper's final
-`[codex-monitored] codex exited` line, not token strings (seats echo
-the packet); background waiters cap at 10 min — use a persistent
-Monitor for seat/terra runs.
+Seat gotchas (still binding): seat prompts = literal strings only
+(zsh `${var/pat/rep}` glob-group silently no-ops); watch seat
+completion via the wrapper's final `[codex-monitored] codex exited`
+line, not token strings (seats echo the packet); background waiters
+cap at 10 min — use a persistent Monitor or `run_in_background` for
+seat/terra runs. If decision D is taken, the launch recipe = the
+m4/m5 recipe (ADJUDICATIONS 08-28 10:12 entry) under a NEW
+registration on the dedicated login — the m6 recipe itself is dead
+with its root.
 
 **iter-0110 AMENDMENT 2 double-FROZEN 2026-08-26 (session 10)** — the
 registered 200,000 context-window denominator was FALSE at the bytes
@@ -167,13 +160,7 @@ bytes: sol `FREEZE-0110-APP8-SOL: a7b8eab7` + grok
 `FREEZE-0110-APP8-GROK: a7b8eab7`.** Registered numbers, predictions P-0110-1..3, recipe:
 iteration file § Apparatus phase record; receipts
 `~/.local/share/nx01/iter0110-apparatus/` (ADJUDICATIONS.md).
-**NEXT SESSION ENTRY: LAUNCH — USER-GATED** (quiet account, outside
-23:00–01:00 KST, no other Claude sessions/headless reviews on the
-account; operator writes the `--window-attestation` JSON at launch
-time; 5 sweeps independently stageable, 24 sessions each; sweep 1's
-first block runs alone as the serial A5 gate — a clean matrix
-session below the horizon threshold aborts the launch before any
-further session is spent).
+Launch history m3–m6 + terminal: START-HERE above.
 
 **iter-0108 band-rederivation pilot CLOSED 2026-08-22 — TERMINAL
 `BAND_REDERIVATION_REJECTED` (DECISIONS 0108.1).** Second same-day
