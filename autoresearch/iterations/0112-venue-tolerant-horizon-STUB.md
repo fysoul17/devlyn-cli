@@ -7,7 +7,7 @@ Status: STUB 2026-08-31 (session 17). Successor to iter-0110 (TERMINAL `VENUE_RE
 - Estimand family: opus-5 vs opus-4-8 late-minus-early interaction ΔH on real resume-chain sessions (0110 registration), unless open question (a) forces a budget-driven revision.
 - sol V5 successor inputs (m6 verify, `m6cap-sol.log`): persist per-task CLI rc in the driver (C-RC class was undiagnosable without it); pre-register whether AUP/policy-refusal session-endings belong to the estimand (engine-differential, task-clustered in m6); pre-register host-network failure disposition (C-NET class).
 - Window-key rule (0110 AMENDMENT 6 rule 7): API-level evidence only; machine-local transcript chaining stays retired.
-- Launch discipline: nothing fires before 2026-09-05 08:00 KST (weekly reset); peer-lane window grants respected.
+- Launch discipline: the 20:26 08-31 weekly-limit receipts ("resets Sep 5 at 8am") stand as the m6 terminal evidence, but enforcement is INTERMITTENT — an X43 peer probe (`claude -p` sonnet, 22:41 KST 08-31) returned clean 2h15m later. Model the venue as a stochastic hazard, not a deterministic dark window; X43's granted overnight sonnet+terra burst (~3,200 calls) doubles as a passive venue probe — read its outcome before ruling on (a)/(b). Peer-lane window grants respected; nothing fires before 0112 is frozen regardless.
 
 ## Open questions for R0 (three-way: fable + sol; grok opportunistic — skip on 402)
 

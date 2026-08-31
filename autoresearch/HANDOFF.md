@@ -32,13 +32,14 @@ registered close.** ≈233 transport-clean sessions m3–m6 unscoreable;
 m6 root sticky/immutable. **NEXT = iter-0112 registration**
 ([`iterations/0112-venue-tolerant-horizon-STUB.md`](iterations/0112-venue-tolerant-horizon-STUB.md)):
 venue-tolerant successor, R0 three-way — open question (a)
-budget-first (size the matrix's own weekly-allowance consumption from
-banked m6 receipts, outcomes unopened) is answerable BEFORE any
-design argument. No account launches before the weekly reset
-**2026-09-05 08:00 KST**. Standing coordination: X43 peer window
-GRANTED 23:30 08-31 → 10:00 09-01 KST — no `claude -p`/`codex exec`
-from this lane inside it (peer also warned the claude headless quota
-is dark until 09-05). Full record: iteration file §§ Launch record m6
+budget-first (numerator measured: m6 output 3.12M tokens inside the
+dead weekly window; denominator needs an R0 instrument) is ruled on
+BEFORE any design argument. Weekly-limit enforcement is INTERMITTENT
+(X43 peer sonnet probe clean at 22:41, 2h15m after the 429s) — model
+the venue as a stochastic hazard, and read X43's overnight burst
+outcome as a passive venue probe at cold start. Standing
+coordination: X43 peer window GRANTED 23:30 08-31 → 10:00 09-01 KST —
+no `claude -p`/`codex exec` from this lane inside it. Full record: iteration file §§ Launch record m6
 + DECISION; `launch/ADJUDICATIONS.md` 08-30/31 entries.
 
 **iter-0111 external-diff mode authority SHIPPED (`c9faf27` +
