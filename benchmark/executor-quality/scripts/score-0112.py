@@ -24,7 +24,7 @@ DEFAULT_PARAMS = REPO / "docs/specs/iter0112/registered-params.json"
 G0_PATH = HERE / "g0-power-0112.py"
 G0_SHA256 = "5ba1a47be5ae328a782555e587c5fc17e051cccfb8f0c8f8a2163075ca8a95a3"
 SCHEDULE_SHA256 = "3b319cf6324e4a19d6b42c74d14b915f4e11d500c35456ce5008ce7802044554"
-PARAMS_SHA256 = "36ea870fc5f0ce4eb16838ddf1c3c8eda1202f8886c133f027c62f54e1ede863"
+PARAMS_SHA256 = "cdc29f90772c8b58241cc9eb12fe58855a0ea8d928a04379c4789b4ebcab56df"
 LAUNCH_MANIFEST_NAME = "launch-manifest-0112.json"
 MATRIX_ENGINES = ("claude-opus-5", "claude-opus-4-8")
 ENGINES = (*MATRIX_ENGINES, "claude-sonnet-5")
@@ -62,6 +62,7 @@ ROW_FIELDS = {
     "cli_argv",
     "host_origin_attestation",
 }
+COMPLETED_SWEEP_FIELDS = {"sweep_id", "pre_sha256", "post_sha256", "receipts", "components", "draw"}
 
 
 class ScoreViolation(ValueError):
@@ -159,10 +160,21 @@ def parse_iso8601(value: object, field: str) -> datetime.datetime:
     return parsed.astimezone(datetime.timezone.utc)
 
 
-def usage_gate(evidence: dict[str, object], sweep: int, params: dict[str, object]) -> bool:
+def ceil_div(numerator: int, denominator: int) -> int:
+    require(type(numerator) is int and type(denominator) is int and numerator >= 0 and denominator > 0, "tpp-invalid")
+    return (numerator + denominator - 1) // denominator
+
+
+def used_percent_upper(evidence: dict[str, object]) -> int:
+    used, resolution = evidence.get("used_percent"), evidence.get("display_resolution_percent")
+    require(type(used) is int and 0 <= used <= 100 and type(resolution) is int and resolution == 1, "usage-evidence-numeric-invalid")
+    return min(100, used + resolution)
+
+
+def usage_gate(evidence: dict[str, object], sweep: int, params: dict[str, object], tpp_gate: int) -> bool:
     budget = params["venue_tolerance"]["budget_gate"]
     burn = budget["first_sweep_burn_bound_transport_tokens"] if sweep == 1 else budget["subsequent_sweep_burn_bound_transport_tokens"]
-    return evidence["used_transport_tokens"] + burn + budget["reserve_transport_tokens"] < evidence["limit_transport_tokens"]
+    return used_percent_upper(evidence) + ceil_div(int(burn), tpp_gate) + ceil_div(int(budget["reserve_transport_tokens"]), tpp_gate) < 100
 
 
 def expected_probe_argv(params: dict[str, object], engine: str) -> list[str]:
@@ -243,7 +255,11 @@ def load_registration(schedule_path: pathlib.Path, params_path: pathlib.Path) ->
     require(schedule_spec.get("sessions") == len(schedule["sessions"]), "params-session-count-mismatch")
     require(expected_digest == SCHEDULE_SHA256, "schedule-digest-mismatch")
     venue = params.get("venue_tolerance")
-    require(isinstance(venue, dict) and isinstance(venue.get("charged_accounting"), dict) and isinstance(venue.get("usage_evidence"), dict) and isinstance(venue.get("resume_oracle"), dict), "params-venue-tolerance-invalid")
+    require(isinstance(venue, dict) and isinstance(venue.get("charged_accounting"), dict) and isinstance(venue.get("usage_evidence"), dict) and isinstance(venue.get("resume_oracle"), dict) and isinstance(venue.get("calibration"), dict) and isinstance(venue.get("settlement"), dict) and isinstance(venue.get("closure_check"), dict), "params-venue-tolerance-invalid")
+    require(venue["usage_evidence"].get("schema") == "iter0112-usage-v2" and venue["usage_evidence"].get("meter_id") == "current_week_all_models", "params-usage-schema-mismatch")
+    closure = venue["closure_check"]
+    derivation = closure.get("probe_prefix_bound_derivation")
+    require(closure.get("probe_prefix_bound_transport_tokens") == 43042 and isinstance(derivation, dict) and derivation.get("maximum_observed_transport_tokens") == 34433 and derivation.get("safety_factor_numerator") == 5 and derivation.get("safety_factor_denominator") == 4, "params-closure-probe-bound-invalid")
     return schedule, params
 
 
@@ -337,57 +353,635 @@ def aup_census_by_cell(rows: list[object], directory: pathlib.Path) -> Counter[s
     return result
 
 
-def verify_evidence_chain(manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object]) -> None:
+def is_digest(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(char in "0123456789abcdef" for char in value)
+
+
+def decode_usage(raw: bytes, params: dict[str, object]) -> dict[str, object]:
+    try:
+        evidence = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ScoreViolation("usage-evidence-bytes-invalid") from exc
+    fields = params["venue_tolerance"]["usage_evidence"]["exact_fields"]
+    require(isinstance(evidence, dict) and set(evidence) == set(fields) and evidence.get("source") == "usage" and evidence.get("meter_id") == "current_week_all_models", "usage-evidence-digest-invalid")
+    require(isinstance(evidence.get("value"), str) and evidence["value"] and isinstance(evidence.get("attested_by"), str) and evidence["attested_by"] and is_digest(evidence.get("panel_sha256")), "usage-evidence-text-invalid")
+    used_percent_upper(evidence)
+    auxiliary = evidence.get("auxiliary")
+    require(isinstance(auxiliary, dict) and set(auxiliary) == {"current_week_fable_percent", "current_session_percent"} and all(value is None or (type(value) is int and 0 <= value <= 100) for value in auxiliary.values()), "usage-evidence-auxiliary-invalid")
+    parse_iso8601(evidence.get("observed_at"), "usage-observed-at")
+    parse_iso8601(evidence.get("reset_at"), "usage-reset-at")
+    return evidence
+
+
+def validate_usage_consumption(evidence: dict[str, object], consumed_at: datetime.datetime, params: dict[str, object]) -> None:
+    observed = parse_iso8601(evidence.get("observed_at"), "usage-observed-at")
+    usage = params["venue_tolerance"]["usage_evidence"]
+    skew = datetime.timedelta(seconds=usage["clock_skew_seconds"])
+    freshness = datetime.timedelta(seconds=usage["freshness_seconds"])
+    require(observed <= consumed_at + skew and consumed_at - observed <= freshness, "usage-evidence-stale")
+
+
+def decode_capture(entry: object, params: dict[str, object]) -> tuple[dict[str, object], datetime.datetime]:
+    require(isinstance(entry, dict) and set(entry) == {"sha256", "bytes_base64", "consumed_at"} and is_digest(entry.get("sha256")), "calibration-capture-invalid")
+    try:
+        raw = base64.b64decode(entry["bytes_base64"], validate=True)
+    except (ValueError, TypeError) as exc:
+        raise ScoreViolation("calibration-capture-invalid") from exc
+    require(hashlib.sha256(raw).hexdigest() == entry["sha256"], "calibration-capture-invalid")
+    consumed_at = parse_iso8601(entry.get("consumed_at"), "calibration-capture-consumed-at")
+    evidence = decode_usage(raw, params)
+    validate_usage_consumption(evidence, consumed_at, params)
+    return evidence, consumed_at
+
+
+def calibration_receipt_layout(sessions: object) -> list[tuple[str, str]]:
+    if not isinstance(sessions, list) or not sessions or len(sessions) % len(ENGINES):
+        raise ScoreViolation("calibration-program-invalid")
+    expected: list[tuple[str, str]] = []
+    labels: list[str] = []
+    for index, engine in enumerate(ENGINES * (len(sessions) // len(ENGINES))):
+        unit = index // len(ENGINES) + 1
+        label = f"calibration-{unit}-{engine}"
+        labels.append(label)
+        for position, task in enumerate(("smoke-1", "smoke-2"), 1):
+            expected.append((f"calibration/{engine}.{label}.r1/t{position}.{task}/cli.stdout", engine))
+    require(sessions == labels, "calibration-program-invalid")
+    return expected
+
+
+def completed_sweep_receipt_layout(root: pathlib.Path, manifest: dict[str, object], schedule: dict[str, object], sweep: int) -> list[tuple[str, str]]:
+    expected: list[tuple[str, str]] = []
+    blocks = manifest.get("blocks")
+    require(isinstance(blocks, dict), "launch-manifest-blocks-invalid")
+    for block in schedule["blocks"]:
+        if block["sweep_id"] != sweep:
+            continue
+        replicate_id = str(block["replicate_id"])
+        stored = blocks.get(replicate_id)
+        require(isinstance(stored, dict) and isinstance(stored.get("designated_attempt"), str), "sweep-not-complete")
+        attempt = next((item for item in stored.get("attempts", []) if isinstance(item, dict) and item.get("attempt_id") == stored["designated_attempt"]), None)
+        require(isinstance(attempt, dict) and isinstance(attempt.get("sessions"), dict), "sweep-not-complete")
+        for session in sessions_by_block(schedule)[replicate_id]:
+            status = attempt["sessions"].get(str(session["session_label"]))
+            expected_dir = session_directory(root, session, str(attempt["attempt_id"]))
+            require(isinstance(status, dict) and status.get("status") == "completed" and status.get("artifact_dir") == str(expected_dir.relative_to(root)), "sweep-not-complete")
+            for position, task in enumerate(session["tasks"], 1):
+                expected.append((str((expected_dir / f"t{position}.{task['task_id']}" / "cli.stdout").relative_to(root)), str(session["engine"])))
+    require(bool(expected), "sweep-not-complete")
+    return expected
+
+
+def receipt_components(root: pathlib.Path, receipts: object, expected_layout: list[tuple[str, str]] | None = None) -> dict[str, int]:
+    require(isinstance(receipts, list) and receipts, "calibration-receipts-invalid")
+    result = {"input": 0, "output": 0, "cache_create": 0, "cache_read": 0, "total": 0}
+    seen: set[str] = set()
+    mapping = {"inputTokens": "input", "outputTokens": "output", "cacheCreationInputTokens": "cache_create", "cacheReadInputTokens": "cache_read"}
+    actual_layout: list[tuple[str, str]] = []
+    for receipt in receipts:
+        require(isinstance(receipt, dict) and set(receipt) == {"path", "sha256", "engine", "completed_at"} and isinstance(receipt.get("path"), str) and receipt.get("engine") in ENGINES and is_digest(receipt.get("sha256")), "calibration-receipt-invalid")
+        path = pathlib.PurePath(receipt["path"])
+        require(not path.is_absolute() and ".." not in path.parts and receipt["path"] not in seen, "calibration-receipt-path-invalid")
+        seen.add(receipt["path"])
+        actual_layout.append((receipt["path"], str(receipt["engine"])))
+        try:
+            raw = (root / path).read_bytes()
+            payload = json.loads(raw)
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ScoreViolation("calibration-receipt-unreadable") from exc
+        require(hashlib.sha256(raw).hexdigest() == receipt["sha256"], "calibration-receipt-digest-invalid")
+        require(isinstance(payload, dict) and isinstance(payload.get("modelUsage"), dict) and set(payload["modelUsage"]) == {receipt["engine"]} and isinstance(payload["modelUsage"][receipt["engine"]], dict), "calibration-receipt-schema-invalid")
+        usage = payload["modelUsage"][receipt["engine"]]
+        require(all(type(usage.get(source)) is int and usage[source] >= 0 for source in mapping), "calibration-receipt-components-invalid")
+        for source, target in mapping.items():
+            result[target] += usage[source]
+    result["total"] = sum(result[key] for key in ("input", "output", "cache_create", "cache_read"))
+    require(expected_layout is None or actual_layout == expected_layout, "calibration-receipt-program-invalid")
+    return result
+
+
+def calibration_for_epoch(manifest: dict[str, object], reset_at: str) -> dict[str, object] | None:
+    values = manifest.get("calibrations")
+    require(isinstance(values, list), "launch-manifest-calibrations-invalid")
+    return next((value for value in reversed(values) if isinstance(value, dict) and value.get("reset_at") == reset_at), None)
+
+
+def verify_calibrations(manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object], root: pathlib.Path) -> None:
+    calibrations = manifest.get("calibrations")
+    accounting = params["venue_tolerance"]["calibration"]["accounting"]
+    require(isinstance(calibrations, list) and type(manifest.get("calibration_session_equivalents")) is int, "launch-manifest-calibrations-invalid")
+    total_sessions = 0
+    resets: set[str] = set()
+    for calibration in calibrations:
+        fields = {"reset_at", "pre_capture", "settlement_captures", "sessions", "receipts", "components", "tpp_chain", "session_equivalents"}
+        require(isinstance(calibration, dict) and set(calibration) == fields and isinstance(calibration.get("reset_at"), str) and isinstance(calibration.get("sessions"), list) and isinstance(calibration.get("receipts"), list) and isinstance(calibration.get("components"), dict) and isinstance(calibration.get("tpp_chain"), list) and type(calibration.get("session_equivalents")) is int, "launch-manifest-calibration-invalid")
+        require(calibration["reset_at"] not in resets, "calibration-cross-epoch-invalid"); resets.add(calibration["reset_at"])
+        pre, _pre_consumed = decode_capture(calibration["pre_capture"], params)
+        settlements = calibration["settlement_captures"]
+        require(isinstance(settlements, list) and len(settlements) == 2, "calibration-settlement-invalid")
+        first, _first_consumed = decode_capture(settlements[0], params); second, _second_consumed = decode_capture(settlements[1], params)
+        require(all(value["reset_at"] == calibration["reset_at"] for value in (pre, first, second)), "calibration-cross-epoch-invalid")
+        first_time, second_time = parse_iso8601(first["observed_at"], "settlement-observed-at"), parse_iso8601(second["observed_at"], "settlement-observed-at")
+        require(first["used_percent"] == second["used_percent"] and second_time - first_time >= datetime.timedelta(seconds=120), "calibration-settlement-invalid")
+        components = receipt_components(root, calibration["receipts"], calibration_receipt_layout(calibration["sessions"]))
+        require(calibration["components"] == components and components["total"] > 0 and 1000 * components["cache_read"] <= 973 * components["total"], "calibration-mix-invalid")
+        latest = max(parse_iso8601(receipt.get("completed_at"), "calibration-receipt-completed-at") for receipt in calibration["receipts"])
+        require(second_time >= latest + datetime.timedelta(seconds=180), "calibration-settlement-too-early")
+        delta = second["used_percent"] - pre["used_percent"]
+        require(delta >= 3, "calibration-delta-unidentifiable")
+        require(calibration["session_equivalents"] == len(calibration["sessions"]) and 1 <= calibration["session_equivalents"] <= accounting["max_per_epoch"], "calibration-session-accounting-invalid")
+        chain = calibration["tpp_chain"]
+        expected = {"kind": "calibration", "pre_sha256": calibration["pre_capture"]["sha256"], "post_sha256": settlements[-1]["sha256"], "receipt_digests": [receipt["sha256"] for receipt in calibration["receipts"]], "components": components, "draw": components["total"], "delta_percent": delta, "tpp_obs": components["total"] // (delta + 1)}
+        require(bool(chain) and chain[0] == expected, "tpp-chain-invalid")
+        for observation in chain[1:]:
+            fields = {"kind", "sweep_id", "pre_sha256", "post_sha256", "receipts", "components", "draw", "delta_percent", "tpp_obs"}
+            require(isinstance(observation, dict) and set(observation) == fields and observation.get("kind") == "sweep" and type(observation.get("sweep_id")) is int and is_digest(observation.get("pre_sha256")) and is_digest(observation.get("post_sha256")) and isinstance(observation.get("receipts"), list), "tpp-chain-invalid")
+            sweep_components = receipt_components(root, observation["receipts"], completed_sweep_receipt_layout(root, manifest, schedule, observation.get("sweep_id")))
+            require(observation.get("components") == sweep_components and observation.get("draw") == sweep_components["total"] and sweep_components["total"] > 0 and 1000 * sweep_components["cache_read"] >= 973 * sweep_components["total"], "calibration-mix-invalid")
+            delta_sweep, tpp_obs = observation.get("delta_percent"), observation.get("tpp_obs")
+            require(type(delta_sweep) is int and delta_sweep >= 1 and type(tpp_obs) is int and tpp_obs == sweep_components["total"] // (delta_sweep + 1), "tpp-chain-invalid")
+        total_sessions += calibration["session_equivalents"]
+    require(total_sessions == manifest["calibration_session_equivalents"] and total_sessions <= accounting["max_per_root"], "calibration-session-accounting-invalid")
+
+
+def account_consumption_times(manifest: dict[str, object]) -> list[datetime.datetime]:
+    times: list[datetime.datetime] = []
+    calibrations = manifest.get("calibrations", [])
+    require(isinstance(calibrations, list), "launch-manifest-calibrations-invalid")
+    for calibration in calibrations:
+        require(isinstance(calibration, dict) and isinstance(calibration.get("receipts"), list), "launch-manifest-calibrations-invalid")
+        times.extend(parse_iso8601(receipt.get("completed_at"), "calibration-receipt-completed-at") for receipt in calibration["receipts"] if isinstance(receipt, dict))
+    blocks = manifest.get("blocks")
+    require(isinstance(blocks, dict), "launch-manifest-blocks-invalid")
+    for block in blocks.values():
+        require(isinstance(block, dict) and isinstance(block.get("attempts"), list), "launch-manifest-blocks-invalid")
+        for attempt in block["attempts"]:
+            require(isinstance(attempt, dict) and isinstance(attempt.get("sessions"), dict), "launch-manifest-attempt-invalid")
+            for status in attempt["sessions"].values():
+                require(isinstance(status, dict), "launch-manifest-status-invalid")
+                times.append(parse_iso8601(status.get("completed_at"), "launch-session-completed-at"))
+    oracles = manifest.get("resume_oracles", [])
+    require(isinstance(oracles, list), "resume-oracle-missing")
+    for entry in oracles:
+        require(isinstance(entry, dict) and isinstance(entry.get("bytes_base64"), str), "resume-oracle-entry-invalid")
+        try:
+            oracle = json.loads(base64.b64decode(entry["bytes_base64"], validate=True))
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise ScoreViolation("resume-oracle-bytes-invalid") from exc
+        require(isinstance(oracle, dict) and isinstance(oracle.get("probes"), list), "resume-oracle-entry-invalid")
+        times.extend(parse_iso8601(probe.get("observed_at"), "resume-oracle-probe-observed-at") for probe in oracle["probes"] if isinstance(probe, dict))
+    return times
+
+
+def manifest_as_of(manifest: dict[str, object], at: datetime.datetime) -> dict[str, object]:
+    """Return the append-only manifest state recorded no later than ``at``."""
+    require(isinstance(manifest, dict) and isinstance(at, datetime.datetime), "manifest-as-of-invalid")
+    at = at.astimezone(datetime.timezone.utc)
+
+    def capture_observed_at(capture: object) -> datetime.datetime:
+        require(isinstance(capture, dict) and isinstance(capture.get("bytes_base64"), str), "manifest-as-of-invalid")
+        try:
+            payload = json.loads(base64.b64decode(capture["bytes_base64"], validate=True))
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise ScoreViolation("manifest-as-of-invalid") from exc
+        require(isinstance(payload, dict), "manifest-as-of-invalid")
+        return parse_iso8601(str(payload.get("observed_at")), "manifest-as-of-observed-at")
+
+    def latest_capture_at(entry: object, field: str) -> datetime.datetime:
+        require(isinstance(entry, dict) and isinstance(entry.get(field), list), "manifest-as-of-invalid")
+        captures = entry[field]
+        require(bool(captures), "manifest-as-of-invalid")
+        return max(capture_observed_at(capture) for capture in captures)
+
+    evidence_at: dict[str, datetime.datetime] = {}
+    for entry in manifest.get("usage_evidence", []):
+        require(isinstance(entry, dict) and isinstance(entry.get("sha256"), str), "manifest-as-of-invalid")
+        evidence_at.setdefault(entry["sha256"], parse_iso8601(str(entry.get("consumed_at")), "manifest-as-of-usage-consumed-at"))
+    for field, captures_field in (("calibrations", "settlement_captures"), ("settlements", "captures")):
+        entries = manifest.get(field, [])
+        require(isinstance(entries, list), "manifest-as-of-invalid")
+        for entry in entries:
+            require(isinstance(entry, dict) and isinstance(entry.get(captures_field), list), "manifest-as-of-invalid")
+            for capture in entry[captures_field]:
+                require(isinstance(capture, dict) and isinstance(capture.get("sha256"), str), "manifest-as-of-invalid")
+                evidence_at.setdefault(capture["sha256"], capture_observed_at(capture))
+
+    projected = dict(manifest)
+    usage_entries = manifest.get("usage_evidence", [])
+    require(isinstance(usage_entries, list), "manifest-as-of-invalid")
+    projected["usage_evidence"] = [entry for entry in usage_entries if isinstance(entry, dict) and evidence_at.get(entry.get("sha256"), at + datetime.timedelta(microseconds=1)) <= at]
+
+    calibrations = manifest.get("calibrations", [])
+    require(isinstance(calibrations, list), "manifest-as-of-invalid")
+    projected_calibrations: list[dict[str, object]] = []
+    for calibration in calibrations:
+        require(isinstance(calibration, dict) and isinstance(calibration.get("receipts"), list), "manifest-as-of-invalid")
+        completed_at = [latest_capture_at(calibration, "settlement_captures")]
+        completed_at.extend(parse_iso8601(str(receipt.get("completed_at")), "manifest-as-of-calibration-completed-at") for receipt in calibration["receipts"] if isinstance(receipt, dict))
+        require(not any(not isinstance(receipt, dict) for receipt in calibration["receipts"]), "manifest-as-of-invalid")
+        if max(completed_at) > at:
+            continue
+        projected_calibration = dict(calibration)
+        chain = calibration.get("tpp_chain")
+        if isinstance(chain, list):
+            projected_calibration["tpp_chain"] = [observation for observation in chain if not isinstance(observation, dict) or evidence_at.get(observation.get("post_sha256"), at + datetime.timedelta(microseconds=1)) <= at]
+        projected_calibrations.append(projected_calibration)
+    projected["calibrations"] = projected_calibrations
+    projected["calibration_session_equivalents"] = sum(calibration.get("session_equivalents", 0) for calibration in projected_calibrations if type(calibration.get("session_equivalents")) is int)
+
+    settlements = manifest.get("settlements", [])
+    require(isinstance(settlements, list), "manifest-as-of-invalid")
+    projected["settlements"] = [entry for entry in settlements if isinstance(entry, dict) and latest_capture_at(entry, "captures") <= at]
+
+    oracles = manifest.get("resume_oracles", [])
+    require(isinstance(oracles, list), "manifest-as-of-invalid")
+    projected["resume_oracles"] = [entry for entry in oracles if isinstance(entry, dict) and parse_iso8601(str(entry.get("consumed_at")), "manifest-as-of-oracle-consumed-at") <= at]
+
+    blocks = manifest.get("blocks")
+    require(isinstance(blocks, dict), "manifest-as-of-invalid")
+    projected_blocks: dict[str, object] = {}
+    for replicate_id, block in blocks.items():
+        require(isinstance(block, dict) and isinstance(block.get("attempts"), list), "manifest-as-of-invalid")
+        projected_block = dict(block)
+        attempts: list[dict[str, object]] = []
+        for attempt in block["attempts"]:
+            require(isinstance(attempt, dict) and isinstance(attempt.get("sessions"), dict), "manifest-as-of-invalid")
+            require(not any(not isinstance(status, dict) for status in attempt["sessions"].values()), "manifest-as-of-invalid")
+            projected_attempt = dict(attempt)
+            projected_attempt["sessions"] = {
+                label: status for label, status in attempt["sessions"].items()
+                if parse_iso8601(str(status.get("completed_at")), "manifest-as-of-attempt-completed-at") <= at
+            }
+            attempts.append(projected_attempt)
+        projected_block["attempts"] = attempts
+        if projected_block.get("designated_attempt") not in {attempt.get("attempt_id") for attempt in attempts}:
+            projected_block["designated_attempt"] = None
+        projected_blocks[str(replicate_id)] = projected_block
+    projected["blocks"] = projected_blocks
+
+    receipts = manifest.get("closure_receipts", [])
+    require(isinstance(receipts, list), "manifest-as-of-invalid")
+    projected["closure_receipts"] = [entry for entry in receipts if isinstance(entry, dict) and parse_iso8601(str(entry.get("consumed_at")), "manifest-as-of-closure-consumed-at") <= at]
+    return projected
+
+
+def verify_settlements(manifest: dict[str, object], params: dict[str, object]) -> None:
+    settlements = manifest.get("settlements")
+    require(isinstance(settlements, list), "settlement-entry-invalid")
+    for entry in settlements:
+        require(isinstance(entry, dict) and set(entry) == {"reset_at", "captures"} and isinstance(entry.get("reset_at"), str) and isinstance(entry.get("captures"), list) and len(entry["captures"]) == 2, "settlement-entry-invalid")
+        parse_iso8601(entry["reset_at"], "settlement-reset-at")
+        first, _first_consumed = decode_capture(entry["captures"][0], params)
+        second, _second_consumed = decode_capture(entry["captures"][1], params)
+        require(first["reset_at"] == second["reset_at"] == entry["reset_at"], "settlement-cross-epoch-invalid")
+        first_time = parse_iso8601(first.get("observed_at"), "settlement-observed-at")
+        second_time = parse_iso8601(second.get("observed_at"), "settlement-observed-at")
+        require(first["used_percent"] == second["used_percent"] and second_time - first_time >= datetime.timedelta(seconds=120), "settlement-invalid")
+        prior_calls = account_consumption_times(manifest_as_of(manifest, first_time))
+        require(not prior_calls or first_time >= max(prior_calls) + datetime.timedelta(seconds=180), "settlement-too-early")
+        recorded_calls = account_consumption_times(manifest_as_of(manifest, second_time))
+        require(not any(first_time < call <= second_time for call in recorded_calls), "settlement-too-early")
+
+
+def latest_settlement(manifest: dict[str, object], reset_at: str, params: dict[str, object], at: datetime.datetime | None = None) -> tuple[dict[str, object], dict[str, object], datetime.datetime, datetime.datetime, str] | None:
+    candidates: list[tuple[dict[str, object], dict[str, object], datetime.datetime, datetime.datetime, str]] = []
+    for calibration in manifest.get("calibrations", []):
+        if not isinstance(calibration, dict) or calibration.get("reset_at") != reset_at:
+            continue
+        captures = calibration.get("settlement_captures")
+        require(isinstance(captures, list) and len(captures) == 2, "calibration-settlement-invalid")
+        first, _first_consumed = decode_capture(captures[0], params)
+        second, _second_consumed = decode_capture(captures[1], params)
+        first_time, second_time = parse_iso8601(first.get("observed_at"), "settlement-observed-at"), parse_iso8601(second.get("observed_at"), "settlement-observed-at")
+        if at is None or second_time <= at:
+            candidates.append((first, second, first_time, second_time, captures[1]["sha256"]))
+    for entry in manifest.get("settlements", []):
+        if not isinstance(entry, dict) or entry.get("reset_at") != reset_at:
+            continue
+        captures = entry.get("captures")
+        require(isinstance(captures, list) and len(captures) == 2, "settlement-entry-invalid")
+        first, _first_consumed = decode_capture(captures[0], params)
+        second, _second_consumed = decode_capture(captures[1], params)
+        first_time, second_time = parse_iso8601(first.get("observed_at"), "settlement-observed-at"), parse_iso8601(second.get("observed_at"), "settlement-observed-at")
+        if at is None or second_time <= at:
+            candidates.append((first, second, first_time, second_time, captures[1]["sha256"]))
+    return max(candidates, key=lambda candidate: candidate[3]) if candidates else None
+
+
+def evidence_by_digest(manifest: dict[str, object], params: dict[str, object]) -> dict[str, tuple[dict[str, object], datetime.datetime]]:
+    result: dict[str, tuple[dict[str, object], datetime.datetime]] = {}
+    for calibration in manifest.get("calibrations", []):
+        require(isinstance(calibration, dict), "launch-manifest-calibrations-invalid")
+        captures = [calibration.get("pre_capture"), *(calibration.get("settlement_captures", []) if isinstance(calibration.get("settlement_captures"), list) else [])]
+        for capture in captures:
+            evidence, consumed_at = decode_capture(capture, params)
+            digest = capture["sha256"]
+            require(digest not in result, "usage-evidence-reused")
+            result[digest] = (evidence, consumed_at)
+    for settlement in manifest.get("settlements", []):
+        require(isinstance(settlement, dict) and isinstance(settlement.get("captures"), list), "settlement-entry-invalid")
+        for capture in settlement["captures"]:
+            evidence, consumed_at = decode_capture(capture, params)
+            digest = capture["sha256"]
+            require(digest not in result, "usage-evidence-reused")
+            result[digest] = (evidence, consumed_at)
+    for entry in manifest.get("usage_evidence", []):
+        require(isinstance(entry, dict) and isinstance(entry.get("bytes_base64"), str) and is_digest(entry.get("sha256")), "usage-evidence-entry-invalid")
+        try:
+            raw = base64.b64decode(entry["bytes_base64"], validate=True)
+        except (ValueError, TypeError) as exc:
+            raise ScoreViolation("usage-evidence-bytes-invalid") from exc
+        require(hashlib.sha256(raw).hexdigest() == entry["sha256"], "usage-evidence-digest-invalid")
+        consumed_at = parse_iso8601(entry.get("consumed_at"), "usage-consumed-at")
+        evidence = decode_usage(raw, params)
+        validate_usage_consumption(evidence, consumed_at, params)
+        prior = result.get(entry["sha256"])
+        require(prior is None or prior[0] == evidence, "usage-evidence-digest-invalid")
+        result.setdefault(entry["sha256"], (evidence, consumed_at))
+    return result
+
+
+def tpp_gate_for_epoch(manifest: dict[str, object], reset_at: str, params: dict[str, object], consumed_at: datetime.datetime) -> int:
+    calibration = calibration_for_epoch(manifest, reset_at)
+    require(calibration is not None and isinstance(calibration.get("tpp_chain"), list), "calibration-missing-for-epoch")
+    evidence = evidence_by_digest(manifest, params)
+    observations = []
+    for observation in calibration["tpp_chain"]:
+        require(isinstance(observation, dict) and is_digest(observation.get("post_sha256")) and observation["post_sha256"] in evidence, "tpp-chain-invalid")
+        if evidence[observation["post_sha256"]][1] <= consumed_at:
+            observations.append(observation.get("tpp_obs"))
+    require(bool(observations) and all(type(value) is int and value > 0 for value in observations), "tpp-chain-invalid")
+    return min(observations)
+
+
+def consumed_probe_calls(manifest: dict[str, object]) -> int:
+    entries = manifest.get("resume_oracles")
+    require(isinstance(entries, list) and all(isinstance(entry, dict) and type(entry.get("probe_calls")) is int and entry["probe_calls"] >= 0 for entry in entries), "resume-oracle-manifest-invalid")
+    return sum(entry["probe_calls"] for entry in entries)
+
+
+def initial_attempt_batches(schedule: dict[str, object], lanes: int) -> list[set[str]]:
+    gate_id = str(schedule["blocks"][0]["replicate_id"])
+    batches: list[set[str]] = []
+    for sweep in range(1, int(schedule["sweeps"]) + 1):
+        pending = [str(block["replicate_id"]) for block in schedule["blocks"] if block["sweep_id"] == sweep]
+        while pending:
+            width = 1 if pending[0] == gate_id else lanes
+            batch, pending = pending[:width], pending[width:]
+            batches.append({f"{replicate_id}.a1" for replicate_id in batch})
+    return batches
+
+
+def recalibration_bound(root: pathlib.Path, manifest: dict[str, object], params: dict[str, object]) -> int:
+    calibrations = manifest.get("calibrations")
+    require(isinstance(calibrations, list) and calibrations and isinstance(calibrations[0], dict), "calibration-missing-for-epoch")
+    first = calibrations[0]
+    sessions, receipts = first.get("sessions"), first.get("receipts")
+    require(isinstance(sessions, list) and isinstance(receipts, list), "calibration-session-accounting-invalid")
+    base_sessions = sessions[:len(ENGINES)]
+    base_receipts = receipts[:len(ENGINES) * 2]
+    base = receipt_components(root, base_receipts, calibration_receipt_layout(base_sessions))
+    maximum = params["venue_tolerance"]["calibration"]["accounting"]["max_per_epoch"]
+    require(type(maximum) is int and maximum % len(ENGINES) == 0, "calibration-session-accounting-invalid")
+    return base["total"] * maximum // len(ENGINES)
+
+
+def consumed_replay_events(manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object]) -> int:
+    blocks = manifest.get("blocks")
+    require(isinstance(blocks, dict), "launch-manifest-blocks-invalid")
+    voids = {
+        str(attempt["attempt_id"])
+        for block in blocks.values()
+        if isinstance(block, dict) and isinstance(block.get("attempts"), list)
+        for attempt in block["attempts"]
+        if isinstance(attempt, dict) and attempt.get("transport_state") == "VOID" and isinstance(attempt.get("attempt_id"), str) and isinstance(attempt.get("sessions"), dict) and any(isinstance(status, dict) and status.get("infra_affected") is True for status in attempt["sessions"].values())
+    }
+    groups = initial_attempt_batches(schedule, int(params["schedule"]["lanes"]))
+    oracles = manifest.get("resume_oracles")
+    require(isinstance(oracles, list), "resume-oracle-manifest-invalid")
+    seen: set[str] = set().union(*groups) if groups else set()
+    for entry in oracles:
+        require(isinstance(entry, dict) and isinstance(entry.get("attempt_ids"), list) and all(isinstance(attempt_id, str) for attempt_id in entry["attempt_ids"]), "resume-oracle-manifest-invalid")
+        group = set(entry["attempt_ids"])
+        require(len(group) == len(entry["attempt_ids"]) and not group & seen, "resume-oracle-attempt-ids-invalid")
+        groups.append(group)
+        seen.update(group)
+    require(voids <= seen, "closure-replay-event-unmapped")
+    return sum(bool(group & voids) for group in groups)
+
+
+def closure_payload(manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object], root: pathlib.Path, bound_evidence_sha256: str, sweep: int, consumed_at: datetime.datetime) -> dict[str, object]:
+    evidence = evidence_by_digest(manifest, params).get(bound_evidence_sha256)
+    require(evidence is not None and evidence[1] <= consumed_at, "closure-bound-evidence-invalid")
+    bound, _bound_consumed = evidence
+    tpp = tpp_gate_for_epoch(manifest, str(bound["reset_at"]), params, consumed_at)
+    budget, closure = params["venue_tolerance"]["budget_gate"], params["venue_tolerance"]["closure_check"]
+    created = parse_iso8601(manifest.get("created_at"), "created-at")
+    expiry = created + datetime.timedelta(hours=params["venue_tolerance"]["calendar"]["root_age_hours"])
+    reset_at = parse_iso8601(bound.get("reset_at"), "closure-reset-at")
+    nominal_waves, replay_waves = int(closure["nominal_waves"]), int(closure["worst_case_replay_waves"])
+    wall_ms = int(closure["max_block_wall_ms"])
+    future_burns = [int(budget["first_sweep_burn_bound_transport_tokens"] if future == 1 else budget["subsequent_sweep_burn_bound_transport_tokens"]) for future in range(sweep, int(schedule["sweeps"]) + 1)]
+    future_sweeps = len(future_burns)
+    require(nominal_waves == 2 * int(schedule["sweeps"]), "closure-nominal-waves-invalid")
+    remaining_nominal_waves = 2 * future_sweeps
+    replay_events = consumed_replay_events(manifest, schedule, params)
+    remaining_replays = max(0, replay_waves - replay_events)
+    calibrations = manifest.get("calibrations")
+    require(isinstance(calibrations, list), "launch-manifest-calibrations-invalid")
+    total_epochs = int(params["venue_tolerance"]["calendar"]["max_reset_epochs"]) + 1
+    remaining_calibration_epochs = total_epochs - len(calibrations)
+    require(remaining_calibration_epochs >= 0, "calibration-session-accounting-invalid")
+    transitioned = remaining_calibration_epochs == 0
+    remaining_wait_ms = 0 if transitioned else int(closure["evidenced_reset_wait_ms"])
+    remaining_active_ms = (remaining_nominal_waves + remaining_replays) * wall_ms
+    calendar_span_ms = remaining_active_ms + remaining_wait_ms
+    calendar_end = consumed_at + datetime.timedelta(milliseconds=calendar_span_ms)
+    actions: list[tuple[int, int]] = []
+    reserve = int(budget["reserve_transport_tokens"])
+    for index, burn in enumerate(future_burns, 1):
+        wave = 2 * index - 1
+        actions.append((wave, burn))
+        actions.append((wave, reserve))
+    replay_burn = max(future_burns, default=int(budget["subsequent_sweep_burn_bound_transport_tokens"]))
+    remaining_calls = int(closure["probe_calls"]) - consumed_probe_calls(manifest)
+    require(remaining_calls >= 0, "resume-oracle-probe-budget-exhausted")
+    for wave in range(remaining_nominal_waves + 1, remaining_nominal_waves + remaining_replays + 1):
+        actions.extend(((wave, replay_burn), (wave, reserve)))
+        calls_here, remainder = divmod(remaining_calls, remaining_replays)
+        actions.extend((wave, int(closure["probe_prefix_bound_transport_tokens"])) for _ in range(calls_here + (1 if wave - remaining_nominal_waves <= remainder else 0)))
+    final_wave = remaining_nominal_waves + remaining_replays
+    if remaining_replays == 0 and remaining_calls:
+        require(final_wave > 0, "closure-actions-missing")
+        actions.extend((final_wave, int(closure["probe_prefix_bound_transport_tokens"])) for _ in range(remaining_calls))
+    if remaining_calibration_epochs:
+        require(final_wave > 0, "closure-actions-missing")
+        actions.append((final_wave, recalibration_bound(root, manifest, params)))
+    used, trajectory = used_percent_upper(bound), []
+    for wave, tokens in actions:
+        action_time = consumed_at + datetime.timedelta(milliseconds=calendar_span_ms * wave // final_wave)
+        if not transitioned and action_time >= reset_at:
+            used, transitioned = 0, True
+        used += ceil_div(tokens, tpp)
+        trajectory.append(used)
+    calibration = calibration_for_epoch(manifest, str(bound["reset_at"]))
+    require(calibration is not None and type(calibration.get("session_equivalents")) is int, "calibration-session-accounting-invalid")
+    passed = max(trajectory, default=used) < 100 and calendar_end <= expiry and (transitioned or remaining_wait_ms == 0)
+    return {"schema": "iter0112-closure-v1", "passed": passed, "sweep_id": sweep, "bound_evidence_sha256": bound_evidence_sha256, "tpp_gate": tpp, "used_percent_upper": used_percent_upper(bound), "trajectory": trajectory, "nominal_waves": closure["nominal_waves"], "worst_case_replay_waves": closure["worst_case_replay_waves"], "worst_case_replay_placement": closure["worst_case_replay_placement"], "max_block_wall_ms": wall_ms, "probe_calls": closure["probe_calls"], "reset_at": bound["reset_at"], "reset_transitions": closure["reset_transitions"], "calendar_start": consumed_at.isoformat(), "calendar_end": calendar_end.isoformat(), "evidenced_reset_wait_ms": closure["evidenced_reset_wait_ms"], "expiry": expiry.isoformat(), "calibration_sessions_per_epoch": calibration["session_equivalents"], "remaining_nominal_sweeps": future_sweeps, "remaining_nominal_waves": remaining_nominal_waves, "remaining_replay_waves": remaining_replays, "remaining_probe_calls": remaining_calls, "remaining_calibration_epochs": remaining_calibration_epochs, "remaining_reset_wait_ms": remaining_wait_ms}
+
+
+def verify_closure_receipts(manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object], root: pathlib.Path, admissions: list[dict[str, object]], evidence_entries: list[dict[str, object]]) -> set[str]:
+    entries = manifest.get("closure_receipts")
+    require(isinstance(entries, list) and entries, "closure-receipt-missing")
+    seen: set[str] = set(); passed_admissions: set[tuple[int, str]] = set(); failed_receipts: list[tuple[int, datetime.datetime, dict[str, object], dict[str, object]]] = []
+    receipts: list[tuple[int, datetime.datetime, dict[str, object], dict[str, object]]] = []
+    for index, entry in enumerate(entries):
+        require(isinstance(entry, dict) and set(entry) == {"sha256", "bytes_base64", "sweep_id", "consumed_at"} and is_digest(entry.get("sha256")) and type(entry.get("sweep_id")) is int, "closure-receipt-invalid")
+        consumed_at = parse_iso8601(entry.get("consumed_at"), "closure-consumed-at")
+        try:
+            raw = base64.b64decode(entry["bytes_base64"], validate=True); payload = json.loads(raw)
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise ScoreViolation("closure-receipt-invalid") from exc
+        require(hashlib.sha256(raw).hexdigest() == entry["sha256"] and entry["sha256"] not in seen and isinstance(payload, dict) and is_digest(payload.get("bound_evidence_sha256")), "closure-receipt-invalid")
+        require(payload == closure_payload(manifest_as_of(manifest, consumed_at), schedule, params, root, payload["bound_evidence_sha256"], entry["sweep_id"], consumed_at), "closure-receipt-invalid")
+        seen.add(entry["sha256"])
+        receipts.append((index, consumed_at, entry, payload))
+        if payload["passed"] is True:
+            passed_admissions.add((payload["sweep_id"], payload["bound_evidence_sha256"]))
+        else:
+            failed_receipts.append((index, consumed_at, entry, payload))
+    terminal_admissions: set[str] = set()
+    if manifest.get("terminal") == "CALIBRATION_DRIFT_OVER_BUDGET":
+        require(bool(receipts), "closure-terminal-receipt-missing")
+        terminal_receipt = max(receipts, key=lambda receipt: (receipt[1], receipt[0]))
+        _index, _consumed_at, _entry, payload = terminal_receipt
+        require(payload["passed"] is False and failed_receipts == [terminal_receipt], "closure-terminal-receipt-invalid")
+        contexts = {
+            (entry["sweep_id"], entry["sha256"])
+            for entry in evidence_entries
+            if entry.get("role") in {"pre-sweep", "resume"}
+        }
+        contexts.update(
+            (entry["sweep_id"] + 1, entry["sha256"])
+            for entry in evidence_entries
+            if entry.get("role") == "post-sweep"
+        )
+        terminal_context = (payload["sweep_id"], payload["bound_evidence_sha256"])
+        require(terminal_context in contexts, "closure-terminal-receipt-invalid")
+        if terminal_context in {(entry["sweep_id"], entry["sha256"]) for entry in admissions}:
+            terminal_admissions.add(payload["bound_evidence_sha256"])
+    else:
+        require(not failed_receipts, "closure-receipt-invalid")
+    for admission in admissions:
+        if admission["sha256"] not in terminal_admissions:
+            require((admission["sweep_id"], admission["sha256"]) in passed_admissions, f"closure-receipt-missing:sweep-{admission['sweep_id']}")
+    return terminal_admissions
+
+
+def verify_completed_sweeps(manifest: dict[str, object], schedule: dict[str, object], root: pathlib.Path, usage: dict[str, tuple[dict[str, object], dict[str, object]]]) -> list[dict[str, object]]:
+    entries = manifest.get("completed_sweeps", [])
+    require(isinstance(entries, list), "completed-sweep-entry-invalid")
+    prior_sweep = 0
+    failures: list[dict[str, object]] = []
+    for entry in entries:
+        require(isinstance(entry, dict) and set(entry) == COMPLETED_SWEEP_FIELDS and type(entry.get("sweep_id")) is int and 1 <= entry["sweep_id"] <= schedule["sweeps"] and entry["sweep_id"] > prior_sweep and is_digest(entry.get("pre_sha256")) and is_digest(entry.get("post_sha256")), "completed-sweep-entry-invalid")
+        pre_pair, post_pair = usage.get(entry["pre_sha256"]), usage.get(entry["post_sha256"])
+        require(pre_pair is not None and post_pair is not None, "completed-sweep-provenance-invalid")
+        pre_entry, pre = pre_pair
+        post_entry, post = post_pair
+        require(pre_entry["role"] == "pre-sweep" and post_entry["role"] == "post-sweep" and pre_entry["sweep_id"] == post_entry["sweep_id"] == entry["sweep_id"] and pre["reset_at"] == post["reset_at"], "completed-sweep-provenance-invalid")
+        components = receipt_components(root, entry.get("receipts"), completed_sweep_receipt_layout(root, manifest, schedule, entry["sweep_id"]))
+        require(entry.get("components") == components and entry.get("draw") == components["total"], "completed-sweep-entry-invalid")
+        if not (components["total"] > 0 and 1000 * components["cache_read"] >= 973 * components["total"]):
+            failures.append(entry)
+        prior_sweep = entry["sweep_id"]
+    if manifest.get("terminal") == "CALIBRATION_UNIDENTIFIABLE":
+        require(bool(failures) and failures[-1] == entries[-1], "completed-sweep-mix-terminal-invalid")
+    else:
+        require(not failures, "completed-sweep-mix-invalid")
+    return entries
+
+
+def account_consumed_after(manifest: dict[str, object], observed_at: datetime.datetime, until: datetime.datetime) -> bool:
+    return any(observed_at < time <= until for time in account_consumption_times(manifest))
+
+
+def verify_evidence_chain(manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object], root: pathlib.Path) -> None:
+    verify_calibrations(manifest, schedule, params, root)
+    verify_settlements(manifest, params)
     entries = manifest.get("usage_evidence")
     require(isinstance(entries, list), "usage-evidence-missing")
     seen: set[str] = set()
     decoded: list[tuple[dict[str, object], dict[str, object], datetime.datetime, datetime.datetime]] = []
-    fields = params["venue_tolerance"]["usage_evidence"]["exact_fields"]
     usage_params = params["venue_tolerance"]["usage_evidence"]
     calendar = params["venue_tolerance"]["calendar"]
     created = parse_iso8601(manifest.get("created_at"), "created_at")
     expiry = created + datetime.timedelta(hours=calendar["root_age_hours"])
     freshness = datetime.timedelta(seconds=usage_params["freshness_seconds"])
     skew = datetime.timedelta(seconds=usage_params["clock_skew_seconds"])
-    latest_reset: datetime.datetime | None = None
-    reset_transitions = 0
-    prior_limit: int | None = None
-    prior_used: int | None = None
+    timeline: list[tuple[datetime.datetime, datetime.datetime, dict[str, object]]] = []
     for entry in entries:
         require(isinstance(entry, dict) and set(entry) == {"sha256", "bytes_base64", "role", "sweep_id", "consumed_at"} and isinstance(entry.get("sha256"), str) and len(entry["sha256"]) == 64 and entry.get("role") in {"pre-sweep", "post-sweep", "resume"} and type(entry.get("sweep_id")) is int, "usage-evidence-entry-invalid")
         try:
             raw = base64.b64decode(entry["bytes_base64"], validate=True)
-            evidence = json.loads(raw)
-        except (ValueError, json.JSONDecodeError) as exc:
+        except (ValueError, TypeError) as exc:
             raise ScoreViolation("usage-evidence-bytes-invalid") from exc
-        require(hashlib.sha256(raw).hexdigest() == entry["sha256"] and entry["sha256"] not in seen and isinstance(evidence, dict) and list(evidence) != [] and set(evidence) == set(fields) and evidence.get("source") == "usage", "usage-evidence-digest-invalid")
-        require(all(type(evidence.get(key)) is int and evidence[key] >= 0 for key in ("used_transport_tokens", "limit_transport_tokens")) and evidence["limit_transport_tokens"] > 0 and evidence["used_transport_tokens"] <= evidence["limit_transport_tokens"], "usage-evidence-numeric-invalid")
+        evidence = decode_usage(raw, params)
+        require(hashlib.sha256(raw).hexdigest() == entry["sha256"] and entry["sha256"] not in seen, "usage-evidence-digest-invalid")
         observed = parse_iso8601(evidence.get("observed_at"), "usage-observed-at")
         consumed_at = parse_iso8601(entry.get("consumed_at"), "usage-consumed-at")
-        reset_at = parse_iso8601(evidence.get("reset_at"), "usage-reset-at")
         require(created <= consumed_at < expiry, "usage-evidence-expired")
         require(observed <= consumed_at + skew and consumed_at - observed <= freshness, "usage-evidence-stale")
-        require(entry["role"] == "post-sweep" or usage_gate(evidence, entry["sweep_id"], params), "usage-evidence-headroom-refused")
-        if latest_reset is None:
-            prior_limit, prior_used = evidence["limit_transport_tokens"], evidence["used_transport_tokens"]
-        elif reset_at == latest_reset:
-            require(evidence["limit_transport_tokens"] == prior_limit and evidence["used_transport_tokens"] >= prior_used, "usage-evidence-nonmonotone")
-            prior_used = evidence["used_transport_tokens"]
-        else:
-            require(reset_at > latest_reset, "usage-evidence-reset-not-advancing")
-            reset_transitions += 1
-            require(reset_transitions <= calendar["max_reset_epochs"], "usage-evidence-reset-epochs-exceeded")
-            prior_limit, prior_used = evidence["limit_transport_tokens"], evidence["used_transport_tokens"]
-        latest_reset = reset_at
+        require(calibration_for_epoch(manifest, str(evidence["reset_at"])) is not None, "calibration-missing-for-epoch")
         seen.add(entry["sha256"])
         decoded.append((entry, evidence, observed, consumed_at))
-    for sweep in range(1, int(schedule["sweeps"]) + 1):
+        timeline.append((consumed_at, observed, evidence))
+    for calibration in manifest["calibrations"]:
+        for capture in [calibration["pre_capture"], *calibration["settlement_captures"]]:
+            evidence, consumed_at = decode_capture(capture, params)
+            timeline.append((consumed_at, parse_iso8601(evidence.get("observed_at"), "usage-observed-at"), evidence))
+    for settlement in manifest["settlements"]:
+        for capture in settlement["captures"]:
+            evidence, consumed_at = decode_capture(capture, params)
+            timeline.append((consumed_at, parse_iso8601(evidence.get("observed_at"), "usage-observed-at"), evidence))
+    prior_reset: str | None = None
+    prior_used: int | None = None
+    seen_resets: set[str] = set()
+    reset_transitions = 0
+    for _consumed, _observed, evidence in sorted(timeline, key=lambda value: value[:2]):
+        reset_at = str(evidence["reset_at"])
+        if prior_reset is None:
+            prior_reset, prior_used = reset_at, int(evidence["used_percent"])
+            seen_resets.add(reset_at)
+        elif reset_at == prior_reset:
+            require(int(evidence["used_percent"]) >= prior_used, "usage-evidence-nonmonotone")
+            prior_used = int(evidence["used_percent"])
+        else:
+            require(reset_at not in seen_resets, "usage-evidence-reset-reused-old")
+            require(parse_iso8601(reset_at, "usage-reset-at") > parse_iso8601(prior_reset, "usage-reset-at"), "usage-evidence-reset-not-advancing")
+            reset_transitions += 1
+            require(reset_transitions <= calendar["max_reset_epochs"], "usage-evidence-reset-epochs-exceeded")
+            prior_reset, prior_used = reset_at, int(evidence["used_percent"])
+            seen_resets.add(reset_at)
+    by_digest = {entry["sha256"]: (entry, evidence) for entry, evidence, _observed, _consumed in decoded}
+    completed_sweeps = verify_completed_sweeps(manifest, schedule, root, by_digest)
+    terminal = manifest.get("terminal")
+    admitted_through = int(schedule["sweeps"])
+    if terminal in {"CALIBRATION_UNIDENTIFIABLE", "CALIBRATION_DRIFT_OVER_BUDGET"}:
+        admitted_through = max((entry["sweep_id"] for entry, _evidence, _observed, _consumed in decoded if entry["role"] == "post-sweep"), default=0)
+    for sweep in range(1, admitted_through + 1):
         require(any(entry["role"] == "pre-sweep" and entry["sweep_id"] == sweep for entry, _evidence, _observed, _consumed in decoded), f"usage-pre-evidence-missing:sweep-{sweep}")
         require(any(entry["role"] == "post-sweep" and entry["sweep_id"] == sweep for entry, _evidence, _observed, _consumed in decoded), f"usage-post-evidence-missing:sweep-{sweep}")
+    for calibration in manifest["calibrations"]:
+        for observation in calibration["tpp_chain"][1:]:
+            pre_pair, post_pair = by_digest.get(observation["pre_sha256"]), by_digest.get(observation["post_sha256"])
+            require(pre_pair is not None and post_pair is not None, "tpp-chain-provenance-invalid")
+            pre_entry, pre_evidence = pre_pair; post_entry, post_evidence = post_pair
+            require(pre_entry["role"] == "pre-sweep" and post_entry["role"] == "post-sweep" and pre_entry["sweep_id"] == post_entry["sweep_id"] == observation["sweep_id"] and pre_evidence["reset_at"] == post_evidence["reset_at"] == calibration["reset_at"] and observation["delta_percent"] == post_evidence["used_percent"] - pre_evidence["used_percent"], "tpp-chain-provenance-invalid")
     oracles = manifest.get("resume_oracles")
     require(isinstance(oracles, list), "resume-oracle-missing")
     oracle_ids: set[str] = set()
     oracle_seen: set[str] = set()
+    oracle_probes_by_usage: dict[str, list[dict[str, object]]] = {}
     consumed_probe_calls = 0
     order = params["venue_tolerance"]["resume_oracle"]["probe_order"]
     probe_freshness = datetime.timedelta(seconds=params["venue_tolerance"]["resume_oracle"]["probe_freshness_seconds"])
@@ -424,22 +1018,39 @@ def verify_evidence_chain(manifest: dict[str, object], schedule: dict[str, objec
             prior_finished = finished
         consumed_probe_calls += entry["probe_calls"]
         oracle_seen.add(entry["sha256"])
+        require(oracle["usage_sha256"] not in oracle_probes_by_usage, "resume-oracle-digest-invalid")
+        oracle_probes_by_usage[oracle["usage_sha256"]] = probes
         for attempt_id in entry["attempt_ids"]:
             require(isinstance(attempt_id, str) and attempt_id not in oracle_ids, "resume-oracle-attempt-ids-invalid")
             oracle_ids.add(attempt_id)
     require(consumed_probe_calls <= params["venue_tolerance"]["resume_oracle"]["probe_budget_session_equivalents"], "resume-oracle-probe-budget-exceeded")
     replacements = {f"{replicate_id}.a{index}" for replicate_id, block in manifest["blocks"].items() for index, _attempt in enumerate(block["attempts"], 1) if index > 1}
     require(replacements == oracle_ids, "resume-oracle-replacement-unattested")
+    admissions = [entry for entry, _evidence, _observed, _consumed in decoded if entry["role"] in {"pre-sweep", "resume"}]
+    terminal_evidence = verify_closure_receipts(manifest, schedule, params, root, admissions, [entry for entry, _evidence, _observed, _consumed in decoded])
+    for entry, evidence, _observed, consumed_at in decoded:
+        if entry["role"] == "post-sweep" or entry["sha256"] in terminal_evidence:
+            continue
+        tpp_gate = tpp_gate_for_epoch(manifest, str(evidence["reset_at"]), params, consumed_at)
+        require(usage_gate(evidence, entry["sweep_id"], params, tpp_gate), "usage-evidence-headroom-refused")
+        settlement = latest_settlement(manifest, str(evidence["reset_at"]), params, consumed_at)
+        require(settlement is not None, "fresh-settlement-required")
+        _first, _second, first_observed, _second_observed, settlement_digest = settlement
+        require(entry["sha256"] == settlement_digest, "gate-evidence-not-latest-settlement")
+        require(not account_consumed_after(manifest, first_observed, consumed_at), "fresh-settlement-required")
+        if entry["role"] == "resume":
+            probes = oracle_probes_by_usage.get(entry["sha256"])
+            require(probes is not None and all(parse_iso8601(probe.get("observed_at"), "resume-oracle-probe-observed-at") < first_observed for probe in probes), "resume-probe-after-settlement")
 
 
 def designated_sessions(
     manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object], root: pathlib.Path
 ) -> tuple[dict[str, tuple[dict[str, object], pathlib.Path]], dict[str, object]]:
     """Verify v3 provenance and return only mechanically designated sessions."""
-    require(manifest.get("schema") == "iter0112-launch-manifest-v3", "launch-manifest-schema-mismatch")
+    require(manifest.get("schema") == "iter0112-launch-manifest-v4", "launch-manifest-schema-mismatch")
     require(manifest.get("schedule_sha256") == sha256(DEFAULT_SCHEDULE), "launch-manifest-schedule-mismatch")
     require(manifest.get("params_sha256") == sha256(DEFAULT_PARAMS), "launch-manifest-params-mismatch")
-    verify_evidence_chain(manifest, schedule, params)
+    verify_evidence_chain(manifest, schedule, params, root)
     blocks = manifest.get("blocks")
     by_block = sessions_by_block(schedule)
     require(isinstance(blocks, dict) and set(blocks) == set(by_block), "launch-manifest-blocks-invalid")
@@ -517,6 +1128,8 @@ def designated_sessions(
         raise ScoreViolation("charged-allowance-exhausted")
     if manifest.get("terminal") == "WALL_CLOCK_EXPIRED":
         raise ScoreViolation("wall-clock-expired")
+    if manifest.get("terminal") in {"CALIBRATION_UNIDENTIFIABLE", "CALIBRATION_DRIFT_OVER_BUDGET"}:
+        raise ScoreViolation(str(manifest["terminal"]).lower())
     if manifest.get("terminal") == "REPLACEMENT_PENDING":
         raise ScoreViolation("undesignated-void-block")
     require(manifest.get("terminal") == "LAUNCH_COMPLETE", "launch-not-complete")
@@ -527,7 +1140,7 @@ def designated_sessions(
 def load_launch_manifest(results_root: pathlib.Path, schedule_path: pathlib.Path, params_path: pathlib.Path) -> dict[str, object]:
     manifest = read_json(results_root / LAUNCH_MANIFEST_NAME)
     require(isinstance(manifest, dict), "launch-manifest-not-object")
-    require(manifest.get("schema") == "iter0112-launch-manifest-v3", "launch-manifest-schema-mismatch")
+    require(manifest.get("schema") == "iter0112-launch-manifest-v4", "launch-manifest-schema-mismatch")
     require(manifest.get("schedule_sha256") == sha256(schedule_path), "launch-manifest-schedule-mismatch")
     require(manifest.get("params_sha256") == sha256(params_path), "launch-manifest-params-mismatch")
     return manifest
@@ -884,12 +1497,47 @@ def finish(report: dict[str, object], exit_code: int, root: pathlib.Path) -> int
 
 def write_synthetic_manifest(root: pathlib.Path, schedule: dict[str, object]) -> None:
     blocks = {}
-    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    now_dt = datetime.datetime.now(datetime.timezone.utc)
+    now = now_dt.isoformat()
+    reset_at = (now_dt + datetime.timedelta(days=1)).isoformat()
+    params = read_json(DEFAULT_PARAMS)
+    assert isinstance(params, dict)
+
+    def usage(used_percent: int, observed: datetime.datetime, label: str = "synthetic panel") -> bytes:
+        return canonical_bytes({"source": "usage", "meter_id": "current_week_all_models", "observed_at": observed.isoformat(), "value": label, "attested_by": "self-test", "used_percent": used_percent, "display_resolution_percent": 1, "reset_at": reset_at, "panel_sha256": "a" * 64, "auxiliary": {"current_week_fable_percent": None, "current_session_percent": None}})
+
+    calibration_receipts = []
+    components = {"input": 30000000, "output": 30000000, "cache_create": 30000000, "cache_read": 10000000}
+    calibration_sessions = [f"calibration-1-{engine}" for engine in ENGINES]
+    for engine, label in zip(ENGINES, calibration_sessions):
+        directory = root / "calibration" / f"{engine}.{label}.r1"
+        for position, task in enumerate(("smoke-1", "smoke-2"), 1):
+            path = directory / f"t{position}.{task}" / "cli.stdout"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            raw = canonical_bytes({"modelUsage": {engine: {"inputTokens": components["input"], "outputTokens": components["output"], "cacheCreationInputTokens": components["cache_create"], "cacheReadInputTokens": components["cache_read"]}}})
+            path.write_bytes(raw)
+            calibration_receipts.append({"path": str(path.relative_to(root)), "sha256": hashlib.sha256(raw).hexdigest(), "engine": engine, "completed_at": (now_dt - datetime.timedelta(seconds=590)).isoformat()})
+    summed = {"input": 180000000, "output": 180000000, "cache_create": 180000000, "cache_read": 60000000, "total": 600000000}
+    pre_raw, post_raw = usage(5, now_dt - datetime.timedelta(seconds=580), "calibration pre"), usage(10, now_dt - datetime.timedelta(seconds=400), "calibration post")
+    pre = {"sha256": hashlib.sha256(pre_raw).hexdigest(), "bytes_base64": base64.b64encode(pre_raw).decode(), "consumed_at": (now_dt - datetime.timedelta(seconds=580)).isoformat()}
+    first_raw = usage(10, now_dt - datetime.timedelta(seconds=520), "calibration settle 1")
+    first = {"sha256": hashlib.sha256(first_raw).hexdigest(), "bytes_base64": base64.b64encode(first_raw).decode(), "consumed_at": (now_dt - datetime.timedelta(seconds=520)).isoformat()}
+    second = {"sha256": hashlib.sha256(post_raw).hexdigest(), "bytes_base64": base64.b64encode(post_raw).decode(), "consumed_at": (now_dt - datetime.timedelta(seconds=400)).isoformat()}
+    calibration = {"reset_at": reset_at, "pre_capture": pre, "settlement_captures": [first, second], "sessions": calibration_sessions, "receipts": calibration_receipts, "components": summed, "tpp_chain": [{"kind": "calibration", "pre_sha256": pre["sha256"], "post_sha256": second["sha256"], "receipt_digests": [receipt["sha256"] for receipt in calibration_receipts], "components": summed, "draw": summed["total"], "delta_percent": 5, "tpp_obs": 100000000}], "session_equivalents": 3}
     evidence_entries = []
+    settlements = []
     for sweep in range(1, int(schedule["sweeps"]) + 1):
-        for role in ("pre-sweep", "post-sweep"):
-            payload = canonical_bytes({"source": "usage", "observed_at": now, "value": f"synthetic {role} {sweep}", "attested_by": "self-test", "used_transport_tokens": len(evidence_entries), "limit_transport_tokens": 2000000000, "reset_at": now})
-            evidence_entries.append({"sha256": hashlib.sha256(payload).hexdigest(), "bytes_base64": base64.b64encode(payload).decode(), "role": role, "sweep_id": sweep, "consumed_at": now})
+        first_time = now_dt - datetime.timedelta(seconds=270 - 30 * (sweep - 1))
+        second_time = first_time + datetime.timedelta(seconds=120)
+        first_raw = usage(10, first_time, f"settlement first {sweep}")
+        second_raw = usage(10, second_time, f"settlement second {sweep}")
+        first_capture = {"sha256": hashlib.sha256(first_raw).hexdigest(), "bytes_base64": base64.b64encode(first_raw).decode(), "consumed_at": first_time.isoformat()}
+        second_capture = {"sha256": hashlib.sha256(second_raw).hexdigest(), "bytes_base64": base64.b64encode(second_raw).decode(), "consumed_at": second_time.isoformat()}
+        settlements.append({"reset_at": reset_at, "captures": [first_capture, second_capture]})
+        evidence_entries.append({"sha256": second_capture["sha256"], "bytes_base64": second_capture["bytes_base64"], "role": "pre-sweep", "sweep_id": sweep, "consumed_at": (second_time + datetime.timedelta(seconds=1)).isoformat()})
+        post_time = second_time + datetime.timedelta(seconds=2)
+        post_raw = usage(10, post_time, f"synthetic post-sweep {sweep}")
+        evidence_entries.append({"sha256": hashlib.sha256(post_raw).hexdigest(), "bytes_base64": base64.b64encode(post_raw).decode(), "role": "post-sweep", "sweep_id": sweep, "consumed_at": (post_time + datetime.timedelta(seconds=1)).isoformat()})
     for replicate_id, sessions in sessions_by_block(schedule).items():
         attempt_id = f"{replicate_id}.a1"
         statuses = {}
@@ -901,27 +1549,27 @@ def write_synthetic_manifest(root: pathlib.Path, schedule: dict[str, object]) ->
                 "rows_sha256": sha256(directory / "rows.jsonl"),
                 "boundary_ledger_sha256": sha256(directory / "boundary-ledger.json"),
                 "driver_evidence_sha256": sha256(directory / "cli-attestation.json"),
-                "artifact_dir": str(directory.relative_to(root)),
+                "artifact_dir": str(directory.relative_to(root)), "completed_at": (now_dt - datetime.timedelta(seconds=590)).isoformat(),
             }
         blocks[replicate_id] = {
             "replicate_id": replicate_id,
             "attempts": [{"attempt_id": attempt_id, "replacement_of": None, "transport_state": "CLEAN", "unrun_suffix": [], "sessions": statuses, "charged_session_equivalents": 6}],
             "designated_attempt": attempt_id,
         }
-    (root / LAUNCH_MANIFEST_NAME).write_bytes(
-        canonical_bytes(
-            {
-                "schema": "iter0112-launch-manifest-v3",
-                "created_at": now,
-                "schedule_sha256": sha256(DEFAULT_SCHEDULE),
-                "params_sha256": sha256(DEFAULT_PARAMS),
-                "usage_evidence": evidence_entries,
-                "resume_oracles": [],
-                "blocks": blocks,
-                "terminal": "LAUNCH_COMPLETE",
-            }
-        )
-    )
+    manifest = {
+        "schema": "iter0112-launch-manifest-v4", "created_at": (now_dt - datetime.timedelta(seconds=600)).isoformat(),
+        "schedule_sha256": sha256(DEFAULT_SCHEDULE), "params_sha256": sha256(DEFAULT_PARAMS),
+        "usage_evidence": evidence_entries, "calibrations": [calibration], "settlements": settlements,
+        "calibration_session_equivalents": 3, "closure_receipts": [], "resume_oracles": [],
+        "blocks": blocks, "terminal": "LAUNCH_COMPLETE",
+    }
+    for sweep in range(1, int(schedule["sweeps"]) + 1):
+        bound_digest = next(entry["sha256"] for entry in evidence_entries if entry["role"] == "pre-sweep" and entry["sweep_id"] == sweep)
+        consumed_at = next(parse_iso8601(entry["consumed_at"], "synthetic-consumed-at") for entry in evidence_entries if entry["sha256"] == bound_digest and entry["role"] == "pre-sweep")
+        closure = closure_payload(manifest, schedule, params, root, bound_digest, sweep, consumed_at)
+        closure_raw = canonical_bytes(closure)
+        manifest["closure_receipts"].append({"sha256": hashlib.sha256(closure_raw).hexdigest(), "bytes_base64": base64.b64encode(closure_raw).decode(), "sweep_id": sweep, "consumed_at": consumed_at.isoformat()})
+    (root / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
 
 
 def synthetic_root(root: pathlib.Path, variant: str) -> None:
@@ -1035,7 +1683,7 @@ def add_void_replacement(root: pathlib.Path, schedule: dict[str, object]) -> Non
             "engine": session["engine"], "replicate_id": replicate_id, "session_label": session["session_label"],
             "status": "completed", "infra_affected": False,
             "rows_sha256": sha256(directory / "rows.jsonl"), "boundary_ledger_sha256": sha256(directory / "boundary-ledger.json"), "driver_evidence_sha256": sha256(directory / "cli-attestation.json"),
-            "artifact_dir": str(directory.relative_to(root)),
+            "artifact_dir": str(directory.relative_to(root)), "completed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
     first = sessions[0]
     original_directory = session_directory(root, first, f"{replicate_id}.a1")
@@ -1080,273 +1728,139 @@ def self_test() -> None:
     assert is_aup_refusal(m6_aup, "claude-opus-5")
     assert not is_aup_refusal({key: value for key, value in m6_aup.items() if key != "api_error_status"}, "claude-opus-5")
     assert not is_aup_refusal({**m6_aup, "modelUsage": ["claude-opus-5"]}, "claude-opus-5")
-    scenarios = {
-        "g1-fail": "TRANSPORT_FAIL_NO_MATRIX_SCORING",
-        "g2-exclusion": "INCONCLUSIVE_AT_PILOT_N",
-        "g3-fail": "INCONCLUSIVE_AT_PILOT_N",
-        "saturated": "SATURATED",
-        "confirmed": "CONFIRMED",
-        "refuted": "MATERIAL_GAP_REFUTED",
-    }
-    with tempfile.TemporaryDirectory(prefix="iter0112-score-") as temporary:
-        root = pathlib.Path(temporary)
-        tampered_params = root / "registered-params.json"
-        tampered_bytes = bytearray(DEFAULT_PARAMS.read_bytes())
-        tampered_bytes[0] ^= 1
-        tampered_params.write_bytes(tampered_bytes)
-        try:
-            verify_frozen_dependencies(DEFAULT_SCHEDULE, tampered_params)
-        except ScoreViolation as exc:
-            if str(tampered_params) not in str(exc):
-                raise AssertionError("tampered params error did not name the mismatched file") from exc
-        else:
-            raise AssertionError("tampered params were accepted")
-        for variant, terminal in scenarios.items():
-            fixture = root / variant
-            synthetic_root(fixture, variant)
-            if variant == "confirmed":
-                first_session = schedule["sessions"][0]
-                rows_path = session_directory(fixture, first_session, f"{first_session['replicate_id']}.a1") / "rows.jsonl"
-                original = rows_path.read_bytes()
-                rows_path.write_bytes(original + b" ")
-                try:
-                    score(fixture, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
-                except ScoreViolation as exc:
-                    if str(first_session["session_label"]) not in str(exc):
-                        raise AssertionError("tampered rows error did not name the session") from exc
-                else:
-                    raise AssertionError("tampered rows were accepted")
-                rows_path.write_bytes(original)
-            report, exit_code = score(fixture, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
-            if report["terminal"] != terminal or exit_code != (2 if variant == "g1-fail" else 0):
-                raise AssertionError(f"{variant}: {report['terminal']} exit {exit_code}")
-            if variant == "g2-exclusion" and not any(report["g2_horizon_attestation"]["excluded_late_cells"].values()):
-                raise AssertionError("g2 exclusion fixture did not exclude late cells")
-            if variant == "g3-fail" and report["g3_estimand_support"]["passed"]:
-                raise AssertionError("g3 fixture unexpectedly passed")
-            if variant == "confirmed":
-                decision = report["decision"]
-                shared = G0.decision_path(decision["replicate_means"], decision["saturated"], G0.BOOTSTRAP_RESAMPLES)
-                if shared != (decision["delta_h"], tuple(decision["percentile_bootstrap_ci"]), report["terminal"]):
-                    raise AssertionError("scorer decision differs from shared G0 path")
-                repeat, repeat_exit = score(fixture, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
-                if repeat_exit != exit_code or canonical_bytes(repeat) != canonical_bytes(report):
-                    raise AssertionError("scorer double-run was not byte-identical")
+    with tempfile.TemporaryDirectory(prefix="iter0112-score-v4-") as temporary:
+        root = pathlib.Path(temporary) / "root"; root.mkdir()
+        synthetic_root(root, "confirmed")
+        report, exit_code = score(root, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
+        assert report["terminal"] == "CONFIRMED" and exit_code == 0
 
-        def expect_evidence_rejection(name, mutate, expected_reason):
-            fixture = root / name
-            synthetic_root(fixture, "confirmed")
-            mutate(fixture)
-            try:
-                score(fixture, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
-            except ScoreViolation as exc:
-                if expected_reason not in str(exc):
-                    raise AssertionError(f"{name}: expected {expected_reason}, got {exc}") from exc
-            else:
-                raise AssertionError(f"{name}: malformed evidence accepted")
+        def reject(name, mutate, reason):
+            fixture = pathlib.Path(temporary) / f"{name}-fixture"; shutil.copytree(root, fixture); manifest = read_json(fixture / LAUNCH_MANIFEST_NAME); assert isinstance(manifest, dict)
+            mutate(manifest)
+            (fixture / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
+            try: score(fixture, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
+            except ScoreViolation as exc: assert reason in str(exc), str(exc)
+            else: raise AssertionError(f"{name} accepted")
 
-        def rewrite_usage_entry(manifest, index, mutate):
-            entry = manifest["usage_evidence"][index]
-            payload = json.loads(base64.b64decode(entry["bytes_base64"]))
-            mutate(payload)
+        reject("v3", lambda manifest: manifest.__setitem__("schema", "iter0112-launch-manifest-v3"), "schema")
+        reject("bad-calibration", lambda manifest: manifest["calibrations"][0]["components"].__setitem__("cache_read", 999999999), "mix")
+        reject("mutated-closure", lambda manifest: manifest["closure_receipts"][0].__setitem__("sha256", "f" * 64), "closure")
+        def mutate_closure_field(field, value):
+            def mutate(manifest):
+                receipt = manifest["closure_receipts"][0]
+                payload = json.loads(base64.b64decode(receipt["bytes_base64"]))
+                payload[field] = value
+                raw = canonical_bytes(payload)
+                receipt["bytes_base64"] = base64.b64encode(raw).decode()
+                receipt["sha256"] = hashlib.sha256(raw).hexdigest()
+            return mutate
+        reject("closure-upper", mutate_closure_field("used_percent_upper", 999999), "closure")
+        reject("closure-trajectory", mutate_closure_field("trajectory", [-999]), "closure")
+        reject("closure-sessions", mutate_closure_field("calibration_sessions_per_epoch", -999), "closure")
+        reject("closure-consumed", lambda manifest: manifest["closure_receipts"][0].__setitem__("consumed_at", "not-a-timestamp"), "timestamp")
+        identity = pathlib.Path(temporary) / "closure-identity"; shutil.copytree(root, identity)
+        manifest = read_json(identity / LAUNCH_MANIFEST_NAME); assert isinstance(manifest, dict)
+        receipt = next(receipt for receipt in manifest["closure_receipts"] if receipt["sweep_id"] == 1)
+        payload = json.loads(base64.b64decode(receipt["bytes_base64"]))
+        payload = closure_payload(manifest, schedule, _params, identity, payload["bound_evidence_sha256"], 5, parse_iso8601(receipt["consumed_at"], "identity-receipt-consumed-at"))
+        raw = canonical_bytes(payload); receipt["sha256"] = hashlib.sha256(raw).hexdigest(); receipt["bytes_base64"] = base64.b64encode(raw).decode(); receipt["sweep_id"] = 5
+        (identity / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
+        try: score(identity, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
+        except ScoreViolation as exc: assert str(exc) == "closure-receipt-missing:sweep-1"
+        else: raise AssertionError("sweep-5 receipt satisfied a sweep-1 admission")
+        sibling_prefix = read_json(root / LAUNCH_MANIFEST_NAME); assert isinstance(sibling_prefix, dict)
+        sibling_settlement = sibling_prefix["settlements"][0]
+        sibling_first, _sibling_first_consumed = decode_capture(sibling_settlement["captures"][0], _params)
+        sibling_second, _sibling_second_consumed = decode_capture(sibling_settlement["captures"][1], _params)
+        sibling_first_at = parse_iso8601(sibling_first["observed_at"], "session-prefix-first-at")
+        sibling_second_at = parse_iso8601(sibling_second["observed_at"], "session-prefix-second-at")
+        sibling_block = sibling_prefix["blocks"][str(schedule["blocks"][0]["replicate_id"])]
+        sibling_block["attempts"][0]["sessions"] = {"before-first": {"completed_at": (sibling_first_at - datetime.timedelta(seconds=30)).isoformat()}, "after-second": {"completed_at": (sibling_second_at + datetime.timedelta(seconds=1)).isoformat()}}
+        sibling_projected = manifest_as_of(sibling_prefix, sibling_first_at)
+        assert set(sibling_projected["blocks"][str(schedule["blocks"][0]["replicate_id"])]["attempts"][0]["sessions"]) == {"before-first"}
+        try: verify_settlements(sibling_prefix, _params)
+        except ScoreViolation as exc: assert str(exc) == "settlement-too-early"
+        else: raise AssertionError("session-prefix scorer accepted a prior call")
+        historical_void = pathlib.Path(temporary) / "historical-void"; shutil.copytree(root, historical_void)
+        add_void_replacement(historical_void, schedule)
+        manifest = read_json(historical_void / LAUNCH_MANIFEST_NAME); assert isinstance(manifest, dict)
+        void_attempt = next(block for block in manifest["blocks"].values() if isinstance(block, dict) and isinstance(block.get("attempts"), list) and len(block["attempts"]) > 1)["attempts"][0]
+        next(iter(void_attempt["sessions"].values()))["completed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        (historical_void / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
+        assert score(historical_void, DEFAULT_SCHEDULE, DEFAULT_PARAMS)[1] == 0
+        claimed_future = pathlib.Path(temporary) / "claimed-future"; shutil.copytree(historical_void, claimed_future)
+        manifest = read_json(claimed_future / LAUNCH_MANIFEST_NAME); assert isinstance(manifest, dict)
+        receipt = next(receipt for receipt in manifest["closure_receipts"] if receipt["sweep_id"] == 1)
+        payload = json.loads(base64.b64decode(receipt["bytes_base64"]))
+        future = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=1)
+        payload = closure_payload(manifest, schedule, _params, claimed_future, payload["bound_evidence_sha256"], 1, future)
+        raw = canonical_bytes(payload); receipt["sha256"] = hashlib.sha256(raw).hexdigest(); receipt["bytes_base64"] = base64.b64encode(raw).decode()
+        (claimed_future / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
+        try: score(claimed_future, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
+        except ScoreViolation as exc: assert str(exc) == "closure-receipt-invalid"
+        else: raise AssertionError("closure receipt claimed future VOID state")
+        def bad_usage(manifest):
+            entry = manifest["usage_evidence"][0]; payload = json.loads(base64.b64decode(entry["bytes_base64"])); payload["meter_id"] = "wrong"; raw = canonical_bytes(payload); entry["bytes_base64"] = base64.b64encode(raw).decode(); entry["sha256"] = hashlib.sha256(raw).hexdigest()
+        reject("bad-usage", bad_usage, "digest")
+        def early_terminal() -> pathlib.Path:
+            fixture = pathlib.Path(temporary) / "admission-drift"; shutil.copytree(root, fixture)
+            manifest = read_json(fixture / LAUNCH_MANIFEST_NAME); assert isinstance(manifest, dict)
+            pre = next(entry for entry in manifest["usage_evidence"] if entry["role"] == "pre-sweep" and entry["sweep_id"] == 1)
+            post = next(entry for entry in manifest["usage_evidence"] if entry["role"] == "post-sweep" and entry["sweep_id"] == 1)
+            failed_admission = next(entry for entry in manifest["usage_evidence"] if entry["role"] == "pre-sweep" and entry["sweep_id"] == 2)
+            payload = json.loads(base64.b64decode(failed_admission["bytes_base64"])); payload["used_percent"] = 98
             raw = canonical_bytes(payload)
-            entry["bytes_base64"] = base64.b64encode(raw).decode()
-            entry["sha256"] = hashlib.sha256(raw).hexdigest()
-
-        def rewrite_reset_epochs(fixture, reset_epochs):
-            manifest = read_json(fixture / LAUNCH_MANIFEST_NAME)
-            assert isinstance(manifest, dict) and len(manifest["usage_evidence"]) == len(reset_epochs)
-            for index, reset_at in enumerate(reset_epochs):
-                rewrite_usage_entry(manifest, index, lambda payload, reset_at=reset_at: payload.__setitem__("reset_at", reset_at))
+            failed_admission["sha256"] = hashlib.sha256(raw).hexdigest(); failed_admission["bytes_base64"] = base64.b64encode(raw).decode()
+            failed_at = parse_iso8601(failed_admission["consumed_at"], "synthetic-failed-admission-closure")
+            manifest["settlements"] = manifest["settlements"][:1]
+            manifest["usage_evidence"] = [pre, post, failed_admission]
+            manifest["completed_sweeps"] = [entry for entry in manifest.get("completed_sweeps", []) if entry["sweep_id"] == 1]
+            manifest["calibrations"][0]["tpp_chain"] = manifest["calibrations"][0]["tpp_chain"][:1]
+            manifest["closure_receipts"] = []
+            passed_at = parse_iso8601(pre["consumed_at"], "synthetic-pre-closure")
+            passed = closure_payload(manifest, schedule, _params, fixture, pre["sha256"], 1, passed_at)
+            assert passed["passed"] is True
+            raw = canonical_bytes(passed)
+            manifest["closure_receipts"].append({"sha256": hashlib.sha256(raw).hexdigest(), "bytes_base64": base64.b64encode(raw).decode(), "sweep_id": 1, "consumed_at": passed_at.isoformat()})
+            failed = closure_payload(manifest, schedule, _params, fixture, failed_admission["sha256"], 2, failed_at)
+            assert failed["passed"] is False
+            raw = canonical_bytes(failed)
+            manifest["closure_receipts"].append({"sha256": hashlib.sha256(raw).hexdigest(), "bytes_base64": base64.b64encode(raw).decode(), "sweep_id": 2, "consumed_at": failed_at.isoformat()})
+            manifest["terminal"] = "CALIBRATION_DRIFT_OVER_BUDGET"
             (fixture / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
-
-        initial_reset_at = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=2)
-        advanced_reset_at = initial_reset_at + datetime.timedelta(days=1)
-        second_advanced_reset_at = advanced_reset_at + datetime.timedelta(days=1)
-        initial_reset = initial_reset_at.isoformat()
-        advanced_reset = advanced_reset_at.isoformat()
-        second_advanced_reset = second_advanced_reset_at.isoformat()
-        backward_reset = (initial_reset_at - datetime.timedelta(days=1)).isoformat()
-        one_transition = [initial_reset, initial_reset, *([advanced_reset] * 8)]
-        reset_transition = root / "reset-one-transition"
-        synthetic_root(reset_transition, "confirmed")
-        rewrite_reset_epochs(reset_transition, one_transition)
-        report, exit_code = score(reset_transition, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
-        if report["terminal"] != "CONFIRMED" or exit_code != 0:
-            raise AssertionError("one advancing reset transition was not accepted")
-
-        expect_evidence_rejection(
-            "reset-second-transition",
-            lambda fixture: rewrite_reset_epochs(fixture, [initial_reset, initial_reset, advanced_reset, advanced_reset, *([second_advanced_reset] * 6)]),
-            "usage-evidence-reset-epochs-exceeded",
-        )
-        expect_evidence_rejection(
-            "reset-backward",
-            lambda fixture: rewrite_reset_epochs(fixture, [initial_reset, initial_reset, *([backward_reset] * 8)]),
-            "usage-evidence-reset-not-advancing",
-        )
-        expect_evidence_rejection(
-            "reset-reused",
-            lambda fixture: rewrite_reset_epochs(fixture, [initial_reset, initial_reset, advanced_reset, advanced_reset, *([initial_reset] * 6)]),
-            "usage-evidence-reset-not-advancing",
-        )
-
-        expect_evidence_rejection(
-            "evidence-tampered",
-            lambda fixture: (lambda manifest: ((manifest["usage_evidence"][0].__setitem__("sha256", "f" * 64)), (fixture / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))))(read_json(fixture / LAUNCH_MANIFEST_NAME)),
-            "usage-evidence-digest-invalid",
-        )
-        expect_evidence_rejection(
-            "evidence-stale",
-            lambda fixture: (lambda manifest: (rewrite_usage_entry(manifest, 0, lambda payload: payload.__setitem__("observed_at", (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=301)).isoformat())), (fixture / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))))(read_json(fixture / LAUNCH_MANIFEST_NAME)),
-            "usage-evidence-stale",
-        )
-        expect_evidence_rejection(
-            "evidence-reordered",
-            lambda fixture: (lambda manifest: ((manifest.__setitem__("usage_evidence", [manifest["usage_evidence"][1], manifest["usage_evidence"][0], *manifest["usage_evidence"][2:]])), (fixture / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))))(read_json(fixture / LAUNCH_MANIFEST_NAME)),
-            "usage-evidence-nonmonotone",
-        )
-
-        def refresh_session_digests(fixture, manifest, session):
-            attempt_id = manifest["blocks"][str(session["replicate_id"])]["designated_attempt"]
-            directory = session_directory(fixture, session, attempt_id)
-            status = manifest["blocks"][str(session["replicate_id"])]["attempts"][0]["sessions"][str(session["session_label"])]
-            status["rows_sha256"] = sha256(directory / "rows.jsonl")
-            status["driver_evidence_sha256"] = sha256(directory / "cli-attestation.json")
-
-        def refresh_synthetic_ledger(fixture, manifest):
-            payload = b""
-            for session in schedule["sessions"]:
-                block = manifest["blocks"][str(session["replicate_id"])]
-                attempt = next(item for item in block["attempts"] if item["attempt_id"] == block["designated_attempt"])
-                payload += (fixture / attempt["sessions"][str(session["session_label"])]["artifact_dir"] / "rows.jsonl").read_bytes()
-            (fixture / "ledger.jsonl").write_bytes(payload)
-
-        def out_of_contract_driver_argv(fixture):
-            manifest = read_json(fixture / LAUNCH_MANIFEST_NAME)
-            assert isinstance(manifest, dict)
-            session = schedule["sessions"][0]
-            directory = session_directory(fixture, session, f"{session['replicate_id']}.a1")
-            rows = read_jsonl(directory / "rows.jsonl")
-            assert isinstance(rows[0], dict)
-            rows[0]["cli_argv"][0] = "/unregistered/python"
-            (directory / "rows.jsonl").write_bytes(b"".join(canonical_bytes(row) for row in rows))
-            attestation = read_json(directory / "cli-attestation.json")
-            assert isinstance(attestation, dict)
-            attestation["invocations"][0]["argv"] = rows[0]["cli_argv"]
-            (directory / "cli-attestation.json").write_bytes(canonical_bytes(attestation))
-            refresh_session_digests(fixture, manifest, session)
-            refresh_synthetic_ledger(fixture, manifest)
-            (fixture / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
-
-        expect_evidence_rejection("evidence-driver-argv", out_of_contract_driver_argv, "cli-evidence-command-invalid")
-
-        def malformed_probe_stdout(fixture):
-            add_void_replacement(fixture, schedule)
-            manifest = read_json(fixture / LAUNCH_MANIFEST_NAME)
-            assert isinstance(manifest, dict)
-            entry = manifest["resume_oracles"][0]
-            oracle = json.loads(base64.b64decode(entry["bytes_base64"]))
-            malformed = b"{"
-            oracle["probes"][0]["stdout_bytes_base64"] = base64.b64encode(malformed).decode()
-            oracle["probes"][0]["stdout_sha256"] = hashlib.sha256(malformed).hexdigest()
-            raw = canonical_bytes(oracle)
-            entry["bytes_base64"] = base64.b64encode(raw).decode()
-            entry["sha256"] = hashlib.sha256(raw).hexdigest()
-            (fixture / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
-
-        expect_evidence_rejection("evidence-probe-stdout", malformed_probe_stdout, "resume-oracle-probe-json-invalid")
-
-        def list_valued_probe_stdout(fixture):
-            add_void_replacement(fixture, schedule)
-            manifest = read_json(fixture / LAUNCH_MANIFEST_NAME)
-            assert isinstance(manifest, dict)
-            entry = manifest["resume_oracles"][0]
-            oracle = json.loads(base64.b64decode(entry["bytes_base64"]))
-            malformed = canonical_bytes({"is_error": False, "modelUsage": [ENGINES[0]]})
-            oracle["probes"][0]["stdout_bytes_base64"] = base64.b64encode(malformed).decode()
-            oracle["probes"][0]["stdout_sha256"] = hashlib.sha256(malformed).hexdigest()
-            raw = canonical_bytes(oracle)
-            entry["bytes_base64"] = base64.b64encode(raw).decode()
-            entry["sha256"] = hashlib.sha256(raw).hexdigest()
-            (fixture / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
-
-        expect_evidence_rejection("evidence-probe-list-model-usage", list_valued_probe_stdout, "resume-oracle-probe-failed")
-
-        def set_aup_receipt(fixture, refusal=True):
-            manifest = read_json(fixture / LAUNCH_MANIFEST_NAME)
-            assert isinstance(manifest, dict)
-            session = schedule["sessions"][0]
-            position = 8
-            task = session["tasks"][position - 1]["task_id"]
-            directory = session_directory(fixture, session, f"{session['replicate_id']}.a1")
-            stdout_path = directory / f"t{position}.{task}" / "cli.stdout"
-            receipt = {"is_error": True, "subtype": "success", "terminal_reason": "api_error", "stop_reason": "refusal" if refusal else "end_turn", "api_error_status": None, "modelUsage": {session["engine"]: {}}}
-            stdout_path.chmod(0o644)
-            stdout_path.write_bytes(canonical_bytes(receipt))
-            stdout_path.chmod(0o444)
-            rows = read_jsonl(directory / "rows.jsonl")
-            assert isinstance(rows[position - 1], dict)
-            row = rows[position - 1]
-            row["cli_returncode"] = 1
-            row["cli_stdout_bytes"] = stdout_path.stat().st_size
-            row["cli_stdout_sha256"] = sha256(stdout_path)
-            row["manifestations_failed"] = row["manifestations_total"]
-            (directory / "rows.jsonl").write_bytes(b"".join(canonical_bytes(value) for value in rows))
-            attestation = read_json(directory / "cli-attestation.json")
-            assert isinstance(attestation, dict)
-            invocation = attestation["invocations"][position - 1]
-            invocation["returncode"] = 1
-            invocation["stdout"] = {"bytes": row["cli_stdout_bytes"], "sha256": row["cli_stdout_sha256"]}
-            (directory / "cli-attestation.json").write_bytes(canonical_bytes(attestation))
-            refresh_session_digests(fixture, manifest, session)
-            refresh_synthetic_ledger(fixture, manifest)
-            (fixture / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
-
-        aup_positive = root / "aup-positive"
-        synthetic_root(aup_positive, "confirmed")
-        set_aup_receipt(aup_positive)
-        report, _exit_code = score(aup_positive, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
-        if not report["diagnostics"]["attempt_censuses"]["designated_attempts_aup_by_engine_task_position"]:
-            raise AssertionError("AUP refusal was not counted by its registered classifier")
-        aup_negative = root / "aup-negative"
-        synthetic_root(aup_negative, "confirmed")
-        set_aup_receipt(aup_negative, refusal=False)
-        report, _exit_code = score(aup_negative, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
-        if report["diagnostics"]["attempt_censuses"]["designated_attempts_aup_by_engine_task_position"]:
-            raise AssertionError("non-refusal receipt entered AUP census")
-        late_position = root / "late-position-crossing"
-        synthetic_root(late_position, "confirmed")
-        for session in schedule["sessions"]:
-            ledger_path = session_directory(late_position, session, f"{session['replicate_id']}.a1") / "boundary-ledger.json"
-            ledger = read_json(ledger_path)
-            ledger["boundaries"][3]["peak_effective_context"] = 1000
-            ledger["boundaries"][4]["peak_effective_context"] = 100000
-            ledger_path.write_bytes(canonical_bytes(ledger))
-        write_synthetic_manifest(late_position, schedule)
-        report, exit_code = score(late_position, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
-        if report["terminal"] != "INCONCLUSIVE_AT_PILOT_N" or exit_code != 0:
-            raise AssertionError("late-position threshold crossing was accepted")
-        if not any("threshold-unreached" in key for key in report["g2_horizon_attestation"]["excluded_late_reasons"]):
-            raise AssertionError("late-position threshold crossing was not excluded")
-        designated_only = root / "designated-only"
-        synthetic_root(designated_only, "confirmed")
-        add_void_replacement(designated_only, schedule)
-        report, exit_code = score(designated_only, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
-        censuses = report["diagnostics"]["attempt_censuses"]
-        if exit_code != 0 or censuses["all_attempts"]["infra_invalid_rows"] != 1 or censuses["designated_attempts"].get("infra_invalid_rows", 0) != 0:
-            raise AssertionError("T6 void rows entered the designated score join")
-        allowance = root / "allowance-exhausted"
-        synthetic_root(allowance, "confirmed")
-        allowance_manifest = read_json(allowance / LAUNCH_MANIFEST_NAME)
-        assert isinstance(allowance_manifest, dict)
-        allowance_manifest["terminal"] = "CHARGED_ALLOWANCE_EXHAUSTED"
-        (allowance / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(allowance_manifest))
-        completed = subprocess.run([sys.executable, str(HERE / "score-0112.py"), "--results-root", str(allowance)], capture_output=True, text=True)
-        if completed.returncode != 3 or "charged-allowance-exhausted" not in completed.stdout:
-            raise AssertionError(f"charged allowance exit: {completed.returncode}")
-    print("SELF_TEST_OK: frozen dependencies, launch digest tamper, G1/G2/G3, strict terminals, deterministic score, charged allowance, designated-only join, strict AUP classifier, reset-transition accounting, post-sweep pause evidence, tampered/stale/reordered usage, registered driver argv, malformed probe stdout, raw stream attestations")
-
+            return fixture
+        drift = early_terminal()
+        try: score(drift, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
+        except ScoreViolation as exc: assert str(exc) == "calibration_drift_over_budget"
+        else: raise AssertionError("score() accepted an admission-time drift terminal")
+        wrong_terminal = pathlib.Path(temporary) / "wrong-terminal-receipt"; shutil.copytree(drift, wrong_terminal)
+        manifest = read_json(wrong_terminal / LAUNCH_MANIFEST_NAME); assert isinstance(manifest, dict)
+        failed_admission = next(entry for entry in manifest["usage_evidence"] if entry["role"] == "pre-sweep" and entry["sweep_id"] == 2)
+        failed_at = parse_iso8601(failed_admission["consumed_at"], "wrong-terminal-receipt-at")
+        failed_receipt = next(receipt for receipt in manifest["closure_receipts"] if json.loads(base64.b64decode(receipt["bytes_base64"]))["passed"] is False)
+        payload = closure_payload(manifest_as_of(manifest, failed_at), schedule, _params, wrong_terminal, failed_admission["sha256"], 5, failed_at)
+        assert payload["passed"] is False
+        raw = canonical_bytes(payload); failed_receipt["sha256"] = hashlib.sha256(raw).hexdigest(); failed_receipt["bytes_base64"] = base64.b64encode(raw).decode(); failed_receipt["sweep_id"] = 5
+        (wrong_terminal / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
+        try: score(wrong_terminal, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
+        except ScoreViolation as exc: assert str(exc) == "closure-terminal-receipt-invalid"
+        else: raise AssertionError("sweep-5 receipt proved a sweep-1 terminal")
+        missing_closure = root / "missing-early-closure"
+        shutil.copytree(drift, missing_closure)
+        manifest = read_json(missing_closure / LAUNCH_MANIFEST_NAME); assert isinstance(manifest, dict)
+        manifest["closure_receipts"] = manifest["closure_receipts"][1:]
+        (missing_closure / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
+        try: score(missing_closure, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
+        except ScoreViolation as exc: assert str(exc) == "closure-receipt-missing:sweep-1"
+        else: raise AssertionError("score() accepted an early terminal without its admission receipt")
+        manifest = read_json(drift / LAUNCH_MANIFEST_NAME); assert isinstance(manifest, dict)
+        manifest["terminal"] = "CALIBRATION_UNIDENTIFIABLE"
+        (drift / LAUNCH_MANIFEST_NAME).write_bytes(canonical_bytes(manifest))
+        try: score(drift, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
+        except ScoreViolation as exc: assert str(exc) == "completed-sweep-mix-terminal-invalid"
+        else: raise AssertionError("score() accepted an unproven mix terminal")
+    print("SELF_TEST_OK: v4 scorer schema, temporal-prefix closure and settlement replay, admission-identity and terminal-evaluation closure coverage, admission-time drift replay, persisted program-bound receipt re-summation, percent evidence, mix falsifier, and v3 refusal")
+    return
 
 def main() -> int:
     parser = argparse.ArgumentParser()

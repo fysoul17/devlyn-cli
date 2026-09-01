@@ -71,19 +71,19 @@
   },
   "venue_tolerance": {
     "usage_evidence": {
-      "schema": "iter0112-usage-v1",
-      "exact_fields": ["source", "observed_at", "value", "attested_by", "used_transport_tokens", "limit_transport_tokens", "reset_at"],
+      "schema": "iter0112-usage-v2",
+      "exact_fields": ["source", "meter_id", "observed_at", "value", "attested_by", "used_percent", "display_resolution_percent", "reset_at", "panel_sha256", "auxiliary"],
       "source": "usage",
-      "unit": "transport_tokens = inputTokens + outputTokens + cacheCreationInputTokens + cacheReadInputTokens",
-      "direction": "used_transport_tokens increases within reset_at epoch; limit_transport_tokens is the positive inclusive weekly limit",
+      "meter_id": "current_week_all_models",
+      "used_percent_upper": "min(100, used_percent + display_resolution_percent)",
       "freshness_seconds": 300,
       "clock_skew_seconds": 5,
       "clock_skew_seconds_proposal": true,
       "reset_handling": "A changed reset_at starts one new epoch only; reset_at must advance and no root may consume more than max_reset_epochs distinct transitions.",
-      "refusal": "missing, malformed, stale, non-monotone within an epoch, or non-transport-token /usage readout refuses before any manifest write"
+      "refusal": "missing, malformed, stale, non-monotone within an epoch, or non-percent /usage readout refuses before any manifest write"
     },
     "budget_gate": {
-      "predicate": "used_transport_tokens + burn_bound(next_sweep) + normal_use_reserve_transport_tokens + rounding_lag_margin_transport_tokens < limit_transport_tokens",
+      "predicate": "used_percent_upper + ceil(burn_bound_tokens / tpp_gate) + ceil(reserve_tokens / tpp_gate) < 100",
       "strict": true,
       "pre_and_post_evidence_required": true,
       "first_sweep_burn_bound_transport_tokens": 140507553,
@@ -94,6 +94,55 @@
       "reserve_transport_tokens": 56081554,
       "m6_sweep_transport_tokens": {"sweep_1": 112406042, "sweep_2": 127195740, "sweep_3": 128186407},
       "safety_factor": {"value": 1.25, "proposal": true}
+    },
+    "calibration": {
+      "program": "driver-shaped smoke session per engine in registered order on the pinned smoke task pair; receipts remain under the launch out-dir",
+      "engine_order": ["claude-opus-5", "claude-opus-4-8", "claude-sonnet-5"],
+      "smoke_tasks": ["smoke-1", "smoke-2"],
+      "draw": "inputTokens + outputTokens + cacheCreationInputTokens + cacheReadInputTokens summed over all calibration receipts",
+      "top_up_rule": "if settled delta_percent is less than 3 after the base batch, run one additional same-order three-session unit; at most 12 calibration sessions per epoch; after the top-up, a delta_percent less than 3 refuses CALIBRATION_UNIDENTIFIABLE",
+      "settlement_rule": "two equal used_percent captures at least 120 seconds apart; the latter observed_at is at least 180 seconds after the final calibration receipt completed",
+      "cross_epoch_carry": "forbidden; every reset epoch has a fresh calibration before its first gate",
+      "tpp": "tpp_cal=floor(D/(delta_percent+1)); each same-epoch completed sweep with delta_percent >= 1 adds floor(draw/(delta_percent+1)); tpp_gate is the current epoch minimum without a floor clamp",
+      "mix_constraint": {
+        "calibration_predicate": "D > 0 and 1000 * cacheRead <= 973 * D",
+        "completed_sweep_predicate": "D_sweep > 0 and 1000 * cacheRead_sweep >= 973 * D_sweep",
+        "constant": 973,
+        "constant_derivation": "floor(1000 * 379507866 / 390017658)",
+        "meter_charge_assumption": {"assumption": true, "statement": "meter_charge = wN*(input+output+cacheCreate) + wR*cacheRead with 0 <= wR <= wN, engine-invariant and stable within a reset epoch; calibration share <= 0.973 <= completed-sweep share makes tpp_cal conservative"},
+        "partial_prefix_rule": "completed sweeps only; partial receipt prefixes are exempt"
+      },
+      "accounting": {"per_session_equivalents": 1, "max_per_epoch": 12, "max_per_root": 24}
+    },
+    "settlement": {
+      "entry_schema": "iter0112-settlement-v1",
+      "entry_shape": "reset_at plus exactly two usage captures; no calibration sessions and no tpp-chain entry",
+      "rule": "captures have equal used_percent, are at least 120 seconds apart, and the first capture is at least 180 seconds after the latest recorded account-consuming calibration receipt, probe call, or sweep receipt including partial and VOID attempts",
+      "admission_rule": "the gate evidence is the latest settlement (or calibration settlement) second capture; no account-consuming call may follow that settlement first capture",
+      "resume_order": "run probes first, record the settlement pair second, then invoke the launcher with the settlement second capture as usage evidence; every probe observed_at must precede the settlement first capture"
+    },
+    "closure_check": {
+      "nominal_waves": 10,
+      "worst_case_replay_waves": 4,
+      "max_block_wall_ms": 12509207,
+      "probe_calls": 36,
+      "probe_prefix_bound_transport_tokens": 43042,
+      "probe_prefix_bound_derivation": {
+        "formula": "ceil(max(observed Reply OK probe transport) * 5 / 4)",
+        "source_receipts": {
+          "/Users/aipalm/.local/share/nx01/iter0110/launch/ctxprobe/launch-m5-claude-opus-5.json": {"sha256": "810d68a4a8901b974b6bccf4293c41e61c7ce298fb00580b680e0e0ff80a6e4b", "transport_tokens": 34433},
+          "/Users/aipalm/.local/share/nx01/iter0110/launch/ctxprobe/launch-m5-claude-opus-4-8.json": {"sha256": "67312c9bc8ce4d622066a7f4aa24ed151b4f60dcc8d653320cc66ac32da4e408", "transport_tokens": 33426},
+          "/Users/aipalm/.local/share/nx01/iter0110/launch/ctxprobe/launch-m6-claude-opus-5.json": {"sha256": "3b6e48fc37495605e09b664a3c638a62480afe70e27f876c5eccae3d3be36726", "transport_tokens": 34424},
+          "/Users/aipalm/.local/share/nx01/iter0110/launch/ctxprobe/launch-m6-claude-opus-4-8.json": {"sha256": "5bb44c086f11b55aa47cb74ab339704701373d5c41f14cda86cc77c5b1be15a7", "transport_tokens": 33455}
+        },
+        "maximum_observed_transport_tokens": 34433,
+        "safety_factor_numerator": 5,
+        "safety_factor_denominator": 4
+      },
+      "reset_transitions": 1,
+      "worst_case_replay_placement": "after the 10 nominal waves",
+      "evidenced_reset_wait_ms": 408452400,
+      "rule": "at each evaluation time, simulate only remaining work: the admitted sweep and later nominal sweep burns, replay waves remaining after observed voids, reserve at every remaining interval, probe calls remaining after recorded consumption, and the 12-session recalibration bound only for uncalibrated epochs; calendar_end is evaluation_time plus remaining active time and the reset wait only until the single transition occurs, and must not exceed the 168-hour expiry"
     },
     "calendar": {
       "root_age_hours": 168,

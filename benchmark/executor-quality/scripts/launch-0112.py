@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Stageable iter-0112 launcher with budget-gated, outcome-blind block replay."""
+"""Stageable iter-0112 launcher with percent-calibrated, outcome-blind block replay.
+
+Launch-day order: offline pins/window checks and a quiet account; pre-percent
+capture; frozen calibration batch (and retained prefix attestation); two settled
+post captures; calibration and closure checks; a final equal capture; dry-run;
+then launch.  Any later account call requires a fresh capture.
+"""
 from __future__ import annotations
 
 import argparse
@@ -10,6 +16,7 @@ import hashlib
 import json
 import os
 import pathlib
+import shutil
 import shlex
 import subprocess
 import sys
@@ -27,12 +34,19 @@ PIN_FILE = REPO / "docs/specs/iter0112/scripts.sha256"
 MATRIX_ENGINES = ("claude-opus-5", "claude-opus-4-8")
 ENGINES = (*MATRIX_ENGINES, "claude-sonnet-5")
 APPARATUS_SCRIPTS = ("sh-driver-0112.py", "boundary-ledger-0112.py", "smoke-gate-0112.py", "derive-schedule-0112.py", "g0-power-0112.py", "score-0112.py", "launch-0112.py")
-REQUIRED_PIN_TARGETS = frozenset([f"benchmark/executor-quality/scripts/{name}" for name in APPARATUS_SCRIPTS] + ["docs/specs/iter0112/schedule.json", "docs/specs/iter0112/registered-params.json"])
-STATUS_FIELDS = frozenset(("engine", "replicate_id", "session_label", "driver_command", "collector_command", "driver_exit", "driver_stdout_sha256", "driver_stderr_sha256", "driver_evidence_sha256", "status", "collector_exit", "collector_stdout_sha256", "collector_stderr_sha256", "infra_affected", "a5_clean", "first_late_threshold_crossed", "rows_sha256", "boundary_ledger_sha256", "artifact_dir"))
+CALIBRATION_ENGINES = ("claude-opus-5", "claude-opus-4-8", "claude-sonnet-5")
+CALIBRATION_TASKS = ("smoke-1", "smoke-2")
+REQUIRED_PIN_TARGETS = frozenset([f"benchmark/executor-quality/scripts/{name}" for name in APPARATUS_SCRIPTS] + ["docs/specs/iter0112/schedule.json", "docs/specs/iter0112/registered-params.json", "benchmark/executor-quality/tasks-0110-smoke/smoke-1 (whole tree)", "benchmark/executor-quality/tasks-0110-smoke/smoke-2 (whole tree)"])
+STATUS_FIELDS = frozenset(("engine", "replicate_id", "session_label", "driver_command", "collector_command", "driver_exit", "driver_stdout_sha256", "driver_stderr_sha256", "driver_evidence_sha256", "status", "collector_exit", "collector_stdout_sha256", "collector_stderr_sha256", "infra_affected", "a5_clean", "first_late_threshold_crossed", "rows_sha256", "boundary_ledger_sha256", "artifact_dir", "completed_at"))
 ATTEMPT_FIELDS = frozenset(("attempt_id", "replacement_of", "transport_state", "unrun_suffix", "sessions", "charged_session_equivalents"))
-USAGE_FIELDS = ("source", "observed_at", "value", "attested_by", "used_transport_tokens", "limit_transport_tokens", "reset_at")
+USAGE_FIELDS = ("source", "meter_id", "observed_at", "value", "attested_by", "used_percent", "display_resolution_percent", "reset_at", "panel_sha256", "auxiliary")
 USAGE_ENTRY_FIELDS = frozenset(("sha256", "bytes_base64", "role", "sweep_id", "consumed_at"))
 RESUME_ORACLE_ENTRY_FIELDS = frozenset(("sha256", "bytes_base64", "attempt_ids", "consumed_at", "probe_calls"))
+CAPTURE_ENTRY_FIELDS = frozenset(("sha256", "bytes_base64", "consumed_at"))
+SETTLEMENT_FIELDS = frozenset(("reset_at", "captures"))
+COMPONENT_FIELDS = frozenset(("input", "output", "cache_create", "cache_read", "total"))
+COMPLETED_SWEEP_FIELDS = frozenset(("sweep_id", "pre_sha256", "post_sha256", "receipts", "components", "draw"))
+CALIBRATION_PENDING_NAME = "calibration-pending-0112.json"
 
 
 class LaunchViolation(ValueError):
@@ -74,14 +88,18 @@ def load_inputs(schedule_path: pathlib.Path, params_path: pathlib.Path) -> tuple
     if any(not isinstance(s, dict) or not isinstance(s.get("tasks"), list) or len(s["tasks"]) != 8 for s in sessions):
         raise LaunchViolation("schedule-session-shape-invalid")
     venue = params.get("venue_tolerance")
-    if not isinstance(venue, dict) or not isinstance(venue.get("usage_evidence"), dict) or not isinstance(venue.get("budget_gate"), dict) or not isinstance(venue.get("calendar"), dict) or not isinstance(venue.get("charged_accounting"), dict) or not isinstance(venue.get("resume_oracle"), dict):
+    if not isinstance(venue, dict) or not isinstance(venue.get("usage_evidence"), dict) or not isinstance(venue.get("budget_gate"), dict) or not isinstance(venue.get("calendar"), dict) or not isinstance(venue.get("charged_accounting"), dict) or not isinstance(venue.get("resume_oracle"), dict) or not isinstance(venue.get("calibration"), dict) or not isinstance(venue.get("settlement"), dict) or not isinstance(venue.get("closure_check"), dict):
         raise LaunchViolation("venue-tolerance-schema-invalid")
-    if venue["usage_evidence"].get("exact_fields") != list(USAGE_FIELDS) or type(venue["usage_evidence"].get("freshness_seconds")) is not int:
+    if venue["usage_evidence"].get("schema") != "iter0112-usage-v2" or venue["usage_evidence"].get("exact_fields") != list(USAGE_FIELDS) or venue["usage_evidence"].get("meter_id") != "current_week_all_models" or type(venue["usage_evidence"].get("freshness_seconds")) is not int:
         raise LaunchViolation("usage-evidence-schema-invalid")
     if type(venue["charged_accounting"].get("maximum_block_attempts")) is not int or venue["charged_accounting"]["maximum_block_attempts"] < 20:
         raise LaunchViolation("charged-allowance-invalid")
     if type(venue["usage_evidence"].get("clock_skew_seconds")) is not int or venue["usage_evidence"]["clock_skew_seconds"] < 0:
         raise LaunchViolation("usage-evidence-clock-skew-invalid")
+    closure = venue["closure_check"]
+    derivation = closure.get("probe_prefix_bound_derivation")
+    if type(closure.get("probe_prefix_bound_transport_tokens")) is not int or closure["probe_prefix_bound_transport_tokens"] <= 0 or not isinstance(derivation, dict) or derivation.get("maximum_observed_transport_tokens") != 34433 or derivation.get("safety_factor_numerator") != 5 or derivation.get("safety_factor_denominator") != 4 or closure["probe_prefix_bound_transport_tokens"] != ceil_div(34433 * 5, 4):
+        raise LaunchViolation("closure-probe-bound-invalid")
     return schedule, params
 
 
@@ -150,33 +168,62 @@ def parse_iso8601(value: str, field: str) -> datetime.datetime:
     return parsed.astimezone(datetime.timezone.utc)
 
 
-def load_usage_evidence(path: pathlib.Path, params: dict[str, object]) -> tuple[bytes, dict[str, object], str]:
+def decode_usage_evidence(raw: bytes, params: dict[str, object]) -> dict[str, object]:
     try:
-        raw = path.read_bytes()
         evidence = json.loads(raw.decode("utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise LaunchViolation(f"usage-evidence-unreadable:{exc}") from exc
-    if not isinstance(evidence, dict) or set(evidence) != set(USAGE_FIELDS) or evidence.get("source") != "usage":
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise LaunchViolation("usage-evidence-schema-invalid") from exc
+    if not isinstance(evidence, dict) or set(evidence) != set(USAGE_FIELDS) or evidence.get("source") != "usage" or evidence.get("meter_id") != params["venue_tolerance"]["usage_evidence"]["meter_id"]:
         raise LaunchViolation("usage-evidence-schema-invalid")
     if any(not isinstance(evidence.get(field), str) or not evidence[field] for field in ("observed_at", "value", "attested_by", "reset_at")):
         raise LaunchViolation("usage-evidence-text-invalid")
-    if any(type(evidence.get(field)) is not int or evidence[field] < 0 for field in ("used_transport_tokens", "limit_transport_tokens")) or evidence["limit_transport_tokens"] <= 0 or evidence["used_transport_tokens"] > evidence["limit_transport_tokens"]:
+    if type(evidence.get("used_percent")) is not int or not 0 <= evidence["used_percent"] <= 100 or type(evidence.get("display_resolution_percent")) is not int or evidence["display_resolution_percent"] != 1 or not is_digest(evidence.get("panel_sha256")):
         raise LaunchViolation("usage-evidence-numeric-invalid")
-    observed = parse_iso8601(evidence["observed_at"], "observed_at")
+    auxiliary = evidence.get("auxiliary")
+    if not isinstance(auxiliary, dict) or set(auxiliary) != {"current_week_fable_percent", "current_session_percent"} or any(value is not None and (type(value) is not int or not 0 <= value <= 100) for value in auxiliary.values()):
+        raise LaunchViolation("usage-evidence-auxiliary-invalid")
+    parse_iso8601(evidence["observed_at"], "observed_at")
     parse_iso8601(evidence["reset_at"], "reset_at")
-    now = datetime.datetime.now(datetime.timezone.utc)
+    return evidence
+
+
+def validate_usage_consumption(evidence: dict[str, object], consumed_at: datetime.datetime, params: dict[str, object]) -> None:
+    observed = parse_iso8601(str(evidence["observed_at"]), "observed_at")
     skew = datetime.timedelta(seconds=params["venue_tolerance"]["usage_evidence"]["clock_skew_seconds"])
-    if observed > now + skew:
+    freshness = datetime.timedelta(seconds=params["venue_tolerance"]["usage_evidence"]["freshness_seconds"])
+    if observed > consumed_at + skew:
         raise LaunchViolation("usage-evidence-future")
-    if now - observed > datetime.timedelta(seconds=params["venue_tolerance"]["usage_evidence"]["freshness_seconds"]):
+    if consumed_at - observed > freshness:
         raise LaunchViolation("usage-evidence-stale")
+
+
+def load_usage_evidence(path: pathlib.Path, params: dict[str, object]) -> tuple[bytes, dict[str, object], str]:
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise LaunchViolation(f"usage-evidence-unreadable:{exc}") from exc
+    evidence = decode_usage_evidence(raw, params)
+    validate_usage_consumption(evidence, datetime.datetime.now(datetime.timezone.utc), params)
     return raw, evidence, hashlib.sha256(raw).hexdigest()
 
 
-def usage_gate(evidence: dict[str, object], sweep: int, params: dict[str, object]) -> bool:
+def ceil_div(numerator: int, denominator: int) -> int:
+    if type(numerator) is not int or type(denominator) is not int or numerator < 0 or denominator <= 0:
+        raise LaunchViolation("tpp-invalid")
+    return (numerator + denominator - 1) // denominator
+
+
+def used_percent_upper(evidence: dict[str, object]) -> int:
+    used, resolution = evidence.get("used_percent"), evidence.get("display_resolution_percent")
+    if type(used) is not int or type(resolution) is not int:
+        raise LaunchViolation("usage-evidence-numeric-invalid")
+    return min(100, used + resolution)
+
+
+def usage_gate(evidence: dict[str, object], sweep: int, params: dict[str, object], tpp_gate: int) -> bool:
     budget = params["venue_tolerance"]["budget_gate"]
     burn = budget["first_sweep_burn_bound_transport_tokens"] if sweep == 1 else budget["subsequent_sweep_burn_bound_transport_tokens"]
-    return evidence["used_transport_tokens"] + burn + budget["reserve_transport_tokens"] < evidence["limit_transport_tokens"]
+    return used_percent_upper(evidence) + ceil_div(burn, tpp_gate) + ceil_div(budget["reserve_transport_tokens"], tpp_gate) < 100
 
 
 def session_key(session: dict[str, object]) -> str:
@@ -245,9 +292,477 @@ def block_sessions(schedule: dict[str, object]) -> dict[str, list[dict[str, obje
     return result
 
 
+def capture_entry(raw: bytes, digest: str, consumed_at: datetime.datetime | None = None) -> dict[str, object]:
+    return {"sha256": digest, "bytes_base64": base64.b64encode(raw).decode(), "consumed_at": (consumed_at or datetime.datetime.now(datetime.timezone.utc)).isoformat()}
+
+
+def decode_capture(entry: object, params: dict[str, object]) -> tuple[bytes, dict[str, object]]:
+    if not isinstance(entry, dict) or set(entry) != CAPTURE_ENTRY_FIELDS or not is_digest(entry.get("sha256")) or not isinstance(entry.get("bytes_base64"), str):
+        raise LaunchViolation("calibration-capture-invalid")
+    consumed_at = parse_iso8601(str(entry.get("consumed_at")), "calibration-capture-consumed-at")
+    try:
+        raw = base64.b64decode(entry["bytes_base64"], validate=True)
+        evidence = json.loads(raw)
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise LaunchViolation("calibration-capture-invalid") from exc
+    if hashlib.sha256(raw).hexdigest() != entry["sha256"]:
+        raise LaunchViolation("calibration-capture-invalid")
+    checked = decode_usage_evidence(raw, params)
+    validate_usage_consumption(checked, consumed_at, params)
+    return raw, checked
+
+
+def empty_components() -> dict[str, int]:
+    return {"input": 0, "output": 0, "cache_create": 0, "cache_read": 0, "total": 0}
+
+
+def token_components(payload: object, engine: str) -> dict[str, int]:
+    if not isinstance(payload, dict) or not isinstance(payload.get("modelUsage"), dict) or set(payload["modelUsage"]) != {engine}:
+        raise LaunchViolation("calibration-receipt-schema-invalid")
+    usage = payload["modelUsage"][engine]
+    names = {"inputTokens": "input", "outputTokens": "output", "cacheCreationInputTokens": "cache_create", "cacheReadInputTokens": "cache_read"}
+    if not isinstance(usage, dict) or any(type(usage.get(source)) is not int or usage[source] < 0 for source in names):
+        raise LaunchViolation("calibration-receipt-components-invalid")
+    result = {target: usage[source] for source, target in names.items()}
+    result["total"] = sum(result.values())
+    return result
+
+
+def calibration_receipt_layout(sessions: object) -> list[tuple[str, str]]:
+    if not isinstance(sessions, list) or not sessions or len(sessions) % len(CALIBRATION_ENGINES):
+        raise LaunchViolation("calibration-program-invalid")
+    expected: list[tuple[str, str]] = []
+    labels: list[str] = []
+    for index, engine in enumerate(CALIBRATION_ENGINES * (len(sessions) // len(CALIBRATION_ENGINES))):
+        unit = index // len(CALIBRATION_ENGINES) + 1
+        label = f"calibration-{unit}-{engine}"
+        labels.append(label)
+        for position, task in enumerate(CALIBRATION_TASKS, 1):
+            expected.append((f"calibration/{engine}.{label}.r1/t{position}.{task}/cli.stdout", engine))
+    if sessions != labels:
+        raise LaunchViolation("calibration-program-invalid")
+    return expected
+
+
+def completed_sweep_receipt_layout(out: pathlib.Path, manifest: dict[str, object], schedule: dict[str, object], sweep: int) -> list[tuple[str, str]]:
+    expected: list[tuple[str, str]] = []
+    for block in schedule["blocks"]:
+        if block["sweep_id"] != sweep:
+            continue
+        attempt = designated(manifest, str(block["replicate_id"]))
+        if attempt is None:
+            raise LaunchViolation("sweep-not-complete")
+        for session in block_sessions(schedule)[str(block["replicate_id"])]:
+            status = attempt["sessions"].get(session_key(session))
+            if not isinstance(status, dict) or status.get("status") != "completed" or status.get("artifact_dir") != str(session_directory(attempt_root(out, str(attempt["attempt_id"])), session).relative_to(out)):
+                raise LaunchViolation("sweep-not-complete")
+            for position, task in enumerate(session["tasks"], 1):
+                expected.append((str((out / str(status["artifact_dir"]) / f"t{position}.{task['task_id']}" / "cli.stdout").relative_to(out)), str(session["engine"])))
+    if not expected:
+        raise LaunchViolation("sweep-not-complete")
+    return expected
+
+
+def sum_receipts(out: pathlib.Path, receipts: object, expected_layout: list[tuple[str, str]] | None = None) -> dict[str, int]:
+    if not isinstance(receipts, list) or not receipts:
+        raise LaunchViolation("calibration-receipts-invalid")
+    result = empty_components()
+    seen: set[str] = set()
+    actual_layout: list[tuple[str, str]] = []
+    for receipt in receipts:
+        if not isinstance(receipt, dict) or set(receipt) != {"path", "sha256", "engine", "completed_at"} or not isinstance(receipt.get("path"), str) or not is_digest(receipt.get("sha256")) or receipt.get("engine") not in CALIBRATION_ENGINES:
+            raise LaunchViolation("calibration-receipt-invalid")
+        parse_iso8601(str(receipt["completed_at"]), "calibration-receipt-completed-at")
+        relative = pathlib.PurePath(receipt["path"])
+        if relative.is_absolute() or ".." in relative.parts or receipt["path"] in seen:
+            raise LaunchViolation("calibration-receipt-path-invalid")
+        seen.add(receipt["path"])
+        actual_layout.append((receipt["path"], str(receipt["engine"])))
+        path = out / relative
+        try:
+            raw = path.read_bytes()
+            payload = json.loads(raw)
+        except (OSError, json.JSONDecodeError) as exc:
+            raise LaunchViolation("calibration-receipt-unreadable") from exc
+        if hashlib.sha256(raw).hexdigest() != receipt["sha256"]:
+            raise LaunchViolation("calibration-receipt-digest-invalid")
+        for name, value in token_components(payload, str(receipt["engine"])).items():
+            result[name] += value
+    if expected_layout is not None and actual_layout != expected_layout:
+        raise LaunchViolation("calibration-receipt-program-invalid")
+    return result
+
+
+def calibration_for_epoch(manifest: dict[str, object], reset_at: str) -> dict[str, object] | None:
+    calibrations = manifest.get("calibrations")
+    if not isinstance(calibrations, list):
+        raise LaunchViolation("launch-manifest-calibrations-invalid")
+    return next((entry for entry in reversed(calibrations) if isinstance(entry, dict) and entry.get("reset_at") == reset_at), None)
+
+
+def evidence_by_digest(manifest: dict[str, object], params: dict[str, object]) -> dict[str, tuple[dict[str, object], datetime.datetime]]:
+    result: dict[str, tuple[dict[str, object], datetime.datetime]] = {}
+    for calibration in manifest.get("calibrations", []):
+        if not isinstance(calibration, dict):
+            raise LaunchViolation("launch-manifest-calibrations-invalid")
+        captures = [calibration.get("pre_capture"), *(calibration.get("settlement_captures", []) if isinstance(calibration.get("settlement_captures"), list) else [])]
+        for capture in captures:
+            raw, evidence = decode_capture(capture, params)
+            digest = hashlib.sha256(raw).hexdigest()
+            if digest in result:
+                raise LaunchViolation("usage-evidence-reused")
+            result[digest] = (evidence, parse_iso8601(str(capture["consumed_at"]), "calibration-capture-consumed-at"))
+    for settlement in manifest.get("settlements", []):
+        if not isinstance(settlement, dict) or not isinstance(settlement.get("captures"), list):
+            raise LaunchViolation("settlement-entry-invalid")
+        for capture in settlement["captures"]:
+            raw, evidence = decode_capture(capture, params)
+            digest = hashlib.sha256(raw).hexdigest()
+            if digest in result:
+                raise LaunchViolation("usage-evidence-reused")
+            result[digest] = (evidence, parse_iso8601(str(capture["consumed_at"]), "settlement-capture-consumed-at"))
+    for entry in manifest.get("usage_evidence", []):
+        if not isinstance(entry, dict) or not isinstance(entry.get("bytes_base64"), str) or not is_digest(entry.get("sha256")):
+            raise LaunchViolation("launch-manifest-usage-evidence-invalid")
+        try:
+            raw = base64.b64decode(entry["bytes_base64"], validate=True)
+        except (ValueError, TypeError) as exc:
+            raise LaunchViolation("launch-manifest-usage-evidence-invalid") from exc
+        if hashlib.sha256(raw).hexdigest() != entry["sha256"]:
+            raise LaunchViolation("usage-evidence-reused")
+        evidence = decode_usage_evidence(raw, params)
+        consumed = parse_iso8601(str(entry.get("consumed_at")), "usage-consumed-at")
+        validate_usage_consumption(evidence, consumed, params)
+        prior = result.get(entry["sha256"])
+        if prior is not None and prior[0] != evidence:
+            raise LaunchViolation("usage-evidence-reused")
+        result.setdefault(entry["sha256"], (evidence, consumed))
+    return result
+
+
+def tpp_gate_for_epoch(manifest: dict[str, object], reset_at: str, params: dict[str, object], consumed_at: datetime.datetime | None = None) -> int:
+    calibration = calibration_for_epoch(manifest, reset_at)
+    if calibration is None or not isinstance(calibration.get("tpp_chain"), list):
+        raise LaunchViolation("calibration-missing-for-epoch")
+    evidence = evidence_by_digest(manifest, params)
+    observations: list[object] = []
+    for entry in calibration["tpp_chain"]:
+        if not isinstance(entry, dict) or not is_digest(entry.get("post_sha256")) or entry["post_sha256"] not in evidence:
+            raise LaunchViolation("tpp-chain-invalid")
+        if consumed_at is None or evidence[entry["post_sha256"]][1] <= consumed_at:
+            observations.append(entry.get("tpp_obs"))
+    if not observations or any(type(value) is not int or value <= 0 for value in observations):
+        raise LaunchViolation("tpp-chain-invalid")
+    return min(observations)
+
+
+def calibration_mix_ok(components: dict[str, int], completed_sweep: bool = False) -> bool:
+    total, cache_read = components.get("total"), components.get("cache_read")
+    if type(total) is not int or type(cache_read) is not int or total <= 0:
+        return False
+    return 1000 * cache_read >= 973 * total if completed_sweep else 1000 * cache_read <= 973 * total
+
+
+def usage_entries_by_digest(manifest: dict[str, object], params: dict[str, object]) -> dict[str, tuple[dict[str, object], dict[str, object]]]:
+    entries = manifest.get("usage_evidence")
+    if not isinstance(entries, list):
+        raise LaunchViolation("launch-manifest-usage-evidence-invalid")
+    result: dict[str, tuple[dict[str, object], dict[str, object]]] = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != USAGE_ENTRY_FIELDS or not is_digest(entry.get("sha256")) or not isinstance(entry.get("bytes_base64"), str):
+            raise LaunchViolation("launch-manifest-usage-evidence-invalid")
+        try:
+            raw = base64.b64decode(entry["bytes_base64"], validate=True)
+        except (ValueError, TypeError) as exc:
+            raise LaunchViolation("launch-manifest-usage-evidence-invalid") from exc
+        if hashlib.sha256(raw).hexdigest() != entry["sha256"] or entry["sha256"] in result:
+            raise LaunchViolation("launch-manifest-usage-evidence-invalid")
+        result[entry["sha256"]] = (entry, decode_usage_evidence(raw, params))
+    return result
+
+
+def validate_completed_sweeps(manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object], out: pathlib.Path) -> list[dict[str, object]]:
+    entries = manifest.get("completed_sweeps", [])
+    if not isinstance(entries, list):
+        raise LaunchViolation("completed-sweep-entry-invalid")
+    usage = usage_entries_by_digest(manifest, params)
+    previous_sweep = 0
+    failures: list[dict[str, object]] = []
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != COMPLETED_SWEEP_FIELDS or type(entry.get("sweep_id")) is not int or not 1 <= entry["sweep_id"] <= schedule["sweeps"] or entry["sweep_id"] <= previous_sweep or not is_digest(entry.get("pre_sha256")) or not is_digest(entry.get("post_sha256")):
+            raise LaunchViolation("completed-sweep-entry-invalid")
+        pre_pair, post_pair = usage.get(entry["pre_sha256"]), usage.get(entry["post_sha256"])
+        if pre_pair is None or post_pair is None:
+            raise LaunchViolation("completed-sweep-provenance-invalid")
+        pre_entry, pre = pre_pair
+        post_entry, post = post_pair
+        if pre_entry["role"] != "pre-sweep" or post_entry["role"] != "post-sweep" or pre_entry["sweep_id"] != entry["sweep_id"] or post_entry["sweep_id"] != entry["sweep_id"] or pre["reset_at"] != post["reset_at"]:
+            raise LaunchViolation("completed-sweep-provenance-invalid")
+        components = sum_receipts(out, entry.get("receipts"), completed_sweep_receipt_layout(out, manifest, schedule, entry["sweep_id"]))
+        if entry.get("components") != components or entry.get("draw") != components["total"]:
+            raise LaunchViolation("completed-sweep-entry-invalid")
+        if not calibration_mix_ok(components, completed_sweep=True):
+            failures.append(entry)
+        previous_sweep = entry["sweep_id"]
+    if manifest.get("terminal") == "CALIBRATION_UNIDENTIFIABLE":
+        if not failures or failures[-1] != entries[-1]:
+            raise LaunchViolation("completed-sweep-mix-terminal-invalid")
+    elif failures:
+        raise LaunchViolation("completed-sweep-mix-invalid")
+    return entries
+
+
+def validate_sweep_tpp_provenance(manifest: dict[str, object], params: dict[str, object]) -> None:
+    usage = usage_entries_by_digest(manifest, params)
+    for calibration in manifest.get("calibrations", []):
+        if not isinstance(calibration, dict) or not isinstance(calibration.get("tpp_chain"), list):
+            raise LaunchViolation("tpp-chain-invalid")
+        for observation in calibration["tpp_chain"][1:]:
+            if not isinstance(observation, dict):
+                raise LaunchViolation("tpp-chain-invalid")
+            pre_pair, post_pair = usage.get(observation.get("pre_sha256")), usage.get(observation.get("post_sha256"))
+            if pre_pair is None or post_pair is None:
+                raise LaunchViolation("tpp-chain-provenance-invalid")
+            pre_entry, pre = pre_pair
+            post_entry, post = post_pair
+            if pre_entry["role"] != "pre-sweep" or post_entry["role"] != "post-sweep" or pre_entry["sweep_id"] != observation.get("sweep_id") or post_entry["sweep_id"] != observation.get("sweep_id") or pre["reset_at"] != post["reset_at"] or pre["reset_at"] != calibration.get("reset_at") or observation.get("delta_percent") != post["used_percent"] - pre["used_percent"]:
+                raise LaunchViolation("tpp-chain-provenance-invalid")
+
+
+def calibration_entry_valid(entry: object, out: pathlib.Path, params: dict[str, object], manifest: dict[str, object], schedule: dict[str, object]) -> None:
+    required = {"reset_at", "pre_capture", "settlement_captures", "sessions", "receipts", "components", "tpp_chain", "session_equivalents"}
+    if not isinstance(entry, dict) or set(entry) != required or not isinstance(entry.get("reset_at"), str) or not isinstance(entry.get("sessions"), list) or not isinstance(entry.get("receipts"), list) or not isinstance(entry.get("components"), dict) or not isinstance(entry.get("tpp_chain"), list) or type(entry.get("session_equivalents")) is not int:
+        raise LaunchViolation("launch-manifest-calibration-invalid")
+    parse_iso8601(entry["reset_at"], "calibration-reset-at")
+    _pre_raw, pre = decode_capture(entry["pre_capture"], params)
+    settlements = entry["settlement_captures"]
+    if not isinstance(settlements, list) or len(settlements) != 2:
+        raise LaunchViolation("calibration-settlement-invalid")
+    _first_raw, first = decode_capture(settlements[0], params)
+    _second_raw, second = decode_capture(settlements[1], params)
+    if any(capture["reset_at"] != entry["reset_at"] for capture in (pre, first, second)):
+        raise LaunchViolation("calibration-cross-epoch-invalid")
+    first_time, second_time = parse_iso8601(first["observed_at"], "settlement-observed-at"), parse_iso8601(second["observed_at"], "settlement-observed-at")
+    if first["used_percent"] != second["used_percent"] or second_time - first_time < datetime.timedelta(seconds=120):
+        raise LaunchViolation("calibration-settlement-invalid")
+    components = sum_receipts(out, entry["receipts"], calibration_receipt_layout(entry["sessions"]))
+    if entry["components"] != components or not calibration_mix_ok(components):
+        raise LaunchViolation("calibration-mix-invalid")
+    latest_receipt = max(parse_iso8601(str(receipt["completed_at"]), "calibration-receipt-completed-at") for receipt in entry["receipts"])
+    if second_time < latest_receipt + datetime.timedelta(seconds=180):
+        raise LaunchViolation("calibration-settlement-too-early")
+    delta = second["used_percent"] - pre["used_percent"]
+    if delta < 3:
+        raise LaunchViolation("calibration-delta-unidentifiable")
+    if entry["session_equivalents"] != len(entry["sessions"]) or not 1 <= entry["session_equivalents"] <= params["venue_tolerance"]["calibration"]["accounting"]["max_per_epoch"]:
+        raise LaunchViolation("calibration-session-accounting-invalid")
+    chain = entry["tpp_chain"]
+    if not chain or not isinstance(chain[0], dict) or chain[0] != {"kind": "calibration", "pre_sha256": entry["pre_capture"]["sha256"], "post_sha256": settlements[-1]["sha256"], "receipt_digests": [receipt["sha256"] for receipt in entry["receipts"]], "components": components, "draw": components["total"], "delta_percent": delta, "tpp_obs": components["total"] // (delta + 1)}:
+        raise LaunchViolation("tpp-chain-invalid")
+    for observation in chain[1:]:
+        if not isinstance(observation, dict) or set(observation) != {"kind", "sweep_id", "pre_sha256", "post_sha256", "receipts", "components", "draw", "delta_percent", "tpp_obs"} or observation.get("kind") != "sweep" or type(observation.get("sweep_id")) is not int or not is_digest(observation.get("pre_sha256")) or not is_digest(observation.get("post_sha256")) or type(observation.get("delta_percent")) is not int or observation["delta_percent"] < 1 or type(observation.get("tpp_obs")) is not int:
+            raise LaunchViolation("tpp-chain-invalid")
+        sweep_components = sum_receipts(out, observation["receipts"], completed_sweep_receipt_layout(out, manifest, schedule, observation["sweep_id"]))
+        if observation.get("components") != sweep_components or observation.get("draw") != sweep_components["total"] or not calibration_mix_ok(sweep_components, completed_sweep=True) or observation["tpp_obs"] != sweep_components["total"] // (observation["delta_percent"] + 1):
+            raise LaunchViolation("tpp-chain-invalid")
+
+
+def account_consumption_times(manifest: dict[str, object]) -> list[datetime.datetime]:
+    """Return every persisted account-consuming call, including partial attempts."""
+    times: list[datetime.datetime] = []
+    calibrations = manifest.get("calibrations", [])
+    if not isinstance(calibrations, list):
+        raise LaunchViolation("launch-manifest-calibrations-invalid")
+    for calibration in calibrations:
+        if not isinstance(calibration, dict) or not isinstance(calibration.get("receipts"), list):
+            raise LaunchViolation("launch-manifest-calibrations-invalid")
+        times.extend(parse_iso8601(str(receipt.get("completed_at")), "calibration-receipt-completed-at") for receipt in calibration["receipts"] if isinstance(receipt, dict))
+    blocks = manifest.get("blocks")
+    if not isinstance(blocks, dict):
+        raise LaunchViolation("launch-manifest-blocks-invalid")
+    for block in blocks.values():
+        if not isinstance(block, dict) or not isinstance(block.get("attempts"), list):
+            raise LaunchViolation("launch-manifest-blocks-invalid")
+        for attempt in block["attempts"]:
+            if not isinstance(attempt, dict) or not isinstance(attempt.get("sessions"), dict):
+                raise LaunchViolation("launch-manifest-attempt-invalid")
+            for status in attempt["sessions"].values():
+                if not isinstance(status, dict):
+                    raise LaunchViolation("launch-manifest-status-invalid")
+                times.append(parse_iso8601(str(status.get("completed_at")), "launch-session-completed-at"))
+    oracles = manifest.get("resume_oracles", [])
+    if not isinstance(oracles, list):
+        raise LaunchViolation("resume-oracle-manifest-invalid")
+    for entry in oracles:
+        if not isinstance(entry, dict) or not isinstance(entry.get("bytes_base64"), str):
+            raise LaunchViolation("resume-oracle-manifest-invalid")
+        try:
+            oracle = json.loads(base64.b64decode(entry["bytes_base64"], validate=True))
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise LaunchViolation("resume-oracle-manifest-invalid") from exc
+        if not isinstance(oracle, dict) or not isinstance(oracle.get("probes"), list):
+            raise LaunchViolation("resume-oracle-manifest-invalid")
+        times.extend(parse_iso8601(str(probe.get("observed_at")), "resume-oracle-probe-observed-at") for probe in oracle["probes"] if isinstance(probe, dict))
+    return times
+
+
+def manifest_as_of(manifest: dict[str, object], at: datetime.datetime) -> dict[str, object]:
+    """Return the append-only manifest state recorded no later than ``at``."""
+    if not isinstance(manifest, dict) or not isinstance(at, datetime.datetime):
+        raise LaunchViolation("manifest-as-of-invalid")
+    at = at.astimezone(datetime.timezone.utc)
+
+    def capture_observed_at(capture: object) -> datetime.datetime:
+        if not isinstance(capture, dict) or not isinstance(capture.get("bytes_base64"), str):
+            raise LaunchViolation("manifest-as-of-invalid")
+        try:
+            payload = json.loads(base64.b64decode(capture["bytes_base64"], validate=True))
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise LaunchViolation("manifest-as-of-invalid") from exc
+        if not isinstance(payload, dict):
+            raise LaunchViolation("manifest-as-of-invalid")
+        return parse_iso8601(str(payload.get("observed_at")), "manifest-as-of-observed-at")
+
+    def latest_capture_at(entry: object, field: str) -> datetime.datetime:
+        if not isinstance(entry, dict) or not isinstance(entry.get(field), list):
+            raise LaunchViolation("manifest-as-of-invalid")
+        captures = entry[field]
+        if not captures:
+            raise LaunchViolation("manifest-as-of-invalid")
+        return max(capture_observed_at(capture) for capture in captures)
+
+    evidence_at: dict[str, datetime.datetime] = {}
+    for entry in manifest.get("usage_evidence", []):
+        if not isinstance(entry, dict) or not isinstance(entry.get("sha256"), str):
+            raise LaunchViolation("manifest-as-of-invalid")
+        evidence_at.setdefault(entry["sha256"], parse_iso8601(str(entry.get("consumed_at")), "manifest-as-of-usage-consumed-at"))
+    for field, captures_field in (("calibrations", "settlement_captures"), ("settlements", "captures")):
+        entries = manifest.get(field, [])
+        if not isinstance(entries, list):
+            raise LaunchViolation("manifest-as-of-invalid")
+        for entry in entries:
+            if not isinstance(entry, dict) or not isinstance(entry.get(captures_field), list):
+                raise LaunchViolation("manifest-as-of-invalid")
+            for capture in entry[captures_field]:
+                if not isinstance(capture, dict) or not isinstance(capture.get("sha256"), str):
+                    raise LaunchViolation("manifest-as-of-invalid")
+                evidence_at.setdefault(capture["sha256"], capture_observed_at(capture))
+
+    projected = dict(manifest)
+    usage_entries = manifest.get("usage_evidence", [])
+    if not isinstance(usage_entries, list):
+        raise LaunchViolation("manifest-as-of-invalid")
+    projected["usage_evidence"] = [entry for entry in usage_entries if isinstance(entry, dict) and evidence_at.get(entry.get("sha256"), at + datetime.timedelta(microseconds=1)) <= at]
+
+    calibrations = manifest.get("calibrations", [])
+    if not isinstance(calibrations, list):
+        raise LaunchViolation("manifest-as-of-invalid")
+    projected_calibrations: list[dict[str, object]] = []
+    for calibration in calibrations:
+        if not isinstance(calibration, dict) or not isinstance(calibration.get("receipts"), list):
+            raise LaunchViolation("manifest-as-of-invalid")
+        completed_at = [latest_capture_at(calibration, "settlement_captures")]
+        completed_at.extend(parse_iso8601(str(receipt.get("completed_at")), "manifest-as-of-calibration-completed-at") for receipt in calibration["receipts"] if isinstance(receipt, dict))
+        if any(not isinstance(receipt, dict) for receipt in calibration["receipts"]):
+            raise LaunchViolation("manifest-as-of-invalid")
+        if max(completed_at) > at:
+            continue
+        projected_calibration = dict(calibration)
+        chain = calibration.get("tpp_chain")
+        if isinstance(chain, list):
+            projected_calibration["tpp_chain"] = [observation for observation in chain if not isinstance(observation, dict) or evidence_at.get(observation.get("post_sha256"), at + datetime.timedelta(microseconds=1)) <= at]
+        projected_calibrations.append(projected_calibration)
+    projected["calibrations"] = projected_calibrations
+    projected["calibration_session_equivalents"] = sum(calibration.get("session_equivalents", 0) for calibration in projected_calibrations if type(calibration.get("session_equivalents")) is int)
+
+    settlements = manifest.get("settlements", [])
+    if not isinstance(settlements, list):
+        raise LaunchViolation("manifest-as-of-invalid")
+    projected["settlements"] = [entry for entry in settlements if isinstance(entry, dict) and latest_capture_at(entry, "captures") <= at]
+
+    oracles = manifest.get("resume_oracles", [])
+    if not isinstance(oracles, list):
+        raise LaunchViolation("manifest-as-of-invalid")
+    projected["resume_oracles"] = [entry for entry in oracles if isinstance(entry, dict) and parse_iso8601(str(entry.get("consumed_at")), "manifest-as-of-oracle-consumed-at") <= at]
+
+    blocks = manifest.get("blocks")
+    if not isinstance(blocks, dict):
+        raise LaunchViolation("manifest-as-of-invalid")
+    projected_blocks: dict[str, object] = {}
+    for replicate_id, block in blocks.items():
+        if not isinstance(block, dict) or not isinstance(block.get("attempts"), list):
+            raise LaunchViolation("manifest-as-of-invalid")
+        projected_block = dict(block)
+        attempts: list[dict[str, object]] = []
+        for attempt in block["attempts"]:
+            if not isinstance(attempt, dict) or not isinstance(attempt.get("sessions"), dict):
+                raise LaunchViolation("manifest-as-of-invalid")
+            if any(not isinstance(status, dict) for status in attempt["sessions"].values()):
+                raise LaunchViolation("manifest-as-of-invalid")
+            projected_attempt = dict(attempt)
+            projected_attempt["sessions"] = {
+                label: status for label, status in attempt["sessions"].items()
+                if parse_iso8601(str(status.get("completed_at")), "manifest-as-of-attempt-completed-at") <= at
+            }
+            attempts.append(projected_attempt)
+        projected_block["attempts"] = attempts
+        if projected_block.get("designated_attempt") not in {attempt.get("attempt_id") for attempt in attempts}:
+            projected_block["designated_attempt"] = None
+        projected_blocks[str(replicate_id)] = projected_block
+    projected["blocks"] = projected_blocks
+
+    receipts = manifest.get("closure_receipts", [])
+    if not isinstance(receipts, list):
+        raise LaunchViolation("manifest-as-of-invalid")
+    projected["closure_receipts"] = [entry for entry in receipts if isinstance(entry, dict) and parse_iso8601(str(entry.get("consumed_at")), "manifest-as-of-closure-consumed-at") <= at]
+    return projected
+
+
+def settlement_entry_valid(entry: object, manifest: dict[str, object], params: dict[str, object]) -> None:
+    if not isinstance(entry, dict) or set(entry) != SETTLEMENT_FIELDS or not isinstance(entry.get("reset_at"), str) or not isinstance(entry.get("captures"), list) or len(entry["captures"]) != 2:
+        raise LaunchViolation("settlement-entry-invalid")
+    parse_iso8601(entry["reset_at"], "settlement-reset-at")
+    _first_raw, first = decode_capture(entry["captures"][0], params)
+    _second_raw, second = decode_capture(entry["captures"][1], params)
+    if first["reset_at"] != entry["reset_at"] or second["reset_at"] != entry["reset_at"]:
+        raise LaunchViolation("settlement-cross-epoch-invalid")
+    first_time = parse_iso8601(str(first["observed_at"]), "settlement-observed-at")
+    second_time = parse_iso8601(str(second["observed_at"]), "settlement-observed-at")
+    if first["used_percent"] != second["used_percent"] or second_time - first_time < datetime.timedelta(seconds=120):
+        raise LaunchViolation("settlement-invalid")
+    prior_calls = account_consumption_times(manifest_as_of(manifest, first_time))
+    if prior_calls and first_time < max(prior_calls) + datetime.timedelta(seconds=180):
+        raise LaunchViolation("settlement-too-early")
+    recorded_calls = account_consumption_times(manifest_as_of(manifest, second_time))
+    if any(first_time < call <= second_time for call in recorded_calls):
+        raise LaunchViolation("settlement-too-early")
+
+
+def latest_settlement(manifest: dict[str, object], reset_at: str, params: dict[str, object]) -> tuple[dict[str, object], dict[str, object], datetime.datetime, datetime.datetime, str] | None:
+    candidates: list[tuple[dict[str, object], dict[str, object], datetime.datetime, datetime.datetime, str]] = []
+    for calibration in manifest.get("calibrations", []):
+        if not isinstance(calibration, dict) or calibration.get("reset_at") != reset_at:
+            continue
+        captures = calibration.get("settlement_captures")
+        if not isinstance(captures, list) or len(captures) != 2:
+            raise LaunchViolation("calibration-settlement-invalid")
+        _first_raw, first = decode_capture(captures[0], params)
+        _second_raw, second = decode_capture(captures[1], params)
+        candidates.append((first, second, parse_iso8601(str(first["observed_at"]), "settlement-observed-at"), parse_iso8601(str(second["observed_at"]), "settlement-observed-at"), str(captures[1]["sha256"])))
+    for entry in manifest.get("settlements", []):
+        if not isinstance(entry, dict) or entry.get("reset_at") != reset_at:
+            continue
+        settlement_entry_valid(entry, manifest, params)
+        first_capture, second_capture = entry["captures"]
+        _first_raw, first = decode_capture(first_capture, params)
+        _second_raw, second = decode_capture(second_capture, params)
+        candidates.append((first, second, parse_iso8601(str(first["observed_at"]), "settlement-observed-at"), parse_iso8601(str(second["observed_at"]), "settlement-observed-at"), str(second_capture["sha256"])))
+    return max(candidates, key=lambda candidate: candidate[3]) if candidates else None
+
+
 def base_manifest(schedule_path: pathlib.Path, params_path: pathlib.Path, run_id: str, pin_sha: str, attestation: bytes) -> dict[str, object]:
     schedule, _params = load_inputs(schedule_path, params_path)
-    return {"schema": "iter0112-launch-manifest-v3", "run_id": run_id, "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "schedule_sha256": sha256(schedule_path), "params_sha256": sha256(params_path), "script_sha256": script_digests(), "scripts_sha256_pin_file": pin_sha, "window_attestation_sha256": hashlib.sha256(attestation).hexdigest(), "window_attestation_bytes_base64": base64.b64encode(attestation).decode(), "usage_evidence": [], "resume_oracles": [], "blocks": {str(block["replicate_id"]): {"replicate_id": str(block["replicate_id"]), "attempts": [], "designated_attempt": None} for block in schedule["blocks"]}, "a5": {engine: {"a5_evaluated_attempt": None, "a5_evaluated_session": None, "a5_crossed": None} for engine in MATRIX_ENGINES}, "terminal": "RUNNING"}
+    return {"schema": "iter0112-launch-manifest-v4", "run_id": run_id, "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "schedule_sha256": sha256(schedule_path), "params_sha256": sha256(params_path), "script_sha256": script_digests(), "scripts_sha256_pin_file": pin_sha, "window_attestation_sha256": hashlib.sha256(attestation).hexdigest(), "window_attestation_bytes_base64": base64.b64encode(attestation).decode(), "usage_evidence": [], "calibrations": [], "settlements": [], "closure_receipts": [], "calibration_session_equivalents": 0, "resume_oracles": [], "completed_sweeps": [], "blocks": {str(block["replicate_id"]): {"replicate_id": str(block["replicate_id"]), "attempts": [], "designated_attempt": None} for block in schedule["blocks"]}, "a5": {engine: {"a5_evaluated_attempt": None, "a5_evaluated_session": None, "a5_crossed": None} for engine in MATRIX_ENGINES}, "terminal": "RUNNING"}
 
 
 def is_digest(value: object) -> bool:
@@ -265,6 +780,7 @@ def validate_status(session: dict[str, object], status: object, out: pathlib.Pat
         raise LaunchViolation(f"launch-manifest-status-invalid:{label}:command")
     if status.get("status") not in {"driver_failed", "driver_receipt_invalid", "collector_failed", "collector_receipt_invalid", "completed"} or type(status.get("driver_exit")) is not int or not is_digest(status.get("driver_stdout_sha256")) or not is_digest(status.get("driver_stderr_sha256")) or type(status.get("infra_affected")) is not bool or type(status.get("a5_clean")) is not bool:
         raise LaunchViolation(f"launch-manifest-status-invalid:{label}:receipt")
+    parse_iso8601(str(status.get("completed_at")), f"launch-manifest-status-completed-at:{label}")
     if status["status"] == "completed":
         if status.get("collector_exit") != 0 or not all(is_digest(status.get(field)) for field in ("collector_stdout_sha256", "collector_stderr_sha256", "rows_sha256", "boundary_ledger_sha256", "driver_evidence_sha256")):
             raise LaunchViolation(f"launch-manifest-status-invalid:{label}:completed")
@@ -289,10 +805,21 @@ def normalize(attempt: dict[str, object], sessions: list[dict[str, object]]) -> 
         attempt["transport_state"] = "CLEAN"
 
 
-def validate_manifest(manifest: dict[str, object], schedule: dict[str, object], out: pathlib.Path, run_id: str) -> None:
+def validate_manifest(manifest: dict[str, object], schedule: dict[str, object], out: pathlib.Path, run_id: str, params: dict[str, object]) -> None:
     evidence_entries = manifest.get("usage_evidence")
-    if not isinstance(evidence_entries, list) or not isinstance(manifest.get("resume_oracles"), list):
+    calibrations = manifest.get("calibrations")
+    settlements = manifest.get("settlements")
+    if not isinstance(evidence_entries, list) or not isinstance(calibrations, list) or not isinstance(settlements, list) or not isinstance(manifest.get("closure_receipts"), list) or not isinstance(manifest.get("resume_oracles"), list):
         raise LaunchViolation("launch-manifest-evidence-invalid")
+    for calibration in calibrations:
+        calibration_entry_valid(calibration, out, params, manifest, schedule)
+    for settlement in settlements:
+        settlement_entry_valid(settlement, manifest, params)
+    if type(manifest.get("calibration_session_equivalents")) is not int or manifest["calibration_session_equivalents"] != sum(calibration["session_equivalents"] for calibration in calibrations) or manifest["calibration_session_equivalents"] > params["venue_tolerance"]["calibration"]["accounting"]["max_per_root"]:
+        raise LaunchViolation("calibration-session-accounting-invalid")
+    reset_epochs = [calibration["reset_at"] for calibration in calibrations]
+    if len(set(reset_epochs)) != len(reset_epochs):
+        raise LaunchViolation("calibration-cross-epoch-invalid")
     consumed: set[str] = set()
     for entry in evidence_entries:
         if not isinstance(entry, dict) or set(entry) != USAGE_ENTRY_FIELDS or not is_digest(entry.get("sha256")) or not isinstance(entry.get("bytes_base64"), str) or entry.get("role") not in {"pre-sweep", "post-sweep", "resume"} or type(entry.get("sweep_id")) is not int:
@@ -304,7 +831,12 @@ def validate_manifest(manifest: dict[str, object], schedule: dict[str, object], 
             raise LaunchViolation("launch-manifest-usage-evidence-invalid") from exc
         if hashlib.sha256(evidence).hexdigest() != entry["sha256"] or entry["sha256"] in consumed:
             raise LaunchViolation("launch-manifest-usage-evidence-invalid")
+        decoded_evidence = decode_usage_evidence(evidence, params)
+        validate_usage_consumption(decoded_evidence, parse_iso8601(str(entry["consumed_at"]), "usage-consumed-at"), params)
         consumed.add(entry["sha256"])
+    validate_sweep_tpp_provenance(manifest, params)
+    validate_completed_sweeps(manifest, schedule, params, out)
+    validate_closure_receipts(manifest, schedule, params, out)
     oracle_seen: set[str] = set()
     for entry in manifest["resume_oracles"]:
         if not isinstance(entry, dict) or set(entry) != RESUME_ORACLE_ENTRY_FIELDS or not is_digest(entry.get("sha256")) or not isinstance(entry.get("bytes_base64"), str) or not isinstance(entry.get("attempt_ids"), list) or type(entry.get("probe_calls")) is not int or entry["probe_calls"] < 0:
@@ -375,7 +907,7 @@ def load_manifest(out: pathlib.Path, schedule_path: pathlib.Path, params_path: p
     if not (out / MANIFEST_NAME).exists():
         return base_manifest(schedule_path, params_path, run_id, pin_sha, attestation)
     manifest = read_json(out / MANIFEST_NAME)
-    if not isinstance(manifest, dict) or manifest.get("schema") != "iter0112-launch-manifest-v3":
+    if not isinstance(manifest, dict) or manifest.get("schema") != "iter0112-launch-manifest-v4":
         raise LaunchViolation("launch-manifest-schema-mismatch")
     expected = base_manifest(schedule_path, params_path, run_id, pin_sha, attestation)
     for field in ("run_id", "schedule_sha256", "params_sha256", "script_sha256", "scripts_sha256_pin_file", "window_attestation_sha256", "window_attestation_bytes_base64"):
@@ -383,7 +915,7 @@ def load_manifest(out: pathlib.Path, schedule_path: pathlib.Path, params_path: p
             raise LaunchViolation(f"launch-manifest-{field}-mismatch")
     schedule, _params = load_inputs(schedule_path, params_path)
     refresh_designations(manifest, schedule)
-    validate_manifest(manifest, schedule, out, run_id)
+    validate_manifest(manifest, schedule, out, run_id, _params)
     verify_recorded_attempt_artifacts(manifest, schedule, out)
     return manifest
 
@@ -399,7 +931,7 @@ def run_session(session: dict[str, object], out: pathlib.Path, attempt_id: str, 
     root, directory = attempt_root(out, attempt_id), session_directory(attempt_root(out, attempt_id), session)
     command, collector_command = command_for(session, root, run_id), collector_command_for(directory)
     driver = subprocess.run(command, cwd=REPO, capture_output=True)
-    status: dict[str, object] = {"engine": session["engine"], "replicate_id": session["replicate_id"], "session_label": session_key(session), "driver_command": command, "collector_command": collector_command, "driver_exit": driver.returncode, "driver_stdout_sha256": hashlib.sha256(driver.stdout).hexdigest(), "driver_stderr_sha256": hashlib.sha256(driver.stderr).hexdigest(), "driver_evidence_sha256": None, "status": "driver_failed", "collector_exit": None, "collector_stdout_sha256": None, "collector_stderr_sha256": None, "infra_affected": False, "a5_clean": False, "first_late_threshold_crossed": None, "rows_sha256": None, "boundary_ledger_sha256": None, "artifact_dir": str(directory.relative_to(out))}
+    status: dict[str, object] = {"engine": session["engine"], "replicate_id": session["replicate_id"], "session_label": session_key(session), "driver_command": command, "collector_command": collector_command, "driver_exit": driver.returncode, "driver_stdout_sha256": hashlib.sha256(driver.stdout).hexdigest(), "driver_stderr_sha256": hashlib.sha256(driver.stderr).hexdigest(), "driver_evidence_sha256": None, "status": "driver_failed", "collector_exit": None, "collector_stdout_sha256": None, "collector_stderr_sha256": None, "infra_affected": False, "a5_clean": False, "first_late_threshold_crossed": None, "rows_sha256": None, "boundary_ledger_sha256": None, "artifact_dir": str(directory.relative_to(out)), "completed_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}
     if driver.returncode:
         return status
     try:
@@ -554,23 +1086,51 @@ def execute_attempt(out: pathlib.Path, manifest: dict[str, object], attempt: dic
 def append_usage(manifest: dict[str, object], raw: bytes, evidence: dict[str, object], digest: str, role: str, sweep: int, params: dict[str, object]) -> None:
     if any(entry["sha256"] == digest for entry in manifest["usage_evidence"]):
         raise LaunchViolation("usage-evidence-reused")
-    previous = []
+    timeline: list[tuple[datetime.datetime, datetime.datetime, dict[str, object]]] = []
+    for calibration in manifest.get("calibrations", []):
+        if isinstance(calibration, dict):
+            for capture in [calibration.get("pre_capture"), *(calibration.get("settlement_captures", []) if isinstance(calibration.get("settlement_captures"), list) else [])]:
+                if isinstance(capture, dict):
+                    _raw, decoded = decode_capture(capture, params)
+                    timeline.append((parse_iso8601(str(capture["consumed_at"]), "calibration-capture-consumed-at"), parse_iso8601(str(decoded["observed_at"]), "usage-observed-at"), decoded))
+    for settlement in manifest.get("settlements", []):
+        if not isinstance(settlement, dict) or not isinstance(settlement.get("captures"), list):
+            raise LaunchViolation("settlement-entry-invalid")
+        for capture in settlement["captures"]:
+            _raw, decoded = decode_capture(capture, params)
+            timeline.append((parse_iso8601(str(capture["consumed_at"]), "settlement-capture-consumed-at"), parse_iso8601(str(decoded["observed_at"]), "usage-observed-at"), decoded))
     for entry in manifest["usage_evidence"]:
-        decoded = json.loads(base64.b64decode(entry["bytes_base64"]))
-        previous.append(decoded)
-    epochs = [item["reset_at"] for item in previous]
-    if epochs and evidence["reset_at"] in epochs and evidence["reset_at"] != epochs[-1]:
-        raise LaunchViolation("usage-evidence-reset-reused-old")
-    if epochs and evidence["reset_at"] != epochs[-1] and parse_iso8601(evidence["reset_at"], "reset_at") <= parse_iso8601(epochs[-1], "reset_at"):
-        raise LaunchViolation("usage-evidence-reset-not-advancing")
-    if epochs and evidence["reset_at"] != epochs[-1]:
-        transitions = sum(previous_epoch != next_epoch for previous_epoch, next_epoch in zip(epochs, epochs[1:]))
-        if transitions >= params["venue_tolerance"]["calendar"]["max_reset_epochs"]:
-            raise LaunchViolation("usage-evidence-reset-epochs-exceeded")
-    same_epoch = [item for item in previous if item["reset_at"] == evidence["reset_at"]]
-    if same_epoch and (evidence["limit_transport_tokens"] != same_epoch[-1]["limit_transport_tokens"] or evidence["used_transport_tokens"] < same_epoch[-1]["used_transport_tokens"]):
-        raise LaunchViolation("usage-evidence-nonmonotone")
-    manifest["usage_evidence"].append({"sha256": digest, "bytes_base64": base64.b64encode(raw).decode(), "role": role, "sweep_id": sweep, "consumed_at": datetime.datetime.now(datetime.timezone.utc).isoformat()})
+        try:
+            decoded = decode_usage_evidence(base64.b64decode(entry["bytes_base64"], validate=True), params)
+        except (ValueError, TypeError) as exc:
+            raise LaunchViolation("launch-manifest-usage-evidence-invalid") from exc
+        timeline.append((parse_iso8601(str(entry["consumed_at"]), "usage-consumed-at"), parse_iso8601(str(decoded["observed_at"]), "usage-observed-at"), decoded))
+    consumed_at = datetime.datetime.now(datetime.timezone.utc)
+    timeline.append((consumed_at, parse_iso8601(str(evidence["observed_at"]), "usage-observed-at"), evidence))
+    prior_reset: str | None = None
+    prior_used: int | None = None
+    seen_resets: set[str] = set()
+    transitions = 0
+    for _consumed, _observed, item in sorted(timeline, key=lambda value: value[:2]):
+        reset_at = str(item["reset_at"])
+        if prior_reset is None:
+            prior_reset, prior_used = reset_at, int(item["used_percent"])
+            seen_resets.add(reset_at)
+        elif reset_at == prior_reset:
+            if int(item["used_percent"]) < prior_used:
+                raise LaunchViolation("usage-evidence-nonmonotone")
+            prior_used = int(item["used_percent"])
+        else:
+            if reset_at in seen_resets:
+                raise LaunchViolation("usage-evidence-reset-reused-old")
+            if parse_iso8601(reset_at, "reset_at") <= parse_iso8601(prior_reset, "reset_at"):
+                raise LaunchViolation("usage-evidence-reset-not-advancing")
+            transitions += 1
+            if transitions > params["venue_tolerance"]["calendar"]["max_reset_epochs"]:
+                raise LaunchViolation("usage-evidence-reset-epochs-exceeded")
+            prior_reset, prior_used = reset_at, int(item["used_percent"])
+            seen_resets.add(reset_at)
+    manifest["usage_evidence"].append({"sha256": digest, "bytes_base64": base64.b64encode(raw).decode(), "role": role, "sweep_id": sweep, "consumed_at": consumed_at.isoformat()})
 
 
 def expected_probe_argv(params: dict[str, object], engine: str) -> list[str]:
@@ -580,7 +1140,7 @@ def expected_probe_argv(params: dict[str, object], engine: str) -> list[str]:
     return [engine if value == "<engine>" else value for value in command]
 
 
-def load_resume_oracle(path: pathlib.Path, usage_digest: str, params: dict[str, object]) -> tuple[bytes, str, int]:
+def load_resume_oracle(path: pathlib.Path, usage_digest: str, params: dict[str, object]) -> tuple[bytes, str, int, list[datetime.datetime]]:
     try:
         raw = path.read_bytes()
         oracle = json.loads(raw)
@@ -598,6 +1158,7 @@ def load_resume_oracle(path: pathlib.Path, usage_digest: str, params: dict[str, 
     if len(oracle["probes"]) != len(ordered):
         raise LaunchViolation("resume-oracle-probe-count-invalid")
     prior = None
+    observed_times: list[datetime.datetime] = []
     for expected, probe in zip(ordered, oracle["probes"]):
         if not isinstance(probe, dict) or set(probe) != {"model", "argv", "executable_path", "executable_sha256", "started_at", "observed_at", "returncode", "stdout_bytes_base64", "stdout_sha256"} or probe.get("model") != expected or probe.get("returncode") != 0 or not is_digest(probe.get("stdout_sha256")):
             raise LaunchViolation("resume-oracle-probe-invalid")
@@ -624,7 +1185,8 @@ def load_resume_oracle(path: pathlib.Path, usage_digest: str, params: dict[str, 
             raise LaunchViolation("resume-oracle-probe-json-invalid") from exc
         if hashlib.sha256(stdout).hexdigest() != probe["stdout_sha256"] or not isinstance(payload, dict) or payload.get("is_error") is True or not isinstance(payload.get("modelUsage"), dict) or set(payload["modelUsage"]) != {expected}:
             raise LaunchViolation("resume-oracle-probe-failed")
-    return raw, hashlib.sha256(raw).hexdigest(), len(ordered)
+        observed_times.append(finished)
+    return raw, hashlib.sha256(raw).hexdigest(), len(ordered), observed_times
 
 
 def consumed_probe_calls(manifest: dict[str, object]) -> int:
@@ -634,47 +1196,442 @@ def consumed_probe_calls(manifest: dict[str, object]) -> int:
     return sum(entry["probe_calls"] for entry in entries)
 
 
+def account_consumed_after(manifest: dict[str, object], observed_at: datetime.datetime) -> bool:
+    return any(time > observed_at for time in account_consumption_times(manifest))
+
+
+def calibration_command(engine: str, label: str, root: pathlib.Path, run_id: str) -> list[str]:
+    return [sys.executable, str(DRIVER), "--engine", engine, "--session-label", label, "--tasks", ",".join(CALIBRATION_TASKS), "--replicate", "1", "--out", str(root), "--run-id", run_id, "--smoke"]
+
+
+def run_calibration_batch(out: pathlib.Path, run_id: str, unit: int) -> tuple[list[str], list[dict[str, object]]]:
+    root = out / "calibration"
+    sessions: list[str] = []
+    receipts: list[dict[str, object]] = []
+    for engine in CALIBRATION_ENGINES:
+        label = f"calibration-{unit}-{engine}"
+        command = calibration_command(engine, label, root, run_id)
+        completed = subprocess.run(command, cwd=REPO, capture_output=True)
+        if completed.returncode:
+            raise LaunchViolation("calibration-session-failed")
+        directory = root / f"{engine}.{label}.r1"
+        parse_session_dir(completed.stdout, directory)
+        for position, task in enumerate(CALIBRATION_TASKS, 1):
+            path = directory / f"t{position}.{task}" / "cli.stdout"
+            try:
+                raw = path.read_bytes()
+                token_components(json.loads(raw), engine)
+            except (OSError, json.JSONDecodeError, LaunchViolation) as exc:
+                raise LaunchViolation("calibration-receipt-invalid") from exc
+            receipts.append({"path": str(path.relative_to(out)), "sha256": hashlib.sha256(raw).hexdigest(), "engine": engine, "completed_at": datetime.datetime.now(datetime.timezone.utc).isoformat()})
+        sessions.append(label)
+    return sessions, receipts
+
+
+def pending_path(out: pathlib.Path) -> pathlib.Path:
+    return out / CALIBRATION_PENDING_NAME
+
+
+def load_pending_calibration(out: pathlib.Path) -> dict[str, object]:
+    pending = read_json(pending_path(out))
+    required = {"schema", "run_id", "schedule_sha256", "params_sha256", "pin_sha256", "window_attestation_sha256", "pre_capture", "sessions", "receipts", "unit"}
+    if not isinstance(pending, dict) or set(pending) != required or pending.get("schema") != "iter0112-calibration-pending-v1" or not isinstance(pending.get("sessions"), list) or not isinstance(pending.get("receipts"), list) or type(pending.get("unit")) is not int:
+        raise LaunchViolation("calibration-pending-invalid")
+    return pending
+
+
+def recalibration_bound(out: pathlib.Path, manifest: dict[str, object], params: dict[str, object]) -> int:
+    calibrations = manifest.get("calibrations")
+    if not isinstance(calibrations, list) or not calibrations or not isinstance(calibrations[0], dict):
+        raise LaunchViolation("calibration-missing-for-epoch")
+    first = calibrations[0]
+    sessions = first.get("sessions")
+    receipts = first.get("receipts")
+    if not isinstance(sessions, list) or not isinstance(receipts, list):
+        raise LaunchViolation("calibration-session-accounting-invalid")
+    base_sessions = sessions[:len(CALIBRATION_ENGINES)]
+    base_receipts = receipts[:len(CALIBRATION_ENGINES) * len(CALIBRATION_TASKS)]
+    base = sum_receipts(out, base_receipts, calibration_receipt_layout(base_sessions))
+    maximum = params["venue_tolerance"]["calibration"]["accounting"]["max_per_epoch"]
+    if type(maximum) is not int or maximum % len(CALIBRATION_ENGINES):
+        raise LaunchViolation("calibration-session-accounting-invalid")
+    return base["total"] * maximum // len(CALIBRATION_ENGINES)
+
+
+def initial_attempt_batches(schedule: dict[str, object], lanes: int) -> list[set[str]]:
+    gate_id = str(schedule["blocks"][0]["replicate_id"])
+    batches: list[set[str]] = []
+    for sweep in range(1, int(schedule["sweeps"]) + 1):
+        pending = [str(block["replicate_id"]) for block in schedule["blocks"] if block["sweep_id"] == sweep]
+        while pending:
+            width = 1 if pending[0] == gate_id else lanes
+            batch, pending = pending[:width], pending[width:]
+            batches.append({f"{replicate_id}.a1" for replicate_id in batch})
+    return batches
+
+
+def next_unadmitted_sweep(manifest: dict[str, object], schedule: dict[str, object]) -> int:
+    entries = manifest.get("usage_evidence")
+    if not isinstance(entries, list):
+        raise LaunchViolation("launch-manifest-usage-evidence-invalid")
+    admitted = {entry.get("sweep_id") for entry in entries if isinstance(entry, dict) and entry.get("role") in {"pre-sweep", "resume"}}
+    return next((sweep for sweep in range(1, int(schedule["sweeps"]) + 1) if sweep not in admitted), int(schedule["sweeps"]) + 1)
+
+
+def consumed_replay_events(manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object]) -> int:
+    blocks = manifest.get("blocks")
+    if not isinstance(blocks, dict):
+        raise LaunchViolation("launch-manifest-blocks-invalid")
+    voids = {
+        str(attempt["attempt_id"])
+        for block in blocks.values()
+        if isinstance(block, dict) and isinstance(block.get("attempts"), list)
+        for attempt in block["attempts"]
+        if isinstance(attempt, dict) and attempt.get("transport_state") == "VOID" and isinstance(attempt.get("attempt_id"), str) and isinstance(attempt.get("sessions"), dict) and any(isinstance(status, dict) and status.get("infra_affected") is True for status in attempt["sessions"].values())
+    }
+    groups = initial_attempt_batches(schedule, int(params["schedule"]["lanes"]))
+    oracles = manifest.get("resume_oracles")
+    if not isinstance(oracles, list):
+        raise LaunchViolation("resume-oracle-manifest-invalid")
+    seen: set[str] = set().union(*groups) if groups else set()
+    for entry in oracles:
+        if not isinstance(entry, dict) or not isinstance(entry.get("attempt_ids"), list) or not all(isinstance(attempt_id, str) for attempt_id in entry["attempt_ids"]):
+            raise LaunchViolation("resume-oracle-manifest-invalid")
+        group = set(entry["attempt_ids"])
+        if len(group) != len(entry["attempt_ids"]) or group & seen:
+            raise LaunchViolation("resume-oracle-attempt-ids-invalid")
+        groups.append(group)
+        seen.update(group)
+    if not voids <= seen:
+        raise LaunchViolation("closure-replay-event-unmapped")
+    return sum(bool(group & voids) for group in groups)
+
+
+def closure_payload(manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object], out: pathlib.Path, bound_evidence_sha256: str, sweep: int, consumed_at: datetime.datetime) -> dict[str, object]:
+    """A deterministic, integer-only worst-case admission simulation."""
+    evidence = evidence_by_digest(manifest, params).get(bound_evidence_sha256)
+    if evidence is None or evidence[1] > consumed_at:
+        raise LaunchViolation("closure-bound-evidence-invalid")
+    bound, _bound_consumed = evidence
+    tpp = tpp_gate_for_epoch(manifest, str(bound["reset_at"]), params, consumed_at)
+    budget, closure = params["venue_tolerance"]["budget_gate"], params["venue_tolerance"]["closure_check"]
+    created = parse_iso8601(str(manifest["created_at"]), "created_at")
+    expiry = created + datetime.timedelta(hours=params["venue_tolerance"]["calendar"]["root_age_hours"])
+    reset_at = parse_iso8601(str(bound["reset_at"]), "reset_at")
+    nominal_waves, replay_waves = int(closure["nominal_waves"]), int(closure["worst_case_replay_waves"])
+    wall_ms = int(closure["max_block_wall_ms"])
+    future_burns = [int(budget["first_sweep_burn_bound_transport_tokens"] if future_sweep == 1 else budget["subsequent_sweep_burn_bound_transport_tokens"]) for future_sweep in range(sweep, int(schedule["sweeps"]) + 1)]
+    future_sweeps = len(future_burns)
+    if nominal_waves != 2 * int(schedule["sweeps"]):
+        raise LaunchViolation("closure-nominal-waves-invalid")
+    remaining_nominal_waves = 2 * future_sweeps
+    replay_events = consumed_replay_events(manifest, schedule, params)
+    remaining_replays = max(0, replay_waves - replay_events)
+    calibrations = manifest.get("calibrations")
+    if not isinstance(calibrations, list):
+        raise LaunchViolation("launch-manifest-calibrations-invalid")
+    total_epochs = int(params["venue_tolerance"]["calendar"]["max_reset_epochs"]) + 1
+    remaining_calibration_epochs = total_epochs - len(calibrations)
+    if remaining_calibration_epochs < 0:
+        raise LaunchViolation("calibration-session-accounting-invalid")
+    transitioned = remaining_calibration_epochs == 0
+    remaining_wait_ms = 0 if transitioned else int(closure["evidenced_reset_wait_ms"])
+    remaining_active_ms = (remaining_nominal_waves + remaining_replays) * wall_ms
+    calendar_start = consumed_at
+    calendar_span_ms = remaining_active_ms + remaining_wait_ms
+    calendar_end = calendar_start + datetime.timedelta(milliseconds=calendar_span_ms)
+    used = used_percent_upper(bound)
+    trajectory: list[int] = []
+    actions: list[tuple[int, int]] = []
+    reserve = int(budget["reserve_transport_tokens"])
+    for index, burn in enumerate(future_burns, 1):
+        wave = 2 * index - 1
+        actions.append((wave, burn))
+        actions.append((wave, reserve))
+    replay_burn = max(future_burns, default=int(budget["subsequent_sweep_burn_bound_transport_tokens"]))
+    remaining_calls = int(closure["probe_calls"]) - consumed_probe_calls(manifest)
+    if remaining_calls < 0:
+        raise LaunchViolation("resume-oracle-probe-budget-exhausted")
+    for wave in range(remaining_nominal_waves + 1, remaining_nominal_waves + remaining_replays + 1):
+        actions.extend(((wave, replay_burn), (wave, reserve)))
+        calls_here, remainder = divmod(remaining_calls, remaining_replays)
+        actions.extend((wave, int(closure["probe_prefix_bound_transport_tokens"])) for _ in range(calls_here + (1 if wave - remaining_nominal_waves <= remainder else 0)))
+    final_wave = remaining_nominal_waves + remaining_replays
+    if remaining_replays == 0 and remaining_calls:
+        if final_wave == 0:
+            raise LaunchViolation("closure-actions-missing")
+        actions.extend((final_wave, int(closure["probe_prefix_bound_transport_tokens"])) for _ in range(remaining_calls))
+    if remaining_calibration_epochs:
+        if final_wave == 0:
+            raise LaunchViolation("closure-actions-missing")
+        actions.append((final_wave, recalibration_bound(out, manifest, params)))
+    for wave, tokens in actions:
+        admission_time = calendar_start + datetime.timedelta(milliseconds=calendar_span_ms * wave // final_wave)
+        if not transitioned and admission_time >= reset_at:
+            used, transitioned = 0, True
+        used += ceil_div(tokens, tpp)
+        trajectory.append(used)
+    passed = max(trajectory, default=used) < 100 and calendar_end <= expiry and (transitioned or remaining_wait_ms == 0)
+    calibration = calibration_for_epoch(manifest, str(bound["reset_at"]))
+    if calibration is None or type(calibration.get("session_equivalents")) is not int:
+        raise LaunchViolation("calibration-session-accounting-invalid")
+    return {"schema": "iter0112-closure-v1", "passed": passed, "sweep_id": sweep, "bound_evidence_sha256": bound_evidence_sha256, "tpp_gate": tpp, "used_percent_upper": used_percent_upper(bound), "trajectory": trajectory, "nominal_waves": closure["nominal_waves"], "worst_case_replay_waves": closure["worst_case_replay_waves"], "worst_case_replay_placement": closure["worst_case_replay_placement"], "max_block_wall_ms": wall_ms, "probe_calls": closure["probe_calls"], "reset_at": bound["reset_at"], "reset_transitions": closure["reset_transitions"], "calendar_start": calendar_start.isoformat(), "calendar_end": calendar_end.isoformat(), "evidenced_reset_wait_ms": closure["evidenced_reset_wait_ms"], "expiry": expiry.isoformat(), "calibration_sessions_per_epoch": calibration["session_equivalents"], "remaining_nominal_sweeps": future_sweeps, "remaining_nominal_waves": remaining_nominal_waves, "remaining_replay_waves": remaining_replays, "remaining_probe_calls": remaining_calls, "remaining_calibration_epochs": remaining_calibration_epochs, "remaining_reset_wait_ms": remaining_wait_ms}
+
+
+def append_closure_receipt(manifest: dict[str, object], payload: dict[str, object], sweep: int, consumed_at: datetime.datetime) -> None:
+    raw = canonical_bytes(payload)
+    digest = hashlib.sha256(raw).hexdigest()
+    if any(entry.get("sha256") == digest for entry in manifest["closure_receipts"]):
+        raise LaunchViolation("closure-receipt-reused")
+    manifest["closure_receipts"].append({"sha256": digest, "bytes_base64": base64.b64encode(raw).decode(), "sweep_id": sweep, "consumed_at": consumed_at.isoformat()})
+
+
+def validate_closure_receipts(manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object], out: pathlib.Path) -> None:
+    receipts = manifest.get("closure_receipts")
+    if not isinstance(receipts, list):
+        raise LaunchViolation("closure-receipt-invalid")
+    seen: set[str] = set()
+    for receipt in receipts:
+        if not isinstance(receipt, dict) or set(receipt) != {"sha256", "bytes_base64", "sweep_id", "consumed_at"} or not is_digest(receipt.get("sha256")) or type(receipt.get("sweep_id")) is not int:
+            raise LaunchViolation("closure-receipt-invalid")
+        consumed_at = parse_iso8601(str(receipt.get("consumed_at")), "closure-consumed-at")
+        try:
+            raw = base64.b64decode(receipt["bytes_base64"], validate=True)
+            payload = json.loads(raw)
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise LaunchViolation("closure-receipt-invalid") from exc
+        if hashlib.sha256(raw).hexdigest() != receipt["sha256"] or receipt["sha256"] in seen or not isinstance(payload, dict) or not is_digest(payload.get("bound_evidence_sha256")):
+            raise LaunchViolation("closure-receipt-invalid")
+        expected = closure_payload(manifest_as_of(manifest, consumed_at), schedule, params, out, payload["bound_evidence_sha256"], receipt["sweep_id"], consumed_at)
+        if payload != expected:
+            raise LaunchViolation("closure-receipt-invalid")
+        seen.add(receipt["sha256"])
+
+
+def run_calibration(args: argparse.Namespace) -> int:
+    schedule, params = load_inputs(args.schedule, args.params)
+    pin, (attestation_raw, _attestation) = verify_script_inventory(), load_window_attestation(args.window_attestation, params)
+    raw, pre, digest = load_usage_evidence(args.usage_evidence, params)
+    args.out.mkdir(parents=True, exist_ok=True)
+    pending_file = pending_path(args.out)
+    if pending_file.exists():
+        pending = load_pending_calibration(args.out)
+        if not args.calibration_top_up or pending["unit"] != 1 or pending["run_id"] != args.run_id or pending["schedule_sha256"] != sha256(args.schedule) or pending["params_sha256"] != sha256(args.params) or pending["pin_sha256"] != pin or pending["window_attestation_sha256"] != hashlib.sha256(attestation_raw).hexdigest():
+            raise LaunchViolation("calibration-pending-mismatch")
+        _prior_raw, prior = decode_capture(pending["pre_capture"], params)
+        if prior["reset_at"] != pre["reset_at"]:
+            raise LaunchViolation("calibration-cross-epoch-invalid")
+        if (args.out / MANIFEST_NAME).exists():
+            manifest = load_manifest(args.out, args.schedule, args.params, args.run_id, pin, attestation_raw)
+            if manifest["calibration_session_equivalents"] + len(pending["sessions"]) + len(CALIBRATION_ENGINES) > params["venue_tolerance"]["calibration"]["accounting"]["max_per_root"]:
+                raise LaunchViolation("calibration-session-accounting-invalid")
+        unit = int(pending["unit"]) + 1
+        sessions, receipts = run_calibration_batch(args.out, args.run_id, unit)
+        pending["sessions"].extend(sessions); pending["receipts"].extend(receipts); pending["unit"] = unit
+    else:
+        if args.calibration_top_up:
+            raise LaunchViolation("calibration-top-up-without-base")
+        if (args.out / MANIFEST_NAME).exists():
+            manifest = load_manifest(args.out, args.schedule, args.params, args.run_id, pin, attestation_raw)
+            if calibration_for_epoch(manifest, str(pre["reset_at"])) is not None or manifest["calibration_session_equivalents"] + len(CALIBRATION_ENGINES) > params["venue_tolerance"]["calibration"]["accounting"]["max_per_root"]:
+                raise LaunchViolation("calibration-session-accounting-invalid")
+        sessions, receipts = run_calibration_batch(args.out, args.run_id, 1)
+        pending = {"schema": "iter0112-calibration-pending-v1", "run_id": args.run_id, "schedule_sha256": sha256(args.schedule), "params_sha256": sha256(args.params), "pin_sha256": pin, "window_attestation_sha256": hashlib.sha256(attestation_raw).hexdigest(), "pre_capture": capture_entry(raw, digest), "sessions": sessions, "receipts": receipts, "unit": 1}
+    if len(pending["sessions"]) > params["venue_tolerance"]["calibration"]["accounting"]["max_per_epoch"]:
+        raise LaunchViolation("calibration-session-cap-exceeded")
+    write_json(pending_file, pending)
+    print(f"CALIBRATION_BATCH_RECORDED: sessions={len(pending['sessions'])}")
+    return 0
+
+
+def run_settle_calibration(args: argparse.Namespace) -> int:
+    schedule, params = load_inputs(args.schedule, args.params)
+    pin, (attestation_raw, _attestation) = verify_script_inventory(), load_window_attestation(args.window_attestation, params)
+    pending = load_pending_calibration(args.out)
+    if pending["run_id"] != args.run_id or pending["schedule_sha256"] != sha256(args.schedule) or pending["params_sha256"] != sha256(args.params) or pending["pin_sha256"] != pin or pending["window_attestation_sha256"] != hashlib.sha256(attestation_raw).hexdigest():
+        raise LaunchViolation("calibration-pending-mismatch")
+    if not isinstance(args.settlement_usage_evidence, list) or len(args.settlement_usage_evidence) != 2:
+        raise LaunchViolation("calibration-settlement-captures-required")
+    captures = [load_usage_evidence(path, params) for path in args.settlement_usage_evidence]
+    _pre_raw, pre = decode_capture(pending["pre_capture"], params)
+    if any(capture[1]["reset_at"] != pre["reset_at"] for capture in captures):
+        raise LaunchViolation("calibration-cross-epoch-invalid")
+    first, second = captures[0][1], captures[1][1]
+    first_time, second_time = parse_iso8601(first["observed_at"], "settlement-observed-at"), parse_iso8601(second["observed_at"], "settlement-observed-at")
+    if first["used_percent"] != second["used_percent"] or second_time - first_time < datetime.timedelta(seconds=120):
+        raise LaunchViolation("calibration-settlement-invalid")
+    components = sum_receipts(args.out, pending["receipts"], calibration_receipt_layout(pending["sessions"]))
+    latest = max(parse_iso8601(str(receipt["completed_at"]), "calibration-receipt-completed-at") for receipt in pending["receipts"])
+    if second_time < latest + datetime.timedelta(seconds=180):
+        raise LaunchViolation("calibration-settlement-too-early")
+    if not calibration_mix_ok(components):
+        raise LaunchViolation("CALIBRATION_UNIDENTIFIABLE")
+    delta = second["used_percent"] - pre["used_percent"]
+    if delta < 3:
+        if int(pending["unit"]) == 1:
+            print("CALIBRATION_TOP_UP_REQUIRED")
+            return 2
+        raise LaunchViolation("CALIBRATION_UNIDENTIFIABLE")
+    chain = {"kind": "calibration", "pre_sha256": pending["pre_capture"]["sha256"], "post_sha256": captures[-1][2], "receipt_digests": [receipt["sha256"] for receipt in pending["receipts"]], "components": components, "draw": components["total"], "delta_percent": delta, "tpp_obs": components["total"] // (delta + 1)}
+    calibration = {"reset_at": pre["reset_at"], "pre_capture": pending["pre_capture"], "settlement_captures": [capture_entry(raw, digest) for raw, _value, digest in captures], "sessions": pending["sessions"], "receipts": pending["receipts"], "components": components, "tpp_chain": [chain], "session_equivalents": len(pending["sessions"])}
+    exists = (args.out / MANIFEST_NAME).exists()
+    manifest = load_manifest(args.out, args.schedule, args.params, args.run_id, pin, attestation_raw) if exists else base_manifest(args.schedule, args.params, args.run_id, pin, attestation_raw)
+    if calibration_for_epoch(manifest, calibration["reset_at"]) is not None or manifest["calibration_session_equivalents"] + calibration["session_equivalents"] > params["venue_tolerance"]["calibration"]["accounting"]["max_per_root"]:
+        raise LaunchViolation("calibration-session-accounting-invalid")
+    manifest["calibrations"].append(calibration); manifest["calibration_session_equivalents"] += calibration["session_equivalents"]
+    closure_at = datetime.datetime.now(datetime.timezone.utc)
+    sweep = next_unadmitted_sweep(manifest, schedule)
+    closure = closure_payload(manifest, schedule, params, args.out, captures[-1][2], sweep, closure_at)
+    if not closure["passed"]:
+        if exists:
+            append_closure_receipt(manifest, closure, sweep, closure_at)
+            manifest["terminal"] = "CALIBRATION_DRIFT_OVER_BUDGET"; write_json(args.out / MANIFEST_NAME, manifest)
+            print("TERMINAL: CALIBRATION_DRIFT_OVER_BUDGET")
+            return 2
+        raise LaunchViolation("VENUE_OVER_BUDGET")
+    append_closure_receipt(manifest, closure, sweep, closure_at)
+    write_json(args.out / MANIFEST_NAME, manifest)
+    pending_path(args.out).unlink()
+    print(f"CALIBRATION_SETTLED: tpp_gate={chain['tpp_obs']}")
+    return 0
+
+
+def run_record_settlement(args: argparse.Namespace) -> int:
+    schedule, params = load_inputs(args.schedule, args.params)
+    pin, (attestation_raw, _attestation) = verify_script_inventory(), load_window_attestation(args.window_attestation, params)
+    if not isinstance(args.settlement_usage_evidence, list) or len(args.settlement_usage_evidence) != 2:
+        raise LaunchViolation("settlement-captures-required")
+    if not (args.out / MANIFEST_NAME).exists():
+        raise LaunchViolation("calibration-manifest-missing")
+    manifest = load_manifest(args.out, args.schedule, args.params, args.run_id, pin, attestation_raw)
+    captures = [load_usage_evidence(path, params) for path in args.settlement_usage_evidence]
+    first, second = captures[0][1], captures[1][1]
+    if first["reset_at"] != second["reset_at"]:
+        raise LaunchViolation("settlement-cross-epoch-invalid")
+    entry = {"reset_at": first["reset_at"], "captures": [capture_entry(raw, digest) for raw, _evidence, digest in captures]}
+    settlement_entry_valid(entry, manifest, params)
+    manifest["settlements"].append(entry)
+    write_json(args.out / MANIFEST_NAME, manifest)
+    print(f"SETTLEMENT_RECORDED: reset_at={entry['reset_at']}")
+    return 0
+
+
+def completed_sweep_receipts(out: pathlib.Path, manifest: dict[str, object], schedule: dict[str, object], sweep: int) -> list[dict[str, object]]:
+    receipts: list[dict[str, object]] = []
+    for relative, engine in completed_sweep_receipt_layout(out, manifest, schedule, sweep):
+        path = out / relative
+        raw = path.read_bytes()
+        token_components(json.loads(raw), engine)
+        receipts.append({"path": relative, "sha256": hashlib.sha256(raw).hexdigest(), "engine": engine, "completed_at": datetime.datetime.now(datetime.timezone.utc).isoformat()})
+    return receipts
+
+
 def run(args: argparse.Namespace) -> int:
     schedule, params = load_inputs(args.schedule, args.params)
     if args.sweep < 1 or args.sweep > schedule["sweeps"] or args.lanes != params["schedule"]["lanes"]:
         raise LaunchViolation("launch-arguments-invalid")
     pin, (attestation_raw, _attestation) = verify_script_inventory(), load_window_attestation(args.window_attestation, params)
     usage_raw, usage, usage_digest = load_usage_evidence(args.usage_evidence, params)
-    if args.dry_run:
-        if not usage_gate(usage, args.sweep, params):
-            raise LaunchViolation("usage-budget-gate-refused")
-        print(f"DRY_RUN: sweep={args.sweep} strict-budget-gate=PASS")
-        return 0
+    if not (args.out / MANIFEST_NAME).exists():
+        raise LaunchViolation("calibration-manifest-missing")
     manifest = load_manifest(args.out, args.schedule, args.params, args.run_id, pin, attestation_raw)
+    calibration = calibration_for_epoch(manifest, str(usage["reset_at"]))
+    if calibration is None:
+        raise LaunchViolation("calibration-missing-for-epoch")
+    tpp_gate = tpp_gate_for_epoch(manifest, str(usage["reset_at"]), params)
+    if args.dry_run:
+        if not usage_gate(usage, args.sweep, params, tpp_gate):
+            raise LaunchViolation("usage-budget-gate-refused")
+        print(f"DRY_RUN: sweep={args.sweep} strict-percent-budget-gate=PASS")
+        return 0
     if args.record_usage_after:
         if any(entry["role"] == "post-sweep" and entry["sweep_id"] == args.sweep for entry in manifest["usage_evidence"]):
             raise LaunchViolation("usage-post-evidence-already-recorded")
         append_usage(manifest, usage_raw, usage, usage_digest, "post-sweep", args.sweep, params)
+        pre_entry = next((entry for entry in reversed(manifest["usage_evidence"][:-1]) if entry["role"] == "pre-sweep" and entry["sweep_id"] == args.sweep), None)
+        if pre_entry is None:
+            raise LaunchViolation("usage-pre-evidence-missing")
+        _pre_raw, pre = decode_capture({"sha256": pre_entry["sha256"], "bytes_base64": pre_entry["bytes_base64"], "consumed_at": pre_entry["consumed_at"]}, params)
+        if pre["reset_at"] != usage["reset_at"]:
+            raise LaunchViolation("calibration-cross-epoch-invalid")
+        receipts = completed_sweep_receipts(args.out, manifest, schedule, args.sweep)
+        components = sum_receipts(args.out, receipts, completed_sweep_receipt_layout(args.out, manifest, schedule, args.sweep))
+        completed = {"sweep_id": args.sweep, "pre_sha256": pre_entry["sha256"], "post_sha256": usage_digest, "receipts": receipts, "components": components, "draw": components["total"]}
+        completed_sweeps = manifest.setdefault("completed_sweeps", [])
+        if not isinstance(completed_sweeps, list) or any(not isinstance(entry, dict) or entry.get("sweep_id") == args.sweep for entry in completed_sweeps):
+            raise LaunchViolation("completed-sweep-entry-invalid")
+        completed_sweeps.append(completed)
+        if not calibration_mix_ok(components, completed_sweep=True):
+            manifest["terminal"] = "CALIBRATION_UNIDENTIFIABLE"
+            write_json(args.out / MANIFEST_NAME, manifest)
+            print("TERMINAL: CALIBRATION_UNIDENTIFIABLE")
+            return 2
+        delta = usage["used_percent"] - pre["used_percent"]
+        prior_tpp = tpp_gate_for_epoch(manifest, str(usage["reset_at"]), params)
+        if delta >= 1:
+            calibration["tpp_chain"].append({"kind": "sweep", "sweep_id": args.sweep, "pre_sha256": pre_entry["sha256"], "post_sha256": usage_digest, "receipts": receipts, "components": components, "draw": components["total"], "delta_percent": delta, "tpp_obs": components["total"] // (delta + 1)})
+            current_tpp = tpp_gate_for_epoch(manifest, str(usage["reset_at"]), params)
+            if current_tpp < prior_tpp:
+                closure_at = datetime.datetime.now(datetime.timezone.utc)
+                closure = closure_payload(manifest, schedule, params, args.out, usage_digest, args.sweep + 1, closure_at)
+                append_closure_receipt(manifest, closure, args.sweep + 1, closure_at)
+                if not closure["passed"]:
+                    manifest["terminal"] = "CALIBRATION_DRIFT_OVER_BUDGET"
+                    write_json(args.out / MANIFEST_NAME, manifest)
+                    print("TERMINAL: CALIBRATION_DRIFT_OVER_BUDGET")
+                    return 2
         write_json(args.out / MANIFEST_NAME, manifest)
         print(f"USAGE_RECORDED: post-sweep={args.sweep}")
         return 0
     terminal, _details = derive_terminal(manifest, schedule, params)
+    if manifest.get("terminal") in {"CALIBRATION_UNIDENTIFIABLE", "CALIBRATION_DRIFT_OVER_BUDGET"}:
+        print(f"TERMINAL: {manifest['terminal']}")
+        return 2
     if terminal in {"WALL_CLOCK_EXPIRED", "CHARGED_ALLOWANCE_EXHAUSTED", "A5_SUBJECT_UNAVAILABLE", "FAIL_FAST_THRESHOLD_UNREACHED", "UNREGISTERED_STRUCTURAL_FAILURE", "LAUNCH_COMPLETE"}:
         terminal = persist(args.out, manifest, schedule, params)
         print(f"TERMINAL: {terminal}")
         return 0 if terminal == "LAUNCH_COMPLETE" else 2
     if args.sweep > 1 and not any(entry["role"] == "post-sweep" and entry["sweep_id"] == args.sweep - 1 for entry in manifest["usage_evidence"]):
         raise LaunchViolation("usage-post-evidence-missing")
-    if not usage_gate(usage, args.sweep, params):
-        raise LaunchViolation("usage-budget-gate-refused")
     pending = terminal == "REPLACEMENT_PENDING"
+    oracle_raw: bytes | None = None
+    oracle_digest: str | None = None
+    oracle_calls = 0
+    probe_times: list[datetime.datetime] = []
     if pending:
         if args.resume_oracle is None:
             raise LaunchViolation("resume-oracle-missing")
-        oracle_raw, oracle_digest, oracle_calls = load_resume_oracle(args.resume_oracle, usage_digest, params)
+        oracle_raw, oracle_digest, oracle_calls, probe_times = load_resume_oracle(args.resume_oracle, usage_digest, params)
         if any(entry["sha256"] == oracle_digest for entry in manifest["resume_oracles"]):
             raise LaunchViolation("resume-oracle-reused")
         if consumed_probe_calls(manifest) + oracle_calls > params["venue_tolerance"]["resume_oracle"]["probe_budget_session_equivalents"]:
             raise LaunchViolation("resume-oracle-probe-budget-exhausted")
-        manifest["resume_oracles"].append({"sha256": oracle_digest, "bytes_base64": base64.b64encode(oracle_raw).decode(), "attempt_ids": [], "consumed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "probe_calls": oracle_calls})
     elif args.resume_oracle is not None:
         raise LaunchViolation("resume-oracle-unexpected")
+    settlement = latest_settlement(manifest, str(usage["reset_at"]), params)
+    if settlement is None:
+        raise LaunchViolation("fresh-settlement-required")
+    _first, _second, first_observed, _second_observed, settlement_digest = settlement
+    if usage_digest != settlement_digest:
+        raise LaunchViolation("gate-evidence-not-latest-settlement")
+    if any(observed_at >= first_observed for observed_at in probe_times):
+        raise LaunchViolation("resume-probe-after-settlement")
+    if account_consumed_after(manifest, first_observed):
+        raise LaunchViolation("fresh-settlement-required")
+    if not usage_gate(usage, args.sweep, params, tpp_gate):
+        raise LaunchViolation("usage-budget-gate-refused")
+    if pending:
+        assert oracle_raw is not None and oracle_digest is not None
+        manifest["resume_oracles"].append({"sha256": oracle_digest, "bytes_base64": base64.b64encode(oracle_raw).decode(), "attempt_ids": [], "consumed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "probe_calls": oracle_calls})
     append_usage(manifest, usage_raw, usage, usage_digest, "resume" if pending else "pre-sweep", args.sweep, params)
+    closure_at = datetime.datetime.now(datetime.timezone.utc)
+    closure = closure_payload(manifest, schedule, params, args.out, usage_digest, args.sweep, closure_at)
+    append_closure_receipt(manifest, closure, args.sweep, closure_at)
+    if not closure["passed"]:
+        manifest["terminal"] = "CALIBRATION_DRIFT_OVER_BUDGET"
+        write_json(args.out / MANIFEST_NAME, manifest)
+        print("TERMINAL: CALIBRATION_DRIFT_OVER_BUDGET")
+        return 2
     gate_id, by_block = str(schedule["blocks"][0]["replicate_id"]), block_sessions(schedule)
     if not manifest["blocks"][gate_id]["attempts"] and args.sweep != 1:
         raise LaunchViolation("a5-gate-requires-sweep-one")
@@ -713,323 +1670,349 @@ def run(args: argparse.Namespace) -> int:
 
 
 def self_test() -> None:
+    """Exercise the v4 input boundary before the legacy transport fixtures below."""
     schedule, params = load_inputs(DEFAULT_SCHEDULE, DEFAULT_PARAMS)
-    budget = params["venue_tolerance"]["budget_gate"]
-    limit = budget["first_sweep_burn_bound_transport_tokens"] + budget["reserve_transport_tokens"]
-    equal = {"used_transport_tokens": 0, "limit_transport_tokens": limit}
-    greater = {"used_transport_tokens": 0, "limit_transport_tokens": limit + 1}
-    assert not usage_gate(equal, 1, params) and usage_gate(greater, 1, params)
-    with tempfile.TemporaryDirectory(prefix="iter0112-launch-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="iter0112-launch-v4-") as temporary:
         root = pathlib.Path(temporary)
-        evidence = root / "usage.json"
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        payload = {"source": "usage", "observed_at": now, "value": "self-test", "attested_by": "self-test", "used_transport_tokens": 1, "limit_transport_tokens": 999999999, "reset_at": now}
-        evidence.write_bytes(canonical_bytes(payload))
-        raw, parsed, digest = load_usage_evidence(evidence, params)
-        manifest = {"usage_evidence": []}
-        append_usage(manifest, raw, parsed, digest, "pre-sweep", 1, params)
-        try:
-            append_usage(manifest, raw, parsed, digest, "resume", 1, params)
-        except LaunchViolation as exc:
-            assert str(exc) == "usage-evidence-reused"
-        else:
-            raise AssertionError("usage evidence reuse accepted")
-        initial_reset = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=2)
-        advanced_reset = initial_reset + datetime.timedelta(days=1)
-        second_advanced_reset = advanced_reset + datetime.timedelta(days=1)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        reset = (now + datetime.timedelta(days=1)).isoformat()
 
-        def epoch_evidence(value, reset_at):
-            payload = {"source": "usage", "observed_at": now, "value": value, "attested_by": "self-test", "used_transport_tokens": 1, "limit_transport_tokens": 999999999, "reset_at": reset_at.isoformat()}
-            raw = canonical_bytes(payload)
-            return raw, payload, hashlib.sha256(raw).hexdigest()
-
-        epoch_manifest = {"usage_evidence": []}
-        first_epoch = epoch_evidence("initial epoch", initial_reset)
-        advanced_epoch = epoch_evidence("advanced epoch", advanced_reset)
-        append_usage(epoch_manifest, *first_epoch, "pre-sweep", 1, params)
-        append_usage(epoch_manifest, *advanced_epoch, "post-sweep", 1, params)
-        try:
-            append_usage(epoch_manifest, *epoch_evidence("second transition", second_advanced_reset), "pre-sweep", 2, params)
-        except LaunchViolation as exc:
-            assert str(exc) == "usage-evidence-reset-epochs-exceeded"
-        else:
-            raise AssertionError("second reset transition accepted")
-        try:
-            append_usage(epoch_manifest, *epoch_evidence("backward reset", initial_reset - datetime.timedelta(days=1)), "pre-sweep", 2, params)
-        except LaunchViolation as exc:
-            assert str(exc) == "usage-evidence-reset-not-advancing"
-        else:
-            raise AssertionError("backward reset accepted")
-        try:
-            append_usage(epoch_manifest, *epoch_evidence("reused reset", initial_reset), "pre-sweep", 2, params)
-        except LaunchViolation as exc:
-            assert str(exc) == "usage-evidence-reset-reused-old"
-        else:
-            raise AssertionError("reused reset accepted")
-        attestation = root / "window-attestation.json"
-        attestation.write_bytes(canonical_bytes({"attested_by": "self-test", "source": "self-test", **{engine: 1000000 for engine in ENGINES}}))
-        out = root / "root"
-        attempts_with_infra = set()
-
-        epoch = datetime.datetime.now(datetime.timezone.utc).isoformat()
-
-        def usage_file(name, used, limit_value, seconds_ago=0, reset_at=epoch):
-            observed = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=seconds_ago)
+        def usage(name: str, used: int = 10, observed: datetime.datetime | None = None) -> pathlib.Path:
             path = root / name
-            path.write_bytes(canonical_bytes({"source": "usage", "observed_at": observed.isoformat(), "value": name, "attested_by": "self-test", "used_transport_tokens": used, "limit_transport_tokens": limit_value, "reset_at": reset_at}))
-            return path
+            payload = {"source": "usage", "meter_id": "current_week_all_models", "observed_at": (observed or now).isoformat(), "value": name, "attested_by": "self-test", "used_percent": used, "display_resolution_percent": 1, "reset_at": reset, "panel_sha256": "a" * 64, "auxiliary": {"current_week_fable_percent": None, "current_session_percent": None}}
+            path.write_bytes(canonical_bytes(payload)); return path
 
-        def fake_session(session, fake_out, attempt_id, run_id, _params):
-            directory = session_directory(attempt_root(fake_out, attempt_id), session)
-            directory.mkdir(parents=True, exist_ok=False)
-            infra = (attempt_id, session_key(session)) in attempts_with_infra
-            session_rows = [{"position_index": task["position_index"], "infra_invalid": infra and task["position_index"] == 1, "catastrophic": False, "custody_ok": True, "custody_broken": False} for task in session["tasks"]]
-            (directory / "rows.jsonl").write_bytes(b"".join(canonical_bytes(row) for row in session_rows))
-            (directory / "boundary-ledger.json").write_bytes(canonical_bytes({"boundaries": [{"position_index": position, "records_invalid": False, "peak_effective_context": 100000} for position in range(1, 9)]}))
-            (directory / "cli-attestation.json").write_bytes(canonical_bytes({"synthetic": True}))
-            digest = "0" * 64
-            return {"engine": session["engine"], "replicate_id": session["replicate_id"], "session_label": session_key(session), "driver_command": command_for(session, attempt_root(fake_out, attempt_id), run_id), "collector_command": collector_command_for(directory), "driver_exit": 0, "driver_stdout_sha256": digest, "driver_stderr_sha256": digest, "driver_evidence_sha256": sha256(directory / "cli-attestation.json"), "status": "completed", "collector_exit": 0, "collector_stdout_sha256": digest, "collector_stderr_sha256": digest, "infra_affected": infra, "a5_clean": not infra, "first_late_threshold_crossed": True if session["engine"] in MATRIX_ENGINES else None, "rows_sha256": sha256(directory / "rows.jsonl"), "boundary_ledger_sha256": sha256(directory / "boundary-ledger.json"), "artifact_dir": str(directory.relative_to(fake_out))}
+        def expect(path: pathlib.Path, reason: str) -> None:
+            try:
+                load_usage_evidence(path, params)
+            except LaunchViolation as exc:
+                assert reason in str(exc)
+            else:
+                raise AssertionError(f"{reason} accepted")
 
-        original_run_session, original_inventory = run_session, verify_script_inventory
-        globals()["run_session"] = fake_session
-        globals()["verify_script_inventory"] = lambda: "0" * 64
+        valid = usage("valid.json")
+        raw, evidence, digest = load_usage_evidence(valid, params)
+        assert used_percent_upper({**evidence, "used_percent": 100}) == 100
+        assert not usage_gate(evidence, 1, params, 1_000_000) and usage_gate(evidence, 1, params, 1_000_000_000)
+        def evidence_raw(value: str, reset_at: str, used: int, observed_at: datetime.datetime) -> bytes:
+            return canonical_bytes({"source": "usage", "meter_id": "current_week_all_models", "observed_at": observed_at.isoformat(), "value": value, "attested_by": "self-test", "used_percent": used, "display_resolution_percent": 1, "reset_at": reset_at, "panel_sha256": "a" * 64, "auxiliary": {"current_week_fable_percent": None, "current_session_percent": None}})
+        old_reset, new_reset = (now + datetime.timedelta(days=1)).isoformat(), (now + datetime.timedelta(days=2)).isoformat()
+        def capture(raw: bytes, consumed_at: datetime.datetime) -> dict[str, object]:
+            return capture_entry(raw, hashlib.sha256(raw).hexdigest(), consumed_at)
+        old_pre = evidence_raw("old-pre", old_reset, 5, now - datetime.timedelta(seconds=250))
+        old_settle = evidence_raw("old-settle", old_reset, 8, now - datetime.timedelta(seconds=230))
+        old_usage = evidence_raw("old-usage", old_reset, 10, now - datetime.timedelta(seconds=200))
+        new_pre = evidence_raw("new-pre", new_reset, 2, now - datetime.timedelta(seconds=150))
+        new_settle = evidence_raw("new-settle", new_reset, 5, now - datetime.timedelta(seconds=130))
+        fresh_epoch = evidence_raw("fresh-epoch", new_reset, 6, now - datetime.timedelta(seconds=1))
+        transition = {"calibrations": [{"pre_capture": capture(old_pre, now - datetime.timedelta(seconds=250)), "settlement_captures": [capture(old_settle, now - datetime.timedelta(seconds=229)), capture(old_settle, now - datetime.timedelta(seconds=229))]}, {"pre_capture": capture(new_pre, now - datetime.timedelta(seconds=150)), "settlement_captures": [capture(new_settle, now - datetime.timedelta(seconds=129)), capture(new_settle, now - datetime.timedelta(seconds=129))]}], "settlements": [], "usage_evidence": [{"sha256": hashlib.sha256(old_usage).hexdigest(), "bytes_base64": base64.b64encode(old_usage).decode(), "role": "post-sweep", "sweep_id": 1, "consumed_at": (now - datetime.timedelta(seconds=200)).isoformat()}]}
+        append_usage(transition, fresh_epoch, decode_usage_evidence(fresh_epoch, params), hashlib.sha256(fresh_epoch).hexdigest(), "pre-sweep", 1, params)
+        assert transition["usage_evidence"][-1]["sha256"] == hashlib.sha256(fresh_epoch).hexdigest()
+        for name, bad_reset, reason in (("reused", old_reset, "usage-evidence-reset-reused-old"), ("not-advancing", (now + datetime.timedelta(days=1, hours=12)).isoformat(), "usage-evidence-reset-not-advancing")):
+            broken = json.loads(json.dumps(transition))
+            bad = evidence_raw(name, bad_reset, 7, now)
+            try: append_usage(broken, bad, decode_usage_evidence(bad, params), hashlib.sha256(bad).hexdigest(), "pre-sweep", 1, params)
+            except LaunchViolation as exc: assert str(exc) == reason
+            else: raise AssertionError(f"{name} reset sequence accepted")
+        for field, value, reason in (("meter_id", "wrong", "schema"), ("display_resolution_percent", 2, "numeric"), ("panel_sha256", None, "numeric"), ("auxiliary", {}, "auxiliary")):
+            bad = json.loads(valid.read_bytes()); bad[field] = value; path = root / f"bad-{field}.json"; write_json(path, bad); expect(path, f"usage-evidence-{reason}")
+            attestation = root / "window-attestation.json"
+            write_json(attestation, {"attested_by": "self-test", "source": "self-test", **{engine: 1000000 for engine in ENGINES}})
+            run_args = argparse.Namespace(sweep=1, lanes=3, out=root / "run-boundary", run_id="self-test", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=path, resume_oracle=None, record_usage_after=False, dry_run=False)
+            try: run(run_args)
+            except LaunchViolation as exc: assert f"usage-evidence-{reason}" in str(exc)
+            else: raise AssertionError(f"run() accepted bad {field}")
+        run_args.usage_evidence = valid
+        run_args.out.mkdir(parents=True)
+        write_json(run_args.out / MANIFEST_NAME, {"schema": "iter0112-launch-manifest-v3"})
+        try: run(run_args)
+        except LaunchViolation as exc: assert str(exc) == "launch-manifest-schema-mismatch"
+        else: raise AssertionError("run() accepted manifest v3")
+
+        sessions = [f"calibration-1-{engine}" for engine in CALIBRATION_ENGINES]
+        receipts = []
+        for engine, label in zip(CALIBRATION_ENGINES, sessions):
+            for position, task in enumerate(CALIBRATION_TASKS, 1):
+                path = root / "calibration" / f"{engine}.{label}.r1" / f"t{position}.{task}" / "cli.stdout"; path.parent.mkdir(parents=True, exist_ok=True)
+                receipt = canonical_bytes({"modelUsage": {engine: {"inputTokens": 40_000_000, "outputTokens": 40_000_000, "cacheCreationInputTokens": 40_000_000, "cacheReadInputTokens": 10_000_000}}})
+                path.write_bytes(receipt); receipts.append({"path": str(path.relative_to(root)), "sha256": hashlib.sha256(receipt).hexdigest(), "engine": engine, "completed_at": (now - datetime.timedelta(seconds=300)).isoformat()})
+        components = sum_receipts(root, receipts, calibration_receipt_layout(sessions))
+        pre_raw = canonical_bytes({**json.loads(valid.read_bytes()), "value": "pre", "used_percent": 5, "observed_at": (now - datetime.timedelta(seconds=250)).isoformat()})
+        settle_a_raw = canonical_bytes({**json.loads(valid.read_bytes()), "value": "settle-a", "observed_at": (now - datetime.timedelta(seconds=125)).isoformat()})
+        settle_b_raw = canonical_bytes({**json.loads(valid.read_bytes()), "value": "settle-b"})
+        entry = lambda value: capture_entry(value, hashlib.sha256(value).hexdigest(), parse_iso8601(str(json.loads(value)["observed_at"]), "self-test-capture-observed-at"))
+        calibration = {"reset_at": reset, "pre_capture": entry(pre_raw), "settlement_captures": [entry(settle_a_raw), entry(settle_b_raw)], "sessions": sessions, "receipts": receipts, "components": components, "tpp_chain": [{"kind": "calibration", "pre_sha256": hashlib.sha256(pre_raw).hexdigest(), "post_sha256": hashlib.sha256(settle_b_raw).hexdigest(), "receipt_digests": [receipt["sha256"] for receipt in receipts], "components": components, "draw": components["total"], "delta_percent": 5, "tpp_obs": components["total"] // 6}], "session_equivalents": 3}
+        manifest = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "self-test", "0" * 64, canonical_bytes({"attested_by": "self-test", "source": "self-test", **{engine: 1000000 for engine in ENGINES}}))
+        manifest["calibrations"] = [calibration]; manifest["calibration_session_equivalents"] = 3
+        calibration_entry_valid(calibration, root, params, manifest, schedule)
+        partial_between = json.loads(json.dumps(manifest))
+        partial_block = partial_between["blocks"][str(schedule["blocks"][0]["replicate_id"])]
+        partial_block["attempts"] = [{"attempt_id": f"{partial_block['replicate_id']}.a1", "replacement_of": None, "transport_state": "VOID", "unrun_suffix": [], "sessions": {"partial": {"completed_at": (now - datetime.timedelta(seconds=30)).isoformat()}}, "charged_session_equivalents": 6}]
+        try: settlement_entry_valid({"reset_at": reset, "captures": [entry(settle_a_raw), entry(settle_b_raw)]}, partial_between, params)
+        except LaunchViolation as exc: assert str(exc) == "settlement-too-early"
+        else: raise AssertionError("partial call between settlement captures accepted")
+        sibling_prefix = json.loads(json.dumps(manifest))
+        sibling_first = canonical_bytes({**json.loads(valid.read_bytes()), "value": "sibling-prefix-first", "observed_at": (now + datetime.timedelta(seconds=10)).isoformat()})
+        sibling_second = canonical_bytes({**json.loads(valid.read_bytes()), "value": "sibling-prefix-second", "observed_at": (now + datetime.timedelta(seconds=130)).isoformat()})
+        sibling_settlement = {"reset_at": reset, "captures": [entry(sibling_first), entry(sibling_second)]}
+        sibling_prefix["settlements"] = [sibling_settlement]
+        sibling_block = sibling_prefix["blocks"][str(schedule["blocks"][0]["replicate_id"])]
+        sibling_block["attempts"] = [{"attempt_id": f"{sibling_block['replicate_id']}.a1", "replacement_of": None, "transport_state": "RUNNING", "unrun_suffix": [], "sessions": {"before-first": {"completed_at": (now - datetime.timedelta(seconds=20)).isoformat()}, "after-second": {"completed_at": (now + datetime.timedelta(seconds=131)).isoformat()}}, "charged_session_equivalents": 6}]
+        sibling_projected = manifest_as_of(sibling_prefix, now + datetime.timedelta(seconds=10))
+        assert set(sibling_projected["blocks"][str(schedule["blocks"][0]["replicate_id"])]["attempts"][0]["sessions"]) == {"before-first"}
+        try: settlement_entry_valid(sibling_settlement, sibling_prefix, params)
+        except LaunchViolation as exc: assert str(exc) == "settlement-too-early"
+        else: raise AssertionError("session-prefix settlement accepted a prior call")
+        for mutation, reason in ((lambda item: item["settlement_captures"].__setitem__(1, dict(item["settlement_captures"][0])), "settlement"), (lambda item: item.__setitem__("reset_at", (now + datetime.timedelta(days=2)).isoformat()), "cross-epoch")):
+            broken = json.loads(json.dumps(calibration)); mutation(broken)
+            try: calibration_entry_valid(broken, root, params, manifest, schedule)
+            except LaunchViolation as exc: assert reason in str(exc)
+            else: raise AssertionError(f"{reason} calibration accepted")
+        assert calibration_mix_ok(components) and calibration_mix_ok({"total": 1000, "cache_read": 973}, True)
+        assert not calibration_mix_ok({"total": 1000, "cache_read": 974}) and not calibration_mix_ok({"total": 1000, "cache_read": 972}, True)
+        assert tpp_gate_for_epoch(manifest, reset, params, now) == components["total"] // 6
+        historical_raw = canonical_bytes({**json.loads(valid.read_bytes()), "value": "historical", "observed_at": (now - datetime.timedelta(hours=6)).isoformat()})
+        historical_entry = capture_entry(historical_raw, hashlib.sha256(historical_raw).hexdigest(), now - datetime.timedelta(hours=6) + datetime.timedelta(seconds=10))
+        assert decode_capture(historical_entry, params)[1]["value"] == "historical"
+        historical_path = root / "historical.json"; historical_path.write_bytes(historical_raw)
+        expect(historical_path, "usage-evidence-stale")
+        replay = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "historical", "0" * 64, canonical_bytes({"attested_by": "self-test", "source": "self-test", **{engine: 1000000 for engine in ENGINES}}))
+        replay["created_at"] = (now - datetime.timedelta(hours=6)).isoformat()
+        replay["usage_evidence"] = [{"sha256": historical_entry["sha256"], "bytes_base64": historical_entry["bytes_base64"], "role": "resume", "sweep_id": 1, "consumed_at": historical_entry["consumed_at"]}]
+        replay_root = root / "historical-reload"; replay_root.mkdir()
+        write_json(replay_root / MANIFEST_NAME, replay)
+        assert load_manifest(replay_root, DEFAULT_SCHEDULE, DEFAULT_PARAMS, "historical", "0" * 64, canonical_bytes({"attested_by": "self-test", "source": "self-test", **{engine: 1000000 for engine in ENGINES}}))["usage_evidence"] == replay["usage_evidence"]
+        closure = closure_payload(manifest, schedule, params, root, hashlib.sha256(settle_b_raw).hexdigest(), 1, now)
+        assert closure["passed"] and closure["remaining_nominal_waves"] == 10
+        replay_event = json.loads(json.dumps(manifest))
+        for block in [block for block in schedule["blocks"] if block["sweep_id"] == 1][1:]:
+            replay_block = replay_event["blocks"][str(block["replicate_id"])]
+            replay_block["attempts"] = [{"attempt_id": f"{replay_block['replicate_id']}.a1", "replacement_of": None, "transport_state": "VOID", "unrun_suffix": [], "sessions": {"partial": {"completed_at": (now - datetime.timedelta(seconds=1)).isoformat(), "infra_affected": True}}, "charged_session_equivalents": 6}]
+        assert closure_payload(replay_event, schedule, params, root, hashlib.sha256(settle_b_raw).hexdigest(), 1, now)["remaining_replay_waves"] == 3
+        append_closure_receipt(manifest, closure, 1, now)
+        validate_manifest(manifest, schedule, root, "self-test", params)
+        historical_void = json.loads(json.dumps(manifest))
+        for block in [block for block in schedule["blocks"] if block["sweep_id"] == 1][1:]:
+            replay_block = historical_void["blocks"][str(block["replicate_id"])]
+            replay_block["attempts"] = [{"attempt_id": f"{replay_block['replicate_id']}.a1", "replacement_of": None, "transport_state": "VOID", "unrun_suffix": [], "sessions": {"partial": {"completed_at": (now + datetime.timedelta(seconds=1)).isoformat(), "infra_affected": True}}, "charged_session_equivalents": 6}]
+        validate_closure_receipts(historical_void, schedule, params, root)
+        claimed_future = json.loads(json.dumps(historical_void))
+        future_payload = closure_payload(claimed_future, schedule, params, root, hashlib.sha256(settle_b_raw).hexdigest(), 1, now + datetime.timedelta(seconds=2))
+        assert future_payload["remaining_replay_waves"] == 3
+        append_closure_receipt(claimed_future, future_payload, 1, now)
+        try: validate_closure_receipts(claimed_future, schedule, params, root)
+        except LaunchViolation as exc: assert str(exc) == "closure-receipt-invalid"
+        else: raise AssertionError("closure receipt claimed future VOID state")
+        def reject_closure(field: str, value: object) -> None:
+            broken = json.loads(json.dumps(manifest))
+            receipt = broken["closure_receipts"][0]
+            payload = json.loads(base64.b64decode(receipt["bytes_base64"])); payload[field] = value
+            payload_raw = canonical_bytes(payload); receipt["bytes_base64"] = base64.b64encode(payload_raw).decode(); receipt["sha256"] = hashlib.sha256(payload_raw).hexdigest()
+            try: validate_manifest(broken, schedule, root, "self-test", params)
+            except LaunchViolation as exc: assert "closure" in str(exc)
+            else: raise AssertionError(f"closure {field} accepted")
+        for field, value in (("used_percent_upper", 999999), ("trajectory", [-999]), ("calibration_sessions_per_epoch", -999)):
+            reject_closure(field, value)
+        broken_consumed = json.loads(json.dumps(manifest)); broken_consumed["closure_receipts"][0]["consumed_at"] = "not-a-timestamp"
+        try: validate_manifest(broken_consumed, schedule, root, "self-test", params)
+        except LaunchViolation as exc: assert "timestamp" in str(exc)
+        else: raise AssertionError("closure consumed_at accepted")
+        attestation = root / "window-attestation-run.json"
+        attestation_raw = canonical_bytes({"attested_by": "self-test", "source": "self-test", **{engine: 1000000 for engine in ENGINES}})
+        attestation.write_bytes(attestation_raw)
+        pin = verify_script_inventory()
+        record_first = usage("record-settlement-first.json", 10, now - datetime.timedelta(seconds=200))
+        record_second = usage("record-settlement-second.json", 10, now - datetime.timedelta(seconds=75))
+        record_out = root / "record-settlement"; record_out.mkdir()
+        shutil.copytree(root / "calibration", record_out / "calibration")
+        record_manifest = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "record-settlement", pin, attestation_raw)
+        record_calibration = json.loads(json.dumps(calibration))
+        for receipt in record_calibration["receipts"]:
+            receipt["completed_at"] = (now - datetime.timedelta(seconds=700)).isoformat()
+        record_pre = evidence_raw("record-calibration-pre", reset, 5, now - datetime.timedelta(seconds=600))
+        record_settle_first = evidence_raw("record-calibration-settle-first", reset, 10, now - datetime.timedelta(seconds=500))
+        record_settle_second = evidence_raw("record-calibration-settle-second", reset, 10, now - datetime.timedelta(seconds=300))
+        record_calibration["pre_capture"] = entry(record_pre)
+        record_calibration["settlement_captures"] = [entry(record_settle_first), entry(record_settle_second)]
+        record_calibration["tpp_chain"] = [{"kind": "calibration", "pre_sha256": hashlib.sha256(record_pre).hexdigest(), "post_sha256": hashlib.sha256(record_settle_second).hexdigest(), "receipt_digests": [receipt["sha256"] for receipt in record_calibration["receipts"]], "components": components, "draw": components["total"], "delta_percent": 5, "tpp_obs": components["total"] // 6}]
+        record_manifest["calibrations"] = [record_calibration]; record_manifest["calibration_session_equivalents"] = 3
+        write_json(record_out / MANIFEST_NAME, record_manifest)
+        saved_argv = sys.argv
         try:
-            def invocation(usage_path, resume_oracle=None, record=False, sweep=1, lanes=3, target=out):
-                return argparse.Namespace(sweep=sweep, lanes=lanes, out=target, run_id="self-test", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=usage_path, resume_oracle=resume_oracle, record_usage_after=record, dry_run=False)
-
-            missing = root / "missing.json"
-            before = out.exists()
-            try:
-                run(invocation(missing))
-            except LaunchViolation as exc:
-                assert str(exc).startswith("usage-evidence-unreadable:")
-            else:
-                raise AssertionError("missing usage evidence accepted")
-            assert out.exists() is before
-            stale = usage_file("stale.json", 0, 999999999, 301)
-            try:
-                run(invocation(stale))
-            except LaunchViolation as exc:
-                assert str(exc) == "usage-evidence-stale"
-            else:
-                raise AssertionError("stale usage evidence accepted")
-            future = usage_file("future.json", 0, 999999999, -6)
-            try:
-                run(invocation(future))
-            except LaunchViolation as exc:
-                assert str(exc) == "usage-evidence-future"
-            else:
-                raise AssertionError("future usage evidence accepted")
-            equality = usage_file("equality.json", 0, limit, 0)
-            try:
-                run(invocation(equality))
-            except LaunchViolation as exc:
-                assert str(exc) == "usage-budget-gate-refused"
-            else:
-                raise AssertionError("strict equality boundary accepted")
-            initial = usage_file("initial.json", 1, 999999999, 0)
-            try:
-                run(invocation(initial, lanes=2))
-            except LaunchViolation as exc:
-                assert str(exc) == "launch-arguments-invalid"
-            else:
-                raise AssertionError("mutable lane count accepted")
-            gate_id = str(schedule["blocks"][0]["replicate_id"])
-            attempts_with_infra.add((f"{gate_id}.a1", session_key(block_sessions(schedule)[gate_id][0])))
-            assert run(invocation(initial)) == 2
-            manifest_path = out / MANIFEST_NAME
-            before_manifest = manifest_path.read_bytes()
-            resumed = usage_file("resumed.json", 2, 999999999, 0)
-            try:
-                run(invocation(resumed))
-            except LaunchViolation as exc:
-                assert str(exc) == "resume-oracle-missing"
-            else:
-                raise AssertionError("resume without oracle accepted")
-            assert manifest_path.read_bytes() == before_manifest
-            raw_resume, _value, resume_digest = load_usage_evidence(resumed, params)
-            probe_now = datetime.datetime.now(datetime.timezone.utc)
-            probe_time = probe_now.isoformat()
-            driver = params["venue_tolerance"]["driver_evidence"]
-            probes = []
-            for index, engine in enumerate(ENGINES):
-                stdout = canonical_bytes({"is_error": False, "modelUsage": {engine: {}}})
-                started = probe_now - datetime.timedelta(seconds=3 - index)
-                finished = started + datetime.timedelta(milliseconds=500)
-                probes.append({"model": engine, "argv": expected_probe_argv(params, engine), "executable_path": driver["cli_path"], "executable_sha256": driver["cli_sha256"], "started_at": started.isoformat(), "observed_at": finished.isoformat(), "returncode": 0, "stdout_bytes_base64": base64.b64encode(stdout).decode(), "stdout_sha256": hashlib.sha256(stdout).hexdigest()})
-            oracle_path = root / "resume-oracle.json"
-            oracle_path.write_bytes(canonical_bytes({"schema": "iter0112-resume-oracle-v1", "observed_at": probe_time, "usage_sha256": resume_digest, "probes": probes}))
-            stale_oracle = root / "resume-oracle-stale-probe.json"
-            stale_probes = [dict(probe) for probe in probes]
-            stale_time = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=301)).isoformat()
-            stale_probes[0]["started_at"] = stale_time
-            stale_probes[0]["observed_at"] = stale_time
-            stale_oracle.write_bytes(canonical_bytes({"schema": "iter0112-resume-oracle-v1", "observed_at": probe_time, "usage_sha256": resume_digest, "probes": stale_probes}))
-            before_manifest = manifest_path.read_bytes()
-            try:
-                run(invocation(resumed, stale_oracle))
-            except LaunchViolation as exc:
-                assert str(exc) == "resume-oracle-probe-stale"
-            else:
-                raise AssertionError("stale per-probe oracle accepted")
-            assert manifest_path.read_bytes() == before_manifest
-            command_oracle = root / "resume-oracle-command.json"
-            command_probes = [dict(probe) for probe in probes]
-            command_probes[0]["argv"] = ["/unregistered/cli"]
-            command_oracle.write_bytes(canonical_bytes({"schema": "iter0112-resume-oracle-v1", "observed_at": probe_time, "usage_sha256": resume_digest, "probes": command_probes}))
-            try:
-                run(invocation(resumed, command_oracle))
-            except LaunchViolation as exc:
-                assert str(exc) == "resume-oracle-probe-command-invalid"
-            else:
-                raise AssertionError("unregistered probe command accepted")
-            assert manifest_path.read_bytes() == before_manifest
-            list_usage_oracle = root / "resume-oracle-list-model-usage.json"
-            list_usage_probes = [dict(probe) for probe in probes]
-            list_usage_stdout = canonical_bytes({"is_error": False, "modelUsage": [ENGINES[0]]})
-            list_usage_probes[0]["stdout_bytes_base64"] = base64.b64encode(list_usage_stdout).decode()
-            list_usage_probes[0]["stdout_sha256"] = hashlib.sha256(list_usage_stdout).hexdigest()
-            list_usage_oracle.write_bytes(canonical_bytes({"schema": "iter0112-resume-oracle-v1", "observed_at": probe_time, "usage_sha256": resume_digest, "probes": list_usage_probes}))
-            try:
-                run(invocation(resumed, list_usage_oracle))
-            except LaunchViolation as exc:
-                assert str(exc) == "resume-oracle-probe-failed"
-            else:
-                raise AssertionError("list-valued probe modelUsage accepted")
-            assert manifest_path.read_bytes() == before_manifest
-            assert run(invocation(resumed, oracle_path)) == 2
-            post = usage_file("post.json", 3, 999999999, 0)
-            assert run(invocation(post, record=True)) == 0
-
-            attempts_with_infra.clear()
-            weekly = root / "weekly-recovery"
-            weekly_initial = usage_file("weekly-initial.json", 4, 999999999, reset_at=initial_reset.isoformat())
-            assert run(invocation(weekly_initial, target=weekly)) == 2
-            weekly_post = usage_file("weekly-post.json", 5, 999999999, reset_at=initial_reset.isoformat())
-            assert run(invocation(weekly_post, record=True, target=weekly)) == 0
-            weekly_recovery = usage_file("weekly-recovery.json", 6, 999999999, reset_at=advanced_reset.isoformat())
-            assert run(invocation(weekly_recovery, sweep=2, target=weekly)) == 2
-            weekly_manifest = read_json(weekly / MANIFEST_NAME)
-            assert {json.loads(base64.b64decode(entry["bytes_base64"]))["reset_at"] for entry in weekly_manifest["usage_evidence"]} == {initial_reset.isoformat(), advanced_reset.isoformat()}
-
-            paused = root / "post-sweep-pause"
-            assert run(invocation(usage_file("pause-pre.json", 7, 999999999), target=paused)) == 2
-            paused_limit = 999999999
-            paused_used = paused_limit - params["venue_tolerance"]["budget_gate"]["subsequent_sweep_burn_bound_transport_tokens"] - params["venue_tolerance"]["budget_gate"]["reserve_transport_tokens"]
-            assert run(invocation(usage_file("pause-post.json", paused_used, paused_limit), record=True, target=paused)) == 0
-            try:
-                run(invocation(usage_file("pause-next-pre.json", paused_used, paused_limit), sweep=2, target=paused))
-            except LaunchViolation as exc:
-                assert str(exc) == "usage-budget-gate-refused"
-            else:
-                raise AssertionError("low-headroom next sweep accepted")
-
-            def oracle_for(name, usage_path):
-                _raw, _payload, usage_digest = load_usage_evidence(usage_path, params)
-                probe_now = datetime.datetime.now(datetime.timezone.utc)
-                now = probe_now.isoformat()
-                driver = params["venue_tolerance"]["driver_evidence"]
-                probes = []
-                for index, engine in enumerate(ENGINES):
-                    stdout = canonical_bytes({"is_error": False, "modelUsage": {engine: {}}})
-                    started = probe_now - datetime.timedelta(seconds=3 - index)
-                    finished = started + datetime.timedelta(milliseconds=500)
-                    probes.append({"model": engine, "argv": expected_probe_argv(params, engine), "executable_path": driver["cli_path"], "executable_sha256": driver["cli_sha256"], "started_at": started.isoformat(), "observed_at": finished.isoformat(), "returncode": 0, "stdout_bytes_base64": base64.b64encode(stdout).decode(), "stdout_sha256": hashlib.sha256(stdout).hexdigest()})
-                path = root / name
-                path.write_bytes(canonical_bytes({"schema": "iter0112-resume-oracle-v1", "observed_at": now, "usage_sha256": usage_digest, "probes": probes}))
-                return path
-
-            attempts_with_infra.clear()
-            parallel = root / "parallel-voids"
-            sweep_one = [str(block["replicate_id"]) for block in schedule["blocks"] if block["sweep_id"] == 1]
-            for replicate_id in sweep_one[1:]:
-                attempts_with_infra.add((f"{replicate_id}.a1", session_key(block_sessions(schedule)[replicate_id][0])))
-            parallel_initial = usage_file("parallel-initial.json", 10, 999999999, 0)
-            assert run(invocation(parallel_initial, target=parallel)) == 2
-            parallel_resume = usage_file("parallel-resume.json", 11, 999999999, 0)
-            assert run(invocation(parallel_resume, oracle_for("parallel-oracle-1.json", parallel_resume), target=parallel)) == 2
-            parallel_manifest = read_json(parallel / MANIFEST_NAME)
-            assert isinstance(parallel_manifest, dict)
-            first_oracle = parallel_manifest["resume_oracles"][0]
-            assert first_oracle["probe_calls"] == 3 and len(first_oracle["attempt_ids"]) == 3
-            assert all(len(parallel_manifest["blocks"][replicate_id]["attempts"]) == 2 for replicate_id in sweep_one[1:])
-            parallel_post = usage_file("parallel-post.json", 12, 999999999, 0)
-            assert run(invocation(parallel_post, record=True, target=parallel)) == 0
-            sweep_two = [str(block["replicate_id"]) for block in schedule["blocks"] if block["sweep_id"] == 2]
-            for replicate_id in sweep_two[:3]:
-                attempts_with_infra.add((f"{replicate_id}.a1", session_key(block_sessions(schedule)[replicate_id][0])))
-            second_initial = usage_file("parallel-second-initial.json", 13, 999999999, 0)
-            assert run(invocation(second_initial, sweep=2, target=parallel)) == 2
-            second_resume = usage_file("parallel-second-resume.json", 14, 999999999, 0)
-            assert run(invocation(second_resume, oracle_for("parallel-oracle-2.json", second_resume), sweep=2, target=parallel)) == 2
-            parallel_manifest = read_json(parallel / MANIFEST_NAME)
-            assert isinstance(parallel_manifest, dict)
-            assert len(parallel_manifest["resume_oracles"]) == 2 and consumed_probe_calls(parallel_manifest) == 6
-
-            expired = root / "expired"
-            expired_manifest = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "self-test", "0" * 64, attestation.read_bytes())
-            expired_manifest["created_at"] = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=169)).isoformat()
-            expired.mkdir()
-            (expired / MANIFEST_NAME).write_bytes(canonical_bytes(expired_manifest))
-            expired_usage = usage_file("expired-usage.json", 15, 999999999, 0)
-            assert run(invocation(expired_usage, target=expired)) == 2
-            charged = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "charged", "0" * 64, attestation.read_bytes())
-            charged_block = charged["blocks"][gate_id]
-            for _ in range(params["venue_tolerance"]["charged_accounting"]["maximum_block_attempts"]):
-                new_attempt(charged_block)
-            assert derive_terminal(charged, schedule, params)[0] == "CHARGED_ALLOWANCE_EXHAUSTED"
+            sys.argv = [str(HERE / "launch-0112.py"), "--out", str(record_out), "--run-id", "record-settlement", "--window-attestation", str(attestation), "--record-settlement", "--settlement-usage-evidence", str(record_first), "--settlement-usage-evidence", str(record_second)]
+            assert main() == 0
         finally:
-            globals()["run_session"] = original_run_session
-            globals()["verify_script_inventory"] = original_inventory
-        integration = root / "status-classification"
-
-        class FakeProcess:
-            def __init__(self, returncode, stdout=b"", stderr=b""):
-                self.returncode, self.stdout, self.stderr = returncode, stdout, stderr
-
-        def classify_session(label, first_argv, first_stderr, suffix_stderr):
-            session = {"engine": "claude-sonnet-5", "replicate_id": label, "session_label": label, "replicate_index": 1, "tasks": [{"position_index": 1, "task_id": "A"}, {"position_index": 2, "task_id": "B"}]}
-            attempt_id = f"{label}.a1"
-            directory = session_directory(attempt_root(integration, attempt_id), session)
-            directory.mkdir(parents=True)
-            rows_payload = [{"position_index": 1, "task": "A", "cli_argv": first_argv, "infra_invalid": False}, {"position_index": 2, "task": "B", "cli_argv": None, "infra_invalid": False}]
-            (directory / "rows.jsonl").write_bytes(b"".join(canonical_bytes(row) for row in rows_payload))
-            (directory / "boundary-ledger.json").write_bytes(canonical_bytes({"boundaries": []}))
-            (directory / "cli-attestation.json").write_bytes(canonical_bytes({"synthetic": True}))
-            for position, task, stderr in ((1, "A", first_stderr), (2, "B", suffix_stderr)):
-                task_dir = directory / f"t{position}.{task}"
-                task_dir.mkdir()
-                (task_dir / "cli.stderr").write_text(stderr, encoding="utf-8")
-            original_subprocess_run = subprocess.run
-            def fake_subprocess(command, **_kwargs):
-                if len(command) > 1 and command[1] == str(DRIVER):
-                    return FakeProcess(0, (json.dumps({"session_dir": str(directory)}) + "\n").encode())
-                return FakeProcess(0)
-            globals()["subprocess"].run = fake_subprocess
-            try:
-                return run_session(session, integration, attempt_id, "self-test", params)
-            finally:
-                globals()["subprocess"].run = original_subprocess_run
-
-        setup_status = classify_session("setup-structural", None, "attempt setup failure: malformed task\n", "custody broken by earlier invocation\n")
-        runner_status = classify_session("runner-scoreable", ["registered", "driver"], "runner failure: self-test\n", "custody broken by earlier invocation\n")
-        assert setup_status["status"] == "driver_receipt_invalid" and setup_status["infra_affected"] is False
-        assert runner_status["status"] == "completed" and runner_status["infra_affected"] is False
-    print("SELF_TEST_OK: run() refusal reachability (missing/stale/future/equality/resume), setup-structural versus runner-scoreable mapping, fixed lanes, three-block lane-parallel replay, multi-resume per-call accounting, 168h expiry, strict budget boundary, consumed evidence append-only, charged accounting, raw-attestation schema")
-
+            sys.argv = saved_argv
+        record_execute, record_persist, record_derive = execute_attempt, persist, derive_terminal
+        def record_later_attempt(out: pathlib.Path, mutable_manifest: dict[str, object], attempt: dict[str, object], sessions: list[dict[str, object]], run_id: str, _params: dict[str, object], _lock: threading.Lock | None = None) -> str:
+            session = sessions[0]
+            attempt_root_path = attempt_root(out, str(attempt["attempt_id"]))
+            directory = session_directory(attempt_root_path, session)
+            attempt["sessions"][session_key(session)] = {"engine": session["engine"], "replicate_id": session["replicate_id"], "session_label": session_key(session), "driver_command": command_for(session, attempt_root_path, run_id), "collector_command": collector_command_for(directory), "driver_exit": 1, "driver_stdout_sha256": hashlib.sha256(b"").hexdigest(), "driver_stderr_sha256": hashlib.sha256(b"").hexdigest(), "driver_evidence_sha256": None, "status": "driver_failed", "collector_exit": None, "collector_stdout_sha256": None, "collector_stderr_sha256": None, "infra_affected": False, "a5_clean": False, "first_late_threshold_crossed": None, "rows_sha256": None, "boundary_ledger_sha256": None, "artifact_dir": str(directory.relative_to(out)), "completed_at": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=1)).isoformat()}
+            normalize(attempt, sessions)
+            write_json(out / MANIFEST_NAME, mutable_manifest)
+            return "STRUCTURAL_FAILURE"
+        try:
+            globals()["execute_attempt"] = record_later_attempt
+            globals()["persist"] = lambda *_args: "REPLACEMENT_PENDING"
+            record_admission = argparse.Namespace(sweep=1, lanes=3, out=record_out, run_id="record-settlement", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=record_second, resume_oracle=None, record_usage_after=False, dry_run=False)
+            assert run(record_admission) == 2
+        finally:
+            globals()["execute_attempt"] = record_execute
+            globals()["persist"] = record_persist
+        recorded_manifest = read_json(record_out / MANIFEST_NAME)
+        assert len(recorded_manifest["settlements"]) == 1
+        admission = next(entry for entry in recorded_manifest["usage_evidence"] if entry["role"] == "pre-sweep" and entry["sweep_id"] == 1)
+        receipt = next(receipt for receipt in recorded_manifest["closure_receipts"] if receipt["sweep_id"] == 1)
+        assert admission["sha256"] == hashlib.sha256(record_second.read_bytes()).hexdigest() and json.loads(base64.b64decode(receipt["bytes_base64"]))["calendar_start"] == receipt["consumed_at"]
+        reloaded_manifest = load_manifest(record_out, DEFAULT_SCHEDULE, DEFAULT_PARAMS, "record-settlement", pin, attestation_raw)
+        post_one = evidence_raw("record-settlement-post-one", reset, 10, now - datetime.timedelta(seconds=25))
+        append_usage(reloaded_manifest, post_one, decode_usage_evidence(post_one, params), hashlib.sha256(post_one).hexdigest(), "post-sweep", 1, params)
+        write_json(record_out / MANIFEST_NAME, reloaded_manifest)
+        try:
+            globals()["derive_terminal"] = lambda *_args: ("LAUNCH_PARTIAL", {})
+            next_admission = argparse.Namespace(sweep=2, lanes=3, out=record_out, run_id="record-settlement", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=record_second, resume_oracle=None, record_usage_after=False, dry_run=False)
+            try: run(next_admission)
+            except LaunchViolation as exc: assert str(exc) == "fresh-settlement-required"
+            else: raise AssertionError("next admission reused a settlement after a recorded session")
+        finally:
+            globals()["derive_terminal"] = record_derive
+        sweep_three_out = root / "sweep-three"; sweep_three_out.mkdir()
+        shutil.copytree(root / "calibration", sweep_three_out / "calibration")
+        sweep_three_manifest = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "sweep-three", pin, attestation_raw)
+        sweep_three_manifest["calibrations"] = [json.loads(json.dumps(record_calibration))]; sweep_three_manifest["calibration_session_equivalents"] = 3
+        write_json(sweep_three_out / MANIFEST_NAME, sweep_three_manifest)
+        sweep_three_first = usage("sweep-three-settlement-first.json", 10, now - datetime.timedelta(seconds=175))
+        sweep_three_second = usage("sweep-three-settlement-second.json", 10, now - datetime.timedelta(seconds=50))
+        try:
+            sys.argv = [str(HERE / "launch-0112.py"), "--out", str(sweep_three_out), "--run-id", "sweep-three", "--window-attestation", str(attestation), "--record-settlement", "--settlement-usage-evidence", str(sweep_three_first), "--settlement-usage-evidence", str(sweep_three_second)]
+            assert main() == 0
+        finally:
+            sys.argv = saved_argv
+        sweep_three_manifest = load_manifest(sweep_three_out, DEFAULT_SCHEDULE, DEFAULT_PARAMS, "sweep-three", pin, attestation_raw)
+        post_two = evidence_raw("sweep-two-post", reset, 10, now - datetime.timedelta(seconds=25))
+        append_usage(sweep_three_manifest, post_two, decode_usage_evidence(post_two, params), hashlib.sha256(post_two).hexdigest(), "post-sweep", 2, params)
+        new_attempt(sweep_three_manifest["blocks"][str(schedule["blocks"][0]["replicate_id"])])
+        write_json(sweep_three_out / MANIFEST_NAME, sweep_three_manifest)
+        try:
+            globals()["execute_attempt"] = lambda *_args: "VOID"
+            globals()["persist"] = lambda *_args: "REPLACEMENT_PENDING"
+            sweep_three_admission = argparse.Namespace(sweep=3, lanes=3, out=sweep_three_out, run_id="sweep-three", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=sweep_three_second, resume_oracle=None, record_usage_after=False, dry_run=False)
+            assert run(sweep_three_admission) == 2
+        finally:
+            globals()["execute_attempt"] = record_execute
+            globals()["persist"] = record_persist
+        recorded_manifest = read_json(sweep_three_out / MANIFEST_NAME)
+        receipt = next(receipt for receipt in recorded_manifest["closure_receipts"] if receipt["sweep_id"] == 3)
+        payload = json.loads(base64.b64decode(receipt["bytes_base64"]))
+        assert payload["remaining_nominal_waves"] == 6 and payload["calendar_start"] == receipt["consumed_at"]
+        pending_sessions = [f"calibration-{unit}-{engine}" for unit in (1, 2) for engine in CALIBRATION_ENGINES]
+        pending_receipts = [{"path": f"pending-{index}", "sha256": "a" * 64, "engine": engine, "completed_at": (now - datetime.timedelta(seconds=300)).isoformat()} for index, engine in enumerate(CALIBRATION_ENGINES * 4)]
+        pending_base = {"schema": "iter0112-calibration-pending-v1", "run_id": "settle-self-test", "schedule_sha256": sha256(DEFAULT_SCHEDULE), "params_sha256": sha256(DEFAULT_PARAMS), "pin_sha256": pin, "window_attestation_sha256": hashlib.sha256(attestation_raw).hexdigest(), "pre_capture": entry(pre_raw), "sessions": pending_sessions, "receipts": pending_receipts, "unit": 2}
+        settle_args = argparse.Namespace(out=root / "settle", run_id="settle-self-test", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, settlement_usage_evidence=[], calibration_top_up=False)
+        originals = {name: globals()[name] for name in ("load_pending_calibration", "sum_receipts", "completed_sweep_receipts", "completed_sweep_receipt_layout", "closure_payload")}
+        try:
+            globals()["load_pending_calibration"] = lambda _out: dict(pending_base)
+            globals()["sum_receipts"] = lambda *_args, **_kwargs: {"input": 40_000_000, "output": 40_000_000, "cache_create": 40_000_000, "cache_read": 10_000_000, "total": 130_000_000}
+            for first_offset, latest_offset, expected in ((60, 0, "calibration-settlement-invalid"), (125, 0, "calibration-settlement-too-early"), (125, 0, "CALIBRATION_UNIDENTIFIABLE")):
+                settled_percent = 10 if expected != "CALIBRATION_UNIDENTIFIABLE" else 6
+                first_path = usage(f"settle-first-{expected}.json", settled_percent, now - datetime.timedelta(seconds=first_offset))
+                second_path = usage(f"settle-second-{expected}.json", settled_percent, now - datetime.timedelta(seconds=latest_offset))
+                pending_base["pre_capture"] = entry(pre_raw if expected != "CALIBRATION_UNIDENTIFIABLE" else canonical_bytes({**json.loads(pre_raw), "used_percent": 5}))
+                if expected == "calibration-settlement-too-early":
+                    pending_base["receipts"] = [{**receipt, "completed_at": (now - datetime.timedelta(seconds=100)).isoformat()} for receipt in pending_receipts]
+                else:
+                    pending_base["receipts"] = pending_receipts
+                settle_args.settlement_usage_evidence = [first_path, second_path]
+                try: run_settle_calibration(settle_args)
+                except LaunchViolation as exc: assert expected in str(exc), str(exc)
+                else: raise AssertionError(f"run_settle_calibration accepted {expected}")
+            quiet_manifest = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "quiet-self-test", pin, attestation_raw)
+            quiet_manifest["calibrations"] = [calibration]; quiet_manifest["calibration_session_equivalents"] = 3
+            quiet_usage = usage("quiet-inequality.json", 11)
+            quiet_args = argparse.Namespace(sweep=1, lanes=3, out=root / "quiet", run_id="quiet-self-test", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=quiet_usage, resume_oracle=None, record_usage_after=False, dry_run=False)
+            quiet_args.out.mkdir(); write_json(quiet_args.out / MANIFEST_NAME, {"schema": "self-test"})
+            globals()["load_pending_calibration"] = originals["load_pending_calibration"]
+            original_load_manifest = globals()["load_manifest"]
+            globals()["load_manifest"] = lambda *_args: json.loads(json.dumps(quiet_manifest))
+            try: run(quiet_args)
+            except LaunchViolation as exc: assert str(exc) == "gate-evidence-not-latest-settlement"
+            else: raise AssertionError("run() accepted non-settlement gate evidence")
+            recapture_manifest = json.loads(json.dumps(quiet_manifest))
+            gate_usage = root / "quiet-settlement.json"; gate_usage.write_bytes(settle_b_raw)
+            recapture_args = argparse.Namespace(sweep=1, lanes=3, out=root / "quiet", run_id="quiet-self-test", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=gate_usage, resume_oracle=root / "recapture-oracle.json", record_usage_after=False, dry_run=False)
+            recapture_block = recapture_manifest["blocks"][str(schedule["blocks"][0]["replicate_id"])]
+            recapture_block["attempts"] = [{"attempt_id": f"{recapture_block['replicate_id']}.a1", "replacement_of": None, "transport_state": "VOID", "unrun_suffix": [], "sessions": {"partial": {"completed_at": (now + datetime.timedelta(seconds=1)).isoformat()}}, "charged_session_equivalents": 6}]
+            globals()["load_manifest"] = lambda *_args: recapture_manifest
+            original_load_resume_oracle = globals()["load_resume_oracle"]
+            globals()["load_resume_oracle"] = lambda *_args: (b"{}", "b" * 64, 0, [])
+            try: run(recapture_args)
+            except LaunchViolation as exc: assert str(exc) == "fresh-settlement-required"
+            else: raise AssertionError("run() ignored a VOID attempt in the settlement census")
+            globals()["load_resume_oracle"] = original_load_resume_oracle
+            globals()["load_manifest"] = original_load_manifest
+            post_manifest = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "post-self-test", pin, attestation_raw)
+            post_manifest["calibrations"] = [calibration]; post_manifest["calibration_session_equivalents"] = 3
+            append_usage(post_manifest, raw, evidence, digest, "pre-sweep", 1, params)
+            post_usage = usage("post-usage.json", 20)
+            post_args = argparse.Namespace(sweep=1, lanes=3, out=root / "post", run_id="post-self-test", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=post_usage, resume_oracle=None, record_usage_after=True, dry_run=False)
+            post_args.out.mkdir(); write_json(post_args.out / MANIFEST_NAME, {"schema": "self-test"})
+            globals()["load_manifest"] = lambda *_args: post_manifest
+            globals()["completed_sweep_receipt_layout"] = lambda *_args: [("synthetic", "claude-opus-5")]
+            globals()["completed_sweep_receipts"] = lambda *_args: [{"path": "synthetic", "sha256": "a" * 64, "engine": "claude-opus-5", "completed_at": now.isoformat()}]
+            globals()["sum_receipts"] = lambda *_args, **_kwargs: {"input": 1, "output": 1, "cache_create": 1, "cache_read": 10_000_000, "total": 10_000_003}
+            globals()["closure_payload"] = lambda *_args: {"schema": "self-test", "passed": False}
+            assert run(post_args) == 2 and post_manifest["terminal"] == "CALIBRATION_DRIFT_OVER_BUDGET"
+            mix_manifest = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "post-self-test", pin, attestation_raw)
+            mix_manifest["calibrations"] = [json.loads(json.dumps(calibration))]; mix_manifest["calibration_session_equivalents"] = 3
+            mix_manifest["calibrations"][0]["tpp_chain"] = mix_manifest["calibrations"][0]["tpp_chain"][:1]
+            append_usage(mix_manifest, raw, evidence, digest, "pre-sweep", 1, params)
+            globals()["load_manifest"] = lambda *_args: mix_manifest
+            globals()["sum_receipts"] = lambda *_args, **_kwargs: {"input": 1, "output": 1, "cache_create": 1, "cache_read": 972, "total": 1000}
+            assert run(post_args) == 2 and mix_manifest["terminal"] == "CALIBRATION_UNIDENTIFIABLE"
+            assert mix_manifest["completed_sweeps"] == [{"sweep_id": 1, "pre_sha256": digest, "post_sha256": hashlib.sha256(post_usage.read_bytes()).hexdigest(), "receipts": [{"path": "synthetic", "sha256": "a" * 64, "engine": "claude-opus-5", "completed_at": now.isoformat()}], "components": {"input": 1, "output": 1, "cache_create": 1, "cache_read": 972, "total": 1000}, "draw": 1000}]
+            partial_manifest = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "partial-self-test", pin, attestation_raw)
+            partial_manifest["calibrations"] = [json.loads(json.dumps(calibration))]; partial_manifest["calibrations"][0]["tpp_chain"] = partial_manifest["calibrations"][0]["tpp_chain"][:1]; partial_manifest["calibration_session_equivalents"] = 3
+            partial_args = argparse.Namespace(sweep=1, lanes=3, out=root / "partial", run_id="partial-self-test", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=valid, resume_oracle=None, record_usage_after=False, dry_run=True)
+            partial_args.out.mkdir(); write_json(partial_args.out / MANIFEST_NAME, {"schema": "self-test"})
+            globals()["load_manifest"] = lambda *_args: partial_manifest
+            globals()["completed_sweep_receipts"] = lambda *_args: (_ for _ in ()).throw(AssertionError("partial prefix evaluated as completed"))
+            assert run(partial_args) == 0
+        finally:
+            for name, value in originals.items(): globals()[name] = value
+            if "original_load_manifest" in locals(): globals()["load_manifest"] = original_load_manifest
+            if "original_load_resume_oracle" in locals(): globals()["load_resume_oracle"] = original_load_resume_oracle
+        manifest["calibrations"][0]["tpp_chain"] = manifest["calibrations"][0]["tpp_chain"][:1]
+        manifest["created_at"] = (now - datetime.timedelta(hours=169)).isoformat()
+        assert not closure_payload(manifest, schedule, params, root, hashlib.sha256(settle_b_raw).hexdigest(), 1, now)["passed"]
+    print("SELF_TEST_OK: v4 percent schema, temporal-prefix closure and settlement replay, closure admission identities/waves/events, registered settlement plus run() lifecycle paths, drift/quiet/mix run paths, partial-prefix exemption, tpp minimum, and closure pass/refusal")
+    return
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--sweep", type=int); parser.add_argument("--lanes", type=int, default=3); parser.add_argument("--out", type=pathlib.Path); parser.add_argument("--run-id"); parser.add_argument("--schedule", type=pathlib.Path, default=DEFAULT_SCHEDULE); parser.add_argument("--params", type=pathlib.Path, default=DEFAULT_PARAMS); parser.add_argument("--window-attestation", type=pathlib.Path); parser.add_argument("--usage-evidence", type=pathlib.Path); parser.add_argument("--resume-oracle", type=pathlib.Path); parser.add_argument("--record-usage-after", action="store_true"); parser.add_argument("--dry-run", action="store_true"); parser.add_argument("--self-test", action="store_true")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--sweep", type=int); parser.add_argument("--lanes", type=int, default=3); parser.add_argument("--out", type=pathlib.Path); parser.add_argument("--run-id"); parser.add_argument("--schedule", type=pathlib.Path, default=DEFAULT_SCHEDULE); parser.add_argument("--params", type=pathlib.Path, default=DEFAULT_PARAMS); parser.add_argument("--window-attestation", type=pathlib.Path); parser.add_argument("--usage-evidence", type=pathlib.Path); parser.add_argument("--resume-oracle", type=pathlib.Path); parser.add_argument("--record-usage-after", action="store_true"); parser.add_argument("--record-settlement", action="store_true"); parser.add_argument("--dry-run", action="store_true"); parser.add_argument("--calibrate", action="store_true"); parser.add_argument("--calibration-top-up", action="store_true"); parser.add_argument("--settle-calibration", action="store_true"); parser.add_argument("--settlement-usage-evidence", type=pathlib.Path, action="append"); parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         try: self_test()
         except (AssertionError, OSError, LaunchViolation, ValueError) as exc:
             print(f"SELF_TEST: {exc}", file=sys.stderr); return 1
         return 0
-    if args.sweep is None or args.out is None or args.run_id is None or args.window_attestation is None or args.usage_evidence is None:
-        parser.error("--sweep, --out, --run-id, --window-attestation, and --usage-evidence are required unless --self-test is used")
-    try: return run(args)
+    if args.out is None or args.run_id is None or args.window_attestation is None:
+        parser.error("--out, --run-id, and --window-attestation are required unless --self-test is used")
+    try:
+        if args.calibrate:
+            if args.settle_calibration or args.usage_evidence is None:
+                parser.error("--calibrate requires --usage-evidence and cannot be combined with --settle-calibration")
+            return run_calibration(args)
+        if args.settle_calibration:
+            return run_settle_calibration(args)
+        if args.record_settlement:
+            if args.usage_evidence is not None or args.resume_oracle is not None or args.record_usage_after or args.dry_run or args.sweep is not None:
+                parser.error("--record-settlement requires exactly two --settlement-usage-evidence values and no launch flags")
+            return run_record_settlement(args)
+        if args.sweep is None or args.usage_evidence is None:
+            parser.error("--sweep and --usage-evidence are required for launch, record, or dry-run")
+        return run(args)
     except LaunchViolation as exc:
         print(f"FAIL launch-0112: {exc}", file=sys.stderr); return 3
 

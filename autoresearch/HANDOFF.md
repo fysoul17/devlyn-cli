@@ -14,7 +14,32 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-08-31 (session 17)
+## 🚦 START-HERE — state after 2026-09-02 (session 19)
+
+**iter-0112 AMENDMENT A3 RE-FROZEN — `FREEZE-0112-APP10-SOL: 9567e937`
+(2026-09-02); NEXT = LAUNCH, USER-GATED.** The operator's live `/usage`
+panel falsified the registered token-unit budget gate (percent-only
+meters; live weekly reset Sun 09-07 21:59 KST, not the dead window's
+Sep 5; "+50% promo through Aug 31" proves the weekly denominator
+moves). A3 = percent evidence v2 + fire-time differential calibration
+(tpp = floor(D/(Δpct+1)), min-tpp chain, integer mix predicates at the
+m6 973/1000 constant) + remaining-work closure check
+(VENUE_OVER_BUDGET pre-manifest / CALIBRATION_DRIFT_OVER_BUDGET) +
+manifest v4 settlement entries + the temporal-prefix class invariant
+(shared session-granularity `manifest_as_of`). Freeze lane: launchgate
+sol COUNTER adopted (fire-at-reset was wrong — the transition belongs
+INSIDE the 168 h root), one more correct terra STOP (mix-envelope
+source empty), then 7 freeze rounds (6+6+5+6+4+1 findings → r7 ZERO).
+grok 402-skip ×6 cumulative. Registered fire order: offline pins +
+quiet account → pre-percent capture → calibration batch + prefix
+attestation → settled post ×2 (≥120 s apart, ≥180 s after last
+receipt) → closure check → final fresh capture → dry-run → launch.
+Every capture is operator-authored from the /usage panel (freshness
+300 s) — the user must be present for the fire sequence. Receipts +
+panel screenshot: `~/.local/share/nx01/iter0112-reg/`. Details:
+iteration file § AMENDMENT A3.
+
+### History — state after 2026-08-31 (session 17)
 
 **iter-0110 CLOSED — TERMINAL `VENUE_REJECTED` (DECISIONS 0110.1).**
 m6 sweep 4 died 20:26 KST 08-31 to the account **WEEKLY limit** (429
