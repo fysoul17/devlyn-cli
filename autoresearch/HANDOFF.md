@@ -29,18 +29,29 @@ user-ruled opportunistic skip (balance self-resets ~3 days; retry the
 `packet-m6cap-verify.md` re-verify at the next natural touchpoint).
 **USER RULING 2026-08-31: retain the shared account (D declined) ⇒
 registered close.** ≈233 transport-clean sessions m3–m6 unscoreable;
-m6 root sticky/immutable. **NEXT = iter-0112 registration**
-([`iterations/0112-venue-tolerant-horizon-STUB.md`](iterations/0112-venue-tolerant-horizon-STUB.md)):
-venue-tolerant successor, R0 three-way — open question (a)
-budget-first (numerator measured: m6 output 3.12M tokens inside the
-dead weekly window; denominator needs an R0 instrument) is ruled on
-BEFORE any design argument. Weekly-limit enforcement is INTERMITTENT
-(X43 peer sonnet probe clean at 22:41, 2h15m after the 429s) — model
-the venue as a stochastic hazard, and read X43's overnight burst
-outcome as a passive venue probe at cold start. Standing
-coordination: X43 peer window GRANTED 23:30 08-31 → 10:00 09-01 KST —
-no `claude -p`/`codex exec` from this lane inside it. Full record: iteration file §§ Launch record m6
-+ DECISION; `launch/ADJUDICATIONS.md` 08-30/31 entries.
+m6 root sticky/immutable. **NEXT SESSION ENTRY: iter-0112 terra implementation — packet READY,
+not yet fired (user paused the lane 09-01 ~11:10 KST).**
+Registration R0+R1 COMPLETE 2026-09-01 (fable+sol; grok 402-skipped
+×3, opportunistic per user ruling — probe before use): the folded
+contract (5 clauses) + sol's six-item at-freeze parameter list live
+in [`iterations/0112-venue-tolerant-horizon-STUB.md`](iterations/0112-venue-tolerant-horizon-STUB.md)
+§§ R0/R1 records (commits `a584867` + `5412bfd`). To resume: fire
+terra as SINGLE WRITER on the packet
+`~/.local/share/nx01/iter0112-reg/packet-0112-terra.md` (standing
+terra recipe, workspace-write, output to
+`~/.local/share/nx01/iter0112-reg/terra-0112.log`, background; watch
+the wrapper's final `codex exited` line; no repo edits while terra
+runs) → fable verify (self-tests must drive `run()` end-to-end; gate
+REACHABILITY, not existence) → trio freeze on final bytes (grok if
+its balance has reset) → launch USER-GATED with the budget gate at
+fire time. Venue state 09-01: X43 peer unit COMPLETE 10:58 KST with
+ZERO 429/402 across ≈1,600 headless calls on both engines — the
+08-31 weekly-limit 429s were a transient enforcement episode; venue
+free; 0112 models it as a stochastic hazard. Receipts
+`~/.local/share/nx01/iter0112-reg/` (packet-0112-r0.md, r0-sol.log,
+r1-sol.log, packet-0112-terra.md); chronicle
+`launch/ADJUDICATIONS.md` through 09-01. m6/0110 full record:
+iteration file §§ Launch record m6 + DECISION.
 
 **iter-0111 external-diff mode authority SHIPPED (`c9faf27` +
 `bd9ff22`).** Non-verify runs now fail closed when
