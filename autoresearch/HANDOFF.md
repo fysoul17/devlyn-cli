@@ -29,29 +29,33 @@ user-ruled opportunistic skip (balance self-resets ~3 days; retry the
 `packet-m6cap-verify.md` re-verify at the next natural touchpoint).
 **USER RULING 2026-08-31: retain the shared account (D declined) ⇒
 registered close.** ≈233 transport-clean sessions m3–m6 unscoreable;
-m6 root sticky/immutable. **NEXT SESSION ENTRY: iter-0112 terra implementation — packet READY,
-not yet fired (user paused the lane 09-01 ~11:10 KST).**
-Registration R0+R1 COMPLETE 2026-09-01 (fable+sol; grok 402-skipped
-×3, opportunistic per user ruling — probe before use): the folded
-contract (5 clauses) + sol's six-item at-freeze parameter list live
-in [`iterations/0112-venue-tolerant-horizon-STUB.md`](iterations/0112-venue-tolerant-horizon-STUB.md)
-§§ R0/R1 records (commits `a584867` + `5412bfd`). To resume: fire
-terra as SINGLE WRITER on the packet
-`~/.local/share/nx01/iter0112-reg/packet-0112-terra.md` (standing
-terra recipe, workspace-write, output to
-`~/.local/share/nx01/iter0112-reg/terra-0112.log`, background; watch
-the wrapper's final `codex exited` line; no repo edits while terra
-runs) → fable verify (self-tests must drive `run()` end-to-end; gate
-REACHABILITY, not existence) → trio freeze on final bytes (grok if
-its balance has reset) → launch USER-GATED with the budget gate at
-fire time. Venue state 09-01: X43 peer unit COMPLETE 10:58 KST with
-ZERO 429/402 across ≈1,600 headless calls on both engines — the
-08-31 weekly-limit 429s were a transient enforcement episode; venue
-free; 0112 models it as a stochastic hazard. Receipts
-`~/.local/share/nx01/iter0112-reg/` (packet-0112-r0.md, r0-sol.log,
-r1-sol.log, packet-0112-terra.md); chronicle
-`launch/ADJUDICATIONS.md` through 09-01. m6/0110 full record:
-iteration file §§ Launch record m6 + DECISION.
+m6 root sticky/immutable. **iter-0112 APPARATUS FROZEN 2026-09-01 (session 18, one sitting):
+`FREEZE-0112-APP3-SOL: 159f2af5` on
+sha256(`docs/specs/iter0112/scripts.sha256`), zero findings; commit
+`2118038`. NEXT = LAUNCH, USER-GATED** with the budget gate at fire
+time (operator-authored `/usage` evidence per registered schema;
+smokes per the frozen launcher; quiet-account discipline stands).
+Full lane in one day: terra packet fired → TWO correct
+pre-implementation STOPs adjudicated fable+sol as STUB **AMENDMENT
+A1** (zero-usage ENOTFOUND conjunct falsified at the bytes → two-leg
+classifier: exact error envelope + host-origin `one.one.one.one`
+control-probe attestation, fail-toward-scoreable; `b10fa2a`) and
+**AMENDMENT A2** (allowance 30 + 48 h root age both failed mechanical
+derivation → 168 h root age, `lanes: 3` pinned fail-closed,
+lane-parallel replay batching, allowance 32 = 20 + 4 observed events
+× 3 lanes, 36-call per-call probe budget; criterion
+REGISTERED-SCHEDULER CLOSURE; `c8d8911`) → implementation → sol
+freeze-r1 REVISE 9 findings (1 CRITICAL: resume arithmetic refused
+every second oracle; 5 HIGH incl. limit-text void leg deleted, AUP
+scoreability, scorer evidence-chain gaps) → fixes → freeze-r2 REVISE
+3 (1 CRITICAL: reset-epoch off-by-one made weekly recovery
+unreachable) → fixes → freeze-r3 CLEAN. Fable verified everything
+independently at the bytes (self-tests 7/7 driven directly, 9/9
+digests, schedule.json `cmp`-identical to 0110, malformed-envelope
+refusals invoked by hand). grok 402-skipped ×5 cumulative (2 probes
+09-01). Receipts + all round packets/logs
+`~/.local/share/nx01/iter0112-reg/`. m6/0110 full record: iteration
+file §§ Launch record m6 + DECISION.
 
 **iter-0111 external-diff mode authority SHIPPED (`c9faf27` +
 `bd9ff22`).** Non-verify runs now fail closed when
