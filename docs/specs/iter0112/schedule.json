@@ -1,0 +1,7420 @@
+{
+  "block_assignments_sha256": "dc9ea3f867d6ac9be9da370ba609e38b178366f4c8ccfd96a35d43fb4b4e2833",
+  "blocks": [
+    {
+      "block_id": 1,
+      "replicate_id": "s01-b01",
+      "replicate_index": 1,
+      "sweep_id": 1,
+      "task_ids": [
+        "EQ3-MI6",
+        "EQ3-UA6",
+        "EQ3-BD2",
+        "EQ3-MI3",
+        "EQ3-UA4",
+        "EQ3-MI4",
+        "EQ3-MI7",
+        "EQ3-MI1"
+      ]
+    },
+    {
+      "block_id": 2,
+      "replicate_id": "s01-b02",
+      "replicate_index": 2,
+      "sweep_id": 1,
+      "task_ids": [
+        "EQ3-MI2",
+        "EQ3-BD7",
+        "EQ3-UA8",
+        "EQ3-BD8",
+        "EQ3-MI8",
+        "EQ3-BD5",
+        "EQ3-UA1",
+        "EQ3-AF8"
+      ]
+    },
+    {
+      "block_id": 3,
+      "replicate_id": "s01-b03",
+      "replicate_index": 3,
+      "sweep_id": 1,
+      "task_ids": [
+        "EQ3-BD4",
+        "EQ3-AF2",
+        "EQ3-AF4",
+        "EQ3-UA3",
+        "EQ3-UA7",
+        "EQ3-AF7",
+        "EQ3-AF1",
+        "EQ3-AF3"
+      ]
+    },
+    {
+      "block_id": 4,
+      "replicate_id": "s01-b04",
+      "replicate_index": 4,
+      "sweep_id": 1,
+      "task_ids": [
+        "EQ3-BD6",
+        "EQ3-BD3",
+        "EQ3-UA5",
+        "EQ3-AF6",
+        "EQ3-UA2",
+        "EQ3-MI5",
+        "EQ3-BD1",
+        "EQ3-AF5"
+      ]
+    },
+    {
+      "block_id": 1,
+      "replicate_id": "s02-b01",
+      "replicate_index": 5,
+      "sweep_id": 2,
+      "task_ids": [
+        "EQ3-UA3",
+        "EQ3-MI4",
+        "EQ3-AF3",
+        "EQ3-AF7",
+        "EQ3-UA2",
+        "EQ3-UA6",
+        "EQ3-MI8",
+        "EQ3-MI1"
+      ]
+    },
+    {
+      "block_id": 2,
+      "replicate_id": "s02-b02",
+      "replicate_index": 6,
+      "sweep_id": 2,
+      "task_ids": [
+        "EQ3-UA5",
+        "EQ3-AF8",
+        "EQ3-BD5",
+        "EQ3-MI5",
+        "EQ3-AF6",
+        "EQ3-UA7",
+        "EQ3-UA4",
+        "EQ3-BD4"
+      ]
+    },
+    {
+      "block_id": 3,
+      "replicate_id": "s02-b03",
+      "replicate_index": 7,
+      "sweep_id": 2,
+      "task_ids": [
+        "EQ3-AF4",
+        "EQ3-BD7",
+        "EQ3-BD2",
+        "EQ3-UA8",
+        "EQ3-UA1",
+        "EQ3-AF5",
+        "EQ3-MI2",
+        "EQ3-AF1"
+      ]
+    },
+    {
+      "block_id": 4,
+      "replicate_id": "s02-b04",
+      "replicate_index": 8,
+      "sweep_id": 2,
+      "task_ids": [
+        "EQ3-MI7",
+        "EQ3-MI3",
+        "EQ3-AF2",
+        "EQ3-MI6",
+        "EQ3-BD3",
+        "EQ3-BD6",
+        "EQ3-BD8",
+        "EQ3-BD1"
+      ]
+    },
+    {
+      "block_id": 1,
+      "replicate_id": "s03-b01",
+      "replicate_index": 9,
+      "sweep_id": 3,
+      "task_ids": [
+        "EQ3-AF5",
+        "EQ3-AF3",
+        "EQ3-AF2",
+        "EQ3-MI2",
+        "EQ3-MI1",
+        "EQ3-UA4",
+        "EQ3-UA2",
+        "EQ3-MI5"
+      ]
+    },
+    {
+      "block_id": 2,
+      "replicate_id": "s03-b02",
+      "replicate_index": 10,
+      "sweep_id": 3,
+      "task_ids": [
+        "EQ3-UA7",
+        "EQ3-AF6",
+        "EQ3-UA8",
+        "EQ3-BD3",
+        "EQ3-MI7",
+        "EQ3-BD1",
+        "EQ3-MI4",
+        "EQ3-AF8"
+      ]
+    },
+    {
+      "block_id": 3,
+      "replicate_id": "s03-b03",
+      "replicate_index": 11,
+      "sweep_id": 3,
+      "task_ids": [
+        "EQ3-AF7",
+        "EQ3-BD7",
+        "EQ3-BD6",
+        "EQ3-MI6",
+        "EQ3-BD8",
+        "EQ3-UA5",
+        "EQ3-UA1",
+        "EQ3-BD5"
+      ]
+    },
+    {
+      "block_id": 4,
+      "replicate_id": "s03-b04",
+      "replicate_index": 12,
+      "sweep_id": 3,
+      "task_ids": [
+        "EQ3-UA6",
+        "EQ3-BD2",
+        "EQ3-AF1",
+        "EQ3-BD4",
+        "EQ3-MI3",
+        "EQ3-MI8",
+        "EQ3-AF4",
+        "EQ3-UA3"
+      ]
+    },
+    {
+      "block_id": 1,
+      "replicate_id": "s04-b01",
+      "replicate_index": 13,
+      "sweep_id": 4,
+      "task_ids": [
+        "EQ3-UA5",
+        "EQ3-AF1",
+        "EQ3-AF7",
+        "EQ3-BD8",
+        "EQ3-UA7",
+        "EQ3-AF2",
+        "EQ3-AF5",
+        "EQ3-UA4"
+      ]
+    },
+    {
+      "block_id": 2,
+      "replicate_id": "s04-b02",
+      "replicate_index": 14,
+      "sweep_id": 4,
+      "task_ids": [
+        "EQ3-AF3",
+        "EQ3-BD1",
+        "EQ3-MI7",
+        "EQ3-AF6",
+        "EQ3-UA3",
+        "EQ3-UA1",
+        "EQ3-MI6",
+        "EQ3-MI3"
+      ]
+    },
+    {
+      "block_id": 3,
+      "replicate_id": "s04-b03",
+      "replicate_index": 15,
+      "sweep_id": 4,
+      "task_ids": [
+        "EQ3-MI4",
+        "EQ3-UA8",
+        "EQ3-UA6",
+        "EQ3-UA2",
+        "EQ3-BD7",
+        "EQ3-BD6",
+        "EQ3-BD2",
+        "EQ3-MI2"
+      ]
+    },
+    {
+      "block_id": 4,
+      "replicate_id": "s04-b04",
+      "replicate_index": 16,
+      "sweep_id": 4,
+      "task_ids": [
+        "EQ3-MI1",
+        "EQ3-BD4",
+        "EQ3-BD3",
+        "EQ3-MI5",
+        "EQ3-MI8",
+        "EQ3-AF8",
+        "EQ3-AF4",
+        "EQ3-BD5"
+      ]
+    },
+    {
+      "block_id": 1,
+      "replicate_id": "s05-b01",
+      "replicate_index": 17,
+      "sweep_id": 5,
+      "task_ids": [
+        "EQ3-UA3",
+        "EQ3-MI5",
+        "EQ3-BD4",
+        "EQ3-AF5",
+        "EQ3-UA1",
+        "EQ3-UA2",
+        "EQ3-MI2",
+        "EQ3-BD7"
+      ]
+    },
+    {
+      "block_id": 2,
+      "replicate_id": "s05-b02",
+      "replicate_index": 18,
+      "sweep_id": 5,
+      "task_ids": [
+        "EQ3-BD3",
+        "EQ3-UA5",
+        "EQ3-AF6",
+        "EQ3-MI7",
+        "EQ3-AF7",
+        "EQ3-UA4",
+        "EQ3-MI4",
+        "EQ3-MI1"
+      ]
+    },
+    {
+      "block_id": 3,
+      "replicate_id": "s05-b03",
+      "replicate_index": 19,
+      "sweep_id": 5,
+      "task_ids": [
+        "EQ3-AF2",
+        "EQ3-AF8",
+        "EQ3-BD2",
+        "EQ3-UA8",
+        "EQ3-AF4",
+        "EQ3-AF1",
+        "EQ3-MI3",
+        "EQ3-AF3"
+      ]
+    },
+    {
+      "block_id": 4,
+      "replicate_id": "s05-b04",
+      "replicate_index": 20,
+      "sweep_id": 5,
+      "task_ids": [
+        "EQ3-BD5",
+        "EQ3-BD8",
+        "EQ3-BD1",
+        "EQ3-UA7",
+        "EQ3-MI8",
+        "EQ3-UA6",
+        "EQ3-BD6",
+        "EQ3-MI6"
+      ]
+    }
+  ],
+  "engines": [
+    "claude-opus-5",
+    "claude-opus-4-8",
+    "claude-sonnet-5"
+  ],
+  "k": 8,
+  "matrix_engines": [
+    "claude-opus-5",
+    "claude-opus-4-8"
+  ],
+  "schema": "iter0110-session-horizon-schedule-v1",
+  "seed": 20260825,
+  "sessions": [
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s01-b01",
+      "replicate_index": 1,
+      "session_label": "s01-b01-claude-opus-5-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI1"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s01-b01",
+      "replicate_index": 1,
+      "session_label": "s01-b01-claude-opus-4-8-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI1"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s01-b01",
+      "replicate_index": 1,
+      "session_label": "s01-b01-claude-sonnet-5-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI1"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s01-b01",
+      "replicate_index": 1,
+      "session_label": "s01-b01-claude-opus-4-8-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI3"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s01-b01",
+      "replicate_index": 1,
+      "session_label": "s01-b01-claude-opus-5-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI3"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s01-b01",
+      "replicate_index": 1,
+      "session_label": "s01-b01-claude-sonnet-5-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI3"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s01-b02",
+      "replicate_index": 2,
+      "session_label": "s01-b02-claude-opus-5-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF8"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s01-b02",
+      "replicate_index": 2,
+      "session_label": "s01-b02-claude-opus-4-8-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF8"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s01-b02",
+      "replicate_index": 2,
+      "session_label": "s01-b02-claude-sonnet-5-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF8"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s01-b02",
+      "replicate_index": 2,
+      "session_label": "s01-b02-claude-opus-4-8-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD8"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s01-b02",
+      "replicate_index": 2,
+      "session_label": "s01-b02-claude-opus-5-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD8"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s01-b02",
+      "replicate_index": 2,
+      "session_label": "s01-b02-claude-sonnet-5-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD8"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s01-b03",
+      "replicate_index": 3,
+      "session_label": "s01-b03-claude-opus-5-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF3"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s01-b03",
+      "replicate_index": 3,
+      "session_label": "s01-b03-claude-opus-4-8-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF3"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s01-b03",
+      "replicate_index": 3,
+      "session_label": "s01-b03-claude-sonnet-5-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF3"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s01-b03",
+      "replicate_index": 3,
+      "session_label": "s01-b03-claude-opus-4-8-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA3"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s01-b03",
+      "replicate_index": 3,
+      "session_label": "s01-b03-claude-opus-5-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA3"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s01-b03",
+      "replicate_index": 3,
+      "session_label": "s01-b03-claude-sonnet-5-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA3"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s01-b04",
+      "replicate_index": 4,
+      "session_label": "s01-b04-claude-opus-5-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF5"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s01-b04",
+      "replicate_index": 4,
+      "session_label": "s01-b04-claude-opus-4-8-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF5"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s01-b04",
+      "replicate_index": 4,
+      "session_label": "s01-b04-claude-sonnet-5-fwd",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF5"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s01-b04",
+      "replicate_index": 4,
+      "session_label": "s01-b04-claude-opus-4-8-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF6"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s01-b04",
+      "replicate_index": 4,
+      "session_label": "s01-b04-claude-opus-5-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF6"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s01-b04",
+      "replicate_index": 4,
+      "session_label": "s01-b04-claude-sonnet-5-swap",
+      "sweep_id": 1,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF6"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s02-b01",
+      "replicate_index": 5,
+      "session_label": "s02-b01-claude-opus-5-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI1"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s02-b01",
+      "replicate_index": 5,
+      "session_label": "s02-b01-claude-opus-4-8-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI1"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s02-b01",
+      "replicate_index": 5,
+      "session_label": "s02-b01-claude-sonnet-5-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI1"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s02-b01",
+      "replicate_index": 5,
+      "session_label": "s02-b01-claude-opus-4-8-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF7"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s02-b01",
+      "replicate_index": 5,
+      "session_label": "s02-b01-claude-opus-5-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF7"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s02-b01",
+      "replicate_index": 5,
+      "session_label": "s02-b01-claude-sonnet-5-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF7"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s02-b02",
+      "replicate_index": 6,
+      "session_label": "s02-b02-claude-opus-5-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD4"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s02-b02",
+      "replicate_index": 6,
+      "session_label": "s02-b02-claude-opus-4-8-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD4"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s02-b02",
+      "replicate_index": 6,
+      "session_label": "s02-b02-claude-sonnet-5-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD4"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s02-b02",
+      "replicate_index": 6,
+      "session_label": "s02-b02-claude-opus-4-8-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI5"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s02-b02",
+      "replicate_index": 6,
+      "session_label": "s02-b02-claude-opus-5-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI5"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s02-b02",
+      "replicate_index": 6,
+      "session_label": "s02-b02-claude-sonnet-5-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI5"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s02-b03",
+      "replicate_index": 7,
+      "session_label": "s02-b03-claude-opus-5-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF1"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s02-b03",
+      "replicate_index": 7,
+      "session_label": "s02-b03-claude-opus-4-8-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF1"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s02-b03",
+      "replicate_index": 7,
+      "session_label": "s02-b03-claude-sonnet-5-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF1"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s02-b03",
+      "replicate_index": 7,
+      "session_label": "s02-b03-claude-opus-4-8-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA8"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s02-b03",
+      "replicate_index": 7,
+      "session_label": "s02-b03-claude-opus-5-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA8"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s02-b03",
+      "replicate_index": 7,
+      "session_label": "s02-b03-claude-sonnet-5-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA8"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s02-b04",
+      "replicate_index": 8,
+      "session_label": "s02-b04-claude-opus-5-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD1"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s02-b04",
+      "replicate_index": 8,
+      "session_label": "s02-b04-claude-opus-4-8-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD1"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s02-b04",
+      "replicate_index": 8,
+      "session_label": "s02-b04-claude-sonnet-5-fwd",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD1"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s02-b04",
+      "replicate_index": 8,
+      "session_label": "s02-b04-claude-opus-4-8-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI6"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s02-b04",
+      "replicate_index": 8,
+      "session_label": "s02-b04-claude-opus-5-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI6"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s02-b04",
+      "replicate_index": 8,
+      "session_label": "s02-b04-claude-sonnet-5-swap",
+      "sweep_id": 2,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI6"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s03-b01",
+      "replicate_index": 9,
+      "session_label": "s03-b01-claude-opus-5-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI5"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s03-b01",
+      "replicate_index": 9,
+      "session_label": "s03-b01-claude-opus-4-8-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI5"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s03-b01",
+      "replicate_index": 9,
+      "session_label": "s03-b01-claude-sonnet-5-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI5"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s03-b01",
+      "replicate_index": 9,
+      "session_label": "s03-b01-claude-opus-4-8-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI2"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s03-b01",
+      "replicate_index": 9,
+      "session_label": "s03-b01-claude-opus-5-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI2"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s03-b01",
+      "replicate_index": 9,
+      "session_label": "s03-b01-claude-sonnet-5-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI2"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s03-b02",
+      "replicate_index": 10,
+      "session_label": "s03-b02-claude-opus-5-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF8"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s03-b02",
+      "replicate_index": 10,
+      "session_label": "s03-b02-claude-opus-4-8-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF8"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s03-b02",
+      "replicate_index": 10,
+      "session_label": "s03-b02-claude-sonnet-5-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF8"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s03-b02",
+      "replicate_index": 10,
+      "session_label": "s03-b02-claude-opus-4-8-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD3"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s03-b02",
+      "replicate_index": 10,
+      "session_label": "s03-b02-claude-opus-5-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD3"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s03-b02",
+      "replicate_index": 10,
+      "session_label": "s03-b02-claude-sonnet-5-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD3"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s03-b03",
+      "replicate_index": 11,
+      "session_label": "s03-b03-claude-opus-5-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD5"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s03-b03",
+      "replicate_index": 11,
+      "session_label": "s03-b03-claude-opus-4-8-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD5"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s03-b03",
+      "replicate_index": 11,
+      "session_label": "s03-b03-claude-sonnet-5-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD5"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s03-b03",
+      "replicate_index": 11,
+      "session_label": "s03-b03-claude-opus-4-8-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI6"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s03-b03",
+      "replicate_index": 11,
+      "session_label": "s03-b03-claude-opus-5-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI6"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s03-b03",
+      "replicate_index": 11,
+      "session_label": "s03-b03-claude-sonnet-5-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI6"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s03-b04",
+      "replicate_index": 12,
+      "session_label": "s03-b04-claude-opus-5-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA3"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s03-b04",
+      "replicate_index": 12,
+      "session_label": "s03-b04-claude-opus-4-8-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA3"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s03-b04",
+      "replicate_index": 12,
+      "session_label": "s03-b04-claude-sonnet-5-fwd",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA3"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s03-b04",
+      "replicate_index": 12,
+      "session_label": "s03-b04-claude-opus-4-8-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD4"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s03-b04",
+      "replicate_index": 12,
+      "session_label": "s03-b04-claude-opus-5-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD4"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s03-b04",
+      "replicate_index": 12,
+      "session_label": "s03-b04-claude-sonnet-5-swap",
+      "sweep_id": 3,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD4"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s04-b01",
+      "replicate_index": 13,
+      "session_label": "s04-b01-claude-opus-5-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA4"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s04-b01",
+      "replicate_index": 13,
+      "session_label": "s04-b01-claude-opus-4-8-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA4"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s04-b01",
+      "replicate_index": 13,
+      "session_label": "s04-b01-claude-sonnet-5-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA4"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s04-b01",
+      "replicate_index": 13,
+      "session_label": "s04-b01-claude-opus-4-8-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD8"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s04-b01",
+      "replicate_index": 13,
+      "session_label": "s04-b01-claude-opus-5-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD8"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s04-b01",
+      "replicate_index": 13,
+      "session_label": "s04-b01-claude-sonnet-5-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD8"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s04-b02",
+      "replicate_index": 14,
+      "session_label": "s04-b02-claude-opus-5-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI3"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s04-b02",
+      "replicate_index": 14,
+      "session_label": "s04-b02-claude-opus-4-8-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI3"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s04-b02",
+      "replicate_index": 14,
+      "session_label": "s04-b02-claude-sonnet-5-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI3"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s04-b02",
+      "replicate_index": 14,
+      "session_label": "s04-b02-claude-opus-4-8-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF6"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s04-b02",
+      "replicate_index": 14,
+      "session_label": "s04-b02-claude-opus-5-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF6"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s04-b02",
+      "replicate_index": 14,
+      "session_label": "s04-b02-claude-sonnet-5-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF6"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s04-b03",
+      "replicate_index": 15,
+      "session_label": "s04-b03-claude-opus-5-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI2"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s04-b03",
+      "replicate_index": 15,
+      "session_label": "s04-b03-claude-opus-4-8-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI2"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s04-b03",
+      "replicate_index": 15,
+      "session_label": "s04-b03-claude-sonnet-5-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI2"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s04-b03",
+      "replicate_index": 15,
+      "session_label": "s04-b03-claude-opus-4-8-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA2"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s04-b03",
+      "replicate_index": 15,
+      "session_label": "s04-b03-claude-opus-5-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA2"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s04-b03",
+      "replicate_index": 15,
+      "session_label": "s04-b03-claude-sonnet-5-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA2"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s04-b04",
+      "replicate_index": 16,
+      "session_label": "s04-b04-claude-opus-5-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD5"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s04-b04",
+      "replicate_index": 16,
+      "session_label": "s04-b04-claude-opus-4-8-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD5"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s04-b04",
+      "replicate_index": 16,
+      "session_label": "s04-b04-claude-sonnet-5-fwd",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD5"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s04-b04",
+      "replicate_index": 16,
+      "session_label": "s04-b04-claude-opus-4-8-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI5"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s04-b04",
+      "replicate_index": 16,
+      "session_label": "s04-b04-claude-opus-5-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI5"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s04-b04",
+      "replicate_index": 16,
+      "session_label": "s04-b04-claude-sonnet-5-swap",
+      "sweep_id": 4,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI5"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s05-b01",
+      "replicate_index": 17,
+      "session_label": "s05-b01-claude-opus-5-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD7"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s05-b01",
+      "replicate_index": 17,
+      "session_label": "s05-b01-claude-opus-4-8-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD7"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s05-b01",
+      "replicate_index": 17,
+      "session_label": "s05-b01-claude-sonnet-5-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-BD7"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s05-b01",
+      "replicate_index": 17,
+      "session_label": "s05-b01-claude-opus-4-8-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF5"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s05-b01",
+      "replicate_index": 17,
+      "session_label": "s05-b01-claude-opus-5-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF5"
+        }
+      ]
+    },
+    {
+      "block_id": 1,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s05-b01",
+      "replicate_index": 17,
+      "session_label": "s05-b01-claude-sonnet-5-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-UA1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-BD7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-UA3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-MI5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF5"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s05-b02",
+      "replicate_index": 18,
+      "session_label": "s05-b02-claude-opus-5-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI1"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s05-b02",
+      "replicate_index": 18,
+      "session_label": "s05-b02-claude-opus-4-8-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI1"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s05-b02",
+      "replicate_index": 18,
+      "session_label": "s05-b02-claude-sonnet-5-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI1"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s05-b02",
+      "replicate_index": 18,
+      "session_label": "s05-b02-claude-opus-4-8-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI7"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s05-b02",
+      "replicate_index": 18,
+      "session_label": "s05-b02-claude-opus-5-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI7"
+        }
+      ]
+    },
+    {
+      "block_id": 2,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s05-b02",
+      "replicate_index": 18,
+      "session_label": "s05-b02-claude-sonnet-5-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF7"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-AF6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI7"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s05-b03",
+      "replicate_index": 19,
+      "session_label": "s05-b03-claude-opus-5-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF3"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s05-b03",
+      "replicate_index": 19,
+      "session_label": "s05-b03-claude-opus-4-8-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF3"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s05-b03",
+      "replicate_index": 19,
+      "session_label": "s05-b03-claude-sonnet-5-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-AF3"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s05-b03",
+      "replicate_index": 19,
+      "session_label": "s05-b03-claude-opus-4-8-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA8"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s05-b03",
+      "replicate_index": 19,
+      "session_label": "s05-b03-claude-opus-5-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA8"
+        }
+      ]
+    },
+    {
+      "block_id": 3,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s05-b03",
+      "replicate_index": 19,
+      "session_label": "s05-b03-claude-sonnet-5-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-AF4"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-AF1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-MI3"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-AF3"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-AF2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-AF8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD2"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA8"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-5",
+      "replicate_id": "s05-b04",
+      "replicate_index": 20,
+      "session_label": "s05-b04-claude-opus-5-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI6"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s05-b04",
+      "replicate_index": 20,
+      "session_label": "s05-b04-claude-opus-4-8-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI6"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "forward",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s05-b04",
+      "replicate_index": 20,
+      "session_label": "s05-b04-claude-sonnet-5-fwd",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-UA7"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-MI6"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-4-8",
+      "replicate_id": "s05-b04",
+      "replicate_index": 20,
+      "session_label": "s05-b04-claude-opus-4-8-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA7"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-opus-5",
+      "replicate_id": "s05-b04",
+      "replicate_index": 20,
+      "session_label": "s05-b04-claude-opus-5-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA7"
+        }
+      ]
+    },
+    {
+      "block_id": 4,
+      "crossover_shape": "swapped_halves",
+      "engine": "claude-sonnet-5",
+      "replicate_id": "s05-b04",
+      "replicate_index": 20,
+      "session_label": "s05-b04-claude-sonnet-5-swap",
+      "sweep_id": 5,
+      "tasks": [
+        {
+          "position_class": "EARLY",
+          "position_index": 1,
+          "slot": "t1",
+          "task_id": "EQ3-MI8"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 2,
+          "slot": "t2",
+          "task_id": "EQ3-UA6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 3,
+          "slot": "t3",
+          "task_id": "EQ3-BD6"
+        },
+        {
+          "position_class": "EARLY",
+          "position_index": 4,
+          "slot": "t4",
+          "task_id": "EQ3-MI6"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 5,
+          "slot": "t5",
+          "task_id": "EQ3-BD5"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 6,
+          "slot": "t6",
+          "task_id": "EQ3-BD8"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 7,
+          "slot": "t7",
+          "task_id": "EQ3-BD1"
+        },
+        {
+          "position_class": "LATE",
+          "position_index": 8,
+          "slot": "t8",
+          "task_id": "EQ3-UA7"
+        }
+      ]
+    }
+  ],
+  "sweeps": 5
+}
