@@ -182,6 +182,7 @@ Invocation contract when OTHER engine is Codex:
 - Invoke Codex only through the monitored wrapper path in `CODEX_MONITORED_PATH`
   resolved from `DEVLYN_SHARED_DIR`:
   `CODEX_MONITORED_ISOLATED=1 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s workspace-write -c sandbox_workspace_write.network_access=false -c model_reasoning_effort=high "<probe prompt>"`.
+  Append `-c sandbox_workspace_write.network_access=true` only when a probe's visible Verification command requires a localhost service (for example, a DB test harness); never as a default.
   Isolation keeps user config, AGENTS.md, hooks, and project rules
   from adding hidden context, tool calls, or transcript side effects.
 - Do not run `codex`, `codex exec`, `/Users/.../codex`, or a plugin-provided
