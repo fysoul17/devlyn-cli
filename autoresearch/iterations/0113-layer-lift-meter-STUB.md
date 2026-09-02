@@ -192,6 +192,10 @@ All r2 items CLOSED except F-13's top-up corner. ADOPT F-17 (unknown-token scan 
 
 First `run --smoke` (account quiet at 07:12 after the other project's devlyn pipeline finished) was REFUSED by the writer check: it scanned the whole repo tree for `pipeline.state.json` and flagged 12 archived July workspaces (`~/.local/share/nx01/iter0113-reg/writer-check-false-positives.txt`; 435 such files exist in the repo). Registered predicate corrected to the standing rule: live `claude -p`/`codex exec`/`grok -p` processes + the repo-root `.devlyn/pipeline.state.json` only, in-flight iff `phases.final_report.verdict` is null. The root state file of the abandoned 2026-08-25 run was moved to `.stale-20260903` (machine-local, gitignored). Apparatus bytes change ⇒ pins reset, sol re-freeze round required (self-tests inject the writer check, which is why the freeze rounds could not see this).
 
+### RE-FROZEN — `FREEZE-0113-SOL: FREEZE n=0` (r6 after A-9 + F-20; `freeze-r5-sol.log`, `freeze-r6-sol.log`; 07:39 KST)
+
+`registered-params.json` sha256 `227a1bc0b60e3e60db53176da272c11f9ed2410f59000dd88118404f721924e2` embedded in both scripts; normalized `apparatus_sha256` `4101a78a88337d62122f58c7f2803784e659ee7fc0451c8ae76ca70b465b60dd`; seals 8/8; self-tests 20/20 + 16/16. Supersedes the 05:29 freeze digests above.
+
 ## Not in scope
 
 Non-coding axes (intent fidelity / decomposition / collaboration) — 0070a

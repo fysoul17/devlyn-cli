@@ -1,8 +1,8 @@
 13c2969cbc559f68888e330d89b43fa9b52b83ed7b179c9de03e499584e34617  benchmark/layer-lift/README.md
 d04821686529aa391cc05cae5049b19f5052586222776a0fb2f249f26073d347  benchmark/layer-lift/panel-quick.json
 227a1bc0b60e3e60db53176da272c11f9ed2410f59000dd88118404f721924e2  benchmark/layer-lift/registered-params.json
-e364824d854f20728ed9ee17d4ad3e3faa43d4b98ec85a3090db7fb34d3564db  benchmark/layer-lift/run-lift-panel.py
-2ddd7a36aaeda6e9ea4a38603f73aec63fd41383e79617e540bd328baa013310  benchmark/layer-lift/score-lift.py
+a16cf7e87c778e9c94f91c15b2e574c2a6cf0ddf6a9b3fd7e5754e5dbfe654c1  benchmark/layer-lift/run-lift-panel.py
+e61ab720ff208a877a62ffe51241ed3a0d25cc8e59bf3fbee7628a9d2aba5613  benchmark/layer-lift/score-lift.py
 325d2f1fc73dafdbcefd3e139102b829a4bcda0b24a99d8e3a0d9d85c695b513  benchmark/ceiling/scripts/claude-isolation.py
 db9ed3832e444449263a5ca3bdeccba41d91722ef2070115107b6caf82424ca5  /Users/aipalm/.local/share/nx01/iter0102/matrix/apparatus/run-bounded.py
 80f0a12ddb6df006c4137ecbc96c557742f8bbe74b0cacf65466c3af6dcd8887  /Users/aipalm/.local/share/nx01/iter0102/freeze/candidate-manifest.json
