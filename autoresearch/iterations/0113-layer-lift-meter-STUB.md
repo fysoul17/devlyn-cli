@@ -188,6 +188,10 @@ All r2 items CLOSED except F-13's top-up corner. ADOPT F-17 (unknown-token scan 
 
 `registered-params.json` sha256 `6713f3df633c70a87d60e5cc151d9d9368d5118dadf87005497db6bcba6824ec` (embedded as `PARAMS_PIN_SHA256` in both scripts); normalized `apparatus_sha256` `a20c93f76035d0f8d17ee61fb746c1afd40a3be1ba40bbcedd89770e1ffa32f5` (sol independently recomputed both); `scripts.sha256` 8/8; self-tests 20/20 + 16/16. Panel = AF2/AF1/AF5, BD2/BD3/BD4, MI5/MI3/MI6, UA2/UA3/UA5. Next = smoke gate (EQ3-AF2 × 3 arms, M = claude-opus-5) → quick panel.
 
+### A-9 post-freeze defect at first use → RE-FREEZE (07:14 KST)
+
+First `run --smoke` (account quiet at 07:12 after the other project's devlyn pipeline finished) was REFUSED by the writer check: it scanned the whole repo tree for `pipeline.state.json` and flagged 12 archived July workspaces (`~/.local/share/nx01/iter0113-reg/writer-check-false-positives.txt`; 435 such files exist in the repo). Registered predicate corrected to the standing rule: live `claude -p`/`codex exec`/`grok -p` processes + the repo-root `.devlyn/pipeline.state.json` only, in-flight iff `phases.final_report.verdict` is null. The root state file of the abandoned 2026-08-25 run was moved to `.stale-20260903` (machine-local, gitignored). Apparatus bytes change ⇒ pins reset, sol re-freeze round required (self-tests inject the writer check, which is why the freeze rounds could not see this).
+
 ## Not in scope
 
 Non-coding axes (intent fidelity / decomposition / collaboration) — 0070a

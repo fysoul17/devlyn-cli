@@ -38,7 +38,7 @@ PARAMS_PATH = HERE / "registered-params.json"
 PANEL_PATH = HERE / "panel-quick.json"
 SCRIPTS_PATH = HERE / "scripts.sha256"
 CLAUDE_ISOLATION = REPO / "benchmark/ceiling/scripts/claude-isolation.py"
-PARAMS_PIN_SHA256 = "6713f3df633c70a87d60e5cc151d9d9368d5118dadf87005497db6bcba6824ec"
+PARAMS_PIN_SHA256 = "TBD-FREEZE"
 MODEL_RE = re.compile(r"^claude-[A-Za-z0-9][A-Za-z0-9.-]*$")
 INFRA_FAILURE = re.compile(r"http\s*429|http\s*529|rate[ -]?limit|session[ -]?limit|usage[ -]?limit|overloaded", re.IGNORECASE)
 CLASS_RE = re.compile(r"^EQ3-(AF|BD|MI|UA)[1-8]$")
@@ -366,9 +366,12 @@ def corpus_task_is_sealed(
         return False
 
 
-def real_writer_check(repo: pathlib.Path) -> tuple[bool, str]:
+def real_writer_check(
+    repo: pathlib.Path,
+    process_probe: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> tuple[bool, str]:
     try:
-        proc = subprocess.run(
+        proc = process_probe(
             ["/bin/ps", "ax", "-o", "pid=,command="],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
@@ -390,9 +393,13 @@ def real_writer_check(repo: pathlib.Path) -> tuple[bool, str]:
         command = fields[1]
         if re.search(r"(?:claude\s+-p|codex\s+exec|grok\s+-p)", command):
             active.append(line.strip())
-    state_paths = list(repo.rglob(".devlyn/pipeline.state.json"))
-    if active or state_paths:
-        return False, "live writer/state found: " + "; ".join(active + [str(p) for p in state_paths])
+    state_path = repo / ".devlyn/pipeline.state.json"
+    state_in_flight = (
+        state_path.is_file()
+        and read_object(state_path).get("phases", {}).get("final_report", {}).get("verdict") is None
+    )
+    if active or state_in_flight:
+        return False, "live writer/state found: " + "; ".join(active + ([str(state_path)] if state_in_flight else []))
     return True, "quiet"
 
 
@@ -1835,6 +1842,21 @@ def self_test() -> int:
     else:  # exercised after the registration owner embeds the final pin
         injected_preflight()
     assert preflight_calls == ["launcher", "codex", "writer"]
+    def quiet_process(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(["ps"], 0, "", "")
+    with tempfile.TemporaryDirectory(prefix="lift-writer-state-") as raw:
+        root = pathlib.Path(raw)
+        nested = root / "benchmark/ceiling/external/archive/.devlyn/pipeline.state.json"
+        nested.parent.mkdir(parents=True)
+        nested.write_bytes(canonical_json({"phases": {"final_report": {"verdict": None}}}))
+        assert real_writer_check(root, process_probe=quiet_process) == (True, "quiet")
+        root_state = root / ".devlyn/pipeline.state.json"
+        root_state.parent.mkdir()
+        root_state.write_bytes(canonical_json({"phases": {"final_report": {"verdict": None}}}))
+        okay, detail = real_writer_check(root, process_probe=quiet_process)
+        assert okay is False and str(root_state) in detail
+        root_state.write_bytes(canonical_json({"phases": {"final_report": {"verdict": "PASS"}}}))
+        assert real_writer_check(root, process_probe=quiet_process) == (True, "quiet")
     names.append("sandbox-writer-and-launcher-injection")
     with tempfile.TemporaryDirectory(prefix="lift-seal-preflight-") as raw:
         root = pathlib.Path(raw)
