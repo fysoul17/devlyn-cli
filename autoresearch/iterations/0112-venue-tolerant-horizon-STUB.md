@@ -53,3 +53,28 @@ A5 freeze-r4 closes the immutable launcher trust anchor, synchronized existing-r
 A5 freeze-r5 closes first-admission settlement self-consumption, typed calibration-S2 drift closure origins, independent 36-session attempt/epoch caps and the 252-session root cap, generation-stamped ledger recovery, nested temporal-prefix charging, original-observation restart freshness, and bracket-local Fable witnesses across retries and reset epochs.
 
 A5 freeze-r7 closes deterministic legacy pending-import starts across the ledger/unlink crash boundary, exact-once settled-commit publication across reset epochs, and existing-root recovery of committed open/settled attempts before manifest validation.
+
+## PARKED 2026-09-02 (session 21) — re-classed as an optional model-axis module of iter-0113
+
+User design review 2026-09-02 (fable, verified at the registered bytes): the
+felt opus-5 regression has not reproduced on any instrument (0100/0102/0103;
+repo-scale 0105–0109 all rejected on calibration); at S=5 the registered G0
+worst-case reachability is P(CONFIRM | large effect) = .517 for a multi-week
+root; and the venue-tolerance machinery (A1–A5) outgrew the experiment. The
+user's stated need is a fixed per-release meter for bare < solo-harness <
+pair-harness — iter-0113. 0112 stays FROZEN-CANDIDATE (A4 frozen `10d6650b…`;
+A5 candidate pin `fb21a35a…`, sol r12 REVISE 1 OPEN) and fires only if 0113
+or a banked-session diagnostic shows a large session-horizon effect.
+
+Resume recipe if un-parked (unchanged from session 20): terra fix12
+(`packet-0112-a5-fix12.md`) → sol r13 → freeze token → commit → fire after
+01:00 KST on the dedicated login, orchestrator idle during the bracket;
+helper `~/.local/share/nx01/iter0112/launch/fire-0112.sh` (NOT frozen):
+`bracket` → `cap final` → `dryrun <final.json> 1` → `launch <final.json> 1`
+(detached, pid in out-dir); later sweeps `record_after` / `record_settlement`
+/ `cap` / `dryrun` / `launch`. Window attestation:
+`~/.local/share/nx01/iter0112/launch/window-attestation.json`. Cheaper
+alternative registered as a 0113 follow-up: a separately pinned,
+apparatus-stratified diagnostic read of the ≈233 banked transport-clean
+m3–m6 sessions (outcomes never opened; allowed by 0112 R0 item 3), zero
+account consumption.

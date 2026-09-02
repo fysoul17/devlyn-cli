@@ -2,419 +2,122 @@
 
 **Read order on cold start (mandatory)**:
 1. **This file** — operating context + active iter + pair-collab protocol
-2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + **ceiling contract + ops test #17** (2026-07-06 amendment) + pair-mode policy
+2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + ceiling contract + ops test #17 + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Next: [`iterations/0112-venue-tolerant-horizon-STUB.md`](iterations/0112-venue-tolerant-horizon-STUB.md) (successor R0 pending). Most recent closed: [`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md) (TERMINAL `VENUE_REJECTED` 2026-08-31 — four roots dead to shared-account limit classes, A5 PASS ×4, design never falsified; user ruled venue retention). Older context in the iteration index + `DECISIONS.md`.
+5. Active: [`iterations/0113-layer-lift-meter-STUB.md`](iterations/0113-layer-lift-meter-STUB.md). Parked: [`iterations/0112-venue-tolerant-horizon-STUB.md`](iterations/0112-venue-tolerant-horizon-STUB.md) § PARKED. Most recent closed: 0110 (`VENUE_REJECTED`), 0111 (SHIPPED). Everything older: iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
-If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md + NORTH-STAR § Pair-mode policy — this file carries only what binds the next session (user cleanup directive 2026-07-07).
-
-Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07-14, 2026-07-20, and 2026-08-18 (user cleanup directives; prior full history recoverable from git + iteration files + DECISIONS.md).
+If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md — this file carries only what binds the next session (user cleanup directives 2026-07-07, 2026-09-02).
 
 ---
 
-## 🚦 START-HERE — state after 2026-09-02 (session 20)
+## 🚦 START-HERE — state after 2026-09-02 (session 21)
 
-**iter-0112 first live fire REFUSED honestly (`VENUE_OVER_BUDGET`, rootless)
-→ AMENDMENT A4 FROZEN + committed (`70839b9`, `FREEZE-0112-APP11-SOL:
-10d6650b…`) → AMENDMENT A5 CANDIDATE COMMITTED, NOT FROZEN (sol r12 REVISE 1
-open). NEXT = terra fix12 → sol r13 → freeze token → commit → fire AFTER
-01:00 KST (user ruling: bracket while the user sleeps so the account is
-quiet).**
+**DIRECTION CHANGE (user design review, Block 11 below): the loop's next
+product is a FIXED PER-RELEASE METER for the NORTH-STAR layer contract —
+bare (L0) < solo harness (L1) < pair harness (L2), per model, in hours —
+registered as iter-0113. iter-0112 (multi-week session-horizon root) is
+PARKED as an optional module.** Why, verified at the bytes on 2026-09-02:
+the felt opus-5 regression reproduced on no instrument (0102/0103: opus-5
+fails LESS than opus-4-8, Δ=−0.181 CI[−0.256,−0.109]; repo-scale 0105–0109
+rejected ×4 on calibration); 0112's registered worst-case reachability is
+P(CONFIRM | large effect)=.517 for a multi-week dedicated-account root; and
+the layer contract itself has NEVER been measured — the ceiling tranche has
+no L1 arm (A = `--pair-verify`, executor codex) and its 13-row corpus is
+bare-saturated, while the only discriminating corpus (sealed 0102, 32
+tasks, hidden oracles) was only ever run bare-to-bare.
 
-What happened today (details: iteration file §§ A4/A5; receipts
-`~/.local/share/nx01/iter0112-reg/` packets `packet-0112-{amend-a4,a4-terra,
-a4-fix1..3,freeze-a4{,-r2..r4},amend-a5,a5-terra,a5-fix1..12,freeze-a5{,-r2..r12}}.md`
-+ paired sol/terra logs; launch receipts
-`~/.local/share/nx01/iter0112/launch/root-20260902/`):
-- **A4 (frozen):** the user questioned the human `/usage` capture; the CLI's
-  own endpoint `GET https://api.anthropic.com/api/oauth/usage` (keychain
-  `Claude Code-credentials` bearer + `anthropic-beta: oauth-2025-04-20`)
-  returns integer weekly_all percent + `resets_at` without consuming quota
-  → pinned `usage-capture-0112.py` authors evidence (token never persisted).
-  Rules adopted: reset transition = changed canonical `reset_at` with no
-  used_percent rise (either direction); admission = fresh same-epoch capture
-  strictly later than and equal to the settlement second capture; canonical
-  `reset_at` = UTC nearest minute + 60 s (server jitter straddles the second
-  boundary — fable live finding, receipts `usage-jitter-A/B`).
-- **First fire (11:19–11:37 KST):** pre 6 % → base batch Δ=1 → top-up →
-  Δ=3 → tpp_cal 999,328 (D=3,997,313 over 6 sessions, cacheRead 0.909) →
-  gate 10+141+57=208 → `VENUE_OVER_BUDGET`. Contaminated bracket (the
-  orchestrator's own turns + the user's other sessions moved the meter) AND
-  a structural fact: S=5 needs tpp ≳ 5 M/% for a multi-week root.
-- **A5 (candidate):** launcher-owned exclusive `--calibrate-bracket`
-  (P1, Q=600 s, P2, units of 3 sessions, settlement pairs; Δ ≥ 4 target;
-  caps 36/attempt, 36/epoch, 252/root; Fable-week meter INVARIANCE as the
-  mechanical quiet witness because the calibration engines never include
-  Fable); append-only attempt ledger (legacy 6-session pending imported as
-  attempt 1 abandoned+charged); venue-derived multi-week calendar (shared
-  launcher/scorer simulator, smallest W ≤ 6 pinned at settlement, separate
-  burn/reserve ceilings as one atomic action, fresh epoch = 1 + recal charge,
-  full-session bound 927,728 × 36, bracket wall bound 7,237,524 ms);
-  abandon-on-interrupt (subtractive: no partial reconciliation; charge =
-  started units × 3; durable post-P1 epoch record so interrupted attempts
-  still count their reset transition); scorer pins the launcher digest
-  (`LAUNCHER_SHA256`) before importing the simulator. Fixture expectations:
-  tpp 2.23 M → refuse; 4.6 M → refuse; 5 M → W=5; 10 M → W=3.
-- **Venue:** the user switched the machine login to a dedicated Max-20x
-  account (itclab25) at 09:46 KST; weekly reset 2026-09-05 08:00 KST
-  (canonical `2026-09-04T23:01:00+00:00`); meter ~12 % at noon. codex hit
-  its account limit mid-lane (lifted by the user); grok 402 ×23.
+**0113 in one screen** (full registration in the STUB): three arms on the
+sealed 0102 corpus — L0 `mx-driver.py` bare, L1 `/devlyn:resolve --no-pair`
+with executor = model under test, L2 = L1 + `--pair-verify` (codex judge +
+one fix round); hidden-oracle score of the FINAL tree; Δ1 = L0−L1 fail
+(harness lift), Δ2 = L1−L2 (pair lift), task-level bootstrap CI, δ=0.15;
+efficiency legs E1/E2 vs `bare-best-of-N` (N = wall ratio, bounded at the
+registered reps); quick panel = 12 tasks (3/class nearest sonnet q_cal 1/2)
+× reps L0 4 / L1 2 / L2 2 (~hours); full = 32 (periodic; copycat arm only
+for an ops #17 claim). Predictions P-0113-1..4 stated in the STUB before
+any run (honest expectation: harness lifts, efficiency leg INEFFICIENT).
 
-Fire recipe (next session, after 01:00 KST, orchestrator idle during the
-bracket — no model calls; Monitor by pid): helper
-`~/.local/share/nx01/iter0112/launch/fire-0112.sh` (NOT frozen):
-`bracket` (runs the whole exclusive bracket; ends `CALIBRATION_SETTLED`
-with pinned W, or `CALIBRATION_BRACKET_CONTAMINATED`/`VENUE_OVER_BUDGET`/
-`CALIBRATION_UNIDENTIFIABLE`) → `cap final` → `dryrun <final.json> 1` →
-`launch <final.json> 1` (detached, `os.setsid`; log + pid in the out-dir).
-Window attestation authored: `~/.local/share/nx01/iter0112/launch/
-window-attestation.json`. Later sweeps: `record_after`, `record_settlement`,
-`cap`, `dryrun`, `launch` per the registered order.
+**R0 sol verdict (2026-09-03, `~/.local/share/nx01/iter0113-reg/r0-sol.log`,
+815 s): `REVISE a=ADOPT b=REVISE c=AMEND d=AMEND e=REVISE` + 4 unlisted —
+ALL FOLDED into the STUB (§ R0 record) after fable re-verified every byte
+claim.** Adopted: exact-set model attestation (no % tolerance), smoke-gate
+conjuncts, launcher `--model` parameter (the `sonnet` literal at
+`claude-isolation.py:309-310` is deleted), mutually exclusive decision line
+at δ=3/20 with within-class bootstrap, monotone best-of-N top-up (no
+`BOUNDED`), two-channel `f_ship`/`f_tree` (BLOCKED ⇒ 1), token efficiency
+legs (OUTPUT tokens pinned), calibrator-separation wording, exact pair ID
+under frozen `CODEX_HOME`, deletions (in-run saturation re-derivation,
+copycat, `panel.py`, P-0113-4). **One named-delta rejection**: sol's
+switch to `--spec` mode — free-form `--goal-file` stays (criterion
+PRODUCT-AS-SHIPPED INTERVENTION; the SURFACE_CLOSE `claude-sonnet-5` phase,
+`SKILL.md:262-264`, is a registered fixed product component attested
+exactly, not tolerated). Grok skipped (402 standing ruling).
 
-Session-20 gotchas (binding): seat logs ECHO other logs' `codex exited`
-lines — watch seat completion by PID, never by grepping the log; codex
-"model at capacity" is transient — `retry-sol-rN.sh` loop (3 min);
-terra STOPs on packet wording (whole-tree pin lines can never pass
-`shasum -c`; re-pin BEFORE self-tests); terra once renamed the full
-adversarial suites to `legacy_self_test` (unreachable) — grep it before
-trusting "8/8"; the orchestrator overestimates the clock — read `date`.
+**NEXT SESSION — do these one at a time, each to a committed artifact:**
+1. `git status` — if session-21 files are uncommitted, commit them as
+   `docs(autoresearch): iter-0113 layer-lift meter registration (R0 folded) + 0112 PARKED + HANDOFF compress`.
+   Re-read the STUB's fixed-elements table once before any lane.
+2. terra lane (workspace-write, xhigh): `benchmark/layer-lift/` — `panel.py`
+   (registered rule → `panel-quick.json`), `run-lift-panel.py` (L0 via
+   mx-driver; L1/L2 via the ceiling arm staging with executor `claude` and
+   `--no-pair`/`--pair-verify`; lanes 2; detached `os.setsid`; one
+   `rows.jsonl`), `score-lift.py` (Δ/E + CI + decision line + terminal
+   token; self-test on synthetic ledgers), `registered-params.json`,
+   `scripts.sha256`. FIRST verify (b): that `claude -p --model M` binds the
+   IMPLEMENT/VERIFY subagents to M — cite the bytes; if not, pin per phase.
+3. Freeze lane: sol read-only rounds until zero findings (grok on 402 →
+   skip per standing ruling); fable byte-verifies self-tests + digests.
+4. Smoke (1 task × 3 arms) on a quiet account → wall anchor + exact-ID
+   attestation → then the quick panel, detached; scorer frozen BEFORE rows
+   complete; ONE evaluation; record `LIFT-0113:` token + DECISION in the
+   iteration file; DECISIONS row; HANDOFF START-HERE.
+5. Follow-ups registered, not started: (i) same meter with M' =
+   claude-opus-4-8 → the model-checkup column; (ii) banked-session
+   diagnostic of 0110 m3–m6 (≈233 clean sessions, zero account use) as the
+   0112 go/no-go; (iii) codex-bare saturation check before any codex L0.
 
-### History — state after 2026-09-02 morning (session 19)
+Venue facts still true: machine login = dedicated Max-20x account
+(itclab25); weekly reset 2026-09-05 08:00 KST; other projects on OTHER
+accounts do not interfere — only this account must be quiet during runs.
 
+## Binding seat/lane rules (consolidated; details in the cited iters)
 
-**iter-0112 AMENDMENT A3 RE-FROZEN — `FREEZE-0112-APP10-SOL: 9567e937`
-(2026-09-02); NEXT = LAUNCH, USER-GATED.** The operator's live `/usage`
-panel falsified the registered token-unit budget gate (percent-only
-meters; live weekly reset Sun 09-07 21:59 KST, not the dead window's
-Sep 5; "+50% promo through Aug 31" proves the weekly denominator
-moves). A3 = percent evidence v2 + fire-time differential calibration
-(tpp = floor(D/(Δpct+1)), min-tpp chain, integer mix predicates at the
-m6 973/1000 constant) + remaining-work closure check
-(VENUE_OVER_BUDGET pre-manifest / CALIBRATION_DRIFT_OVER_BUDGET) +
-manifest v4 settlement entries + the temporal-prefix class invariant
-(shared session-granularity `manifest_as_of`). Freeze lane: launchgate
-sol COUNTER adopted (fire-at-reset was wrong — the transition belongs
-INSIDE the 168 h root), one more correct terra STOP (mix-envelope
-source empty), then 7 freeze rounds (6+6+5+6+4+1 findings → r7 ZERO).
-grok 402-skip ×6 cumulative. Registered fire order: offline pins +
-quiet account → pre-percent capture → calibration batch + prefix
-attestation → settled post ×2 (≥120 s apart, ≥180 s after last
-receipt) → closure check → final fresh capture → dry-run → launch.
-Every capture is operator-authored from the /usage panel (freshness
-300 s) — the user must be present for the fire sequence. Receipts +
-panel screenshot: `~/.local/share/nx01/iter0112-reg/`. Details:
-iteration file § AMENDMENT A3.
-
-### History — state after 2026-08-31 (session 17)
-
-**iter-0110 CLOSED — TERMINAL `VENUE_REJECTED` (DECISIONS 0110.1).**
-m6 sweep 4 died 20:26 KST 08-31 to the account **WEEKLY limit** (429
-"resets Sep 5 at 8am (Asia/Seoul)", all 3 lanes within 3 s → 3
-simultaneous block voids > cap 2 ⇒ sticky `REPLACEMENT_CAP_EXCEEDED`,
-mechanical; frozen scorer exit 3 ×2 byte-identical, sha `02b24315…`).
-P-0110-4 FIRED — fourth root death in four distinct shared-account
-limit classes with the serial A5 design gate PASSING all four times:
-**the design was never falsified, the venue was.** Trio verify: sol
-V1/V3/V5 CONFIRM + V2/V4 packet corrections adopted; grok 402 →
-user-ruled opportunistic skip (balance self-resets ~3 days; retry the
-`packet-m6cap-verify.md` re-verify at the next natural touchpoint).
-**USER RULING 2026-08-31: retain the shared account (D declined) ⇒
-registered close.** ≈233 transport-clean sessions m3–m6 unscoreable;
-m6 root sticky/immutable. **iter-0112 APPARATUS FROZEN 2026-09-01 (session 18, one sitting):
-`FREEZE-0112-APP3-SOL: 159f2af5` on
-sha256(`docs/specs/iter0112/scripts.sha256`), zero findings; commit
-`2118038`. NEXT = LAUNCH, USER-GATED** with the budget gate at fire
-time (operator-authored `/usage` evidence per registered schema;
-smokes per the frozen launcher; quiet-account discipline stands).
-Full lane in one day: terra packet fired → TWO correct
-pre-implementation STOPs adjudicated fable+sol as STUB **AMENDMENT
-A1** (zero-usage ENOTFOUND conjunct falsified at the bytes → two-leg
-classifier: exact error envelope + host-origin `one.one.one.one`
-control-probe attestation, fail-toward-scoreable; `b10fa2a`) and
-**AMENDMENT A2** (allowance 30 + 48 h root age both failed mechanical
-derivation → 168 h root age, `lanes: 3` pinned fail-closed,
-lane-parallel replay batching, allowance 32 = 20 + 4 observed events
-× 3 lanes, 36-call per-call probe budget; criterion
-REGISTERED-SCHEDULER CLOSURE; `c8d8911`) → implementation → sol
-freeze-r1 REVISE 9 findings (1 CRITICAL: resume arithmetic refused
-every second oracle; 5 HIGH incl. limit-text void leg deleted, AUP
-scoreability, scorer evidence-chain gaps) → fixes → freeze-r2 REVISE
-3 (1 CRITICAL: reset-epoch off-by-one made weekly recovery
-unreachable) → fixes → freeze-r3 CLEAN. Fable verified everything
-independently at the bytes (self-tests 7/7 driven directly, 9/9
-digests, schedule.json `cmp`-identical to 0110, malformed-envelope
-refusals invoked by hand). grok 402-skipped ×5 cumulative (2 probes
-09-01). Receipts + all round packets/logs
-`~/.local/share/nx01/iter0112-reg/`. m6/0110 full record: iteration
-file §§ Launch record m6 + DECISION.
-
-**iter-0111 external-diff mode authority SHIPPED (`c9faf27` +
-`bd9ff22`).** Non-verify runs now fail closed when
-`.devlyn/external-diff.patch` exists; verify-only still consumes the exact
-artifact. The named CRITICAL path and caller-specific operator remediation are
-covered by subprocess RED/GREEN evidence. Resolve run
-`rs-20260828T084352Z-8962c24cf41c` ended PASS; exact Opus 5 found no product
-blocker (three LOW advisories), exact isolated grok 4.6 returned PASS with zero
-findings. HX-2 required no code: current spec-amendment reversion and bare-PASS
-collector behavior are already correct. This maintenance lane did not change
-iter-0110; the next product action remains the USER-GATED m5 launch below.
-
-Seat gotchas (still binding): seat prompts = literal strings only
-(zsh `${var/pat/rep}` glob-group silently no-ops); watch seat
-completion via the wrapper's final `[codex-monitored] codex exited`
-line, not token strings (seats echo the packet); background waiters
-cap at 10 min — use a persistent Monitor or `run_in_background` for
-seat/terra runs. If decision D is taken, the launch recipe = the
-m4/m5 recipe (ADJUDICATIONS 08-28 10:12 entry) under a NEW
-registration on the dedicated login — the m6 recipe itself is dead
-with its root.
-
-**iter-0110 AMENDMENT 2 double-FROZEN 2026-08-26 (session 10)** — the
-registered 200,000 context-window denominator was FALSE at the bytes
-(pinned CLI reports 1,000,000); truthful 1M recorded, tautological
-fraction leg retired, absolute gate kept (later superseded by
-AMENDMENTS 3–5 → T=48,000). B′ (per-request ledger `contextWindow`
-guard) remains a REGISTERED FOLLOW-UP: choose B′ vs deleting the
-attestation plumbing. Detail: iteration file § AMENDMENT 2 +
-ADJUDICATIONS.md. Its resume recipe (pin `7e67c1cd`) is superseded by
-the m5 recipe above.
-
-**iter-0109 proximity-parity pilot CLOSED 2026-08-25 — TERMINAL
-`PROXIMITY_PARITY_REJECTED` (DECISIONS 0109.1).** Launch resumed on
-user go-ahead after the 08-23 deferral. Full lane: cross-session
-launch coordination (pyx-memory-v1 X27 window HOLD ~40 min → close
-commit + all-clear; pyx-www resolve pipeline held between phases;
-user pre-adjudicated wait-for-all-clear) → smokes 3/3 exact-ID →
-fired `pilot1-20260824T164713Z` 01:47 KST, gate self-audit 15/15
-pins → 24/24 valid rows in ~24 min (infra 0, rc=124 0, attestation
-24/24; fast wall verified authentic) → frozen finalizer stdout
-`TERMINAL`, DECISION REJECT (receipt `ecf2b587…`, scorer double-run
-byte-identical exit 2) → trio verify sol S1-S8 + grok G1-G5 PASS,
-fully convergent diagnosis: **sonnet mean 37/40 ABOVE the 3/5 bound
-+ interior 1/4; opus-5 mean EXACTLY 3/5 IN-BAND (inclusive) +
-interior 3/4 — the FIRST in-band anchor in the 0105 lineage,
-failing ONLY the matrix both-ceiling conjunct; opus-4-8 7/8 ABOVE +
-interior 2/4; both-ceiling PRESENT.** P-0109-1 falsified by a valid
-scored REJECT — fourth consecutive too-hard-side bound
-(0105/0107/0108/0109). Orchestrator exposure deviation disclosed in
-the iteration file (successor derivation isolation must weigh it).
-**SUCCESSOR DIRECTION DECIDED 2026-08-25 (user-delegated "best
-practice", fable+sol R0 convergent): PIVOT — iter-0110
-session-horizon/long-context instrument (H1-shaped, pair held
-out).** Decisive criterion PROSPECTIVE GATE-CROSSING SUFFICIENCY
-(sol, adopted over fable's knob-response reading with a named
-delta); B (fifth easing) rejected with a registered resurrection
-falsifier, C (pair-scoped band) rejected convergently — full
-decision record + open R0 design questions in
-[`iterations/0110-session-horizon-STUB.md`](iterations/0110-session-horizon-STUB.md).
-Narratives: 0109 iteration file § Execution log; receipts
-`~/.local/share/nx01/iter0109/pilot/`; direction logs
-`~/.local/share/nx01/iter0110-direction/`.
-
-**iter-0110 REGISTERED-FROZEN 2026-08-25 (same day, sitting 2).**
-Three-way registration lane complete on the STUB's open questions
-(a)-(d): R0 (sol `a=AMEND b=AMEND c=REVISE d=ADOPT` / grok `a=AMEND
-b=AMEND c=AMEND d=ADOPT`; fable flipped (a) single-invocation →
-resume-primary with a named delta) → R1 REVISE ×2, all findings
-folded (sol S1-S3: request-level attestation over the misleading
-terminal aggregate, rotation-aware resume-chain custody, G0
-correlation envelope; grok B1-B3 + M4-M7: falsifier remedy,
-compact_boundary unimplementable on the JSON envelope,
-complete-replicate resampling unit, citation fixes) → micro ×2
-CONVERGENT catch of a mixed-invocation receipt (rebound at the
-bytes: worker session `6018fb9a…` cumulative 193,126 vs
-request-deduplicated peak 43,685) → double FREEZE (sol `9f3c7a1d` +
-grok `b8e4c1a3`). The frozen cell: sealed 0102 corpus serialized
-into driver-fed resume-chain sessions (real accumulated work, no
-filler), request-level horizon attestation with registered
-thresholds, counterbalanced crossover in complete replicates +
-replicate bootstrap, decision = opus-5 vs opus-4-8 late-minus-early
-interaction ΔH, sonnet demoted to transport validator, no judge,
-pair held out. Full contract:
-[`iterations/0110-session-horizon-interference.md`](iterations/0110-session-horizon-interference.md);
-receipts `~/.local/share/nx01/iter0110-reg/`.
-**iter-0110 APPARATUS TRIO-FROZEN 2026-08-26 (session 9, one
-sitting).** Terra direct-drive lane (T-r0 → r0F/r0G → T-r1 → T-r2/r2F
-→ T-r3/r3F): resume smoke attempt 1 FAILED the registered growth
-formula → named-delta revision (first-to-first + discriminability
-precondition) → attempt 2 GATE PASS = **PRIMARY resume-chain
-CONFIRMED**; seeded-defect audit clean; G0 proof; scorer + launcher
-+ pins. Trio round 1: sol REVISE 11 (S1 — G0 evaluated only at ρ=0.5,
-ρ=0 is the true worst case → **S=4 NOT passing; re-derived S=5 = 120
-sessions / 960 attempts**; S2 → micro round → **AMENDMENT 1 double
-ADOPT**: block-crossover replicate = registered resampling unit,
-block-serial lanes) / grok FREEZE + 2 minors; all folded (T-r3/r3F)
-→ six re-freeze rounds on the launcher (sol 5+2+3+2+2 more findings,
-all adopted; grok converged with sol at round 3; round 5 ruled a
-SUBTRACTIVE redesign: serial A5 gate phase + persisted-state
-`derive_terminal`) → double FREEZE 73654c88 → fable caught a
-packaging defect at commit time that all seven seat rounds missed
-(smoke-tree pins computed with gitignored `__pycache__` artifacts
-present; one gitignored `*.log` fixture) → artifacts deleted, pins
-recomputed, zero code change → **FINAL double FREEZE on identical
-bytes: sol `FREEZE-0110-APP8-SOL: a7b8eab7` + grok
-`FREEZE-0110-APP8-GROK: a7b8eab7`.** Registered numbers, predictions P-0110-1..3, recipe:
-iteration file § Apparatus phase record; receipts
-`~/.local/share/nx01/iter0110-apparatus/` (ADJUDICATIONS.md).
-Launch history m3–m6 + terminal: START-HERE above.
-
-**iter-0108 band-rederivation pilot CLOSED 2026-08-22 — TERMINAL
-`BAND_REDERIVATION_REJECTED` (DECISIONS 0108.1).** Second same-day
-full lane: registration trio-frozen (R0 folded, R1 sol-router
-adoption over grok FREEZE, micro ×2 convergent seven-cause infra
-contract) → terra 24-run three-engine apparatus, double trio-FREEZE
-after fix round F1-F8 → launch held for the peer X24 window, then
-user-directed immediate fire 20:44 KST → smokes 3/3 exact-ID, 24/24
-valid rows in ~28 min (infra 0, rc=124 0, attestation 24/24; fast
-wall verified authentic = fast failure) → frozen scorer double-run
-byte-identical REJECT (receipt `72df7c45…`) → trio verify sol S1-S8
-+ grok G1-G5 PASS, fully convergent diagnosis: **ALL THREE engines
-mean ABOVE the 3/5 upper bound (sonnet 4/5 · opus-5 7/10 · opus-4-8
-7/8), interior below minimum (1/4 · 1/4 · 2/4), matrix both-ceiling
-present.** P-0108-1 falsified by a valid scored REJECT: the eased
-geometry (exact-distance-3 + decoy non-dominance) is STILL
-above-band for every anchor — three registrations now bound the
-repo-scale mechanism from the too-hard side (0105 sonnet, 0107
-frontier pair, 0108 all three at eased knobs). The successor was
-adjudicated and registered as iter-0109 (see above). The mx-driver
-taxonomy corners still decide at any successor's matrix derivation.
-Narratives: iteration file 0108 § Execution log; receipts
-`~/.local/share/nx01/iter0108/`.
-
-**iter-0106 Grok terminal-message carrier SHIPPED 2026-08-21
-(`59df4d3` + `15cba6c` + `3820023`, DECISIONS 0106.1).** The observed
-pyx-cloud pair blocker was the aggregate Grok transport welding narration to
-terminal PASS. The adapter now uses whole-message NDJSON; the shared parser
-binds only a unique terminal `end_turn` assistant plus an agreeing successful
-result, while a registered result-less partial stream remains TIMEOUT. Existing
-Codex envelope behavior is unchanged. Collector regression: 133 checks; full
-skill lint and all critical mirrors PASS. Fresh isolated Grok 4.6 collection
-PASS; pyx-cloud HEAD `18f4259` final verification converged mechanical PASS +
-Opus 5 PASS + Grok 4.6 PASS, deterministic merge zero findings. Root runtime
-installed with source-identical hashes. Production rollout remains correctly
-blocked on current owner payment-method attestations, not on code or harness.
-
-**iter-0105 repo-scale discovery corpus REGISTERED + trio
-DESIGN-FROZEN 2026-08-20**
-([`iterations/0105-repo-scale-discovery-corpus.md`](iterations/0105-repo-scale-discovery-corpus.md)):
-the checkup loop's first coverage module — N=32×2 EQ4 band, 0102
-discovery mechanism + repo-scale mechanical laws L-R1..R4
-(Python-only, import-graph derivation per user ruling), matrix pair
-opus-5 vs opus-4-8. **Sequencing step 2 COMPLETE 2026-08-20**:
-authoring table (32 EQ4 + 4 EQ4P rows) + `gen-repo-skeleton.py`
-trio-FROZEN (terra single-writer, r0→r2, sol+grok FREEZE tokens;
-generator digest `213594c6…`). **Step 3a COMPLETE (`0a71f66`)**: all
-NINE specs sealed pre-pilot. **Step 3b apparatus COMPLETE
-(`eeac6bc`)**: `validate-repo-task.py` (digest `f88474ca…`) +
-`score-pilot-0105.py` (`31916d00…`, registration-gap amendment)
-trio-frozen; **L-R2 distance-only FALLBACK FIRED** (module claim
-narrowed to "distance + distractor-mass discovery"; pin file
-`docs/specs/iter0105-pilot/scripts.sha256`). **Pilot R1 COMPLETE
-2026-08-21 (`426df93`+`6f073b1`+`3e2a365`)**: all four EQ4P
-prototypes trio-FROZEN (UA1 3 rounds / MI1-AF1-BD1 batch 2 rounds;
-freeze tokens ×8; trees UA1 `453093a6…` · MI1 `40b6db84…` · AF1
-`0d567197…` · BD1 `ad69e711…`) + R4 README landed. Narrative +
-adjudications (incl. the MI1/AF1 class-split ruling) in the
-iteration file § Execution log 2026-08-21; reports + round logs in
-`~/.local/share/nx01/iter0105/authoring/`.
-
-**iter-0107 frontier-anchor pilot CLOSED 2026-08-22 — TERMINAL
-`BAND_REANCHOR_REJECTED` (DECISIONS 0107.1).** Same-day full lane:
-registration trio-frozen (2 fable-adjudicated splits: ABBA
-TIME-SYMMETRY, P-0107-2 deletion EXPOSURE-MINIMALITY) → terra 16-run
-two-engine apparatus, double trio-FREEZE (sol REVISE ×4 adopted:
-lane-scorer FROZEN pin, run-id confinement, receipt-before-effect,
-driver identity) → launch held ~1h for the pyx-memory-v1 X23 window
-then fired QUIET → 16/16 valid rows (~95 min, infra 0) → frozen
-scorer REJECT (receipt `353686df…`) → trio verify PASS ×2.
-Convergent abstract diagnosis: BOTH `claude-opus-5` and
-`claude-opus-4-8` fail mean-above-upper-bound AND
-interior-below-minimum, plus a shared-task both-ceiling — all three
-gates. **The frozen EQ4P difficulty is now EVIDENCED above-band for
-sonnet (0105) AND the frontier pair (0107)** — the user hypothesis
-"frontier lands interior" was measured and falsified, per-task
-outcomes stay sealed. The evidenced RE-DERIVED-easier candidate was
-executed as iter-0108 (REJECT — see above). Narratives: iteration files
-0105/0107 § Execution log; receipts
-`~/.local/share/nx01/iter0105/pilot/` + `iter0107/pilot/`.
-
-**iter-0105 CLOSED 2026-08-21 — TERMINAL `MECHANISM_REJECTED`
-(DECISIONS 0105.1)**: sonnet pilot REJECT (mean above upper bound +
-interior < 3 + one prototype at q=1), 8/8 valid rows, trio-verified;
-prototypes/apparatus stayed frozen and were reused byte-identical by
-0107.
-
-Standing seat recipes: terra =
-`codex-monitored.sh -s workspace-write -m gpt-5.6-terra -c
-model_reasoning_effort=xhigh`; sol = same wrapper read-only,
-default model; grok = `grok -p "<prompt>" --allow read_file --allow
-grep --allow list_dir --no-memory --reasoning-effort high` —
-**grok gotcha: `-p` can WRITE files despite read-only allows; seat
-prompts must say STDOUT-only (a freeze run clobbered a receipt,
-since restored)**. Whole-tree digest pins: always `cd <task root>
-&& find . -type f -print0 | LC_ALL=C sort -z | xargs -0 shasum -a
-256 | shasum -a 256` (cwd + locale are part of the recipe).
-
-**iter-0104 model-checkup loop v1 SHIPPED 2026-08-18.** The standing
-"new model ID → one-page verdict + re-pin recommendation" loop lives in
-[`playbooks/model-checkup.md`](playbooks/model-checkup.md); closure in
-`DECISIONS.md` 0104.1 + `iterations/0104-model-checkup-loop.md`.
-
-Session operating rules (BINDING): fable = design / adjudication /
-verification / planning ONLY — token economy HARD
-(`feedback_fable_token_economy`; prior bust precedent); corpus
-authoring, apparatus builds, runbook scripting, and repetitive runs →
-terra direct-drive lane (0102-proven) or opus/sonnet; verification trio
-= fable + sol(5.6) + grok; matrix arms only on a quiet account outside
-23:00–01:00 KST; delegated file edits = ONE writer at a time + digest
-pins in seat/verify prompts (0105 registration race, 2026-08-20 — a
-"dead" resumed subagent executed late against a replacement).
-Driver seed =
-`benchmark/executor-quality/scripts/mx-driver.py` (canonical since
-batch B: structural infra taxonomy 429/529, replay-proven 45/45 on the
-0102 attempt-1 rows).
-
-**Batch B harness findings CLOSED (2026-08-18, `6bf0d2a` pushed).**
-All 6 registered product findings from the 0089–0103 lineage shipped:
-verify-merge primary fail-closed (+mechanical-skip exemption) +
-seat-attributed pair scan; shared `_shared/judge-output-parser.py`
-(registered tolerances only); archive_run per-run inventory; brace-glob
-surface grammar fail-closed at load; detached-HEAD `base_ref.branch:
-null`; canonical mx-driver seed. Terra implemented (4 rounds), trio
-verified (R0 REVISE ×3 → R1 REVISE ×2 → grok FREEZE / sol residuals
-applied). Receipts `~/.local/share/nx01/harness-batchB-20260818/`.
-**Collector terminal-verdict ruling CLOSED (`a75c2ee`)**: user ruled
-TIGHTEN — findings without a terminal verdict line now reject
-(`error: findings without terminal verdict`); 4 tracked captures flip
-via dated overrides; contract test 114 checks green.
-
-### History — state after 2026-08-18 (session 1)
-
-**Executor-quality lineage 0100→0103 CLOSED (2026-08-18).** Authority:
-`DECISIONS.md` 0102.1 / 0103.1 + `iterations/0102-*.md` / `0103-*.md`
-DECISION paragraphs. On the sealed 0102 discovery corpus (32 tasks,
-sonnet-calibrated mid-band 0.49): **opus-5 ≈ fable-5** (0102, Δ=−0.047,
-CI [−0.116,+0.016]) and **opus-5 fails materially LESS than opus-4-8**
-(0103, Δ=−0.181, CI [−0.256,−0.109]; 18 tasks better / 2 worse). The
-felt "opus-5 regression" is not reproduced by any instrument
-(0100 SATURATED, 0102, 0103). Candidates weighed for the successor:
-true repo scale (>100 files), session-horizon/long-context, pair-loop
-deference (H2), the user's live workload shape → user picked repo
-scale (see START-HERE). Operator rules now standing: never launch a
-matrix arm while other Claude sessions/headless reviews share the
-account; pre-commit freeze inventories + digest rules (0103 sol F1).
-Receipts `~/.local/share/nx01/iter0102/`, `iter0103/`.
-
-### Deep history (0037–0103) — repo is the authority
-
-Closed-iteration narratives live in `DECISIONS.md` + `iterations/<n>-*.md`
-(+ memory archive). Superseded START-HERE blocks (0094/0095/0100–0103
-registration detail) were removed from this file 2026-08-18 — recover via
-`git log -p -- autoresearch/HANDOFF.md` if ever needed.
-
----
+- fable = design / adjudication / verification / planning ONLY — token
+  economy HARD (`feedback_fable_token_economy`); corpus authoring,
+  apparatus builds, runbook scripting, repetitive runs → terra direct-drive
+  lane or opus/sonnet; verification trio = fable + sol(5.6) + grok (402 →
+  opportunistic skip, user ruling 2026-08-31); matrix arms only on a quiet
+  account outside 23:00–01:00 KST; delegated edits = ONE writer at a time +
+  digest pins in seat prompts (0105 race).
+- Seat recipes: terra = `codex-monitored.sh -s workspace-write -m
+  gpt-5.6-terra -c model_reasoning_effort=xhigh`; sol = same wrapper
+  read-only, default model; grok = `grok -p "<prompt>" --allow read_file
+  --allow grep --allow list_dir --no-memory --reasoning-effort high`
+  (STDOUT-only in the prompt — `-p` can write files). Whole-tree pins:
+  `cd <root> && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 shasum
+  -a 256 | shasum -a 256`.
+- Seat-lane gotchas (each observed ≥1×): seat prompts = literal strings
+  (zsh `${var/pat/rep}` silently no-ops); watch completion by PID / the
+  wrapper's final `codex exited` line — seat logs ECHO other logs; codex
+  "model at capacity" is transient (retry loop, 3 min); terra STOPs on
+  packet wording (re-pin BEFORE self-tests; whole-tree pin lines never pass
+  `shasum -c`); terra once renamed full suites to `legacy_self_test` — grep
+  before trusting "N/N"; background waiters cap at 10 min — use
+  `run_in_background`/Monitor; the orchestrator overestimates the clock —
+  read `date`; envelope `modelUsage` is invocation-cumulative (never a
+  zero-usage predicate); parallel Bash calls inherit cwd.
+- Launch discipline (0102/0103/0110 rules): writer check (`ps` for live
+  `claude -p`/`codex exec`/`grok -p` + `.devlyn` run_id) before any
+  bootstrap; detached long runs via `python os.setsid()`; scorer frozen +
+  pair-audited before inputs complete; ONE evaluation per registration,
+  attempts only replace infra-invalid rows on identical digests; no
+  retuning; corpus ids never in skill text; per-task outcomes sealed until
+  the scorer runs. Driver seed = `benchmark/executor-quality/scripts/mx-driver.py`.
+- Standing playbook: [`playbooks/model-checkup.md`](playbooks/model-checkup.md)
+  (0104: new model ID → recert + discovery band → one-page verdict; user
+  shorthand "모델 체크업"). 0113 becomes its harness-arm column.
 
 ## ⛔ Hard operating rules (binding)
 
@@ -524,6 +227,18 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 
 **Conflict rule**: if HANDOFF and a memory file disagree, stop before editing and ask the user.
 
+### Block 11 (2026-09-02 — design review → fixed layer-lift meter, verbatim)
+
+> Opus 4.8 보다 확실하게 Opus 5 가 많이 놓치는 느낌은 분명히 있었는데, 이걸 증명하는 방법이 지금 설계대로 하는게 맞는지 아니면 의미가 없는건지, 의도 목표 비전 북극성 등을 검토해서 다시 알려줘. 우리가 이걸 하는 이유는, 지난번 Opus 4.7 때도 굉장히 이상한 모델 튜닝이 되어서 그런가 모든 사람들이 이상하다 라고 했었고. 이후에도 이런 일이 있을지 없을지 보장을 못하기도 하고, claude 뿐 아니라 codex 등 새로운 버전이 나왔을때 이전꺼를 써야하는지, 새로운걸 써야하는지 아니면 Grok 이나 Gemini 처럼 또 다른것보다 성능이 어떻게 다른지 등을 체크하는 어떤 최소한의 체킹 머신이 필요했떤거거든.
+
+> 그러면 해당 테스트가 devlyn-cli 하네스가 없는 환경에서 돌린건지, 만약에 하네스가 있는 환경에서 측정이 달라지면 우리 하네스의 문제니까 하네스를 업그레이드 혹은 개선/수정 해야한다는 신호로도 읽힐수 있는데, 이것도 비교하게할 수 있나?
+
+> 어쨌든 우리 비전이나 의도 목표 북극성 등을 살펴보면, 우리가 하려는게, bare 보다 더 나은 하네스 그리고 pair 로 했을때 더더욱 나은 하네스를 구축하는게 목표인데, 그걸 제대로 측정하는 고정된 방법이 필요한거야. 측정기.
+
+> 그러면 가장 최소한의 토큰과 시간으로 가장 효율적으로 제대로 모델별로 측정할수 있는 측정기를 어떻게 만들어야할지 먼저 설계하고 그걸 만들어보자. 설명은 쉽고 간결하게 해줘 내가 이해하기 쉽게. … 그리고 그 계획을 5.6-sol 에게 검증시켜보고, 답변을 보고 너가 결정해봐 … 그리고 나서 새 세션에서 하나씩 완성시켜나갈수 있게 컨텍스트 이제 더이상 쓸모 없는건 지우고 업데이트된 핸드오프 문서로 준비해줘.
+
+→ Folded: iter-0113 STUB (three-arm meter on the sealed 0102 corpus; predictions stated before any run); 0112 PARKED as a module; this HANDOFF compressed (closed-iter narratives removed — recover via `git log -p -- autoresearch/HANDOFF.md`, iteration files, DECISIONS.md).
+
 ---
 
 ## 🧠 Empirical TL;DR (what is measured, one screen)
@@ -544,6 +259,8 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 | C1 Stop-hook (terminal-claim pressure) | claude route VETO-CAPABLE — 5/5 BLOCK_HONORED strict bar; HONEST BOUND: CLI caps stop-hook loop (~9) — C1 = pressure, C2 = authority; codex ROUTE-DISABLED-BY-HARNESS, omp unmeasured | `benchmark/ceiling/probes/c1-stop-parity/results/`; DECISIONS 0074.3 |
 | T1 packet calibration (seat×defect) | complementary override: catalog admits ONLY sonnet, credential ONLY terra (risk-diff 1.0 both) → routed-seat v2, validation fixtures landed | 0070a Amendment 2 + addendum 9; `benchmark/noncoding/validation/` |
 | Seat fitness (모델 × 포지션) | matrix live; 5 current cells; executor/pair-judge pins fail-closed "recert required" | `benchmark/seats/seat-matrix-2026-07-07.json` |
+| Opus line, bare, discriminating corpus | opus-5 fails LESS than opus-4-8 (Δ=−0.181, CI[−0.256,−0.109]); opus-5 ≈ fable-5; felt regression NOT reproduced by 0100/0102/0103; repo-scale band 0105–0109 REJECTED ×4; session-horizon 0110 VENUE_REJECTED, 0112 PARKED | DECISIONS 0102.1/0103.1/0105.1–0110.1; `~/.local/share/nx01/iter0102/` |
+| **Layer contract L1>L0, L2>L1 on a discriminating corpus** | **UNMEASURED** — ceiling tranche has no L1 arm and its corpus is bare-saturated; iter-0113 meter registered (STUB, R0 2026-09-02) | `iterations/0113-layer-lift-meter-STUB.md` |
 
 Working instruments: violation matrix (`run-violation-matrix.sh`), compliance cells (`run-compliance-cell.sh` + `check-compliance-cell.py`, now incl. `finish_gate_ran`), drift-bait probes (bare + resolve-framed), judge-quality bench (+codex route), frozen-VERIFY pair gates, token gauge (`scripts/skill-token-gauge.py`), **ceiling 3-arm harness** (`benchmark/ceiling/scripts/run-ceiling-tranche.sh`), **seat matrix + recert runner** (`benchmark/seats/recert-seats.sh`, fail-closed pins).
 
@@ -551,8 +268,8 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 
 ## 📍 Project state (verify before editing)
 
-- **Branch**: `main`, pushed through `a75c2ee` + this HANDOFF commit (2026-08-18). Run `git log --oneline -10`. Release/installer surface (README/bin publish commits) is USER territory, hands off.
-- **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`).
+- **Branch**: `main`, HEAD `d12a2f3` (2026-09-02, session 20). Session 21 changes (this HANDOFF, 0113 STUB, 0112 PARKED note) are committed as `docs(autoresearch): iter-0113 registration` if that commit exists; otherwise they are the uncommitted working tree — check `git status` first. Release/installer surface (README/bin publish commits) is USER territory, hands off.
+- **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (verified 2026-09-02; machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`). NOTE for 0113: the meter's L1/L2 arms stage their OWN `engines.json` with executor `claude` inside the arm worktree — the repo pin is untouched.
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 
 ### Cold-start sanity check (~30s)
@@ -594,6 +311,8 @@ If any unexpected output, do NOT proceed. Surface to user.
 
 ---
 
+---
+
 ## ⏭️ End of HANDOFF
 
-Evolution loop trajectory since re-open (2026-07-03): 0037-0039 conversational handoff + queue → 0040 cross-CLI portability → 0042-0047 instrument panel → 0048-0050 language-neutral + doctor → 0051-0057 local-backend shipped→measured→deleted → 0058-0060 violation-rate axis + engine-symmetric pair → 0061 F6 closed (AGENTS.md binding) → 0062 contract decidability (E1 shipped) → 0063 mechanical finish-gate → 0064 ceiling & seat instrument SHIPPED, pilot FAIL-pilot on efficiency → 0065 hands-free large + bounded pair-VERIFY SHIPPED → 0066 pre-VERIFY overhead SHIPPED → 0067 ceiling tranche 2 MEASURED, verdict **FAIL-pilot** (de-biased instrument, fresh django holdout: objective tie, neutral judge prefers copycat 16:3, wall 8.33×) → 0068 discriminating corpus CLOSED VALID-NEGATIVE (isolation v2 permanent) → 0070a non-coding instruments → 0071 proportional escalation SHIPPED (wall levers later valid-negative) → 0072 changed-surface closure SHIP-CREDITED then CLOSED (first 11/11 row) → **0073 attribution-complete re-measure MEASURED then CLOSED (quality 0/7 · wall 12.1× · objective 7/7 via exact-pin FS1 re-row · bottleneck ≠ IMPLEMENT — residual+VERIFY dominate, 9 rows unanimous) → 0074 terminal-claim C2 binding SHIPPED + C1 probe frozen/built/MEASURED (claude route veto-capable 5/5; CLI loop-cap honest bound — C1 pressure, C2 authority)**. Detail: DECISIONS.md + iteration files. Mission 1 not formally closed (test #15 user-gated). 압도적·독보적 is the bar; the instruments made it losable — it loses today on wall (12×) and blind quality (0/7), and for the first time the loop knows WHERE the wall goes. That honesty is the moat-in-progress.
+Evolution-loop trajectory 0037→0111 is recorded in `DECISIONS.md` and the iteration files (0064/0067 ceiling FAIL-pilots; 0073 bottleneck = residual+VERIFY; 0102/0103 opus line; 0105–0109 band rejections; 0110 venue rejected). What is measured today: the harness ties bare on objective outcome, loses blind quality on saturated rows, and runs 8–12× wall — and the layer contract (L1>L0, L2>L1) has never been measured on a discriminating corpus. iter-0113 is the instrument that makes that claim losable. 압도적·독보적 is the bar; honesty about where it loses is the moat-in-progress.
