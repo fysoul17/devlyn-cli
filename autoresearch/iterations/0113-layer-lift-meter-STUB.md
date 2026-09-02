@@ -2,7 +2,7 @@
 id: "0113-layer-lift-meter"
 title: "Layer-lift meter — one fixed instrument for L1−L0 (harness over bare) and L2−L1 (pair over solo), per model, minimal wall/tokens"
 kind: instrument
-status: REGISTERED-DRAFT 2026-09-03 (session 21) — R0 sol REVISE folded (a ADOPT / b REVISED with named delta / c d AMEND / e REVISE / 4 unlisted ADOPT); next = terra apparatus → sol freeze rounds → smoke → quick panel
+status: APPARATUS-FROZEN 2026-09-03 (session 22) — FREEZE-0113-SOL r4 after 3 REVISE rounds; next = smoke gate → quick panel (opus-5)
 depends_on: ["0102-executor-quality-discovery-corpus", "0104-model-checkup-loop", "0064-ceiling-instrument", "0073-nodeg-cell"]
 ---
 
@@ -183,6 +183,10 @@ CLOSED F-1/3/4/5/7/8/9/10/11. ADOPT F-2 (launcher inside `apparatus_sha256`), F-
 ### Freeze round 3 record (sol `freeze-r3-sol.log`, 453 s, `REVISE n=3`; fable 05:15 KST)
 
 All r2 items CLOSED except F-13's top-up corner. ADOPT F-17 (unknown-token scan covers every required cheaper-arm rep through N/M, top-ups included), **F-18** (smoke gate gains the registered wall/token-anchor conjunct: positive `wall_ms` and known positive tokens on all three rows — a pair TIMEOUT fails smoke), F-19 (P-0113-3 aggregated by task; `panel_size` = tasks). Sol's independent normalized apparatus digest before this round: `7e967c77…`.
+
+### FROZEN — `FREEZE-0113-SOL: FREEZE` (r4, `freeze-r4-sol.log`, 322 s, 2026-09-03 05:29 KST; rounds 11+5+3→0)
+
+`registered-params.json` sha256 `6713f3df633c70a87d60e5cc151d9d9368d5118dadf87005497db6bcba6824ec` (embedded as `PARAMS_PIN_SHA256` in both scripts); normalized `apparatus_sha256` `a20c93f76035d0f8d17ee61fb746c1afd40a3be1ba40bbcedd89770e1ffa32f5` (sol independently recomputed both); `scripts.sha256` 8/8; self-tests 20/20 + 16/16. Panel = AF2/AF1/AF5, BD2/BD3/BD4, MI5/MI3/MI6, UA2/UA3/UA5. Next = smoke gate (EQ3-AF2 × 3 arms, M = claude-opus-5) → quick panel.
 
 ## Not in scope
 
