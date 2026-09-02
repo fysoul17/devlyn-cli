@@ -234,8 +234,9 @@ FORBIDDEN_RISK_PROBE_CMD_RE = re.compile(
 )
 EXTERNAL_URL_RE = re.compile(r"https?://([^/\s\"']+)", re.IGNORECASE)
 RISK_PROBE_SCRIPT_RE = re.compile(
-    r'(?<![\w./-])(\.devlyn/probes/[A-Za-z0-9][A-Za-z0-9._/-]*)'
+    r'(?<![\w./-])(?:\./)?(\.devlyn/probes/[A-Za-z0-9][A-Za-z0-9._/-]*)'
 )
+RISK_PROBE_RAW_REF = ".devlyn/probes/"
 RISK_PROBE_INTEGRITY_FIX_HINT = (
     "Probe artifacts changed after PHASE 1.5. Only the orchestrator may regenerate probes: "
     "re-run probe validation and re-write state.risk_probes_digest; workers must never modify "
@@ -587,7 +588,28 @@ def referenced_risk_probe_scripts(cmd: str) -> list[str]:
     return scripts
 
 
+def unrecognized_risk_probe_reference(cmd: str) -> str | None:
+    command = cmd or ""
+    matches = list(RISK_PROBE_SCRIPT_RE.finditer(command))
+    offset = command.find(RISK_PROBE_RAW_REF)
+    while offset >= 0:
+        if not any(
+            match.start() <= offset and offset + len(RISK_PROBE_RAW_REF) <= match.end()
+            for match in matches
+        ):
+            tail = command[offset:].split(maxsplit=1)[0][:80]
+            return (
+                f"unrecognized probe script reference {tail!r}; write it as "
+                ".devlyn/probes/<file> (a ./ prefix is the only alias)"
+            )
+        offset = command.find(RISK_PROBE_RAW_REF, offset + len(RISK_PROBE_RAW_REF))
+    return None
+
+
 def validate_risk_probe_scripts(cmd: str, index: int, work: Path) -> str | None:
+    unrecognized = unrecognized_risk_probe_reference(cmd)
+    if unrecognized:
+        return f"risk-probes[{index}].cmd has {unrecognized}"
     for rel_path in referenced_risk_probe_scripts(cmd):
         path = Path(rel_path)
         if ".." in path.parts:
@@ -647,6 +669,9 @@ def risk_probes_digest(devlyn_dir: Path) -> tuple[str | None, str | None]:
         except ValueError as e:
             return (None, f"risk-probes[{index}] invalid JSON: {e}")
         cmd = probe.get("cmd") if isinstance(probe, dict) else ""
+        unrecognized = unrecognized_risk_probe_reference(cmd)
+        if unrecognized:
+            return (None, f"risk-probes[{index}].cmd has {unrecognized}")
         scripts.update(referenced_risk_probe_scripts(cmd))
 
     digest = hashlib.sha256()
@@ -2694,22 +2719,13 @@ def run_self_test() -> int:
         probes_dir = devlyn / "probes"
         probes_dir.mkdir(exist_ok=True)
         (probes_dir / "Pscript.py").write_text("print('script-ok')\n", encoding="utf-8")
-        (devlyn / "risk-probes.jsonl").write_text(json.dumps({
+        script_probe_payload = {
+            **risk_probe_payload,
             "id": "Pscript",
-            "derived_from": "probe must pass visible marker.",
             "cmd": "python3 .devlyn/probes/Pscript.py",
-            "exit_code": 0,
             "stdout_contains": ["script-ok"],
-            "stdout_not_contains": [],
-            "tags": ["shape_contract"],
-            "tag_evidence": {
-                "shape_contract": [
-                    "uses_visible_input_key_names",
-                    "asserts_visible_output_key_names",
-                    "asserts_no_unexpected_output_keys",
-                ],
-            },
-        }) + "\n")
+        }
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(script_probe_payload) + "\n")
         good_script_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
@@ -2722,10 +2738,47 @@ def run_self_test() -> int:
             print(good_script_probe.stderr, file=sys.stderr)
             return 1
 
+        mixed_script_payload = {
+            **script_probe_payload,
+            "id": "Pmixed",
+            "cmd": "python3 .devlyn/probes/Pscript.py && python3 ./.devlyn/probes/P1.py",
+        }
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(mixed_script_payload) + "\n")
+        mixed_script_probe = subprocess.run(
+            [sys.executable, script_path, "--validate-risk-probes"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if mixed_script_probe.returncode != 0:
+            print("canonical and ./-alias probe script references were rejected", file=sys.stderr)
+            print(mixed_script_probe.stderr, file=sys.stderr)
+            return 1
+        mixed_digest, mixed_digest_error = risk_probes_digest(devlyn)
+        if mixed_digest_error:
+            print(mixed_digest_error, file=sys.stderr)
+            return 1
+        (probes_dir / "Pscript.py").write_text("print('script-mutated')\n", encoding="utf-8")
+        canonical_mutated_digest, canonical_mutated_error = risk_probes_digest(devlyn)
+        (probes_dir / "Pscript.py").write_text("print('script-ok')\n", encoding="utf-8")
+        if canonical_mutated_error:
+            print(canonical_mutated_error, file=sys.stderr)
+            return 1
+        probe_script.write_text("print('probe-mutated')\n", encoding="utf-8")
+        alias_mutated_digest, alias_mutated_error = risk_probes_digest(devlyn)
+        probe_script.write_text("print('probe-ok')\n", encoding="utf-8")
+        if alias_mutated_error:
+            print(alias_mutated_error, file=sys.stderr)
+            return 1
+        if len({mixed_digest, canonical_mutated_digest, alias_mutated_digest}) != 3:
+            print("probe digest did not change for both canonical and ./-alias scripts", file=sys.stderr)
+            return 1
+
         (devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "Pmissing",
             "derived_from": "probe must pass visible marker.",
-            "cmd": "python3 .devlyn/probes/missing.py",
+            "cmd": "python3 ./.devlyn/probes/missing.py",
             "exit_code": 0,
         }) + "\n")
         missing_script_probe = subprocess.run(
@@ -2757,6 +2810,45 @@ def run_self_test() -> int:
             print("missing script digest mode had the wrong error", file=sys.stderr)
             print(missing_script_digest.stderr, file=sys.stderr)
             return 1
+
+        for bad_form in (
+            "../.devlyn/probes/Pscript.py",
+            "/tmp/.devlyn/probes/Pscript.py",
+            "$PWD/.devlyn/probes/Pscript.py",
+            "././.devlyn/probes/Pscript.py",
+        ):
+            (devlyn / "risk-probes.jsonl").write_text(json.dumps({
+                "id": "Pbadref",
+                "derived_from": "probe must pass visible marker.",
+                "cmd": f"python3 {bad_form}",
+                "exit_code": 0,
+            }) + "\n")
+            bad_ref_probe = subprocess.run(
+                [sys.executable, script_path, "--validate-risk-probes"],
+                cwd=work,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            bad_ref_digest = subprocess.run(
+                [sys.executable, script_path, "--print-risk-probes-digest"],
+                cwd=work,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            unrecognized = unrecognized_risk_probe_reference(f"python3 {bad_form}")
+            expected_error = f"risk-probes[0].cmd has {unrecognized}"
+            if (
+                bad_ref_probe.returncode == 0
+                or expected_error not in bad_ref_probe.stderr
+                or bad_ref_digest.returncode == 0
+                or expected_error not in bad_ref_digest.stderr
+            ):
+                print(f"bad probe script reference was not rejected: {bad_form}", file=sys.stderr)
+                print(bad_ref_probe.stderr, file=sys.stderr)
+                print(bad_ref_digest.stderr, file=sys.stderr)
+                return 1
 
         (probes_dir / "Phidden.py").write_text("print('benchmark/auto-resolve/fixtures')\n", encoding="utf-8")
         (devlyn / "risk-probes.jsonl").write_text(json.dumps({
