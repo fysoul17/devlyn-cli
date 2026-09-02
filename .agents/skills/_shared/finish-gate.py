@@ -277,13 +277,11 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
         return 0
 
     findings: list[dict] = []
-    failed = False
     reverted = 0
     revert_failed = 0
     for seq, path in enumerate(offenders, start=1):
         ok, detail, existed_at_base = revert_offender(work, base_sha, path)
         status = "reverted" if ok else "revert-failed"
-        failed = failed or not ok
         if ok:
             reverted += 1
         else:
@@ -305,7 +303,10 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
             ),
         ))
     write_findings(devlyn_dir, findings)
-    exit_code = 2 if failed else 0
+    # Exit 0 let a real run treat reverted orchestrator commits as a clean pass.
+    # Any offender is therefore unclean even when every automatic revert succeeds;
+    # the caller maps exit 1/2 to BLOCKED:finish-gate-unclean.
+    exit_code = 2
     write_summary(devlyn_dir, {
         "mode": state.get("mode"),
         "checked": len(checked),
@@ -386,25 +387,25 @@ def self_test() -> int:
 
         work, devlyn, _base = make_fixture(root, "tracked-mutation")
         write_text(work / "notes.txt", "polluted\n")
-        assert checked_run_gate(work, devlyn) == 0
+        assert checked_run_gate(work, devlyn) == 2
         assert (work / "notes.txt").read_text(encoding="utf-8") == "base notes\n"
         findings = read_findings(devlyn)
         assert findings[0]["rule_id"] == "scope.finish-unaudited-file"
         assert findings[0]["status"] == "reverted"
         assert_summary(devlyn, {
             "mode": "full", "checked": 1, "offenders": 1,
-            "reverted": 1, "revert_failed": 0, "exit": 0,
+            "reverted": 1, "revert_failed": 0, "exit": 2,
         })
 
         work, devlyn, _base = make_fixture(root, "added-file")
         write_text(work / "runtime.txt", "late\n")
         git_check(work, "add", "runtime.txt")
-        assert checked_run_gate(work, devlyn) == 0
+        assert checked_run_gate(work, devlyn) == 2
         assert not (work / "runtime.txt").exists()
         assert "runtime.txt" not in git_check(work, "diff", "--name-only", _base).splitlines()
         assert_summary(devlyn, {
             "mode": "full", "checked": 1, "offenders": 1,
-            "reverted": 1, "revert_failed": 0, "exit": 0,
+            "reverted": 1, "revert_failed": 0, "exit": 2,
         })
 
         work, devlyn, _base = make_fixture(root, "devlyn-owned-tracked-mutation")
@@ -414,7 +415,7 @@ def self_test() -> int:
         git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "track devlyn state")
         write_text(archived, "mutated devlyn state\n")
         write_text(work / "notes.txt", "polluted\n")
-        assert checked_run_gate(work, devlyn) == 0
+        assert checked_run_gate(work, devlyn) == 2
         assert archived.read_text(encoding="utf-8") == "mutated devlyn state\n"
         assert (work / "notes.txt").read_text(encoding="utf-8") == "base notes\n"
         findings = read_findings(devlyn)
@@ -422,7 +423,7 @@ def self_test() -> int:
         assert findings[0]["status"] == "reverted"
         assert_summary(devlyn, {
             "mode": "full", "checked": 1, "offenders": 1,
-            "reverted": 1, "revert_failed": 0, "exit": 0,
+            "reverted": 1, "revert_failed": 0, "exit": 2,
         })
 
         work, devlyn, base = make_fixture(root, "cleanup-window")
@@ -469,12 +470,12 @@ def self_test() -> int:
 
         work, devlyn, _base = make_fixture(root, "deleted-file")
         (work / "notes.txt").unlink()
-        assert checked_run_gate(work, devlyn) == 0
+        assert checked_run_gate(work, devlyn) == 2
         assert (work / "notes.txt").read_text(encoding="utf-8") == "base notes\n"
         assert read_findings(devlyn)[0]["status"] == "reverted"
         assert_summary(devlyn, {
             "mode": "full", "checked": 1, "offenders": 1,
-            "reverted": 1, "revert_failed": 0, "exit": 0,
+            "reverted": 1, "revert_failed": 0, "exit": 2,
         })
 
         work, devlyn, _base = make_fixture(root, "git-diff-failure")

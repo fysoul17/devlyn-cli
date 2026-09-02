@@ -356,7 +356,7 @@ State write: `phases.final_report.started_at` at the top of this phase.
 
 1. Kill any dev server PHASE 3 left running.
 
-2. **FINISH GATE** — run `python3 "$DEVLYN_SHARED_DIR/finish-gate.py"`; branch only on exit code plus `.devlyn/finish-gate.findings.jsonl` existence: 0 without the file → clean; 0 with it → terminal verdict floors at `PASS_WITH_ISSUES` (report lists the reverted paths); 1 or 2 → `BLOCKED:finish-gate-unclean`.
+2. **FINISH GATE** — run `python3 "$DEVLYN_SHARED_DIR/finish-gate.py"`; branch only on exit code: 0 → clean; 1 or 2 → `BLOCKED:finish-gate-unclean`, and report the `.devlyn/finish-gate.findings.jsonl` listing, including reverted paths. Offenders exit 2 even when every revert succeeded — a silent revert must never ride an exit-0 pass.
 
 3. **Terminal verdict** — derive from `state.phases.{plan, implement, surface_close, build_gate, cleanup, verify}.verdict` per the precedence rules in `references/state-schema.md#terminal-verdict`. Verify-only mode short-circuits to `state.phases.verify.verdict`.
 

@@ -122,7 +122,7 @@ Precedence:
 
 1. finish-gate exit 1 or 2 → `BLOCKED:finish-gate-unclean`; `phases.<any>.verdict == "BLOCKED"` → terminal `BLOCKED:<reason>`.
 2. `phases.verify.verdict == "NEEDS_WORK"` after fix-loop exhaustion → terminal `NEEDS_WORK`.
-3. `phases.verify.verdict == "PASS_WITH_ISSUES"` or finish-gate findings file present → terminal `PASS_WITH_ISSUES`.
+3. `phases.verify.verdict == "PASS_WITH_ISSUES"` → terminal `PASS_WITH_ISSUES`; any finish-gate offender → `BLOCKED:finish-gate-unclean` under precedence 1.
 4. `phases.verify.verdict == "PASS"` → terminal `PASS`.
 5. Verify-only mode: terminal = `phases.verify.verdict` directly (PHASE 1-4 are skipped).
 
