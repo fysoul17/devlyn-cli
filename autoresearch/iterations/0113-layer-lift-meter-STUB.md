@@ -196,6 +196,10 @@ First `run --smoke` (account quiet at 07:12 after the other project's devlyn pip
 
 `registered-params.json` sha256 `227a1bc0b60e3e60db53176da272c11f9ed2410f59000dd88118404f721924e2` embedded in both scripts; normalized `apparatus_sha256` `4101a78a88337d62122f58c7f2803784e659ee7fc0451c8ae76ca70b465b60dd`; seals 8/8; self-tests 20/20 + 16/16. Supersedes the 05:29 freeze digests above.
 
+### A-10 binary pin independent of PATH (08:10 KST) → re-freeze
+
+Second smoke attempt refused `Claude binary path/digest mismatch`: the CLI auto-updated 2.1.258 → 2.1.259 between freeze and launch. Registered fix (0102 `mx-driver.py` PIN precedent): the registered binary is copied to `~/.local/share/nx01/pins/claude-2.1.258-iter0113/claude` (sha unchanged) and every arm launches THAT path — L0 directly, L1/L2 via the launcher's explicit-binary mechanism — so PATH drift (auto-update mid-panel) cannot change the measured binary; the PATH comparison is deleted. The (b) binding evidence stays on 2.1.258 exactly.
+
 ## Not in scope
 
 Non-coding axes (intent fidelity / decomposition / collaboration) — 0070a
