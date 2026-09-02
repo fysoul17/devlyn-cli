@@ -1,0 +1,1 @@
+{"calibrator_sha256":"6fa1b4bc9ed708e64bc4ab41e579a0a3485c6cccedc8b4a44b008cb3013f0d18","rule":"per class, 3 ids minimizing exact Fraction abs(q_cal - 1/2); ties lexical id","tasks":{"AF":["EQ3-AF2","EQ3-AF1","EQ3-AF5"],"BD":["EQ3-BD2","EQ3-BD3","EQ3-BD4"],"MI":["EQ3-MI5","EQ3-MI3","EQ3-MI6"],"UA":["EQ3-UA2","EQ3-UA3","EQ3-UA5"]}}

@@ -202,6 +202,7 @@ def call_sonnet(
     try:
         result = launch_claude(
             mode="judge",
+            model="sonnet",
             home=home,
             codex_home=home / "codex",
             workdir=scratch_dir,

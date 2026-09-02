@@ -378,6 +378,7 @@ def execute(args: argparse.Namespace) -> tuple[dict[str, Any], Path]:
         prompt_path.write_text(prompt, encoding="utf-8")
         command = [
             sys.executable, str(CLAUDE_ISOLATION), "launch", "--mode", "arm",
+            "--model", "sonnet",
             "--home", str(home), "--codex-home", str(prepared_codex_home),
             "--workdir", str(workspace), "--prompt-file", str(prompt_path),
             "--debug-file", str(artifact_dir / "claude-debug.log"),

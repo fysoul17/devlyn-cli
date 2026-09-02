@@ -367,6 +367,7 @@ def execute(args: argparse.Namespace) -> tuple[dict[str, Any], Path]:
             debug_path = private_dir / "debug.log"
             command = [
                 sys.executable, str(CLAUDE_ISOLATION), "launch", "--mode", "arm",
+                "--model", "sonnet",
                 "--home", str(home), "--codex-home", str(prepared_codex_home),
                 "--workdir", str(workspace), "--prompt-file", str(private_prompt_path),
                 "--debug-file", str(debug_path),

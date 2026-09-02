@@ -129,6 +129,7 @@ run_canary() {
   fi
   if ! python3 "$ISOLATION" launch \
     --mode "$launch_mode" \
+    --model sonnet \
     --home "$home" \
     --codex-home "$codex_home" \
     --workdir "$WORKTREE" \

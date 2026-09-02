@@ -363,7 +363,7 @@ printf 'Persistent private instruction unique to this isolation selftest.\n' > "
 printf 'clean probe\n' > "$PURITY_PROMPT"
 CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TEST_CLAUDE_CREDENTIALS" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" \
   python3 "$SCRIPT_DIR/claude-isolation.py" launch \
-    --mode arm --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
+    --mode arm --model sonnet --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
     --workdir "$PURITY_WORK" --prompt-file "$PURITY_PROMPT" \
     --metadata-out "$TMP_DIR/purity-clean.json" --user-memory-file "$PURITY_MEMORY" \
     > "$TMP_DIR/purity-clean.stdout" 2> "$TMP_DIR/purity-clean.stderr"
@@ -373,7 +373,7 @@ test ! -e "$PURITY_HOME/.claude/.credentials.json"
 printf 'emit-user-memory-leak\n' > "$PURITY_PROMPT"
 if CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TEST_CLAUDE_CREDENTIALS" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" \
   python3 "$SCRIPT_DIR/claude-isolation.py" launch \
-    --mode arm --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
+    --mode arm --model sonnet --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
     --workdir "$PURITY_WORK" --prompt-file "$PURITY_PROMPT" \
     --metadata-out "$TMP_DIR/purity-leak.json" --user-memory-file "$PURITY_MEMORY" \
     > "$TMP_DIR/purity-leak.stdout" 2> "$TMP_DIR/purity-leak.stderr"; then
@@ -386,7 +386,7 @@ test ! -e "$PURITY_HOME/.claude/.credentials.json"
 printf 'emit-wrong-model\n' > "$PURITY_PROMPT"
 if CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TEST_CLAUDE_CREDENTIALS" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" \
   python3 "$SCRIPT_DIR/claude-isolation.py" launch \
-    --mode arm --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
+    --mode arm --model sonnet --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
     --workdir "$PURITY_WORK" --prompt-file "$PURITY_PROMPT" \
     --metadata-out "$TMP_DIR/purity-wrong-model.json" --user-memory-file "$PURITY_MEMORY" \
     > "$TMP_DIR/purity-wrong-model.stdout" 2> "$TMP_DIR/purity-wrong-model.stderr"; then
@@ -398,7 +398,7 @@ test ! -e "$PURITY_HOME/.claude/.credentials.json"
 
 if CEILING_TEST_AUTH_JSON="$TEST_AUTH" CEILING_TEST_CLAUDE_CREDENTIALS="$TMP_DIR/missing-credentials.json" CEILING_TEST_CLAUDE_BIN="$TEST_CLAUDE_BIN" CEILING_TEST_CODEX_BIN="$FAKEBIN/codex" \
   python3 "$SCRIPT_DIR/claude-isolation.py" launch \
-    --mode arm --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
+    --mode arm --model sonnet --home "$PURITY_HOME" --codex-home "$PURITY_CODEX_HOME" \
     --workdir "$PURITY_WORK" --prompt-file "$PURITY_PROMPT" \
     --metadata-out "$TMP_DIR/purity-auth-fail.json" --user-memory-file "$PURITY_MEMORY" \
     > "$TMP_DIR/purity-auth-fail.stdout" 2> "$TMP_DIR/purity-auth-fail.stderr"; then

@@ -601,6 +601,8 @@ def run_sonnet(
         "launch",
         "--mode",
         "arm",
+        "--model",
+        "sonnet",
         "--home",
         str(home),
         "--codex-home",
@@ -1829,7 +1831,7 @@ def self_test() -> int:
         unknown_cell_failed_closed = True
     expect(unknown_cell_failed_closed, "unknown --cell fails closed")
     restricted_command = imported_claude_isolation().command_for(
-        "arm", Path("/direct/claude"), "prompt", None, RESTRICTED_TOOLS_CSV
+        "arm", Path("/direct/claude"), "prompt", None, "sonnet", RESTRICTED_TOOLS_CSV
     )
     expect(
         restricted_command[-2:] == ["--tools", RESTRICTED_TOOLS_CSV],

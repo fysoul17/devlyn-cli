@@ -134,7 +134,7 @@ def launch_session(
     prompt: str,
 ) -> int:
     command = isolation.command_for(
-        "arm", claude_binary, prompt, scratch / "claude-debug.log"
+        "arm", claude_binary, prompt, scratch / "claude-debug.log", "sonnet"
     )
     bounded = ["python3", str(RUN_BOUNDED), "600", "--", *command]
     with (scratch / "claude.stdout").open("wb") as out, (

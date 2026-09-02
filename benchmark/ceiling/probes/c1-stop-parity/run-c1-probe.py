@@ -451,7 +451,7 @@ def make_arm_command(
     context: LiveContext, prompt: str, debug_file: pathlib.Path
 ) -> list[str]:
     command = context.isolation.command_for(
-        "arm", context.claude_binary, prompt, debug_file
+        "arm", context.claude_binary, prompt, debug_file, "sonnet"
     )
     output_index = command.index("--output-format") + 1
     if command[output_index] != "json":

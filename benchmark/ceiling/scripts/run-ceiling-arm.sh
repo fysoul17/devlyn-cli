@@ -565,6 +565,7 @@ run_with_timeout() {
         printf '%s' "$prompt" > "$RESULT_DIR/claude-prompt.txt"
         exec python3 "$CLAUDE_ISOLATION" launch \
           --mode arm \
+          --model sonnet \
           --home "$CLAUDE_HOME_A" \
           --codex-home "$CODEX_HOME_TERRA" \
           --workdir "$worktree" \

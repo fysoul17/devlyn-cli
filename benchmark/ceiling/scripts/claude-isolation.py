@@ -52,6 +52,15 @@ def sha256_file(path: Path) -> str:
     return sha256_bytes(path.read_bytes())
 
 
+def runtime_model_matches(requested: str, runtime: object) -> bool:
+    rendered = str(runtime)
+    if requested == "sonnet":
+        return "sonnet" in rendered.casefold()
+    if requested.startswith("claude-"):
+        return rendered == requested
+    return False
+
+
 def resolve_direct_binary(name: str, explicit: str | None = None) -> Path:
     candidates = [Path(explicit)] if explicit else [
         Path(part) / name for part in os.environ.get("PATH", "").split(os.pathsep) if part
@@ -285,6 +294,7 @@ def command_for(
     claude_binary: Path,
     prompt: str | None,
     debug_file: Path | None,
+    model: str | None,
     tools_csv: str | None = None,
 ) -> list[str]:
     if tools_csv is not None and (mode != "arm" or not tools_csv):
@@ -295,6 +305,8 @@ def command_for(
         return ["/bin/zsh", "-lc", "printf isolation-ok"]
     if prompt is None:
         raise IsolationError(f"{mode} requires a prompt")
+    if mode in {"arm", "judge", "canary-a", "canary-judge"} and not model:
+        raise IsolationError(f"{mode} requires --model")
     command = [str(claude_binary), "-p", prompt]
     if mode in {"arm", "canary-a"}:
         command.extend(
@@ -308,7 +320,7 @@ def command_for(
                 "--mcp-config",
                 '{"mcpServers":{}}',
                 "--model",
-                "sonnet",
+                model,
                 "--output-format",
                 "json",
             ]
@@ -319,7 +331,7 @@ def command_for(
         command.extend(
             [
                 "--model",
-                "sonnet",
+                model,
                 "--strict-mcp-config",
                 "--mcp-config",
                 '{"mcpServers":{}}',
@@ -347,6 +359,7 @@ def write_metadata(
     command_v_claude: dict[str, Any],
     path_value: str,
     version: str,
+    model: str | None,
     auth_mechanism: str,
     credentials_seeded: bool,
 ) -> dict[str, Any]:
@@ -355,7 +368,9 @@ def write_metadata(
             "path": str(claude_binary),
             "sha256": sha256_file(claude_binary),
             "version": version,
-            "requested_model": "sonnet",
+            # version/shell-canary have no model argv; retain their historical
+            # metadata value while model-bearing modes record the new input.
+            "requested_model": model or "sonnet",
             "superset_wrapper": False,
         },
         "direct_codex": {
@@ -392,6 +407,7 @@ def launch_claude(
     metadata_out: Path | None,
     user_memory_file: Path | None,
     timeout_seconds: int | None = None,
+    model: str | None = None,
     tools_csv: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     home = home.resolve()
@@ -423,6 +439,7 @@ def launch_claude(
                 command_v_claude=command_v_claude,
                 path_value=path_value,
                 version="unavailable",
+                model=model,
                 auth_mechanism=mechanism,
                 credentials_seeded=False,
             )
@@ -452,6 +469,7 @@ def launch_claude(
             command_v_claude=command_v_claude,
             path_value=path_value,
             version=version[0],
+            model=model,
             auth_mechanism=mechanism,
             credentials_seeded=True,
         )
@@ -461,7 +479,7 @@ def launch_claude(
             or metadata["command_v_claude"].get("passed") is not True
         ):
             raise IsolationError("Claude isolation purity contract failed")
-        command = command_for(mode, claude_binary, prompt, debug_file, tools_csv)
+        command = command_for(mode, claude_binary, prompt, debug_file, model, tools_csv)
         proc = subprocess.Popen(
             command,
             cwd=workdir,
@@ -506,10 +524,11 @@ def launch_claude(
                 raise IsolationError("Claude JSON result wrapper missing") from exc
             usage = wrapper.get("modelUsage") or wrapper.get("usage")
             if not isinstance(usage, dict) or not usage or not all(
-                "sonnet" in str(model).casefold() for model in usage
+                runtime_model_matches(model, runtime_model)
+                for runtime_model in usage
             ):
                 raise IsolationError(
-                    f"runtime model is not sonnet: "
+                    f"runtime model is not {model}: "
                     f"{sorted(usage) if isinstance(usage, dict) else usage!r}"
                 )
         return subprocess.CompletedProcess(command, proc.returncode, stdout, stderr)
@@ -519,6 +538,12 @@ def launch_claude(
 
 
 def self_test() -> int:
+    if not runtime_model_matches("sonnet", "claude-sonnet-5"):
+        raise AssertionError("legacy sonnet alias stopped matching its family")
+    if not runtime_model_matches("claude-opus-5", "claude-opus-5"):
+        raise AssertionError("exact model id did not match itself")
+    if runtime_model_matches("claude-opus-5", "prefix-claude-opus-5-suffix"):
+        raise AssertionError("containing runtime model passed exact-id purity")
     with tempfile.TemporaryDirectory(prefix="claude-isolation-self-test-") as tmp:
         root = Path(tmp)
         home = root / "home"
@@ -564,6 +589,7 @@ def self_test() -> int:
     print("ok: Claude shim command-v attestation")
     print("ok: absent Claude shim raises IsolationError")
     print("ok: target-mismatched Claude shim raises IsolationError")
+    print("ok: exact claude model purity with legacy sonnet family alias")
     return 0
 
 
@@ -576,6 +602,7 @@ def main() -> int:
         required=True,
         choices=("arm", "judge", "canary-a", "canary-judge", "version", "shell-canary"),
     )
+    launch.add_argument("--model")
     launch.add_argument("--home", required=True, type=Path)
     launch.add_argument("--codex-home", required=True, type=Path)
     launch.add_argument("--workdir", required=True, type=Path)
@@ -609,6 +636,7 @@ def main() -> int:
             metadata_out=args.metadata_out.resolve() if args.metadata_out else None,
             user_memory_file=args.user_memory_file.resolve() if args.user_memory_file else None,
             timeout_seconds=args.timeout_seconds,
+            model=args.model,
             tools_csv=args.tools_csv,
         )
     except (IsolationError, OSError, subprocess.TimeoutExpired) as exc:
