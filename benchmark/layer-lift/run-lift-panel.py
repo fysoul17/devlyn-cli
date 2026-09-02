@@ -394,10 +394,10 @@ def real_writer_check(
         if re.search(r"(?:claude\s+-p|codex\s+exec|grok\s+-p)", command):
             active.append(line.strip())
     state_path = repo / ".devlyn/pipeline.state.json"
-    state_in_flight = (
-        state_path.is_file()
-        and read_object(state_path).get("phases", {}).get("final_report", {}).get("verdict") is None
-    )
+    state_in_flight = False
+    if state_path.is_file():
+        final_report = read_object(state_path).get("phases", {}).get("final_report")
+        state_in_flight = final_report is None or final_report.get("verdict") is None
     if active or state_in_flight:
         return False, "live writer/state found: " + "; ".join(active + ([str(state_path)] if state_in_flight else []))
     return True, "quiet"
@@ -1852,6 +1852,10 @@ def self_test() -> int:
         assert real_writer_check(root, process_probe=quiet_process) == (True, "quiet")
         root_state = root / ".devlyn/pipeline.state.json"
         root_state.parent.mkdir()
+        root_state.write_bytes(canonical_json({"phases": {"final_report": None}}))
+        assert real_writer_check(root, process_probe=quiet_process) == (
+            False, f"live writer/state found: {root_state}",
+        )
         root_state.write_bytes(canonical_json({"phases": {"final_report": {"verdict": None}}}))
         okay, detail = real_writer_check(root, process_probe=quiet_process)
         assert okay is False and str(root_state) in detail
