@@ -24,7 +24,7 @@ DEFAULT_PARAMS = REPO / "docs/specs/iter0112/registered-params.json"
 G0_PATH = HERE / "g0-power-0112.py"
 G0_SHA256 = "5ba1a47be5ae328a782555e587c5fc17e051cccfb8f0c8f8a2163075ca8a95a3"
 SCHEDULE_SHA256 = "3b319cf6324e4a19d6b42c74d14b915f4e11d500c35456ce5008ce7802044554"
-PARAMS_SHA256 = "cdc29f90772c8b58241cc9eb12fe58855a0ea8d928a04379c4789b4ebcab56df"
+PARAMS_SHA256 = "0b94d23f1192f74951557d1182ac48de60a3c70725f916e538b13328d7099f06"
 LAUNCH_MANIFEST_NAME = "launch-manifest-0112.json"
 MATRIX_ENGINES = ("claude-opus-5", "claude-opus-4-8")
 ENGINES = (*MATRIX_ENGINES, "claude-sonnet-5")
@@ -905,6 +905,34 @@ def account_consumed_after(manifest: dict[str, object], observed_at: datetime.da
     return any(observed_at < time <= until for time in account_consumption_times(manifest))
 
 
+def verify_reset_timeline(timeline: list[tuple[datetime.datetime, datetime.datetime, dict[str, object]]], max_reset_epochs: int) -> None:
+    prior_reset: str | None = None
+    prior_used: int | None = None
+    seen_resets: set[str] = set()
+    reset_transitions = 0
+    for _consumed, _observed, evidence in sorted(timeline, key=lambda value: value[:2]):
+        reset_at = str(evidence["reset_at"])
+        if prior_reset is None:
+            prior_reset, prior_used = reset_at, int(evidence["used_percent"])
+            seen_resets.add(reset_at)
+        elif reset_at == prior_reset:
+            require(int(evidence["used_percent"]) >= prior_used, "usage-evidence-nonmonotone")
+            prior_used = int(evidence["used_percent"])
+        else:
+            require(reset_at not in seen_resets, "usage-evidence-reset-reused-old")
+            require(int(evidence["used_percent"]) <= prior_used, "usage-evidence-reset-with-rise")
+            reset_transitions += 1
+            require(reset_transitions <= max_reset_epochs, "usage-evidence-reset-epochs-exceeded")
+            prior_reset, prior_used = reset_at, int(evidence["used_percent"])
+            seen_resets.add(reset_at)
+
+
+def require_settlement_admission(evidence: dict[str, object], settlement: tuple[dict[str, object], dict[str, object], datetime.datetime, datetime.datetime, str]) -> datetime.datetime:
+    _first, second, first_observed, second_observed, _settlement_digest = settlement
+    require(str(evidence["reset_at"]) == str(second["reset_at"]) and evidence["used_percent"] == second["used_percent"] and parse_iso8601(evidence.get("observed_at"), "usage-evidence-observed-at") > second_observed, "settlement-stale")
+    return first_observed
+
+
 def verify_evidence_chain(manifest: dict[str, object], schedule: dict[str, object], params: dict[str, object], root: pathlib.Path) -> None:
     verify_calibrations(manifest, schedule, params, root)
     verify_settlements(manifest, params)
@@ -943,25 +971,7 @@ def verify_evidence_chain(manifest: dict[str, object], schedule: dict[str, objec
         for capture in settlement["captures"]:
             evidence, consumed_at = decode_capture(capture, params)
             timeline.append((consumed_at, parse_iso8601(evidence.get("observed_at"), "usage-observed-at"), evidence))
-    prior_reset: str | None = None
-    prior_used: int | None = None
-    seen_resets: set[str] = set()
-    reset_transitions = 0
-    for _consumed, _observed, evidence in sorted(timeline, key=lambda value: value[:2]):
-        reset_at = str(evidence["reset_at"])
-        if prior_reset is None:
-            prior_reset, prior_used = reset_at, int(evidence["used_percent"])
-            seen_resets.add(reset_at)
-        elif reset_at == prior_reset:
-            require(int(evidence["used_percent"]) >= prior_used, "usage-evidence-nonmonotone")
-            prior_used = int(evidence["used_percent"])
-        else:
-            require(reset_at not in seen_resets, "usage-evidence-reset-reused-old")
-            require(parse_iso8601(reset_at, "usage-reset-at") > parse_iso8601(prior_reset, "usage-reset-at"), "usage-evidence-reset-not-advancing")
-            reset_transitions += 1
-            require(reset_transitions <= calendar["max_reset_epochs"], "usage-evidence-reset-epochs-exceeded")
-            prior_reset, prior_used = reset_at, int(evidence["used_percent"])
-            seen_resets.add(reset_at)
+    verify_reset_timeline(timeline, calendar["max_reset_epochs"])
     by_digest = {entry["sha256"]: (entry, evidence) for entry, evidence, _observed, _consumed in decoded}
     completed_sweeps = verify_completed_sweeps(manifest, schedule, root, by_digest)
     terminal = manifest.get("terminal")
@@ -1035,8 +1045,7 @@ def verify_evidence_chain(manifest: dict[str, object], schedule: dict[str, objec
         require(usage_gate(evidence, entry["sweep_id"], params, tpp_gate), "usage-evidence-headroom-refused")
         settlement = latest_settlement(manifest, str(evidence["reset_at"]), params, consumed_at)
         require(settlement is not None, "fresh-settlement-required")
-        _first, _second, first_observed, _second_observed, settlement_digest = settlement
-        require(entry["sha256"] == settlement_digest, "gate-evidence-not-latest-settlement")
+        first_observed = require_settlement_admission(evidence, settlement)
         require(not account_consumed_after(manifest, first_observed, consumed_at), "fresh-settlement-required")
         if entry["role"] == "resume":
             probes = oracle_probes_by_usage.get(entry["sha256"])
@@ -1534,8 +1543,10 @@ def write_synthetic_manifest(root: pathlib.Path, schedule: dict[str, object]) ->
         first_capture = {"sha256": hashlib.sha256(first_raw).hexdigest(), "bytes_base64": base64.b64encode(first_raw).decode(), "consumed_at": first_time.isoformat()}
         second_capture = {"sha256": hashlib.sha256(second_raw).hexdigest(), "bytes_base64": base64.b64encode(second_raw).decode(), "consumed_at": second_time.isoformat()}
         settlements.append({"reset_at": reset_at, "captures": [first_capture, second_capture]})
-        evidence_entries.append({"sha256": second_capture["sha256"], "bytes_base64": second_capture["bytes_base64"], "role": "pre-sweep", "sweep_id": sweep, "consumed_at": (second_time + datetime.timedelta(seconds=1)).isoformat()})
-        post_time = second_time + datetime.timedelta(seconds=2)
+        admission_time = second_time + datetime.timedelta(seconds=1)
+        admission_raw = usage(10, admission_time, f"synthetic pre-sweep {sweep}")
+        evidence_entries.append({"sha256": hashlib.sha256(admission_raw).hexdigest(), "bytes_base64": base64.b64encode(admission_raw).decode(), "role": "pre-sweep", "sweep_id": sweep, "consumed_at": (admission_time + datetime.timedelta(seconds=1)).isoformat()})
+        post_time = admission_time + datetime.timedelta(seconds=1)
         post_raw = usage(10, post_time, f"synthetic post-sweep {sweep}")
         evidence_entries.append({"sha256": hashlib.sha256(post_raw).hexdigest(), "bytes_base64": base64.b64encode(post_raw).decode(), "role": "post-sweep", "sweep_id": sweep, "consumed_at": (post_time + datetime.timedelta(seconds=1)).isoformat()})
     for replicate_id, sessions in sessions_by_block(schedule).items():
@@ -1733,6 +1744,21 @@ def self_test() -> None:
         synthetic_root(root, "confirmed")
         report, exit_code = score(root, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
         assert report["terminal"] == "CONFIRMED" and exit_code == 0
+        reset_now = datetime.datetime.now(datetime.timezone.utc)
+        def reset_timeline(*pairs: tuple[str, int]) -> list[tuple[datetime.datetime, datetime.datetime, dict[str, object]]]:
+            return [(reset_now + datetime.timedelta(seconds=index), reset_now + datetime.timedelta(seconds=index), {"reset_at": reset_at, "used_percent": used}) for index, (reset_at, used) in enumerate(pairs)]
+        reset_late, reset_middle, reset_early = ((reset_now + datetime.timedelta(days=3)).isoformat(), (reset_now + datetime.timedelta(days=2)).isoformat(), (reset_now + datetime.timedelta(days=1)).isoformat())
+        verify_reset_timeline(reset_timeline((reset_late, 10), (reset_middle, 5)), 1)
+        for name, timeline, reason in (("retreat-rise", reset_timeline((reset_late, 10), (reset_middle, 11)), "usage-evidence-reset-with-rise"), ("advance-rise", reset_timeline((reset_middle, 10), (reset_late, 11)), "usage-evidence-reset-with-rise"), ("second-transition", reset_timeline((reset_late, 10), (reset_middle, 5), (reset_early, 4)), "usage-evidence-reset-epochs-exceeded"), ("reused", reset_timeline((reset_late, 10), (reset_middle, 5), (reset_late, 4)), "usage-evidence-reset-reused-old"), ("same-epoch-drop", reset_timeline((reset_late, 10), (reset_late, 9)), "usage-evidence-nonmonotone")):
+            try: verify_reset_timeline(timeline, 1)
+            except ScoreViolation as exc: assert str(exc) == reason
+            else: raise AssertionError(f"{name} accepted")
+        settlement = ({"reset_at": reset_middle, "used_percent": 10}, {"reset_at": reset_middle, "used_percent": 10}, reset_now - datetime.timedelta(seconds=120), reset_now, "a" * 64)
+        for name, observed_at, used, accepted in (("older-equal", reset_now - datetime.timedelta(seconds=1), 10, False), ("same-time", reset_now, 10, False), ("later-equal", reset_now + datetime.timedelta(seconds=1), 10, True), ("later-unequal", reset_now + datetime.timedelta(seconds=1), 11, False)):
+            evidence = {"reset_at": reset_middle, "used_percent": used, "observed_at": observed_at.isoformat()}
+            try: assert require_settlement_admission(evidence, settlement) == settlement[2]
+            except ScoreViolation as exc: assert not accepted and str(exc) == "settlement-stale"
+            else: assert accepted, f"{name} admission refused"
 
         def reject(name, mutate, reason):
             fixture = pathlib.Path(temporary) / f"{name}-fixture"; shutil.copytree(root, fixture); manifest = read_json(fixture / LAUNCH_MANIFEST_NAME); assert isinstance(manifest, dict)
@@ -1859,7 +1885,7 @@ def self_test() -> None:
         try: score(drift, DEFAULT_SCHEDULE, DEFAULT_PARAMS)
         except ScoreViolation as exc: assert str(exc) == "completed-sweep-mix-terminal-invalid"
         else: raise AssertionError("score() accepted an unproven mix terminal")
-    print("SELF_TEST_OK: v4 scorer schema, temporal-prefix closure and settlement replay, admission-identity and terminal-evaluation closure coverage, admission-time drift replay, persisted program-bound receipt re-summation, percent evidence, mix falsifier, and v3 refusal")
+    print("SELF_TEST_OK: v4 scorer schema, reset transitions, temporal-prefix closure and settlement replay, admission equality and terminal-evaluation closure coverage, admission-time drift replay, persisted program-bound receipt re-summation, percent evidence, mix falsifier, and v3 refusal")
     return
 
 def main() -> int:

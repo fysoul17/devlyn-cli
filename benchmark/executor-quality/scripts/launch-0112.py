@@ -3,8 +3,9 @@
 
 Launch-day order: offline pins/window checks and a quiet account; pre-percent
 capture; frozen calibration batch (and retained prefix attestation); two settled
-post captures; calibration and closure checks; a final equal capture; dry-run;
-then launch.  Any later account call requires a fresh capture.
+post captures; calibration and closure checks; a fresh final same-epoch capture
+equal to the settlement second; dry-run; then launch.  Any later account call
+requires a fresh capture.
 """
 from __future__ import annotations
 
@@ -33,10 +34,10 @@ MANIFEST_NAME = "launch-manifest-0112.json"
 PIN_FILE = REPO / "docs/specs/iter0112/scripts.sha256"
 MATRIX_ENGINES = ("claude-opus-5", "claude-opus-4-8")
 ENGINES = (*MATRIX_ENGINES, "claude-sonnet-5")
-APPARATUS_SCRIPTS = ("sh-driver-0112.py", "boundary-ledger-0112.py", "smoke-gate-0112.py", "derive-schedule-0112.py", "g0-power-0112.py", "score-0112.py", "launch-0112.py")
+APPARATUS_SCRIPTS = ("sh-driver-0112.py", "boundary-ledger-0112.py", "smoke-gate-0112.py", "derive-schedule-0112.py", "g0-power-0112.py", "score-0112.py", "launch-0112.py", "usage-capture-0112.py", "../fixtures-0112/usage-endpoint-20260902-0840KST.raw.json", "../fixtures-0112/usage-jitter-B-20260902-1055KST.raw.json")
 CALIBRATION_ENGINES = ("claude-opus-5", "claude-opus-4-8", "claude-sonnet-5")
 CALIBRATION_TASKS = ("smoke-1", "smoke-2")
-REQUIRED_PIN_TARGETS = frozenset([f"benchmark/executor-quality/scripts/{name}" for name in APPARATUS_SCRIPTS] + ["docs/specs/iter0112/schedule.json", "docs/specs/iter0112/registered-params.json", "benchmark/executor-quality/tasks-0110-smoke/smoke-1 (whole tree)", "benchmark/executor-quality/tasks-0110-smoke/smoke-2 (whole tree)"])
+REQUIRED_PIN_TARGETS = frozenset([f"benchmark/executor-quality/scripts/{name}" if "/" not in name else f"benchmark/executor-quality/{name[3:]}" for name in APPARATUS_SCRIPTS] + ["docs/specs/iter0112/schedule.json", "docs/specs/iter0112/registered-params.json", "benchmark/executor-quality/tasks-0110-smoke/smoke-1 (whole tree)", "benchmark/executor-quality/tasks-0110-smoke/smoke-2 (whole tree)"])
 STATUS_FIELDS = frozenset(("engine", "replicate_id", "session_label", "driver_command", "collector_command", "driver_exit", "driver_stdout_sha256", "driver_stderr_sha256", "driver_evidence_sha256", "status", "collector_exit", "collector_stdout_sha256", "collector_stderr_sha256", "infra_affected", "a5_clean", "first_late_threshold_crossed", "rows_sha256", "boundary_ledger_sha256", "artifact_dir", "completed_at"))
 ATTEMPT_FIELDS = frozenset(("attempt_id", "replacement_of", "transport_state", "unrun_suffix", "sessions", "charged_session_equivalents"))
 USAGE_FIELDS = ("source", "meter_id", "observed_at", "value", "attested_by", "used_percent", "display_resolution_percent", "reset_at", "panel_sha256", "auxiliary")
@@ -1123,8 +1124,8 @@ def append_usage(manifest: dict[str, object], raw: bytes, evidence: dict[str, ob
         else:
             if reset_at in seen_resets:
                 raise LaunchViolation("usage-evidence-reset-reused-old")
-            if parse_iso8601(reset_at, "reset_at") <= parse_iso8601(prior_reset, "reset_at"):
-                raise LaunchViolation("usage-evidence-reset-not-advancing")
+            if int(item["used_percent"]) > prior_used:
+                raise LaunchViolation("usage-evidence-reset-with-rise")
             transitions += 1
             if transitions > params["venue_tolerance"]["calendar"]["max_reset_epochs"]:
                 raise LaunchViolation("usage-evidence-reset-epochs-exceeded")
@@ -1198,6 +1199,20 @@ def consumed_probe_calls(manifest: dict[str, object]) -> int:
 
 def account_consumed_after(manifest: dict[str, object], observed_at: datetime.datetime) -> bool:
     return any(time > observed_at for time in account_consumption_times(manifest))
+
+
+def validate_settlement_admission(manifest: dict[str, object], usage: dict[str, object], params: dict[str, object], probe_times: list[datetime.datetime]) -> None:
+    settlement = latest_settlement(manifest, str(usage["reset_at"]), params)
+    if settlement is None:
+        raise LaunchViolation("fresh-settlement-required")
+    _first, second, first_observed, second_observed, _settlement_digest = settlement
+    observed_at = parse_iso8601(str(usage["observed_at"]), "usage-evidence-observed-at")
+    if str(usage["reset_at"]) != str(second["reset_at"]) or usage["used_percent"] != second["used_percent"] or observed_at <= second_observed:
+        raise LaunchViolation("settlement-stale")
+    if any(probe_time >= first_observed for probe_time in probe_times):
+        raise LaunchViolation("resume-probe-after-settlement")
+    if account_consumed_after(manifest, first_observed):
+        raise LaunchViolation("fresh-settlement-required")
 
 
 def calibration_command(engine: str, label: str, root: pathlib.Path, run_id: str) -> list[str]:
@@ -1539,11 +1554,6 @@ def run(args: argparse.Namespace) -> int:
     if calibration is None:
         raise LaunchViolation("calibration-missing-for-epoch")
     tpp_gate = tpp_gate_for_epoch(manifest, str(usage["reset_at"]), params)
-    if args.dry_run:
-        if not usage_gate(usage, args.sweep, params, tpp_gate):
-            raise LaunchViolation("usage-budget-gate-refused")
-        print(f"DRY_RUN: sweep={args.sweep} strict-percent-budget-gate=PASS")
-        return 0
     if args.record_usage_after:
         if any(entry["role"] == "post-sweep" and entry["sweep_id"] == args.sweep for entry in manifest["usage_evidence"]):
             raise LaunchViolation("usage-post-evidence-already-recorded")
@@ -1608,18 +1618,12 @@ def run(args: argparse.Namespace) -> int:
             raise LaunchViolation("resume-oracle-probe-budget-exhausted")
     elif args.resume_oracle is not None:
         raise LaunchViolation("resume-oracle-unexpected")
-    settlement = latest_settlement(manifest, str(usage["reset_at"]), params)
-    if settlement is None:
-        raise LaunchViolation("fresh-settlement-required")
-    _first, _second, first_observed, _second_observed, settlement_digest = settlement
-    if usage_digest != settlement_digest:
-        raise LaunchViolation("gate-evidence-not-latest-settlement")
-    if any(observed_at >= first_observed for observed_at in probe_times):
-        raise LaunchViolation("resume-probe-after-settlement")
-    if account_consumed_after(manifest, first_observed):
-        raise LaunchViolation("fresh-settlement-required")
+    validate_settlement_admission(manifest, usage, params, probe_times)
     if not usage_gate(usage, args.sweep, params, tpp_gate):
         raise LaunchViolation("usage-budget-gate-refused")
+    if args.dry_run:
+        print(f"DRY_RUN: sweep={args.sweep} strict-percent-budget-gate=PASS")
+        return 0
     if pending:
         assert oracle_raw is not None and oracle_digest is not None
         manifest["resume_oracles"].append({"sha256": oracle_digest, "bytes_base64": base64.b64encode(oracle_raw).decode(), "attempt_ids": [], "consumed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "probe_calls": oracle_calls})
@@ -1708,12 +1712,30 @@ def self_test() -> None:
         transition = {"calibrations": [{"pre_capture": capture(old_pre, now - datetime.timedelta(seconds=250)), "settlement_captures": [capture(old_settle, now - datetime.timedelta(seconds=229)), capture(old_settle, now - datetime.timedelta(seconds=229))]}, {"pre_capture": capture(new_pre, now - datetime.timedelta(seconds=150)), "settlement_captures": [capture(new_settle, now - datetime.timedelta(seconds=129)), capture(new_settle, now - datetime.timedelta(seconds=129))]}], "settlements": [], "usage_evidence": [{"sha256": hashlib.sha256(old_usage).hexdigest(), "bytes_base64": base64.b64encode(old_usage).decode(), "role": "post-sweep", "sweep_id": 1, "consumed_at": (now - datetime.timedelta(seconds=200)).isoformat()}]}
         append_usage(transition, fresh_epoch, decode_usage_evidence(fresh_epoch, params), hashlib.sha256(fresh_epoch).hexdigest(), "pre-sweep", 1, params)
         assert transition["usage_evidence"][-1]["sha256"] == hashlib.sha256(fresh_epoch).hexdigest()
-        for name, bad_reset, reason in (("reused", old_reset, "usage-evidence-reset-reused-old"), ("not-advancing", (now + datetime.timedelta(days=1, hours=12)).isoformat(), "usage-evidence-reset-not-advancing")):
+        for name, bad_reset, reason in (("reused", old_reset, "usage-evidence-reset-reused-old"), ("rise", (now + datetime.timedelta(days=1, hours=12)).isoformat(), "usage-evidence-reset-with-rise")):
             broken = json.loads(json.dumps(transition))
             bad = evidence_raw(name, bad_reset, 7, now)
             try: append_usage(broken, bad, decode_usage_evidence(bad, params), hashlib.sha256(bad).hexdigest(), "pre-sweep", 1, params)
             except LaunchViolation as exc: assert str(exc) == reason
             else: raise AssertionError(f"{name} reset sequence accepted")
+        def reset_manifest(reset_at: str, used: int) -> dict[str, object]:
+            initial = evidence_raw("reset-initial", reset_at, used, now - datetime.timedelta(seconds=2))
+            return {"calibrations": [], "settlements": [], "usage_evidence": [{"sha256": hashlib.sha256(initial).hexdigest(), "bytes_base64": base64.b64encode(initial).decode(), "role": "pre-sweep", "sweep_id": 1, "consumed_at": (now - datetime.timedelta(seconds=2)).isoformat()}]}
+        def append_reset(manifest: dict[str, object], label: str, reset_at: str, used: int) -> None:
+            candidate = evidence_raw(label, reset_at, used, now - datetime.timedelta(seconds=1))
+            append_usage(manifest, candidate, decode_usage_evidence(candidate, params), hashlib.sha256(candidate).hexdigest(), "pre-sweep", 1, params)
+        retreat = reset_manifest((now + datetime.timedelta(days=2)).isoformat(), 10)
+        append_reset(retreat, "retreat-drop", (now + datetime.timedelta(days=1)).isoformat(), 5)
+        for label, first_reset, second_reset, second_used, reason in (("retreat-rise", (now + datetime.timedelta(days=2)).isoformat(), (now + datetime.timedelta(days=1)).isoformat(), 11, "usage-evidence-reset-with-rise"), ("advance-rise", (now + datetime.timedelta(days=1)).isoformat(), (now + datetime.timedelta(days=2)).isoformat(), 11, "usage-evidence-reset-with-rise"), ("same-epoch-drop", reset, reset, 9, "usage-evidence-nonmonotone")):
+            broken = reset_manifest(first_reset, 10)
+            try: append_reset(broken, label, second_reset, second_used)
+            except LaunchViolation as exc: assert str(exc) == reason
+            else: raise AssertionError(f"{label} accepted")
+        two_transitions = reset_manifest((now + datetime.timedelta(days=3)).isoformat(), 10)
+        append_reset(two_transitions, "first-transition", (now + datetime.timedelta(days=2)).isoformat(), 5)
+        try: append_reset(two_transitions, "second-transition", (now + datetime.timedelta(days=1)).isoformat(), 4)
+        except LaunchViolation as exc: assert str(exc) == "usage-evidence-reset-epochs-exceeded"
+        else: raise AssertionError("second reset transition accepted")
         for field, value, reason in (("meter_id", "wrong", "schema"), ("display_resolution_percent", 2, "numeric"), ("panel_sha256", None, "numeric"), ("auxiliary", {}, "auxiliary")):
             bad = json.loads(valid.read_bytes()); bad[field] = value; path = root / f"bad-{field}.json"; write_json(path, bad); expect(path, f"usage-evidence-{reason}")
             attestation = root / "window-attestation.json"
@@ -1745,6 +1767,14 @@ def self_test() -> None:
         manifest = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "self-test", "0" * 64, canonical_bytes({"attested_by": "self-test", "source": "self-test", **{engine: 1000000 for engine in ENGINES}}))
         manifest["calibrations"] = [calibration]; manifest["calibration_session_equivalents"] = 3
         calibration_entry_valid(calibration, root, params, manifest, schedule)
+        for name, observed_at, used, accepted in (("older-equal", now - datetime.timedelta(seconds=1), 10, False), ("same-time", now, 10, False), ("later-equal", now + datetime.timedelta(seconds=1), 10, True), ("later-unequal", now + datetime.timedelta(seconds=1), 11, False)):
+            candidate = decode_usage_evidence(evidence_raw(name, reset, used, observed_at), params)
+            try:
+                validate_settlement_admission(manifest, candidate, params, [])
+            except LaunchViolation as exc:
+                assert not accepted and str(exc) == "settlement-stale"
+            else:
+                assert accepted
         partial_between = json.loads(json.dumps(manifest))
         partial_block = partial_between["blocks"][str(schedule["blocks"][0]["replicate_id"])]
         partial_block["attempts"] = [{"attempt_id": f"{partial_block['replicate_id']}.a1", "replacement_of": None, "transport_state": "VOID", "unrun_suffix": [], "sessions": {"partial": {"completed_at": (now - datetime.timedelta(seconds=30)).isoformat()}}, "charged_session_equivalents": 6}]
@@ -1821,8 +1851,10 @@ def self_test() -> None:
         attestation_raw = canonical_bytes({"attested_by": "self-test", "source": "self-test", **{engine: 1000000 for engine in ENGINES}})
         attestation.write_bytes(attestation_raw)
         pin = verify_script_inventory()
+        assert "usage-capture-0112.py" in script_digests() and "../fixtures-0112/usage-endpoint-20260902-0840KST.raw.json" in script_digests() and "../fixtures-0112/usage-jitter-B-20260902-1055KST.raw.json" in script_digests()
         record_first = usage("record-settlement-first.json", 10, now - datetime.timedelta(seconds=200))
         record_second = usage("record-settlement-second.json", 10, now - datetime.timedelta(seconds=75))
+        record_fresh = usage("record-settlement-fresh.json", 10, now - datetime.timedelta(seconds=25))
         record_out = root / "record-settlement"; record_out.mkdir()
         shutil.copytree(root / "calibration", record_out / "calibration")
         record_manifest = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "record-settlement", pin, attestation_raw)
@@ -1855,7 +1887,7 @@ def self_test() -> None:
         try:
             globals()["execute_attempt"] = record_later_attempt
             globals()["persist"] = lambda *_args: "REPLACEMENT_PENDING"
-            record_admission = argparse.Namespace(sweep=1, lanes=3, out=record_out, run_id="record-settlement", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=record_second, resume_oracle=None, record_usage_after=False, dry_run=False)
+            record_admission = argparse.Namespace(sweep=1, lanes=3, out=record_out, run_id="record-settlement", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=record_fresh, resume_oracle=None, record_usage_after=False, dry_run=False)
             assert run(record_admission) == 2
         finally:
             globals()["execute_attempt"] = record_execute
@@ -1864,14 +1896,15 @@ def self_test() -> None:
         assert len(recorded_manifest["settlements"]) == 1
         admission = next(entry for entry in recorded_manifest["usage_evidence"] if entry["role"] == "pre-sweep" and entry["sweep_id"] == 1)
         receipt = next(receipt for receipt in recorded_manifest["closure_receipts"] if receipt["sweep_id"] == 1)
-        assert admission["sha256"] == hashlib.sha256(record_second.read_bytes()).hexdigest() and json.loads(base64.b64decode(receipt["bytes_base64"]))["calendar_start"] == receipt["consumed_at"]
+        assert admission["sha256"] == hashlib.sha256(record_fresh.read_bytes()).hexdigest() and json.loads(base64.b64decode(receipt["bytes_base64"]))["calendar_start"] == receipt["consumed_at"]
         reloaded_manifest = load_manifest(record_out, DEFAULT_SCHEDULE, DEFAULT_PARAMS, "record-settlement", pin, attestation_raw)
         post_one = evidence_raw("record-settlement-post-one", reset, 10, now - datetime.timedelta(seconds=25))
         append_usage(reloaded_manifest, post_one, decode_usage_evidence(post_one, params), hashlib.sha256(post_one).hexdigest(), "post-sweep", 1, params)
         write_json(record_out / MANIFEST_NAME, reloaded_manifest)
         try:
             globals()["derive_terminal"] = lambda *_args: ("LAUNCH_PARTIAL", {})
-            next_admission = argparse.Namespace(sweep=2, lanes=3, out=record_out, run_id="record-settlement", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=record_second, resume_oracle=None, record_usage_after=False, dry_run=False)
+            next_usage = usage("record-settlement-next.json", 10, now - datetime.timedelta(seconds=5))
+            next_admission = argparse.Namespace(sweep=2, lanes=3, out=record_out, run_id="record-settlement", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=next_usage, resume_oracle=None, record_usage_after=False, dry_run=False)
             try: run(next_admission)
             except LaunchViolation as exc: assert str(exc) == "fresh-settlement-required"
             else: raise AssertionError("next admission reused a settlement after a recorded session")
@@ -1884,6 +1917,7 @@ def self_test() -> None:
         write_json(sweep_three_out / MANIFEST_NAME, sweep_three_manifest)
         sweep_three_first = usage("sweep-three-settlement-first.json", 10, now - datetime.timedelta(seconds=175))
         sweep_three_second = usage("sweep-three-settlement-second.json", 10, now - datetime.timedelta(seconds=50))
+        sweep_three_fresh = usage("sweep-three-fresh.json", 10, now - datetime.timedelta(seconds=25))
         try:
             sys.argv = [str(HERE / "launch-0112.py"), "--out", str(sweep_three_out), "--run-id", "sweep-three", "--window-attestation", str(attestation), "--record-settlement", "--settlement-usage-evidence", str(sweep_three_first), "--settlement-usage-evidence", str(sweep_three_second)]
             assert main() == 0
@@ -1897,7 +1931,7 @@ def self_test() -> None:
         try:
             globals()["execute_attempt"] = lambda *_args: "VOID"
             globals()["persist"] = lambda *_args: "REPLACEMENT_PENDING"
-            sweep_three_admission = argparse.Namespace(sweep=3, lanes=3, out=sweep_three_out, run_id="sweep-three", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=sweep_three_second, resume_oracle=None, record_usage_after=False, dry_run=False)
+            sweep_three_admission = argparse.Namespace(sweep=3, lanes=3, out=sweep_three_out, run_id="sweep-three", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=sweep_three_fresh, resume_oracle=None, record_usage_after=False, dry_run=False)
             assert run(sweep_three_admission) == 2
         finally:
             globals()["execute_attempt"] = record_execute
@@ -1936,10 +1970,24 @@ def self_test() -> None:
             original_load_manifest = globals()["load_manifest"]
             globals()["load_manifest"] = lambda *_args: json.loads(json.dumps(quiet_manifest))
             try: run(quiet_args)
-            except LaunchViolation as exc: assert str(exc) == "gate-evidence-not-latest-settlement"
+            except LaunchViolation as exc: assert str(exc) == "settlement-stale"
             else: raise AssertionError("run() accepted non-settlement gate evidence")
+            original_latest_settlement = globals()["latest_settlement"]
+            globals()["latest_settlement"] = lambda *_args: None
+            absent_args = argparse.Namespace(**{**vars(quiet_args), "dry_run": True})
+            try: run(absent_args)
+            except LaunchViolation as exc: assert str(exc) == "fresh-settlement-required"
+            else: raise AssertionError("dry-run accepted absent settlement")
+            globals()["latest_settlement"] = original_latest_settlement
+            unequal_dry_args = argparse.Namespace(**{**vars(quiet_args), "dry_run": True})
+            try: run(unequal_dry_args)
+            except LaunchViolation as exc: assert str(exc) == "settlement-stale"
+            else: raise AssertionError("dry-run accepted unequal settlement")
+            valid_dry_usage = usage("quiet-later-equal.json", 10, now + datetime.timedelta(seconds=1))
+            valid_dry_args = argparse.Namespace(**{**vars(quiet_args), "usage_evidence": valid_dry_usage, "dry_run": True})
+            assert run(valid_dry_args) == 0
             recapture_manifest = json.loads(json.dumps(quiet_manifest))
-            gate_usage = root / "quiet-settlement.json"; gate_usage.write_bytes(settle_b_raw)
+            gate_usage = usage("quiet-settlement.json", 10, now + datetime.timedelta(seconds=1))
             recapture_args = argparse.Namespace(sweep=1, lanes=3, out=root / "quiet", run_id="quiet-self-test", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=gate_usage, resume_oracle=root / "recapture-oracle.json", record_usage_after=False, dry_run=False)
             recapture_block = recapture_manifest["blocks"][str(schedule["blocks"][0]["replicate_id"])]
             recapture_block["attempts"] = [{"attempt_id": f"{recapture_block['replicate_id']}.a1", "replacement_of": None, "transport_state": "VOID", "unrun_suffix": [], "sessions": {"partial": {"completed_at": (now + datetime.timedelta(seconds=1)).isoformat()}}, "charged_session_equivalents": 6}]
@@ -1973,7 +2021,8 @@ def self_test() -> None:
             assert mix_manifest["completed_sweeps"] == [{"sweep_id": 1, "pre_sha256": digest, "post_sha256": hashlib.sha256(post_usage.read_bytes()).hexdigest(), "receipts": [{"path": "synthetic", "sha256": "a" * 64, "engine": "claude-opus-5", "completed_at": now.isoformat()}], "components": {"input": 1, "output": 1, "cache_create": 1, "cache_read": 972, "total": 1000}, "draw": 1000}]
             partial_manifest = base_manifest(DEFAULT_SCHEDULE, DEFAULT_PARAMS, "partial-self-test", pin, attestation_raw)
             partial_manifest["calibrations"] = [json.loads(json.dumps(calibration))]; partial_manifest["calibrations"][0]["tpp_chain"] = partial_manifest["calibrations"][0]["tpp_chain"][:1]; partial_manifest["calibration_session_equivalents"] = 3
-            partial_args = argparse.Namespace(sweep=1, lanes=3, out=root / "partial", run_id="partial-self-test", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=valid, resume_oracle=None, record_usage_after=False, dry_run=True)
+            partial_usage = usage("partial-later-equal.json", 10, now + datetime.timedelta(seconds=1))
+            partial_args = argparse.Namespace(sweep=1, lanes=3, out=root / "partial", run_id="partial-self-test", schedule=DEFAULT_SCHEDULE, params=DEFAULT_PARAMS, window_attestation=attestation, usage_evidence=partial_usage, resume_oracle=None, record_usage_after=False, dry_run=True)
             partial_args.out.mkdir(); write_json(partial_args.out / MANIFEST_NAME, {"schema": "self-test"})
             globals()["load_manifest"] = lambda *_args: partial_manifest
             globals()["completed_sweep_receipts"] = lambda *_args: (_ for _ in ()).throw(AssertionError("partial prefix evaluated as completed"))
@@ -1982,10 +2031,11 @@ def self_test() -> None:
             for name, value in originals.items(): globals()[name] = value
             if "original_load_manifest" in locals(): globals()["load_manifest"] = original_load_manifest
             if "original_load_resume_oracle" in locals(): globals()["load_resume_oracle"] = original_load_resume_oracle
+            if "original_latest_settlement" in locals(): globals()["latest_settlement"] = original_latest_settlement
         manifest["calibrations"][0]["tpp_chain"] = manifest["calibrations"][0]["tpp_chain"][:1]
         manifest["created_at"] = (now - datetime.timedelta(hours=169)).isoformat()
         assert not closure_payload(manifest, schedule, params, root, hashlib.sha256(settle_b_raw).hexdigest(), 1, now)["passed"]
-    print("SELF_TEST_OK: v4 percent schema, temporal-prefix closure and settlement replay, closure admission identities/waves/events, registered settlement plus run() lifecycle paths, drift/quiet/mix run paths, partial-prefix exemption, tpp minimum, and closure pass/refusal")
+    print("SELF_TEST_OK: v4 percent schema, reset transitions, temporal-prefix closure and settlement replay, quiet admission equality, closure admission identities/waves/events, registered settlement plus run() lifecycle paths, drift/quiet/mix run paths, partial-prefix exemption, tpp minimum, and closure pass/refusal")
     return
 
 def main() -> int:

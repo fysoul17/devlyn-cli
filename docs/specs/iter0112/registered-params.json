@@ -75,11 +75,24 @@
       "exact_fields": ["source", "meter_id", "observed_at", "value", "attested_by", "used_percent", "display_resolution_percent", "reset_at", "panel_sha256", "auxiliary"],
       "source": "usage",
       "meter_id": "current_week_all_models",
+      "capture": {
+        "endpoint": "https://api.anthropic.com/api/oauth/usage",
+        "credential_source": "macOS Keychain item Claude Code-credentials",
+        "headers": {"anthropic-beta": "oauth-2025-04-20", "User-Agent": "claude-cli/2.1.226", "Accept": "application/json"},
+        "script": "usage-capture-0112.py (pinned in scripts.sha256)",
+        "authorship": "script-authored under the orchestrator by the pinned capture script",
+        "field_mapping": {"source": "usage", "meter_id": "current_week_all_models", "observed_at": "local UTC at response completion", "value": "compact JSON of weekly_all, raw seven_day resets_at, server Date, and raw_sha256", "attested_by": "usage-capture-0112.py sha256=<script sha256>", "used_percent": "weekly_all.percent", "display_resolution_percent": 1, "reset_at": "canonical weekly_all.resets_at", "panel_sha256": "sha256 of the raw endpoint response body", "auxiliary": "Fable weekly_scoped percent and session percent"},
+        "panel_sha256": "sha256 of the raw endpoint response body",
+        "reset_at_canonicalization": "UTC, round to nearest minute (>=30 s up), +60 s; observed sub-second jitter straddles the second boundary (receipts usage-jitter-A/B 2026-09-02)",
+        "refusals": ["credential unavailable or invalid", "non-200 response", "non-JSON object", "token-in-body", "weekly_all missing or ambiguous", "invalid weekly_all percent", "seven_day utilization mismatch", "raw reset mismatch or invalid timestamp", "non-null lock reason", "ambiguous or invalid auxiliary meter", "existing output path"],
+        "lock_rule": "seven_day.locked_reason is null and any weekly_all locked_reason present is null; is_active and severity are ignored",
+        "auxiliary_rule": "one weekly_scoped limit whose scope.model.display_name is Fable and one session limit supply integer percents; absence supplies null and duplicate matches refuse"
+      },
       "used_percent_upper": "min(100, used_percent + display_resolution_percent)",
       "freshness_seconds": 300,
       "clock_skew_seconds": 5,
       "clock_skew_seconds_proposal": true,
-      "reset_handling": "A changed reset_at starts one new epoch only; reset_at must advance and no root may consume more than max_reset_epochs distinct transitions.",
+      "reset_handling": "A changed canonical reset_at with used_percent not above the prior capture starts one new epoch (either direction); a change with a rise refuses; reused epochs refuse; at most max_reset_epochs transitions per root.",
       "refusal": "missing, malformed, stale, non-monotone within an epoch, or non-percent /usage readout refuses before any manifest write"
     },
     "budget_gate": {
@@ -118,8 +131,8 @@
       "entry_schema": "iter0112-settlement-v1",
       "entry_shape": "reset_at plus exactly two usage captures; no calibration sessions and no tpp-chain entry",
       "rule": "captures have equal used_percent, are at least 120 seconds apart, and the first capture is at least 180 seconds after the latest recorded account-consuming calibration receipt, probe call, or sweep receipt including partial and VOID attempts",
-      "admission_rule": "the gate evidence is the latest settlement (or calibration settlement) second capture; no account-consuming call may follow that settlement first capture",
-      "resume_order": "run probes first, record the settlement pair second, then invoke the launcher with the settlement second capture as usage evidence; every probe observed_at must precede the settlement first capture"
+      "admission_rule": "the latest settlement (or calibration settlement) second capture is the comparison baseline; no account-consuming call may follow that settlement first capture; the CLI-supplied gate evidence must be a new final same-epoch capture with strictly later observed_at and used_percent equal to the comparison baseline (settlement-stale otherwise)",
+      "resume_order": "run probes first, record the settlement pair second, take a fresh final capture third, then invoke the launcher with that final capture; every probe observed_at precedes the settlement first capture"
     },
     "closure_check": {
       "nominal_waves": 10,
