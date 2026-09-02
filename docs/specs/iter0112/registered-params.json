@@ -92,7 +92,7 @@
       "freshness_seconds": 300,
       "clock_skew_seconds": 5,
       "clock_skew_seconds_proposal": true,
-      "reset_handling": "A changed canonical reset_at with used_percent not above the prior capture starts one new epoch (either direction); a change with a rise refuses; reused epochs refuse; at most max_reset_epochs transitions per root.",
+      "reset_handling": "A changed canonical reset_at with used_percent not above the prior capture starts one new epoch (either direction); a change with a rise refuses; reused epochs refuse; the manifest-pinned calendar permits at most W transitions per root.",
       "refusal": "missing, malformed, stale, non-monotone within an epoch, or non-percent /usage readout refuses before any manifest write"
     },
     "budget_gate": {
@@ -113,8 +113,9 @@
       "engine_order": ["claude-opus-5", "claude-opus-4-8", "claude-sonnet-5"],
       "smoke_tasks": ["smoke-1", "smoke-2"],
       "draw": "inputTokens + outputTokens + cacheCreationInputTokens + cacheReadInputTokens summed over all calibration receipts",
-      "top_up_rule": "if settled delta_percent is less than 3 after the base batch, run one additional same-order three-session unit; at most 12 calibration sessions per epoch; after the top-up, a delta_percent less than 3 refuses CALIBRATION_UNIDENTIFIABLE",
-      "settlement_rule": "two equal used_percent captures at least 120 seconds apart; the latter observed_at is at least 180 seconds after the final calibration receipt completed",
+      "top_up_rule": "the launcher-owned exclusive bracket requires P1/P2 equal after Q=600 seconds, then runs same-order three-session units; if settled delta_percent is less than 4 it continues through at most 36 sessions per attempt and 36 per epoch across attempts, and at either cap or whenever no further complete registered unit fits accepts only a full calendar closure (delta zero refuses CALIBRATION_UNIDENTIFIABLE; a failed closure refuses VENUE_OVER_BUDGET)",
+      "settlement_rule": "the launcher captures S1 at least 180 seconds after the final receipt and S2 125 seconds later; S1/S2 must have equal used_percent and the same reset epoch; it durably records calibration and closure inputs before marking an attempt settled, so restart publication is idempotent",
+      "exclusive_bracket": "from P1 through the final settlement capture, the launcher is the only permitted account-consuming surface; the orchestrator is idle and other sessions are stopped; immediately after P1 completes it atomically records the attempt epoch as P1's canonical reset_at before any unit starts; current_week_fable_percent is invariant at P2, every intermediate bracket capture, S1, and S2",
       "cross_epoch_carry": "forbidden; every reset epoch has a fresh calibration before its first gate",
       "tpp": "tpp_cal=floor(D/(delta_percent+1)); each same-epoch completed sweep with delta_percent >= 1 adds floor(draw/(delta_percent+1)); tpp_gate is the current epoch minimum without a floor clamp",
       "mix_constraint": {
@@ -125,13 +126,15 @@
         "meter_charge_assumption": {"assumption": true, "statement": "meter_charge = wN*(input+output+cacheCreate) + wR*cacheRead with 0 <= wR <= wN, engine-invariant and stable within a reset epoch; calibration share <= 0.973 <= completed-sweep share makes tpp_cal conservative"},
         "partial_prefix_rule": "completed sweeps only; partial receipt prefixes are exempt"
       },
-      "accounting": {"per_session_equivalents": 1, "max_per_epoch": 12, "max_per_root": 24}
+      "accounting": {"per_session_equivalents": 1, "attempt_session_cap": 36, "epoch_session_cap": 36, "root_session_cap": 252, "derivation": "The append-only attempt ledger charges started units x 3 sessions, including interrupted attempts; an interruption before P1 has no epoch and zero started units, while every persisted post-P1 epoch is counted as a reset transition. 36 sessions per attempt and 36 sessions per epoch across all attempts give 36 sessions per epoch x (W_max + 1) epochs, where W_max=6, for the 252-session root cap"},
+      "full_session_bound_transport_tokens": {"value": 927728, "derivation": "ceil(742182 * 5 / 4), where 742182 is max over the six observed fire-bracket sessions of that session's two smoke receipt transport totals (claude-sonnet-5 calibration-1: 370829 + 371353)", "proposal": true},
+      "full_bracket_wall_ms": {"value": 7237524, "derivation": "The observed six-session bracket ran 1106253.379 ms from P1 2026-09-02T01:18:54.483015Z to S2 2026-09-02T01:37:20.736394Z. Its two 180s+125s settlement waits consume 610000 ms, leaving 496253.379 ms; ceil(496253.379) = 496254 ms for one six-session model/capture group. A 36-session future epoch has six such groups: 6*496254 + Q=600000 + 12*(180000+125000) = 7237524 ms.", "proposal": true}
     },
     "settlement": {
       "entry_schema": "iter0112-settlement-v1",
       "entry_shape": "reset_at plus exactly two usage captures; no calibration sessions and no tpp-chain entry",
       "rule": "captures have equal used_percent, are at least 120 seconds apart, and the first capture is at least 180 seconds after the latest recorded account-consuming calibration receipt, probe call, or sweep receipt including partial and VOID attempts",
-      "admission_rule": "the latest settlement (or calibration settlement) second capture is the comparison baseline; no account-consuming call may follow that settlement first capture; the CLI-supplied gate evidence must be a new final same-epoch capture with strictly later observed_at and used_percent equal to the comparison baseline (settlement-stale otherwise)",
+      "admission_rule": "the latest settlement (or calibration settlement) second capture is the comparison baseline; no account-consuming call may follow that settlement first capture, with exactly one selected event subtracted per capture identity; the CLI-supplied gate evidence must be a new final same-epoch capture with strictly later observed_at and used_percent equal to the comparison baseline (settlement-stale otherwise)",
       "resume_order": "run probes first, record the settlement pair second, take a fresh final capture third, then invoke the launcher with that final capture; every probe observed_at precedes the settlement first capture"
     },
     "closure_check": {
@@ -152,16 +155,16 @@
         "safety_factor_numerator": 5,
         "safety_factor_denominator": 4
       },
-      "reset_transitions": 1,
       "worst_case_replay_placement": "after the 10 nominal waves",
-      "evidenced_reset_wait_ms": 408452400,
-      "rule": "at each evaluation time, simulate only remaining work: the admitted sweep and later nominal sweep burns, replay waves remaining after observed voids, reserve at every remaining interval, probe calls remaining after recorded consumption, and the 12-session recalibration bound only for uncalibrated epochs; calendar_end is evaluation_time plus remaining active time and the reset wait only until the single transition occurs, and must not exceed the 168-hour expiry"
+      "rule": "the shared calendar simulator places every remaining nominal sweep burn and reserve, replay-event burn and reserve, probe call, registered active-wave bound, reset wait, and a 36-session worst-case calibration before every new epoch on the canonical 168-hour reset timeline; it chooses the smallest W <= W_max that keeps every epoch strictly below 100 and ends no later than created_at + W*168 hours"
     },
     "calendar": {
-      "root_age_hours": 168,
+      "formula": "iter0112-calendar-v2: shared deterministic placement on canonical reset_at + n*168h boundaries",
+      "W_max": 6,
+      "root_age_hours": "derived W×168, pinned in manifest",
       "anchor": "manifest.created_at",
-      "max_reset_epochs": 1,
-      "expiry_transition": "At or after created_at + 168 hours, before launch or resume work, write terminal WALL_CLOCK_EXPIRED; scorer returns UNSCORED.",
+      "max_reset_epochs": "derived = W",
+      "expiry_transition": "At or after the manifest-pinned expiry, before launch or resume work, write terminal WALL_CLOCK_EXPIRED; scorer returns UNSCORED.",
       "proposal": true
     },
     "charged_accounting": {
@@ -169,7 +172,7 @@
       "maximum_block_attempts": 32,
       "session_equivalent_allowance": 192,
       "per_attempt_budget_charge_transport_tokens": 40058253,
-      "derivation": "Proposal. 32 maximum block attempts = 20 complete replicates + 12 replay slots (4 observed limit events across m3/m4/m5/m6 × 3 pinned lanes concurrently voidable per event). 32 × 6 = 192 session-equivalent allowance. Worst-case transport exposure is 32 × 40,058,253 = 1,281,864,096; the strict per-sweep fire-time gate is the identifiable operational bound because the weekly denominator was unmeasurable at freeze. Calendar closure: 10 nominal waves (gate alone + 3-block wave + 2 waves × 4 sweeps) + 4 replay waves = 14 waves × 12,509,207 ms maximum observed block (m6 s02-b01.a1) = 48.647 h active; + 113.459 h total observed reset waits = 162.106 h ≤ 168 h (5.894 h headroom).",
+      "derivation": "Proposal. 32 maximum block attempts = 20 complete replicates + 12 replay slots (4 observed limit events across m3/m4/m5/m6 × 3 pinned lanes concurrently voidable per event). 32 × 6 = 192 session-equivalent allowance. Worst-case transport exposure is 32 × 40,058,253 = 1,281,864,096; the strict per-sweep fire-time gate is the identifiable operational bound because the weekly denominator was unmeasurable at freeze. Calendar headroom is derived per closure receipt as pinned expiry minus simulated calendar_end for that receipt's W.",
       "exhaustion_transition": "A proposed started block at count 32 writes terminal CHARGED_ALLOWANCE_EXHAUSTED before process launch; scorer returns UNSCORED.",
       "proposal": true
     },

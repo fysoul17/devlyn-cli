@@ -14,7 +14,75 @@ Last rewritten 2026-07-07; closed-iter narratives compressed 2026-07-10, 2026-07
 
 ---
 
-## 🚦 START-HERE — state after 2026-09-02 (session 19)
+## 🚦 START-HERE — state after 2026-09-02 (session 20)
+
+**iter-0112 first live fire REFUSED honestly (`VENUE_OVER_BUDGET`, rootless)
+→ AMENDMENT A4 FROZEN + committed (`70839b9`, `FREEZE-0112-APP11-SOL:
+10d6650b…`) → AMENDMENT A5 CANDIDATE COMMITTED, NOT FROZEN (sol r12 REVISE 1
+open). NEXT = terra fix12 → sol r13 → freeze token → commit → fire AFTER
+01:00 KST (user ruling: bracket while the user sleeps so the account is
+quiet).**
+
+What happened today (details: iteration file §§ A4/A5; receipts
+`~/.local/share/nx01/iter0112-reg/` packets `packet-0112-{amend-a4,a4-terra,
+a4-fix1..3,freeze-a4{,-r2..r4},amend-a5,a5-terra,a5-fix1..12,freeze-a5{,-r2..r12}}.md`
++ paired sol/terra logs; launch receipts
+`~/.local/share/nx01/iter0112/launch/root-20260902/`):
+- **A4 (frozen):** the user questioned the human `/usage` capture; the CLI's
+  own endpoint `GET https://api.anthropic.com/api/oauth/usage` (keychain
+  `Claude Code-credentials` bearer + `anthropic-beta: oauth-2025-04-20`)
+  returns integer weekly_all percent + `resets_at` without consuming quota
+  → pinned `usage-capture-0112.py` authors evidence (token never persisted).
+  Rules adopted: reset transition = changed canonical `reset_at` with no
+  used_percent rise (either direction); admission = fresh same-epoch capture
+  strictly later than and equal to the settlement second capture; canonical
+  `reset_at` = UTC nearest minute + 60 s (server jitter straddles the second
+  boundary — fable live finding, receipts `usage-jitter-A/B`).
+- **First fire (11:19–11:37 KST):** pre 6 % → base batch Δ=1 → top-up →
+  Δ=3 → tpp_cal 999,328 (D=3,997,313 over 6 sessions, cacheRead 0.909) →
+  gate 10+141+57=208 → `VENUE_OVER_BUDGET`. Contaminated bracket (the
+  orchestrator's own turns + the user's other sessions moved the meter) AND
+  a structural fact: S=5 needs tpp ≳ 5 M/% for a multi-week root.
+- **A5 (candidate):** launcher-owned exclusive `--calibrate-bracket`
+  (P1, Q=600 s, P2, units of 3 sessions, settlement pairs; Δ ≥ 4 target;
+  caps 36/attempt, 36/epoch, 252/root; Fable-week meter INVARIANCE as the
+  mechanical quiet witness because the calibration engines never include
+  Fable); append-only attempt ledger (legacy 6-session pending imported as
+  attempt 1 abandoned+charged); venue-derived multi-week calendar (shared
+  launcher/scorer simulator, smallest W ≤ 6 pinned at settlement, separate
+  burn/reserve ceilings as one atomic action, fresh epoch = 1 + recal charge,
+  full-session bound 927,728 × 36, bracket wall bound 7,237,524 ms);
+  abandon-on-interrupt (subtractive: no partial reconciliation; charge =
+  started units × 3; durable post-P1 epoch record so interrupted attempts
+  still count their reset transition); scorer pins the launcher digest
+  (`LAUNCHER_SHA256`) before importing the simulator. Fixture expectations:
+  tpp 2.23 M → refuse; 4.6 M → refuse; 5 M → W=5; 10 M → W=3.
+- **Venue:** the user switched the machine login to a dedicated Max-20x
+  account (itclab25) at 09:46 KST; weekly reset 2026-09-05 08:00 KST
+  (canonical `2026-09-04T23:01:00+00:00`); meter ~12 % at noon. codex hit
+  its account limit mid-lane (lifted by the user); grok 402 ×23.
+
+Fire recipe (next session, after 01:00 KST, orchestrator idle during the
+bracket — no model calls; Monitor by pid): helper
+`~/.local/share/nx01/iter0112/launch/fire-0112.sh` (NOT frozen):
+`bracket` (runs the whole exclusive bracket; ends `CALIBRATION_SETTLED`
+with pinned W, or `CALIBRATION_BRACKET_CONTAMINATED`/`VENUE_OVER_BUDGET`/
+`CALIBRATION_UNIDENTIFIABLE`) → `cap final` → `dryrun <final.json> 1` →
+`launch <final.json> 1` (detached, `os.setsid`; log + pid in the out-dir).
+Window attestation authored: `~/.local/share/nx01/iter0112/launch/
+window-attestation.json`. Later sweeps: `record_after`, `record_settlement`,
+`cap`, `dryrun`, `launch` per the registered order.
+
+Session-20 gotchas (binding): seat logs ECHO other logs' `codex exited`
+lines — watch seat completion by PID, never by grepping the log; codex
+"model at capacity" is transient — `retry-sol-rN.sh` loop (3 min);
+terra STOPs on packet wording (whole-tree pin lines can never pass
+`shasum -c`; re-pin BEFORE self-tests); terra once renamed the full
+adversarial suites to `legacy_self_test` (unreachable) — grep it before
+trusting "8/8"; the orchestrator overestimates the clock — read `date`.
+
+### History — state after 2026-09-02 morning (session 19)
+
 
 **iter-0112 AMENDMENT A3 RE-FROZEN — `FREEZE-0112-APP10-SOL: 9567e937`
 (2026-09-02); NEXT = LAUNCH, USER-GATED.** The operator's live `/usage`
