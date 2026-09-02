@@ -1517,6 +1517,16 @@ def smoke_gate(rows: list[dict[str, Any]], model: str, pair: dict[str, Any]) -> 
             (not row.get("surface_close_ran")) or row.get("surface_model_attested") == "claude-sonnet-5"
             for row in rows if row["arm"] != "L0"
         ),
+        "wall_and_token_anchors": (
+            all(
+                type(by_arm.get(arm, {}).get("wall_ms")) is int
+                and by_arm[arm]["wall_ms"] > 0
+                and type(by_arm[arm].get("output_tokens_total")) is int
+                and by_arm[arm]["output_tokens_total"] > 0
+                for arm in ARMS
+            )
+            and type(by_arm.get("L2", {}).get("codex_tokens_total")) is int
+        ),
         "l2_pair_attested": all(by_arm.get("L2", {}).get(field) == pair[value] for field, value in (
             ("pair_model_attested", "model_id"), ("pair_effort_attested", "effective_effort"),
             ("pair_cli_version_attested", "codex_cli_version"),
@@ -1770,17 +1780,29 @@ def self_test() -> int:
     names.append("quick-calibrator-model-refusal")
     smoke_rows = [base_row("smoke", 1, arm, "EQ3-AF2", 1, "claude-opus-5", False) for arm in ARMS]
     for row in smoke_rows:
-        row.update(model_attested="claude-opus-5", manifestations_total=1, catastrophic=False)
+        row.update(
+            model_attested="claude-opus-5", manifestations_total=1, catastrophic=False,
+            wall_ms=1, output_tokens_total=1,
+        )
     smoke_rows[1]["terminal"] = "PASS"
     smoke_rows[2].update(terminal="PASS", pair_model_attested=params["pair"]["model_id"],
                          pair_effort_attested=params["pair"]["effective_effort"],
                          pair_cli_version_attested=params["pair"]["codex_cli_version"],
-                         infra_invalid=True, infra_reason="fixture")
+                         codex_tokens_total=1, infra_invalid=True, infra_reason="fixture")
     captured = io.StringIO()
     with contextlib.redirect_stdout(captured):
         assert smoke_gate(smoke_rows, "claude-opus-5", params["pair"]) is False
     assert "SMOKE-CONJUNCT all_rows_infra_valid=FAIL" in captured.getvalue()
     names.append("smoke-all-rows-infra-valid")
+    smoke_rows[2].update(
+        pair_timeout=True, codex_tokens_total=None, output_tokens_total=None,
+        infra_invalid=False, infra_reason=None,
+    )
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        assert smoke_gate(smoke_rows, "claude-opus-5", params["pair"]) is False
+    assert "SMOKE-CONJUNCT wall_and_token_anchors=FAIL" in captured.getvalue()
+    names.append("smoke-wall-and-token-anchors")
     with tempfile.TemporaryDirectory(prefix="lift-append-") as raw:
         ledger = pathlib.Path(raw) / "rows.jsonl"
         row = base_row("r", 1, "L0", "EQ3-AF2", 1, "claude-opus-5", False)

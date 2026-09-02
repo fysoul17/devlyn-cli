@@ -721,25 +721,45 @@ def score(
         cheaper="L1", expensive="L2", n=m2_wall, tasks=tasks,
         all_latest=all_latest, arm_rates=rates, params=params,
     )
-    e1_unknown = sorted(unknown_tokens["L0"] + unknown_tokens["L1"])
-    e2_unknown = sorted(unknown_tokens["L1"] + unknown_tokens["L2"])
-    if e1_unknown:
+    e1_base_unknown = sorted(unknown_tokens["L0"] + unknown_tokens["L1"])
+    e2_base_unknown = sorted(unknown_tokens["L1"] + unknown_tokens["L2"])
+    if e1_base_unknown:
         n1_tok = None
-        e1_tok = {"decision": "INCONCLUSIVE", "unknown_timeout_rows": e1_unknown}
+        e1_tok = {"decision": "INCONCLUSIVE", "unknown_timeout_rows": e1_base_unknown}
     else:
         n1_tok = ceil_fraction(Fraction(token_sums["L1"], token_sums["L0"]))
-        e1_tok = efficiency_dimension(
-            cheaper="L0", expensive="L1", n=n1_tok, tasks=tasks,
-            all_latest=all_latest, arm_rates=rates, params=params,
+        e1_unknown = sorted(
+            row["run_id"]
+            for task in tasks
+            for rep in range(1, n1_tok + 1)
+            if (row := all_latest.get(("L0", task, rep))) is not None
+            and row["output_tokens_total"] is None
         )
-    if e2_unknown:
+        e1_tok = (
+            {"decision": "INCONCLUSIVE", "unknown_timeout_rows": e1_unknown}
+            if e1_unknown else efficiency_dimension(
+                cheaper="L0", expensive="L1", n=n1_tok, tasks=tasks,
+                all_latest=all_latest, arm_rates=rates, params=params,
+            )
+        )
+    if e2_base_unknown:
         m2_tok = None
-        e2_tok = {"decision": "INCONCLUSIVE", "unknown_timeout_rows": e2_unknown}
+        e2_tok = {"decision": "INCONCLUSIVE", "unknown_timeout_rows": e2_base_unknown}
     else:
         m2_tok = ceil_fraction(Fraction(token_sums["L2"], token_sums["L1"]))
-        e2_tok = efficiency_dimension(
-            cheaper="L1", expensive="L2", n=m2_tok, tasks=tasks,
-            all_latest=all_latest, arm_rates=rates, params=params,
+        e2_unknown = sorted(
+            row["run_id"]
+            for task in tasks
+            for rep in range(1, m2_tok + 1)
+            if (row := all_latest.get(("L1", task, rep))) is not None
+            and row["output_tokens_total"] is None
+        )
+        e2_tok = (
+            {"decision": "INCONCLUSIVE", "unknown_timeout_rows": e2_unknown}
+            if e2_unknown else efficiency_dimension(
+                cheaper="L1", expensive="L2", n=m2_tok, tasks=tasks,
+                all_latest=all_latest, arm_rates=rates, params=params,
+            )
         )
     e1 = aggregate_efficiency(e1_wall, e1_tok)
     e2 = aggregate_efficiency(e2_wall, e2_tok)
@@ -786,16 +806,25 @@ def score(
         }
     harness_rows = [row for row in base_rows if row["arm"] != "L0"]
     l2_rows = [row for row in base_rows if row["arm"] == "L2"]
+    l2_by_task = {task: [row for row in l2_rows if row["task"] == task] for task in tasks}
+    diff_changed_by_task = {
+        task: (
+            True if any(row["diff_changed_by_pair"] is True for row in task_rows)
+            else None if any(row["diff_changed_by_pair"] is None for row in task_rows)
+            else False
+        )
+        for task, task_rows in l2_by_task.items()
+    }
     diagnostics = {
         "verification_bullets_median": fraction_json(median([row["verification_bullets"] for row in harness_rows])),
         "fix_round_ran": {
-            "count": sum(row["fix_round_ran"] is True for row in l2_rows),
-            "panel_size": len(l2_rows),
+            "count": sum(any(row["fix_round_ran"] is True for row in task_rows) for task_rows in l2_by_task.values()),
+            "panel_size": len(tasks),
         },
         "diff_changed_by_pair": {
-            "count": sum(row["diff_changed_by_pair"] is True for row in l2_rows),
-            "unknown_count": sum(row["diff_changed_by_pair"] is None for row in l2_rows),
-            "panel_size": len(l2_rows),
+            "count": sum(changed is True for changed in diff_changed_by_task.values()),
+            "unknown_count": sum(changed is None for changed in diff_changed_by_task.values()),
+            "panel_size": len(tasks),
         },
         "pair_timeout_count": sum(row["pair_timeout"] is True for row in l2_rows),
     }
@@ -1048,6 +1077,28 @@ def self_test() -> int:
     names.append("timeout-unknown-token-leg-inconclusive")
 
     params, panel, rows = fixture_rows()
+    tasks = [task for cls in sorted(panel["tasks"]) for task in panel["tasks"][cls]]
+    for row in rows:
+        if row["arm"] == "L1":
+            row["output_tokens"] = {"parent": {"claude-fixture": 50}, "surface_close": {}}
+            row["output_tokens_total"] = 50
+    topups = [
+        fixture_row(
+            "L0", task, 3, Fraction(1, 2), topup=True,
+            terminal="TIMEOUT" if task == tasks[0] else None,
+        )
+        for task in tasks
+    ]
+    rows.extend(topups)
+    result = invoke_fixture(rows, params, panel)
+    assert result["ratios"]["N1_tok"] == 3
+    assert result["E1"]["tokens"] == {
+        "decision": "INCONCLUSIVE",
+        "unknown_timeout_rows": [topups[0]["run_id"]],
+    }
+    names.append("topup-timeout-token-leg-inconclusive")
+
+    params, panel, rows = fixture_rows()
     rows[0]["model_attested"] = None
     try:
         invoke_fixture(rows, params, panel)
@@ -1093,14 +1144,24 @@ def self_test() -> int:
     names.append("topup-excluded-from-quality")
 
     params, panel, rows = fixture_rows()
-    l2_rows = [row for row in rows if row["arm"] == "L2"]
-    l2_rows[0].update(fix_round_ran=True, diff_changed_by_pair=True)
-    l2_rows[1].update(
+    tasks = [task for cls in sorted(panel["tasks"]) for task in panel["tasks"][cls]]
+    params["base_reps"]["L2"] = 2
+    rows.extend(fixture_row("L2", task, 2, Fraction(1, 2)) for task in tasks)
+    l2_by_task = {
+        task: [row for row in rows if row["arm"] == "L2" and row["task"] == task]
+        for task in tasks
+    }
+    assert all(len(task_rows) == 2 for task_rows in l2_by_task.values())
+    for row in l2_by_task[tasks[0]]:
+        row["fix_round_ran"] = True
+    l2_by_task[tasks[0]][0]["diff_changed_by_pair"] = True
+    l2_by_task[tasks[0]][1]["diff_changed_by_pair"] = None
+    l2_by_task[tasks[1]][0].update(
         pair_timeout=True,
         codex_tokens_total=None, output_tokens_total=None,
     )
-    l2_rows[2]["diff_changed_by_pair"] = None
-    assert validate_row(l2_rows[1], 1) == []
+    l2_by_task[tasks[2]][0]["diff_changed_by_pair"] = None
+    assert validate_row(l2_by_task[tasks[1]][0], 1) == []
     diagnostics = invoke_fixture(rows, params, panel)["diagnostics"]
     assert diagnostics == {
         "verification_bullets_median": "1/1",

@@ -180,6 +180,10 @@ ADOPT F-2 (normalized `apparatus_sha256` in params, scripts self-check), F-3 (`s
 
 CLOSED F-1/3/4/5/7/8/9/10/11. ADOPT F-2 (launcher inside `apparatus_sha256`), F-6 (`ran` = phase present ∧ not `auto_surface_close_claude_unavailable`; the adjudication-malformed recovery keeps its envelope), **F-12** (the pinned product captures streams separately — codex header + `tokens used` are in `codex-judge.stderr`, real artifact `rs-20260729T151700Z…/codex-judge.stderr:5-14,510-511`; parse stderr only, require both files), **F-13** (TIMEOUT rows carry unknown tokens ⇒ the affected token leg is `INCONCLUSIVE`; quality and wall legs unchanged), F-14 (all selected task seals validated before any launch), F-15/16 (text). Accretion adopted: orphan telemetry, non-attempt-1 history acceptance, duplicate missing-cell scan, redundant run-metadata digests, hardcoded `runner_is_frozen`, consumer-less params prose — deleted; registered diagnostics (`verification_bullets`, `fix_round_ran`, `diff_changed_by_pair`, `pair_timeout`) are now summarized in the verdict (P-0113-3 reads `diff_changed_by_pair`).
 
+### Freeze round 3 record (sol `freeze-r3-sol.log`, 453 s, `REVISE n=3`; fable 05:15 KST)
+
+All r2 items CLOSED except F-13's top-up corner. ADOPT F-17 (unknown-token scan covers every required cheaper-arm rep through N/M, top-ups included), **F-18** (smoke gate gains the registered wall/token-anchor conjunct: positive `wall_ms` and known positive tokens on all three rows — a pair TIMEOUT fails smoke), F-19 (P-0113-3 aggregated by task; `panel_size` = tasks). Sol's independent normalized apparatus digest before this round: `7e967c77…`.
+
 ## Not in scope
 
 Non-coding axes (intent fidelity / decomposition / collaboration) — 0070a
