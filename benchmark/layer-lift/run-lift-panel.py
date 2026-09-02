@@ -44,7 +44,17 @@ INFRA_FAILURE = re.compile(r"http\s*429|http\s*529|rate[ -]?limit|session[ -]?li
 CLASS_RE = re.compile(r"^EQ3-(AF|BD|MI|UA)[1-8]$")
 ARMS = ("L0", "L1", "L2")
 BASE_REPS = {"L0": 4, "L1": 2, "L2": 2}
-APPARATUS_FILES = ("README.md", "panel-quick.json", "run-lift-panel.py", "score-lift.py")
+APPARATUS_FILES = (
+    "benchmark/ceiling/scripts/claude-isolation.py",
+    "benchmark/layer-lift/README.md",
+    "benchmark/layer-lift/panel-quick.json",
+    "benchmark/layer-lift/run-lift-panel.py",
+    "benchmark/layer-lift/score-lift.py",
+)
+PARAMS_PIN_FILES = {
+    "benchmark/layer-lift/run-lift-panel.py",
+    "benchmark/layer-lift/score-lift.py",
+}
 PARAMS_PIN_LINE = re.compile(rb'(?m)^PARAMS_PIN_SHA256 = "[^"\r\n]*"\r?\n')
 SETTINGS_BYTES = b'{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"python3 \\"$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py\\"","timeout":30}]}]}}\n'
 ENGINES_BYTES = b'{"executor":"claude"}\n'
@@ -56,36 +66,20 @@ class Refusal(RuntimeError):
 class CellInterrupted(RuntimeError):
     pass
 class WindowInterrupted(RuntimeError):
-    def __init__(self, orphan_count: int):
-        super().__init__(f"WINDOW-INTERRUPTED: orphan_cells={orphan_count}")
-        self.orphan_count = orphan_count
+    pass
 class InterruptionController:
     def __init__(self) -> None:
         self.event = threading.Event()
         self.lock = threading.RLock()
-        self.active: set[tuple[str, str, int]] = set()
-        self.orphans: set[tuple[str, str, int]] = set()
         self.groups: set[int] = set()
 
     @property
     def interrupted(self) -> bool:
         return self.event.is_set()
 
-    @property
-    def orphan_count(self) -> int:
+    def begin_cell(self) -> bool:
         with self.lock:
-            return len(self.orphans)
-
-    def begin_cell(self, key: tuple[str, str, int]) -> bool:
-        with self.lock:
-            if self.event.is_set():
-                return False
-            self.active.add(key)
-            return True
-
-    def finish_cell(self, key: tuple[str, str, int]) -> None:
-        with self.lock:
-            self.active.discard(key)
+            return not self.event.is_set()
 
     def register_process_group(self, pid: int) -> None:
         with self.lock:
@@ -110,7 +104,6 @@ class InterruptionController:
             if self.event.is_set():
                 return
             self.event.set()
-            self.orphans.update(self.active)
             process_groups = tuple(self.groups)
         for pid in process_groups:
             self._signal_group(pid, signal.SIGTERM)
@@ -129,11 +122,11 @@ def sha256_file(path: pathlib.Path) -> str:
     return sha256_bytes(path.read_bytes())
 
 
-def normalized_apparatus_sha256(root: pathlib.Path = HERE) -> str:
+def normalized_apparatus_sha256(root: pathlib.Path = REPO) -> str:
     digest = hashlib.sha256()
     for relative in sorted(APPARATUS_FILES):
         data = (root / relative).read_bytes()
-        if relative.endswith(".py"):
+        if relative in PARAMS_PIN_FILES:
             data, count = PARAMS_PIN_LINE.subn(b'PARAMS_PIN_SHA256 = "TBD-FREEZE"\n', data)
             if count != 1:
                 raise Refusal(f"apparatus params-pin line count differs: {relative}")
@@ -142,7 +135,7 @@ def normalized_apparatus_sha256(root: pathlib.Path = HERE) -> str:
     return digest.hexdigest()
 
 
-def validate_apparatus(params: dict[str, Any], root: pathlib.Path = HERE) -> None:
+def validate_apparatus(params: dict[str, Any], root: pathlib.Path = REPO) -> None:
     if normalized_apparatus_sha256(root) != params.get("apparatus_sha256"):
         raise Refusal("normalized apparatus digest mismatch")
 
@@ -351,7 +344,11 @@ def resolve_codex_binary() -> pathlib.Path:
     return resolve_direct_binary("codex")
 
 
-def corpus_task_is_sealed(task: str, params: dict[str, Any]) -> bool:
+def corpus_task_is_sealed(
+    task: str,
+    params: dict[str, Any],
+    tasks_root: pathlib.Path = TASKS_ROOT,
+) -> bool:
     try:
         manifest = read_object(pathlib.Path(params["corpus"]["manifest_path"]))
         tasks = manifest["tasks"]
@@ -359,7 +356,7 @@ def corpus_task_is_sealed(task: str, params: dict[str, Any]) -> bool:
         expected = tasks[task]
         if tree != params["corpus"]["tree_sha256"] or not isinstance(expected, dict) or not expected:
             return False
-        task_dir = TASKS_ROOT / task
+        task_dir = tasks_root / task
         entries = list(task_dir.rglob("*"))
         if any(path.is_symlink() for path in entries):
             return False
@@ -462,15 +459,13 @@ def preflight(
     return params
 
 
-def scrubbed_env() -> dict[str, str]:
+def scrubbed_env(params: dict[str, Any]) -> dict[str, str]:
     keep = {
         key: value
         for key, value in os.environ.items()
         if not key.startswith(("CLAUDE", "CODEX", "MCP", "ANTHROPIC_MODEL"))
     }
-    keep["TERM"] = "dumb"
-    keep["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
-    keep["DISABLE_AUTOUPDATER"] = "1"
+    keep.update(params["l0_env"])
     return keep
 
 
@@ -668,7 +663,11 @@ def classify_cli_result(engine, returncode, payload, stderr):
     return catastrophic, incomplete, infra_invalid, engine_attested
 
 
-def codex_stdout_attestation(raw: bytes) -> tuple[str | None, str | None, str | None, int | None, list[str]]:
+def codex_stderr_attestation(
+    raw: bytes,
+    *,
+    tokens_required: bool = True,
+) -> tuple[str | None, str | None, str | None, int | None, list[str]]:
     text = raw.decode("utf-8", errors="replace")
     lines = text.splitlines()
     errors: list[str] = []
@@ -695,21 +694,26 @@ def codex_stdout_attestation(raw: bytes) -> tuple[str | None, str | None, str | 
         if rendered.isdigit():
             tokens = int(rendered)
     if version is None:
-        errors.append("Codex stdout version header missing or ambiguous")
+        errors.append("Codex stderr version header missing or ambiguous")
     if model is None:
-        errors.append("Codex stdout model header missing or ambiguous")
+        errors.append("Codex stderr model header missing or ambiguous")
     if effort is None:
-        errors.append("Codex stdout effort header missing or ambiguous")
-    if tokens is None:
-        errors.append("Codex stdout tokens-used value missing or malformed")
+        errors.append("Codex stderr effort header missing or ambiguous")
+    if tokens is None and tokens_required:
+        errors.append("Codex stderr tokens-used value missing or malformed")
     return version, model, effort, tokens, errors
 
 
-def validate_codex_stdout(
+def validate_codex_stderr(
     raw: bytes,
     params: dict[str, Any],
+    *,
+    tokens_required: bool = True,
 ) -> tuple[str | None, str | None, str | None, int | None, list[str]]:
-    version, model, effort, tokens, errors = codex_stdout_attestation(raw)
+    version, model, effort, tokens, errors = codex_stderr_attestation(
+        raw,
+        tokens_required=tokens_required,
+    )
     if version is not None and version != params["pair"]["codex_cli_version"]:
         errors.append("L2 Codex CLI version attestation mismatch")
     if model is not None and model != params["pair"]["model_id"]:
@@ -725,7 +729,10 @@ def surface_close_receipt(
 ) -> tuple[bool, list[str]]:
     phases = state.get("phases")
     surface = phases.get("surface_close") if isinstance(phases, dict) else None
-    ran = isinstance(surface, dict) and surface.get("verdict") is not None
+    ran = (
+        isinstance(surface, dict)
+        and surface.get("skipped_reason") != "auto_surface_close_claude_unavailable"
+    )
     errors: list[str] = []
     if ran and envelope_path is None:
         errors.append("surface-close state records a run but envelope is absent")
@@ -912,6 +919,7 @@ def execute_attempt(
     topup: bool = False,
     launcher_command: Callable[[list[str], pathlib.Path, int], subprocess.CompletedProcess[bytes]] | None = None,
     interruption: InterruptionController | None = None,
+    codex_auth_source: pathlib.Path | None = None,
 ) -> dict[str, Any]:
     row = base_row(run_id, attempt, arm, task, rep, model, topup)
     started = dt.datetime.now(dt.timezone.utc)
@@ -985,7 +993,7 @@ def execute_attempt(
                     params["bounds_seconds"]["L0"] + 60,
                     launcher_command,
                     interruption,
-                    scrubbed_env(),
+                    scrubbed_env(params),
                 )
             except subprocess.TimeoutExpired:
                 proc = subprocess.CompletedProcess(command, 125, b"", b"runner subprocess timeout\n")
@@ -994,9 +1002,10 @@ def execute_attempt(
             row["wall_ms"] = int((time.monotonic() - before) * 1000)
             if proc.returncode == 124 and not runner_timeout:
                 timed_out = True
+                row["wall_ms"] = params["bounds_seconds"]["L0"] * 1000
         else:
             row["staged_intervention_sha256"] = stage_harness(work, goal_bytes, params)
-            stage_codex_home(codex_home)
+            stage_codex_home(codex_home, codex_auth_source)
             prompt = (
                 b"/devlyn:resolve --goal-file .devlyn/goal.txt --no-pair"
                 if arm == "L1"
@@ -1121,11 +1130,20 @@ def execute_attempt(
                     if pair_verdict is None:
                         reasons.append("L2 pair_judge sub-verdict is null")
                     codex_stdout = sibling_artifact(state_path, work, "codex-judge.stdout")
+                    codex_stderr = sibling_artifact(state_path, work, "codex-judge.stderr")
                     if codex_stdout is None:
                         reasons.append("L2 codex-judge.stdout is absent")
                     else:
                         copy_if_present(codex_stdout, attempt_dir / "codex-judge.stdout")
-                        version, pair_model, effort, tokens, header_errors = validate_codex_stdout(codex_stdout.read_bytes(), params)
+                    if codex_stderr is None:
+                        reasons.append("L2 codex-judge.stderr is absent")
+                    else:
+                        copy_if_present(codex_stderr, attempt_dir / "codex-judge.stderr")
+                        version, pair_model, effort, tokens, header_errors = validate_codex_stderr(
+                            codex_stderr.read_bytes(),
+                            params,
+                            tokens_required=pair_verdict != "TIMEOUT",
+                        )
                         row["pair_cli_version_attested"] = version
                         row["pair_model_attested"] = pair_model
                         row["pair_effort_attested"] = effort
@@ -1177,11 +1195,15 @@ def execute_attempt(
         if reasons:
             row["infra_invalid"] = True
             row["infra_reason"] = "; ".join(dict.fromkeys(reasons))
-        row["output_tokens_total"] = (
-            sum(row["output_tokens"]["parent"].values())
-            + sum(row["output_tokens"]["surface_close"].values())
-            + row["codex_tokens_total"]
-        )
+        if row["terminal"] == "TIMEOUT" or row["pair_timeout"]:
+            row["codex_tokens_total"] = None
+            row["output_tokens_total"] = None
+        else:
+            row["output_tokens_total"] = (
+                sum(row["output_tokens"]["parent"].values())
+                + sum(row["output_tokens"]["surface_close"].values())
+                + row["codex_tokens_total"]
+            )
         row["finished_at"] = dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
         shutil.rmtree(scratch, ignore_errors=True)
     return row
@@ -1238,14 +1260,6 @@ def run_metadata(params: dict[str, Any], model: str, panel: str, run_id: str) ->
         "model": model,
         "panel": panel,
         "params_sha256": sha256_file(PARAMS_PATH),
-        "scripts_sha256": sha256_file(SCRIPTS_PATH),
-        "panel_sha256": sha256_file(PANEL_PATH),
-        "corpus_manifest_sha256": params["corpus"]["manifest_sha256"],
-        "corpus_tree_sha256": params["corpus"]["tree_sha256"],
-        "calibrator_sha256": params["calibrator"]["sha256"],
-        "claude_binary_sha256": params["claude"]["binary_sha256"],
-        "staged_intervention_sha256": params["harness"]["staged_intervention_sha256"],
-        "codex_binary_sha256": params["pair"]["codex_binary_sha256"],
         "apparatus_sha256": params["apparatus_sha256"],
     }
 
@@ -1293,22 +1307,17 @@ def validate_resume_rows(rows: list[dict[str, Any]], tasks: list[str], params: d
         attempt = row.get("attempt")
         if arm not in ARMS or task not in tasks or type(rep) is not int or type(attempt) is not int:
             raise Refusal(f"attempt 1 resume ledger contains an unknown cell: {key}")
+        if attempt != 1 or row.get("topup") is not False or key not in base_keys:
+            raise Refusal("attempt 1 resume accepts only attempt 1 base history")
         if row.get("run_id") != f"{run_id}:a{attempt}:{arm}:{task}:r{rep}":
             raise Refusal(f"attempt 1 resume run identity differs for {key}")
         expected = expected_cell_digests(params, arm, task)
         for field, digest in expected.items():
             if row.get(field) != digest:
                 raise Refusal(f"attempt 1 resume {field} differs for {key}")
-        if row.get("topup"):
-            continue
-        if key not in base_keys:
-            raise Refusal(f"attempt 1 resume ledger contains a non-base cell: {key}")
-        if attempt == 1:
-            if key in present:
-                raise Refusal(f"attempt 1 resume ledger contains a duplicate cell: {key}")
-            present.add(key)
-        elif key not in present:
-            raise Refusal(f"attempt {attempt} row precedes its attempt 1 base cell: {key}")
+        if key in present:
+            raise Refusal(f"attempt 1 resume ledger contains a duplicate cell: {key}")
+        present.add(key)
     return present
 
 
@@ -1322,16 +1331,17 @@ def schedule_base(tasks: list[str]) -> list[tuple[str, str, int, bool]]:
     return jobs
 
 
-def jobs_for_attempt(rows: list[dict[str, Any]], tasks: list[str], attempt: int, *, resume: bool = False) -> list[tuple[str, str, int, bool]]:
+def jobs_for_attempt(
+    rows: list[dict[str, Any]],
+    tasks: list[str],
+    attempt: int,
+    *,
+    resume_present: set[tuple[str, str, int]] | None = None,
+) -> list[tuple[str, str, int, bool]]:
     if attempt == 1:
         expected = schedule_base(tasks)
-        if resume:
-            present = {
-                (row["arm"], row["task"], row["rep"])
-                for row in rows
-                if not row.get("topup") and row.get("attempt") == 1
-            }
-            return [job for job in expected if job[:3] not in present]
+        if resume_present is not None:
+            return [job for job in expected if job[:3] not in resume_present]
         if any(not row.get("topup") for row in rows):
             raise Refusal("attempt 1 base rows already exist")
         return expected
@@ -1395,13 +1405,12 @@ def attempt_artifact_dir(out: pathlib.Path, attempt: int, arm: str, task: str, r
     return out / "attempts" / f"a{attempt}" / arm / task / f"r{rep}"
 
 
-def append_committed_row(path: pathlib.Path, row: dict[str, Any], controller: InterruptionController, key: tuple[str, str, int]) -> bool:
+def append_committed_row(path: pathlib.Path, row: dict[str, Any], controller: InterruptionController) -> bool:
     previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGTERM})
     try:
         if controller.interrupted:
             return False
         append_row(path, row)
-        controller.finish_cell(key)
         return True
     finally:
         signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
@@ -1421,8 +1430,7 @@ def execute_jobs(args: argparse.Namespace, params: dict[str, Any], jobs: list[tu
 
     def run_job(job: tuple[str, str, int, bool]) -> dict[str, Any]:
         arm, task, rep, topup = job
-        key = (arm, task, rep)
-        if not interrupt.begin_cell(key):
+        if not interrupt.begin_cell():
             raise CellInterrupted("window-boundary interruption")
         if getattr(args, "resume", False):
             shutil.rmtree(attempt_artifact_dir(out, args.attempt, arm, task, rep), ignore_errors=True)
@@ -1439,24 +1447,18 @@ def execute_jobs(args: argparse.Namespace, params: dict[str, Any], jobs: list[tu
             pending[pool.submit(run_job, job)] = job
         for future in concurrent.futures.as_completed(pending):
             arm, task, rep, _ = pending[future]
-            key = (arm, task, rep)
             try:
                 row = future.result()
             except CellInterrupted:
                 shutil.rmtree(attempt_artifact_dir(out, args.attempt, arm, task, rep), ignore_errors=True)
-                interrupt.finish_cell(key)
-            except BaseException:
-                interrupt.finish_cell(key)
-                raise
             else:
-                if append_committed_row(rows_path, row, interrupt, key):
+                if append_committed_row(rows_path, row, interrupt):
                     print(json.dumps(row, sort_keys=True), flush=True)
                     results.append(row)
                 else:
                     shutil.rmtree(attempt_artifact_dir(out, args.attempt, arm, task, rep), ignore_errors=True)
-                    interrupt.finish_cell(key)
         if interrupt.interrupted:
-            raise WindowInterrupted(interrupt.orphan_count)
+            raise WindowInterrupted("WINDOW-INTERRUPTED")
     finally:
         for future in pending:
             if interrupt.interrupted:
@@ -1472,10 +1474,15 @@ def validate_panel_model(params: dict[str, Any], model: str, panel: str) -> None
         raise Refusal("quick panel model must differ from the calibrator engine")
 
 
-def prepare_run(args: argparse.Namespace) -> tuple[dict[str, Any], list[str], pathlib.Path, list[dict[str, Any]]]:
+def prepare_run(
+    args: argparse.Namespace,
+    *,
+    preflight_check: Callable[[], dict[str, Any]] = preflight,
+    task_check: Callable[[str, dict[str, Any]], bool] = corpus_task_is_sealed,
+) -> tuple[dict[str, Any], list[str], pathlib.Path, list[dict[str, Any]]]:
     if MODEL_RE.fullmatch(args.model) is None:
         raise Refusal("--model must be an exact claude-* id")
-    params = preflight()
+    params = preflight_check()
     validate_panel_model(params, args.model, args.panel)
     out = pathlib.Path(args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -1484,6 +1491,9 @@ def prepare_run(args: argparse.Namespace) -> tuple[dict[str, Any], list[str], pa
         if args.task not in tasks and args.task not in selected_tasks(params, "full"):
             raise Refusal("--task is not in the sealed corpus")
         tasks = [args.task]
+    unsealed = [task for task in tasks if not task_check(task, params)]
+    if unsealed:
+        raise Refusal(f"corpus task integrity mismatch: {unsealed}")
     rows = load_rows(out / "rows.jsonl")
     metadata_path = out / "run-metadata.json"
     current = run_metadata(params, args.model, args.panel, args.run_id)
@@ -1532,23 +1542,27 @@ def validate_resume_mode(args: argparse.Namespace) -> None:
         raise Refusal("--resume is invalid with --smoke")
 
 
-def command_run(args: argparse.Namespace) -> int:
+def command_run(
+    args: argparse.Namespace,
+    *,
+    prepare: Callable[[argparse.Namespace], tuple[dict[str, Any], list[str], pathlib.Path, list[dict[str, Any]]]] = prepare_run,
+    job_runner: Callable[..., list[dict[str, Any]]] = execute_jobs,
+) -> int:
     validate_resume_mode(args)
     if args.detach:
         return detach(args)
-    params, tasks, _, rows = prepare_run(args)
+    params, tasks, _, rows = prepare(args)
     if args.smoke:
         if args.attempt != 1:
             raise Refusal("smoke uses attempt 1 only")
         if rows:
             raise Refusal("smoke output directory must not contain rows")
         jobs = [(arm, tasks[0], 1, False) for arm in ARMS]
-        produced = execute_jobs(args, params, jobs)
+        produced = job_runner(args, params, jobs)
         return 0 if smoke_gate(produced, args.model, params["pair"]) else 2
-    if args.resume:
-        validate_resume_rows(rows, tasks, params, args.run_id)
-    jobs = jobs_for_attempt(rows, tasks, args.attempt, resume=args.resume)
-    execute_jobs(args, params, jobs)
+    resume_present = validate_resume_rows(rows, tasks, params, args.run_id) if args.resume else None
+    jobs = jobs_for_attempt(rows, tasks, args.attempt, resume_present=resume_present)
+    job_runner(args, params, jobs)
     return 0
 
 
@@ -1592,8 +1606,11 @@ def self_test() -> int:
     with tempfile.TemporaryDirectory(prefix="lift-apparatus-") as raw:
         root = pathlib.Path(raw)
         for relative in APPARATUS_FILES:
-            shutil.copy2(HERE / relative, root / relative)
-        (root / "README.md").write_bytes((root / "README.md").read_bytes() + b"drift\n")
+            destination = root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(REPO / relative, destination)
+        launcher = root / "benchmark/ceiling/scripts/claude-isolation.py"
+        launcher.write_bytes(launcher.read_bytes() + b"# drift\n")
         refuses(lambda: validate_apparatus(params, root), "apparatus digest mismatch")
     names.append("normalized-apparatus-digest-refusal")
     derived = derive_panel(pathlib.Path(params["calibrator"]["path"]))
@@ -1605,7 +1622,7 @@ def self_test() -> int:
         "UA": ["EQ3-UA2", "EQ3-UA3", "EQ3-UA5"],
     }
     names.append("exact-panel-derivation")
-    env = scrubbed_env()
+    env = scrubbed_env(params)
     assert [env[key] for key in ("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "DISABLE_AUTOUPDATER", "TERM")] == ["1", "1", "dumb"]
     names.append("registered-l0-env")
     with tempfile.TemporaryDirectory(prefix="lift-stage-") as raw:
@@ -1645,11 +1662,59 @@ def self_test() -> int:
     clean_base.append(topup_row)
     assert jobs_for_attempt(clean_base, ["EQ3-AF2"], 2) == [("L0", "EQ3-AF2", 5, True)]
     names.append("infra-only-attempt-replacement")
-    header = (b"[codex-monitored] isolated=1\nOpenAI Codex v0.152.1\n--------\nworkdir: /fixture\n"
-              b"model: gpt-5.6-sol\nprovider: openai\nreasoning effort: medium\n--------\n"
-              b"assistant output\ntokens used\n22,696\n")
-    version, pair_model, effort, tokens, errors = validate_codex_stdout(header, params)
+    reply = b'# SUMMARY {"verdict": "PASS"}\n'
+    telemetry = (
+        b"[codex-monitored] start: ts=2026-07-29T15:47:20Z heartbeat=30s timeout=0s bin=codex\n"
+        b"[codex-monitored] isolated=1\n[codex-monitored] codex pid=92976\n"
+        b"Reading additional input from stdin...\nOpenAI Codex v0.152.1\n--------\n"
+        b"workdir: /fixture\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\n"
+        b"sandbox: read-only\nreasoning effort: medium\nreasoning summaries: none\n"
+        b"session id: fixture\n--------\ncodex\n# SUMMARY {\"verdict\": \"PASS\"}\n"
+        b"tokens used\n22,696\n[codex-monitored] codex exited: code=0 elapsed=197s\n"
+    )
+    assert reply.startswith(b"# SUMMARY") and b"OpenAI Codex" not in reply
+    version, pair_model, effort, tokens, errors = validate_codex_stderr(telemetry, params)
     assert (version, pair_model, effort, tokens, errors) == ("0.152.1", "gpt-5.6-sol", "medium", 22696, [])
+    with tempfile.TemporaryDirectory(prefix="lift-pair-streams-") as raw:
+        root = pathlib.Path(raw)
+        auth = root / "auth.json"
+        auth.write_bytes(b'{}\n')
+        state = {
+            "pair_verify": True,
+            "rounds": {"global": 0},
+            "phases": {
+                "surface_close": {
+                    "verdict": None,
+                    "skipped_reason": "auto_surface_close_claude_unavailable",
+                },
+                "verify": {"sub_verdicts": {"pair_judge": "PASS"}},
+                "final_report": {"verdict": "PASS"},
+            },
+        }
+        def pair_result(stdout: bool, stderr: bool) -> Callable[[list[str], pathlib.Path, int], subprocess.CompletedProcess[bytes]]:
+            def launch(command: list[str], work: pathlib.Path, _timeout: int) -> subprocess.CompletedProcess[bytes]:
+                (work / ".devlyn/pipeline.state.json").write_bytes(canonical_json(state))
+                if stdout:
+                    (work / ".devlyn/codex-judge.stdout").write_bytes(reply)
+                if stderr:
+                    (work / ".devlyn/codex-judge.stderr").write_bytes(telemetry)
+                parent = {"subtype": "success", "modelUsage": {"claude-opus-5": {"outputTokens": 1}}}
+                return subprocess.CompletedProcess(command, 0, canonical_json(parent), b"")
+            return launch
+        common = dict(
+            params=params, model="claude-opus-5", run_id="pair-streams", attempt=1,
+            arm="L2", task="EQ3-AF2", out_dir=root, codex_auth_source=auth,
+        )
+        valid = execute_attempt(**common, rep=1, launcher_command=pair_result(True, True))
+        assert valid["infra_invalid"] is False and valid["codex_tokens_total"] == 22696
+        assert valid["output_tokens_total"] == 22697
+        artifacts = root / "attempts/a1/L2/EQ3-AF2/r1"
+        assert (artifacts / "codex-judge.stdout").read_bytes() == reply
+        assert (artifacts / "codex-judge.stderr").read_bytes() == telemetry
+        missing_stdout = execute_attempt(**common, rep=2, launcher_command=pair_result(False, True))
+        missing_stderr = execute_attempt(**common, rep=3, launcher_command=pair_result(True, False))
+        assert "codex-judge.stdout is absent" in missing_stdout["infra_reason"]
+        assert "codex-judge.stderr is absent" in missing_stderr["infra_reason"]
     names.append("rollout-attestation-and-final-usage")
     for before, after, expected in (
         (b"v0.152.1", b"v0.152.2", "version attestation mismatch"),
@@ -1657,7 +1722,7 @@ def self_test() -> int:
         (b"effort: medium", b"effort: high", "effort attestation mismatch"),
         (b"22,696", b"not-a-number", "tokens-used value"),
     ):
-        *_, mismatch_errors = validate_codex_stdout(header.replace(before, after), params)
+        *_, mismatch_errors = validate_codex_stderr(telemetry.replace(before, after), params)
         assert any(expected in error for error in mismatch_errors), mismatch_errors
     names.append("codex-stdout-header-mismatch-refusal")
     for label, returncode, payload, stderr in (
@@ -1676,6 +1741,8 @@ def self_test() -> int:
         timeout_row = execute_attempt(**common, run_id="timeout", rep=1, launcher_command=fake_result(124, None))
         assert timeout_row["terminal"] == "TIMEOUT"
         assert timeout_row["f_ship"] == "1/1" and timeout_row["infra_invalid"] is False
+        assert timeout_row["wall_ms"] == params["bounds_seconds"]["L0"] * 1000
+        assert timeout_row["output_tokens_total"] is None and timeout_row["codex_tokens_total"] is None
         failure = {"is_error": True, "subtype": "error_max_turns", "modelUsage": {"claude-opus-5": {"outputTokens": 1}}}
         incomplete_row = execute_attempt(**common, run_id="incomplete", rep=2, launcher_command=fake_result(0, failure))
         assert incomplete_row["incomplete"] is True and incomplete_row["infra_invalid"] is False
@@ -1685,9 +1752,17 @@ def self_test() -> int:
         envelope = pathlib.Path(raw) / "surface-close.output.json"
         envelope.write_bytes(b"{}\n")
         ran_state = {"phases": {"surface_close": {"verdict": "PASS"}}}
-        idle_state = {"phases": {"surface_close": {"verdict": None}}}
+        idle_state = {"phases": {"surface_close": {
+            "verdict": None, "skipped_reason": "auto_surface_close_claude_unavailable",
+        }}}
+        recovery_state = {"phases": {"surface_close": {
+            "verdict": None,
+            "skipped_reason": "surface_close_rolled_back_adjudication_malformed",
+            "continued_after_block": True,
+        }}}
         assert surface_close_receipt(ran_state, None) == (True, ["surface-close state records a run but envelope is absent"])
         assert surface_close_receipt(idle_state, envelope) == (False, ["surface envelope exists without state run"])
+        assert surface_close_receipt(recovery_state, envelope) == (True, [])
     names.append("surface-envelope-orphan-and-missing-refusal")
     validate_panel_model(params, "claude-opus-5", "quick")
     validate_panel_model(params, params["calibrator"]["engine"], "full")
@@ -1739,6 +1814,33 @@ def self_test() -> int:
         injected_preflight()
     assert preflight_calls == ["launcher", "codex", "writer"]
     names.append("sandbox-writer-and-launcher-injection")
+    with tempfile.TemporaryDirectory(prefix="lift-seal-preflight-") as raw:
+        root = pathlib.Path(raw)
+        changed_tasks = root / "tasks"
+        changed_task = changed_tasks / "EQ3-AF2"
+        shutil.copytree(TASKS_ROOT / "EQ3-AF2", changed_task)
+        visible_file = next(path for path in (changed_task / "visible").rglob("*") if path.is_file())
+        visible_file.write_bytes(visible_file.read_bytes() + b"drift\n")
+        args = argparse.Namespace(
+            model="claude-opus-5", panel="quick", out=str(root / "out"), run_id="seal",
+            attempt=1, resume=False, detach=False, smoke=True, task="EQ3-AF2",
+        )
+        launcher_calls: list[object] = []
+        def changed_prepare(run_args: argparse.Namespace) -> tuple[dict[str, Any], list[str], pathlib.Path, list[dict[str, Any]]]:
+            return prepare_run(
+                run_args,
+                preflight_check=lambda: params,
+                task_check=lambda task, registered: corpus_task_is_sealed(task, registered, changed_tasks),
+            )
+        def forbidden_jobs(*_args: object, **_kwargs: object) -> list[dict[str, Any]]:
+            launcher_calls.append(object())
+            return []
+        refuses(
+            lambda: command_run(args, prepare=changed_prepare, job_runner=forbidden_jobs),
+            "corpus task integrity mismatch",
+        )
+        assert launcher_calls == []
+    names.append("preflight-corpus-drift-zero-launch")
     resume_tasks = ["EQ3-AF2"]
     registered_jobs = schedule_base(resume_tasks)
     completed_jobs = (registered_jobs[0], registered_jobs[2], registered_jobs[4])
@@ -1749,11 +1851,21 @@ def self_test() -> int:
         completed_rows.append(row)
     present = validate_resume_rows(completed_rows, resume_tasks, params, "resume")
     assert present == {(job[0], job[1], job[2]) for job in completed_jobs}
-    assert jobs_for_attempt(completed_rows, resume_tasks, 1, resume=True) == [job for job in registered_jobs if job not in completed_jobs]
+    assert jobs_for_attempt(completed_rows, resume_tasks, 1, resume_present=present) == [job for job in registered_jobs if job not in completed_jobs]
     refuses(lambda: jobs_for_attempt(completed_rows, resume_tasks, 1), "attempt 1 base rows already exist")
     drifted = [dict(row) for row in completed_rows]
     drifted[-1]["staged_intervention_sha256"] = "f" * 64
     refuses(lambda: validate_resume_rows(drifted, resume_tasks, params, "resume"), "staged_intervention_sha256")
+    later = dict(completed_rows[0], attempt=2, run_id="resume:a2:L0:EQ3-AF2:r1")
+    refuses(
+        lambda: validate_resume_rows([*completed_rows, later], resume_tasks, params, "resume"),
+        "only attempt 1 base history",
+    )
+    topup = dict(completed_rows[0], rep=5, topup=True, run_id="resume:a1:L0:EQ3-AF2:r5")
+    refuses(
+        lambda: validate_resume_rows([*completed_rows, topup], resume_tasks, params, "resume"),
+        "only attempt 1 base history",
+    )
     with tempfile.TemporaryDirectory(prefix="lift-resume-metadata-") as raw:
         metadata_path = pathlib.Path(raw) / "run-metadata.json"
         metadata = {"params_sha256": sha256_file(PARAMS_PATH)}
@@ -1782,8 +1894,7 @@ def self_test() -> int:
         try:
             execute_jobs(resume_args, params, [("L0", "EQ3-AF2", 1, False)], attempt_runner=interrupted_attempt, controller=interrupt, install_sigterm_handler=False)
         except WindowInterrupted as exc:
-            assert exc.orphan_count == 1
-            assert str(exc) == "WINDOW-INTERRUPTED: orphan_cells=1"
+            assert str(exc) == "WINDOW-INTERRUPTED"
         else:
             raise AssertionError("interrupted driver returned success")
         trigger.join(timeout=2)

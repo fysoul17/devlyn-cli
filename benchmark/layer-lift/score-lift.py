@@ -24,7 +24,17 @@ PARAMS_PIN_SHA256 = "TBD-FREEZE"
 ARMS = ("L0", "L1", "L2")
 CLASS_RE = re.compile(r"^EQ3-(AF|BD|MI|UA)[1-8]$")
 TERMINALS = {"BARE", "PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "TIMEOUT"}
-APPARATUS_FILES = ("README.md", "panel-quick.json", "run-lift-panel.py", "score-lift.py")
+APPARATUS_FILES = (
+    "benchmark/ceiling/scripts/claude-isolation.py",
+    "benchmark/layer-lift/README.md",
+    "benchmark/layer-lift/panel-quick.json",
+    "benchmark/layer-lift/run-lift-panel.py",
+    "benchmark/layer-lift/score-lift.py",
+)
+PARAMS_PIN_FILES = {
+    "benchmark/layer-lift/run-lift-panel.py",
+    "benchmark/layer-lift/score-lift.py",
+}
 PARAMS_PIN_LINE = re.compile(rb'(?m)^PARAMS_PIN_SHA256 = "[^"\r\n]*"\r?\n')
 
 
@@ -40,11 +50,11 @@ def sha256_file(path: pathlib.Path) -> str:
     return sha256_bytes(path.read_bytes())
 
 
-def normalized_apparatus_sha256(root: pathlib.Path = HERE) -> str:
+def normalized_apparatus_sha256(root: pathlib.Path = REPO) -> str:
     digest = hashlib.sha256()
     for relative in sorted(APPARATUS_FILES):
         data = (root / relative).read_bytes()
-        if relative.endswith(".py"):
+        if relative in PARAMS_PIN_FILES:
             data, count = PARAMS_PIN_LINE.subn(b'PARAMS_PIN_SHA256 = "TBD-FREEZE"\n', data)
             if count != 1:
                 raise ScoreError(f"apparatus params-pin line count differs: {relative}")
@@ -53,7 +63,7 @@ def normalized_apparatus_sha256(root: pathlib.Path = HERE) -> str:
     return digest.hexdigest()
 
 
-def validate_apparatus(params: dict[str, Any], root: pathlib.Path = HERE) -> None:
+def validate_apparatus(params: dict[str, Any], root: pathlib.Path = REPO) -> None:
     if normalized_apparatus_sha256(root) != params.get("apparatus_sha256"):
         raise ScoreError("normalized apparatus digest mismatch")
 
@@ -347,8 +357,16 @@ def validate_row(row: object, number: int) -> list[str]:
             errors.append(f"{label}: class mismatch")
     except (ScoreError, TypeError):
         errors.append(f"{label}: invalid task")
-    for key in ("attempt", "rep", "manifestations_total", "manifestations_failed", "wall_ms", "output_tokens_total", "codex_tokens_total"):
+    for key in ("attempt", "rep", "manifestations_total", "manifestations_failed", "wall_ms"):
         if type(row[key]) is not int or row[key] < 0:
+            errors.append(f"{label}: {key} must be a non-negative int")
+    timeout = row["terminal"] == "TIMEOUT"
+    usage_unknown = timeout or row["pair_timeout"] is True
+    for key in ("output_tokens_total", "codex_tokens_total"):
+        if usage_unknown:
+            if row[key] is not None:
+                errors.append(f"{label}: timed-out usage requires null {key}")
+        elif type(row[key]) is not int or row[key] < 0:
             errors.append(f"{label}: {key} must be a non-negative int")
     if type(row["attempt"]) is int and row["attempt"] not in {1, 2, 3}:
         errors.append(f"{label}: attempt must be 1, 2, or 3")
@@ -423,7 +441,8 @@ def validate_row(row: object, number: int) -> list[str]:
         errors.append(f"{label}: non-L2 fix diagnostics must be null")
     pair_fields = ("pair_model_attested", "pair_effort_attested", "pair_cli_version_attested")
     if row["arm"] != "L2":
-        if any(row[key] is not None for key in pair_fields) or row["pair_timeout"] is not False or row["codex_tokens_total"] != 0:
+        expected_codex = None if usage_unknown else 0
+        if any(row[key] is not None for key in pair_fields) or row["pair_timeout"] is not False or row["codex_tokens_total"] != expected_codex:
             errors.append(f"{label}: non-L2 pair attestation must be empty")
     return errors
 
@@ -589,7 +608,7 @@ def score(
                     or row["pair_effort_attested"] != params["pair"]["effective_effort"]
                     or row["pair_cli_version_attested"] != params["pair"]["codex_cli_version"]
                 ):
-                    identity_errors.append(f"L2 pair stdout attestation mismatch: {row['run_id']}")
+                    identity_errors.append(f"L2 pair stderr attestation mismatch: {row['run_id']}")
             if row["arm"] == "L2" and row["terminal"] == "TIMEOUT":
                 observed_pair = tuple(row[field] for field in (
                     "pair_model_attested", "pair_effort_attested", "pair_cli_version_attested",
@@ -599,9 +618,7 @@ def score(
                     params["pair"]["codex_cli_version"],
                 )
                 if observed_pair != (None, None, None) and observed_pair != expected_pair:
-                    identity_errors.append(f"L2 timeout pair stdout attestation mismatch: {row['run_id']}")
-                if observed_pair == (None, None, None) and row["codex_tokens_total"] != 0:
-                    identity_errors.append(f"L2 launcher timeout carries Codex tokens: {row['run_id']}")
+                    identity_errors.append(f"L2 timeout pair stderr attestation mismatch: {row['run_id']}")
             goal_digests.setdefault(row["task"], set()).add(row["goal_sha256"])
         base_limit = int(params["base_reps"][row["arm"]])
         if row["topup"] is False and row["rep"] > base_limit:
@@ -646,7 +663,6 @@ def score(
                     "params_sha256": params_sha256,
                     "panel_sha256": sha256_bytes(canonical_json(panel)),
                     "run_metadata_sha256": sha256_bytes(canonical_json(run_metadata)),
-                    "token_rule": params["token_rule"],
                 },
                 "model": run_metadata["model"],
                 "panel": panel_name,
@@ -677,34 +693,54 @@ def score(
         arm: median([row["wall_ms"] for row in base_rows if row["arm"] == arm])
         for arm in ARMS
     }
+    unknown_tokens = {
+        arm: sorted(
+            row["run_id"]
+            for row in base_rows
+            if row["arm"] == arm and row["output_tokens_total"] is None
+        )
+        for arm in ARMS
+    }
     token_sums = {
-        arm: sum(row["output_tokens_total"] for row in base_rows if row["arm"] == arm)
+        arm: None if unknown_tokens[arm] else sum(
+            row["output_tokens_total"] for row in base_rows if row["arm"] == arm
+        )
         for arm in ARMS
     }
     if any(value <= 0 for value in wall_medians.values()):
         raise ScoreError("efficiency wall denominator is zero")
-    if any(value <= 0 for value in token_sums.values()):
+    if any(value <= 0 for value in token_sums.values() if value is not None):
         raise ScoreError("efficiency token denominator is zero")
     n1_wall = ceil_fraction(wall_medians["L1"] / wall_medians["L0"])
-    n1_tok = ceil_fraction(Fraction(token_sums["L1"], token_sums["L0"]))
     m2_wall = ceil_fraction(wall_medians["L2"] / wall_medians["L1"])
-    m2_tok = ceil_fraction(Fraction(token_sums["L2"], token_sums["L1"]))
     e1_wall = efficiency_dimension(
         cheaper="L0", expensive="L1", n=n1_wall, tasks=tasks,
-        all_latest=all_latest, arm_rates=rates, params=params,
-    )
-    e1_tok = efficiency_dimension(
-        cheaper="L0", expensive="L1", n=n1_tok, tasks=tasks,
         all_latest=all_latest, arm_rates=rates, params=params,
     )
     e2_wall = efficiency_dimension(
         cheaper="L1", expensive="L2", n=m2_wall, tasks=tasks,
         all_latest=all_latest, arm_rates=rates, params=params,
     )
-    e2_tok = efficiency_dimension(
-        cheaper="L1", expensive="L2", n=m2_tok, tasks=tasks,
-        all_latest=all_latest, arm_rates=rates, params=params,
-    )
+    e1_unknown = sorted(unknown_tokens["L0"] + unknown_tokens["L1"])
+    e2_unknown = sorted(unknown_tokens["L1"] + unknown_tokens["L2"])
+    if e1_unknown:
+        n1_tok = None
+        e1_tok = {"decision": "INCONCLUSIVE", "unknown_timeout_rows": e1_unknown}
+    else:
+        n1_tok = ceil_fraction(Fraction(token_sums["L1"], token_sums["L0"]))
+        e1_tok = efficiency_dimension(
+            cheaper="L0", expensive="L1", n=n1_tok, tasks=tasks,
+            all_latest=all_latest, arm_rates=rates, params=params,
+        )
+    if e2_unknown:
+        m2_tok = None
+        e2_tok = {"decision": "INCONCLUSIVE", "unknown_timeout_rows": e2_unknown}
+    else:
+        m2_tok = ceil_fraction(Fraction(token_sums["L2"], token_sums["L1"]))
+        e2_tok = efficiency_dimension(
+            cheaper="L1", expensive="L2", n=m2_tok, tasks=tasks,
+            all_latest=all_latest, arm_rates=rates, params=params,
+        )
     e1 = aggregate_efficiency(e1_wall, e1_tok)
     e2 = aggregate_efficiency(e2_wall, e2_tok)
     topup: dict[str, Any] | None = None
@@ -730,7 +766,7 @@ def score(
     for arm in ARMS:
         parent: dict[str, int] = {}
         surface: dict[str, int] = {}
-        codex_total = 0
+        codex_total: int | None = 0
         for row in base_rows:
             if row["arm"] != arm:
                 continue
@@ -738,21 +774,37 @@ def score(
                 parent[model] = parent.get(model, 0) + count
             for model, count in row["output_tokens"]["surface_close"].items():
                 surface[model] = surface.get(model, 0) + count
-            codex_total += row["codex_tokens_total"]
+            if row["codex_tokens_total"] is None:
+                codex_total = None
+            elif codex_total is not None:
+                codex_total += row["codex_tokens_total"]
         token_breakdown[arm] = {
             "parent": parent,
             "surface_close": surface,
             "codex_total": codex_total,
             "total": token_sums[arm],
         }
-    pair_timeouts = sum(1 for row in base_rows if row["arm"] == "L2" and row["pair_timeout"] is True)
+    harness_rows = [row for row in base_rows if row["arm"] != "L0"]
+    l2_rows = [row for row in base_rows if row["arm"] == "L2"]
+    diagnostics = {
+        "verification_bullets_median": fraction_json(median([row["verification_bullets"] for row in harness_rows])),
+        "fix_round_ran": {
+            "count": sum(row["fix_round_ran"] is True for row in l2_rows),
+            "panel_size": len(l2_rows),
+        },
+        "diff_changed_by_pair": {
+            "count": sum(row["diff_changed_by_pair"] is True for row in l2_rows),
+            "unknown_count": sum(row["diff_changed_by_pair"] is None for row in l2_rows),
+            "panel_size": len(l2_rows),
+        },
+        "pair_timeout_count": sum(row["pair_timeout"] is True for row in l2_rows),
+    }
     return {
         "terminal_kind": "NEEDS_TOPUP" if topup else "LIFT",
         "panel_saturated": False,
         "model": run_metadata["model"],
         "panel": panel_name,
         "run_id": run_metadata["run_id"],
-        "runner_is_frozen": True,
         "inputs": {
             "rows_sha256": rows_sha256,
             "params_sha256": params_sha256,
@@ -760,12 +812,10 @@ def score(
             "corpus_manifest_sha256": params["corpus"]["manifest_sha256"],
             "corpus_tree_sha256": params["corpus"]["tree_sha256"],
             "calibrator_sha256": params["calibrator"]["sha256"],
-            "scripts_sha256": run_metadata.get("scripts_sha256"),
             "claude_binary_sha256": params["claude"]["binary_sha256"],
             "codex_binary_sha256": params["pair"]["codex_binary_sha256"],
             "staged_intervention_sha256": params["harness"]["staged_intervention_sha256"],
             "apparatus_sha256": params["apparatus_sha256"],
-            "token_rule": params["token_rule"],
             "run_metadata_sha256": sha256_bytes(canonical_json(run_metadata)),
         },
         "Q1": q1,
@@ -783,7 +833,7 @@ def score(
         "topup": topup,
         "per_task": per_task,
         "token_breakdown": token_breakdown,
-        "pair_timeout_count": pair_timeouts,
+        "diagnostics": diagnostics,
     }
 
 
@@ -835,7 +885,6 @@ def fixture_params() -> tuple[dict[str, Any], dict[str, Any], list[str]]:
             "codex_cli_version": "0.fixture", "codex_binary_sha256": "7" * 64,
         },
         "apparatus_sha256": "9" * 64,
-        "token_rule": "fixture asymmetric token rule",
     }
     return params, panel, tasks
 
@@ -867,13 +916,13 @@ def fixture_row(
         "pair_effort_attested": "medium" if arm == "L2" else None,
         "pair_cli_version_attested": "0.fixture" if arm == "L2" else None,
         "pair_timeout": terminal == "TIMEOUT" and arm == "L2",
-        "codex_tokens_total": 0,
+        "codex_tokens_total": None if terminal == "TIMEOUT" else 0,
         "terminal": terminal, "f_tree": fraction_json(tree), "f_ship": fraction_json(ship),
         "manifestations_total": tree.denominator, "manifestations_failed": tree.numerator,
         "catastrophic": False, "incomplete": False, "infra_invalid": infra,
         "infra_reason": "fixture infra" if infra else None, "wall_ms": wall,
         "output_tokens": {"parent": {"claude-fixture": tokens}, "surface_close": {}},
-        "output_tokens_total": tokens,
+        "output_tokens_total": None if terminal == "TIMEOUT" else tokens,
         "verification_bullets": None if arm == "L0" else 1,
         "fix_round_ran": False if arm == "L2" else None,
         "diff_changed_by_pair": False if arm == "L2" else None,
@@ -899,7 +948,7 @@ def invoke_fixture(rows: list[dict[str, Any]], params: dict[str, Any], panel: di
     return score(
         rows, params, panel_name="quick", panel=panel,
         rows_sha256="a" * 64, params_sha256="b" * 64,
-        run_metadata={"model": "claude-fixture", "panel": "quick", "run_id": "fixture", "scripts_sha256": "c" * 64},
+        run_metadata={"model": "claude-fixture", "panel": "quick", "run_id": "fixture"},
         injected_frozen_errors=errors,
     )
 
@@ -912,8 +961,11 @@ def self_test() -> int:
     with tempfile.TemporaryDirectory(prefix="score-apparatus-") as raw:
         root = pathlib.Path(raw)
         for relative in APPARATUS_FILES:
-            shutil.copy2(HERE / relative, root / relative)
-        (root / "panel-quick.json").write_bytes(b"{}\n")
+            destination = root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(REPO / relative, destination)
+        launcher = root / "benchmark/ceiling/scripts/claude-isolation.py"
+        launcher.write_bytes(launcher.read_bytes() + b"# drift\n")
         try:
             validate_apparatus(params_registered, root)
         except ScoreError as exc:
@@ -968,9 +1020,32 @@ def self_test() -> int:
     l0_timeout["model_attested"] = None
     assert blocked["f_ship"] == timeout["f_ship"] == l0_timeout["f_ship"] == "1/1"
     assert blocked["f_tree"] == "1/3" and timeout["f_tree"] == "2/3"
+    assert timeout["output_tokens_total"] is None and timeout["codex_tokens_total"] is None
+    assert l0_timeout["output_tokens_total"] is None and l0_timeout["codex_tokens_total"] is None
     assert validate_row(blocked, 1) == [] and validate_row(timeout, 2) == []
     assert validate_row(l0_timeout, 3) == []
     names.append("blocked-timeout-ship-channel")
+
+    params, panel, rows = fixture_rows()
+    l1_timeout = fixture_row(
+        "L1", "EQ3-AF1", 1, Fraction(1, 2), terminal="TIMEOUT", tree=Fraction(1, 2),
+    )
+    rows = [
+        l1_timeout if (row["arm"], row["task"], row["rep"]) == ("L1", "EQ3-AF1", 1) else row
+        for row in rows
+    ]
+    result = invoke_fixture(rows, params, panel)
+    timeout_id = l1_timeout["run_id"]
+    assert result["per_task"]["EQ3-AF1"]["f_L1"] == "1/1"
+    assert result["E1"]["tokens"] == {
+        "decision": "INCONCLUSIVE", "unknown_timeout_rows": [timeout_id],
+    }
+    assert result["E2"]["tokens"] == {
+        "decision": "INCONCLUSIVE", "unknown_timeout_rows": [timeout_id],
+    }
+    assert result["ratios"]["N1_tok"] is None and result["ratios"]["M2_tok"] is None
+    assert "unknown_timeout_rows" not in result["E1"]["wall"]
+    names.append("timeout-unknown-token-leg-inconclusive")
 
     params, panel, rows = fixture_rows()
     rows[0]["model_attested"] = None
@@ -1016,6 +1091,24 @@ def self_test() -> int:
         rows.append(fixture_row("L0", task, 3, Fraction(0), topup=True))
     assert invoke_fixture(rows, params, panel)["Q1"] == baseline
     names.append("topup-excluded-from-quality")
+
+    params, panel, rows = fixture_rows()
+    l2_rows = [row for row in rows if row["arm"] == "L2"]
+    l2_rows[0].update(fix_round_ran=True, diff_changed_by_pair=True)
+    l2_rows[1].update(
+        pair_timeout=True,
+        codex_tokens_total=None, output_tokens_total=None,
+    )
+    l2_rows[2]["diff_changed_by_pair"] = None
+    assert validate_row(l2_rows[1], 1) == []
+    diagnostics = invoke_fixture(rows, params, panel)["diagnostics"]
+    assert diagnostics == {
+        "verification_bullets_median": "1/1",
+        "fix_round_ran": {"count": 1, "panel_size": 4},
+        "diff_changed_by_pair": {"count": 1, "unknown_count": 1, "panel_size": 4},
+        "pair_timeout_count": 1,
+    }
+    names.append("registered-diagnostics-summary")
 
     values_by_task = {
         "EQ3-AF1": Fraction(0), "EQ3-AF2": Fraction(1),
@@ -1084,14 +1177,6 @@ def main() -> int:
         panel = read_object(DEFAULT_PANEL)
         metadata_pins = {
             "params_sha256": sha256_file(args.params),
-            "scripts_sha256": sha256_file(SCRIPTS_PATH),
-            "panel_sha256": sha256_file(DEFAULT_PANEL),
-            "corpus_manifest_sha256": params["corpus"]["manifest_sha256"],
-            "corpus_tree_sha256": params["corpus"]["tree_sha256"],
-            "calibrator_sha256": params["calibrator"]["sha256"],
-            "claude_binary_sha256": params["claude"]["binary_sha256"],
-            "staged_intervention_sha256": params["harness"]["staged_intervention_sha256"],
-            "codex_binary_sha256": params["pair"]["codex_binary_sha256"],
             "apparatus_sha256": params["apparatus_sha256"],
         }
         mismatched_metadata = [
@@ -1105,7 +1190,7 @@ def main() -> int:
             run_metadata=metadata,
         )
         final, receipt = write_verdict(verdict, args.out)
-        print(f"pair_timeouts={final.get('pair_timeout_count', 0)}")
+        print(f"pair_timeouts={final.get('diagnostics', {}).get('pair_timeout_count', 0)}")
         print(terminal_line(final, receipt, args.rows))
         return 0
     except (OSError, ValueError, KeyError, ScoreError) as exc:

@@ -8,9 +8,9 @@
 
 2. Freeze before any model run, in this order: finalize every registered
    parameter; write `apparatus_sha256` from the normalized runner, scorer,
-   README, and panel bytes; replace both `TBD-FREEZE` constants with the final
-   SHA-256 of `registered-params.json`; then re-seal `scripts.sha256` and require
-   this to pass.
+   README, panel, and `claude-isolation.py` bytes; replace both `TBD-FREEZE`
+   constants with the final SHA-256 of `registered-params.json`; then re-seal
+   `scripts.sha256` and require this to pass.
 
    ```sh
    shasum -a 256 -c benchmark/layer-lift/scripts.sha256
@@ -31,8 +31,8 @@
    python3 benchmark/layer-lift/run-lift-panel.py run --model claude-opus-5 --panel quick --out /private/tmp/lift-quick --run-id lift-quick --attempt 1 --detach
    ```
 
-   At a window boundary: `kill -TERM $(cat driver.pid)`; when the account is
-   quiet again, rerun step 4 with `--resume`.
+   At a window boundary: `kill -TERM "$(cat /private/tmp/lift-quick/driver.pid)"`;
+   when the account is quiet again, rerun step 4 with `--resume`.
 
 5. Replace only infrastructure-invalid rows, at most twice.
 
