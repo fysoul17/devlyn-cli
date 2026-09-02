@@ -280,13 +280,22 @@ section "Check 5b: Installed skill roots carry exact version markers"
 if make_temp_dir tmp_install_marker /tmp/devlyn-install-marker.XXXXXX; then
   marker_home="$tmp_install_marker/home"
   marker_project="$tmp_install_marker/project"
+  timeout_low="$tmp_install_marker/timeout-low"
+  timeout_high="$tmp_install_marker/timeout-high"
   installer="$PWD/bin/devlyn.js"
-  mkdir -p "$marker_home" "$marker_project"
+  mkdir -p "$marker_home" "$marker_project" "$timeout_low/.claude" "$timeout_high/.claude"
+  printf '{"env":{"BASH_MAX_TIMEOUT_MS":"600000"}}\n' > "$timeout_low/.claude/settings.json"
+  printf '{"env":{"BASH_MAX_TIMEOUT_MS":"7200000"}}\n' > "$timeout_high/.claude/settings.json"
 
   if (cd "$marker_project" \
       && HOME="$marker_home" node "$installer" -y >"$tmp_install_marker/claude.log" 2>&1 \
-      && HOME="$marker_home" node "$installer" agents all >"$tmp_install_marker/agents.log" 2>&1); then
-    if python3 - "$installer" "$marker_home" "$marker_project" <<'PY'
+      && HOME="$marker_home" node "$installer" agents all >"$tmp_install_marker/agents.log" 2>&1) \
+      && (cd "$timeout_low" && HOME="$marker_home" node "$installer" -y >"$tmp_install_marker/timeout-low.log" 2>&1) \
+      && cp "$timeout_low/.claude/settings.json" "$tmp_install_marker/timeout-low-first.json" \
+      && (cd "$timeout_low" && HOME="$marker_home" node "$installer" -y >"$tmp_install_marker/timeout-low-second.log" 2>&1) \
+      && cmp -s "$timeout_low/.claude/settings.json" "$tmp_install_marker/timeout-low-first.json" \
+      && (cd "$timeout_high" && HOME="$marker_home" node "$installer" -y >"$tmp_install_marker/timeout-high.log" 2>&1); then
+    if python3 - "$installer" "$marker_home" "$marker_project" "$timeout_low" "$timeout_high" <<'PY'
 import json
 import pathlib
 import stat
@@ -295,6 +304,8 @@ import sys
 installer = pathlib.Path(sys.argv[1])
 home = pathlib.Path(sys.argv[2])
 project = pathlib.Path(sys.argv[3])
+timeout_low = pathlib.Path(sys.argv[4])
+timeout_high = pathlib.Path(sys.argv[5])
 package = json.loads((installer.parent.parent / "package.json").read_text())
 expected = {"schemaVersion": 1, "package": package["name"], "version": package["version"]}
 roots = [
@@ -312,10 +323,20 @@ for root in roots:
         raise SystemExit(f"{marker}: expected mode 0600")
     if list(root.glob(".devlyn-install.json.*.tmp")):
         raise SystemExit(f"{root}: stale marker temp file")
+for target, expected_timeout in (
+    (project, "3600000"),
+    (timeout_low, "3600000"),
+    (timeout_high, "7200000"),
+):
+    env = json.loads((target / ".claude" / "settings.json").read_text())["env"]
+    if env.get("BASH_MAX_TIMEOUT_MS") != expected_timeout:
+        raise SystemExit(f"{target}: expected BASH_MAX_TIMEOUT_MS={expected_timeout}")
+    if "BASH_DEFAULT_TIMEOUT_MS" in env:
+        raise SystemExit(f"{target}: BASH_DEFAULT_TIMEOUT_MS must not be installed")
 PY
     then
       if grep -Fxq '.claude/skills/.devlyn-install.json' "$marker_project/.gitignore"; then
-        ok "Claude, Codex, shared-agent, and Grok roots have exact 0600 markers; project marker is ignored"
+        ok "managed roots have exact 0600 markers; Bash max is installed, raised, preserved, and idempotent"
       else
         bad "Claude project install must ignore its local marker"
       fi

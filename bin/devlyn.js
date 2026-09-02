@@ -865,6 +865,11 @@ function installClaudeCore() {
     settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1';
     settingsChanged = true;
   }
+  const bashMaxTimeoutMs = Number.parseInt(settings.env.BASH_MAX_TIMEOUT_MS, 10);
+  if (!Number.isFinite(bashMaxTimeoutMs) || bashMaxTimeoutMs < 3600000) {
+    settings.env.BASH_MAX_TIMEOUT_MS = '3600000';
+    settingsChanged = true;
+  }
   if (!hasOwnSetting('hooks')) {
     settings.hooks = {};
     settingsChanged = true;
@@ -893,7 +898,7 @@ function installClaudeCore() {
   }
   if (settingsChanged) {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-    log('  → settings.json (agent teams + pipeline permissions + Stop hook)', 'dim');
+    log('  → settings.json (agent teams + one-hour Bash max + pipeline permissions + Stop hook)', 'dim');
   }
 
   // Configure global Claude Code settings (~/.claude/settings.json)
