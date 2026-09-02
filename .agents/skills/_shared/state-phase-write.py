@@ -1487,9 +1487,9 @@ def clear_verify_round_artifacts(devlyn: pathlib.Path) -> None:
     # verify-merge-findings.py (iter-0060 R0 finding).
     # verify*.jsonl (not just *.findings.jsonl): judge-specific files like
     # verify.findings.judge-codex.jsonl end in .judge-<engine>.jsonl.
-    # *-judge.* covers every engine's stdout/stderr capture (codex-judge.*,
-    # claude-judge.* — adapters/claude.md ## Invocation).
-    for pattern in ("verify*.jsonl", "*-judge.*"):
+    # The judge suffixes cover harness-owned stdout/stderr captures and the
+    # collector-written pair-judge.summary.json, without matching prompts.
+    for pattern in ("verify*.jsonl", "*-judge.stdout", "*-judge.stderr", "*-judge.summary.json"):
         for path in devlyn.glob(pattern):
             path.unlink()
     (devlyn / "verify-merge.summary.json").unlink(missing_ok=True)
@@ -2704,8 +2704,11 @@ def self_test() -> int:
             "verify-merge.summary.json",
             "codex-judge.stdout",
             "claude-judge.stdout",
+            "claude-judge.stderr",
+            "pair-judge.summary.json",
         ):
             (devlyn / name).write_text("stale\n", encoding="utf-8")
+        (devlyn / "codex-primary-judge.prompt.md").write_text("current\n", encoding="utf-8")
         (devlyn / "spec-verify.json").write_text("{}", encoding="utf-8")
         clear_verify_round_artifacts(devlyn)
         for name in (
@@ -2716,8 +2719,11 @@ def self_test() -> int:
             "verify-merge.summary.json",
             "codex-judge.stdout",
             "claude-judge.stdout",
+            "claude-judge.stderr",
+            "pair-judge.summary.json",
         ):
             assert not (devlyn / name).exists(), f"{name} must be cleared on VERIFY spawn"
+        assert (devlyn / "codex-primary-judge.prompt.md").exists(), "judge prompts must survive VERIFY spawn"
         assert (devlyn / "spec-verify.json").exists(), "non-VERIFY-round files must survive"
 
         # Fix-loop respawn of phase-gated IMPLEMENT must preserve `exec`
