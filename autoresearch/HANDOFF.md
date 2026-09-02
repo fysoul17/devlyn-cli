@@ -12,75 +12,45 @@ If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PR
 
 ---
 
-## 🚦 START-HERE — state after 2026-09-02 (session 21)
+## 🚦 START-HERE — state after 2026-09-03 (session 22)
 
-**DIRECTION CHANGE (user design review, Block 11 below): the loop's next
-product is a FIXED PER-RELEASE METER for the NORTH-STAR layer contract —
-bare (L0) < solo harness (L1) < pair harness (L2), per model, in hours —
-registered as iter-0113. iter-0112 (multi-week session-horizon root) is
-PARKED as an optional module.** Why, verified at the bytes on 2026-09-02:
-the felt opus-5 regression reproduced on no instrument (0102/0103: opus-5
-fails LESS than opus-4-8, Δ=−0.181 CI[−0.256,−0.109]; repo-scale 0105–0109
-rejected ×4 on calibration); 0112's registered worst-case reachability is
-P(CONFIRM | large effect)=.517 for a multi-week dedicated-account root; and
-the layer contract itself has NEVER been measured — the ceiling tranche has
-no L1 arm (A = `--pair-verify`, executor codex) and its 13-row corpus is
-bare-saturated, while the only discriminating corpus (sealed 0102, 32
-tasks, hidden oracles) was only ever run bare-to-bare.
+**iter-0113 layer-lift meter: APPARATUS FROZEN (`FREEZE-0113-SOL` r4 after
+11+5+3 findings), commit `311187e`.** `benchmark/layer-lift/` = `run-lift-panel.py`
+(L0 bare copy of mx-driver's attempt shape; L1/L2 via the ceiling isolation
+launcher with executor `claude`, `--no-pair` / `--pair-verify`; lanes 2;
+`--detach`; `--attempt 1 --resume` for window boundaries), `score-lift.py`
+(Δ1/Δ2 + stratified CI + best-of-N legs + `LIFT-0113:` token), `panel-quick.json`
+(AF2/AF1/AF5, BD2/BD3/BD4, MI5/MI3/MI6, UA2/UA3/UA5), `registered-params.json`
+(sha `6713f3df…` embedded in both scripts), `scripts.sha256` (8/8). Launcher
+`claude-isolation.py` now takes `--model` (sonnet literal deleted; 8 callers pass
+`--model sonnet`). Every design delta is recorded in the STUB § "Apparatus
+record" A-1..A-8 + freeze rounds 1-3; read that section before touching bytes.
 
-**0113 in one screen** (full registration in the STUB): three arms on the
-sealed 0102 corpus — L0 `mx-driver.py` bare, L1 `/devlyn:resolve --no-pair`
-with executor = model under test, L2 = L1 + `--pair-verify` (codex judge +
-one fix round); hidden-oracle score of the FINAL tree; Δ1 = L0−L1 fail
-(harness lift), Δ2 = L1−L2 (pair lift), task-level bootstrap CI, δ=0.15;
-efficiency legs E1/E2 vs `bare-best-of-N` (N = wall ratio, bounded at the
-registered reps); quick panel = 12 tasks (3/class nearest sonnet q_cal 1/2)
-× reps L0 4 / L1 2 / L2 2 (~hours); full = 32 (periodic; copycat arm only
-for an ops #17 claim). Predictions P-0113-1..4 stated in the STUB before
-any run (honest expectation: harness lifts, efficiency leg INEFFICIENT).
+**Verified this session (bytes, not memory):** (b) subagents INHERIT `--model M`
+and the parent envelope sees their usage (`~/.local/share/nx01/iter0113-reg/b-binding.md`).
+claude 2.1.258 adds a haiku session-title call unless
+`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` (launcher sets it; L0 now too).
+The pair judge is `--ephemeral` + `--ignore-user-config` ⇒ no rollout, config
+unread; attestation = the product-captured `codex-judge.stderr` header
+(`OpenAI Codex v0.152.1` / `model: gpt-5.6-sol` / `reasoning effort: medium` /
+`tokens used`). TIMEOUT is a valid outcome in every arm (`f_ship = 1/1`, tokens
+unknown ⇒ that token leg INCONCLUSIVE). Terra's sandbox cannot use the Keychain,
+`ps`, or write `~/.local/share/nx01/` — fable runs micro-runs/smoke/panel itself.
 
-**R0 sol verdict (2026-09-03, `~/.local/share/nx01/iter0113-reg/r0-sol.log`,
-815 s): `REVISE a=ADOPT b=REVISE c=AMEND d=AMEND e=REVISE` + 4 unlisted —
-ALL FOLDED into the STUB (§ R0 record) after fable re-verified every byte
-claim.** Adopted: exact-set model attestation (no % tolerance), smoke-gate
-conjuncts, launcher `--model` parameter (the `sonnet` literal at
-`claude-isolation.py:309-310` is deleted), mutually exclusive decision line
-at δ=3/20 with within-class bootstrap, monotone best-of-N top-up (no
-`BOUNDED`), two-channel `f_ship`/`f_tree` (BLOCKED ⇒ 1), token efficiency
-legs (OUTPUT tokens pinned), calibrator-separation wording, exact pair ID
-under frozen `CODEX_HOME`, deletions (in-run saturation re-derivation,
-copycat, `panel.py`, P-0113-4). **One named-delta rejection**: sol's
-switch to `--spec` mode — free-form `--goal-file` stays (criterion
-PRODUCT-AS-SHIPPED INTERVENTION; the SURFACE_CLOSE `claude-sonnet-5` phase,
-`SKILL.md:262-264`, is a registered fixed product component attested
-exactly, not tolerated). Grok skipped (402 standing ruling).
-
-**NEXT SESSION — do these one at a time, each to a committed artifact:**
-1. `git status` — if session-21 files are uncommitted, commit them as
-   `docs(autoresearch): iter-0113 layer-lift meter registration (R0 folded) + 0112 PARKED + HANDOFF compress`.
-   Re-read the STUB's fixed-elements table once before any lane.
-2. terra lane (workspace-write, xhigh): `benchmark/layer-lift/` — `panel.py`
-   (registered rule → `panel-quick.json`), `run-lift-panel.py` (L0 via
-   mx-driver; L1/L2 via the ceiling arm staging with executor `claude` and
-   `--no-pair`/`--pair-verify`; lanes 2; detached `os.setsid`; one
-   `rows.jsonl`), `score-lift.py` (Δ/E + CI + decision line + terminal
-   token; self-test on synthetic ledgers), `registered-params.json`,
-   `scripts.sha256`. FIRST verify (b): that `claude -p --model M` binds the
-   IMPLEMENT/VERIFY subagents to M — cite the bytes; if not, pin per phase.
-3. Freeze lane: sol read-only rounds until zero findings (grok on 402 →
-   skip per standing ruling); fable byte-verifies self-tests + digests.
-4. Smoke (1 task × 3 arms) on a quiet account → wall anchor + exact-ID
-   attestation → then the quick panel, detached; scorer frozen BEFORE rows
-   complete; ONE evaluation; record `LIFT-0113:` token + DECISION in the
-   iteration file; DECISIONS row; HANDOFF START-HERE.
-5. Follow-ups registered, not started: (i) same meter with M' =
-   claude-opus-4-8 → the model-checkup column; (ii) banked-session
-   diagnostic of 0110 m3–m6 (≈233 clean sessions, zero account use) as the
-   0112 go/no-go; (iii) codex-bare saturation check before any codex L0.
-
-Venue facts still true: machine login = dedicated Max-20x account
-(itclab25); weekly reset 2026-09-05 08:00 KST; other projects on OTHER
-accounts do not interfere — only this account must be quiet during runs.
+**NEXT SESSION (or the rest of this one):**
+1. Smoke gate: `python3 benchmark/layer-lift/run-lift-panel.py run --model claude-opus-5 --panel quick --out ~/.local/share/nx01/iter0113/smoke-1 --run-id lift-smoke-1 --smoke --task EQ3-AF2` — preflight REFUSES on any live `claude -p` / `codex exec` / `grok -p` machine-wide (other projects' devlyn pipelines spawn `claude -p` on the same account); wait for quiet, do not relax the check (frozen). Continue only on `SMOKE-0113: PASS` (all conjuncts incl. `all_rows_infra_valid` + wall/token anchors).
+2. Budget read: capture `/api/oauth/usage` before/after the smoke
+   (`benchmark/executor-quality/scripts/usage-capture-0112.py --out …`); 05:31 KST
+   reading = weekly 58 % used, reset **2026-09-07 20:01 KST**. Plan the 96-cell
+   quick panel across windows with `kill -TERM $(cat <out>/driver.pid)` at a
+   boundary and `--attempt 1 --resume` after it; scorer is already frozen.
+3. Quick panel detached (`--detach`), quiet account, outside 23:00–01:00 KST;
+   attempts 2/3 replace infra-invalid rows only; `score-lift.py score …`;
+   `topup` loop on `NEEDS_TOPUP`; ONE evaluation; record `LIFT-0113:` +
+   DECISION in the STUB, a DECISIONS row, and this START-HERE.
+4. Follow-ups registered, not started: (i) M' = claude-opus-4-8 column;
+   (ii) 0110 banked-session diagnostic as the 0112 go/no-go; (iii) codex-bare
+   saturation check before any codex L0.
 
 ## Binding seat/lane rules (consolidated; details in the cited iters)
 
@@ -268,7 +238,7 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 
 ## 📍 Project state (verify before editing)
 
-- **Branch**: `main`, HEAD `d12a2f3` (2026-09-02, session 20). Session 21 changes (this HANDOFF, 0113 STUB, 0112 PARKED note) are committed as `docs(autoresearch): iter-0113 registration` if that commit exists; otherwise they are the uncommitted working tree — check `git status` first. Release/installer surface (README/bin publish commits) is USER territory, hands off.
+- **Branch**: `main`, HEAD `311187e` (2026-09-03, session 22, FREEZE-0113). Release/installer surface (README/bin publish commits) is USER territory, hands off.
 - **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (verified 2026-09-02; machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`). NOTE for 0113: the meter's L1/L2 arms stage their OWN `engines.json` with executor `claude` inside the arm worktree — the repo pin is untouched.
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 
