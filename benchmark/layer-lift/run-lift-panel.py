@@ -38,7 +38,7 @@ PARAMS_PATH = HERE / "registered-params.json"
 PANEL_PATH = HERE / "panel-quick.json"
 SCRIPTS_PATH = HERE / "scripts.sha256"
 CLAUDE_ISOLATION = REPO / "benchmark/ceiling/scripts/claude-isolation.py"
-PARAMS_PIN_SHA256 = "ba9bc790429126fbc110eecf02eeb48cb445481d03c1d898a84084590f252c44"
+PARAMS_PIN_SHA256 = "TBD-FREEZE"
 MODEL_RE = re.compile(r"^claude-[A-Za-z0-9][A-Za-z0-9.-]*$")
 INFRA_FAILURE = re.compile(r"http\s*429|http\s*529|rate[ -]?limit|session[ -]?limit|usage[ -]?limit|overloaded", re.IGNORECASE)
 CLASS_RE = re.compile(r"^EQ3-(AF|BD|MI|UA)[1-8]$")
@@ -1136,13 +1136,14 @@ def execute_attempt(
                 copy_if_present(criteria_path, attempt_dir / "criteria.generated.md")
                 risk = state.get("risk_profile")
                 verify = state.get("phases", {}).get("verify") if isinstance(state.get("phases"), dict) else None
-                trigger = verify.get("pair_trigger") if isinstance(verify, dict) else None
-                if trigger is None and isinstance(state.get("verify"), dict):
-                    trigger = state["verify"].get("pair_trigger")
                 if arm == "L1":
                     if not isinstance(risk, dict) or risk.get("pair_default_enabled") is not False:
                         reasons.append("L1 risk_profile.pair_default_enabled is not false")
-                    if not isinstance(trigger, dict) or trigger.get("skipped_reason") != "user_no_pair":
+                    trigger = verify.get("pair_trigger") if isinstance(verify, dict) else None
+                    if verify is not None and (
+                        not isinstance(trigger, dict)
+                        or trigger.get("skipped_reason") != "user_no_pair"
+                    ):
                         reasons.append("L1 pair_trigger.skipped_reason is not user_no_pair")
                 else:
                     rounds = state.get("rounds")
@@ -1797,6 +1798,56 @@ def self_test() -> int:
             for env in launcher_environments
         )
     names.append("rollout-attestation-and-final-usage")
+    with tempfile.TemporaryDirectory(prefix="lift-smoke1-l1-") as raw:
+        root = pathlib.Path(raw)
+        auth = root / "auth.json"
+        auth.write_bytes(b'{}\n')
+        blocked_terminal = "BLOCKED:surface-close-adjudication-out-of-surface"
+        smoke1_state = {
+            "risk_profile": {"pair_default_enabled": False},
+            "phases": {
+                "surface_close": {"verdict": "BLOCKED"},
+                "verify": None,
+                "final_report": {"verdict": "BLOCKED"},
+            },
+        }
+        smoke1_report = (
+            "# resolve — FINAL REPORT\n\n"
+            "| | |\n|---|---|\n"
+            f"| **verdict** | **`{blocked_terminal}`** |\n"
+        )
+        def smoke1_l1_result(
+            command: list[str], work: pathlib.Path, _timeout: int,
+            _env: dict[str, str] | None,
+        ) -> subprocess.CompletedProcess[bytes]:
+            metadata_path = pathlib.Path(command[command.index("--metadata-out") + 1])
+            metadata_path.write_bytes(canonical_json({
+                "direct_claude": {
+                    "path": params["claude"]["binary_path"],
+                    "sha256": params["claude"]["binary_sha256"],
+                },
+            }))
+            devlyn = work / ".devlyn"
+            (devlyn / "pipeline.state.json").write_bytes(canonical_json(smoke1_state))
+            (devlyn / "final-report.md").write_text(smoke1_report, encoding="utf-8")
+            (devlyn / "surface-close.output.json").write_bytes(canonical_json({
+                "subtype": "success",
+                "modelUsage": {"claude-sonnet-5": {"outputTokens": 1}},
+            }))
+            parent = {"subtype": "success", "modelUsage": {"claude-opus-5": {"outputTokens": 1}}}
+            return subprocess.CompletedProcess(command, 0, canonical_json(parent), b"")
+        smoke1_l1_row = execute_attempt(
+            params=params, model="claude-opus-5", run_id="smoke1-l1", attempt=1,
+            arm="L1", task="EQ3-AF2", rep=1, out_dir=root,
+            launcher_command=smoke1_l1_result, codex_auth_source=auth,
+        )
+        copied_report = root / "attempts/a1/L1/EQ3-AF2/r1/final-report.md"
+        assert copied_report.read_text(encoding="utf-8") == smoke1_report
+        assert harness_terminal(smoke1_state, copied_report) == blocked_terminal
+        assert smoke1_l1_row["terminal"] == blocked_terminal
+        assert smoke1_l1_row["f_ship"] == "1/1"
+        assert smoke1_l1_row["infra_invalid"] is False
+        assert smoke1_l1_row["infra_reason"] is None
     with tempfile.TemporaryDirectory(prefix="lift-claude-pin-") as raw:
         root = pathlib.Path(raw)
         missing_params = {**params, "claude": {**params["claude"], "binary_path": str(root / "missing")}}
@@ -1891,7 +1942,7 @@ def self_test() -> int:
             model_attested="claude-opus-5", manifestations_total=1, catastrophic=False,
             wall_ms=1, output_tokens_total=1,
         )
-    smoke_rows[1]["terminal"] = "PASS"
+    smoke_rows[1] = {**smoke1_l1_row, "wall_ms": max(smoke1_l1_row["wall_ms"], 1)}
     smoke_rows[2].update(terminal="PASS", pair_model_attested=params["pair"]["model_id"],
                          pair_effort_attested=params["pair"]["effective_effort"],
                          pair_cli_version_attested=params["pair"]["codex_cli_version"],
@@ -1900,6 +1951,8 @@ def self_test() -> int:
     with contextlib.redirect_stdout(captured):
         assert smoke_gate(smoke_rows, "claude-opus-5", params["pair"]) is False
     assert "SMOKE-CONJUNCT all_rows_infra_valid=FAIL" in captured.getvalue()
+    assert "SMOKE-CONJUNCT l1_user_no_pair=PASS" in captured.getvalue()
+    names.append("smoke1-l1-verify-absent-valid")
     names.append("smoke-all-rows-infra-valid")
     smoke_rows[2].update(
         pair_timeout=True, codex_tokens_total=None, output_tokens_total=None,

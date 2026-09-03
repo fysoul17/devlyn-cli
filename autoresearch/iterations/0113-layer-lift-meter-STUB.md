@@ -204,6 +204,13 @@ Second smoke attempt refused `Claude binary path/digest mismatch`: the CLI auto-
 
 `registered-params.json` sha256 `ba9bc790429126fbc110eecf02eeb48cb445481d03c1d898a84084590f252c44` embedded in both scripts; normalized `apparatus_sha256` `a831f2d34f716965c9b47a3cad05ece07c194c9377f736097b7d60763d55a717`; seals 8/8; self-tests 21/21 + 16/16. Supersedes the earlier freeze digests. Freeze ledger: r1 11 → r2 5 → r3 3 → r4 FREEZE → A-9 r5 1 → r6 FREEZE → A-10 r7 FREEZE.
 
+### Smoke-1 (2026-09-03 10:10–10:29 KST, `~/.local/share/nx01/iter0113/smoke-1/`) → `SMOKE-0113: FAIL` — one apparatus defect (A-11) + one infra row
+
+- L0 (opus-5 bare): 5/5 manifestations pass, 50 s, 3,822 output tokens, key set {opus-5} exactly. L1: PLAN PASS → IMPLEMENT PASS → SURFACE_CLOSE `BLOCKED:surface-close-adjudication-out-of-surface` → `BLOCKED` (VERIFY never spawned), 762 s, 61,944 output tokens, parent {opus-5} + surface envelope {sonnet-5} attested; oracle on the tree as left 2/5 failed. L2: 68 turns, then `is_error` "You've hit your session limit · resets 13:10 KST" during VERIFY — infra-invalid (correct classification), 1,052 s, 83,487 output tokens.
+- **A-11** (apparatus): the L1 conjunct `phases.verify.pair_trigger.skipped_reason == user_no_pair` cannot exist when VERIFY never spawns; corrected to `pair_default_enabled == false` ∧ (verify absent ∨ `user_no_pair`) ∧ zero rollouts. Re-freeze required (terra fix7 → sol r8).
+- Venue: the 5-hour session window (48 % before the smoke, shared with other projects' pipelines on this account) is the binding limit, not the weekly meter (27 % after a denominator shift) — 0110's lesson again. Smoke-2 after 13:10 KST on a quiet account; the quick panel needs night windows + `--resume`.
+- Product signal (not yet a claim): bare solved EQ3-AF2 in 50 s; the harness declined to ship after 12.7 min.
+
 ## Not in scope
 
 Non-coding axes (intent fidelity / decomposition / collaboration) — 0070a
