@@ -211,6 +211,10 @@ Second smoke attempt refused `Claude binary path/digest mismatch`: the CLI auto-
 - Venue: the 5-hour session window (48 % before the smoke, shared with other projects' pipelines on this account) is the binding limit, not the weekly meter (27 % after a denominator shift) — 0110's lesson again. Smoke-2 after 13:10 KST on a quiet account; the quick panel needs night windows + `--resume`.
 - Product signal (not yet a claim): bare solved EQ3-AF2 in 50 s; the harness declined to ship after 12.7 min.
 
+### RE-FROZEN (3) — `FREEZE-0113-SOL: FREEZE n=0` (r8 after A-11; `freeze-r8-sol.log`; 12:58 KST)
+
+`registered-params.json` sha256 `52731fd9dab43b526b87d07a862aa0dec2b6666a68abb86c30ebbc7263c0e111` embedded in both scripts; normalized `apparatus_sha256` `1cf69fb8ec73b10683836e65660cf4e4a8d770453df53c0ab0b3fe3fbb01e77b`; seals 8/8; self-tests 22/22 + 16/16. Supersedes earlier freeze digests. Freeze ledger: r1 11 → r2 5 → r3 3 → r4 FREEZE → A-9 r5 1 → r6 FREEZE → A-10 r7 FREEZE → A-11 r8 FREEZE.
+
 ## Not in scope
 
 Non-coding axes (intent fidelity / decomposition / collaboration) — 0070a
