@@ -1,5 +1,5 @@
 {
-  "apparatus_sha256": "1cf69fb8ec73b10683836e65660cf4e4a8d770453df53c0ab0b3fe3fbb01e77b",
+  "apparatus_sha256": "1e314e0dcf4a08e9761921510033d1283cb49e76576f52b51347b35db1f697e4",
   "corpus": {
     "manifest_path": "/Users/aipalm/.local/share/nx01/iter0102/freeze/candidate-manifest.json",
     "manifest_sha256": "80f0a12ddb6df006c4137ecbc96c557742f8bbe74b0cacf65466c3af6dcd8887",
@@ -12,10 +12,10 @@
   },
   "base_reps": {
     "L0": 4,
-    "L1": 2,
-    "L2": 2
+    "L1": 1,
+    "L2": 1
   },
-  "lanes": 2,
+  "lanes": 1,
   "bounds_seconds": {
     "L0": 1800,
     "harness": 3600
@@ -52,7 +52,7 @@
     "codex_binary_path": "/Users/aipalm/.nvm/versions/node/v20.19.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex",
     "codex_binary_sha256": "8194ea3181f330e63023b234b0b231855e5874e0331c5ef7cbc490591497a7bf"
   },
-  "delta": "3/20",
+  "delta": "6/20",
   "bootstrap": {
     "seed": 20260903,
     "resamples": 2000

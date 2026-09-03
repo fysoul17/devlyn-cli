@@ -14,44 +14,41 @@ If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PR
 
 ## 🚦 START-HERE — state after 2026-09-03 (session 23)
 
-**iter-0113 layer-lift meter: APPARATUS FROZEN (`FREEZE-0113-SOL` r8; params
-`52731fd9…`, apparatus `1cf69fb8…`, seals 8/8).** `benchmark/layer-lift/` =
-`run-lift-panel.py` (L0 bare copy of mx-driver's attempt shape; L1/L2 via the
-ceiling isolation launcher, executor `claude`, `--no-pair` / `--pair-verify`;
-lanes 2; `--detach`; `--attempt 1 --resume` for window boundaries),
-`score-lift.py`, `panel-quick.json` (12 tasks), `registered-params.json`,
-`scripts.sha256`. Every design delta is in the STUB § "Apparatus record"
-(A-1..A-11, freeze ledger r1→r8, smoke-1/smoke-2 records) — read it before
-touching bytes. Terra's sandbox cannot use the Keychain, `ps`, or write
-`~/.local/share/nx01/` — fable runs smoke/panel launches itself.
+**iter-0113 layer-lift meter: APPARATUS FROZEN r12 after AMENDMENT A-12
+(minimal panel; params `56cdc14d…`, apparatus `1e314e0d…`, seals 8/8;
+STUB § "RE-FROZEN (4)").** Two smokes had
+died on the 5-hour session limit with lanes 2 (one harness cell ≈ 25–45 %
+of a Max-20x window); the user ruled: minimum, shared login, coexist with
+the user's own sessions. A-12 = L1/L2 reps 2→1 (24 harness cells), lanes 1,
+δ 6/20, `--task` in `--resume` runs, operator loop `drain-quick.py`. Every
+design delta is in the STUB § "Apparatus record" (A-1..A-12, freeze ledger,
+smoke-1/2 records) — read it before touching bytes. Terra's sandbox cannot
+use the Keychain, `ps`, or write `~/.local/share/nx01/` — fable launches.
 
-**Two smokes, both `SMOKE-0113: FAIL` on venue, zero open apparatus defects.**
-Smoke-2 (14:43–14:57 KST, dedicated account): L0 PASS (50 s); L1/L2 died at
-12.5 min in IMPLEMENT on the 5-hour session limit (429). **Capacity fact
-(binding for scheduling):** one harness cell (L1 or L2, opus-5, xhigh) ≈ 13
-min, ~60 k output tokens, 5–6 M cache-read tokens ≈ 25–45 % of a Max-20x
-5-hour window; the registered quick panel (48 harness + 48 L0 cells) needs
-≥ 20 windows ≈ 4–6 days on ONE idle account and ≈ one weekly allowance.
+**NEXT SESSION — one command, then leave it alone (≈ 2.5–4 days):**
+```bash
+git status && python3 benchmark/layer-lift/run-lift-panel.py --self-test >/dev/null && \
+python3 benchmark/layer-lift/drain-quick.py --model claude-opus-5 \
+  --out ~/.local/share/nx01/iter0113/quick-1 --run-id lift-quick-1
+tail -f ~/.local/share/nx01/iter0113/quick-1/drain.log
+```
+The drain self-detaches, waits for a gate (no live `claude -p`/`codex exec`/
+`grok -p` machine-wide ∧ five-hour usage ≤ 10 % via `usage-capture-0112.py`
+∧ outside 23:00–01:00 KST), runs smoke-3 first (`smoke/smoke.log` must end
+`SMOKE-0113: PASS`; on FAIL it stops — read the row, decide, re-run the
+command), then one task per fresh window (`run --attempt 1 --resume --task`),
+then attempts 2/3 for infra-invalid rows, then `score-lift.py score` →
+`LIFT-0113:` or `NEEDS_TOPUP` in `drain.log` + `drain.done`. Stop it with
+`kill -TERM $(cat …/quick-1/drain.pid)` (rows stay atomic; re-run the same
+command to continue). The user's own sessions may keep running; a cell that
+still dies on a 429 is replaced by attempts 2/3.
 
-**USER GATE (open — do not fire smoke-3 before the user rules):** venue +
-schedule. (A) run as registered: multi-day exclusive-account drain, ≈ 2
-harness cells per fresh window, `run --attempt 1 --resume` per window,
-`kill -TERM $(cat <out>/driver.pid)` at the boundary; (B) amend the panel
-(seat micro-round + re-freeze) to fewer cells for a directional first read;
-(C) halt the launch and treat the smoke's product signal (bare 50 s vs
-harness 13 min, not shipping) as the finding → product-weight work first.
-
-**After the ruling:** capture `usage-capture-0112.py --out …` (session %
-must be fresh on the chosen account; other projects' pipelines spawn
-`claude -p` on the shared account — preflight refuses while any is live),
-smoke-3 via the `smoke-2/launch-loop.sh` shape, continue only on
-`SMOKE-0113: PASS` (all conjuncts incl. `all_rows_infra_valid`); then the
-panel per the chosen schedule, attempts 2/3 replace infra-invalid rows only,
-`score-lift.py score …`, `topup` on `NEEDS_TOPUP`, ONE evaluation,
-`LIFT-0113:` + DECISION in the STUB, a DECISIONS row, this START-HERE.
-Follow-ups registered, not started: (i) M' = claude-opus-4-8 column; (ii)
-0110 banked-session diagnostic as the 0112 go/no-go; (iii) codex-bare
-saturation check before any codex L0.
+**After `drain.done`:** `NEEDS_TOPUP` → `run-lift-panel.py topup …` per the
+scorer's line (E1 = L0 reps, cheap; E2 = L1 reps, one per half-window), then
+score again. ONE evaluation. Record `LIFT-0113:` + DECISION in the STUB, a
+DECISIONS row, and this START-HERE. Follow-ups registered, not started:
+(i) M' = claude-opus-4-8 column; (ii) 0110 banked-session diagnostic as the
+0112 go/no-go; (iii) codex-bare saturation check before any codex L0.
 
 ## Binding seat/lane rules (consolidated; details in the cited iters)
 
@@ -70,8 +67,10 @@ saturation check before any codex L0.
   `cd <root> && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 shasum
   -a 256 | shasum -a 256`.
 - Seat-lane gotchas (each observed ≥1×): seat prompts = literal strings
-  (zsh `${var/pat/rep}` silently no-ops); watch completion by PID / the
-  wrapper's final `codex exited` line — seat logs ECHO other logs; codex
+  (zsh `${var/pat/rep}` silently no-ops); watch completion by PID or by a
+  line YOUR subshell appends after the wrapper exits (`echo rc=$?`) — seat
+  logs ECHO other logs, including another seat's `codex exited` line
+  (terra14, 2026-09-03); codex
   "model at capacity" is transient (retry loop, 3 min); terra STOPs on
   packet wording (re-pin BEFORE self-tests; whole-tree pin lines never pass
   `shasum -c`); terra once renamed full suites to `legacy_self_test` — grep
@@ -231,7 +230,7 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 | T1 packet calibration (seat×defect) | complementary override: catalog admits ONLY sonnet, credential ONLY terra (risk-diff 1.0 both) → routed-seat v2, validation fixtures landed | 0070a Amendment 2 + addendum 9; `benchmark/noncoding/validation/` |
 | Seat fitness (모델 × 포지션) | matrix live; 5 current cells; executor/pair-judge pins fail-closed "recert required" | `benchmark/seats/seat-matrix-2026-07-07.json` |
 | Opus line, bare, discriminating corpus | opus-5 fails LESS than opus-4-8 (Δ=−0.181, CI[−0.256,−0.109]); opus-5 ≈ fable-5; felt regression NOT reproduced by 0100/0102/0103; repo-scale band 0105–0109 REJECTED ×4; session-horizon 0110 VENUE_REJECTED, 0112 PARKED | DECISIONS 0102.1/0103.1/0105.1–0110.1; `~/.local/share/nx01/iter0102/` |
-| **Layer contract L1>L0, L2>L1 on a discriminating corpus** | **UNMEASURED** — ceiling tranche has no L1 arm and its corpus is bare-saturated; iter-0113 meter frozen (r8), smokes 1–2 venue-FAIL, user gate on venue/schedule | `iterations/0113-layer-lift-meter-STUB.md` |
+| **Layer contract L1>L0, L2>L1 on a discriminating corpus** | **UNMEASURED** — ceiling tranche has no L1 arm and its corpus is bare-saturated; iter-0113 meter frozen r12 (A-12 minimal panel), smokes 1–2 venue-FAIL, drain ready | `iterations/0113-layer-lift-meter-STUB.md` |
 
 Working instruments: violation matrix (`run-violation-matrix.sh`), compliance cells (`run-compliance-cell.sh` + `check-compliance-cell.py`, now incl. `finish_gate_ran`), drift-bait probes (bare + resolve-framed), judge-quality bench (+codex route), frozen-VERIFY pair gates, token gauge (`scripts/skill-token-gauge.py`), **ceiling 3-arm harness** (`benchmark/ceiling/scripts/run-ceiling-tranche.sh`), **seat matrix + recert runner** (`benchmark/seats/recert-seats.sh`, fail-closed pins).
 
@@ -239,7 +238,7 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 
 ## 📍 Project state (verify before editing)
 
-- **Branch**: `main`, HEAD = freeze `ff58b47` + session-23 docs commit (2026-09-03). Release/installer surface (README/bin publish commits) is USER territory, hands off.
+- **Branch**: `main`, HEAD = A-12 freeze commit (2026-09-03, session 23). Release/installer surface (README/bin publish commits) is USER territory, hands off.
 - **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (verified 2026-09-02; machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`). NOTE for 0113: the meter's L1/L2 arms stage their OWN `engines.json` with executor `claude` inside the arm worktree — the repo pin is untouched.
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 

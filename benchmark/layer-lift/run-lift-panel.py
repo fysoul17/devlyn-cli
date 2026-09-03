@@ -38,12 +38,12 @@ PARAMS_PATH = HERE / "registered-params.json"
 PANEL_PATH = HERE / "panel-quick.json"
 SCRIPTS_PATH = HERE / "scripts.sha256"
 CLAUDE_ISOLATION = REPO / "benchmark/ceiling/scripts/claude-isolation.py"
-PARAMS_PIN_SHA256 = "52731fd9dab43b526b87d07a862aa0dec2b6666a68abb86c30ebbc7263c0e111"
+PARAMS_PIN_SHA256 = "56cdc14de95950c21676e062fec3e9a8b61cfc013965d33d7fdfa7801dbd26be"
 MODEL_RE = re.compile(r"^claude-[A-Za-z0-9][A-Za-z0-9.-]*$")
 INFRA_FAILURE = re.compile(r"http\s*429|http\s*529|rate[ -]?limit|session[ -]?limit|usage[ -]?limit|overloaded", re.IGNORECASE)
 CLASS_RE = re.compile(r"^EQ3-(AF|BD|MI|UA)[1-8]$")
 ARMS = ("L0", "L1", "L2")
-BASE_REPS = {"L0": 4, "L1": 2, "L2": 2}
+BASE_REPS = {"L0": 4, "L1": 1, "L2": 1}
 APPARATUS_FILES = (
     "benchmark/ceiling/scripts/claude-isolation.py",
     "benchmark/layer-lift/README.md",
@@ -138,6 +138,8 @@ def normalized_apparatus_sha256(root: pathlib.Path = REPO) -> str:
 def validate_apparatus(params: dict[str, Any], root: pathlib.Path = REPO) -> None:
     if normalized_apparatus_sha256(root) != params.get("apparatus_sha256"):
         raise Refusal("normalized apparatus digest mismatch")
+    if params.get("base_reps") != BASE_REPS:
+        raise Refusal("runner BASE_REPS differs from registered base_reps")
 
 
 def reject_constant(token: str) -> None:
@@ -279,7 +281,7 @@ def validate_script_manifest(path: pathlib.Path = SCRIPTS_PATH) -> list[str]:
     expected_targets = {
         target.resolve()
         for target in HERE.iterdir()
-        if target.is_file() and target != SCRIPTS_PATH
+        if target.is_file() and target != SCRIPTS_PATH and target.name != "drain-quick.py"
     } | {
         CLAUDE_ISOLATION.resolve(),
         pathlib.Path("/Users/aipalm/.local/share/nx01/iter0102/matrix/apparatus/run-bounded.py").resolve(),
@@ -1520,6 +1522,8 @@ def prepare_run(
         if args.task not in tasks and args.task not in selected_tasks(params, "full"):
             raise Refusal("--task is not in the sealed corpus")
         tasks = [args.task]
+    elif args.task is not None and args.task not in tasks:
+        raise Refusal("--task is not in the selected panel")
     unsealed = [task for task in tasks if not task_check(task, params)]
     if unsealed:
         raise Refusal(f"corpus task integrity mismatch: {unsealed}")
@@ -1581,6 +1585,13 @@ def validate_resume_mode(args: argparse.Namespace) -> None:
         raise Refusal("--resume is invalid with --smoke")
 
 
+def validate_task_mode(args: argparse.Namespace) -> None:
+    if args.smoke and not args.task:
+        raise Refusal("--smoke requires --task")
+    if args.task and not args.smoke and (args.attempt != 1 or not args.resume):
+        raise Refusal("--task without --smoke requires --attempt 1 --resume")
+
+
 def command_run(
     args: argparse.Namespace,
     *,
@@ -1588,6 +1599,7 @@ def command_run(
     job_runner: Callable[..., list[dict[str, Any]]] = execute_jobs,
 ) -> int:
     validate_resume_mode(args)
+    validate_task_mode(args)
     if args.detach:
         return detach(args)
     params, tasks, _, rows = prepare(args)
@@ -1600,7 +1612,12 @@ def command_run(
         produced = job_runner(args, params, jobs)
         return 0 if smoke_gate(produced, args.model, params["pair"]) else 2
     resume_present = validate_resume_rows(rows, tasks, params, args.run_id) if args.resume else None
-    jobs = jobs_for_attempt(rows, tasks, args.attempt, resume_present=resume_present)
+    scheduled_tasks = [args.task] if args.task else tasks
+    jobs = jobs_for_attempt(rows, scheduled_tasks, args.attempt, resume_present=resume_present)
+    if not jobs:
+        if args.task:
+            print(f"NO-JOBS: {args.task} has no missing base cells")
+        return 0
     job_runner(args, params, jobs)
     return 0
 
@@ -1652,6 +1669,9 @@ def self_test() -> int:
         launcher.write_bytes(launcher.read_bytes() + b"# drift\n")
         refuses(lambda: validate_apparatus(params, root), "apparatus digest mismatch")
     names.append("normalized-apparatus-digest-refusal")
+    mismatched_reps = {**params, "base_reps": {"L0": 4, "L1": 2, "L2": 1}}
+    refuses(lambda: validate_apparatus(mismatched_reps), "BASE_REPS differs")
+    names.append("registered-base-reps-match-runner")
     derived = derive_panel(pathlib.Path(params["calibrator"]["path"]))
     assert derived == read_object(PANEL_PATH)
     assert derived["tasks"] == {
@@ -1685,8 +1705,12 @@ def self_test() -> int:
         assert (codex / "auth.json").stat().st_mode & 0o777 == 0o600
     names.append("opaque-codex-home-staging")
     jobs = schedule_base(["EQ3-AF2", "EQ3-BD2"])
-    assert len(jobs) == 16
-    assert jobs[:4] == [("L0", "EQ3-AF2", 1, False), ("L1", "EQ3-AF2", 1, False), ("L2", "EQ3-AF2", 1, False), ("L0", "EQ3-AF2", 2, False)]
+    assert len(jobs) == 12
+    assert jobs[:6] == [
+        ("L0", "EQ3-AF2", 1, False), ("L1", "EQ3-AF2", 1, False),
+        ("L2", "EQ3-AF2", 1, False), ("L0", "EQ3-AF2", 2, False),
+        ("L0", "EQ3-AF2", 3, False), ("L0", "EQ3-AF2", 4, False),
+    ]
     names.append("task-major-arm-round-robin")
     base = [base_row("retry", 1, arm, task, rep, "claude-test", topup) for arm, task, rep, topup in schedule_base(["EQ3-AF2"])]
     base[2]["infra_invalid"] = True
@@ -2067,6 +2091,42 @@ def self_test() -> int:
         lambda: validate_resume_rows([*completed_rows, topup], resume_tasks, params, "resume"),
         "only attempt 1 base history",
     )
+    full_resume_tasks = ["EQ3-AF2", "EQ3-BD2"]
+    full_resume_rows: list[dict[str, Any]] = []
+    for arm, task, rep, topup in schedule_base(full_resume_tasks):
+        row = base_row("task-resume", 1, arm, task, rep, "claude-opus-5", topup)
+        row.update(expected_cell_digests(params, arm, task))
+        full_resume_rows.append(row)
+    task_args = argparse.Namespace(
+        model="claude-opus-5", panel="quick", out="/fixture", run_id="task-resume",
+        attempt=1, resume=True, detach=False, smoke=False, task="EQ3-AF2",
+    )
+    task_launches: list[list[tuple[str, str, int, bool]]] = []
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        assert command_run(
+            task_args,
+            prepare=lambda _args: (params, full_resume_tasks, pathlib.Path("/fixture"), full_resume_rows),
+            job_runner=lambda _args, _params, jobs: task_launches.append(jobs) or [],
+        ) == 0
+    assert task_launches == [] and captured.getvalue() == "NO-JOBS: EQ3-AF2 has no missing base cells\n"
+    missing_task_rows = [
+        row for row in full_resume_rows
+        if (row["arm"], row["task"], row["rep"]) != ("L1", "EQ3-AF2", 1)
+    ]
+    assert command_run(
+        task_args,
+        prepare=lambda _args: (params, full_resume_tasks, pathlib.Path("/fixture"), missing_task_rows),
+        job_runner=lambda _args, _params, jobs: task_launches.append(jobs) or [],
+    ) == 0
+    assert task_launches == [[("L1", "EQ3-AF2", 1, False)]]
+    for invalid in (
+        argparse.Namespace(smoke=False, task="EQ3-AF2", attempt=1, resume=False),
+        argparse.Namespace(smoke=False, task="EQ3-AF2", attempt=2, resume=True),
+    ):
+        refuses(lambda invalid=invalid: validate_task_mode(invalid), "--task without --smoke")
+    validate_task_mode(task_args)
+    names.append("task-resume-full-ledger-task-only-schedule-and-zero-job")
     with tempfile.TemporaryDirectory(prefix="lift-resume-metadata-") as raw:
         metadata_path = pathlib.Path(raw) / "run-metadata.json"
         metadata = {"params_sha256": sha256_file(PARAMS_PATH)}
@@ -2148,10 +2208,6 @@ def main() -> int:
             print(json.dumps(panel, sort_keys=True))
             return 0
         if args.command == "run":
-            if args.smoke and not args.task:
-                raise Refusal("--smoke requires --task")
-            if not args.smoke and args.task:
-                raise Refusal("--task is only valid with --smoke")
             return command_run(args)
         if args.command == "topup":
             return command_topup(args)

@@ -1,6 +1,7 @@
 # Layer-lift operator recipe
 
-1. Derive and verify the registered quick panel.
+1. Derive and verify the registered quick panel. Its fixed base is L0 ×4,
+   L1 ×1, L2 ×1 with one lane and materiality δ = 6/20.
 
    ```sh
    python3 benchmark/layer-lift/run-lift-panel.py --derive-panel
@@ -24,28 +25,16 @@
 
    Continue only after every `SMOKE-CONJUNCT` and `SMOKE-0113` line is `PASS`.
 
-4. Start the quick panel detached. Keep the account quiet and outside
-   23:00–01:00 KST.
+4. Start the serial operator drain. It self-detaches, waits until the account
+   has no active supported CLI session, five-hour use is at most 10%, and KST
+   is outside the quiet window; it then runs the separate smoke directory,
+   drains one task per window, replaces infrastructure-invalid rows through
+   attempts 2 and 3, and scores. Top-ups remain an operator decision.
 
    ```sh
-   python3 benchmark/layer-lift/run-lift-panel.py run --model claude-opus-5 --panel quick --out /private/tmp/lift-quick --run-id lift-quick --attempt 1 --detach
+   python3 benchmark/layer-lift/drain-quick.py --model claude-opus-5 --out /private/tmp/lift-quick --run-id lift-quick
    ```
 
-   At a window boundary: `kill -TERM "$(cat /private/tmp/lift-quick/driver.pid)"`;
-   when the account is quiet again, rerun step 4 with `--resume`.
-
-5. Replace only infrastructure-invalid rows, at most twice.
-
-   ```sh
-   python3 benchmark/layer-lift/run-lift-panel.py run --model claude-opus-5 --panel quick --out /private/tmp/lift-quick --run-id lift-quick --attempt 2 --detach
-   python3 benchmark/layer-lift/run-lift-panel.py run --model claude-opus-5 --panel quick --out /private/tmp/lift-quick --run-id lift-quick --attempt 3 --detach
-   ```
-
-6. Score the frozen rows.
-
-   ```sh
-   python3 benchmark/layer-lift/score-lift.py score --rows /private/tmp/lift-quick/rows.jsonl --params benchmark/layer-lift/registered-params.json --out /private/tmp/lift-quick/verdict.json
-   ```
-
-7. If the scorer prints `NEEDS_TOPUP`, run that exact command and score again.
-   Stop on `PANEL_SATURATED`; otherwise retain the single `LIFT-0113:` token.
+   Stop it with `kill -TERM "$(cat /private/tmp/lift-quick/drain.pid)"`.
+   After `drain.done`, run the exact `NEEDS_TOPUP` command if present;
+   otherwise retain the single `LIFT-0113:` token in `drain.log`.

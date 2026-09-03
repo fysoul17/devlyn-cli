@@ -20,7 +20,7 @@ HERE = REPO / "benchmark/layer-lift"
 DEFAULT_PARAMS = HERE / "registered-params.json"
 DEFAULT_PANEL = HERE / "panel-quick.json"
 SCRIPTS_PATH = HERE / "scripts.sha256"
-PARAMS_PIN_SHA256 = "52731fd9dab43b526b87d07a862aa0dec2b6666a68abb86c30ebbc7263c0e111"
+PARAMS_PIN_SHA256 = "56cdc14de95950c21676e062fec3e9a8b61cfc013965d33d7fdfa7801dbd26be"
 ARMS = ("L0", "L1", "L2")
 CLASS_RE = re.compile(r"^EQ3-(AF|BD|MI|UA)[1-8]$")
 TERMINALS = {"BARE", "PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "TIMEOUT"}
@@ -239,7 +239,7 @@ def validate_scripts_manifest(path: pathlib.Path = SCRIPTS_PATH) -> list[str]:
     expected_targets = {
         target.resolve()
         for target in HERE.iterdir()
-        if target.is_file() and target != SCRIPTS_PATH
+        if target.is_file() and target != SCRIPTS_PATH and target.name != "drain-quick.py"
     } | {
         (REPO / "benchmark/ceiling/scripts/claude-isolation.py").resolve(),
         pathlib.Path("/Users/aipalm/.local/share/nx01/iter0102/matrix/apparatus/run-bounded.py").resolve(),
