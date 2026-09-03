@@ -2,7 +2,7 @@
 id: "0113-layer-lift-meter"
 title: "Layer-lift meter — one fixed instrument for L1−L0 (harness over bare) and L2−L1 (pair over solo), per model, minimal wall/tokens"
 kind: instrument
-status: APPARATUS-FROZEN 2026-09-03 (session 22) — FREEZE-0113-SOL r4 after 3 REVISE rounds; next = smoke gate → quick panel (opus-5)
+status: APPARATUS-FROZEN 2026-09-03 (r8 after A-9/A-10/A-11) — smoke-1 FAIL (A-11 + infra), smoke-2 FAIL (venue: 5-hour window, no apparatus defect); USER GATE = venue + schedule before smoke-3
 depends_on: ["0102-executor-quality-discovery-corpus", "0104-model-checkup-loop", "0064-ceiling-instrument", "0073-nodeg-cell"]
 ---
 
@@ -214,6 +214,14 @@ Second smoke attempt refused `Claude binary path/digest mismatch`: the CLI auto-
 ### RE-FROZEN (3) — `FREEZE-0113-SOL: FREEZE n=0` (r8 after A-11; `freeze-r8-sol.log`; 12:58 KST)
 
 `registered-params.json` sha256 `52731fd9dab43b526b87d07a862aa0dec2b6666a68abb86c30ebbc7263c0e111` embedded in both scripts; normalized `apparatus_sha256` `1cf69fb8ec73b10683836e65660cf4e4a8d770453df53c0ab0b3fe3fbb01e77b`; seals 8/8; self-tests 22/22 + 16/16. Supersedes earlier freeze digests. Freeze ledger: r1 11 → r2 5 → r3 3 → r4 FREEZE → A-9 r5 1 → r6 FREEZE → A-10 r7 FREEZE → A-11 r8 FREEZE.
+
+### Smoke-2 (2026-09-03 14:43–14:57 KST, `~/.local/share/nx01/iter0113/smoke-2/`, dedicated account) → `SMOKE-0113: FAIL` — venue only, no apparatus defect
+
+- Fired by session 22's launch loop (`smoke-2/launch-loop.sh`) after 30 s machine-wide quiet. L0 (opus-5 bare): 5/5 manifestations pass, 50.6 s, 3,894 output tokens, key set {opus-5}. L1 and L2: PLAN PASS → SURFACE_CLOSE PASS → IMPLEMENT in flight, then `429 rate_limit_error` "You've hit your session limit · resets 08:30 UTC" at 05:56:55Z (L1, 787 s, 59,596 output tokens, 4.78 M cache-read) and 05:57:30Z (L2, 770 s, 60,144 output tokens, 6.16 M cache-read; pair judge never spawned). Both rows `infra_invalid` (registered classification; `terminal BLOCKED:unclassified` is the unscored placeholder). Conjuncts `parent_model_exact` / `surface_close_attested_when_run` / `wall_and_token_anchors` PASS; the other four FAIL as consequences of the two infra rows. Apparatus bytes unchanged (`1cf69fb8…`, params `52731fd9…`); no A-item.
+- Venue evidence: the 429's reset (08:30Z) matches the 12:33 KST capture of the dedicated account (session 9 %, resets 08:30Z, weekly 2 %; session-22 scratchpad `usage-post-smoke1.json.raw.json`), not the shared account (session resets 09:09Z, 15 % at 15:16 KST; session-23 `usage-1517.json.raw.json`). Session 23 runs on the shared account (`~/.claude.json` oauthAccount); a pinned-binary opus-5 probe at 15:20 KST returned OK there.
+- **Capacity fact (two smokes, two accounts):** two concurrent harness arms of one task consumed ≥ 52 % (smoke-1: 48 % → limit) and ≤ 91 % (smoke-2: 9 % → limit) of a Max-20x 5-hour window ⇒ ≈ 25–45 % per harness cell (~13 min, ~60 k output tokens, 5–6 M cache-read tokens, 3 subagents). The registered quick panel = 48 harness cells + 48 L0 cells ⇒ ≥ 20 five-hour windows (≈ 4–6 days round-the-clock on ONE otherwise-idle account) and ≈ 2.9 M output tokens ≈ one weekly allowance (0110 m6 reached the weekly limit at 3.12 M output tokens). Not runnable as a same-day panel on any account; runnable only as a multi-day exclusive-account drain (≈ 2 harness cells per fresh window, `--attempt 1 --resume` per window). A cell killed by the limit is wasted and re-run.
+- Product signal (n=1 per smoke, not a claim): bare solved EQ3-AF2 in 50 s / 3.9 k tokens both times; the harness arm spent 12.5–13 min / 60 k tokens and either declined to ship (smoke-1 L1) or was still in IMPLEMENT (smoke-2). Logged for the 0073 bottleneck ledger (residual + VERIFY).
+- Open user decision (recorded, not taken): venue + schedule for the registered panel — HANDOFF START-HERE.
 
 ## Not in scope
 

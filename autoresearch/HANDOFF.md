@@ -12,45 +12,46 @@ If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PR
 
 ---
 
-## 🚦 START-HERE — state after 2026-09-03 (session 22)
+## 🚦 START-HERE — state after 2026-09-03 (session 23)
 
-**iter-0113 layer-lift meter: APPARATUS FROZEN (`FREEZE-0113-SOL` r4 after
-11+5+3 findings), commit `311187e`.** `benchmark/layer-lift/` = `run-lift-panel.py`
-(L0 bare copy of mx-driver's attempt shape; L1/L2 via the ceiling isolation
-launcher with executor `claude`, `--no-pair` / `--pair-verify`; lanes 2;
-`--detach`; `--attempt 1 --resume` for window boundaries), `score-lift.py`
-(Δ1/Δ2 + stratified CI + best-of-N legs + `LIFT-0113:` token), `panel-quick.json`
-(AF2/AF1/AF5, BD2/BD3/BD4, MI5/MI3/MI6, UA2/UA3/UA5), `registered-params.json`
-(sha `6713f3df…` embedded in both scripts), `scripts.sha256` (8/8). Launcher
-`claude-isolation.py` now takes `--model` (sonnet literal deleted; 8 callers pass
-`--model sonnet`). Every design delta is recorded in the STUB § "Apparatus
-record" A-1..A-8 + freeze rounds 1-3; read that section before touching bytes.
+**iter-0113 layer-lift meter: APPARATUS FROZEN (`FREEZE-0113-SOL` r8; params
+`52731fd9…`, apparatus `1cf69fb8…`, seals 8/8).** `benchmark/layer-lift/` =
+`run-lift-panel.py` (L0 bare copy of mx-driver's attempt shape; L1/L2 via the
+ceiling isolation launcher, executor `claude`, `--no-pair` / `--pair-verify`;
+lanes 2; `--detach`; `--attempt 1 --resume` for window boundaries),
+`score-lift.py`, `panel-quick.json` (12 tasks), `registered-params.json`,
+`scripts.sha256`. Every design delta is in the STUB § "Apparatus record"
+(A-1..A-11, freeze ledger r1→r8, smoke-1/smoke-2 records) — read it before
+touching bytes. Terra's sandbox cannot use the Keychain, `ps`, or write
+`~/.local/share/nx01/` — fable runs smoke/panel launches itself.
 
-**Verified this session (bytes, not memory):** (b) subagents INHERIT `--model M`
-and the parent envelope sees their usage (`~/.local/share/nx01/iter0113-reg/b-binding.md`).
-claude 2.1.258 adds a haiku session-title call unless
-`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` (launcher sets it; L0 now too).
-The pair judge is `--ephemeral` + `--ignore-user-config` ⇒ no rollout, config
-unread; attestation = the product-captured `codex-judge.stderr` header
-(`OpenAI Codex v0.152.1` / `model: gpt-5.6-sol` / `reasoning effort: medium` /
-`tokens used`). TIMEOUT is a valid outcome in every arm (`f_ship = 1/1`, tokens
-unknown ⇒ that token leg INCONCLUSIVE). Terra's sandbox cannot use the Keychain,
-`ps`, or write `~/.local/share/nx01/` — fable runs micro-runs/smoke/panel itself.
+**Two smokes, both `SMOKE-0113: FAIL` on venue, zero open apparatus defects.**
+Smoke-2 (14:43–14:57 KST, dedicated account): L0 PASS (50 s); L1/L2 died at
+12.5 min in IMPLEMENT on the 5-hour session limit (429). **Capacity fact
+(binding for scheduling):** one harness cell (L1 or L2, opus-5, xhigh) ≈ 13
+min, ~60 k output tokens, 5–6 M cache-read tokens ≈ 25–45 % of a Max-20x
+5-hour window; the registered quick panel (48 harness + 48 L0 cells) needs
+≥ 20 windows ≈ 4–6 days on ONE idle account and ≈ one weekly allowance.
 
-**NEXT SESSION (or the rest of this one):**
-1. Smoke gate: `python3 benchmark/layer-lift/run-lift-panel.py run --model claude-opus-5 --panel quick --out ~/.local/share/nx01/iter0113/smoke-1 --run-id lift-smoke-1 --smoke --task EQ3-AF2` — preflight REFUSES on any live `claude -p` / `codex exec` / `grok -p` machine-wide (other projects' devlyn pipelines spawn `claude -p` on the same account); wait for quiet, do not relax the check (frozen). Continue only on `SMOKE-0113: PASS` (all conjuncts incl. `all_rows_infra_valid` + wall/token anchors).
-2. Budget read: capture `/api/oauth/usage` before/after the smoke
-   (`benchmark/executor-quality/scripts/usage-capture-0112.py --out …`); 05:31 KST
-   reading = weekly 58 % used, reset **2026-09-07 20:01 KST**. Plan the 96-cell
-   quick panel across windows with `kill -TERM $(cat <out>/driver.pid)` at a
-   boundary and `--attempt 1 --resume` after it; scorer is already frozen.
-3. Quick panel detached (`--detach`), quiet account, outside 23:00–01:00 KST;
-   attempts 2/3 replace infra-invalid rows only; `score-lift.py score …`;
-   `topup` loop on `NEEDS_TOPUP`; ONE evaluation; record `LIFT-0113:` +
-   DECISION in the STUB, a DECISIONS row, and this START-HERE.
-4. Follow-ups registered, not started: (i) M' = claude-opus-4-8 column;
-   (ii) 0110 banked-session diagnostic as the 0112 go/no-go; (iii) codex-bare
-   saturation check before any codex L0.
+**USER GATE (open — do not fire smoke-3 before the user rules):** venue +
+schedule. (A) run as registered: multi-day exclusive-account drain, ≈ 2
+harness cells per fresh window, `run --attempt 1 --resume` per window,
+`kill -TERM $(cat <out>/driver.pid)` at the boundary; (B) amend the panel
+(seat micro-round + re-freeze) to fewer cells for a directional first read;
+(C) halt the launch and treat the smoke's product signal (bare 50 s vs
+harness 13 min, not shipping) as the finding → product-weight work first.
+
+**After the ruling:** capture `usage-capture-0112.py --out …` (session %
+must be fresh on the chosen account; other projects' pipelines spawn
+`claude -p` on the shared account — preflight refuses while any is live),
+smoke-3 via the `smoke-2/launch-loop.sh` shape, continue only on
+`SMOKE-0113: PASS` (all conjuncts incl. `all_rows_infra_valid`); then the
+panel per the chosen schedule, attempts 2/3 replace infra-invalid rows only,
+`score-lift.py score …`, `topup` on `NEEDS_TOPUP`, ONE evaluation,
+`LIFT-0113:` + DECISION in the STUB, a DECISIONS row, this START-HERE.
+Follow-ups registered, not started: (i) M' = claude-opus-4-8 column; (ii)
+0110 banked-session diagnostic as the 0112 go/no-go; (iii) codex-bare
+saturation check before any codex L0.
 
 ## Binding seat/lane rules (consolidated; details in the cited iters)
 
@@ -230,7 +231,7 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 | T1 packet calibration (seat×defect) | complementary override: catalog admits ONLY sonnet, credential ONLY terra (risk-diff 1.0 both) → routed-seat v2, validation fixtures landed | 0070a Amendment 2 + addendum 9; `benchmark/noncoding/validation/` |
 | Seat fitness (모델 × 포지션) | matrix live; 5 current cells; executor/pair-judge pins fail-closed "recert required" | `benchmark/seats/seat-matrix-2026-07-07.json` |
 | Opus line, bare, discriminating corpus | opus-5 fails LESS than opus-4-8 (Δ=−0.181, CI[−0.256,−0.109]); opus-5 ≈ fable-5; felt regression NOT reproduced by 0100/0102/0103; repo-scale band 0105–0109 REJECTED ×4; session-horizon 0110 VENUE_REJECTED, 0112 PARKED | DECISIONS 0102.1/0103.1/0105.1–0110.1; `~/.local/share/nx01/iter0102/` |
-| **Layer contract L1>L0, L2>L1 on a discriminating corpus** | **UNMEASURED** — ceiling tranche has no L1 arm and its corpus is bare-saturated; iter-0113 meter registered (STUB, R0 2026-09-02) | `iterations/0113-layer-lift-meter-STUB.md` |
+| **Layer contract L1>L0, L2>L1 on a discriminating corpus** | **UNMEASURED** — ceiling tranche has no L1 arm and its corpus is bare-saturated; iter-0113 meter frozen (r8), smokes 1–2 venue-FAIL, user gate on venue/schedule | `iterations/0113-layer-lift-meter-STUB.md` |
 
 Working instruments: violation matrix (`run-violation-matrix.sh`), compliance cells (`run-compliance-cell.sh` + `check-compliance-cell.py`, now incl. `finish_gate_ran`), drift-bait probes (bare + resolve-framed), judge-quality bench (+codex route), frozen-VERIFY pair gates, token gauge (`scripts/skill-token-gauge.py`), **ceiling 3-arm harness** (`benchmark/ceiling/scripts/run-ceiling-tranche.sh`), **seat matrix + recert runner** (`benchmark/seats/recert-seats.sh`, fail-closed pins).
 
@@ -238,7 +239,7 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 
 ## 📍 Project state (verify before editing)
 
-- **Branch**: `main`, HEAD `311187e` (2026-09-03, session 22, FREEZE-0113). Release/installer surface (README/bin publish commits) is USER territory, hands off.
+- **Branch**: `main`, HEAD = freeze `ff58b47` + session-23 docs commit (2026-09-03). Release/installer surface (README/bin publish commits) is USER territory, hands off.
 - **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (verified 2026-09-02; machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`). NOTE for 0113: the meter's L1/L2 arms stage their OWN `engines.json` with executor `claude` inside the arm worktree — the repo pin is untouched.
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 
