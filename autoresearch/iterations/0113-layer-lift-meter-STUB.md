@@ -2,7 +2,7 @@
 id: "0113-layer-lift-meter"
 title: "Layer-lift meter — one fixed instrument for L1−L0 (harness over bare) and L2−L1 (pair over solo), per model, minimal wall/tokens"
 kind: instrument
-status: USER-PARKED 2026-09-05 — A15 PLAN/IMPLEMENT PASS; partial BUILD_GATE, final gates/trio incomplete and suspended; quick-a15-1 NOT LAUNCHED (72 base cells, one lane, 4/1/1)
+status: 2026-09-05 — scoped A15 full PASS archived and committed; collection NOT LAUNCHED, held for separate quiet-detector correction and apparatus re-freeze (72 base cells, one lane, 4/1/1)
 depends_on: ["0102-executor-quality-discovery-corpus", "0104-model-checkup-loop", "0064-ceiling-instrument", "0073-nodeg-cell"]
 ---
 
@@ -269,22 +269,15 @@ Lane (scratchpad `a14/`): R0 sol (codex gpt-6-astra, ultra) REVISE n=1 (D2 wordi
 
 ### A-15 — fair outcomes, per-run tokens and common isolation (2026-09-05)
 
-USER-PARKED; authoritative [0114 checkpoint](0114-harness-direction.md#checkpoint).
-Design accepted under [0114](0114-harness-direction.md); current correction
-follows `.devlyn/fix-0114-pair-stream-20260905/accepted-missing-state-design.md`.
-Parked `rs-20260905T104352Z-29990a258793`, base `4b5bb0a39fcf3b5122f1104ca3adfa6c58da0ec1`,
-spec SHA256 `e11e2b239e91d72854bb0a346094eaa17aeeee3f6c587cc56c0fa2490e8702d4`:
-PLAN/IMPLEMENT PASS, missing-state initialization/regression and refreeze implemented;
-focused A15 green (58.320 s), partial BUILD_GATE interrupted by user; final
-gates/trio incomplete and full acceptance suspended. Baseline captured
-before the first worker. Prior rs100953 archived `BLOCKED:phase0-baseline-missing`:
-seven commands exit0, overall BUILD_GATE FAIL from root’s omitted baseline;
-no CLEANUP/VERIFY/final trio. Fable 5.1/Grok 4.6 design GO; Grok prose is
-transport-attested but collector-rejected, not JUDGE PASS.
-Prior `rs-20260905T092108Z-8e9404a2d660` is NEEDS_WORK (iteration 1/3) despite
-BG7/7 + MECH7/7: actual Codex HIGH binds over Fable PASS/Grok PASS; old Grok
-MCP-memory freshness limitation is recorded in 0114. Historical rs083049 BLOCKED,
-parking exit143 and superseded rs095801 PLAN-only receipts remain preserved.
+Scoped A15 full PASS archived as `rs-20260905T141220Z-694227ace2db`, implementation
+committed `4ccb6d7ad2c3a868f9e72c7e8a537c82e50cb02b`; authoritative
+[0114 final-evidence checkpoint](0114-harness-direction.md#checkpoint) records
+BUILD_GATE 7/7 + independent MECHANICAL 7/7, no-op CLEANUP, actual Codex/Fable/
+clean-isolated Grok final PASS with zero findings, durable archive/manifest and
+preserved incomplete rs104352. It retains prior failure explanations and owner
+amendments; old design GO is not final review. The user explicitly resumed;
+collection is held for separately scoped correction of both detectors missing
+Grok `--prompt-file` and apparatus re-freeze. The runner's separate active-root-state predicate blocked at observation; usage/window were not evaluated, and no overall gate PASS is claimed. Frozen 0114 forbids drain changes.
 A1–A14 remain history. A15 changes:
 
 - Preserve canonical unopened BLOCKED and verdict-binding mechanical
@@ -314,17 +307,22 @@ A1–A14 remain history. A15 changes:
 Refreeze order: final code/tests/README → normalized apparatus in params →
 params SHA in both scripts → seven script seals: completed. Final apparatus
 `644fef268345b0c9a435f7a28bb825d2c14122c07efacacfecb8b97fa39881c1`;
-params `38e0761882a9e2f4d3aab32e6d2d238ffe5dcca342f00b45d6e6dd8bb2cc425b`.
-[0114 checkpoint](0114-harness-direction.md#checkpoint) links the no-cycle hash proof and focused
-receipts; full acceptance and final review are suspended on user request. Product staged digest remains
+params `38e0761882a9e2f4d3aab32e6d2d238ffe5dcca342f00b45d6e6dd8bb2cc425b`;
+runner `8694c9fdb0149b3f985398d503a559d058d42010194872063a09b293baed12f5`.
+These remain accepted A15 bytes; [0114 checkpoint](0114-harness-direction.md#checkpoint)
+links final acceptance evidence. Product staged digest remains
 `ee8f74d4d2a5061c36b1ad2b4459f6801f08af3b0d08d069a756532bdb8a89f1`;
 seats, corpus, panel, reps and thresholds are unchanged.
 
 Preserve old `quick-1` artifacts. Pre-A15 rows are noncomparable because the
 context/measurement contract changed; no causal leakage effect is inferred.
-Fresh `~/.local/share/nx01/iter0113/quick-a15-1`, run ID `lift-quick-a15-1`,
-is **USER-PARKED/NOT LAUNCHED** until explicit user resume and full acceptance. No new panel
-result or runtime lift is claimed.
+Collection is **NOT LAUNCHED**. `~/.local/share/nx01/iter0113/quick-a15-1` /
+`lift-quick-a15-1` are reserved future names, revisable by new registration; no
+new collection exists. After detector correction and re-freeze, follow the
+[0114 collection rules](0114-harness-direction.md#collection-continuation-owned-by-root):
+quiet account, usage ≤10%, no other CLI seats, outside 23:00–01:00 KST,
+actual-pair smoke, one lane, 72 base cells (4/1/1), infra-only attempts 2/3,
+single evaluation and exact `NEEDS_TOPUP`. No runtime lift is claimed.
 
 ## Not in scope
 

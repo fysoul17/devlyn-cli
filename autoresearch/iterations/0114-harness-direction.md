@@ -1,41 +1,23 @@
 # 0114 — harness direction and honest layer-lift measurement
 
-**USER-PARKED, 2026-09-05.** Parked run
-`rs-20260905T104352Z-29990a258793`: PLAN/IMPLEMENT PASS; missing-state initialization/regression and refreeze
-implemented, uncommitted. Current BUILD_GATE was interrupted by user with partial
-evidence; full acceptance and actual corrected-diff final trio are suspended
-on user request; fresh collection is NOT LAUNCHED. PHASE0 baseline was captured
-before the first worker. Prior rs100953 is archived `BLOCKED:phase0-baseline-missing`:
-seven commands exit0, overall BUILD_GATE FAIL from root’s omitted baseline;
-no CLEANUP/VERIFY/final trio. [Accepted correction](../../.devlyn/fix-0114-pair-stream-20260905/accepted-missing-state-design.md):
-plain `pair_verdict = None` before state branching, valid-state assignment retained.
-Actual Fable 5.1/Grok 4.6 design GO; Grok prose is transport-attested but
-collector-rejected, not canonical JUDGE PASS.
+**Scoped 0114/A15 acceptance complete; collection NOT LAUNCHED (2026-09-05).**
+The user explicitly resumed. Collection is held for a separately scoped
+quiet-detector correction and apparatus re-freeze; frozen 0114 forbids drain changes.
 
 ## Checkpoint
 
-**USER-PARKED at 2026-09-05T11:05:55.872448+00:00 (20:05:55 KST).**
-[Stop proof](../../.devlyn/fix-0114-state-capture-20260905/parking-stop.json)
-records actual wrapper exit 0 after SIGTERM, a completed exit-0
-[invocation receipt](../../.devlyn/build_gate.invocation.0.json), no final worker
-verdict and `remaining_owned_processes=[]`.
-[Canonical state](../../.devlyn/pipeline.state.json) retains PLAN/IMPLEMENT PASS
-(IMPLEMENT completed `2026-09-05T10:59:40.141Z`); the
-[focused receipt](../../.devlyn/fix-0114-state-capture-20260905/implement-evidence.json)
-records green in 58.320 seconds. Exactly five sealed BUILD_GATE commands exited 0;
-lint was interrupted, command 7 and the scope gate are incomplete. BUILD_GATE
-round 0 remains open with `completed_at`/`verdict` null: no overall PASS/FAIL,
-exit-143 verdict, product failure or exhaustion. Preserve state, invocation,
-[worker session](../../.devlyn/build_gate.worker-session.0.jsonl) and
-[partial command evidence](../../.devlyn/process-evidence/rs-20260905T104352Z-29990a258793/build_gate/round-0/)
-byte-exact, including explicit park-packet preservation of unbound raw evidence;
-normal archive ownership must not be assumed to cover every unfinished file.
-Correction/refreeze remains uncommitted WIP; no CLEANUP, independent MECHANICAL,
-actual final Codex/Fable 5.1/clean Grok 4.6 trio, implementation commit or new
-collection occurred. Full acceptance is suspended.
+Final evidence: `rs-20260905T141220Z-694227ace2db` is archived full PASS, base `4b5bb0a39fcf3b5122f1104ca3adfa6c58da0ec1`, spec SHA256 `e11e2b239e91d72854bb0a346094eaa17aeeee3f6c587cc56c0fa2490e8702d4`; BUILD_GATE 7/7 and independent MECHANICAL 7/7, no-op CLEANUP, actual Codex `gpt-6-astra`, Fable `claude-fable-5-1` and clean-isolated Grok requested `grok-4.6` / emitted `grok-4.6-build` final PASS with zero findings. Implementation committed `4ccb6d7ad2c3a868f9e72c7e8a537c82e50cb02b` at `2026-09-05T14:50:25Z`; durable 1186-file bundle `/Users/aipalm/.local/share/nx01/iter0114/final-rs-20260905T141220Z-694227ace2db`, manifest SHA256 `ef278a8254473cd4b96abcecb05f7e88d8d7935cdaf90fc1502e82fc78c9e070`. [Closure receipt](../../.devlyn/resume-0114-20260905T141058Z/close-pass.completed.json), [subsequent commit/bundle receipt](../../.devlyn/resume-0114-20260905T141058Z/implementation-commit.json) and [archived final report](../../.devlyn/runs/rs-20260905T141220Z-694227ace2db/final-report.md) establish this scoped result; the report owns interruption/provenance caveats and predates the commit. Incomplete `rs-20260905T104352Z-29990a258793` was byte-preserved, state SHA256 `5f97f28603fc15e5249fb4a89396468707623d7ed9cb878ff12faa97d4245864`; the fresh run used the original baseline writer before its first worker. Collection remains held for the separate detector correction below; this PASS establishes no runtime lift or whole-harness readiness.
 
-- Base: `4b5bb0a39fcf3b5122f1104ca3adfa6c58da0ec1`; keep the cumulative
-  WIP uncommitted until root completes full gates and final review.
+Qualification recorded afterward: the mutation-worker launcher set `CODEX_MONITORED_ISOLATED=1` contrary to the canonical mutation route. Sealed command passes remain actual evidence, but route conformity is not established; the archive was not rewritten. The new 0117 operator helper is to remove the override; this owner task is not claimed complete. See the [operator isolation caveat](../../.devlyn/resume-0114-20260905T141058Z/operator-isolation-caveat.json).
+
+Historical user interruption at `2026-09-05T11:05:55.872448+00:00` left rs104352
+PLAN/IMPLEMENT PASS and BUILD_GATE round 0 open: five sealed commands exited 0,
+lint was interrupted, command 7 and scope gate incomplete. The stop proof records
+wrapper exit 0 after SIGTERM, no final worker verdict and no remaining owned
+processes at that observation. No overall PASS/FAIL, exit-143 verdict, product
+failure or exhaustion is assigned to that run; partial evidence was preserved
+separately before archive (see final report).
+
 - Contract: [`spec.md`](../../docs/specs/0114-harness-direction/spec.md),
   SHA256 `e11e2b239e91d72854bb0a346094eaa17aeeee3f6c587cc56c0fa2490e8702d4`;
   sibling `spec.expected.json` owns the seven verification commands.
@@ -61,10 +43,10 @@ collection occurred. Full acceptance is suspended.
   Product staged digest stays
   `ee8f74d4d2a5061c36b1ad2b4459f6801f08af3b0d08d069a756532bdb8a89f1`;
   product skills/mirrors, root AGENTS/CLAUDE, corpus, panel, seats, reps,
-  thresholds and drain script stay unchanged. No implementation commit/push.
-- Old `quick-1` is stopped and preserved. Fresh
-  `~/.local/share/nx01/iter0113/quick-a15-1` / `lift-quick-a15-1` remains
-  USER-PARKED/NOT LAUNCHED until explicit user resume and full acceptance.
+  thresholds and drain script stay unchanged in accepted A15.
+- Old `quick-1` is stopped and preserved. `~/.local/share/nx01/iter0113/quick-a15-1`
+  / `lift-quick-a15-1` are reserved future names, revisable by the new registration;
+  no new collection exists.
 
 ## Accepted direction and evidence
 
@@ -80,7 +62,7 @@ when available. The 0070 aggregate/off-resolve closure is not fully shipped.
 
 The original direction contract is `.devlyn/direction-20260905/accepted-design.md`;
 its A15 stdout rule is superseded by the [accepted correction](../../.devlyn/fix-0114-pair-stream-20260905/accepted-design.md),
-the committed spec and parked `.devlyn/plan.md`. Original synthetic red proofs
+the committed spec and [archived plan](../../.devlyn/runs/rs-20260905T141220Z-694227ace2db/plan.md). Original synthetic red proofs
 established four defects without opening sealed panel outcomes:
 
 | Defect | Raw evidence under `.devlyn/direction-20260905/` | Accepted correction |
@@ -122,7 +104,7 @@ Root's `prep-interrupt-red.json` records exit 1, `ordinary descendant survived`;
 2.009 s for a 1 s bound. The correction moves interruption kill **and reap**
 together into `finally`, and adds prep interruption to the existing matrix.
 Fable's final placement follow-up was quota-blocked; root authorized this R7
-correction, with final actual-diff trio review still pending.
+correction; the final actual-diff trio subsequently passed (checkpoint above).
 
 ## Exam validity and evidence limits
 
@@ -170,10 +152,19 @@ findings iteration 1/3: BUILD_GATE 7/7 and independent MECHANICAL 7/7 passed;
 actual Codex HIGH [A15-JUDGE-001](../../.devlyn/runs/rs-20260905T092108Z-8e9404a2d660/verify-merged.findings.jsonl)
 binds despite Fable PASS and Grok PASS (no majority override). Old Grok's MCP-memory
 access limits freshness. Raw `codex-judge.stdout` remains beside the merged receipt.
-PLAN-only `rs-20260905T095801Z-392cb0a8fb6f` is superseded: worker PASS, incomplete
+PLAN-only `rs-20260905T095801Z-392cb0a8fb6f` is archived BLOCKED: worker PASS, incomplete
 lifecycle after standalone completion rejection, no code implemented. Its corrected
 archive report preserves the original. Spec-only commits `495585e`, `5e98a13`,
 `854e3f4` are owner amendments, not implementation shipments.
+
+Prior `rs-20260905T100953Z-dce2515635b5` is archived
+`BLOCKED:phase0-baseline-missing`: seven commands exited 0, but overall BUILD_GATE
+FAIL records root's omitted baseline; no CLEANUP/VERIFY/final trio opened.
+The [accepted missing-state correction](../../.devlyn/fix-0114-pair-stream-20260905/accepted-missing-state-design.md)
+initializes plain `pair_verdict = None` before state branching, retaining valid-state
+assignment; its regression retains explicit infra-invalid and the missing-state reason. Actual Fable 5.1/Grok
+4.6 design GO remains design evidence: Grok prose was transport-attested but
+collector-rejected, not canonical JUDGE PASS.
 
 Named design delta: actual Fable R1 cited `verify.md:245–248`, confirmed by
 `verify-merge-findings.py:1298–1319`; emission rejection is product BLOCKED,
@@ -188,47 +179,25 @@ and shipping arithmetic: normalized binding output cannot accompany overall
 PASS/PASS_WITH_ISSUES even when the pair sub-verdict is truthful. Truthful nonshipping
 BLOCKED stays retained/nonretryable; missing captures/I/O/wrong identity stay infra.
 Actual pair/driver TIMEOUT preserves incomplete-output and unknown-usage allowances.
-Fresh final actual corrected-diff reviews are suspended on user request.
 
 Observed follow-ups outside frozen A15: wrapper orphan watchdog sleep;
 self-test's unpinned ambient timeout; ineffective shell exclusion on this
 route; missing completion route for a pre-verification environment blocker.
 These are recorded limitations, not changes implemented here.
 
-## Resume-only continuation owned by root
+## Collection continuation owned by root
 
-While USER-PARKED, perform none of the following actions. Only an explicitly
-resumed session may proceed:
+The [quiet-detector audit](../../.devlyn/resume-0114-20260905T141058Z/quiet-grok-audit.json)
+records both drain `ACTIVE_CLI` and runner `real_writer_check` missing the observed
+live Grok `--prompt-file` invocation. The runner's separate active-root-state predicate blocked at observation; usage/window were not evaluated, and no overall gate PASS is claimed. This is not current liveness evidence. Frozen 0114 forbids drain changes: correct the two detectors
+under separate scope and re-freeze apparatus/params/seals before collection.
 
-1. Read HANDOFF START-HERE and this checkpoint. Preserve parked state, WIP,
-   baseline, prompts, invocation/session and partial command evidence before
-   any lifecycle action; compare actual HEAD/spec/source/seals to this checkpoint.
-   Keep Fable 5.1/Grok 4.6 collaboration and the pinned Codex writer. Never
-   overwrite round-0 evidence or rerun this packet's one-shot bootstrap/helper outputs.
-2. Reconcile actual interrupted BUILD_GATE receipts through shared state machinery.
-   An open span cannot be respawned; a fresh round requires honest accepted completion
-   first. Do not fabricate incomplete seven-command evidence to make completion pass.
-   If completion is unavailable, preserve/archive the incomplete run through the
-   existing owned-artifact archive/bootstrap route, then run a fresh normal resolve
-   with the same committed owner spec and preserved WIP. Bootstrap requires a clean
-   tracked baseline: use the already authorized scoped temporary stash/byte-exact
-   restore route and mandatory untracked-baseline writer before any worker. User
-   parking alone is not a product finding or grounds for a spec amendment/fix commit.
-3. Complete full BUILD_GATE → inspection-only CLEANUP → independent MECHANICAL
-   → actual Codex/Fable 5.1/clean Grok 4.6 final review on the final diff. CLEANUP
-   proves no-op with WIP/index and real HEAD snapshots. Only after all gates/trio
-   may root commit the implementation and launch the authorized quiet-gated fresh
-   `quick-a15-1` / `lift-quick-a15-1` drain. Invoke `spec-verify-check.py` directly
-   through `env -u CODEX_MONITORED_TIMEOUT_SEC`, clearing only that leaked key;
-   preserve seven exact inner commands, bounds (600/120/120/120/60/600/60 seconds),
-   parent 1800-second watchdog, `workspace-write` and `network=true`.
-   Prediction on resume: unchanged checks finish within their bounds; record actual
-   failures as well as passes. Retain quiet account, usage ≤10%, no other CLI seats,
-   outside 23:00–01:00 KST, one lane, actual-pair smoke, 72 base cells (4/1/1),
-   infra-only attempts 2/3 and identical digests. Never reuse old rows under new
-   digests; follow exact scorer `NEEDS_TOPUP`, evaluate once and record `LIFT-0113:`.
-
-4. Positive quality AND efficiency screens earn registered full confirmation.
+1. After that correction and re-freeze, retain quiet account, usage ≤10%, no other
+   CLI seats, outside 23:00–01:00 KST, actual-pair smoke, one lane, 72 base cells
+   (4/1/1), infra-only attempts 2/3 and identical digests. Never reuse old rows
+   under new digests; follow exact scorer `NEEDS_TOPUP`, evaluate once and record
+   `LIFT-0113:`.
+2. Positive quality AND efficiency screens earn registered full confirmation.
    Quality lift with inefficiency drives a bounded cost reduction; valid
    quality harm/negative results drive a bounded correctness/claim change.
    NULL/INCONCLUSIVE preserve uncertainty and do not automatically remove pair.
@@ -261,6 +230,6 @@ its own registered comparison. A removed premature halt alone proves no lift.
   exact allowedTools forwarding fails its option regression (R7); retain it.
 - **#2 No guesswork / #5 Best practice:** preserved red/focused receipts;
   current source inspection, existing launch seams and exact Fraction means.
-- **#4 Worldclass production-ready / #6 Layer-cost-justified:** full review
-  and empirical quality/efficiency gates remain open; deterministic A15
-  checks alone establish neither whole-harness readiness nor runtime lift.
+- **#4 Worldclass production-ready / #6 Layer-cost-justified:** scoped A15
+  review passed; empirical quality/efficiency gates remain open. This acceptance
+  establishes neither whole-harness readiness nor runtime lift.
