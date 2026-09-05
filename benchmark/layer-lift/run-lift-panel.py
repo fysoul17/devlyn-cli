@@ -12,7 +12,6 @@ import concurrent.futures
 import contextlib
 import datetime as dt
 import hashlib
-import importlib.util
 import io
 import json
 import os
@@ -38,7 +37,7 @@ PARAMS_PATH = HERE / "registered-params.json"
 PANEL_PATH = HERE / "panel-quick.json"
 SCRIPTS_PATH = HERE / "scripts.sha256"
 CLAUDE_ISOLATION = REPO / "benchmark/ceiling/scripts/claude-isolation.py"
-PARAMS_PIN_SHA256 = "56cdc14de95950c21676e062fec3e9a8b61cfc013965d33d7fdfa7801dbd26be"
+PARAMS_PIN_SHA256 = "44f34b2ec98b38cd33d02140cc3ba6da5ab0953471ebe3d536713f85a4781225"
 MODEL_RE = re.compile(r"^claude-[A-Za-z0-9][A-Za-z0-9.-]*$")
 INFRA_FAILURE = re.compile(r"http\s*429|http\s*529|rate[ -]?limit|session[ -]?limit|usage[ -]?limit|overloaded", re.IGNORECASE)
 CLASS_RE = re.compile(r"^EQ3-(AF|BD|MI|UA)[1-8]$")
@@ -325,35 +324,18 @@ def validate_script_manifest(path: pathlib.Path = SCRIPTS_PATH) -> list[str]:
     return errors
 
 
-def resolve_direct_binary(name: str) -> pathlib.Path:
-    spec = importlib.util.spec_from_file_location("lift_claude_isolation", CLAUDE_ISOLATION)
-    if spec is None or spec.loader is None:
-        raise Refusal("cannot load claude-isolation.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    try:
-        explicit = os.environ.get(f"CEILING_TEST_{name.upper()}_BIN")
-        return pathlib.Path(module.resolve_direct_binary(name, explicit)).resolve()
-    except Exception as exc:
-        raise Refusal(f"direct {name} resolution failed: {exc}") from exc
-
-
-def resolve_codex_binary() -> pathlib.Path:
-    return resolve_direct_binary("codex")
-
-
-def registered_claude_binary(params: dict[str, Any]) -> tuple[pathlib.Path, str]:
-    binary = pathlib.Path(params["claude"]["binary_path"])
+def registered_binary(name: str, binary_path: str, expected_sha256: str) -> tuple[pathlib.Path, str]:
+    binary = pathlib.Path(binary_path)
     if not binary.is_file():
-        raise Refusal(f"registered Claude binary is missing: {binary}")
+        raise Refusal(f"registered {name} binary is missing: {binary}")
     if not os.access(binary, os.X_OK):
-        raise Refusal(f"registered Claude binary is not executable: {binary}")
+        raise Refusal(f"registered {name} binary is not executable: {binary}")
     try:
         digest = sha256_file(binary)
     except OSError as exc:
-        raise Refusal(f"registered Claude binary is unreadable: {binary}: {exc}") from exc
-    if digest != params["claude"]["binary_sha256"]:
-        raise Refusal(f"registered Claude binary digest mismatch: {binary}")
+        raise Refusal(f"registered {name} binary is unreadable: {binary}: {exc}") from exc
+    if digest != expected_sha256:
+        raise Refusal(f"registered {name} binary digest mismatch: {binary}")
     return binary, digest
 
 
@@ -427,7 +409,6 @@ def preflight(
     params_path: pathlib.Path = PARAMS_PATH,
     *,
     writer_probe: Callable[[pathlib.Path], tuple[bool, str]] = real_writer_check,
-    codex_probe: Callable[[], pathlib.Path] = resolve_codex_binary,
     now: dt.datetime | None = None,
 ) -> dict[str, Any]:
     errors: list[str] = []
@@ -452,16 +433,14 @@ def preflight(
                 errors.append(f"{label} digest mismatch")
         except OSError as exc:
             errors.append(f"{label} unreadable: {exc}")
-    try:
-        registered_claude_binary(params)
-    except Refusal as exc:
-        errors.append(str(exc))
-    codex_binary = codex_probe()
-    if (
-        str(codex_binary) != params["pair"]["codex_binary_path"]
-        or sha256_file(codex_binary) != params["pair"]["codex_binary_sha256"]
+    for name, path, expected in (
+        ("Claude", params["claude"]["binary_path"], params["claude"]["binary_sha256"]),
+        ("Codex", params["pair"]["codex_binary_path"], params["pair"]["codex_binary_sha256"]),
     ):
-        errors.append("Codex binary path/digest mismatch")
+        try:
+            registered_binary(name, path, expected)
+        except Refusal as exc:
+            errors.append(str(exc))
     try:
         if source_intervention_sha256() != params["harness"]["staged_intervention_sha256"]:
             errors.append("staged intervention source digest mismatch")
@@ -976,7 +955,9 @@ def execute_attempt(
         goal_bytes = goal.encode("utf-8")
         row["goal_sha256"] = sha256_bytes(goal_bytes)
         shutil.copytree(task_dir / "visible", work)
-        binary, row["claude_binary_sha256"] = registered_claude_binary(params)
+        binary, row["claude_binary_sha256"] = registered_binary(
+            "Claude", params["claude"]["binary_path"], params["claude"]["binary_sha256"],
+        )
         if arm == "L0":
             prompt = goal_bytes
             prompt_path = attempt_dir / "prompt.txt"
@@ -1065,7 +1046,8 @@ def execute_attempt(
                     params["bounds_seconds"]["harness"] + 60,
                     launcher_command,
                     interruption,
-                    {**os.environ, "CEILING_TEST_CLAUDE_BIN": str(binary)},
+                    {**os.environ, "CEILING_TEST_CLAUDE_BIN": str(binary),
+                     "CEILING_TEST_CODEX_BIN": params["pair"]["codex_binary_path"]},
                 )
             except subprocess.TimeoutExpired:
                 proc = subprocess.CompletedProcess(command, 124, b"", b"harness timeout\n")
@@ -1084,6 +1066,12 @@ def execute_attempt(
                     or direct_claude.get("sha256") != row["claude_binary_sha256"]
                 ):
                     reasons.append("launcher Claude binary attestation mismatch")
+                direct_codex = launcher_metadata.get("direct_codex")
+                if not isinstance(direct_codex, dict) or (
+                    direct_codex.get("path") != params["pair"]["codex_binary_path"]
+                    or direct_codex.get("sha256") != params["pair"]["codex_binary_sha256"]
+                ):
+                    reasons.append("launcher Codex binary attestation mismatch")
         stdout_path.write_bytes(proc.stdout)
         stderr_path.write_bytes(proc.stderr)
         payload = decode_envelope(proc.stdout)
@@ -1729,22 +1717,24 @@ def self_test() -> int:
     telemetry = (
         b"[codex-monitored] start: ts=2026-07-29T15:47:20Z heartbeat=30s timeout=0s bin=codex\n"
         b"[codex-monitored] isolated=1\n[codex-monitored] codex pid=92976\n"
-        b"Reading additional input from stdin...\nOpenAI Codex v0.152.1\n--------\n"
-        b"workdir: /fixture\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\n"
+        b"Reading additional input from stdin...\nOpenAI Codex v0.153.4\n--------\n"
+        b"workdir: /fixture\nmodel: gpt-6-astra\nprovider: openai\napproval: never\n"
         b"sandbox: read-only\nreasoning effort: medium\nreasoning summaries: none\n"
         b"session id: fixture\n--------\ncodex\n# SUMMARY {\"verdict\": \"PASS\"}\n"
         b"tokens used\n22,696\n[codex-monitored] codex exited: code=0 elapsed=197s\n"
     )
     assert reply.startswith(b"# SUMMARY") and b"OpenAI Codex" not in reply
     version, pair_model, effort, tokens, errors = validate_codex_stderr(telemetry, params)
-    assert (version, pair_model, effort, tokens, errors) == ("0.152.1", "gpt-5.6-sol", "medium", 22696, [])
+    assert (version, pair_model, effort, tokens, errors) == ("0.153.4", "gpt-6-astra", "medium", 22696, [])
     with tempfile.TemporaryDirectory(prefix="lift-pair-streams-") as raw:
         root = pathlib.Path(raw)
         path_bin = root / "path-bin"
         path_bin.mkdir()
         path_claude = path_bin / "claude"
-        path_claude.write_bytes(b"#!/bin/sh\nexit 99\n")
-        path_claude.chmod(0o755)
+        path_codex = path_bin / "codex"
+        for path_binary in (path_claude, path_codex):
+            path_binary.write_bytes(b"#!/bin/sh\nexit 99\n")
+            path_binary.chmod(0o755)
         auth = root / "auth.json"
         auth.write_bytes(b'{}\n')
         state = {
@@ -1764,6 +1754,7 @@ def self_test() -> int:
             stdout: bool,
             stderr: bool,
             metadata_binary: str | None = None,
+            metadata_codex_binary: str | None = None,
         ) -> Callable[[list[str], pathlib.Path, int, dict[str, str] | None], subprocess.CompletedProcess[bytes]]:
             def launch(
                 command: list[str], work: pathlib.Path, _timeout: int,
@@ -1776,6 +1767,10 @@ def self_test() -> int:
                     "direct_claude": {
                         "path": metadata_binary or params["claude"]["binary_path"],
                         "sha256": params["claude"]["binary_sha256"],
+                    },
+                    "direct_codex": {
+                        "path": metadata_codex_binary or params["pair"]["codex_binary_path"],
+                        "sha256": params["pair"]["codex_binary_sha256"],
                     },
                 }))
                 (work / ".devlyn/pipeline.state.json").write_bytes(canonical_json(state))
@@ -1805,6 +1800,10 @@ def self_test() -> int:
                 **common, rep=4,
                 launcher_command=pair_result(True, True, str(path_claude)),
             )
+            bad_codex_metadata = execute_attempt(
+                **common, rep=5,
+                launcher_command=pair_result(True, True, metadata_codex_binary=str(path_codex)),
+            )
         finally:
             if original_path is None:
                 os.environ.pop("PATH", None)
@@ -1813,12 +1812,15 @@ def self_test() -> int:
         assert "codex-judge.stdout is absent" in missing_stdout["infra_reason"]
         assert "codex-judge.stderr is absent" in missing_stderr["infra_reason"]
         assert "launcher Claude binary attestation mismatch" in bad_metadata["infra_reason"]
+        assert "launcher Codex binary attestation mismatch" in bad_codex_metadata["infra_reason"]
         assert all(
             env["CEILING_TEST_CLAUDE_BIN"] == params["claude"]["binary_path"]
+            and env["CEILING_TEST_CODEX_BIN"] == params["pair"]["codex_binary_path"]
             for env in launcher_environments
         )
         assert all(
             shutil.which("claude", path=env["PATH"]) == str(path_claude)
+            and shutil.which("codex", path=env["PATH"]) == str(path_codex)
             for env in launcher_environments
         )
     names.append("rollout-attestation-and-final-usage")
@@ -1850,6 +1852,10 @@ def self_test() -> int:
                     "path": params["claude"]["binary_path"],
                     "sha256": params["claude"]["binary_sha256"],
                 },
+                "direct_codex": {
+                    "path": params["pair"]["codex_binary_path"],
+                    "sha256": params["pair"]["codex_binary_sha256"],
+                },
             }))
             devlyn = work / ".devlyn"
             (devlyn / "pipeline.state.json").write_bytes(canonical_json(smoke1_state))
@@ -1874,17 +1880,23 @@ def self_test() -> int:
         assert smoke1_l1_row["infra_reason"] is None
     with tempfile.TemporaryDirectory(prefix="lift-claude-pin-") as raw:
         root = pathlib.Path(raw)
-        missing_params = {**params, "claude": {**params["claude"], "binary_path": str(root / "missing")}}
-        refuses(lambda: registered_claude_binary(missing_params), "is missing")
+        refuses(lambda: registered_binary("Claude", str(root / "missing"), params["claude"]["binary_sha256"]), "is missing")
         altered = root / "claude"
         altered.write_bytes(b"altered binary\n")
         altered.chmod(0o755)
-        altered_params = {**params, "claude": {**params["claude"], "binary_path": str(altered)}}
-        refuses(lambda: registered_claude_binary(altered_params), "digest mismatch")
+        refuses(lambda: registered_binary("Claude", str(altered), params["claude"]["binary_sha256"]), "digest mismatch")
     names.append("path-independent-claude-pin-refusal")
+    with tempfile.TemporaryDirectory(prefix="lift-codex-pin-") as raw:
+        root = pathlib.Path(raw)
+        refuses(lambda: registered_binary("Codex", str(root / "missing"), params["pair"]["codex_binary_sha256"]), "is missing")
+        altered = root / "codex"
+        altered.write_bytes(b"altered binary\n")
+        altered.chmod(0o755)
+        refuses(lambda: registered_binary("Codex", str(altered), params["pair"]["codex_binary_sha256"]), "digest mismatch")
+    names.append("path-independent-codex-pin-refusal")
     for before, after, expected in (
-        (b"v0.152.1", b"v0.152.2", "version attestation mismatch"),
-        (b"gpt-5.6-sol", b"gpt-5.6-terra", "model attestation mismatch"),
+        (b"v0.153.4", b"v0.153.5", "version attestation mismatch"),
+        (b"gpt-6-astra", b"gpt-6-terra", "model attestation mismatch"),
         (b"effort: medium", b"effort: high", "effort attestation mismatch"),
         (b"22,696", b"not-a-number", "tokens-used value"),
     ):
@@ -1997,9 +2009,6 @@ def self_test() -> int:
     def fake_writer(_repo: pathlib.Path) -> tuple[bool, str]:
         preflight_calls.append("writer")
         return True, "fake quiet"
-    def fake_codex() -> pathlib.Path:
-        preflight_calls.append("codex")
-        return pathlib.Path(params["pair"]["codex_binary_path"])
     calls: list[list[str]] = []
     def fake_launch(
         command: list[str], _cwd: pathlib.Path, _timeout: int,
@@ -2011,14 +2020,14 @@ def self_test() -> int:
     assert invoked.returncode == 0 and calls == [["fake-claude", "-p", "goal"]]
     def injected_preflight() -> None:
         preflight(
-            writer_probe=fake_writer, codex_probe=fake_codex,
+            writer_probe=fake_writer,
             now=dt.datetime(2026, 9, 3, 3, 0, tzinfo=ZoneInfo("Asia/Seoul")),
         )
     if PARAMS_PIN_SHA256 == "TBD-FREEZE":
         refuses(injected_preflight, "TBD-FREEZE")
     else:  # exercised after the registration owner embeds the final pin
         injected_preflight()
-    assert preflight_calls == ["codex", "writer"]
+    assert preflight_calls == ["writer"]
     def quiet_process(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(["ps"], 0, "", "")
     with tempfile.TemporaryDirectory(prefix="lift-writer-state-") as raw:

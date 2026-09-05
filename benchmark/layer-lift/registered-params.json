@@ -1,5 +1,5 @@
 {
-  "apparatus_sha256": "1e314e0dcf4a08e9761921510033d1283cb49e76576f52b51347b35db1f697e4",
+  "apparatus_sha256": "9a40ae66e23c9065a18fbb5dd652fbf8d8dea2a9767b05781e35611157ae0acf",
   "corpus": {
     "manifest_path": "/Users/aipalm/.local/share/nx01/iter0102/freeze/candidate-manifest.json",
     "manifest_sha256": "80f0a12ddb6df006c4137ecbc96c557742f8bbe74b0cacf65466c3af6dcd8887",
@@ -46,11 +46,11 @@
     "staged_intervention_sha256": "bd48e94b4bab165ddbf3b975cc35e1fb0e614ce79d3f429756fa18e232716edc"
   },
   "pair": {
-    "model_id": "gpt-5.6-sol",
+    "model_id": "gpt-6-astra",
     "effective_effort": "medium",
-    "codex_cli_version": "0.152.1",
-    "codex_binary_path": "/Users/aipalm/.nvm/versions/node/v20.19.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex",
-    "codex_binary_sha256": "8194ea3181f330e63023b234b0b231855e5874e0331c5ef7cbc490591497a7bf"
+    "codex_cli_version": "0.153.4",
+    "codex_binary_path": "/Users/aipalm/.local/share/nx01/pins/codex-0.153.4-iter0113/bin/codex",
+    "codex_binary_sha256": "b973d440acac501fd2594a43e7ca9ce41e0a65b9dfb28d0d7a7837c99e1261e3"
   },
   "delta": "6/20",
   "bootstrap": {
