@@ -1,6 +1,6 @@
 # 0117 / A16 — versioned Grok quiet-process correction
 
-2026-09-06 — **IMPLEMENTED/REFROZEN; full gates and final review pending; collection NOT LAUNCHED.**
+2026-09-06 — **FULL PASS ARCHIVED + COMMITTED; waiter launched, last observed gate BLOCKED; collection results not yet established.**
 Owner: [0117 spec](../../docs/specs/0117-quiet-grok/spec.md), run `rs-20260905T150205Z-fbdcf616cd7f`.
 
 Pre-flight 0: prevents collection from treating an observed active Grok seat as quiet.
@@ -45,13 +45,45 @@ Drain stays unsealed. Model/version/effort seats, corpus/panel, 4/1/1 reps, thre
 arithmetic, deadlines and usage/window policy are unchanged. Historical A1–A15 hashes,
 [0114 scope/caveat](0114-harness-direction.md#checkpoint), prior outputs and pre-A15
 noncomparability remain; installed original runtime is fixed, 0115/0116 candidates unadopted.
-Fresh reservation only: `~/.local/share/nx01/iter0113/quick-a16-1` / `lift-quick-a16-1` (absent).
 
-Root owns full gates, fresh actual Codex/Fable 5.1/Grok 4.6 final review, implementation commit,
-and the separate final status checkpoint. Only afterward may root launch the existing quiet-gated
-drain: quiet account, usage ≤10%, no other CLI seats, outside 23:00–01:00 KST, actual-pair smoke,
-one lane, 72 base cells, infra-only attempts 2/3, one evaluation and exact `NEEDS_TOPUP`.
-No smoke/panel/scoring ran during IMPLEMENT; no runtime lift or whole-harness readiness is claimed.
+### Post-closure checkpoint
+
+[Accepted commit receipt](../../.devlyn/0117/implementation-commit.json):
+`5dfb49d1fd2f2e3f3f10a18c56a40f2ef823f800`.
+[Canonical report](../../.devlyn/runs/rs-20260905T150205Z-fbdcf616cd7f/final-report.md):
+BUILD_GATE 5/5 + independent post-CLEANUP MECHANICAL 5/5; exact no-op CLEANUP across 9449 files.
+Actual primary `gpt-6-astra`, pair `claude-fable-5-1`, supplemental isolated Grok 4.6
+each PASS, zero findings; canonical merged PASS, finish-gate exit 0, full archived PASS.
+Initial IMPLEMENT0 received two root LOW documentation findings; fresh IMPLEMENT1 fixed/refroze
+before the first BUILD_GATE. Original-round/focused-proof limits above remain.
+[Archive completion](../../.devlyn/0117/close-pass.completed.json) binds
+[state](../../.devlyn/runs/rs-20260905T150205Z-fbdcf616cd7f/pipeline.state.json) SHA
+`f7157867e8e6592a3240653466bae0a38125419ad9ded653a1465cafb4eb18e4` and report SHA
+`40c184b6185a57c8e4f69bfe3903036b2ca1008b332c8695e4774355d71ae304`.
+Its `collection_launched: false` is the earlier closure checkpoint, superseded by launch evidence below.
+
+[Launch preflight](../../.devlyn/0117/launch.preflight.json),
+[parent exit 0](../../.devlyn/0117/launch.done.json), and
+[observation](../../.devlyn/0117/launch.observed.json): at **2026-09-06T00:29:48.678285+09:00**
+(2026-09-05T15:29:48.678285+00:00), PID 45397 matched argv and start time
+2026-09-05T15:29:40+00:00. `/Users/aipalm/.local/share/nx01/iter0113/quick-a16-1` /
+`lift-quick-a16-1` are now created/launched, not reserved. **Waiter launched, last observed gate
+BLOCKED; collection results not yet established:** utilization 59% >10% and the 23:00–01:00 KST
+window was active. Smoke/cells/collection verdict were intentionally `NOT_INSPECTED`;
+PID liveness and a gate observation establish neither execution nor PASS, even if a later gate is READY.
+
+**Next:** root observes the existing waiter; never recreate/relaunch a live waiter.
+After 01:00, time alone is insufficient: usage ≤10% and no other supported CLI remain required.
+The [frozen collection policy](0114-harness-direction.md#collection-continuation-owned-by-root)
+still waits before actual-pair smoke, then one lane, 72 base cells (4/1/1), infra-only attempts 2/3,
+one frozen evaluation/exact `NEEDS_TOPUP`. Inference/topup requires valid collection/scorer evidence;
+no retuning or candidate adoption into this comparison. No smoke/panel/scoring ran during IMPLEMENT.
+
+Root owns commits and evidence custody. Raw evidence stays under `.devlyn/0117/` and the canonical
+archive; assigned durable snapshot: `/Users/aipalm/.local/share/nx01/iter0117/final-rs-20260905T150205Z-fbdcf616cd7f`.
+The original 0114 1186-file bundle stays immutable; root includes late 0114 supplements in the new snapshot.
+Quality AND efficiency lift, 0070 aggregate/current-seat certification, real-project/matched-time
+evidence and whole-harness production readiness remain open; static PASS establishes no world-best result.
 
 Principles #1/#3/#5 (No overengineering / No workaround / Best practice): replace only the two
 Grok subpatterns; reuse injection seams. Final deletion attempts removed the version suffix or
@@ -59,4 +91,4 @@ long-option alternative in memory: each restored drain `[]` and runner `[true, "
 attested row. Remaining test additions prevent recurrence and bound the basename/state behavior;
 R3 requires registration/status evidence. Repeated launch-policy prose was deleted from the A16
 stub in favor of its existing policy. #2 (No guesswork): raw red/green above; #4 (Worldclass
-production-ready): final gates/review pending; #6 (Optimized): focused deterministic checks only.
+production-ready): scoped final gates/reviews PASS, broader readiness open; #6 (Optimized): reuse recorded evidence.

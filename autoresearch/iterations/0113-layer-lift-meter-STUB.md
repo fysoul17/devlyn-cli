@@ -2,7 +2,7 @@
 id: "0113-layer-lift-meter"
 title: "Layer-lift meter — one fixed instrument for L1−L0 (harness over bare) and L2−L1 (pair over solo), per model, minimal wall/tokens"
 kind: instrument
-status: 2026-09-06 — 0117/A16 implemented/refrozen; full gates/final review pending; collection NOT LAUNCHED (72 base cells, one lane, 4/1/1)
+status: 2026-09-06 — 0117/A16 full PASS archived + committed; waiter launched, last observed gate BLOCKED (00:29:48 KST); collection results not yet established (72 base cells, one lane, 4/1/1)
 depends_on: ["0102-executor-quality-discovery-corpus", "0104-model-checkup-loop", "0064-ceiling-instrument", "0073-nodeg-cell"]
 ---
 
@@ -326,9 +326,11 @@ single evaluation and exact `NEEDS_TOPUP`. No runtime lift is claimed.
 
 ### A-16 — versioned Grok quiet-process detection (0117, 2026-09-06)
 
-Implemented/refrozen; full gates and fresh actual Codex/Fable 5.1/Grok 4.6 final
-review are pending. [0117](0117-quiet-grok.md#a16-registration) owns corrected red/green evidence
-and current runner/apparatus/params hashes. Both existing process gates now
+Full PASS archived as `rs-20260905T150205Z-fbdcf616cd7f`; accepted commit
+`5dfb49d1fd2f2e3f3f10a18c56a40f2ef823f800`.
+[0117](0117-quiet-grok.md#post-closure-checkpoint) owns the canonical report, actual final trio,
+closure/launch receipts, proof limits and snapshot custody; its registration retains current hashes.
+Both existing process gates now
 recognize plain or version-suffixed Grok with `-p` or `--prompt-file`, retaining
 Claude/Codex, independent root-state/usage/window checks and failure behavior.
 Historical A9 and A1–A15 registrations above remain evidence of their own bytes.
@@ -336,12 +338,14 @@ Only the apparatus parameter changed; both pins and seven seals were refreshed,
 with drain intentionally unsealed. Product staged digest, seats, corpus/panel,
 4/1/1 reps, thresholds, arithmetic and deadlines remain fixed.
 
-Collection is **NOT LAUNCHED**. Fresh reservation:
+**Waiter launched, last observed gate BLOCKED; collection results not yet established.**
+At 2026-09-06 00:29:48 KST, PID/argv/starttime matched; smoke/cells/collection verdict
+were intentionally NOT_INSPECTED. Created/launched:
 `~/.local/share/nx01/iter0113/quick-a16-1` / `lift-quick-a16-1`.
-Root alone commits after full gates/final trio, then launches the existing
-quiet-gated drain under the continuing policy above. Preserve all prior outputs
-and pre-A15 noncomparability; root writes final acceptance separately after
-actual closure. Deterministic checks establish this fix, not runtime lift or readiness.
+Root next observes the existing waiter, never recreates/relaunches it; the continuing
+policy above remains fixed. Inference/topup requires valid collection/scorer evidence;
+no retuning or adoption of isolated 0115/0116 candidates. Preserve all prior outputs
+and pre-A15 noncomparability. Static PASS establishes no runtime lift or readiness.
 
 ## Not in scope
 
