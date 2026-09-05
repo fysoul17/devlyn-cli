@@ -12,7 +12,7 @@ The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the s
 
 ## 🎯 MISSION 1 (active, 2026-04-29 →) — Single-task skill excellence on `main`
 
-**Frame**: one user, one task, one working tree on `main`. No parallel runs. No worktree per task. The skill (`/devlyn:resolve`, optionally preceded by `/devlyn:ideate`) must be **extremely** more accurate, more effective, and reasonably faster than a bare end-user prompting Claude or Codex directly on the same task.
+**Frame**: one user, one task, one working tree on `main`. No parallel fleet or automatic worktree-per-task placement; the bounded 0118 admission exception below applies. The skill (`/devlyn:resolve`, optionally preceded by `/devlyn:ideate`) must be **extremely** more accurate, more effective, and reasonably faster than a bare end-user prompting Claude or Codex directly on the same task.
 
 **Why this is mission 1, not mission 2 or 3**: parallel-fleet readiness, multi-agent organisation, run-isolation infrastructure are all *amplifiers* — they multiply whatever single-task value the skill already delivers. If single-task value is marginal, multiplying it gives marginal × N = still marginal. iter-0020's L2 architecture failed exactly this test: pair-mode lost on accuracy at the single-task level. There is no point shipping parallel infra over a single-task surface that isn't yet world-class.
 
@@ -30,16 +30,18 @@ The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the s
 
 **Categorical reliability (Codex GPT-5.5 verdict 2026-04-29, ultimate-goal consult)** — per Q2 of that consult, "overwhelmingly better" is *not* an average margin number; it is **expected utility under categorical reliability**. The harness must systematically *not* fail the task classes bare prompting systematically *does* fail (spec-compliance, multi-file scope, build-gate-detected runtime errors, security CRITICAL findings, silent-catch / hardcoded-value / `any` / `@ts-ignore` violations, scope leaks). Mission 1 ships only when this asymmetry is empirically clear, not when an average lift hits a number.
 
-**Open work (2026-09-05)**:
+**0118 exception — USER RESUMED 2026-09-06:** the user's explicit concurrent same-project tasks/sessions request supersedes the blanket Mission 2 deferral only for bounded bootstrap admission protection. [0118](iterations/0118-concurrent-admission.md) owns final-spec agreement, checkpoint and execution status. Mission 1 floor and ceiling remain incomplete; 0113 remains the frozen quality-and-efficiency comparison, separate from this bounded correction. This is no fleet, automatic placement, merge or shared-resource guarantee, and no main adoption of 0118 or 0115/0116.
+
+**Open work (2026-09-06)**:
 - 0114/A15 corrects 0113 outcome retention, per-run token anchors and launch isolation before fresh collection; quick12 is a screen, full32 the confirmatory layer instrument. See HANDOFF START-HERE.
 - Continue the existing 0070 intent-closure direction; the aggregate/off-resolve closure kernel is designed, not fully shipped. Post-panel changes follow both quality and efficiency, with the observed SURFACE_CLOSE false-halt candidate first (0114).
 - The full #15 real-project trial remains open; the 0035 prelim did not close its external-developer/existing-codebase axes.
 
-**Hard NO list during Mission 1**:
+**Hard NO list during Mission 1 (subject only to the bounded 0118 exception above)**:
 - ❌ No worktree-per-task substrate work. Stays single-worktree on `main`.
 - ❌ No parallel-fleet smoke (N≥2 simultaneous runs). Single task only.
 - ❌ No resource-lease helper / SQLite leases / port pool. Defaults stay (single dev server on 5173 is fine for one user).
-- ❌ No run-scoped state migration (`.devlyn/pipeline.state.json` stays at worktree root — parallel-collision is not Mission 1's problem).
+- ❌ No run-scoped state migration (`.devlyn/pipeline.state.json` stays at worktree root — 0118 protects admission without migrating this state).
 - ❌ No queue-length / wait-time instrumentation (parallel-readiness signals — out of scope).
 - ❌ No multi-agent coordination, knowledge-base sharing, self-replanning, audit manifest infrastructure beyond what `pipeline.state.json` already gives.
 - ❌ No qwen / gemma / local-model arm exploration (NORTH-STAR ops test #11 stays deferred).
@@ -79,11 +81,11 @@ loop directly; orchestrator-neutral continuation is insurance (차선).
 
 ---
 
-## 🚀 MISSION 2 (deferred — do NOT touch until Mission 1 unblocks) — Parallel-fleet readiness substrate
+## 🚀 MISSION 2 (deferred except bounded 0118 admission protection) — Parallel-fleet readiness substrate
 
 **Frame**: same single-task quality, but the user can run N≥5 simultaneous independent tasks hands-free with no per-task quality collapse, no crosstalk, and aggregate wall-time materially shorter than serial.
 
-**Mission 2 is ONLY relevant after Mission 1 ships**. The reason: an N=5 fleet of marginally-better-than-bare agents collapses to zero ROI — the user is better off prompting bare 5 times. The fleet only earns its existence if Mission 1 has *already* delivered overwhelm-level single-task value to multiply.
+**The broader Mission 2 substrate remains deferred until Mission 1 ships; only the explicit bounded 0118 exception above is authorized.** The reason: an N=5 fleet of marginally-better-than-bare agents collapses to zero ROI — the user is better off prompting bare 5 times. The fleet only earns its existence if Mission 1 has *already* delivered overwhelm-level single-task value to multiply.
 
 ### What's already designed for Mission 2 (ready to consume when Mission 1 unblocks)
 
@@ -143,6 +145,6 @@ These are recorded so they don't get re-discovered each session. They bind nothi
 ## How to use this file
 
 1. **Every iter file's "Why this iter exists" section names which Mission it serves.** If it does not, reject the iter scope per Pre-flight 0.
-2. **No iter touches a Mission 2 or Mission 3 surface during Mission 1** — even if the work is "small" or "would be nice." That is scope creep per Goal-locked execution (CLAUDE.md). Surface as a Mission 2/3 note, do not implement.
+2. **No iter touches a Mission 2 or Mission 3 surface during Mission 1, except the explicit bounded 0118 admission correction above** — even if the work is "small" or "would be nice." That is scope creep per Goal-locked execution (CLAUDE.md). Surface as a Mission 2/3 note, do not implement.
 3. **When Mission 1 unblocks, this file is updated**: Mission 1 → "✅ COMPLETED <date>" + summary, Mission 2 → "🎯 active." HANDOFF rotates accordingly.
 4. **Mission boundaries are hard, not soft**. The 5 hard NOs in Mission 1 are not preferences. Skipping one is a violation.

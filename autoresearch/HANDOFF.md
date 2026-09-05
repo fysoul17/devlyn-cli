@@ -1,16 +1,40 @@
 # HANDOFF — for the next session
 
 **Read order on cold start (mandatory)**:
-1. **This file** — operating context + existing waiter checkpoint + pair-collab protocol
+1. **This file, START-HERE**, then [0118 PARK record](iterations/0118-concurrent-admission.md) — stop receipts, accepted design, prepared spec/operator and 3-seat rules before any continuation
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + ceiling contract + ops test #17 + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Closed PASS [0117/A16](iterations/0117-quiet-grok.md#post-closure-checkpoint), waiter launched / last observed gate BLOCKED; accepted [`0114`](iterations/0114-harness-direction.md) and current [`0113/A16`](iterations/0113-layer-lift-meter-STUB.md#a-16--versioned-grok-quiet-process-detection-0117-2026-09-06). Parked: [`iterations/0112-venue-tolerant-horizon-STUB.md`](iterations/0112-venue-tolerant-horizon-STUB.md) § PARKED. Earlier closed: 0110 (`VENUE_REJECTED`), 0111 (SHIPPED). Everything older: iteration index + `DECISIONS.md`.
+5. Accepted background: closed PASS [0117/A16](iterations/0117-quiet-grok.md#post-closure-checkpoint), waiter now user-parked (0118 owns stop receipts); accepted [`0114`](iterations/0114-harness-direction.md) and current [`0113/A16`](iterations/0113-layer-lift-meter-STUB.md#a-16--versioned-grok-quiet-process-detection-0117-2026-09-06). Parked: [`iterations/0112-venue-tolerant-horizon-STUB.md`](iterations/0112-venue-tolerant-horizon-STUB.md) § PARKED. Earlier closed: 0110 (`VENUE_REJECTED`), 0111 (SHIPPED). Everything older: iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
-If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md — this file carries only what binds the next session (user cleanup directives 2026-07-07, 2026-09-02).
+Subject to explicit user directives (including the bounded 0118 exception), if any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md — this file carries only what binds the next session (user cleanup directives 2026-07-07, 2026-09-02).
 
 ---
+
+## 🚦 START-HERE — USER RESUMED 2026-09-06 / 0118 READY FOR FULL RUN
+
+**0118 exact final-spec three-seat agreement is complete; implementation, full resolve, gates and final implementation trio remain NOT STARTED.** The parked design was a root-reconciled proposal, not three explicit votes on the final spec. Read the [0118 record](iterations/0118-concurrent-admission.md) for current receipts. Candidate: `/Users/aipalm/Documents/GitHub/devlyn-cli-0118-concurrent-sessions`, branch `codex/0118-concurrent-sessions-20260906`, original base `4acfc3c`. The preserved [PARK bundle](/Users/aipalm/.local/share/nx01/iter0118/park-20260905T161107Z) now has a verified 132-file manifest; prior spec/context were uncommitted. No 0118 or 0115/0116 main product adoption.
+
+**Next session:** first read the [stop request](/Users/aipalm/Documents/GitHub/devlyn-cli/.devlyn/concurrency-20260906/park-waiter-stop.json) and [final stop receipt](/Users/aipalm/Documents/GitHub/devlyn-cli/.devlyn/concurrency-20260906/park-waiter-final.json), and check PID identity before any continuation; never launch a duplicate waiter. Final observation records PID 45397 not live at 2026-09-05 16:12:17 UTC; outcomes remain NOT_INSPECTED. No automatic restart during PARK. Only explicit new-session continuation permits revalidating spec/HEAD/design and the prepared operator, removing candidate `.devlyn/0118/PARKED`, then running the canonical full pipeline under the [0118 resume contract](iterations/0118-concurrent-admission.md#prepared-operator-and-resume). Do not run the generic cold-start test list during PARK.
+
+User restart line:
+
+> autoresearch/HANDOFF.md의 START-HERE부터 이어서, 3-seat 협업 규칙을 지키며 0118을 진행해줘.
+
+### Accepted 0117/A16 and 0114 background
+
+**0114 scoped full PASS is archived as `rs-20260905T141220Z-694227ace2db` and implementation committed `4ccb6d7ad2c3a868f9e72c7e8a537c82e50cb02b`.** The [0114 final-evidence checkpoint](iterations/0114-harness-direction.md#checkpoint) owns exact base/spec pins, BUILD_GATE 7/7 + independent MECHANICAL 7/7, no-op CLEANUP, actual Codex/Fable/clean-isolated Grok final PASS with zero findings, durable 1186-file bundle/manifest and preserved incomplete rs104352 state. Historical failures, owner amendments and design-only GO receipts remain there; the final report owns interruption/provenance caveats.
+
+**0117 is complete PASS**, archived as `rs-20260905T150205Z-fbdcf616cd7f`, accepted implementation `5dfb49d1fd2f2e3f3f10a18c56a40f2ef823f800`. [0117 checkpoint](iterations/0117-quiet-grok.md#post-closure-checkpoint) owns the canonical report, closure/launch receipts and durable snapshot location. Full gates and the actual Codex/Fable/isolated Grok final trio passed with zero findings; the checkpoint preserves IMPLEMENT0's two LOW findings, IMPLEMENT1's refreeze and original focused-proof limits.
+
+The historical 0114 audit identified the missed Grok execution; its separate active-root-state predicate blocked at observation, usage/window were not evaluated, and no overall gate PASS was claimed. Frozen 0114 forbids drain changes; the correction belongs to [0117/A16](iterations/0117-quiet-grok.md#a16-registration). Accepted A15 runner `8694c9fdb0149b3f985398d503a559d058d42010194872063a09b293baed12f5`, apparatus `644fef268345b0c9a435f7a28bb825d2c14122c07efacacfecb8b97fa39881c1`, params `38e0761882a9e2f4d3aab32e6d2d238ffe5dcca342f00b45d6e6dd8bb2cc425b` remain historical accepted A15 hashes; staged product stays `ee8f74d4d2a5061c36b1ad2b4459f6801f08af3b0d08d069a756532bdb8a89f1`.
+
+**A16 collection is user-parked; stop evidence is owned by [0118](iterations/0118-concurrent-admission.md#waiter-park-and-custody).** Preserve `~/.local/share/nx01/iter0113/quick-a16-1` / `lift-quick-a16-1`, staged product, frozen A16 runner/params and any partial artifacts. Historical launch at 2026-09-06 00:29:48 KST matched PID/argv/starttime after parent exit 0; utilization 59% >10% and the 23:00–01:00 window was active. Smoke/cells/collection verdict remain NOT_INSPECTED; the last BLOCKED gate does not prove they never started. The unchanged [collection policy](iterations/0114-harness-direction.md#collection-continuation-owned-by-root) still requires usage ≤10%, no supported CLI and outside 23:00–01:00 KST on any later authorized collection. Infer/topup only from valid collection/scorer evidence, without retuning or candidate adoption. Old `quick-1/` and historical smokes remain preserved; pre-A15 rows are noncomparable, with no causal leakage effect inferred.
+
+The goal remains genuine `bare < solo < pair` in quality AND efficiency, preserving maximum native capability and autonomy. The user's 2026-09-06 reaffirmation includes root `CLAUDE.md`, `AGENTS.md` and all resolve skills/runtime as optimization targets; 0113 already hashes and stages them together (`run-lift-panel.py:247–259,545–565`). Keep candidate changes separate from the frozen comparison. Preserve invalid-exam corrections and valid negative results; do not force the ordering by changing the exam. NULL/INCONCLUSIVE do not automatically remove pair. [0114](iterations/0114-harness-direction.md) records the bounded SURFACE_CLOSE candidate for a separate future worktree. Broader superiority and whole-harness production readiness remain unproven.
+
+Plain conversation may authorize implementation (DECISIONS 0069.1); once resolve is entered, its phase machinery is mandatory. Executor pins bind both routes. VERIFY pair stays default when available; explicit routes fail closed. The 0070 aggregate/off-resolve closure direction is not a shipped guarantee.
 
 ## Direction reassessment — 2026-09-05
 
@@ -18,29 +42,9 @@ Before continuing below, read [0115 direction and initialization ownership](../.
 
 Original product, frozen panels and historical run state are preserved. The candidate reader deliberately rejects nonempty legacy LF snapshots. Keep the current comparison on its frozen product; adopt the candidate only with a fresh authorized baseline, never by recapturing a dirty active run. The linked direction record keeps original-intent closure, current role certification and real-project/matched-time comparisons as open evidence gates.
 
-## 🚦 START-HERE — 0117/A16 FULL PASS ARCHIVED + COMMITTED; WAITER LAUNCHED (2026-09-06)
-
-**User continuation resumed; scoped full PASS is archived as `rs-20260905T141220Z-694227ace2db` and implementation committed `4ccb6d7ad2c3a868f9e72c7e8a537c82e50cb02b`.** The [0114 final-evidence checkpoint](iterations/0114-harness-direction.md#checkpoint) owns exact base/spec pins, BUILD_GATE 7/7 + independent MECHANICAL 7/7, no-op CLEANUP, actual Codex/Fable/clean-isolated Grok final PASS with zero findings, durable 1186-file bundle/manifest and preserved incomplete rs104352 state. Historical failures, owner amendments and design-only GO receipts remain there; the final report owns interruption/provenance caveats.
-
-**0117 is complete PASS**, archived as `rs-20260905T150205Z-fbdcf616cd7f`, accepted implementation `5dfb49d1fd2f2e3f3f10a18c56a40f2ef823f800`. [0117 checkpoint](iterations/0117-quiet-grok.md#post-closure-checkpoint) owns the canonical report, closure/launch receipts and durable snapshot location. Full gates and the actual Codex/Fable/isolated Grok final trio passed with zero findings; the checkpoint preserves IMPLEMENT0's two LOW findings, IMPLEMENT1's refreeze and original focused-proof limits.
-
-The historical 0114 audit identified the missed Grok execution; its separate active-root-state predicate blocked at observation, usage/window were not evaluated, and no overall gate PASS was claimed. Frozen 0114 forbids drain changes; the correction belongs to [0117/A16](iterations/0117-quiet-grok.md#a16-registration). Accepted A15 runner `8694c9fdb0149b3f985398d503a559d058d42010194872063a09b293baed12f5`, apparatus `644fef268345b0c9a435f7a28bb825d2c14122c07efacacfecb8b97fa39881c1`, params `38e0761882a9e2f4d3aab32e6d2d238ffe5dcca342f00b45d6e6dd8bb2cc425b` remain historical accepted A15 hashes; staged product stays `ee8f74d4d2a5061c36b1ad2b4459f6801f08af3b0d08d069a756532bdb8a89f1`.
-
-**Waiter launched, last observed gate BLOCKED; collection results not yet established.** `~/.local/share/nx01/iter0113/quick-a16-1` / `lift-quick-a16-1` are created/launched. At 2026-09-06 00:29:48 KST, PID/argv/starttime matched after parent exit 0; utilization 59% >10% and the 23:00–01:00 window was active. Smoke/cells/collection verdict were intentionally NOT_INSPECTED. **Next:** root reobserves the existing waiter with `python3 .devlyn/0117/observe-drain.py`; never recreate/relaunch a live waiter. After 01:00, usage ≤10% and no other supported CLI are still required. Follow the unchanged [collection policy](iterations/0114-harness-direction.md#collection-continuation-owned-by-root); infer/topup only from valid collection/scorer evidence, without retuning or candidate adoption. Old `quick-1/` and historical smokes remain preserved; pre-A15 rows are noncomparable, with no causal leakage effect inferred.
-
-The goal remains genuine `bare < solo < pair` in quality AND efficiency. Preserve invalid-exam corrections and valid negative results; do not force the ordering by changing the exam. NULL/INCONCLUSIVE do not automatically remove pair. [0114](iterations/0114-harness-direction.md) records the bounded SURFACE_CLOSE candidate for a separate future worktree. Broader superiority and whole-harness production readiness remain unproven.
-
-Plain conversation may authorize implementation (DECISIONS 0069.1); once resolve is entered, its phase machinery is mandatory. Executor pins bind both routes. VERIFY pair stays default when available; explicit routes fail closed. The 0070 aggregate/off-resolve closure direction is not a shipped guarantee.
-
 ## Binding seat/lane rules (consolidated; details in the cited iters)
 
-- fable = design / adjudication / verification / planning ONLY — token
-  economy HARD (`feedback_fable_token_economy`); corpus authoring,
-  apparatus builds, runbook scripting, repetitive runs → terra direct-drive
-  lane or opus/sonnet; verification trio = fable + codex `gpt-6-astra` + grok 4.6 (402
-  cleared 2026-09-05; if it returns → opportunistic skip, user ruling 2026-08-31); matrix arms only on a quiet
-  account outside 23:00–01:00 KST; delegated edits = ONE writer at a time +
-  digest pins in seat prompts (0105 race).
+- Current actual 3-seat roles, design-row limits and pending final-code trio are owned by [0118](iterations/0118-concurrent-admission.md#three-seat-collaboration). This supersedes older executor/model shorthand below; Fable token economy remains HARD. Matrix arms only on a quiet account outside 23:00–01:00 KST; delegated edits = ONE writer at a time + digest pins in seat prompts (0105 race).
 - Seat recipes (user direction 2026-09-05: codex `gpt-6-astra` + grok 4.6):
   terra = `codex-monitored.sh -s workspace-write -c model_reasoning_effort=xhigh`
   (omit `-m` → CLI default `gpt-6-astra`); sol = same wrapper read-only;
@@ -216,7 +220,7 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 | T1 packet calibration (seat×defect) | complementary override: catalog admits ONLY sonnet, credential ONLY terra (risk-diff 1.0 both) → routed-seat v2, validation fixtures landed | 0070a Amendment 2 + addendum 9; `benchmark/noncoding/validation/` |
 | Seat fitness (모델 × 포지션) | matrix live; 5 current cells; executor/pair-judge pins fail-closed "recert required" | `benchmark/seats/seat-matrix-2026-07-07.json` |
 | Opus line, bare, discriminating corpus | opus-5 fails LESS than opus-4-8 (Δ=−0.181, CI[−0.256,−0.109]); opus-5 ≈ fable-5; felt regression NOT reproduced by 0100/0102/0103; repo-scale band 0105–0109 REJECTED ×4; session-horizon 0110 VENUE_REJECTED, 0112 PARKED | DECISIONS 0102.1/0103.1/0105.1–0110.1; `~/.local/share/nx01/iter0102/` |
-| **Layer contract L1>L0, L2>L1 on a discriminating corpus** | **UNMEASURED** — 0117/A16 full PASS archived + committed; waiter launched, last observed gate BLOCKED (2026-09-06 00:29:48 KST); collection results not yet established | [0114 checkpoint](iterations/0114-harness-direction.md#checkpoint), [0117/A16](iterations/0117-quiet-grok.md#post-closure-checkpoint) |
+| **Layer contract L1>L0, L2>L1 on a discriminating corpus** | **UNMEASURED** — 0117/A16 full PASS archived + committed; waiter user-parked, final PID-not-live observation recorded in [0118](iterations/0118-concurrent-admission.md#waiter-park-and-custody); collection outcomes NOT_INSPECTED | [0114 checkpoint](iterations/0114-harness-direction.md#checkpoint), [0117/A16](iterations/0117-quiet-grok.md#post-closure-checkpoint) |
 
 Working instruments: violation matrix (`run-violation-matrix.sh`), compliance cells (`run-compliance-cell.sh` + `check-compliance-cell.py`, now incl. `finish_gate_ran`), drift-bait probes (bare + resolve-framed), judge-quality bench (+codex route), frozen-VERIFY pair gates, token gauge (`scripts/skill-token-gauge.py`), **ceiling 3-arm harness** (`benchmark/ceiling/scripts/run-ceiling-tranche.sh`), **seat matrix + recert runner** (`benchmark/seats/recert-seats.sh`, fail-closed pins).
 
@@ -228,7 +232,7 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 - **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (verified 2026-09-02; machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`). NOTE for 0113: the meter's L1/L2 arms stage their OWN `engines.json` with executor `claude` inside the arm worktree — the repo pin is untouched.
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 
-### Cold-start sanity check (~30s)
+### Cold-start sanity check (~30s; suspended during USER PARKED)
 
 ```bash
 git status                                  # inspect current branch and WIP; see START-HERE
