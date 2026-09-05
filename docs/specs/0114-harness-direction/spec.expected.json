@@ -11,6 +11,11 @@
       "timeout_sec": 120
     },
     {
+      "cmd": "python3 benchmark/ceiling/scripts/claude-isolation.py self-test",
+      "exit_code": 0,
+      "timeout_sec": 120
+    },
+    {
       "cmd": "python3 benchmark/layer-lift/drain-quick.py --self-test",
       "exit_code": 0,
       "timeout_sec": 120
