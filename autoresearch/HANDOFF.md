@@ -12,21 +12,25 @@ If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PR
 
 ---
 
-## 🚦 START-HERE — state after 2026-09-05 (session 24)
+## 🚦 START-HERE — state after 2026-09-05 (session 25)
 
-**iter-0113 layer-lift meter: APPARATUS RE-FROZEN (5) after AMENDMENT A-13
-(params `44f34b2e…`, apparatus `9a40ae66…`, seals 8/8; sol + grok
-`FREEZE-0113-A13: FREEZE n=0`) and the quick-panel drain is LAUNCHED —
-`~/.local/share/nx01/iter0113/quick-1/`, `drain.pid` 58955, 10:47 KST.**
-A-13 (STUB § "A-13"): the registered Codex binary auto-updated 0.152.1 →
-0.153.4 at cold start and the CLI flagship became `gpt-6-astra`, so the
-frozen preflight refused (fail-closed, correct); fix = A-10 mirror — full
-vendor-tree snapshot under `~/.local/share/nx01/pins/codex-0.153.4-iter0113/`
-launched by explicit path, pair pin `gpt-6-astra` / 0.153.4 / medium. A-12
-(minimal panel: L1/L2 ×1, lanes 1, δ 6/20, `drain-quick.py`) stands. Every
-design delta is in the STUB § "Apparatus record" — read it before touching
-bytes. Terra's sandbox cannot use the Keychain, `ps`, or write
-`~/.local/share/nx01/` — fable launches.
+**iter-0113 layer-lift meter: APPARATUS RE-FROZEN (6) after AMENDMENT A-14
+(params `cc802595…`, apparatus `ed58ed29…`, staged `ee8f74d4…`, seals 8/8;
+sol + grok `FREEZE-0113-A14: FREEZE n=0`) and the quick-panel drain is
+RELAUNCHED — `~/.local/share/nx01/iter0113/quick-1/`, pid in `drain.pid`,
+2026-09-05 session 25.** Smoke-3 (first open gate, 14:54 KST) FAILED on the
+L1 row and it was NOT venue: the L1 orchestrator hand-wrote
+`final_report.verdict = "BLOCKED:surface-close-…"` (the writer refuses that
+string; PHASE 6 was the only phase whose SKILL steps did not name the
+writer) and the meter read it as "no terminal" → infra-invalid. A-14 (STUB
+§ "A-14"): meter returns `BLOCKED:<reason>` verbatim as the product's
+declared terminal (f_ship 1/1, not replaceable), SKILL PHASE 6 names the
+writer + bare enum, fail-closed `git -c tag.gpgsign=false tag baseline`,
+grok F-4 folded. A-13 (Codex vendor-tree pin, `gpt-6-astra` / 0.153.4 /
+medium) and A-12 (minimal panel) stand. Every design delta is in the STUB
+§ "Apparatus record" — read it before touching bytes. Terra's sandbox cannot
+use the Keychain, `ps`, or write `~/.local/share/nx01/` or `.agents/` —
+fable launches and syncs `.agents`.
 
 **NEXT SESSION — the drain is already running; do NOT relaunch blindly:**
 ```bash
@@ -41,9 +45,9 @@ python3 benchmark/layer-lift/drain-quick.py --model claude-opus-5 --out
 for a gate (no live `claude -p`/`codex exec`/`grok -p` machine-wide ∧
 five-hour usage ≤ 10 % via `usage-capture-0112.py` ∧ outside 23:00–01:00
 KST — at launch it was blocked by the user's other sessions: 25 % and an
-active codex exec; that is the design, it just waits), runs smoke-3 first
+active codex exec; that is the design, it just waits), runs smoke-4 first
 (`smoke/smoke.log` must end `SMOKE-0113: PASS`; on FAIL it stops — read the
-row, decide, re-run the command), then one task per fresh window, attempts
+row, decide, archive `smoke/` → `smoke-N-FAIL/`, re-run the command), then one task per fresh window, attempts
 2/3 for infra-invalid rows, then `score-lift.py score` → `LIFT-0113:` or
 `NEEDS_TOPUP` in `drain.log` + `drain.done`. Stop it with `kill -TERM
 $(cat …/quick-1/drain.pid)`.
@@ -53,9 +57,8 @@ scorer's line (E1 = L0 reps, cheap; E2 = L1 reps, one per half-window), then
 score again. ONE evaluation. Record `LIFT-0113:` + DECISION in the STUB, a
 DECISIONS row, and this START-HERE. Follow-ups registered, not started:
 (i) M' = claude-opus-4-8 column; (ii) 0110 banked-session diagnostic as the
-0112 go/no-go; (iii) codex-bare saturation check before any codex L0;
-(iv) grok F-4 test-only `which("codex")` conjunct — fold into the next
-apparatus edit, never alone.
+0112 go/no-go; (iii) codex-bare saturation check before any codex L0. (grok F-4 closed by
+A-14.)
 
 ## Binding seat/lane rules (consolidated; details in the cited iters)
 
@@ -241,7 +244,7 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 | T1 packet calibration (seat×defect) | complementary override: catalog admits ONLY sonnet, credential ONLY terra (risk-diff 1.0 both) → routed-seat v2, validation fixtures landed | 0070a Amendment 2 + addendum 9; `benchmark/noncoding/validation/` |
 | Seat fitness (모델 × 포지션) | matrix live; 5 current cells; executor/pair-judge pins fail-closed "recert required" | `benchmark/seats/seat-matrix-2026-07-07.json` |
 | Opus line, bare, discriminating corpus | opus-5 fails LESS than opus-4-8 (Δ=−0.181, CI[−0.256,−0.109]); opus-5 ≈ fable-5; felt regression NOT reproduced by 0100/0102/0103; repo-scale band 0105–0109 REJECTED ×4; session-horizon 0110 VENUE_REJECTED, 0112 PARKED | DECISIONS 0102.1/0103.1/0105.1–0110.1; `~/.local/share/nx01/iter0102/` |
-| **Layer contract L1>L0, L2>L1 on a discriminating corpus** | **UNMEASURED** — ceiling tranche has no L1 arm and its corpus is bare-saturated; iter-0113 meter re-frozen (5) after A-13 (Codex pin), smokes 1–2 venue-FAIL, drain LAUNCHED 2026-09-05 10:47 KST | `iterations/0113-layer-lift-meter-STUB.md` |
+| **Layer contract L1>L0, L2>L1 on a discriminating corpus** | **UNMEASURED** — ceiling tranche has no L1 arm and its corpus is bare-saturated; iter-0113 meter re-frozen (6) after A-14 (declared-BLOCKED carrier + PHASE 6 writer text), smokes 1–2 venue-FAIL, smoke-3 apparatus/product FAIL, drain RELAUNCHED 2026-09-05 session 25 | `iterations/0113-layer-lift-meter-STUB.md` |
 
 Working instruments: violation matrix (`run-violation-matrix.sh`), compliance cells (`run-compliance-cell.sh` + `check-compliance-cell.py`, now incl. `finish_gate_ran`), drift-bait probes (bare + resolve-framed), judge-quality bench (+codex route), frozen-VERIFY pair gates, token gauge (`scripts/skill-token-gauge.py`), **ceiling 3-arm harness** (`benchmark/ceiling/scripts/run-ceiling-tranche.sh`), **seat matrix + recert runner** (`benchmark/seats/recert-seats.sh`, fail-closed pins).
 
@@ -249,7 +252,7 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 
 ## 📍 Project state (verify before editing)
 
-- **Branch**: `main`, HEAD = A-13 freeze + drain-launch commits (2026-09-05, session 24); origin/main is 18+ commits behind — push is USER territory. Release/installer surface (README/bin publish commits) is USER territory, hands off.
+- **Branch**: `main`, HEAD = A-14 freeze + relaunch commits (2026-09-05, session 25); origin/main is 18+ commits behind — push is USER territory. Release/installer surface (README/bin publish commits) is USER territory, hands off.
 - **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (verified 2026-09-02; machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`). NOTE for 0113: the meter's L1/L2 arms stage their OWN `engines.json` with executor `claude` inside the arm worktree — the repo pin is untouched.
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 
