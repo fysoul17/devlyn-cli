@@ -42,7 +42,7 @@ The user requested an end-to-end direction audit against the north star with exa
 <!-- devlyn:verification -->
 ## Verification
 
-- `python3 benchmark/layer-lift/run-lift-panel.py --self-test` passes the existing and focused new injected-launcher/outcome/replacement regressions.
+- `python3 benchmark/layer-lift/run-lift-panel.py --self-test` passes the existing and focused new injected-launcher/outcome/replacement regressions, including completed-pair empty/malformed/contradictory stdout rejection, genuine valid stdout, and preserved pair/whole-driver timeout controls.
 - `python3 benchmark/layer-lift/score-lift.py --self-test` passes the existing arithmetic and new retained-failure/invalid-attestation and repetition-normalized token-anchor regressions.
 - `python3 benchmark/ceiling/scripts/claude-isolation.py self-test` passes existing isolation checks and the narrowly added option contract.
 - `python3 benchmark/layer-lift/drain-quick.py --self-test` passes unchanged.
@@ -56,3 +56,11 @@ The user requested an end-to-end direction audit against the north star with exa
 The user explicitly reinforced genuine quality AND efficiency ordering and prior exam defects. The synthetic scorer proof (`.devlyn/direction-20260905/token-rep-normalization-proof.log`, preserved with iteration receipts) found a favorable-to-harness repetition bias. This amendment expands the original correction before IMPLEMENT or new outcome collection; it does not react to hidden outcomes. The original PLAN-only invocation is preserved as superseded, without claiming implementation or verification.
 
 A final pre-implementation amendment adds the existing isolation apparatus file to the surface (12 paths). Actual inert subprocess proofs confirmed caller environment leakage and the nested wrapper process-group escape. The common launcher plus existing driver deadline removes that extra layer; no new model comparison or hidden outcome informed this amendment. Prior PLAN-only runs are preserved as superseded.
+
+## Amendment — 2026-09-05, final-review finding A15-JUDGE-001
+
+The first completed product review in run `rs-20260905T092108Z-8e9404a2d660` returned NEEDS_WORK after BUILD_GATE and independent MECHANICAL each passed 7/7. The Codex primary found that `run-lift-panel.py:1119` copies a present pair stdout without parsing it, while :1124 validates only stderr; valid identity/usage can therefore accompany empty or malformed judge output and pass pair smoke. Fable returned PASS; supplemental Grok returned PASS, with a separately recorded freshness violation. The binding HIGH finding remains; raw review and merged evidence are archived with that run. This is findings iteration 1/3, not a hidden-outcome-driven change.
+
+Clarify R2/R3/R4 using the existing shared judge emission/collector contract: completed non-timeout executed-pair stdout must parse successfully and its normalized findings/verdict must not contradict a more favorable claimed pair sub-verdict. Compare that sub-verdict, not the harness final terminal; preserve valid normalization and stricter outcomes. Add injected empty/whitespace/malformed/missing-verdict and binding-finding-with-PASS controls with otherwise identical valid stderr, plus genuine completed-PASS and actual pair/whole-driver TIMEOUT controls. Do not require a completed terminal reply on a registered deadline; preserve unknown usage and existing identity/capture rules. Reuse the existing frozen source contract rather than a new parser or model-writable arm copy.
+
+The twelve-file surface, seven literal commands and bounds, unchanged product staged intervention, model seats, panel, repetitions and thresholds remain fixed. Refreeze A15 apparatus, params, both pins and seven seals before any fresh scoreable collection. The owner commits only this spec amendment, preserves cumulative implementation WIP, and starts a fresh full run under the existing commit-after-full-gates/final-trio instruction; the prior NEEDS_WORK is neither rewritten nor labeled exhausted.
