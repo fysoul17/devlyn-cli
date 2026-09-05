@@ -29,7 +29,7 @@ RUNNER = REPO / "benchmark/layer-lift/run-lift-panel.py"
 SCORER = REPO / "benchmark/layer-lift/score-lift.py"
 PARAMS = REPO / "benchmark/layer-lift/registered-params.json"
 USAGE_CAPTURE = REPO / "benchmark/executor-quality/scripts/usage-capture-0112.py"
-ACTIVE_CLI = re.compile(r"(?:^|[\s/])(?:claude\s+-p|codex\s+exec|grok\s+-p)(?:\s|$)")
+ACTIVE_CLI = re.compile(r"(?:^|[\s/])(?:claude\s+-p|codex\s+exec|grok(?:-[^\s/]+)?\s+(?:-p|--prompt-file))(?:\s|$)")
 
 
 class DrainError(RuntimeError):
@@ -499,6 +499,16 @@ def self_test() -> int:
         "COMMAND\n", {"five_hour": {"utilization": 10}},
         dt.datetime(2026, 9, 3, 2, tzinfo=ZoneInfo("Asia/Seoul")), params, 10,
     ) == ()
+    for command, active in (
+        ("/Users/aipalm/.grok/downloads/grok-1.0.13-macos-aarch64 --prompt-file /private/tmp/review.prompt --model grok-4.6", True),
+        ("grok --prompt-file /private/tmp/review.prompt", True),
+        ("grok -p review", True),
+        ("groksomething --prompt-file /private/tmp/review.prompt", False),
+    ):
+        assert gate_reasons(
+            command + "\n", {"five_hour": {"utilization": 0}},
+            dt.datetime(2026, 9, 3, 2, tzinfo=ZoneInfo("Asia/Seoul")), params, 10,
+        ) == (("supported CLI session is active",) if active else ())
     names.append("injected-gate-predicates")
     assert "--resume" not in runner_argv("claude-fixture", pathlib.Path("/smoke"), "smoke", 1, "EQ3-AF2")
     assert "--resume" in runner_argv("claude-fixture", pathlib.Path("/panel"), "panel", 1, "EQ3-AF2", resume=True)

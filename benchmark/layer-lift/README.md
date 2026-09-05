@@ -7,11 +7,10 @@
    python3 benchmark/layer-lift/run-lift-panel.py --derive-panel
    ```
 
-2. A15 freeze before any model run: finish code/tests/README and parameters; write `apparatus_sha256` from the normalized runner, scorer,
+2. A16 freeze before any model run: finish code/tests/README; update only `apparatus_sha256` in parameters from the normalized runner, scorer,
    README, panel, and `claude-isolation.py` bytes; replace both parameter-pin
    constants with the final SHA-256 of `registered-params.json`; then re-seal
-   `scripts.sha256` (seven targets; obsolete `l0_env`/external bounded-wrapper
-   dependencies removed) and require this to pass.
+   `scripts.sha256` (seven existing targets; drain remains unsealed) and require this to pass.
 
    ```sh
    shasum -a 256 -c benchmark/layer-lift/scripts.sha256
@@ -28,7 +27,9 @@
 
 4. Start the serial operator drain. It self-detaches, waits until the account
    has no active supported CLI session, five-hour use is at most 10%, and KST
-   is outside the quiet window; it then runs the separate smoke directory,
+   is outside 23:00–01:00. Both process gates recognize Claude `-p`, Codex `exec`,
+   and plain or version-suffixed Grok with `-p` or `--prompt-file`; the runner
+   independently blocks active root state. It then runs the separate smoke directory,
    drains one task per window, replaces infrastructure-invalid rows through
    attempts 2 and 3, and scores. Top-ups remain an operator decision.
 
@@ -40,7 +41,7 @@
    After `drain.done`, run the exact `NEEDS_TOPUP` command if present;
    otherwise retain the single `LIFT-0113:` token in `drain.log`.
 
-A15 uses the same isolated launcher/fresh homes/frozen environment in every
+A16 retains A15's same isolated launcher/fresh homes/frozen environment in every
 arm. L0 stays goal-only, unstaged, with exactly
 `--allowedTools Read,Grep,Glob,Edit,Write,Bash`; existing `--tools-csv` callers
 keep their semantics. The driver alone bounds launcher/auth preparation and
@@ -68,5 +69,5 @@ within each run; wall anchors stay medians. Raw token totals remain diagnostics,
 top-ups never change anchors, and unknown TIMEOUT usage stays INCONCLUSIVE.
 Preserve pre-A15 artifacts as noncomparable, with unchanged staged product,
 seats, panel, reps and thresholds. Actual operational status and collection
-identity live in [HANDOFF](../../autoresearch/HANDOFF.md). No measured runtime
-lift follows from A15.
+identity live in [HANDOFF](../../autoresearch/HANDOFF.md).
+No measured runtime lift follows from A16.

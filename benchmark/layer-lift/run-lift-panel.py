@@ -39,7 +39,7 @@ PARAMS_PATH = HERE / "registered-params.json"
 PANEL_PATH = HERE / "panel-quick.json"
 SCRIPTS_PATH = HERE / "scripts.sha256"
 CLAUDE_ISOLATION = REPO / "benchmark/ceiling/scripts/claude-isolation.py"
-PARAMS_PIN_SHA256 = "38e0761882a9e2f4d3aab32e6d2d238ffe5dcca342f00b45d6e6dd8bb2cc425b"
+PARAMS_PIN_SHA256 = "f339e7629683303aa8ae94c4770f6231cdf150c8bbebff626d2970d4e2970f3c"
 MODEL_RE = re.compile(r"^claude-[A-Za-z0-9][A-Za-z0-9.-]*$")
 INFRA_FAILURE = re.compile(r"http\s*429|http\s*529|rate[ -]?limit|session[ -]?limit|usage[ -]?limit|overloaded", re.IGNORECASE)
 CLASS_RE = re.compile(r"^EQ3-(AF|BD|MI|UA)[1-8]$")
@@ -387,7 +387,7 @@ def real_writer_check(
         if len(fields) != 2 or not fields[0].isdigit() or int(fields[0]) == own:
             continue
         command = fields[1]
-        if re.search(r"(?:claude\s+-p|codex\s+exec|grok\s+-p)", command):
+        if re.search(r"(?:claude\s+-p|codex\s+exec|grok(?:-[^\s/]+)?\s+(?:-p|--prompt-file))", command):
             active.append(line.strip())
     state_path = repo / ".devlyn/pipeline.state.json"
     state_in_flight = False
@@ -2376,6 +2376,22 @@ def self_test() -> int:
         assert okay is False and str(root_state) in detail
         root_state.write_bytes(canonical_json({"phases": {"final_report": {"verdict": "PASS"}}}))
         assert real_writer_check(root, process_probe=quiet_process) == (True, "quiet")
+        for final_report in (None, {"verdict": "PASS"}):
+            root_state.unlink(missing_ok=True)
+            if final_report is not None:
+                root_state.write_bytes(canonical_json({"phases": {"final_report": final_report}}))
+            for command, active in (
+                ("/Users/aipalm/.grok/downloads/grok-1.0.13-macos-aarch64 --prompt-file /private/tmp/review.prompt --model grok-4.6", True),
+                ("grok --prompt-file /private/tmp/review.prompt", True),
+                ("grok -p review", True),
+                ("groksomething --prompt-file /private/tmp/review.prompt", False),
+            ):
+                row = f"{os.getpid() + 1} {command}"
+                def injected_process(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+                    return subprocess.CompletedProcess(["ps"], 0, row + "\n", "")
+                assert real_writer_check(root, process_probe=injected_process) == (
+                    (False, f"live writer/state found: {row}") if active else (True, "quiet")
+                )
     names.append("sandbox-writer-and-launcher-injection")
     with tempfile.TemporaryDirectory(prefix="lift-seal-preflight-") as raw:
         root = pathlib.Path(raw)

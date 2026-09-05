@@ -2,7 +2,7 @@
 id: "0113-layer-lift-meter"
 title: "Layer-lift meter — one fixed instrument for L1−L0 (harness over bare) and L2−L1 (pair over solo), per model, minimal wall/tokens"
 kind: instrument
-status: 2026-09-05 — scoped A15 full PASS archived and committed; collection NOT LAUNCHED, held for separate quiet-detector correction and apparatus re-freeze (72 base cells, one lane, 4/1/1)
+status: 2026-09-06 — 0117/A16 implemented/refrozen; full gates/final review pending; collection NOT LAUNCHED (72 base cells, one lane, 4/1/1)
 depends_on: ["0102-executor-quality-discovery-corpus", "0104-model-checkup-loop", "0064-ceiling-instrument", "0073-nodeg-cell"]
 ---
 
@@ -309,20 +309,39 @@ params SHA in both scripts → seven script seals: completed. Final apparatus
 `644fef268345b0c9a435f7a28bb825d2c14122c07efacacfecb8b97fa39881c1`;
 params `38e0761882a9e2f4d3aab32e6d2d238ffe5dcca342f00b45d6e6dd8bb2cc425b`;
 runner `8694c9fdb0149b3f985398d503a559d058d42010194872063a09b293baed12f5`.
-These remain accepted A15 bytes; [0114 checkpoint](0114-harness-direction.md#checkpoint)
+These are historical accepted A15 bytes; [0114 checkpoint](0114-harness-direction.md#checkpoint)
 links final acceptance evidence. Product staged digest remains
 `ee8f74d4d2a5061c36b1ad2b4459f6801f08af3b0d08d069a756532bdb8a89f1`;
 seats, corpus, panel, reps and thresholds are unchanged.
 
 Preserve old `quick-1` artifacts. Pre-A15 rows are noncomparable because the
 context/measurement contract changed; no causal leakage effect is inferred.
-Collection is **NOT LAUNCHED**. `~/.local/share/nx01/iter0113/quick-a15-1` /
-`lift-quick-a15-1` are reserved future names, revisable by new registration; no
-new collection exists. After detector correction and re-freeze, follow the
+At the A15 checkpoint, collection was **NOT LAUNCHED**. `~/.local/share/nx01/iter0113/quick-a15-1` /
+`lift-quick-a15-1` were reserved future names, now superseded by A16; no
+collection was launched. The continuing policy is the
 [0114 collection rules](0114-harness-direction.md#collection-continuation-owned-by-root):
 quiet account, usage ≤10%, no other CLI seats, outside 23:00–01:00 KST,
 actual-pair smoke, one lane, 72 base cells (4/1/1), infra-only attempts 2/3,
 single evaluation and exact `NEEDS_TOPUP`. No runtime lift is claimed.
+
+### A-16 — versioned Grok quiet-process detection (0117, 2026-09-06)
+
+Implemented/refrozen; full gates and fresh actual Codex/Fable 5.1/Grok 4.6 final
+review are pending. [0117](0117-quiet-grok.md#a16-registration) owns corrected red/green evidence
+and current runner/apparatus/params hashes. Both existing process gates now
+recognize plain or version-suffixed Grok with `-p` or `--prompt-file`, retaining
+Claude/Codex, independent root-state/usage/window checks and failure behavior.
+Historical A9 and A1–A15 registrations above remain evidence of their own bytes.
+Only the apparatus parameter changed; both pins and seven seals were refreshed,
+with drain intentionally unsealed. Product staged digest, seats, corpus/panel,
+4/1/1 reps, thresholds, arithmetic and deadlines remain fixed.
+
+Collection is **NOT LAUNCHED**. Fresh reservation:
+`~/.local/share/nx01/iter0113/quick-a16-1` / `lift-quick-a16-1`.
+Root alone commits after full gates/final trio, then launches the existing
+quiet-gated drain under the continuing policy above. Preserve all prior outputs
+and pre-A15 noncomparability; root writes final acceptance separately after
+actual closure. Deterministic checks establish this fix, not runtime lift or readiness.
 
 ## Not in scope
 
