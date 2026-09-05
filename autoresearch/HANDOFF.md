@@ -1,7 +1,7 @@
 # HANDOFF — for the next session
 
 **Read order on cold start (mandatory)**:
-1. **This file, START-HERE**, then [0118 PARK record](iterations/0118-concurrent-admission.md) — stop receipts, accepted design, prepared spec/operator and 3-seat rules before any continuation
+1. **This file, START-HERE**, then [0118 blocked checkpoint](iterations/0118-concurrent-admission.md#final-acceptance-blocked-checkpoint--2026-09-06) — actual two-run state, immutable custody and missing final approvals before continuation
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + ceiling contract + ops test #17 + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
@@ -12,11 +12,11 @@ Subject to explicit user directives (including the bounded 0118 exception), if a
 
 ---
 
-## 🚦 START-HERE — USER RESUMED 2026-09-06 / 0118 READY FOR FULL RUN
+## 🚦 START-HERE — 2026-09-06 / 0118 FINAL ACCEPTANCE BLOCKED
 
-**0118 exact final-spec three-seat agreement is complete; implementation, full resolve, gates and final implementation trio remain NOT STARTED.** The parked design was a root-reconciled proposal, not three explicit votes on the final spec. Read the [0118 record](iterations/0118-concurrent-admission.md) for current receipts. Candidate: `/Users/aipalm/Documents/GitHub/devlyn-cli-0118-concurrent-sessions`, branch `codex/0118-concurrent-sessions-20260906`, original base `4acfc3c`. The preserved [PARK bundle](/Users/aipalm/.local/share/nx01/iter0118/park-20260905T161107Z) now has a verified 132-file manifest; prior spec/context were uncommitted. No 0118 or 0115/0116 main product adoption.
+**0118 implementation is frozen; final acceptance is incomplete.** Full precommit acceptance passed BUILD6/6, fresh CLEANUP after a preserved cache finding, and independent MECHANICAL6/6. Actual Astra final PASS; Fable stopped at session quota, and Grok raw PASS failed a mismatched operator prompt/tool/validator contract. Sidecar `rs-20260905T174917Z-4fcdaacca51b` is canonically BLOCKED and archived. Original `rs-20260905T164734Z-f5936cf6fc73` remains unclosed at IMPLEMENT2 PASS / BUILD0 FAIL. [0118 checkpoint](iterations/0118-concurrent-admission.md#final-acceptance-blocked-checkpoint--2026-09-06) owns exact hashes, raw failures, 762-file verified custody and continuation constraints. No implementation commit or main adoption.
 
-**Next session:** first read the [stop request](/Users/aipalm/Documents/GitHub/devlyn-cli/.devlyn/concurrency-20260906/park-waiter-stop.json) and [final stop receipt](/Users/aipalm/Documents/GitHub/devlyn-cli/.devlyn/concurrency-20260906/park-waiter-final.json), and check PID identity before any continuation; never launch a duplicate waiter. Final observation records PID 45397 not live at 2026-09-05 16:12:17 UTC; outcomes remain NOT_INSPECTED. No automatic restart during PARK. Only explicit new-session continuation permits revalidating spec/HEAD/design and the prepared operator, removing candidate `.devlyn/0118/PARKED`, then running the canonical full pipeline under the [0118 resume contract](iterations/0118-concurrent-admission.md#prepared-operator-and-resume). Do not run the generic cold-start test list during PARK.
+**Next session:** read that checkpoint and the candidate `.devlyn/0118/RESUME.md` before invoking any prepared operator. Preserve both worktrees' identical frozen delta and original rounds. Fable's CLI reports a 2026-09-06 06:00 KST reset; availability still needs verification. Reconcile Grok's visible review contract with its validator before fresh acceptance; never treat invalid raw PASS or an archived BLOCKED as approval. The original commit/reentry helpers remain blocked by missing full acceptance. Do not repeat tests/models merely on cold start. A16 waiter remains stopped, outcomes NOT_INSPECTED; preserve its stop receipts and frozen artifacts, with no duplicate waiter or collection relaunch.
 
 User restart line:
 
