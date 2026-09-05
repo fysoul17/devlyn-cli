@@ -1,5 +1,5 @@
 {
-  "apparatus_sha256": "9a40ae66e23c9065a18fbb5dd652fbf8d8dea2a9767b05781e35611157ae0acf",
+  "apparatus_sha256": "ed58ed29644aa3054c50010524c39a87d926de9d301ab297cb7fd61cea3c5d59",
   "corpus": {
     "manifest_path": "/Users/aipalm/.local/share/nx01/iter0102/freeze/candidate-manifest.json",
     "manifest_sha256": "80f0a12ddb6df006c4137ecbc96c557742f8bbe74b0cacf65466c3af6dcd8887",
@@ -43,7 +43,7 @@
     "binary_sha256": "b63136194160791c27cfa7b0403060d85eb0752991625fde8c09f9acacb17c78"
   },
   "harness": {
-    "staged_intervention_sha256": "bd48e94b4bab165ddbf3b975cc35e1fb0e614ce79d3f429756fa18e232716edc"
+    "staged_intervention_sha256": "ee8f74d4d2a5061c36b1ad2b4459f6801f08af3b0d08d069a756532bdb8a89f1"
   },
   "pair": {
     "model_id": "gpt-6-astra",

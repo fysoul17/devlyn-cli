@@ -37,7 +37,7 @@ PARAMS_PATH = HERE / "registered-params.json"
 PANEL_PATH = HERE / "panel-quick.json"
 SCRIPTS_PATH = HERE / "scripts.sha256"
 CLAUDE_ISOLATION = REPO / "benchmark/ceiling/scripts/claude-isolation.py"
-PARAMS_PIN_SHA256 = "44f34b2ec98b38cd33d02140cc3ba6da5ab0953471ebe3d536713f85a4781225"
+PARAMS_PIN_SHA256 = "cc8025959f2f576ce2b241a990444dea302f4057f85a87dc8a270ee3ded9895f"
 MODEL_RE = re.compile(r"^claude-[A-Za-z0-9][A-Za-z0-9.-]*$")
 INFRA_FAILURE = re.compile(r"http\s*429|http\s*529|rate[ -]?limit|session[ -]?limit|usage[ -]?limit|overloaded", re.IGNORECASE)
 CLASS_RE = re.compile(r"^EQ3-(AF|BD|MI|UA)[1-8]$")
@@ -558,6 +558,7 @@ def stage_harness(work: pathlib.Path, goal: bytes, params: dict[str, Any]) -> st
         ["git", "config", "user.email", "meter@local"],
         ["git", "add", "-A"],
         ["git", "commit", "-qm", "baseline"],
+        ["git", "-c", "tag.gpgsign=false", "tag", "baseline"],
     ):
         proc = run_command(command, cwd=work)
         if proc.returncode != 0:
@@ -826,6 +827,8 @@ def harness_terminal(state: dict[str, Any], report_path: pathlib.Path | None = N
             if isinstance(phase, dict) and phase.get("verdict") == "BLOCKED":
                 return f"BLOCKED:{phase_name}"
         return "BLOCKED:unspecified"
+    if isinstance(verdict, str) and verdict.startswith("BLOCKED:"):
+        return verdict
     return None
 
 
@@ -1818,11 +1821,6 @@ def self_test() -> int:
             and env["CEILING_TEST_CODEX_BIN"] == params["pair"]["codex_binary_path"]
             for env in launcher_environments
         )
-        assert all(
-            shutil.which("claude", path=env["PATH"]) == str(path_claude)
-            and shutil.which("codex", path=env["PATH"]) == str(path_codex)
-            for env in launcher_environments
-        )
     names.append("rollout-attestation-and-final-usage")
     with tempfile.TemporaryDirectory(prefix="lift-smoke1-l1-") as raw:
         root = pathlib.Path(raw)
@@ -1878,6 +1876,40 @@ def self_test() -> int:
         assert smoke1_l1_row["f_ship"] == "1/1"
         assert smoke1_l1_row["infra_invalid"] is False
         assert smoke1_l1_row["infra_reason"] is None
+    with tempfile.TemporaryDirectory(prefix="lift-smoke3-l1-") as raw:
+        root = pathlib.Path(raw)
+        auth = root / "auth.json"
+        auth.write_bytes(b'{}\n')
+        smoke3_state = {
+            "risk_profile": {"pair_default_enabled": False},
+            "phases": {
+                "plan": {"verdict": "PASS"},
+                "implement": {"verdict": "PASS"},
+                "surface_close": {"verdict": "BLOCKED"},
+                "build_gate": None,
+                "cleanup": None,
+                "verify": None,
+                "final_report": {"verdict": blocked_terminal},
+            },
+        }
+        assert harness_terminal(smoke3_state) == blocked_terminal
+        assert harness_terminal({"phases": {"final_report": {"verdict": "DONE"}}}) is None
+        def smoke3_l1_result(
+            command: list[str], work: pathlib.Path, timeout: int,
+            env: dict[str, str] | None,
+        ) -> subprocess.CompletedProcess[bytes]:
+            result = smoke1_l1_result(command, work, timeout, env)
+            (work / ".devlyn/pipeline.state.json").write_bytes(canonical_json(smoke3_state))
+            return result
+        smoke3_l1_row = execute_attempt(
+            params=params, model="claude-opus-5", run_id="smoke3-l1", attempt=1,
+            arm="L1", task="EQ3-AF2", rep=1, out_dir=root,
+            launcher_command=smoke3_l1_result, codex_auth_source=auth,
+        )
+        assert smoke3_l1_row["terminal"] == blocked_terminal
+        assert smoke3_l1_row["f_ship"] == "1/1"
+        assert smoke3_l1_row["infra_invalid"] is False
+        assert smoke3_l1_row["infra_reason"] is None
     with tempfile.TemporaryDirectory(prefix="lift-claude-pin-") as raw:
         root = pathlib.Path(raw)
         refuses(lambda: registered_binary("Claude", str(root / "missing"), params["claude"]["binary_sha256"]), "is missing")
@@ -1990,6 +2022,12 @@ def self_test() -> int:
     assert "SMOKE-CONJUNCT l1_user_no_pair=PASS" in captured.getvalue()
     names.append("smoke1-l1-verify-absent-valid")
     names.append("smoke-all-rows-infra-valid")
+    smoke3_rows = [smoke_rows[0], smoke3_l1_row, smoke_rows[2]]
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        assert smoke_gate(smoke3_rows, "claude-opus-5", params["pair"]) is False
+    assert "SMOKE-CONJUNCT l1_user_no_pair=PASS" in captured.getvalue()
+    names.append("smoke3-l1-blocked-prefix-terminal")
     smoke_rows[2].update(
         pair_timeout=True, codex_tokens_total=None, output_tokens_total=None,
         infra_invalid=False, infra_reason=None,

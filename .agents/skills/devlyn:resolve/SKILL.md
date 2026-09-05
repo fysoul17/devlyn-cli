@@ -353,7 +353,7 @@ Branch:
 
 ## PHASE 6: FINAL REPORT + ARCHIVE
 
-State write: `phases.final_report.started_at` at the top of this phase.
+Open the `final_report` span through the predecessor's `state-phase-write.py --devlyn-dir .devlyn --phase <predecessor> transition --next-phase final_report --next-round 0 …` on a direct handoff; after a halt, use standalone `state-phase-write.py --devlyn-dir .devlyn --phase final_report spawn --round 0` only if the span is unopened.
 
 1. Kill any dev server PHASE 3 left running.
 
@@ -363,7 +363,7 @@ State write: `phases.final_report.started_at` at the top of this phase.
 
 4. **Render report** — sections: header (run_id, engine, mode, verdict, wall-time), per-phase summary (including SURFACE_CLOSE run or skip), pair/risk-probe status, findings table (verify + finish-gate findings), follow-up notes (the explicit line `pipeline continued to BUILD_GATE — surface_close_rolled_back_adjudication_malformed` when `continued_after_block` is set, any large-mode `## Assumptions` block, any pair-judge TIMEOUT (headline: solo verdict after pair TIMEOUT), any `--no-pair` / `--no-risk-probes` opt-out, any engine setup guidance after BLOCKED, `/devlyn:ideate` guidance after `BLOCKED:solo-headroom-hypothesis-required` that asks for the visible behavior `solo_claude` is expected to miss, and `/devlyn:ideate` guidance after `BLOCKED:solo-ceiling-avoidance-required` that asks for the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`).
 
-5. State write: `phases.final_report.{verdict, completed_at, duration_ms}` BEFORE archive runs (archive prune logic skips runs whose `final_report.verdict` is null).
+5. Complete the span with `state-phase-write.py --devlyn-dir .devlyn --phase final_report complete --verdict <bare enum>` — the enum class of the terminal verdict (`BLOCKED:<reason>` → `BLOCKED`; `NEEDS_WORK` / `PASS_WITH_ISSUES` / `PASS` unchanged) — BEFORE archive runs (archive prune skips runs whose `final_report.verdict` is null). Never hand-edit lifecycle fields in `pipeline.state.json` (`references/state-schema.md` § Write protocol).
 
 6. **Archive** — invoke the deterministic script: `python3 "$DEVLYN_SHARED_DIR/archive_run.py"`. The script reads `run_id` from `.devlyn/pipeline.state.json`, moves the static per-run artifact set (`PER_RUN_PATTERNS` remains the single ownership list) plus every state-bound process-evidence manifest/raw stream into `.devlyn/runs/<run_id>/`, preserves evidence-relative layout, and rehashes bound bytes before any move. An unsafe/missing/altered evidence path or destination collision reports archive failure without changing the already-derived product verdict. It then best-effort prunes to the last 10 completed runs. Archive must run; running this step as deterministic-script-not-prose ensures the move actually happens (iter-0033a Smoke 3 caught a case where the agent claimed archive ran without moving the files).
 
