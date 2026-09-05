@@ -1,0 +1,35 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "python3 benchmark/layer-lift/run-lift-panel.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 600
+    },
+    {
+      "cmd": "python3 benchmark/layer-lift/score-lift.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 120
+    },
+    {
+      "cmd": "python3 benchmark/layer-lift/drain-quick.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 120
+    },
+    {
+      "cmd": "shasum -a 256 -c benchmark/layer-lift/scripts.sha256",
+      "exit_code": 0,
+      "timeout_sec": 60
+    },
+    {
+      "cmd": "bash scripts/lint-skills.sh",
+      "exit_code": 0,
+      "timeout_sec": 600
+    },
+    {
+      "cmd": "git diff --check",
+      "exit_code": 0,
+      "timeout_sec": 60
+    }
+  ],
+  "max_deps_added": 0
+}
