@@ -1,64 +1,36 @@
 # HANDOFF — for the next session
 
 **Read order on cold start (mandatory)**:
-1. **This file** — operating context + active iter + pair-collab protocol
+1. **This file** — operating context + parked continuation + pair-collab protocol
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + ceiling contract + ops test #17 + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
-5. Active: [`iterations/0113-layer-lift-meter-STUB.md`](iterations/0113-layer-lift-meter-STUB.md). Parked: [`iterations/0112-venue-tolerant-horizon-STUB.md`](iterations/0112-venue-tolerant-horizon-STUB.md) § PARKED. Most recent closed: 0110 (`VENUE_REJECTED`), 0111 (SHIPPED). Everything older: iteration index + `DECISIONS.md`.
+5. Parked continuation: [`iterations/0114-harness-direction.md`](iterations/0114-harness-direction.md) and [`0113/A15`](iterations/0113-layer-lift-meter-STUB.md). Parked: [`iterations/0112-venue-tolerant-horizon-STUB.md`](iterations/0112-venue-tolerant-horizon-STUB.md) § PARKED. Most recent closed: 0110 (`VENUE_REJECTED`), 0111 (SHIPPED). Everything older: iteration index + `DECISIONS.md`.
 6. [`DECISIONS.md`](DECISIONS.md) — append-only ship/revert log (newest at bottom)
 
 If any file contradicts another, **NORTH-STAR.md wins**, then this file, then PRINCIPLES.md. Open a doc-fix iter on the contradiction. Historical narratives live in `iterations/*` + DECISIONS.md — this file carries only what binds the next session (user cleanup directives 2026-07-07, 2026-09-02).
 
 ---
 
-## 🚦 START-HERE — state after 2026-09-05 (session 25)
+## Direction reassessment — 2026-09-05
 
-**iter-0113 layer-lift meter: APPARATUS RE-FROZEN (6) after AMENDMENT A-14
-(params `cc802595…`, apparatus `ed58ed29…`, staged `ee8f74d4…`, seals 8/8;
-sol + grok `FREEZE-0113-A14: FREEZE n=0`) and the quick-panel drain is
-RELAUNCHED — `~/.local/share/nx01/iter0113/quick-1/`, pid in `drain.pid`,
-2026-09-05 session 25.** Smoke-3 (first open gate, 14:54 KST) FAILED on the
-L1 row and it was NOT venue: the L1 orchestrator hand-wrote
-`final_report.verdict = "BLOCKED:surface-close-…"` (the writer refuses that
-string; PHASE 6 was the only phase whose SKILL steps did not name the
-writer) and the meter read it as "no terminal" → infra-invalid. A-14 (STUB
-§ "A-14"): meter returns `BLOCKED:<reason>` verbatim as the product's
-declared terminal (f_ship 1/1, not replaceable), SKILL PHASE 6 names the
-writer + bare enum, fail-closed `git -c tag.gpgsign=false tag baseline`,
-grok F-4 folded. A-13 (Codex vendor-tree pin, `gpt-6-astra` / 0.153.4 /
-medium) and A-12 (minimal panel) stand. Every design delta is in the STUB
-§ "Apparatus record" — read it before touching bytes. Terra's sandbox cannot
-use the Keychain, `ps`, or write `~/.local/share/nx01/` or `.agents/` —
-fable launches and syncs `.agents`.
+Before continuing below, read [0115 direction and initialization ownership](../../devlyn-cli-0115-bootstrap-baseline/autoresearch/iterations/0115-bootstrap-baseline.md) and [0116 filename identity](../../devlyn-cli-0115-bootstrap-baseline/autoresearch/iterations/0116-baseline-path-identity.md). Verified isolated branch `codex/0115-bootstrap-baseline-20260905` contains `9394f5f` (bootstrap owns the mandatory baseline) and `bdfef51` (NUL framing closes a reproduced scope omission). Actual Fable 5.1/Grok 4.6 design and final Fable/Codex/Grok static reviews, required tests and full lint are recorded; durable evidence is in `~/.local/share/nx01/iter0115/` and `iter0116/`. These are candidate commits, not main adoption or whole-harness readiness.
 
-**NEXT SESSION — the drain is already running; do NOT relaunch blindly:**
-```bash
-git status && cat ~/.local/share/nx01/iter0113/quick-1/drain.pid && kill -0 $(cat ~/.local/share/nx01/iter0113/quick-1/drain.pid) && echo alive
-tail -n 30 ~/.local/share/nx01/iter0113/quick-1/drain.log
-```
-Alive → leave it (≈ 2.5–4 days from the first open gate). Dead without
-`drain.done` → re-run the exact START command (rows are atomic, resume-safe):
-`python3 benchmark/layer-lift/run-lift-panel.py --self-test >/dev/null &&
-python3 benchmark/layer-lift/drain-quick.py --model claude-opus-5 --out
-~/.local/share/nx01/iter0113/quick-1 --run-id lift-quick-1`. The drain waits
-for a gate (no live `claude -p`/`codex exec`/`grok -p` machine-wide ∧
-five-hour usage ≤ 10 % via `usage-capture-0112.py` ∧ outside 23:00–01:00
-KST — at launch it was blocked by the user's other sessions: 25 % and an
-active codex exec; that is the design, it just waits), runs smoke-4 first
-(`smoke/smoke.log` must end `SMOKE-0113: PASS`; on FAIL it stops — read the
-row, decide, archive `smoke/` → `smoke-N-FAIL/`, re-run the command), then one task per fresh window, attempts
-2/3 for infra-invalid rows, then `score-lift.py score` → `LIFT-0113:` or
-`NEEDS_TOPUP` in `drain.log` + `drain.done`. Stop it with `kill -TERM
-$(cat …/quick-1/drain.pid)`.
+**0114 and collection remain USER-PARKED.** Original product, frozen panels and run state are preserved; this pointer is the only root tracked edit from the reassessment. The new reader deliberately rejects nonempty legacy LF snapshots. Keep the parked run on its frozen product; adopt the candidate only with a fresh authorized baseline, never by recapturing a dirty active run. The linked direction record keeps original-intent closure, current role certification and real-project/matched-time comparisons as open evidence gates.
 
-**After `drain.done`:** `NEEDS_TOPUP` → `run-lift-panel.py topup …` per the
-scorer's line (E1 = L0 reps, cheap; E2 = L1 reps, one per half-window), then
-score again. ONE evaluation. Record `LIFT-0113:` + DECISION in the STUB, a
-DECISIONS row, and this START-HERE. Follow-ups registered, not started:
-(i) M' = claude-opus-4-8 column; (ii) 0110 banked-session diagnostic as the
-0112 go/no-go; (iii) codex-bare saturation check before any codex L0. (grok F-4 closed by
-A-14.)
+## 🚦 START-HERE — USER-PARKED 2026-09-05 20:05:55 KST (11:05:55 UTC), 0114/A15
+
+**0114 missing-state correction/refreeze is implemented, uncommitted, in USER-PARKED run `rs-20260905T104352Z-29990a258793`, base `4b5bb0a39fcf3b5122f1104ca3adfa6c58da0ec1`.** PLAN/IMPLEMENT PASS; current BUILD_GATE interrupted by user with partial evidence; PHASE0 baseline captured before the first worker; spec SHA256 `e11e2b239e91d72854bb0a346094eaa17aeeee3f6c587cc56c0fa2490e8702d4`. Prior `rs-20260905T092108Z-8e9404a2d660` is archived NEEDS_WORK (iteration 1/3): BUILD_GATE 7/7 and MECHANICAL 7/7 passed, but actual Codex HIGH A15-JUDGE-001 binds despite Fable PASS/Grok PASS; old Grok used MCP memory, limiting freshness. Full acceptance and final corrected-diff reviews are suspended on user request. [0114 parked checkpoint](iterations/0114-harness-direction.md#checkpoint) owns current stop/state/evidence receipts; [accepted missing-state correction](../.devlyn/fix-0114-pair-stream-20260905/accepted-missing-state-design.md) initializes plain `pair_verdict = None` before state branching; one regression preserves explicit infra-invalid and the missing-state reason. Actual Fable 5.1/Grok 4.6 design GO; Grok prose is transport-attested, collector-rejected, not JUDGE PASS. Prior rs100953 is archived `BLOCKED:phase0-baseline-missing`: seven commands exit0, overall BUILD_GATE FAIL, no CLEANUP/VERIFY/final trio. Root omitted that baseline. [Implementation evidence](../.devlyn/fix-0114-state-capture-20260905/implement-evidence.json) links verified root red, focused green (58.320 s), snapshot and refreeze: apparatus `644fef268345b0c9a435f7a28bb825d2c14122c07efacacfecb8b97fa39881c1`, params `38e0761882a9e2f4d3aab32e6d2d238ffe5dcca342f00b45d6e6dd8bb2cc425b`; seven seals written.
+
+Historical parking stopped the prior IMPLEMENT worker (wrapper exit 143); archived run `rs-20260905T074941Z-1b68ecba41e8` and its `started` receipt remain incomplete. Preserve `~/.local/share/nx01/iter0114/park-20260905/` and the original proofs byte-exact. No implementation commit or push.
+
+**Next — only on explicit user resume:** follow the [0114 parked checkpoint](iterations/0114-harness-direction.md#checkpoint) and [resume-only sequence](iterations/0114-harness-direction.md#resume-only-continuation-owned-by-root): preserve evidence/WIP before lifecycle reconciliation, then complete full gates/final trio before any implementation commit or collection launch. Prior focused checks and the 2.288-second clean-env diagnostic are not acceptance. Product staged intervention remains `ee8f74d4d2a5061c36b1ad2b4459f6801f08af3b0d08d069a756532bdb8a89f1`.
+
+Old `~/.local/share/nx01/iter0113/quick-1/` is stopped and preserved with historical smokes. **Fresh collection is USER-PARKED/NOT LAUNCHED:** `~/.local/share/nx01/iter0113/quick-a15-1`, run ID `lift-quick-a15-1`, suspended until explicit user resume and full acceptance. Keep quiet-account/window gates, actual-pair smoke, one lane, 72 base cells (4/1/1), infra-only attempts 2/3 and single evaluation. Pre-A15 rows are noncomparable; no causal leakage effect is inferred.
+
+The goal remains genuine `bare < solo < pair` in quality AND efficiency. Preserve invalid-exam corrections and valid negative results; do not force the ordering by changing the exam. NULL/INCONCLUSIVE do not automatically remove pair. [0114](iterations/0114-harness-direction.md) records the bounded SURFACE_CLOSE candidate for a separate future worktree. Broader superiority and whole-harness production readiness remain unproven.
+
+Plain conversation may authorize implementation (DECISIONS 0069.1); once resolve is entered, its phase machinery is mandatory. Executor pins bind both routes. VERIFY pair stays default when available; explicit routes fail closed. The 0070 aggregate/off-resolve closure direction is not a shipped guarantee.
 
 ## Binding seat/lane rules (consolidated; details in the cited iters)
 
@@ -229,7 +201,7 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 
 | Surface | Verdict | Evidence anchor |
 |---|---|---|
-| Codex BUILD/IMPLEMENT routing | **FALSIFIED** | iter-0020: L2−L1 = −3.6 on 9-fixture suite |
+| Iter-0020 Codex BUILD/IMPLEMENT architecture | **FALSIFIED for that architecture** | iter-0020: L2−L1 = −3.6 on 9-fixture suite |
 | Pair VERIFY on frozen diffs | **PASS** | frozen-verify-gate internal F12/F10 + SWE-bench Lite n11 (avg wall 1.87x, cap 3x) |
 | Full-pipeline pair via risk probes | **PASS (small suite)** | F16/F23/F25 bare<solo<pair aggregate (avg wall 1.73x) — NOT broad product superiority |
 | PLAN-pair | research-only | iter-0033d/f/g (no empirical subagent introspection; unblock conditions in SKILL.md PHASE 1) |
@@ -244,7 +216,7 @@ At `~/.claude/projects/-Users-aipalm-Documents-GitHub-devlyn-cli/memory/`: `feed
 | T1 packet calibration (seat×defect) | complementary override: catalog admits ONLY sonnet, credential ONLY terra (risk-diff 1.0 both) → routed-seat v2, validation fixtures landed | 0070a Amendment 2 + addendum 9; `benchmark/noncoding/validation/` |
 | Seat fitness (모델 × 포지션) | matrix live; 5 current cells; executor/pair-judge pins fail-closed "recert required" | `benchmark/seats/seat-matrix-2026-07-07.json` |
 | Opus line, bare, discriminating corpus | opus-5 fails LESS than opus-4-8 (Δ=−0.181, CI[−0.256,−0.109]); opus-5 ≈ fable-5; felt regression NOT reproduced by 0100/0102/0103; repo-scale band 0105–0109 REJECTED ×4; session-horizon 0110 VENUE_REJECTED, 0112 PARKED | DECISIONS 0102.1/0103.1/0105.1–0110.1; `~/.local/share/nx01/iter0102/` |
-| **Layer contract L1>L0, L2>L1 on a discriminating corpus** | **UNMEASURED** — ceiling tranche has no L1 arm and its corpus is bare-saturated; iter-0113 meter re-frozen (6) after A-14 (declared-BLOCKED carrier + PHASE 6 writer text), smokes 1–2 venue-FAIL, smoke-3 apparatus/product FAIL, drain RELAUNCHED 2026-09-05 session 25 | `iterations/0113-layer-lift-meter-STUB.md` |
+| **Layer contract L1>L0, L2>L1 on a discriminating corpus** | **UNMEASURED** — 0114/A15 USER-PARKED: PLAN/IMPLEMENT PASS, partial BUILD_GATE; full acceptance suspended, fresh quick-a15-1 NOT LAUNCHED | [0114 checkpoint](iterations/0114-harness-direction.md#checkpoint), [0113/A15](iterations/0113-layer-lift-meter-STUB.md) |
 
 Working instruments: violation matrix (`run-violation-matrix.sh`), compliance cells (`run-compliance-cell.sh` + `check-compliance-cell.py`, now incl. `finish_gate_ran`), drift-bait probes (bare + resolve-framed), judge-quality bench (+codex route), frozen-VERIFY pair gates, token gauge (`scripts/skill-token-gauge.py`), **ceiling 3-arm harness** (`benchmark/ceiling/scripts/run-ceiling-tranche.sh`), **seat matrix + recert runner** (`benchmark/seats/recert-seats.sh`, fail-closed pins).
 
@@ -252,14 +224,14 @@ Working instruments: violation matrix (`run-violation-matrix.sh`), compliance ce
 
 ## 📍 Project state (verify before editing)
 
-- **Branch**: `main`, HEAD = A-14 freeze + relaunch commits (2026-09-05, session 25); origin/main is 18+ commits behind — push is USER territory. Release/installer surface (README/bin publish commits) is USER territory, hands off.
+- **Working state**: see START-HERE and actual `git status` / `git log -1` before editing. Push and release/installer publishing remain USER territory, hands off.
 - **Engine pins**: `.devlyn/engines.json` = `{"executor": "codex"}` (verified 2026-09-02; machine-local; orchestrator passes `--pair-verify` on resolve runs per `feedback_executor_codex_always_pair_verify.md`). NOTE for 0113: the meter's L1/L2 arms stage their OWN `engines.json` with executor `claude` inside the arm worktree — the repo pin is untouched.
 - Housekeeping (deferred per user 2026-04-30, unchanged): 4 dirty `.claude/worktrees/agent-*` — save patches before any removal; NOT in iter scope.
 
 ### Cold-start sanity check (~30s)
 
 ```bash
-git status                                  # main, clean
+git status                                  # inspect current branch and WIP; see START-HERE
 bash scripts/lint-skills.sh                 # "All checks passed." (npm-pack check is occasionally slow — rerun once before diagnosing)
 diff -q config/skills/devlyn:resolve/SKILL.md .claude/skills/devlyn:resolve/SKILL.md
 diff -q config/skills/_shared/finish-gate.py .claude/skills/_shared/finish-gate.py

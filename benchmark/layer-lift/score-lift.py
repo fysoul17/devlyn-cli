@@ -20,7 +20,7 @@ HERE = REPO / "benchmark/layer-lift"
 DEFAULT_PARAMS = HERE / "registered-params.json"
 DEFAULT_PANEL = HERE / "panel-quick.json"
 SCRIPTS_PATH = HERE / "scripts.sha256"
-PARAMS_PIN_SHA256 = "cc8025959f2f576ce2b241a990444dea302f4057f85a87dc8a270ee3ded9895f"
+PARAMS_PIN_SHA256 = "38e0761882a9e2f4d3aab32e6d2d238ffe5dcca342f00b45d6e6dd8bb2cc425b"
 ARMS = ("L0", "L1", "L2")
 CLASS_RE = re.compile(r"^EQ3-(AF|BD|MI|UA)[1-8]$")
 TERMINALS = {"BARE", "PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "TIMEOUT"}
@@ -242,7 +242,6 @@ def validate_scripts_manifest(path: pathlib.Path = SCRIPTS_PATH) -> list[str]:
         if target.is_file() and target != SCRIPTS_PATH and target.name != "drain-quick.py"
     } | {
         (REPO / "benchmark/ceiling/scripts/claude-isolation.py").resolve(),
-        pathlib.Path("/Users/aipalm/.local/share/nx01/iter0102/matrix/apparatus/run-bounded.py").resolve(),
         pathlib.Path("/Users/aipalm/.local/share/nx01/iter0102/freeze/candidate-manifest.json").resolve(),
     }
     seen: set[pathlib.Path] = set()
@@ -299,7 +298,6 @@ def frozen_errors(params_path: pathlib.Path, params: dict[str, Any]) -> list[str
     checks = (
         (params["corpus"]["manifest_path"], params["corpus"]["manifest_sha256"], "corpus manifest"),
         (params["calibrator"]["path"], params["calibrator"]["sha256"], "calibrator"),
-        (params["run_bounded"]["path"], params["run_bounded"]["sha256"], "run-bounded"),
         (params["claude"]["binary_path"], params["claude"]["binary_sha256"], "Claude binary"),
         (params["pair"]["codex_binary_path"], params["pair"]["codex_binary_sha256"], "Codex binary"),
     )
@@ -329,7 +327,7 @@ REQUIRED_FIELDS = {
     "run_id", "attempt", "arm", "task", "class", "rep", "topup",
     "model_requested", "model_attested", "surface_close_ran",
     "surface_model_attested", "pair_model_attested", "pair_effort_attested",
-    "pair_cli_version_attested", "pair_timeout", "codex_tokens_total",
+    "pair_cli_version_attested", "pair_judge_ran", "pair_timeout", "codex_tokens_total",
     "terminal", "f_tree", "f_ship",
     "manifestations_total", "manifestations_failed", "catastrophic",
     "incomplete", "infra_invalid", "infra_reason", "wall_ms",
@@ -440,7 +438,24 @@ def validate_row(row: object, number: int) -> list[str]:
     elif row["fix_round_ran"] is not None or row["diff_changed_by_pair"] is not None:
         errors.append(f"{label}: non-L2 fix diagnostics must be null")
     pair_fields = ("pair_model_attested", "pair_effort_attested", "pair_cli_version_attested")
+    ran = row["pair_judge_ran"]
+    if ran is not None and type(ran) is not bool:
+        errors.append(f"{label}: pair_judge_ran must be boolean or null")
+    if row["arm"] == "L2" and row["infra_invalid"] is False:
+        if timeout:
+            if ran is False:
+                errors.append(f"{label}: TIMEOUT cannot establish pair not-run")
+        elif type(ran) is not bool:
+            errors.append(f"{label}: clean L2 requires boolean pair_judge_ran")
+        if ran is False and (
+            row["terminal"] in {"PASS", "PASS_WITH_ISSUES", "TIMEOUT"}
+            or row["f_ship"] != "1/1" or any(row[key] is not None for key in pair_fields)
+            or row["codex_tokens_total"] != 0 or row["pair_timeout"] is not False
+        ):
+            errors.append(f"{label}: pair not-run contradicts outcome or evidence")
     if row["arm"] != "L2":
+        if ran is not None:
+            errors.append(f"{label}: non-L2 pair_judge_ran must be null")
         expected_codex = None if usage_unknown else 0
         if any(row[key] is not None for key in pair_fields) or row["pair_timeout"] is not False or row["codex_tokens_total"] != expected_codex:
             errors.append(f"{label}: non-L2 pair attestation must be empty")
@@ -602,7 +617,7 @@ def score(
                 identity_errors.append(f"surface model attestation mismatch: {row['run_id']}")
             if row["surface_close_ran"] is False and row["surface_model_attested"] is not None:
                 identity_errors.append(f"surface model attestation without a run: {row['run_id']}")
-            if row["arm"] == "L2" and row["terminal"] != "TIMEOUT":
+            if row["arm"] == "L2" and row["terminal"] != "TIMEOUT" and row["pair_judge_ran"] is True:
                 if (
                     row["pair_model_attested"] != params["pair"]["model_id"]
                     or row["pair_effort_attested"] != params["pair"]["effective_effort"]
@@ -707,6 +722,12 @@ def score(
         )
         for arm in ARMS
     }
+    token_means = {
+        arm: None if token_sums[arm] is None else Fraction(
+            token_sums[arm], sum(row["arm"] == arm for row in base_rows),
+        )
+        for arm in ARMS
+    }
     if any(value <= 0 for value in wall_medians.values()):
         raise ScoreError("efficiency wall denominator is zero")
     if any(value <= 0 for value in token_sums.values() if value is not None):
@@ -727,7 +748,7 @@ def score(
         n1_tok = None
         e1_tok = {"decision": "INCONCLUSIVE", "unknown_timeout_rows": e1_base_unknown}
     else:
-        n1_tok = ceil_fraction(Fraction(token_sums["L1"], token_sums["L0"]))
+        n1_tok = ceil_fraction(token_means["L1"] / token_means["L0"])
         e1_unknown = sorted(
             row["run_id"]
             for task in tasks
@@ -746,7 +767,7 @@ def score(
         m2_tok = None
         e2_tok = {"decision": "INCONCLUSIVE", "unknown_timeout_rows": e2_base_unknown}
     else:
-        m2_tok = ceil_fraction(Fraction(token_sums["L2"], token_sums["L1"]))
+        m2_tok = ceil_fraction(token_means["L2"] / token_means["L1"])
         e2_unknown = sorted(
             row["run_id"]
             for task in tasks
@@ -906,7 +927,6 @@ def fixture_params() -> tuple[dict[str, Any], dict[str, Any], list[str]]:
         "saturation_threshold": "1/10",
         "corpus": {"manifest_path": "/fixture", "manifest_sha256": "1" * 64, "tree_sha256": "2" * 64},
         "calibrator": {"path": "/fixture", "sha256": "3" * 64},
-        "run_bounded": {"path": "/fixture", "sha256": "4" * 64},
         "claude": {"binary_path": "/fixture", "binary_sha256": "5" * 64},
         "harness": {"staged_intervention_sha256": "6" * 64},
         "pair": {
@@ -941,6 +961,7 @@ def fixture_row(
         "arm": arm, "task": task, "class": task_class(task), "rep": rep,
         "topup": topup, "model_requested": "claude-fixture", "model_attested": "claude-fixture",
         "surface_close_ran": False, "surface_model_attested": None,
+        "pair_judge_ran": True if arm == "L2" else None,
         "pair_model_attested": "gpt-fixture" if arm == "L2" else None,
         "pair_effort_attested": "medium" if arm == "L2" else None,
         "pair_cli_version_attested": "0.fixture" if arm == "L2" else None,
@@ -982,7 +1003,88 @@ def invoke_fixture(rows: list[dict[str, Any]], params: dict[str, Any], panel: di
     )
 
 
+def self_test_a15() -> None:
+    params, panel, rows = fixture_rows()
+    index = next(i for i, row in enumerate(rows) if row["arm"] == "L2")
+    retained = fixture_row("L2", rows[index]["task"], 1, Fraction(1), terminal="BLOCKED:fixture")
+    retained.update(pair_judge_ran=False, pair_model_attested=None, pair_effort_attested=None,
+                    pair_cli_version_attested=None)
+    rows[index] = retained
+    assert validate_row(retained, 1) == []
+    result = invoke_fixture(rows, params, panel)
+    assert result["per_task"][retained["task"]]["f_L2"] == "1/1"
+    for value in (None, 0, 1, "false"):
+        assert validate_row({**retained, "pair_judge_ran": value}, 1), value
+    missing = dict(retained)
+    del missing["pair_judge_ran"]
+    assert validate_row(missing, 1)
+    for patch in ({"terminal": "PASS"}, {"terminal": "PASS_WITH_ISSUES"}, {"terminal": "TIMEOUT"},
+                  {"pair_model_attested": "gpt-fixture"}, {"pair_effort_attested": "medium"},
+                  {"pair_cli_version_attested": "0.fixture"}, {"codex_tokens_total": 1}, {"pair_timeout": True}):
+        assert validate_row({**retained, **patch}, 1), patch
+    for arm in ("L0", "L1"):
+        assert validate_row({**fixture_row(arm, "EQ3-AF1", 1, Fraction(1)), "pair_judge_ran": False}, 1)
+    for value in (True, None):
+        timeout = fixture_row("L2", retained["task"], 1, Fraction(1), terminal="TIMEOUT")
+        timeout["pair_judge_ran"] = value
+        assert validate_row(timeout, 1) == []
+        invoke_fixture([timeout if i == index else row for i, row in enumerate(rows)], params, panel)
+        assert validate_row({**timeout, "pair_judge_ran": False}, 1)
+    for patch in ({"pair_judge_ran": True}, {"pair_judge_ran": True, "pair_model_attested": "wrong"},
+                  {"terminal": "TIMEOUT", "pair_judge_ran": None, "pair_model_attested": "wrong",
+                   "codex_tokens_total": None, "output_tokens_total": None}):
+        try:
+            invoke_fixture([{**retained, **patch} if i == index else row for i, row in enumerate(rows)], params, panel)
+        except ScoreError as exc:
+            assert "attestation mismatch" in str(exc)
+        else:
+            raise AssertionError(patch)
+    retry = {**retained, "attempt": 2, "run_id": retained["run_id"].replace(":a1:", ":a2:")}
+    try:
+        invoke_fixture(rows + [retry], params, panel)
+    except ScoreError as exc:
+        assert "retry does not replace" in str(exc)
+    else:
+        raise AssertionError("retained product failure was replaced")
+    rows[index] = {**retained, "infra_invalid": True, "infra_reason": "engine unavailable"}
+    invoke_fixture(rows + [retry], params, panel)
+    print("a15-score strict carrier, retained failure, identity, TIMEOUT, replacement: PASS")
+
+    for repetitions in ({"L0": 4, "L1": 1, "L2": 1}, {"L0": 4, "L1": 4, "L2": 4}, {"L0": 1, "L1": 4, "L2": 1}):
+        for ratio in (2, 8):
+            params, panel, tasks = fixture_params()
+            params["base_reps"] = repetitions
+            rows = [fixture_row(arm, task, rep, Fraction(1, 2), tokens={"L0": 10, "L1": 10 * ratio, "L2": 10 * ratio * ratio}[arm])
+                    for task in tasks for arm in ARMS for rep in range(1, repetitions[arm] + 1)]
+            # Split the same within-run total across parent, SURFACE_CLOSE, and pair usage.
+            for row in rows:
+                if row["arm"] != "L0":
+                    row["surface_close_ran"] = True
+                    row["surface_model_attested"] = "claude-sonnet-5"
+                    row["output_tokens"]["surface_close"] = {"claude-sonnet-5": 3}
+                    row["output_tokens"]["parent"]["claude-fixture"] -= 3
+                if row["arm"] == "L2":
+                    row["codex_tokens_total"] = 7
+                    row["output_tokens"]["parent"]["claude-fixture"] -= 7
+                assert validate_row(row, 1) == []
+            result = invoke_fixture(rows, params, panel)
+            assert result["ratios"]["N1_tok"] == ratio and result["ratios"]["M2_tok"] == ratio
+            assert result["ratios"]["N1_wall"] == result["ratios"]["M2_wall"] == 1
+            totals = {arm: sum(row["output_tokens_total"] for row in rows if row["arm"] == arm) for arm in ARMS}
+            assert result["ratios"]["output_token_sums"] == totals
+            topups = [fixture_row(arm, task, rep, Fraction(1, 2), topup=True, tokens=9999)
+                      for task in tasks for arm in ("L0", "L1") for rep in range(repetitions[arm] + 1, ratio + 1)]
+            topped = invoke_fixture(rows + topups, params, panel)
+            assert topped["ratios"] == result["ratios"] and topped["Q1"] == result["Q1"] and topped["Q2"] == result["Q2"]
+            timeout = fixture_row("L1", tasks[0], 1, Fraction(1), terminal="TIMEOUT")
+            unknown = invoke_fixture([timeout if (row["arm"], row["task"], row["rep"]) == ("L1", tasks[0], 1) else row for row in rows], params, panel)
+            assert unknown["ratios"]["N1_tok"] is None and unknown["ratios"]["M2_tok"] is None
+            assert unknown["E1"]["tokens"]["decision"] == unknown["E2"]["tokens"]["decision"] == "INCONCLUSIVE"
+            print("a15-score", repetitions, "per-run ratio", ratio, "N1_tok=M2_tok=" + str(ratio), "topups/unknown: PASS")
+
+
 def self_test() -> int:
+    self_test_a15()
     names: list[str] = []
 
     params_registered = read_object(DEFAULT_PARAMS)
@@ -1084,14 +1186,14 @@ def self_test() -> int:
             row["output_tokens_total"] = 50
     topups = [
         fixture_row(
-            "L0", task, 3, Fraction(1, 2), topup=True,
-            terminal="TIMEOUT" if task == tasks[0] else None,
+            "L0", task, rep, Fraction(1, 2), topup=True,
+            terminal="TIMEOUT" if task == tasks[0] and rep == 3 else None,
         )
-        for task in tasks
+        for task in tasks for rep in range(3, 6)
     ]
     rows.extend(topups)
     result = invoke_fixture(rows, params, panel)
-    assert result["ratios"]["N1_tok"] == 3
+    assert result["ratios"]["N1_tok"] == 5
     assert result["E1"]["tokens"] == {
         "decision": "INCONCLUSIVE",
         "unknown_timeout_rows": [topups[0]["run_id"]],

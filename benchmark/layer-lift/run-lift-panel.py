@@ -17,6 +17,7 @@ import json
 import os
 import pathlib
 import re
+import runpy
 import secrets
 import signal
 import shutil
@@ -32,12 +33,13 @@ from zoneinfo import ZoneInfo
 
 REPO = pathlib.Path("/Users/aipalm/Documents/GitHub/devlyn-cli")
 HERE = REPO / "benchmark/layer-lift"
+PAIR_COLLECTOR = runpy.run_path(REPO / "config/skills/_shared/collect-codex-findings.py")
 TASKS_ROOT = REPO / "benchmark/executor-quality/tasks-0102"
 PARAMS_PATH = HERE / "registered-params.json"
 PANEL_PATH = HERE / "panel-quick.json"
 SCRIPTS_PATH = HERE / "scripts.sha256"
 CLAUDE_ISOLATION = REPO / "benchmark/ceiling/scripts/claude-isolation.py"
-PARAMS_PIN_SHA256 = "cc8025959f2f576ce2b241a990444dea302f4057f85a87dc8a270ee3ded9895f"
+PARAMS_PIN_SHA256 = "38e0761882a9e2f4d3aab32e6d2d238ffe5dcca342f00b45d6e6dd8bb2cc425b"
 MODEL_RE = re.compile(r"^claude-[A-Za-z0-9][A-Za-z0-9.-]*$")
 INFRA_FAILURE = re.compile(r"http\s*429|http\s*529|rate[ -]?limit|session[ -]?limit|usage[ -]?limit|overloaded", re.IGNORECASE)
 CLASS_RE = re.compile(r"^EQ3-(AF|BD|MI|UA)[1-8]$")
@@ -283,7 +285,6 @@ def validate_script_manifest(path: pathlib.Path = SCRIPTS_PATH) -> list[str]:
         if target.is_file() and target != SCRIPTS_PATH and target.name != "drain-quick.py"
     } | {
         CLAUDE_ISOLATION.resolve(),
-        pathlib.Path("/Users/aipalm/.local/share/nx01/iter0102/matrix/apparatus/run-bounded.py").resolve(),
         pathlib.Path("/Users/aipalm/.local/share/nx01/iter0102/freeze/candidate-manifest.json").resolve(),
     }
     seen: set[pathlib.Path] = set()
@@ -425,7 +426,6 @@ def preflight(
     checks = (
         (pathlib.Path(params["corpus"]["manifest_path"]), params["corpus"]["manifest_sha256"], "corpus manifest"),
         (pathlib.Path(params["calibrator"]["path"]), params["calibrator"]["sha256"], "calibrator"),
-        (pathlib.Path(params["run_bounded"]["path"]), params["run_bounded"]["sha256"], "run-bounded"),
     )
     for path, expected, label in checks:
         try:
@@ -456,16 +456,6 @@ def preflight(
     if errors:
         raise Refusal("; ".join(errors))
     return params
-
-
-def scrubbed_env(params: dict[str, Any]) -> dict[str, str]:
-    keep = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.startswith(("CLAUDE", "CODEX", "MCP", "ANTHROPIC_MODEL"))
-    }
-    keep.update(params["l0_env"])
-    return keep
 
 
 def run_command(command: list[str], *, cwd: pathlib.Path, env: dict[str, str] | None = None, timeout: int = 60) -> subprocess.CompletedProcess[bytes]:
@@ -516,14 +506,15 @@ def run_cell_command(
                 break
             except subprocess.TimeoutExpired:
                 if interruption is not None and interruption.interrupted:
-                    InterruptionController._signal_group(proc.pid, signal.SIGKILL)
-                    proc.communicate()
                     raise CellInterrupted("window-boundary interruption")
         if interruption is not None:
             interruption.refuse_if_interrupted()
         return subprocess.CompletedProcess(command, proc.returncode, stdout, stderr)
     finally:
         if interruption is not None:
+            if interruption.interrupted:
+                InterruptionController._signal_group(proc.pid, signal.SIGKILL)
+                proc.communicate()
             interruption.unregister_process_group(proc.pid)
 
 
@@ -572,16 +563,6 @@ def stage_harness(work: pathlib.Path, goal: bytes, params: dict[str, Any]) -> st
     (work / ".devlyn/engines.json").write_bytes(ENGINES_BYTES)
     (work / ".devlyn/goal.txt").write_bytes(goal)
     return validate_staged_intervention(work, params)
-
-
-def stage_codex_home(root: pathlib.Path, auth_source: pathlib.Path | None = None) -> pathlib.Path:
-    root.mkdir(parents=True)
-    source = auth_source or pathlib.Path.home() / ".codex/auth.json"
-    if not source.is_file():
-        raise Refusal(f"Codex auth file missing: {source}")
-    shutil.copy2(source, root / "auth.json")
-    os.chmod(root / "auth.json", 0o600)
-    return root
 
 
 def manifestation_count(task_dir: pathlib.Path) -> int:
@@ -879,6 +860,7 @@ def base_row(run_id: str, attempt: int, arm: str, task: str, rep: int, model: st
         "model_attested": None,
         "surface_close_ran": False,
         "surface_model_attested": None,
+        "pair_judge_ran": None,
         "pair_model_attested": None,
         "pair_effort_attested": None,
         "pair_cli_version_attested": None,
@@ -945,11 +927,11 @@ def execute_attempt(
     state: dict[str, Any] | None = None
     state_path: pathlib.Path | None = None
     timed_out = False
-    runner_timeout = False
+    pair_verdict = None
     try:
         if interruption is not None:
             interruption.refuse_if_interrupted()
-        if not corpus_task_is_sealed(task, params):
+        if not corpus_task_is_sealed(task, params, TASKS_ROOT):
             raise Refusal("corpus task integrity mismatch")
         task_payload = read_object(task_dir / "task.json")
         goal = task_payload.get("goal")
@@ -963,118 +945,60 @@ def execute_attempt(
         )
         if arm == "L0":
             prompt = goal_bytes
-            prompt_path = attempt_dir / "prompt.txt"
-            prompt_path.write_bytes(prompt)
-            row["prompt_sha256"] = sha256_bytes(prompt)
-            command = [
-                sys.executable,
-                params["run_bounded"]["path"],
-                str(params["bounds_seconds"]["L0"]),
-                "--",
-                str(binary),
-                "-p",
-                goal,
-                "--model",
-                model,
-                "--effort",
-                params["effort"],
-                "--output-format",
-                "json",
-                "--dangerously-skip-permissions",
-                "--strict-mcp-config",
-                "--mcp-config",
-                '{"mcpServers":{}}',
-                "--allowedTools",
-                ",".join(params["tools"]),
-            ]
-            before = time.monotonic()
-            try:
-                proc = invoke_launcher(
-                    command,
-                    work,
-                    params["bounds_seconds"]["L0"] + 60,
-                    launcher_command,
-                    interruption,
-                    scrubbed_env(params),
-                )
-            except subprocess.TimeoutExpired:
-                proc = subprocess.CompletedProcess(command, 125, b"", b"runner subprocess timeout\n")
-                reasons.append("L0 runner subprocess timeout")
-                runner_timeout = True
-            row["wall_ms"] = int((time.monotonic() - before) * 1000)
-            if proc.returncode == 124 and not runner_timeout:
-                timed_out = True
-                row["wall_ms"] = params["bounds_seconds"]["L0"] * 1000
         else:
             row["staged_intervention_sha256"] = stage_harness(work, goal_bytes, params)
-            stage_codex_home(codex_home, codex_auth_source)
             prompt = (
                 b"/devlyn:resolve --goal-file .devlyn/goal.txt --no-pair"
                 if arm == "L1"
                 else b"/devlyn:resolve --goal-file .devlyn/goal.txt --pair-verify"
             )
-            prompt_path = attempt_dir / "prompt.txt"
-            prompt_path.write_bytes(prompt)
-            row["prompt_sha256"] = sha256_bytes(prompt)
-            command = [
-                sys.executable,
-                str(CLAUDE_ISOLATION),
-                "launch",
-                "--mode",
-                "arm",
-                "--model",
-                model,
-                "--home",
-                str(claude_home),
-                "--codex-home",
-                str(codex_home),
-                "--workdir",
-                str(work),
-                "--prompt-file",
-                str(prompt_path),
-                "--debug-file",
-                str(attempt_dir / "claude-debug.log"),
-                "--metadata-out",
-                str(launcher_metadata_path),
-                "--user-memory-file",
-                str(pathlib.Path.home() / ".claude/CLAUDE.md"),
-                "--timeout-seconds",
-                str(params["bounds_seconds"]["harness"]),
-            ]
-            before = time.monotonic()
-            try:
-                proc = invoke_launcher(
-                    command,
-                    work,
-                    params["bounds_seconds"]["harness"] + 60,
-                    launcher_command,
-                    interruption,
-                    {**os.environ, "CEILING_TEST_CLAUDE_BIN": str(binary),
-                     "CEILING_TEST_CODEX_BIN": params["pair"]["codex_binary_path"]},
-                )
-            except subprocess.TimeoutExpired:
-                proc = subprocess.CompletedProcess(command, 124, b"", b"harness timeout\n")
-                timed_out = True
-            if proc.returncode == 78 and b"timed out" in proc.stderr.lower():
-                timed_out = True
-            row["wall_ms"] = params["bounds_seconds"]["harness"] * 1000 if timed_out else int((time.monotonic() - before) * 1000)
-            try:
-                launcher_metadata = read_object(launcher_metadata_path)
-            except (OSError, Refusal, ValueError) as exc:
+        prompt_path = attempt_dir / "prompt.txt"
+        prompt_path.write_bytes(prompt)
+        row["prompt_sha256"] = sha256_bytes(prompt)
+        command = [
+            sys.executable, str(CLAUDE_ISOLATION), "launch", "--mode", "arm",
+            "--model", model, "--home", str(claude_home), "--codex-home", str(codex_home),
+            "--workdir", str(work), "--prompt-file", str(prompt_path),
+            "--debug-file", str(attempt_dir / "claude-debug.log"),
+            "--metadata-out", str(launcher_metadata_path),
+            "--user-memory-file", str(pathlib.Path.home() / ".claude/CLAUDE.md"),
+        ]
+        if arm == "L0":
+            command.extend(["--allowed-tools-csv", ",".join(params["tools"])])
+        launch_env = {
+            **os.environ, "CEILING_TEST_CLAUDE_BIN": str(binary),
+            "CEILING_TEST_CODEX_BIN": params["pair"]["codex_binary_path"],
+        }
+        if codex_auth_source is not None:
+            launch_env["CEILING_TEST_AUTH_JSON"] = str(codex_auth_source)
+        bound = params["bounds_seconds"]["L0" if arm == "L0" else "harness"]
+        before = time.monotonic()
+        try:
+            proc = invoke_launcher(command, work, bound, launcher_command, interruption, launch_env)
+        except subprocess.TimeoutExpired as exc:
+            proc = subprocess.CompletedProcess(command, 124, exc.output or b"", exc.stderr or b"")
+            timed_out = True
+        row["wall_ms"] = bound * 1000 if timed_out else int((time.monotonic() - before) * 1000)
+        try:
+            launcher_metadata = read_object(launcher_metadata_path)
+        except FileNotFoundError as exc:
+            if not timed_out or os.path.lexists(launcher_metadata_path):
                 reasons.append(f"launcher metadata unavailable: {exc}")
-            else:
-                direct_claude = launcher_metadata.get("direct_claude")
-                if not isinstance(direct_claude, dict) or (
-                    direct_claude.get("path") != str(binary)
-                    or direct_claude.get("sha256") != row["claude_binary_sha256"]
-                ):
-                    reasons.append("launcher Claude binary attestation mismatch")
-                direct_codex = launcher_metadata.get("direct_codex")
-                if not isinstance(direct_codex, dict) or (
-                    direct_codex.get("path") != params["pair"]["codex_binary_path"]
-                    or direct_codex.get("sha256") != params["pair"]["codex_binary_sha256"]
-                ):
-                    reasons.append("launcher Codex binary attestation mismatch")
+        except (OSError, Refusal, ValueError) as exc:
+            reasons.append(f"launcher metadata invalid: {exc}")
+        else:
+            direct_claude = launcher_metadata.get("direct_claude")
+            if not isinstance(direct_claude, dict) or (
+                direct_claude.get("path") != str(binary)
+                or direct_claude.get("sha256") != row["claude_binary_sha256"]
+            ):
+                reasons.append("launcher Claude binary attestation mismatch")
+            direct_codex = launcher_metadata.get("direct_codex")
+            if not isinstance(direct_codex, dict) or (
+                direct_codex.get("path") != params["pair"]["codex_binary_path"]
+                or direct_codex.get("sha256") != params["pair"]["codex_binary_sha256"]
+            ):
+                reasons.append("launcher Codex binary attestation mismatch")
         stdout_path.write_bytes(proc.stdout)
         stderr_path.write_bytes(proc.stderr)
         payload = decode_envelope(proc.stdout)
@@ -1095,7 +1019,7 @@ def execute_attempt(
         if payload is not None and not timed_out:
             if any(runtime_model not in parent_output for runtime_model in models):
                 reasons.append("parent modelUsage outputTokens are missing or malformed")
-        if arm != "L0" and proc.returncode == 78 and not timed_out:
+        if proc.returncode == 78 and not timed_out:
             reasons.append("Claude isolation launcher failed")
         if arm != "L0" and not timed_out:
             state_path, state = find_state(work)
@@ -1109,6 +1033,8 @@ def execute_attempt(
                     reasons.append("pipeline state lacks terminal final_report verdict")
                 else:
                     row["terminal"] = terminal
+                    if terminal in {"BLOCKED:claude-unavailable", "BLOCKED:codex-unavailable"}:
+                        reasons.append(f"engine unavailable: {terminal}")
                 surface_path = sibling_artifact(state_path, work, "surface-close.output.json")
                 ran, surface_errors = surface_close_receipt(state, surface_path)
                 row["surface_close_ran"] = ran
@@ -1128,50 +1054,98 @@ def execute_attempt(
                 row["verification_bullets"] = verification_bullets(criteria_path)
                 copy_if_present(criteria_path, attempt_dir / "criteria.generated.md")
                 risk = state.get("risk_profile")
-                verify = state.get("phases", {}).get("verify") if isinstance(state.get("phases"), dict) else None
+                phases = state.get("phases")
+                verify = phases.get("verify") if isinstance(phases, dict) else None
+                trigger = verify.get("pair_trigger") if isinstance(verify, dict) else None
+                sub = verify.get("sub_verdicts") if isinstance(verify, dict) else None
+                pair_verdict = sub.get("pair_judge") if isinstance(sub, dict) else None
+                codex_stdout = sibling_artifact(state_path, work, "codex-judge.stdout")
+                codex_stderr = sibling_artifact(state_path, work, "codex-judge.stderr")
+                captured = codex_stdout is not None or codex_stderr is not None
+                unopened = (
+                    isinstance(phases, dict) and "verify" in phases and verify is None
+                    and row["terminal"].startswith("BLOCKED:")
+                )
+                mechanical_skip = (
+                    isinstance(trigger, dict) and trigger.get("eligible") is False
+                    and trigger.get("reasons") == [] and trigger.get("skipped_reason") == "mechanical_blocker"
+                    and isinstance(sub, dict) and sub.get("mechanical") in {"NEEDS_WORK", "BLOCKED"}
+                    and "judge" in sub and sub["judge"] is None
+                    and "pair_judge" in sub and pair_verdict is None
+                    and row["terminal"] not in {"PASS", "PASS_WITH_ISSUES", "TIMEOUT"}
+                )
                 if arm == "L1":
                     if not isinstance(risk, dict) or risk.get("pair_default_enabled") is not False:
                         reasons.append("L1 risk_profile.pair_default_enabled is not false")
-                    trigger = verify.get("pair_trigger") if isinstance(verify, dict) else None
-                    if verify is not None and (
-                        not isinstance(trigger, dict)
-                        or trigger.get("skipped_reason") != "user_no_pair"
-                    ):
-                        reasons.append("L1 pair_trigger.skipped_reason is not user_no_pair")
+                    if not (unopened or mechanical_skip or (
+                        isinstance(trigger, dict) and trigger.get("skipped_reason") == "user_no_pair"
+                        and trigger.get("eligible") is False and trigger.get("reasons") == []
+                        and isinstance(sub, dict) and "pair_judge" in sub and pair_verdict is None
+                    )):
+                        reasons.append("L1 pair trigger is not a canonical skip")
+                    if captured:
+                        reasons.append("L1 skipped pair has captures")
                 else:
                     rounds = state.get("rounds")
                     row["fix_round_ran"] = isinstance(rounds, dict) and type(rounds.get("global")) is int and rounds["global"] >= 1
                     row["diff_changed_by_pair"] = diff_changed_by_verify(state, state_path, work)
-                if arm == "L2":
-                    verify = state.get("phases", {}).get("verify") if isinstance(state.get("phases"), dict) else None
-                    sub = verify.get("sub_verdicts") if isinstance(verify, dict) else None
-                    pair_verdict = sub.get("pair_judge") if isinstance(sub, dict) else None
+                    row["pair_judge_ran"] = not (unopened or mechanical_skip)
                     row["pair_timeout"] = pair_verdict == "TIMEOUT"
                     if state.get("pair_verify") is not True:
                         reasons.append("L2 state.pair_verify is not true")
-                    if pair_verdict is None:
-                        reasons.append("L2 pair_judge sub-verdict is null")
-                    codex_stdout = sibling_artifact(state_path, work, "codex-judge.stdout")
-                    codex_stderr = sibling_artifact(state_path, work, "codex-judge.stderr")
-                    if codex_stdout is None:
-                        reasons.append("L2 codex-judge.stdout is absent")
+                    if row["pair_judge_ran"] is False:
+                        if captured:
+                            reasons.append("L2 skipped pair has captures")
                     else:
-                        copy_if_present(codex_stdout, attempt_dir / "codex-judge.stdout")
-                    if codex_stderr is None:
-                        reasons.append("L2 codex-judge.stderr is absent")
-                    else:
-                        copy_if_present(codex_stderr, attempt_dir / "codex-judge.stderr")
-                        version, pair_model, effort, tokens, header_errors = validate_codex_stderr(
-                            codex_stderr.read_bytes(),
-                            params,
-                            tokens_required=pair_verdict != "TIMEOUT",
-                        )
-                        row["pair_cli_version_attested"] = version
-                        row["pair_model_attested"] = pair_model
-                        row["pair_effort_attested"] = effort
-                        row["codex_tokens_total"] = tokens or 0
-                        reasons.extend(header_errors)
+                        if not (
+                            isinstance(trigger, dict) and trigger.get("eligible") is True
+                            and isinstance(trigger.get("reasons"), list) and "pair.default" in trigger["reasons"]
+                            and all(isinstance(reason, str) and reason for reason in trigger["reasons"])
+                            and trigger.get("skipped_reason") is None
+                        ):
+                            reasons.append("L2 pair trigger does not establish dispatch")
+                        if pair_verdict not in {"PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED", "TIMEOUT"}:
+                            reasons.append("L2 pair_judge sub-verdict is null or invalid")
                 copy_if_present(final_report_path, attempt_dir / "final-report.md")
+        if arm == "L2":
+            if timed_out:
+                state_path, state = find_state(work)
+            codex_stdout = sibling_artifact(state_path, work, "codex-judge.stdout")
+            codex_stderr = sibling_artifact(state_path, work, "codex-judge.stderr")
+            captured = codex_stdout is not None or codex_stderr is not None
+            if timed_out and captured:
+                row["pair_judge_ran"] = True
+            if row["pair_judge_ran"] is True or captured:
+                if codex_stdout is None:
+                    reasons.append("L2 codex-judge.stdout is absent")
+                else:
+                    copy_if_present(codex_stdout, attempt_dir / "codex-judge.stdout")
+                    if not timed_out and not row["pair_timeout"]:
+                        ranks = PAIR_COLLECTOR["VERDICT_RANK"]
+                        try:
+                            findings, summary = PAIR_COLLECTOR["collect_stdout"](codex_stdout)
+                            normalized_rank = max([ranks[summary["verdict"]]] + [
+                                PAIR_COLLECTOR["finding_rank"](finding) for finding in findings
+                            ])
+                        except (SystemExit, UnicodeDecodeError):
+                            # Product emission-contract failures are BLOCKED, not free retries.
+                            normalized_rank = ranks["BLOCKED"]
+                        if ranks.get(pair_verdict, -1) < normalized_rank:
+                            reasons.append("L2 pair_judge sub-verdict understates normalized stdout")
+                        if normalized_rank >= ranks["NEEDS_WORK"] and row["terminal"] in {"PASS", "PASS_WITH_ISSUES"}:
+                            reasons.append("L2 shipping terminal contradicts binding pair stdout")
+                if codex_stderr is None:
+                    reasons.append("L2 codex-judge.stderr is absent")
+                else:
+                    copy_if_present(codex_stderr, attempt_dir / "codex-judge.stderr")
+                    version, pair_model, effort, tokens, header_errors = validate_codex_stderr(
+                        codex_stderr.read_bytes(), params, tokens_required=not timed_out and not row["pair_timeout"],
+                    )
+                    row["pair_cli_version_attested"] = version
+                    row["pair_model_attested"] = pair_model
+                    row["pair_effort_attested"] = effort
+                    row["codex_tokens_total"] = tokens or 0
+                    reasons.extend(header_errors)
         rollouts = sorted(codex_home.rglob("rollout-*.jsonl"))
         if rollouts:
             reasons.append(f"{arm} Codex home contains rollout(s)")
@@ -1550,8 +1524,9 @@ def smoke_gate(rows: list[dict[str, Any]], model: str, pair: dict[str, Any]) -> 
                 for arm in ARMS
             )
             and type(by_arm.get("L2", {}).get("codex_tokens_total")) is int
+            and by_arm["L2"]["codex_tokens_total"] > 0
         ),
-        "l2_pair_attested": all(by_arm.get("L2", {}).get(field) == pair[value] for field, value in (
+        "l2_pair_attested": by_arm.get("L2", {}).get("pair_judge_ran") is True and all(by_arm.get("L2", {}).get(field) == pair[value] for field, value in (
             ("pair_model_attested", "model_id"), ("pair_effort_attested", "effective_effort"),
             ("pair_cli_version_attested", "codex_cli_version"),
         )),
@@ -1638,7 +1613,326 @@ def command_topup(args: argparse.Namespace) -> int:
     return 0
 
 
+def self_test_a15() -> None:
+    """Synthetic outcome receipts and inert end-to-end launches; no panel assets."""
+    global TASKS_ROOT
+    original_tasks = TASKS_ROOT
+    with tempfile.TemporaryDirectory(prefix="lift-a15-") as raw:
+        root = pathlib.Path(raw).resolve()
+        TASKS_ROOT = root / "tasks"
+        task = TASKS_ROOT / "EQ3-AF1"
+        (task / "visible").mkdir(parents=True)
+        (task / "hidden").mkdir()
+        (task / "visible/fixture.txt").write_text("synthetic\n")
+        (task / "task.json").write_bytes(canonical_json({"goal": "Keep the synthetic fixture."}))
+        (task / "hidden/manifests.json").write_bytes(canonical_json({"manifestations": [{}]}))
+        (task / "hidden/oracle.py").write_text('print(\'{"manifestations":[{"passed":true}]}\')\n')
+        manifest = {"EQ3-AF1": {p.relative_to(task).as_posix(): sha256_file(p) for p in task.rglob("*") if p.is_file()}}
+        manifest_path = root / "manifest.json"
+        manifest_path.write_bytes(canonical_json({"tasks": manifest}))
+        auth = root / "auth.json"
+        auth.write_bytes(b'{}\n')
+        binary = root / "claude"
+        binary.write_text("#!/bin/sh\nexit 99\n")
+        binary.chmod(0o700)
+        params = read_object(PARAMS_PATH)
+        params = {**params, "corpus": {"manifest_path": str(manifest_path),
+                  "tree_sha256": sha256_bytes(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())},
+                  "claude": {"binary_path": str(binary), "binary_sha256": sha256_file(binary)},
+                  "pair": {**params["pair"], "codex_binary_path": str(binary), "codex_binary_sha256": sha256_file(binary)}}
+        pair = params["pair"]
+        metadata = {
+            "direct_claude": {"path": str(binary), "sha256": sha256_file(binary)},
+            "direct_codex": {"path": str(binary), "sha256": sha256_file(binary)},
+        }
+        telemetry = (f'OpenAI Codex v{pair["codex_cli_version"]}\n--------\n'
+                     f'model: {pair["model_id"]}\nreasoning effort: {pair["effective_effort"]}\n'
+                     '--------\ntokens used\n11\n').encode()
+        parent = canonical_json({"subtype": "success", "modelUsage": {"claude-fixture": {"outputTokens": 10}}})
+        mechanical = {"pair_trigger": {"eligible": False, "reasons": [], "skipped_reason": "mechanical_blocker"},
+                      "sub_verdicts": {"mechanical": "NEEDS_WORK", "judge": None, "pair_judge": None}}
+        executed = {"pair_trigger": {"eligible": True, "reasons": ["pair.default", "mode.pair-verify"], "skipped_reason": None},
+                    "sub_verdicts": {"mechanical": "PASS", "judge": "PASS", "pair_judge": "PASS"}}
+        scratches: list[pathlib.Path] = []
+        counter = 0
+
+        def run(arm: str, verify: object = None, terminal: str = "BLOCKED:fixture", *,
+                capture: tuple[bytes | None, bytes | None] = (None, None),
+                meta: object = metadata, timeout: bool = False, state_kind: str = "valid",
+                returncode: int = 0) -> dict[str, Any]:
+            nonlocal counter
+            counter += 1
+            def launch(command: list[str], work: pathlib.Path, bound: int,
+                       env: dict[str, str] | None) -> subprocess.CompletedProcess[bytes]:
+                assert bound == params["bounds_seconds"]["L0" if arm == "L0" else "harness"]
+                assert command[1] == str(CLAUDE_ISOLATION) and "--timeout-seconds" not in command
+                assert env is not None and env["CEILING_TEST_AUTH_JSON"] == str(auth)
+                scratches.append(work.parent)
+                if arm == "L0":
+                    assert pathlib.Path(command[command.index("--prompt-file") + 1]).read_text() == "Keep the synthetic fixture."
+                    assert command[command.index("--allowed-tools-csv") + 1] == ",".join(params["tools"])
+                    assert not (work / ".claude").exists() and not (work / "AGENTS.md").exists()
+                else:
+                    assert "--allowed-tools-csv" not in command
+                    state = {"pair_verify": True, "risk_profile": {"pair_default_enabled": False},
+                             "phases": {"surface_close": {"verdict": None, "skipped_reason": "auto_surface_close_claude_unavailable"},
+                                        "verify": verify, "final_report": {"verdict": terminal}}}
+                    if state_kind == "absent-verify":
+                        del state["phases"]["verify"]
+                    state_path = work / ".devlyn/pipeline.state.json"
+                    if state_kind != "missing":
+                        state_path.write_bytes(b'{' if state_kind == "malformed" else canonical_json(state))
+                    for name, content in zip(("stdout", "stderr"), capture):
+                        if content is not None:
+                            (work / f".devlyn/codex-judge.{name}").write_bytes(content)
+                path = pathlib.Path(command[command.index("--metadata-out") + 1])
+                if meta == "directory":
+                    path.mkdir()
+                elif meta is not None:
+                    path.write_bytes(meta if isinstance(meta, bytes) else canonical_json(meta))
+                if timeout:
+                    raise subprocess.TimeoutExpired(command, bound, output=parent, stderr=b"partial stderr\n")
+                return subprocess.CompletedProcess(command, returncode, parent, b"")
+            row = execute_attempt(params=params, model="claude-fixture", run_id="a15", attempt=1,
+                                  arm=arm, task="EQ3-AF1", rep=1, out_dir=root / str(counter),
+                                  launcher_command=launch, codex_auth_source=auth)
+            assert not scratches[-1].exists()
+            artifacts = root / str(counter) / "attempts/a1" / arm / "EQ3-AF1/r1"
+            for name, content in zip(("stdout", "stderr"), capture):
+                if arm == "L2" and content is not None:
+                    assert (artifacts / f"codex-judge.{name}").read_bytes() == content
+            if timeout:
+                assert (artifacts / "cli.stdout").read_bytes() == parent
+                assert (artifacts / "cli.stderr").read_bytes() == b"partial stderr\n"
+                assert row["terminal"] == "TIMEOUT" and row["f_ship"] == "1/1"
+                assert row["output_tokens_total"] is None and row["codex_tokens_total"] is None
+            print("a15-outcome", arm, state_kind, terminal, "timeout=" + str(timeout),
+                  "pair_judge_ran=" + str(row["pair_judge_ran"]), "infra=" + str(row["infra_invalid"]), row["infra_reason"])
+            return row
+
+        try:
+            retained: list[dict[str, Any]] = []
+            for arm in ("L1", "L2"):
+                for verify in (None, mechanical, {**mechanical, "sub_verdicts": {**mechanical["sub_verdicts"], "mechanical": "BLOCKED"}}):
+                    row = run(arm, verify)
+                    assert not row["infra_invalid"] and row["f_ship"] == "1/1" and row["f_tree"] == "0/1"
+                    assert row["pair_judge_ran"] is (False if arm == "L2" else None)
+                    assert row["pair_model_attested"] is None and row["codex_tokens_total"] == 0 and not row["pair_timeout"]
+                    retained.append(row)
+                for terminal in ("BLOCKED:claude-unavailable", "BLOCKED:codex-unavailable"):
+                    infra = run(arm, terminal=terminal)
+                    assert infra["infra_invalid"]
+                    # The real replacement consumer sees a complete synthetic base ledger.
+                    ledger = [base_row("a15", 1, a, t, r, "claude-fixture", u) for a, t, r, u in schedule_base(["EQ3-AF1"])]
+                    index = next(i for i, item in enumerate(ledger) if item["arm"] == arm)
+                    ledger[index] = infra
+                    assert jobs_for_attempt(ledger, ["EQ3-AF1"], 2) == [(arm, "EQ3-AF1", 1, False)]
+                    ledger[index] = row
+                    assert jobs_for_attempt(ledger, ["EQ3-AF1"], 2) == []
+                for kind in ("missing", "malformed", "absent-verify"):
+                    assert run(arm, state_kind=kind)["infra_invalid"]
+                for invalid in ({"pair_trigger": None}, {**mechanical, "pair_trigger": {**mechanical["pair_trigger"], "eligible": 0}},
+                                {**mechanical, "sub_verdicts": {**mechanical["sub_verdicts"], "judge": "PASS"}}):
+                    assert run(arm, invalid)["infra_invalid"]
+                assert run(arm, mechanical, capture=(b"stale", telemetry))["infra_invalid"]
+                assert run(arm, mechanical, terminal="PASS")["infra_invalid"]
+            user_skip = {"pair_trigger": {"eligible": False, "reasons": [], "skipped_reason": "user_no_pair"},
+                         "sub_verdicts": {"mechanical": "PASS", "judge": "PASS", "pair_judge": None}}
+            assert not run("L1", user_skip, terminal="PASS")["infra_invalid"]
+            valid = run("L2", executed, terminal="PASS", capture=(b'# SUMMARY {"verdict":"PASS"}\n', telemetry))
+            assert not valid["infra_invalid"] and valid["pair_judge_ran"] is True and valid["codex_tokens_total"] == 11
+            missing = run("L2", state_kind="missing", capture=(b'# SUMMARY {"verdict":"PASS"}\n', telemetry))
+            assert missing["infra_invalid"] and "missing or ambiguous pipeline state" in missing["infra_reason"]
+            high = b'{"id":"a15-binding","severity":"HIGH"}\n'
+            low = b'{"id":"a15-advisory","severity":"LOW"}\n'
+            malformed = (("empty", b""), ("whitespace", b" \n\t"),
+                         ("malformed", b"# SUMMARY PASS\n"), ("no-verdict", high),
+                         ("binary", b"\xff\xfe"), ("HIGH+PASS", high + b"PASS\n"))
+            cases = [(label, output, claim, terminal, invalid)
+                     for label, output in malformed
+                     for claim, terminal, invalid in (("PASS", "PASS", True),
+                                                      ("BLOCKED", "BLOCKED", False),
+                                                      ("BLOCKED", "PASS", True))]
+            cases += [
+                ("NEEDS_WORK falsely claimed PASS", high + b"NEEDS_WORK\n", "PASS", "BLOCKED", True),
+                ("binding with overall PASS", high + b"NEEDS_WORK\n", "NEEDS_WORK", "PASS", True),
+                ("binding with overall PASS_WITH_ISSUES", high + b"NEEDS_WORK\n", "NEEDS_WORK", "PASS_WITH_ISSUES", True),
+                ("binding normalized", high + b"PASS_WITH_ISSUES\n", "NEEDS_WORK", "NEEDS_WORK", False),
+                ("binding underclaimed", high + b"PASS_WITH_ISSUES\n", "PASS_WITH_ISSUES", "BLOCKED", True),
+                ("FAIL normalized", high + b"FAIL\n", "NEEDS_WORK", "NEEDS_WORK", False),
+                ("advisory normalized", low + b"PASS\n", "PASS_WITH_ISSUES", "PASS_WITH_ISSUES", False),
+                ("advisory underclaimed", low + b"PASS\n", "PASS", "BLOCKED", True),
+                ("stricter outcome", high + b"NEEDS_WORK\n", "BLOCKED", "BLOCKED", False),
+                ("PASS stricter outcome", b"PASS\n", "NEEDS_WORK", "NEEDS_WORK", False),
+            ]
+            for label, output, claim, terminal, invalid in cases:
+                verify = {**executed, "sub_verdicts": {**executed["sub_verdicts"], "pair_judge": claim}}
+                row = run("L2", verify, terminal=terminal, capture=(output, telemetry))
+                print("a15-stream", label, "pair=" + claim, "terminal=" + terminal,
+                      "expected_infra=" + str(invalid), "actual_infra=" + str(row["infra_invalid"]))
+                assert row["infra_invalid"] is invalid, (label, claim, terminal, row["infra_reason"])
+                if not invalid and terminal not in {"PASS", "PASS_WITH_ISSUES"}:
+                    assert row["f_ship"] == "1/1" and row["codex_tokens_total"] == 11
+                    ledger = [base_row("a15", 1, a, t, r, "claude-fixture", u) for a, t, r, u in schedule_base(["EQ3-AF1"])]
+                    index = next(i for i, item in enumerate(ledger) if item["arm"] == "L2")
+                    ledger[index] = row
+                    assert jobs_for_attempt(ledger, ["EQ3-AF1"], 2) == []
+            pair_timeout = {**executed, "sub_verdicts": {**executed["sub_verdicts"], "pair_judge": "TIMEOUT"}}
+            row = run("L2", pair_timeout, terminal="NEEDS_WORK", capture=(b"partial", telemetry))
+            assert not row["infra_invalid"] and row["pair_timeout"] and row["f_ship"] == "1/1"
+            assert row["output_tokens_total"] is None and row["codex_tokens_total"] is None
+            assert run("L2", pair_timeout, capture=(b"partial", b"malformed"))["infra_invalid"]
+            assert run("L2", pair_timeout, capture=(None, telemetry))["infra_invalid"]
+            for bad_capture in ((None, telemetry), (b"PASS", None), (b"PASS", b"malformed"),
+                                (b"PASS", telemetry.replace(pair["model_id"].encode(), b"wrong-model")),
+                                (b"PASS", telemetry.replace(pair["effective_effort"].encode(), b"wrong-effort")),
+                                (b"PASS", telemetry.replace(pair["codex_cli_version"].encode(), b"wrong-version"))):
+                assert run("L2", executed, terminal="BLOCKED:fixture", capture=bad_capture)["infra_invalid"]
+            assert run("L2", terminal="PASS")["infra_invalid"]
+            assert not run("L2", executed, timeout=True, capture=(b"partial", telemetry))["infra_invalid"]
+            assert run("L2", executed, timeout=True, capture=(b"partial", b"malformed"))["infra_invalid"]
+            for arm in ARMS:
+                assert not run(arm, timeout=True, meta=None)["infra_invalid"]
+                for bad_meta in (b"{", "directory", {**metadata, "direct_claude": {"path": "wrong"}},
+                                 {**metadata, "direct_codex": {"path": "wrong"}}):
+                    assert run(arm, timeout=True, meta=bad_meta)["infra_invalid"]
+                assert run(arm, meta=None)["infra_invalid"]
+                assert run(arm, returncode=78)["infra_invalid"]
+            smoke = [run("L0"), retained[0], valid]
+            for row in smoke:
+                row["wall_ms"] = max(1, row["wall_ms"])
+            assert smoke_gate(smoke, "claude-fixture", pair)
+            smoke[2] = retained[-1]
+            assert not smoke_gate(smoke, "claude-fixture", pair)
+
+            # Exercise the actual isolation subprocess with hostile ambient context.
+            receipt = root / "inert.json"
+            pids = root / "pids.jsonl"
+            mode_path = root / "mode"
+            binary.write_text(f'''#!{sys.executable}
+import json, os, pathlib, signal, sys, time
+root = pathlib.Path({str(root)!r})
+mode = (root / "mode").read_text()
+if "--version" in sys.argv and mode != "prep":
+    print("inert-1")
+    sys.exit(0)
+if mode in ("sleep", "prep"):
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    for depth in range(2):
+        if os.fork():
+            break
+    with (root / "pids.jsonl").open("a") as stream:
+        stream.write(json.dumps([os.getpid(), os.getpgrp()]) + "\\n")
+    print("partial inert stream", flush=True)
+    time.sleep(30)
+else:
+    home = pathlib.Path(os.environ["HOME"])
+    auth = pathlib.Path(os.environ["CODEX_HOME"]) / "auth.json"
+    (root / "inert.json").write_text(json.dumps({{"argv":sys.argv[1:], "env":dict(os.environ),
+        "work":str(pathlib.Path.cwd()), "staged":pathlib.Path(".claude/skills").exists(),
+        "auth":auth.read_text(), "auth_mode":auth.stat().st_mode & 0o777}}))
+    print(json.dumps({{"subtype":"success", "modelUsage":{{"claude-fixture":{{"outputTokens":10}}}}}}))
+''')
+            params["claude"]["binary_sha256"] = sha256_file(binary)
+            params["pair"]["codex_binary_sha256"] = sha256_file(binary)
+            hostile = root / "hostile"
+            hostile.mkdir()
+            (hostile / ".zshenv").write_text("export A15_POISON=1\n")
+            credentials = root / "credentials"
+            credentials.write_bytes(b'{"fake":"inert"}\n')
+            updates = {"HOME": str(hostile), "ZDOTDIR": str(hostile), "PATH": str(hostile),
+                       "BASH_ENV": str(hostile / ".zshenv"), "ENV": str(hostile / ".zshenv"),
+                       "CEILING_TEST_CLAUDE_CREDENTIALS": str(credentials)}
+            original_env = {key: os.environ.get(key) for key in updates}
+            try:
+                os.environ.update(updates)
+                mode_path.write_text("normal")
+                actual = execute_attempt(params=params, model="claude-fixture", run_id="inert", attempt=1,
+                    arm="L0", task="EQ3-AF1", rep=1, out_dir=root / "normal", codex_auth_source=auth)
+                assert not actual["infra_invalid"], actual
+                observed = read_object(receipt)
+                env = observed["env"]
+                assert all(key not in env for key in ("ZDOTDIR", "BASH_ENV", "ENV", "A15_POISON"))
+                assert env["HOME"] != str(hostile) and str(hostile) not in env["PATH"]
+                assert observed["auth"] == '{}\n' and observed["auth_mode"] == 0o600
+                argv = observed["argv"]
+                assert argv[argv.index("-p") + 1] == "Keep the synthetic fixture."
+                assert argv[argv.index("--allowedTools") + 1] == ",".join(params["tools"]) and "--tools" not in argv
+                assert argv[argv.index("--effort") + 1] == "xhigh" and argv[argv.index("--model") + 1] == "claude-fixture"
+                assert argv[argv.index("--mcp-config") + 1] == '{"mcpServers":{}}' and "--strict-mcp-config" in argv
+                assert argv[argv.index("--setting-sources") + 1] == "project,local"
+                assert not observed["staged"] and not pathlib.Path(env["HOME"]).exists()
+                print("a15-inert isolation, exact allowedTools, auth, scratch cleanup: PASS")
+            finally:
+                for key, value in original_env.items():
+                    if value is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = value
+
+            for mode, interrupt in (("prep", False), ("prep", True), ("sleep", False), ("sleep", True)):
+                mode_path.write_text(mode)
+                pids.unlink(missing_ok=True)
+                controller = InterruptionController()
+                def cancel() -> None:
+                    deadline = time.monotonic() + 5
+                    while time.monotonic() < deadline:
+                        if pids.exists() and len(pids.read_text().splitlines()) == 3:
+                            break
+                        time.sleep(0.01)
+                    controller.request_interrupt()
+                thread = threading.Thread(target=cancel) if interrupt else None
+                if thread is not None:
+                    thread.start()
+                os.environ["CEILING_TEST_CLAUDE_CREDENTIALS"] = str(credentials)
+                # Capture the actual scratch path without replacing the subprocess call.
+                launched: list[pathlib.Path] = []
+                def bounded(command: list[str], work: pathlib.Path, bound: int,
+                            env: dict[str, str] | None) -> subprocess.CompletedProcess[bytes]:
+                    launched.append(work.parent)
+                    return run_cell_command(command, cwd=work, timeout=bound, env=env, interruption=controller)
+                before = time.monotonic()
+                try:
+                    try:
+                        row = execute_attempt(params={**params, "bounds_seconds": {"L0": 3, "harness": 3}},
+                            model="claude-fixture", run_id="inert", attempt=1, arm="L0", task="EQ3-AF1", rep=1,
+                            out_dir=root / (mode + str(interrupt)), codex_auth_source=auth,
+                            launcher_command=bounded, interruption=controller)
+                    except CellInterrupted:
+                        assert interrupt
+                        assert not append_committed_row(root / "interrupted.jsonl", {}, controller)
+                        assert not (root / "interrupted.jsonl").exists()
+                    else:
+                        assert not interrupt and row["terminal"] == "TIMEOUT" and not row["infra_invalid"], row
+                        assert row["output_tokens_total"] is None and row["wall_ms"] == 3000
+                    assert time.monotonic() - before < 8
+                    assert not launched[0].exists()
+                    descendants = [json.loads(line) for line in pids.read_text().splitlines()]
+                    assert len(descendants) == 3 and len({pgid for _, pgid in descendants}) == 1
+                    for pid, _ in descendants:
+                        deadline = time.monotonic() + 3
+                        while True:
+                            try:
+                                os.kill(pid, 0)
+                            except ProcessLookupError:
+                                break
+                            assert time.monotonic() < deadline, f"ordinary descendant survived: {pid}"
+                            time.sleep(0.01)
+                    print("a15-inert", mode, "interrupt=" + str(interrupt), "ordinary descendants stopped; scratch removed: PASS")
+                finally:
+                    if thread is not None:
+                        thread.join(timeout=6)
+                    old_credentials = original_env["CEILING_TEST_CLAUDE_CREDENTIALS"]
+                    if old_credentials is None:
+                        os.environ.pop("CEILING_TEST_CLAUDE_CREDENTIALS", None)
+                    else:
+                        os.environ["CEILING_TEST_CLAUDE_CREDENTIALS"] = old_credentials
+        finally:
+            TASKS_ROOT = original_tasks
+
+
 def self_test() -> int:
+    self_test_a15()
     names: list[str] = []
     params = read_object(PARAMS_PATH)
     def refuses(call: Callable[[], object], text: str) -> None:
@@ -1672,9 +1966,6 @@ def self_test() -> int:
         "UA": ["EQ3-UA2", "EQ3-UA3", "EQ3-UA5"],
     }
     names.append("exact-panel-derivation")
-    env = scrubbed_env(params)
-    assert [env[key] for key in ("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "DISABLE_AUTOUPDATER", "TERM")] == ["1", "1", "dumb"]
-    names.append("registered-l0-env")
     with tempfile.TemporaryDirectory(prefix="lift-stage-") as raw:
         root = pathlib.Path(raw)
         work = root / "work"
@@ -1687,14 +1978,6 @@ def self_test() -> int:
         refuses(lambda: validate_staged_intervention(work, params), "intervention digest mismatch")
     names.append("harness-staging")
     names.append("staged-intervention-drift-refusal")
-    with tempfile.TemporaryDirectory(prefix="lift-codex-stage-") as raw:
-        root = pathlib.Path(raw)
-        auth = root / "source-auth.json"
-        auth.write_bytes(b'{"token":"fake-self-test"}\n')
-        codex = stage_codex_home(root / "codex", auth)
-        assert sorted(path.name for path in codex.iterdir()) == ["auth.json"]
-        assert (codex / "auth.json").stat().st_mode & 0o777 == 0o600
-    names.append("opaque-codex-home-staging")
     jobs = schedule_base(["EQ3-AF2", "EQ3-BD2"])
     assert len(jobs) == 12
     assert jobs[:6] == [
@@ -1748,7 +2031,8 @@ def self_test() -> int:
                     "verdict": None,
                     "skipped_reason": "auto_surface_close_claude_unavailable",
                 },
-                "verify": {"sub_verdicts": {"pair_judge": "PASS"}},
+                "verify": {"sub_verdicts": {"pair_judge": "PASS"},
+                           "pair_trigger": {"eligible": True, "reasons": ["pair.default", "mode.pair-verify"], "skipped_reason": None}},
                 "final_report": {"verdict": "PASS"},
             },
         }
@@ -1958,6 +2242,12 @@ def self_test() -> int:
             ) -> subprocess.CompletedProcess[bytes]:
                 assert env is not None
                 l0_launches.append((command, env))
+                if returncode == 124:
+                    raise subprocess.TimeoutExpired(command, _timeout)
+                pathlib.Path(command[command.index("--metadata-out") + 1]).write_bytes(canonical_json({
+                    "direct_claude": {"path": params["claude"]["binary_path"], "sha256": params["claude"]["binary_sha256"]},
+                    "direct_codex": {"path": params["pair"]["codex_binary_path"], "sha256": params["pair"]["codex_binary_sha256"]},
+                }))
                 return subprocess.CompletedProcess(command, returncode, raw_payload, b"")
             return launch
         common = dict(params=params, model="claude-opus-5", attempt=1, arm="L0", task="EQ3-AF2", out_dir=outcome_dir)
@@ -1979,7 +2269,8 @@ def self_test() -> int:
         assert incomplete_row["incomplete"] is True and incomplete_row["infra_invalid"] is False
         assert incomplete_row["f_ship"] == "1/1"
         assert all(
-            command[command.index("--") + 1] == params["claude"]["binary_path"]
+            env["CEILING_TEST_CLAUDE_BIN"] == params["claude"]["binary_path"]
+            and command[command.index("--allowed-tools-csv") + 1] == ",".join(params["tools"])
             and shutil.which("claude", path=env["PATH"]) == str(path_claude)
             for command, env in l0_launches
         )
@@ -2011,7 +2302,7 @@ def self_test() -> int:
             wall_ms=1, output_tokens_total=1,
         )
     smoke_rows[1] = {**smoke1_l1_row, "wall_ms": max(smoke1_l1_row["wall_ms"], 1)}
-    smoke_rows[2].update(terminal="PASS", pair_model_attested=params["pair"]["model_id"],
+    smoke_rows[2].update(terminal="PASS", pair_judge_ran=True, pair_model_attested=params["pair"]["model_id"],
                          pair_effort_attested=params["pair"]["effective_effort"],
                          pair_cli_version_attested=params["pair"]["codex_cli_version"],
                          codex_tokens_total=1, infra_invalid=True, infra_reason="fixture")

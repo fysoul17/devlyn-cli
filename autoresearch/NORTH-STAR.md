@@ -2,7 +2,8 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Last refined: 2026-07-10 (value axes for frontier engines — user directive,
+Current guidance reconciled: 2026-09-05 (0114; policy and claim boundaries).
+Value axes refined: 2026-07-10 (user directive,
 HANDOFF Block 8: raw coding correctness is the engine floor, the moat is
 intent fidelity / decomposition / collaboration synergy / design rigor /
 unprompted completeness. Prior: 2026-07-06 ceiling amendment; 2026-05-07
@@ -67,32 +68,32 @@ The 5 hard NOs in `MISSIONS.md` Mission 1 list are absolute during Mission 1.
 
 ---
 
-## The product surface (locked 2026-04-30)
+## The product surface
 
-After 16 skills of accretion-driven landscape, the user-facing surface compresses to **2 skills + 1 internal kernel + 1 utility**. This is the canonical shape from this date forward; any deviation requires explicit user direction.
+The April 2026 redesign reduced the surface to two core workflow entrypoints. That inventory and its deprecation list are historical; current auxiliary skills are defined by `DEVLYN_CORE_SKILLS` in [`bin/devlyn.js`](../bin/devlyn.js).
 
-### User skills (2)
+### Core workflow entrypoints (2)
 
 - **`/devlyn:ideate`** — OPTIONAL. Used for greenfield, multi-feature projects, or when the user wants a formal spec before building. Output: `spec.md` (human contract) + `spec.expected.json` (mechanical verifications). Modes: `default` | `--quick` (assume-and-confirm) | `--from-spec <path>` (lint+normalize external spec) | `--project` (plan.md index + N specs). spec lint mandatory. `spec.kind = feature | spike | prototype` escape hatch.
-- **`/devlyn:resolve`** — REQUIRED. Single entrypoint for all work-doing: new feature, modify, debug, refactor, chore, PR review. Inputs: free-form goal OR `--spec <path>` OR `--verify-only <diff>`. Internal phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → **VERIFY (fresh subagent context, findings-only)**.
+- **`/devlyn:resolve`** — the hands-free pipeline entrypoint for new feature, modify, debug, refactor, chore, PR review. Inputs: free-form goal OR `--spec <path>` OR `--verify-only <diff>`. Internal phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → **VERIFY (fresh subagent context, findings-only)**. Conversational implementation remains authorized by DECISIONS 0069.1; entering resolve binds its phase machinery, including on Codex. Executor pins bind both routes (AGENTS.md § Quick Start).
 
 ### Internal kernel (`_shared/`, NOT a user skill)
 
-`expected.schema.json` (load-bearing LLM-agnostic decoupler), `run.state.json` (pipeline state), `spec-verify-check.py`, `forbidden-pattern-check.py`, `scope-check.py`, `complexity-classifier.py` (NEW — for resolve PLAN trivial/medium/large branching), `browser-runner.sh`, `engine-routing.md`, `adapters/<model>.md` (per-engine prompt deltas).
+`expected.schema.json` (load-bearing LLM-agnostic decoupler), `pipeline.state.json` (pipeline state), `spec-verify-check.py`, `forbidden-pattern-check.py`, `scope-check.py`, the classifier in `devlyn:resolve/references/free-form-mode.md` (mini-spec depth, not general phase omission), `browser-runner.sh`, `engine-preflight.md`, `adapters/<model>.md` (per-engine prompt deltas).
 
-### Utility (1)
+### Optional utility
 
 - **`/devlyn:reap`** — lives in `optional-skills/` (moved 2026-05-04 in iter-0034 Phase 4 cutover). Process hygiene only.
 
-### What dies (16)
+### Historical April deprecation plan
 
 `/auto-resolve` `/resolve` (both → new `/resolve`) `/implement-ui` `/design-ui` `/team-design-ui` `/design-system` `/clean` `/update-docs` `/preflight` `/evaluate` `/review` `/team-review` `/team-resolve` `/browser-validate` (→ kernel runner) `/product-spec` `/feature-spec` `/recommend-features` `/discover-product` `/ideate` (→ new `/ideate`).
 
-Optional plugins (creative capabilities, non-hot-path): `/design-system`, `/team-design-ui`.
+The historical creative-plugin proposal named `/design-system` and `/team-design-ui`.
 
 ### Multi-LLM evolution direction (binding for `/devlyn:resolve`)
 
-`/devlyn:resolve` and `/devlyn:ideate` are **the surfaces where multi-LLM mixing keeps evolving**. Today: Claude (Opus 4.x) + GPT-5.5 (Codex CLI). Tomorrow: a **pi-agent** abstraction that lets the skills swap in additional LLMs (Qwen, Gemini, Gemma, future frontier models) wherever empirical evidence shows lift.
+`/devlyn:resolve` and `/devlyn:ideate` are **the surfaces where multi-LLM mixing keeps evolving**. Current routes are defined by `_shared/engine-preflight.md` and each skill, with exact seats re-certified on model/version changes. Longer-term: a **pi-agent** abstraction that lets the skills swap in additional LLMs (Qwen, Gemini, Gemma, future frontier models) wherever empirical evidence shows lift.
 
 **Architectural commitments**:
 - Pair-mode is **measurement-gated by phase; VERIFY/JUDGE is the default-when-available exception**. The Pair-mode policy section below names the candidate phases, the deterministic-vs-judgment distinction, and the gate every shipped pair surface must clear.
@@ -116,7 +117,7 @@ This block is the standing commitment. Any redesign Phase that contradicts it is
 4. ✅ Cutover + deprecation — iter-0034 SHIPPED 2026-05-04: 15 user skills deleted, 3 (reap / design-system / team-design-ui) moved to `optional-skills/`, `bin/devlyn.js DEPRECATED_DIRS` extended to force-remove stale legacy skills from downstream installs.
 5. ⏳ Optional plugin separation — partially shipped via Phase 4 (3 skills moved to `optional-skills/`); remaining work is Mission 2/3 boundary if any.
 
-Real-project trial (iter-0035, NORTH-STAR test #15) is the Mission 1 terminal gate post-cutover.
+Real-project trial (iter-0035, NORTH-STAR test #15) is the Mission 1 terminal gate post-cutover. The 0070 intent-closure ladder remains a design direction: instrument components shipped under 0070a, but project/off-resolve closure is not fully wired. Do not treat it as an existing completion guarantee (0114 source audit; 0070 STUB §§ 1–8).
 
 ### Closing principle (Codex R1 verdict)
 
@@ -204,7 +205,7 @@ A change ships only if it can answer all of these with concrete numbers:
 6. **No regression**: L2 must not regress any fixture's margin materially vs L1 (no fixture L1→L2 delta worse than −3 axes).
 7. **Pair lift on high-value fixtures**: L2 must beat L1 by ≥ +5 on **pair-eligible / high-value fixtures** (where L1 was tied or lost vs L0, OR where the spec touches security / scope / spec-compliance regions where pair_critic/consensus would plausibly help). L2 ≈ L1 on easy fixtures is acceptable.
 8. **L2 efficiency**: `L2-vs-L1-best-of-M` is the economic baseline (M = `L2_wall / L1_wall`). Same dominance rule as #2.
-9. **Short-circuit discipline**: VERIFY's JUDGE only fires the pair audit when first-model fails a deterministic checklist or coverage gate. `coverage_failed=true` triggers escalate-to-pair regardless of severity counts.
+9. **Pair dispatch discipline**: after MECHANICAL passes, VERIFY/JUDGE uses the OTHER engine by default when available; reasons are telemetry, not outcome-dependent escalation. `--no-pair` opts out. Explicit `--engine`, `--risk-probes`, and `--pair-verify` routes fail closed; an unavailable automatic route reports its solo skip (`SKILL.md` § PHASE 5; `_shared/engine-preflight.md`).
 
 ### Measurement validity (added 2026-04-30 from iter-0027/0028 lesson)
 
@@ -216,11 +217,11 @@ A change ships only if it can answer all of these with concrete numbers:
 
 ### Model-agnostic axis (upgraded 2026-04-30)
 
-12. **First-class via schema + adapter, not promised via inline rewrites.** The 2-skill redesign's `expected.schema.json` is the load-bearing LLM-agnostic decoupler — it must stay stable across model upgrades. Per-model prompt deltas live in `_shared/adapters/<model>.md` as small files, not in skill body rewrites. Cross-model fixtures (Qwen / Gemini / Gemma variant arms) become real once an adapter ships for that model. Until then, the *measured claim* must not exceed the data: "Claude Opus 4.x + GPT-5.5 today; adapter-ready for swap-in."
+12. **First-class via schema + adapter, not promised via inline rewrites.** The 2-skill redesign's `expected.schema.json` is the load-bearing LLM-agnostic decoupler — it must stay stable across model upgrades. Per-model prompt deltas live in `_shared/adapters/<model>.md` as small files, not in skill body rewrites. Cross-model fixtures (Qwen / Gemini / Gemma variant arms) become real once an adapter ships for that model. The *measured claim* must name the actual engine, model, task population and adapter tested.
 
 ### Honest claim boundary (Codex R3 + R4)
 
-13. The **contract** in this file requires single-LLM (Opus alone, GPT-5.5 alone) to be first-class. The **measurable product promise** today is Claude-only on the L1 arm — there is no non-Claude orchestrator path yet. The contract stays first-class for both groups; the *measured claim* must not exceed the data.
+13. Single-LLM users remain first-class. Claude, Codex and omp orchestration routes exist (`AGENTS.md` § Quick Start; resolve `SKILL.md` § Engine routing). Iter-0061 measured Codex phase entry 4/4 on a minimal trivial-add repo with project AGENTS.md. That proves the scoped route, not broad cross-engine quality or ceiling superiority.
 14. **L2-vs-L1 compression risk**. Evidence must be L2 vs L1, not L2 vs L0. If L1 lands at +9 over L0, then L2's effective lift over L1 must be measured *over L1*, not aliased through L0.
 
 ### Real-project trial gate (Codex R2, 2026-04-28)

@@ -2,7 +2,7 @@
 id: "0113-layer-lift-meter"
 title: "Layer-lift meter — one fixed instrument for L1−L0 (harness over bare) and L2−L1 (pair over solo), per model, minimal wall/tokens"
 kind: instrument
-status: APPARATUS-FROZEN r12 2026-09-03 (A-12 minimal panel: L1/L2 ×1, lanes 1, δ 6/20, task-granular drain) — next = one-command drain (smoke-3 → 72 cells → score)
+status: USER-PARKED 2026-09-05 — A15 PLAN/IMPLEMENT PASS; partial BUILD_GATE, final gates/trio incomplete and suspended; quick-a15-1 NOT LAUNCHED (72 base cells, one lane, 4/1/1)
 depends_on: ["0102-executor-quality-discovery-corpus", "0104-model-checkup-loop", "0064-ceiling-instrument", "0073-nodeg-cell"]
 ---
 
@@ -20,9 +20,11 @@ N = the wall ratio). Verified 2026-09-02:
   **There is no L1 arm**, and its parent launcher hardcodes `--model sonnet`
   (`claude-isolation.py:309-310`). L2−L1 was only ever measured on retired
   fixture suites ("PASS (small suite) — NOT broad product superiority").
-- The ceiling/nodeg corpus (13 rows) is bare-saturated (0068
-  VALID-NEGATIVE; `benchmark/ceiling/README.md:12`). Both honest tranche
-  runs were FAIL-pilot for that reason.
+- Iter-0067 is a valid negative: objective outcomes did not separate arms,
+  wall was 8.33× and neutral judges preferred copycat (DECISIONS 0067).
+  Iter-0068's isolation/identity and visible HH:MM versus hidden ISO-input
+  defects invalidated that exam; do not conflate it with 0067 or infer a
+  causal leakage effect (`exam-validity-summary.md` in 0114's receipts).
 - The sealed 0102 discovery corpus (32 tasks, 4 classes × 8, hidden
   oracles, no judge) is the only corpus measured to discriminate at bare
   (sonnet fail mean 39/80, interior 30/32; opus-4-8 0.475; fable-5 0.353;
@@ -51,13 +53,13 @@ token efficiency vs best-of-N, in hours not weeks.
 |---|---|
 | Corpus | sealed 0102 candidate (`~/.local/share/nx01/iter0102/freeze/candidate-manifest.json`, tree pinned) |
 | Quick panel | 12 tasks = per class (AF/BD/MI/UA) the 3 whose sonnet calibration `q_cal` (`iter0102/calibration/band-verdict.json`) is closest to 1/2 (ties → lexical id). Committed as `panel-quick.json` + calibrator-file digest; `run-lift-panel.py` re-derives and refuses on mismatch (no standalone selector). **Prior-selected: outcome-blind for models disjoint from the registered `claude-sonnet-5` calibrator; calibrator-model claims require a disjoint registered panel.** Full panel = all 32 |
-| Arms (the intervention = the product as shipped) | **L0** bare: `mx-driver.py` (opaque workdir, goal-only prompt, `claude -p --model M --strict-mcp-config --allowedTools …`, run-bounded 1800 s). **L1** solo harness: `/devlyn:resolve --goal-file .devlyn/goal.txt --no-pair` (free-form mode — the user's workload shape; `resolve-bootstrap.py:21-24,153-160`), orchestrating CLI `claude -p --model M` (launcher gains a `--model` parameter; the `sonnet` literal is deleted), arm-local `.devlyn/engines.json = {"executor":"claude"}`, devlyn context staged as the ceiling A arm does. **L2** = L1 + `--pair-verify`; pair judge = the EXACT registered Codex model ID under a frozen `CODEX_HOME` (config digest pinned; receipt must agree). Same visible tree + same goal bytes in all arms; harness arms additionally get `git init` + baseline commit |
+| Arms (the intervention = the product as shipped) | All arms use `claude-isolation.py launch --mode arm`, fresh homes, frozen environment, exact M/xhigh/empty MCP. **L0**: unstaged visible tree, goal-only prompt, exact `--allowedTools Read,Grep,Glob,Edit,Write,Bash`. **L1**: staged harness, executor `claude`, `/devlyn:resolve --goal-file .devlyn/goal.txt --no-pair`. **L2**: L1 with `--pair-verify`, exact registered Codex identity. Same goal bytes; only harness arms get git baseline and product context. Driver `run_cell_command` alone owns 1800/3600 s including launcher/auth preparation; no nested bound. |
 | Known fixed harness component | SURFACE_CLOSE runs iff source is generated (free-form) and complexity trivial/medium, always `--model claude-sonnet-5` (`SKILL.md:262-264`). It is part of the shipped product and stays; its usage is attributed separately (diagnostic) |
-| Attestation (exact sets, no tolerance) | L0: Claude `modelUsage` key set == {M} (0103 rule, `mx-driver.py:124-140`). L1/L2: key set ⊆ {M, `claude-sonnet-5`}, `claude-sonnet-5` admissible ONLY when `state.phases.surface_close` records a run (when M = sonnet-5 the set is {M}); L1 state attests `pair_default_enabled=false` + `user_no_pair` (`state-schema.md:52-58`); L2 codex receipt attests the registered pair ID. Any other model id or missing attestation ⇒ infra-invalid (replaceable), never scored |
+| Attestation (exact sets, no tolerance) | Parent `modelUsage` == {M}; SURFACE_CLOSE envelope == {claude-sonnet-5} iff state records a run. L1 attests `pair_default_enabled=false` and canonical unopened BLOCKED, `user_no_pair` or mechanical skip. L2 `pair_judge_ran=true` requires exact registered pair streams/model/version/effort; `false` only established non-shipment before pair, null pair identity, zero Codex tokens, no pair timeout. Whole TIMEOUT permits true/null, never false, unknown usage and absent attestation; present malformed/wrong evidence stays infra-invalid. Missing state/trigger or successful missing-pair evidence is invalid. |
 | Reps | L0 ×4, L1 ×1, L2 ×1; lanes = 1, identical for all arms (wall comparability by symmetry). **A-12 (2026-09-03)** supersedes the registered L1 ×2 / L2 ×2 / lanes 2 — see § "A-12" below. Same on the full panel |
 | Score per (task, arm, rep) — two channels | `f_tree` = hidden oracle on the final worktree (always recorded, diagnostic). **Primary `f_ship`** = `f_tree` for terminal PASS / PASS_WITH_ISSUES; **valid product BLOCKED terminals ⇒ `f_ship = 1`** (the harness declined to ship; hands-free contract); registered infrastructure / availability / attestation failures ⇒ infra-invalid, replaceable. `wall_ms`; tokens per model id |
 | Estimands | reps averaged within task; `d1_t = f_L0(t) − f_L1(t)`, `d2_t = f_L1(t) − f_L2(t)`; **Δ1 = mean d1 (harness lift), Δ2 = mean d2 (pair lift)**; bootstrap **stratified within class** (resample 3 tasks per class, average the 4 class means; the panel fixed the class mixture) |
-| Efficiency — wall AND tokens (NORTH-STAR names both) | `N1_wall = ceil(median wall_L1 / median wall_L0)`, `N1_tok = ceil(tokens_L1 / tokens_L0)` (tokens = OUTPUT tokens summed over all models incl. the codex receipt — the vendor-comparable generation cost; full breakdown recorded; registered assumption, falsified by a NORTH-STAR metric amendment). `E1_x = mean[best-of-N1_x L0 − f_L1]` where best-of = min `f_ship` over pre-indexed L0 reps. **Monotone top-up rule (fixed, not retuning)**: base reps first; if the best-of-4 E CI upper < 0 the leg is already `INEFFICIENT` (more cheaper-arm reps can only lower its best) — stop; otherwise run pre-indexed L0 reps 5…N1 and score exact best-of-N1. Same for E2 with L1 reps 3…M2. Top-up reps are efficiency-only, excluded from Q1/Q2. No `BOUNDED` states |
+| Efficiency — wall AND tokens (NORTH-STAR names both) | `N1_wall = ceil(median wall_L1 / median wall_L0)`, `N1_tok = ceil(mean tokens_L1 / mean tokens_L0)` (exact Fraction mean per BASE run, summing models within each run incl. the Codex receipt; raw totals remain diagnostics). Same ratio of means for M2_tok; wall remains median. Claude output plus Codex total-used is a conservative generation proxy, not dollar/input/cache equivalence. Unknown TIMEOUT usage makes affected token legs INCONCLUSIVE. `E1_x = mean[best-of-N1_x L0 − f_L1]` where best-of = min `f_ship` over pre-indexed L0 reps. **Monotone top-up rule (fixed, not retuning)**: base reps first; if the best-of-4 E CI upper < 0 the leg is already `INEFFICIENT` (more cheaper-arm reps can only lower its best) — stop; otherwise run pre-indexed L0 reps 5…N1 and score exact best-of-N1. Same for E2 with L1 reps 2…M2. Top-up reps are efficiency-only, excluded from Q1/Q2. No `BOUNDED` states |
 | Materiality | δ = 6/20 (**A-12**; supersedes the registered 3/20 / 0103 precedent — the harness arm costs ≈ 15× bare in wall and output tokens (smoke-1/2), so only a large quality lift can make the layer out-earn bare; at 12 tasks × 1 harness rep, ±3/20 is narrower than the attainable CI, making `NULL` unreachable and every honest outcome `INCONCLUSIVE`) |
 | Decision line (mutually exclusive) | `LIFT` = CI_lower > +δ · `NULL` = CI_lower > −δ ∧ CI_upper < +δ · `HARM` = CI_upper < −δ · else `INCONCLUSIVE`. Efficiency per leg: `EFFICIENT` = E CI_lower > 0 · `INEFFICIENT` = E CI_upper < 0 · else `INCONCLUSIVE`; the terminal E1/E2 is `EFFICIENT` only when wall AND token legs are both `EFFICIENT` (fail-closed) |
 | Terminal token | `LIFT-0113: Q1=<…> E1=<…> Q2=<…> E2=<…> M=<model> panel=<quick|full> receipt=<sha>` — quick tokens are panel-scoped screening results; confirmatory layer claims use the full 32 |
@@ -71,14 +73,12 @@ token efficiency vs best-of-N, in hours not weeks.
   more per wall/token — an efficiency defect signal (nodeg precedent 8-12×).
 - Q1 `NULL`/`HARM`: harness defect signal for M — adapter/prompt/phase
   work, not model work.
-- Q2 `LIFT`: the codex pair judge catches oracle-visible defects that M's
-  solo VERIFY misses AND the one permitted fix loop repairs them
-  (`SKILL.md:352`). Q2 `NULL`: pair-VERIFY measured unnecessary at this
-  corpus shape for M. Registered limitation: free-form goals synthesize at
-  most a thin `## Verification` section (`free-form-mode.md:35-50`), so the
-  pair judge's bullet targets are few — the diagnostic records the bullet
-  count per run; a Q2 read is a product read at the user's workload shape,
-  not a judge-recall measurement.
+- Q2 `LIFT` is a layer-product result after pair merge/fix, not proof of
+  judge recall or unexecuted-pair lift. Q2 `NULL` means its CI lies inside
+  ±0.30, not zero value or unnecessary pair. NULL/INCONCLUSIVE do not
+  automatically disable pair; combine quality and efficiency for the
+  scoped confirmation in 0114. Free-form goals' thin Verification bullets
+  remain a recorded limit on oracle-visible pair benefit.
 - Same meter with M' ⇒ the model checkup (0104) and the harness checkup are
   two columns of one table.
 
@@ -94,28 +94,20 @@ token efficiency vs best-of-N, in hours not weeks.
 
 ## Reuse / new
 
-- **Reuse (byte-identical)**: 0102 corpus + `hidden/oracle.py`;
-  `mx-driver.py` (L0 + oracle + ledger + modelUsage); ceiling arm
-  `stage_devlyn_context` + claude isolation launcher (arm mode) +
-  attribution receipt; `score-cohort.py` bootstrap/terminal shape.
-- **New (terra, `benchmark/layer-lift/`)**: `run-lift-panel.py` (panel
-  re-derivation check; L0 via mx-driver; L1/L2 via the arm staging with
-  executor `claude`, `--no-pair`/`--pair-verify`, `--model M`; lanes 2;
-  detached `os.setsid`; one `rows.jsonl` with both score channels;
-  top-up scheduling), `score-lift.py` (Δ/E + stratified CI + decision line
-  + terminal token; self-test on synthetic ledgers covering every
-  point/CI tuple → exactly one token), `panel-quick.json`,
-  `registered-params.json`, `scripts.sha256`. Launcher changes: `--model`
-  parameter replacing the `sonnet` literal; arm-local executor `claude`.
+`run-lift-panel.py` reuses the sealed 0102 oracle and ceiling harness staging
+plus shared isolation; only harness arms stage product context. The scorer
+uses synthetic ledgers for Δ/E/bootstrap/decision tests. `panel-quick.json`,
+`registered-params.json` and seven-target `scripts.sha256` freeze the meter;
+`drain-quick.py` remains unsealed operator tooling. A1–A14 below are historical.
 
 ## Operating tier (HANDOFF hard rule 8)
 
 1. **Smoke gate** (not a prediction): 1 task × 3 arms × 1 rep on a quiet
    account — must show, simultaneously, exact `modelUsage` key sets as
-   registered, L1 `user_no_pair` state, SURFACE_CLOSE recorded when it
-   ran, L2 codex receipt ID, oracle output for all three arms; records the
+   registered, L1 canonical skip state, SURFACE_CLOSE recorded when it
+   ran, L2 actual pair receipt/positive known usage, oracle output for all three arms; records the
    wall/token anchors. Fails ⇒ no panel.
-2. **Quick panel**: 12 tasks — 48 L0 + 24 L1 + 24 L2 base runs (+ top-up)
+2. **Quick panel**: 12 tasks — 48 L0 + 12 L1 + 12 L2 = 72 base runs (+ top-up)
    — the per-release check (hours; fires on every model release AND every
    harness release).
 3. **Full panel**: 32 tasks — periodic exam; the only basis for a
@@ -274,6 +266,65 @@ Lane (scratchpad `a14/`): R0 sol (codex gpt-6-astra, ultra) REVISE n=1 (D2 wordi
 ### RE-FROZEN (6) — `FREEZE-0113-A14: FREEZE n=0` ×2 (sol ultra `a14/sol-fz.log`; grok 4.6 `a14/grok-fz.log`; 16:05 KST, 2026-09-05)
 
 `registered-params.json` sha256 `cc8025959f2f576ce2b241a990444dea302f4057f85a87dc8a270ee3ded9895f` embedded in both scripts; normalized `apparatus_sha256` `ed58ed29644aa3054c50010524c39a87d926de9d301ab297cb7fd61cea3c5d59`; `staged_intervention_sha256` `ee8f74d4d2a5061c36b1ad2b4459f6801f08af3b0d08d069a756532bdb8a89f1` (sol recomputed all three with the runner's own functions; grok string-level; fable recomputed all three independently); seals 8/8; self-tests 26/26 + 16/16 + 10/10; writer self-test 21 PASS; lint PASS. Supersedes the r13 digests. Freeze ledger: … → A-13 FREEZE → **A-14 R0 sol REVISE 1 / grok REVISE 1 → terra ×2 → sol FREEZE + grok FREEZE**. Drain RELAUNCHED 2026-09-05 (session 25) from the committed tree with the same START command after archiving `smoke` → `smoke-3-FAIL`; smoke-4 PASS criterion = seven conjuncts PASS (a BLOCKED L1 row is valid under D1). Smoke-4 + panel outcome → next session records here.
+
+### A-15 — fair outcomes, per-run tokens and common isolation (2026-09-05)
+
+USER-PARKED; authoritative [0114 checkpoint](0114-harness-direction.md#checkpoint).
+Design accepted under [0114](0114-harness-direction.md); current correction
+follows `.devlyn/fix-0114-pair-stream-20260905/accepted-missing-state-design.md`.
+Parked `rs-20260905T104352Z-29990a258793`, base `4b5bb0a39fcf3b5122f1104ca3adfa6c58da0ec1`,
+spec SHA256 `e11e2b239e91d72854bb0a346094eaa17aeeee3f6c587cc56c0fa2490e8702d4`:
+PLAN/IMPLEMENT PASS, missing-state initialization/regression and refreeze implemented;
+focused A15 green (58.320 s), partial BUILD_GATE interrupted by user; final
+gates/trio incomplete and full acceptance suspended. Baseline captured
+before the first worker. Prior rs100953 archived `BLOCKED:phase0-baseline-missing`:
+seven commands exit0, overall BUILD_GATE FAIL from root’s omitted baseline;
+no CLEANUP/VERIFY/final trio. Fable 5.1/Grok 4.6 design GO; Grok prose is
+transport-attested but collector-rejected, not JUDGE PASS.
+Prior `rs-20260905T092108Z-8e9404a2d660` is NEEDS_WORK (iteration 1/3) despite
+BG7/7 + MECH7/7: actual Codex HIGH binds over Fable PASS/Grok PASS; old Grok
+MCP-memory freshness limitation is recorded in 0114. Historical rs083049 BLOCKED,
+parking exit143 and superseded rs095801 PLAN-only receipts remain preserved.
+A1–A14 remain history. A15 changes:
+
+- Preserve canonical unopened BLOCKED and verdict-binding mechanical
+  NEEDS_WORK/BLOCKED skips as non-shipment in both arms. Strict L2
+  `pair_judge_ran` distinguishes not-run from missing executed evidence.
+  Exact availability terminals (`BLOCKED:claude-unavailable`,
+  `BLOCKED:codex-unavailable`) remain replaceable infrastructure; other
+  product failures cannot be retried. Smoke still requires an actual pair.
+  Completed stdout reuses frozen collector/ranks: max(summary/findings), or
+  BLOCKED for emission rejection/invalid UTF-8. Claimed pair rank cannot be
+  better; binding output cannot ship even with a truthful pair claim. Honest
+  nonshipping BLOCKED stays retained; captures/identity and TIMEOUT rules stand.
+- Token anchors use exact mean per base run (models summed within run):
+  4/1/1 and 4/4/4 with 8× per-run load both yield N1_tok=8. Preserve raw
+  totals, unknown usage, top-up exclusion, wall/quality arithmetic and δ.
+- All arms share isolated launch; driver alone owns 1800/3600 s including
+  preparation. Remove `l0_env`/external `run_bounded` registration and its
+  seal, leaving that historical file untouched. L0 retains exact
+  `--allowedTools`; existing launcher callers keep their behavior.
+  TIMEOUT permits ABSENT metadata only; present invalid identity/metadata
+  remains infrastructure. Ordinary descendant cleanup is tested; explicit
+  session escape and complete buffered partial transcripts are not claimed.
+- Known residual: earlier pair-round captures beside a final mechanical
+  skip remain contradictory and rejected. False availability assertions
+  remain observationally indistinguishable, bounded by attempts 1–3.
+
+Refreeze order: final code/tests/README → normalized apparatus in params →
+params SHA in both scripts → seven script seals: completed. Final apparatus
+`644fef268345b0c9a435f7a28bb825d2c14122c07efacacfecb8b97fa39881c1`;
+params `38e0761882a9e2f4d3aab32e6d2d238ffe5dcca342f00b45d6e6dd8bb2cc425b`.
+[0114 checkpoint](0114-harness-direction.md#checkpoint) links the no-cycle hash proof and focused
+receipts; full acceptance and final review are suspended on user request. Product staged digest remains
+`ee8f74d4d2a5061c36b1ad2b4459f6801f08af3b0d08d069a756532bdb8a89f1`;
+seats, corpus, panel, reps and thresholds are unchanged.
+
+Preserve old `quick-1` artifacts. Pre-A15 rows are noncomparable because the
+context/measurement contract changed; no causal leakage effect is inferred.
+Fresh `~/.local/share/nx01/iter0113/quick-a15-1`, run ID `lift-quick-a15-1`,
+is **USER-PARKED/NOT LAUNCHED** until explicit user resume and full acceptance. No new panel
+result or runtime lift is claimed.
 
 ## Not in scope
 

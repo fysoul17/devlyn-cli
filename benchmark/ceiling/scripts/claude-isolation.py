@@ -296,9 +296,12 @@ def command_for(
     debug_file: Path | None,
     model: str | None,
     tools_csv: str | None = None,
+    allowed_tools_csv: str | None = None,
 ) -> list[str]:
     if tools_csv is not None and (mode != "arm" or not tools_csv):
         raise IsolationError("--tools-csv requires arm mode and a non-empty value")
+    if allowed_tools_csv is not None and (mode != "arm" or not allowed_tools_csv):
+        raise IsolationError("--allowed-tools-csv requires arm mode and a non-empty value")
     if mode == "version":
         return [str(claude_binary), "--version"]
     if mode == "shell-canary":
@@ -344,6 +347,8 @@ def command_for(
         raise IsolationError(f"unsupported Claude launch mode: {mode}")
     if tools_csv is not None:
         command.extend(["--tools", tools_csv])
+    if allowed_tools_csv is not None:
+        command.extend(["--allowedTools", allowed_tools_csv])
     return command
 
 
@@ -409,6 +414,7 @@ def launch_claude(
     timeout_seconds: int | None = None,
     model: str | None = None,
     tools_csv: str | None = None,
+    allowed_tools_csv: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     home = home.resolve()
     codex_home = codex_home.resolve()
@@ -479,7 +485,7 @@ def launch_claude(
             or metadata["command_v_claude"].get("passed") is not True
         ):
             raise IsolationError("Claude isolation purity contract failed")
-        command = command_for(mode, claude_binary, prompt, debug_file, model, tools_csv)
+        command = command_for(mode, claude_binary, prompt, debug_file, model, tools_csv, allowed_tools_csv)
         proc = subprocess.Popen(
             command,
             cwd=workdir,
@@ -537,7 +543,24 @@ def launch_claude(
             credentials.unlink(missing_ok=True)
 
 
+def self_test_tools() -> None:
+    tools = "Read,Grep,Glob,Edit,Write,Bash"
+    base = command_for("arm", Path("/fixture/claude"), "goal", None, "claude-fixture")
+    assert command_for("arm", Path("/fixture/claude"), "goal", None, "claude-fixture", tools_csv=tools) == base + ["--tools", tools]
+    assert command_for("arm", Path("/fixture/claude"), "goal", None, "claude-fixture", allowed_tools_csv=tools) == base + ["--allowedTools", tools]
+    for option in ("tools_csv", "allowed_tools_csv"):
+        for mode, value in (("judge", tools), ("version", tools), ("arm", "")):
+            try:
+                command_for(mode, Path("/fixture/claude"), "goal", None, "claude-fixture", **{option: value})
+            except IsolationError:
+                pass
+            else:
+                raise AssertionError((option, mode, value))
+    print("ok: exact tools/allowedTools forwarding and arm/non-empty guards")
+
+
 def self_test() -> int:
+    self_test_tools()
     if not runtime_model_matches("sonnet", "claude-sonnet-5"):
         raise AssertionError("legacy sonnet alias stopped matching its family")
     if not runtime_model_matches("claude-opus-5", "claude-opus-5"):
@@ -612,6 +635,7 @@ def main() -> int:
     launch.add_argument("--user-memory-file", type=Path)
     launch.add_argument("--timeout-seconds", type=int)
     launch.add_argument("--tools-csv")
+    launch.add_argument("--allowed-tools-csv")
     scan = subparsers.add_parser("scan-user-memory")
     scan.add_argument("--transcript", required=True, type=Path)
     scan.add_argument("--user-memory-file", required=True, type=Path)
@@ -638,6 +662,7 @@ def main() -> int:
             timeout_seconds=args.timeout_seconds,
             model=args.model,
             tools_csv=args.tools_csv,
+            allowed_tools_csv=args.allowed_tools_csv,
         )
     except (IsolationError, OSError, subprocess.TimeoutExpired) as exc:
         print(f"CLAUDE_ISOLATION_ERROR: {exc}", file=sys.stderr)

@@ -12,27 +12,28 @@ The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the s
 
 ## 🎯 MISSION 1 (active, 2026-04-29 →) — Single-task skill excellence on `main`
 
-**Frame**: one user, one task, one working tree on `main`. No parallel runs. No worktree per task. The skill (`/devlyn:auto-resolve`, optionally chained with `/devlyn:ideate` + `/devlyn:preflight`) must be **extremely** more accurate, more effective, and reasonably faster than a bare end-user prompting Claude or Codex directly on the same task.
+**Frame**: one user, one task, one working tree on `main`. No parallel runs. No worktree per task. The skill (`/devlyn:resolve`, optionally preceded by `/devlyn:ideate`) must be **extremely** more accurate, more effective, and reasonably faster than a bare end-user prompting Claude or Codex directly on the same task.
 
 **Why this is mission 1, not mission 2 or 3**: parallel-fleet readiness, multi-agent organisation, run-isolation infrastructure are all *amplifiers* — they multiply whatever single-task value the skill already delivers. If single-task value is marginal, multiplying it gives marginal × N = still marginal. iter-0020's L2 architecture failed exactly this test: pair-mode lost on accuracy at the single-task level. There is no point shipping parallel infra over a single-task surface that isn't yet world-class.
 
 **Mission gates (release blockers — every gate must hold before Mission 2 starts)**:
 
-1. **L1 vs L0 (single-task quality)** — single-engine harness (`--engine claude` OR `--engine codex`) beats the same engine bare on the 4-axis judge rubric (Spec / Constraint / Scope / Quality), per NORTH-STAR.md operational test #1: suite-avg margin ≥ +8 (preferred) or ≥ +5 (floor) across ≥ 7 of 9 fixtures. **Currently FAILING**: iter-0020 9-fixture data showed L1-L0 = +4.4, below the +5 floor.
+1. **L1 vs L0 (single-task quality)** — single-engine harness (`--engine claude` OR `--engine codex`) beats the same engine bare on the 4-axis judge rubric (Spec / Constraint / Scope / Quality), per NORTH-STAR.md operational test #1: suite-avg margin ≥ +8 (preferred) or ≥ +5 (floor) across ≥ 7 of 9 fixtures. **Historical floor evidence**: iter-0020 was +4.4; iter-0034 R5 reached +5.0 (`DECISIONS.md`, solo-stable). Current broader quality/efficiency claims remain open; 0113 measures fresh layer deltas, with 0114/A15 correcting its meter.
 
 2. **L1 vs L0 (single-task efficiency)** — per NORTH-STAR.md ops test #2: L1 must beat `bare-best-of-N` where N is the wall-time ratio. No fixture where L1 ties or loses on quality with wall ratio ≥ 1.0.
 
-3. **L2 vs L1 (single-task pair value)** — if a pair-mode L2 ships, it must materially lift quality on pair-eligible fixtures (NORTH-STAR ops test #6) without regressing any fixture (#5). **Currently DISABLED**: iter-0020 closed L2 (Codex BUILD + Claude review) as failed-experiment 2026-04-29; iter-0021 inverted-pair (Claude BUILD + Codex CRITIC) is the open research path.
+3. **L2 vs L1 (single-task pair value)** — if a pair-mode L2 ships, it must materially lift quality on pair-eligible fixtures (NORTH-STAR ops test #7) without regressing any fixture (#6). **Current product policy**: VERIFY/JUDGE pair is default when available, with explicit routes failing closed. Iter-0020 rejected Codex BUILD, not pair generally; later fixed-diff and small-suite pair evidence is recorded in NORTH-STAR § Pair-mode policy. Broad superiority remains unproven.
 
 4. **No hard floors broken** — zero variant-arm CRITICAL findings, zero variant-arm HIGH `design.*` / `security.*` findings, zero variant watchdog timeouts (NORTH-STAR ops test #3).
 
-5. **Real-project trial passes** — NORTH-STAR ops test #14: one fresh real-project task (not fixture) ships under `/devlyn:auto-resolve` end-to-end without prompt-engineering rescue.
+5. **Real-project trial passes** — NORTH-STAR ops test #15: one fresh real-project task (not fixture) ships under `/devlyn:resolve` end-to-end without prompt-engineering rescue.
 
 **Categorical reliability (Codex GPT-5.5 verdict 2026-04-29, ultimate-goal consult)** — per Q2 of that consult, "overwhelmingly better" is *not* an average margin number; it is **expected utility under categorical reliability**. The harness must systematically *not* fail the task classes bare prompting systematically *does* fail (spec-compliance, multi-file scope, build-gate-detected runtime errors, security CRITICAL findings, silent-catch / hardcoded-value / `any` / `@ts-ignore` violations, scope leaks). Mission 1 ships only when this asymmetry is empirically clear, not when an average lift hits a number.
 
-**Open iter (Mission 1 work-in-progress)**:
-- iter-0021 — Claude BUILD + Codex CRITIC inverted-pair research smoke on F2 / F3 / F8 (the three fixtures with strongest L1 underperformance signal). **Research candidate only** (Codex 2026-04-29 verdict): a 3-fixture PASS does NOT make L2 a product surface — it only earns L2 a candidate slot pending full 9-fixture L1/L2 release-readiness data. NORTH-STAR.md #4 still requires L1 to pass its own gates before L2 ships.
-- L1 real-project diagnostic — one fresh `--engine claude` end-to-end run on a real (non-fixture) task; documents whether L1 produces genuinely better output than the same engine bare. This is single-task, single-worktree work — does *not* depend on parallel infra.
+**Open work (2026-09-05)**:
+- 0114/A15 corrects 0113 outcome retention, per-run token anchors and launch isolation before fresh collection; quick12 is a screen, full32 the confirmatory layer instrument. See HANDOFF START-HERE.
+- Continue the existing 0070 intent-closure direction; the aggregate/off-resolve closure kernel is designed, not fully shipped. Post-panel changes follow both quality and efficiency, with the observed SURFACE_CLOSE false-halt candidate first (0114).
+- The full #15 real-project trial remains open; the 0035 prelim did not close its external-developer/existing-codebase axes.
 
 **Hard NO list during Mission 1**:
 - ❌ No worktree-per-task substrate work. Stays single-worktree on `main`.
@@ -64,15 +65,15 @@ loop directly; orchestrator-neutral continuation is insurance (차선).
 **What IS in scope during Mission 1**:
 - Skill prompt + reference body refinement (BUILD/EVAL/CRITIC/DOCS/fix-loop quality).
 - Mechanical gates that catch known failure classes (e.g. `spec-verify-check.py` pattern from iter-0019.6/.8/.9 — extend if measurement shows new categorical failure).
-- Engine-routing decisions strictly as research, never as L2 product ship without L1 release-readiness first.
+- Additional engine/phase pair routes remain measurement-gated; shipped VERIFY pairing and executor pins remain binding.
 - Findings-schema enrichment when measurement shows the current rule_id vocabulary misses a real failure class.
 - Subtractive cleanup of any skill prompt section that doesn't pull weight (Karpathy 4 + Subtractive-first).
 - Single-worktree fix-loop convergence / wall-time / quality measurement.
 - Real-project trial diagnostics with explicit before/after evidence.
 
 **Mission 1 unblocks Mission 2 only when**:
-- All 5 gates above hold on a paid 9-fixture L0/L1 (and optionally L2 if any L2 shape ships) suite.
-- Real-project trial passes once (NORTH-STAR test #14 final stop condition).
+- All 5 gates above hold with the NORTH-STAR floor evidence and its headroom amendment; use the registered 0113 full32 comparison for confirmatory layer claims and ops #17 for the ceiling claim. The retired nine-fixture suite is historical evidence, not the sole current exam.
+- Real-project trial passes once (NORTH-STAR test #15 final stop condition).
 - The L1 surface is documented and positioned as the canonical product (not "experimental").
 - The asymmetry between harness and bare prompting is empirically clear (categorical reliability, not just average margin).
 
