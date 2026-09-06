@@ -6,7 +6,7 @@
 
 Pre-flight 0 / Mission 1: actual 0120 R1 worker initialization failed before `plan.md`, then output hashing rejected the prescribed BLOCKED completion. The violated invariant was a truthful completed failure record. Principles: **No workaround**, **No overengineering**, **No guesswork**, **Production ready**.
 
-Schema3 PLAN with explicit BLOCKED and lexically absent output now records completion time, duration and null digest while preserving existing session/receipt failure semantics and null effective model. Only FINAL_REPORT lifecycle may follow; work dispatch, surface events and durability enforcement reject that missing-output state. Existing output integrity, successful-path requirements and finish-gate precedence remain intact. The three canonical writer/SKILL/schema files and their tracked mirrors are the six-file product change; the SKILL wording refers to the schema rather than duplicating its exception.
+Schema3 PLAN with explicit BLOCKED and lexically absent output now records completion time, duration and null digest while preserving existing session/receipt attestation semantics. Only FINAL_REPORT lifecycle may follow; work dispatch, surface events and durability enforcement reject that missing-output state. Existing output integrity, successful-path requirements and finish-gate precedence remain intact. The three canonical writer/SKILL/schema files and their tracked mirrors are the six-file product change; the SKILL wording refers to the schema rather than duplicating its exception.
 
 ## Validation and advice
 
