@@ -24,7 +24,7 @@ Durable custody: `~/.local/share/nx01/iter0120/20260906T130002Z-advisory-consult
 
 ## Ordered implementation frontier
 
-- 0119 and full0118 acceptance are closed and pushed; the [0118 checkpoint](0118-concurrent-admission.md#current-continuation--2026-09-06) preserves exact artifacts, negative histories and remaining advisories. Integrate accepted runtime changes separately from candidate measurements.
+- 0119 and full0118 acceptance are closed and pushed; the [0118 checkpoint](0118-concurrent-admission.md#current-continuation--2026-09-06) preserves exact artifacts, negative histories and remaining advisories. Main73919fa integrates their exact sources with package3.0.0; full lint/pack checks passed. This is the new candidate-comparison baseline, not a performance result.
 - Correct output/identity accounting in the next scoped comparison, alongside a concrete subtractive candidate. Reuse working instruments; do not create an instrument-only chain or modify A16. Pre-register quality/failure/completeness and output/wall/cost readouts before running.
 - Compare removal of duplicate model reporting and scripted known checks. Preserve raw decision evidence and required independent verification; do not claim repeated test execution is redundant merely because source hashes match.
 - Compare worker/reviewer separation and model deltas on representative tasks. Add the smallest user-facing controls justified by those results, with sensible defaults, explicit overrides and visible resolved values.
