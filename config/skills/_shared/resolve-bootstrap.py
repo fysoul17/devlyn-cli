@@ -2,6 +2,7 @@
 """Deterministic PHASE-0 bootstrap for /devlyn:resolve."""
 from __future__ import annotations
 
+import contextlib
 import datetime
 import hashlib
 import importlib.util
@@ -207,6 +208,12 @@ def archive_prior_run(devlyn: pathlib.Path, shared_dir: pathlib.Path) -> None:
     except (archive["ArchiveError"], OSError, UnicodeError, ValueError) as exc:
         block("BLOCKED:prior-run-ownership-unverified", str(exc))
     run_id = state["run_id"]
+    if not archive["is_completed"](state) or archive["has_bootstrap_residue"](devlyn):
+        block(
+            "BLOCKED:prior-run-unfinished",
+            f"Run {run_id} at {devlyn.parent} is unfinished or indeterminate. "
+            "Continue through its owning session or start in a distinct worktree.",
+        )
     try:
         archive["move_artifacts"](devlyn, devlyn / "runs" / run_id)
         archive["prune"](devlyn / "runs", keep=10)
@@ -297,10 +304,10 @@ def init_spec_source(
 
 
 def git_text(cwd: pathlib.Path, *args: str) -> str:
-    proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
-    text = proc.stdout.strip()
+    proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True)
+    text = os.fsdecode(proc.stdout.removesuffix(b"\n"))
     if proc.returncode != 0 or not text:
-        detail = (proc.stderr or proc.stdout).strip() or "git command failed"
+        detail = os.fsdecode(proc.stderr or proc.stdout).strip() or "git command failed"
         block("BLOCKED:invalid-flags", detail)
     return text
 
@@ -351,6 +358,31 @@ def require_clean_tracked_baseline(cwd: pathlib.Path) -> None:
         )
 
 
+@contextlib.contextmanager
+def admission_lock(cwd: pathlib.Path):
+    lock_path = pathlib.Path(git_text(cwd, "rev-parse", "--absolute-git-dir")) / "devlyn-bootstrap.lock"
+    try:
+        import fcntl
+        handle = lock_path.open("a+b")
+    except (ImportError, OSError) as exc:
+        block("BLOCKED:bootstrap-lock-unavailable", f"{cwd}: {lock_path}: {exc}")
+    # Closing releases flock on every exit; keep the inode for the next caller.
+    with handle:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            block(
+                "BLOCKED:bootstrap-contended",
+                f"Bootstrap admission is occupied at {cwd}. Retry from this root after admission finishes.",
+            )
+        except (OSError, AttributeError) as exc:
+            block("BLOCKED:bootstrap-lock-unavailable", f"{cwd}: {lock_path}: {exc}")
+        for path in (cwd / ".devlyn", cwd / ".devlyn" / "runs"):
+            if path.is_symlink() or (path.exists() and not path.is_dir()):
+                block("BLOCKED:devlyn-path-redirect", f"{cwd}: require an unredirected directory at {path}")
+        yield
+
+
 def bootstrap(
     argv: list[str],
     cwd: pathlib.Path,
@@ -362,83 +394,484 @@ def bootstrap(
     cwd = cwd.resolve()
     validate_shared_dir(shared_dir)
     parsed = parse_flags(argv)
+    for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR"):
+        if name in os.environ:
+            block("BLOCKED:git-env-redirect", f"{cwd}: inherited {name} redirects Git; unset it before retrying.")
+    root = pathlib.Path(git_text(cwd, "rev-parse", "--show-toplevel")).resolve()
+    if cwd != root:
+        block("BLOCKED:worktree-root-required", f"{cwd} is not the worktree root {root}. Retry from {root}.")
     if parsed["mode"] != "verify-only":
         require_clean_tracked_baseline(cwd)
-    devlyn = cwd / ".devlyn"
-    outputs: dict[pathlib.Path, bytes | None] = {devlyn / "external-diff.patch": None}
-    if parsed["mode"] == "free-form":
-        raw_goal = (
-            safe_goal_file(cwd, parsed["goal_file"])
-            if parsed["goal_file"] is not None
-            else parsed["inline_goal"].encode("utf-8")
-        )
-        outputs[devlyn / "goal.raw.txt"] = raw_goal
-        source = {
-            "type": "generated",
-            "spec_path": None,
-            "spec_sha256": None,
-            "goal_path": ".devlyn/goal.raw.txt",
-            "goal_sha256": sha256(raw_goal),
-            "criteria_path": ".devlyn/criteria.generated.md",
-            "criteria_sha256": None,
-        }
-    else:
-        with tempfile.TemporaryDirectory() as tmp:
-            source, staged_spec = init_spec_source(
-                cwd, pathlib.Path(tmp), shared_dir, parsed["spec"],
+    with admission_lock(cwd):
+        devlyn = cwd / ".devlyn"
+        outputs: dict[pathlib.Path, bytes | None] = {devlyn / "external-diff.patch": None}
+        if parsed["mode"] == "free-form":
+            raw_goal = (
+                safe_goal_file(cwd, parsed["goal_file"])
+                if parsed["goal_file"] is not None
+                else parsed["inline_goal"].encode("utf-8")
             )
-        outputs[devlyn / "spec-verify.json"] = staged_spec
-        if parsed["mode"] == "verify-only":
-            outputs[devlyn / "external-diff.patch"] = capture_external_diff(cwd, parsed["verify_ref"])
+            outputs[devlyn / "goal.raw.txt"] = raw_goal
+            source = {
+                "type": "generated",
+                "spec_path": None,
+                "spec_sha256": None,
+                "goal_path": ".devlyn/goal.raw.txt",
+                "goal_sha256": sha256(raw_goal),
+                "criteria_path": ".devlyn/criteria.generated.md",
+                "criteria_sha256": None,
+            }
+        else:
+            with tempfile.TemporaryDirectory() as tmp:
+                source, staged_spec = init_spec_source(
+                    cwd, pathlib.Path(tmp), shared_dir, parsed["spec"],
+                )
+            outputs[devlyn / "spec-verify.json"] = staged_spec
+            if parsed["mode"] == "verify-only":
+                outputs[devlyn / "external-diff.patch"] = capture_external_diff(cwd, parsed["verify_ref"])
 
-    engine = parsed["engine"] or default_engine
-    engine_source = "flag" if parsed["engine"] is not None else "default"
-    now = datetime.datetime.now(datetime.timezone.utc)
-    started_at = now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
-    run_id = now.strftime("rs-%Y%m%dT%H%M%SZ-") + secrets.token_hex(6)
-    state = {
-        "version": "3.0",
-        "run_id": run_id,
-        "started_at": started_at,
-        "session_id": os.environ.get("CLAUDE_CODE_SESSION_ID"),
-        "engine": engine,
-        "engine_source": engine_source,
-        "mode": parsed["mode"],
-        "pair_verify": parsed["pair_verify"],
-        "complexity": None,
-        "risk_profile": {
-            "high_risk": False,
-            "reasons": [],
-            "risk_probes_enabled": False,
-            "risk_probes_explicit": False,
-            "pair_default_enabled": True,
-        },
-        "risk_probes_digest": None,
-        "process_evidence": None,
-        "base_ref": {
-            "branch": base_branch(cwd),
-            "sha": git_text(cwd, "rev-parse", "HEAD"),
-        },
-        "rounds": {"max_rounds": parsed["max_rounds"], "global": 0},
-        "bypasses": parsed["bypasses"],
-        "implement_passed_sha": None,
-        "source": source,
-        "criteria": [],
-        "phases": {name: None for name in PHASE_NAMES},
-        "verify": {"coverage_failed": False, "pair_trigger": None},
-    }
-    state_raw = json_bytes(state)
-    outputs[devlyn / "pipeline.state.json"] = state_raw
-    archive_prior_run(devlyn, shared_dir)
-    atomic_write_batch(outputs, writer)
-    return {
-        "ok": True,
-        "run_id": run_id,
-        "mode": parsed["mode"],
-        "source": source,
-        "state_path": ".devlyn/pipeline.state.json",
-        "state_sha256": sha256(state_raw),
-    }
+        engine = parsed["engine"] or default_engine
+        engine_source = "flag" if parsed["engine"] is not None else "default"
+        now = datetime.datetime.now(datetime.timezone.utc)
+        started_at = now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
+        run_id = now.strftime("rs-%Y%m%dT%H%M%SZ-") + secrets.token_hex(6)
+        state = {
+            "version": "3.0",
+            "run_id": run_id,
+            "started_at": started_at,
+            "session_id": os.environ.get("CLAUDE_CODE_SESSION_ID"),
+            "engine": engine,
+            "engine_source": engine_source,
+            "mode": parsed["mode"],
+            "pair_verify": parsed["pair_verify"],
+            "complexity": None,
+            "risk_profile": {
+                "high_risk": False,
+                "reasons": [],
+                "risk_probes_enabled": False,
+                "risk_probes_explicit": False,
+                "pair_default_enabled": True,
+            },
+            "risk_probes_digest": None,
+            "process_evidence": None,
+            "base_ref": {
+                "branch": base_branch(cwd),
+                "sha": git_text(cwd, "rev-parse", "HEAD"),
+            },
+            "rounds": {"max_rounds": parsed["max_rounds"], "global": 0},
+            "bypasses": parsed["bypasses"],
+            "implement_passed_sha": None,
+            "source": source,
+            "criteria": [],
+            "phases": {name: None for name in PHASE_NAMES},
+            "verify": {"coverage_failed": False, "pair_trigger": None},
+        }
+        state_raw = json_bytes(state)
+        outputs[devlyn / "pipeline.state.json"] = state_raw
+        archive_prior_run(devlyn, shared_dir)
+        atomic_write_batch(outputs, writer)
+        return {
+            "ok": True,
+            "run_id": run_id,
+            "mode": parsed["mode"],
+            "source": source,
+            "state_path": ".devlyn/pipeline.state.json",
+            "state_sha256": sha256(state_raw),
+        }
+
+
+
+def pathname_self_test() -> None:
+    script = pathlib.Path(__file__).resolve()
+    env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+    with tempfile.TemporaryDirectory() as tmp:
+        for name in ("plain", "trailing ", "trailing\t", "trailing\n", "trailing\r\n"):
+            repo = pathlib.Path(tmp).resolve() / name
+            repo.mkdir()
+
+            def git(*args):
+                return subprocess.run(["git", *args], cwd=repo, env=env,
+                                      check=True, capture_output=True).stdout
+
+            git("init", "-q")
+            git("-c", "user.name=Test", "-c", "user.email=test@example.com",
+                "commit", "--allow-empty", "-qm", "base")
+            for option, path in (("--show-toplevel", repo), ("--absolute-git-dir", repo / ".git")):
+                raw = git("rev-parse", option)
+                print(f"pathname {name!r} {option}: {raw!r}", flush=True)
+                assert raw == os.fsencode(path) + b"\n", raw
+            command = [sys.executable, str(script), "pathname", "probe"]
+            proc = subprocess.run(command, cwd=repo, env=env, capture_output=True, timeout=15)
+            result = strict_json(proc.stdout)
+            assert proc.returncode == 0 and result["ok"] and not proc.stderr, (name, proc, result)
+            for option, path in (("--show-toplevel", repo), ("--absolute-git-dir", repo / ".git")):
+                assert git_text(repo, "rev-parse", option) == str(path)
+            lock = repo / ".git" / "devlyn-bootstrap.lock"
+            inode = lock.stat().st_ino
+            devlyn = repo / ".devlyn"
+            before = {p.relative_to(devlyn): p.read_bytes() for p in devlyn.rglob("*") if p.is_file()}
+            assert (devlyn / "goal.raw.txt").read_bytes() == b"pathname probe"
+            proc = subprocess.run(command, cwd=repo, env=env, capture_output=True, timeout=15)
+            refused = strict_json(proc.stdout)
+            assert proc.returncode == 1 and not proc.stderr, (name, proc)
+            assert refused["blocked"] == "BLOCKED:prior-run-unfinished", refused
+            assert str(repo) in refused["detail"] and result["run_id"] in refused["detail"]
+            assert {p.relative_to(devlyn): p.read_bytes() for p in devlyn.rglob("*") if p.is_file()} == before
+            assert not (devlyn / "runs").exists() and lock.stat().st_ino == inode
+            print(f"PASS admission pathname {name!r}: exact root/Gitdir, stable lock, unfinished refusal")
+
+
+def admission_self_test() -> None:
+    import time
+    from unittest.mock import patch
+
+    shared = pathlib.Path(__file__).resolve().parent
+    script = shared / "resolve-bootstrap.py"
+    archive = runpy.run_path(shared / "archive_run.py")
+    env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1",
+               CLAUDE_CODE_SESSION_ID="same-admission-session")
+    spec_raw = (
+        '# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n'
+        '{"verification_commands":[{"cmd":"printf ok","stdout_contains":["ok"]}]}\n```\n'
+    ).encode()
+    modes = (["goal", "A"], ["--spec", "spec.md"],
+             ["--verify-only", "external.patch", "--spec", "spec.md"])
+
+    def git(repo, *args):
+        return subprocess.run(["git", *args], cwd=repo, env=env, check=True, capture_output=True).stdout
+
+    def inputs(repo):
+        (repo / "spec.md").write_bytes(spec_raw)
+        (repo / "external.patch").write_bytes(b"external patch A\x00\n")
+
+    def init(repo):
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "test@example.com")
+        git(repo, "config", "user.name", "Test")
+        (repo / "app.py").write_text("print('base')\n")
+        git(repo, "add", "app.py")
+        git(repo, "commit", "-qm", "base")
+        inputs(repo)
+
+    def snapshot(path):
+        if not path.exists() and not path.is_symlink():
+            return {}
+        return {
+            str(p.relative_to(path)): (str(p.readlink()) if p.is_symlink()
+                                      else None if p.is_dir() else p.read_bytes())
+            for p in (path, *path.rglob("*"))
+        }
+
+    def cli(repo, argv, extra_env=None):
+        proc = subprocess.run([sys.executable, str(script), *argv], cwd=repo,
+                              env=extra_env or env, capture_output=True, text=True, timeout=15)
+        assert proc.stderr == "", (proc.returncode, proc.stdout, proc.stderr)
+        result = strict_json(proc.stdout)
+        assert proc.returncode == (0 if result["ok"] else 1), result
+        return result
+
+    def refusal(repo, argv, reason, extra_env=None):
+        before = snapshot(repo / ".devlyn")
+        result = cli(repo, argv, extra_env)
+        assert result.get("blocked") == reason, result
+        assert snapshot(repo / ".devlyn") == before, result
+        return result
+
+    def wait_for(predicate):
+        deadline = time.monotonic() + 15
+        while not predicate():
+            assert time.monotonic() < deadline, "admission child synchronization timed out"
+            time.sleep(0.01)
+
+    # Test-only seam around the real bootstrap and atomic writer. Both children
+    # reach the pipe barrier before flock; only the winner reaches the writer.
+    child = r"""
+import json, os, pathlib, runpy, sys, time
+script, repo, signals, action, barrier, argv = sys.argv[1:]
+m = runpy.run_path(script)
+signals = pathlib.Path(signals)
+def hold():
+    signals.with_suffix('.inside').touch()
+    deadline = time.monotonic() + 20
+    while not signals.with_suffix('.release').exists():
+        if time.monotonic() > deadline:
+            raise TimeoutError('held admission was not released')
+        time.sleep(0.01)
+def writer(path, raw):
+    if action in ('hold', 'before'):
+        hold()
+    m['atomic_write'](path, raw)
+    if action == 'canonical':
+        hold()
+if action.startswith('temp:'):
+    replace = pathlib.Path.replace
+    def held_replace(path, target):
+        if path.name.startswith(action[5:] + '.tmp.'):
+            hold()
+        return replace(path, target)
+    pathlib.Path.replace = held_replace
+signals.with_suffix('.ready').touch()
+if int(barrier) >= 0:
+    os.read(int(barrier), 1)
+    os.close(int(barrier))
+try:
+    result = m['bootstrap'](json.loads(argv), pathlib.Path(repo), pathlib.Path(script).parent, writer=writer)
+except m['BootstrapBlocked'] as exc:
+    print(json.dumps({'ok': False, 'blocked': exc.reason, 'detail': exc.detail}))
+    sys.exit(1)
+print(json.dumps(result))
+"""
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp).resolve()
+        repo = root / "state"
+        init(repo)
+        first = cli(repo, modes[0])
+        devlyn = repo / ".devlyn"
+        state_path = devlyn / "pipeline.state.json"
+        initial = strict_json(state_path.read_text())
+        (devlyn / "engines.json").write_bytes(b'{"executor":"codex"}\n')
+        (devlyn / "config.json").write_bytes(b'{"setting":true}\n')
+        (devlyn / "unrelated.data").write_bytes(b"keep\n")
+        old_archive = devlyn / "runs" / "unfinished-old" / "pipeline.state.json"
+        old_archive.parent.mkdir(parents=True)
+        old_archive.write_bytes(b'{"run_id":"unfinished-old","phases":{}}\n')
+        for argv in modes:
+            result = refusal(repo, argv, "BLOCKED:prior-run-unfinished")
+            assert first["run_id"] in result["detail"] and str(repo) in result["detail"]
+        invalid = [None, [], "PASS", {}, {"verdict": "PASS"},
+                   {"completed_at": "2026-09-06T00:00:00Z"}]
+        invalid += [{"verdict": v, "completed_at": "2026-09-06T00:00:00Z"}
+                    for v in (None, [], {}, "UNKNOWN", "FAIL")]
+        invalid += [{"verdict": "PASS", "completed_at": t} for t in (
+            None, [], "", "2026-09-06T00:00:00", "2026-02-29T00:00:00Z",
+            "2026-09-06T24:00:00Z", "2026-09-06T00:00:00.1Z",
+            "2026-09-06T00:00:00+00:00",
+        )]
+        for final in invalid:
+            state = dict(initial, phases={"final_report": final, "verify": {"verdict": "PASS"}})
+            state_path.write_bytes(json_bytes(state))
+            refusal(repo, modes[0], "BLOCKED:prior-run-unfinished")
+        for verdict in ("PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED"):
+            for timestamp in ("2024-02-29T23:59:59Z", "2024-02-29T23:59:59.123Z"):
+                state = strict_json(state_path.read_text())
+                state["phases"]["final_report"] = {"verdict": verdict, "completed_at": timestamp}
+                state_path.write_bytes(json_bytes(state))
+                raw = state_path.read_bytes()
+                goal = (devlyn / "goal.raw.txt").read_bytes()
+                assert cli(repo, modes[0])["ok"]
+                archived = devlyn / "runs" / state["run_id"]
+                assert (archived / "pipeline.state.json").read_bytes() == raw
+                assert (archived / "goal.raw.txt").read_bytes() == goal
+        assert (devlyn / "engines.json").read_bytes() == b'{"executor":"codex"}\n'
+        assert (devlyn / "config.json").read_bytes() == b'{"setting":true}\n'
+        assert (devlyn / "unrelated.data").read_bytes() == b"keep\n"
+        assert old_archive.read_bytes() == b'{"run_id":"unfinished-old","phases":{}}\n'
+        for raw in (None, b"{", b"null", b'{"run_id":[]}', b'{"run_id":"../escape"}'):
+            if raw is None:
+                state_path.unlink()
+            else:
+                state_path.write_bytes(raw)
+            refusal(repo, modes[0], "BLOCKED:prior-run-ownership-unverified")
+        # Residue also blocks when the canonical report otherwise looks completed.
+        for pattern in archive["BOOTSTRAP_TEMP_PATTERNS"]:
+            state = dict(initial, phases={"final_report": {
+                "verdict": "PASS", "completed_at": "2026-09-06T00:00:00Z",
+            }})
+            state_path.write_bytes(json_bytes(state))
+            residue = devlyn / pattern.replace("*", "interrupted")
+            residue.write_bytes(b"partial")
+            for argv in modes:
+                refusal(repo, argv, "BLOCKED:prior-run-unfinished")
+            residue.unlink()
+        print("PASS admission state: same-session/all-mode byte stability, 8 completed forms, ownership/residue refusal")
+
+        identity = root / "identity"
+        init(identity)
+        alias = root / "alias"
+        alias.symlink_to(identity, target_is_directory=True)
+        sub = identity / "sub"
+        sub.mkdir()
+        detail = refusal(sub, ["--goal-file", "relative.txt"], "BLOCKED:worktree-root-required")["detail"]
+        assert str(identity) in detail and "Retry" in detail
+        assert not (identity / ".devlyn").exists()
+        external = root / "external"
+        init(external)
+        external_before = snapshot(external)
+        for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR"):
+            for value in ("", str(external / ".git")):
+                for argv in modes:
+                    result = refusal(identity, argv, "BLOCKED:git-env-redirect", dict(env, **{key: value}))
+                    assert key in result["detail"] and str(identity) in result["detail"]
+        assert snapshot(external) == external_before
+        # Even a non-repository location must reject Git redirection before Git.
+        assert cli(root, modes[0], dict(env, GIT_DIR=""))["blocked"] == "BLOCKED:git-env-redirect"
+        for relative in (".devlyn", ".devlyn/runs"):
+            for dangling in (False, True):
+                target = root / ("missing-target" if dangling else "redirect-target")
+                if not dangling:
+                    target.mkdir(exist_ok=True)
+                    (target / "keep").write_bytes(b"untouched")
+                link = identity / relative
+                link.parent.mkdir(exist_ok=True)
+                link.symlink_to(target, target_is_directory=True)
+                before = snapshot(target)
+                result = refusal(identity, modes[0], "BLOCKED:devlyn-path-redirect")
+                assert str(link) in result["detail"] and link.is_symlink()
+                assert snapshot(target) == before
+                link.unlink()
+        print("PASS admission identity: physical-root guidance, Git redirects including empty, live/dangling directory links")
+
+        def launch(repo, signals, action, argv, barrier=-1):
+            return subprocess.Popen(
+                [sys.executable, "-c", child, str(script), str(repo), str(signals),
+                 action, str(barrier), json.dumps(argv)],
+                cwd=repo, env=env, pass_fds=(() if barrier < 0 else (barrier,)),
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+
+        def receipt(proc):
+            stdout, stderr = proc.communicate(timeout=15)
+            assert stderr == "", (proc.returncode, stdout, stderr)
+            result = strict_json(stdout)
+            assert proc.returncode == (0 if result["ok"] else 1), result
+            return result
+
+        for i, argv in enumerate(modes):
+            race = root / f"race-{i}"
+            init(race)
+            (race / "spec-b.md").write_bytes(spec_raw.replace(b"# Spec", b"# Other spec"))
+            (race / "external-b.patch").write_bytes(b"external patch B\n")
+            other = ["goal", "B"] if i == 0 else [s.replace("spec.md", "spec-b.md").replace(
+                "external.patch", "external-b.patch") for s in argv]
+            signals = [root / f"race-{i}-{label}" for label in ("A", "B")]
+            rfd, wfd = os.pipe()
+            procs = []
+            try:
+                procs = [launch(race, signal, "hold", args, rfd)
+                         for signal, args in zip(signals, (argv, other))]
+                os.close(rfd)
+                wait_for(lambda: all(s.with_suffix(".ready").exists() for s in signals))
+                os.close(wfd)
+                wait_for(lambda: any(s.with_suffix(".inside").exists() for s in signals)
+                         and any(p.poll() is not None for p in procs))
+                holders = [j for j, s in enumerate(signals) if s.with_suffix(".inside").exists()]
+                assert len(holders) == 1, holders
+                winner = holders[0]
+                loser = receipt(procs[1 - winner])
+                assert loser.get("blocked") == "BLOCKED:bootstrap-contended", loser
+                assert str(race) in loser["detail"] and "run_id" not in loser
+                assert snapshot(race / ".devlyn") == {}, "loser mutated owned/archive state"
+                signals[winner].with_suffix(".release").touch()
+                won = receipt(procs[winner])
+                assert won["ok"]
+            finally:
+                for proc in procs:
+                    if proc.poll() is None:
+                        proc.kill()
+                        proc.communicate()
+            state_raw = (race / ".devlyn/pipeline.state.json").read_bytes()
+            state = strict_json(state_raw.decode())
+            assert state["run_id"] == won["run_id"] and sha256(state_raw) == won["state_sha256"]
+            expected_files = {"pipeline.state.json"}
+            if i == 0:
+                goal = (race / ".devlyn/goal.raw.txt").read_bytes()
+                assert goal == (b"goal A" if winner == 0 else b"goal B")
+                assert sha256(goal) == state["source"]["goal_sha256"]
+                expected_files.add("goal.raw.txt")
+            else:
+                source_path = "spec.md" if winner == 0 else "spec-b.md"
+                assert state["source"]["spec_path"] == source_path
+                assert state["source"]["spec_sha256"] == sha256((race / source_path).read_bytes())
+                expected_files.add("spec-verify.json")
+                if i == 2:
+                    patch_path = "external.patch" if winner == 0 else "external-b.patch"
+                    assert (race / ".devlyn/external-diff.patch").read_bytes() == (race / patch_path).read_bytes()
+                    expected_files.add("external-diff.patch")
+            assert {p.name for p in (race / ".devlyn").iterdir()} == expected_files
+            for attempt in modes:
+                refusal(race, attempt, "BLOCKED:prior-run-unfinished")
+        print("PASS admission processes: pre-lock synchronized pair in all 3 modes, one winner, zero loser delta, unmixed outputs")
+
+        linked = root / "linked"
+        git(identity, "worktree", "add", "-qb", "independent", str(linked))
+        inputs(linked)
+        lock_path = pathlib.Path(git(identity, "rev-parse", "--absolute-git-dir").decode().strip()) / "devlyn-bootstrap.lock"
+        with admission_lock(identity):
+            inode = lock_path.stat().st_ino
+            assert cli(linked, modes[0])["ok"]
+            refusal(alias, modes[0], "BLOCKED:bootstrap-contended")
+        assert cli(alias, modes[0])["ok"]
+        assert lock_path.stat().st_ino == inode
+        assert pathlib.Path(git(linked, "rev-parse", "--absolute-git-dir").decode().strip()) != lock_path.parent
+        collision = subprocess.run(["git", "worktree", "add", str(root / "collision"), "independent"],
+                                   cwd=identity, env=env, capture_output=True)
+        assert collision.returncode != 0 and b"already" in collision.stderr
+        assert not (root / "collision").exists()
+        print("PASS admission worktrees: linked root initializes under other's lock; aliases exclude; branch collision retained")
+
+        failure = root / "failure"
+        init(failure)
+        def fail_writer(path, raw):
+            raise OSError("before-first-write")
+        try:
+            bootstrap(modes[0], failure, shared, writer=fail_writer)
+        except OSError as exc:
+            assert str(exc) == "before-first-write"
+        else:
+            raise AssertionError("writer exception was hidden")
+        assert not (failure / ".devlyn").exists()
+        failure_lock = failure / ".git/devlyn-bootstrap.lock"
+        failure_inode = failure_lock.stat().st_ino
+        import fcntl
+        for replacement in (patch.dict(sys.modules, {"fcntl": None}),
+                            patch.object(fcntl, "flock", side_effect=OSError("unsupported locking"))):
+            with replacement:
+                try:
+                    bootstrap(modes[0], failure, shared)
+                except BootstrapBlocked as exc:
+                    assert exc.reason == "BLOCKED:bootstrap-lock-unavailable" and str(failure) in exc.detail
+                else:
+                    raise AssertionError("unavailable locking was accepted")
+            assert not (failure / ".devlyn").exists()
+            assert failure_lock.stat().st_ino == failure_inode
+        denied = root / "lock-open-failure"
+        init(denied)
+        (denied / ".git/devlyn-bootstrap.lock").mkdir()
+        refusal(denied, modes[0], "BLOCKED:bootstrap-lock-unavailable")
+        assert cli(failure, modes[0])["ok"] and failure_lock.stat().st_ino == failure_inode
+        print("PASS admission failures: before-write exception/retry; explicit import/open/acquisition refusal; persistent inode")
+
+        deaths = [("before", modes[0], None), ("canonical", modes[0], "goal.raw.txt")]
+        deaths += [("temp:" + name, modes[mode], name + ".tmp.*") for name, mode in (
+            ("goal.raw.txt", 0), ("spec-verify.json", 1), ("external-diff.patch", 2), ("pipeline.state.json", 0),
+        )]
+        for i, (action, argv, family) in enumerate(deaths):
+            dead = root / f"death-{i}"
+            init(dead)
+            signal = root / f"death-{i}"
+            proc = launch(dead, signal, action, argv)
+            try:
+                wait_for(lambda: signal.with_suffix(".inside").exists() or proc.poll() is not None)
+                assert signal.with_suffix(".inside").exists(), proc.communicate()
+                inode = (dead / ".git/devlyn-bootstrap.lock").stat().st_ino
+                proc.kill()
+                stdout, stderr = proc.communicate(timeout=15)
+                assert proc.returncode == -9 and stdout == "" and stderr == "", (stdout, stderr)
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                    proc.communicate()
+            if family is None:
+                assert not (dead / ".devlyn").exists()
+                assert cli(dead, modes[1])["ok"]
+            else:
+                assert len(list((dead / ".devlyn").glob(family))) == 1
+                for attempt in modes:
+                    refusal(dead, attempt, "BLOCKED:prior-run-ownership-unverified")
+            assert (dead / ".git/devlyn-bootstrap.lock").stat().st_ino == inode
+        print("PASS admission death: SIGKILL before write retries; canonical and all 4 real atomic temp families preserved across modes")
 
 
 def self_test() -> int:
@@ -465,6 +898,14 @@ def self_test() -> int:
             for file in path.rglob("*")
             if file.is_file()
         }
+
+    def complete_prior(path: pathlib.Path) -> None:
+        state_path = path / ".devlyn" / "pipeline.state.json"
+        state = strict_json(state_path.read_text())
+        state["phases"]["final_report"] = {
+            "verdict": "PASS", "completed_at": "2026-09-06T00:00:00Z",
+        }
+        state_path.write_bytes(json_bytes(state))
 
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
@@ -534,6 +975,7 @@ def self_test() -> int:
         assert detached_state["base_ref"]["sha"] == git_text(detached, "rev-parse", "HEAD")
         print("PASS bootstrap self-test detached HEAD: branch null with exact HEAD sha")
 
+        complete_prior(work)
         os.environ[session_key] = "session-self-test"
         bootstrap(["--engine", "raw-engine", "--pair-verify", "fix", "app.py"], work, script_shared)
         stamped = strict_json(state_path.read_text())
@@ -612,6 +1054,7 @@ def self_test() -> int:
 
         goal_raw = "fix app.py\r\npreserve café bytes\n".encode()
         (work / "goal.txt").write_bytes(goal_raw)
+        complete_prior(work)
         goal_result = bootstrap(["--goal-file", "goal.txt"], work, script_shared)
         assert goal_result["source"]["goal_sha256"] == sha256(goal_raw)
         assert (work / ".devlyn" / "goal.raw.txt").read_bytes() == goal_raw
@@ -657,23 +1100,27 @@ def self_test() -> int:
         spec_raw = spec_path.read_bytes()
         external_patch = work / ".devlyn" / "external-diff.patch"
         external_patch.write_bytes(b"stale spec patch\n")
+        complete_prior(work)
         spec_result = bootstrap(["--spec", str(spec_path.relative_to(work))], work, script_shared)
         assert not external_patch.exists()
         staged = strict_json((work / ".devlyn" / "spec-verify.json").read_text())
         assert staged["verification_commands"][0]["cmd"] == "printf ok"
         assert spec_result["source"]["spec_sha256"] == sha256(spec_raw)
         external_patch.write_bytes(b"stale free-form patch\n")
+        complete_prior(work)
         bootstrap(["fresh", "goal"], work, script_shared)
         assert not external_patch.exists()
         (spec_dir / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [{"cmd": "printf expected", "stdout_contains": ["expected"]}],
         }) + "\n")
+        complete_prior(work)
         bootstrap(["--spec", str(spec_path.relative_to(work))], work, script_shared)
         staged = strict_json((work / ".devlyn" / "spec-verify.json").read_text())
         assert staged["verification_commands"][0]["cmd"] == "printf expected"
         patch_raw = b"diff --git a/app.py b/app.py\nexact external bytes\x00\n"
         (work / "external.patch").write_bytes(patch_raw)
         (work / "app.py").write_text("print('dirty verify-only input')\n")
+        complete_prior(work)
         verify_result = bootstrap([
             "--verify-only", "external.patch", "--spec", str(spec_path.relative_to(work)),
         ], work, script_shared)
@@ -734,6 +1181,16 @@ def self_test() -> int:
             (prior_devlyn / name).write_text(f"prior {name}\n", encoding="utf-8")
         (prior_devlyn / "engines.json").write_text('{"executor":"codex"}\n', encoding="utf-8")
         (prior_devlyn / "unrelated.data").write_text("preserve\n", encoding="utf-8")
+        before = snapshot(prior_devlyn)
+        try:
+            bootstrap(["replacement", "run"], prior_work, script_shared)
+        except BootstrapBlocked as exc:
+            assert exc.reason == "BLOCKED:prior-run-unfinished"
+            assert prior["run_id"] in exc.detail and str(prior_work.resolve()) in exc.detail
+        else:
+            raise AssertionError("unfinished prior run was replaced")
+        assert snapshot(prior_devlyn) == before
+        complete_prior(prior_work)
         replacement = bootstrap(["replacement", "run"], prior_work, script_shared)
         prior_archive = prior_devlyn / "runs" / prior["run_id"]
         assert replacement["run_id"] != prior["run_id"]
@@ -773,7 +1230,7 @@ def self_test() -> int:
             else:
                 raise AssertionError(f"{label} prior-run ownership was accepted")
             assert snapshot(unauthenticated_devlyn) == before
-        print("PASS bootstrap self-test prior-run ownership: archive before replace; unauthenticated bytes stable")
+        print("PASS bootstrap self-test prior-run ownership: unfinished refused, completed archived; unauthenticated bytes stable")
 
         malformed_work = root / "malformed-spec-repo"
         init_repo(malformed_work)
@@ -790,6 +1247,8 @@ def self_test() -> int:
         assert not (malformed_work / ".devlyn").exists()
         print("PASS bootstrap self-test spec validation failure: zero partial filesystem state")
 
+    pathname_self_test()
+    admission_self_test()
     return 0
 
 

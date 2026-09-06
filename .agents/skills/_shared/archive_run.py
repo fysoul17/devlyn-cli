@@ -6,7 +6,7 @@ Usage:
 
 Reads run_id from .devlyn/pipeline.state.json, moves per-run artifacts into
 .devlyn/runs/<run_id>/, then best-effort prunes to last 10 completed runs
-(in-flight runs — phases.final_report.verdict == null — are never deleted).
+(unfinished or indeterminate runs are never deleted).
 
 The contract lives in pipeline-state.md. This script implements it so that
 archive behavior is identical across every invocation.
@@ -14,6 +14,7 @@ archive behavior is identical across every invocation.
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
 import json
 import pathlib
@@ -100,6 +101,12 @@ PER_RUN_PATTERNS += tuple(
         "event-stream.jsonl", "retry.*",
     )
 )
+BOOTSTRAP_TEMP_PATTERNS = tuple(
+    name + ".tmp.*" for name in (
+        "goal.raw.txt", "spec-verify.json", "external-diff.patch", "pipeline.state.json",
+    )
+)
+PER_RUN_PATTERNS += BOOTSTRAP_TEMP_PATTERNS
 
 SAFE_RUN_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
@@ -162,6 +169,32 @@ def read_run_id(devlyn: pathlib.Path) -> str:
         raise SystemExit(f"error: {exc}") from exc
 
 
+def is_completed(state: object) -> bool:
+    phases = state.get("phases") if isinstance(state, dict) else None
+    final = phases.get("final_report") if isinstance(phases, dict) else None
+    if not isinstance(final, dict) or final.get("verdict") not in (
+        "PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED",
+    ):
+        return False
+    timestamp = final.get("completed_at")
+    if not isinstance(timestamp, str) or not re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{3})?Z",
+        timestamp,
+    ):
+        return False
+    try:
+        datetime.datetime.strptime(
+            timestamp, "%Y-%m-%dT%H:%M:%S.%fZ" if "." in timestamp else "%Y-%m-%dT%H:%M:%SZ",
+        )
+    except ValueError:
+        return False
+    return True
+
+
+def has_bootstrap_residue(devlyn: pathlib.Path) -> bool:
+    return any(path for pattern in BOOTSTRAP_TEMP_PATTERNS for path in devlyn.glob(pattern))
+
+
 def static_artifacts(devlyn: pathlib.Path) -> list[pathlib.Path]:
     found: dict[pathlib.Path, None] = {}
     for pattern in PER_RUN_PATTERNS:
@@ -179,7 +212,7 @@ def static_artifacts(devlyn: pathlib.Path) -> list[pathlib.Path]:
 def has_owned_artifacts(devlyn: pathlib.Path) -> bool:
     if not devlyn.is_dir():
         return False
-    if static_artifacts(devlyn):
+    if has_bootstrap_residue(devlyn) or static_artifacts(devlyn):
         return True
     evidence = devlyn / "process-evidence"
     return evidence.is_dir() and any(path.is_file() for path in evidence.rglob("*"))
@@ -385,18 +418,13 @@ def prune(runs_dir: pathlib.Path, keep: int = 10) -> int:
     """Delete oldest completed runs beyond `keep`. In-flight runs never removed."""
     candidates = []
     for d in sorted(runs_dir.glob("*/"), key=lambda p: p.name):
-        state_file = d / "pipeline.state.json"
-        if not state_file.is_file():
-            continue
         try:
-            s = loads_strict_json(state_file.read_text(encoding="utf-8"))
-        except ValueError:
+            s = read_state(d)
+        except ArchiveError:
             # Can't decide flight-state safely; skip (never prune)
             continue
-        phases = s.get("phases") if isinstance(s, dict) else None
-        final_report = phases.get("final_report") if isinstance(phases, dict) else None
-        if not isinstance(final_report, dict) or final_report.get("verdict") is None:
-            continue  # in-flight
+        if not is_completed(s) or has_bootstrap_residue(d):
+            continue  # in-flight or indeterminate
         candidates.append(d)
     over = len(candidates) - keep
     if over <= 0:
@@ -406,6 +434,64 @@ def prune(runs_dir: pathlib.Path, keep: int = 10) -> int:
         shutil.rmtree(d, ignore_errors=False)
         pruned += 1
     return pruned
+
+
+def completion_self_test() -> None:
+    valid = [
+        {"verdict": verdict, "completed_at": timestamp}
+        for verdict in ("PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED")
+        for timestamp in ("2024-02-29T23:59:59Z", "2024-02-29T23:59:59.123Z")
+    ]
+    invalid = [None, [], "PASS", {}, {"verdict": "PASS"}]
+    invalid += [
+        {"verdict": verdict, "completed_at": "2026-09-06T00:00:00Z"}
+        for verdict in (None, [], {}, 1, "", "FAIL", "UNKNOWN", "pass")
+    ]
+    invalid += [
+        {"verdict": "PASS", "completed_at": timestamp}
+        for timestamp in (
+            None, [], 1, "", "2026-09-06T00:00:00", "2026-09-06T00:00:00+00:00",
+            "2026-02-29T00:00:00Z", "2026-13-01T00:00:00Z", "0000-01-01T00:00:00Z",
+            "2026-09-06T24:00:00Z", "2026-09-06T00:60:00Z", "2026-09-06T00:00:60Z",
+            "2026-09-06T00:00:00.1Z", "2026-09-06T00:00:00.123456Z",
+            "2026-9-06T00:00:00Z", "2026-09-06 00:00:00Z", "2026-09-06T00:00:00Z\n",
+        )
+    ]
+    invalid.append({"completed_at": "2026-09-06T00:00:00Z"})
+    assert all(is_completed({"phases": {"final_report": final}}) for final in valid)
+    assert not any(is_completed({"phases": {"final_report": final}}) for final in invalid)
+    assert not any(is_completed(state) for state in (None, [], {}, {"phases": []}))
+    with tempfile.TemporaryDirectory() as tmp:
+        runs = pathlib.Path(tmp)
+        preserved = []
+        for i, final in enumerate(invalid):
+            path = runs / f"indeterminate-{i:02d}" / "pipeline.state.json"
+            path.parent.mkdir()
+            path.write_text(json.dumps({"run_id": path.parent.name, "phases": {"final_report": final}}))
+            preserved.append(path)
+        for i, raw in enumerate((b"{", b"\xff", b"null", b'{"phases":{}}', b'{"run_id":[]}')):
+            path = runs / f"malformed-{i}" / "pipeline.state.json"
+            path.parent.mkdir()
+            path.write_bytes(raw)
+            preserved.append(path)
+        for i, pattern in enumerate(BOOTSTRAP_TEMP_PATTERNS):
+            path = runs / f"residue-{i}" / "pipeline.state.json"
+            path.parent.mkdir()
+            path.write_text(json.dumps({"run_id": path.parent.name, "phases": {"final_report": valid[0]}}))
+            residue = path.with_name(pattern.replace("*", "interrupted"))
+            residue.write_bytes(b"interrupted initialization")
+            preserved.extend((path, residue))
+        for i in range(12):
+            path = runs / f"complete-{i:02d}" / "pipeline.state.json"
+            path.parent.mkdir()
+            path.write_text(json.dumps({"run_id": path.parent.name, "phases": {"final_report": valid[i % 8]}}))
+        before = {p: p.read_bytes() for p in preserved}
+        assert prune(runs) == 2
+        assert {p: p.read_bytes() for p in preserved} == before
+        assert not (runs / "complete-00").exists() and not (runs / "complete-01").exists()
+        assert all((runs / f"complete-{i:02d}").is_dir() for i in range(2, 12))
+        assert prune(runs) == 0
+    print("PASS archive completion: 8 terminal forms; malformed/unfinished/residue retained beyond keep-10")
 
 
 def self_test() -> int:
@@ -486,7 +572,7 @@ def self_test() -> int:
                     "history": [{"invocation_receipt": prior_binding}],
                     "invocation_receipt": receipt_binding,
                 },
-                "final_report": {"verdict": "PASS"},
+                "final_report": {"verdict": "PASS", "completed_at": "2026-09-06T00:00:00Z"},
             },
             "process_evidence": None,
         }
@@ -716,7 +802,9 @@ def self_test() -> int:
         newest_run = devlyn / "runs" / "run-2"
         newest_run.mkdir()
         (newest_run / "pipeline.state.json").write_text(
-            json.dumps({"phases": {"final_report": {"verdict": "PASS"}}}) + "\n",
+            json.dumps({"run_id": "run-2", "phases": {"final_report": {
+                "verdict": "PASS", "completed_at": "2026-09-06T00:00:00.123Z",
+            }}}) + "\n",
             encoding="utf-8",
         )
         assert prune(devlyn / "runs", keep=1) == 1
@@ -751,6 +839,7 @@ def self_test() -> int:
             assert "invalid JSON numeric constant: NaN" in str(exc)
         else:
             raise AssertionError("NaN archive run_id was accepted")
+    completion_self_test()
     return 0
 
 

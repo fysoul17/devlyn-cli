@@ -234,6 +234,7 @@ def bind_process_evidence(
         return
     runner = process_evidence_module()
     try:
+        results_path = devlyn / "spec-verify.results.json"
         if phase == "implement":
             obligations = runner.declared_obligations(work, state, phase)
             if not obligations:
@@ -244,8 +245,13 @@ def bind_process_evidence(
             carrier = runner.validate_manifest(
                 work, manifest_path, state.get("run_id"), phase, round_, obligations,
             )
+        elif verdict == "BLOCKED" and not os.path.lexists(results_path):
+            round_ = runner.phase_round(state, phase)
+            carrier = runner.validate_manifest(
+                work, runner.manifest_relative_path(state, phase),
+                state.get("run_id"), phase, round_, require_expectations=False,
+            )
         else:
-            results_path = devlyn / "spec-verify.results.json"
             if not results_path.is_file():
                 raise runner.EvidenceError(
                     "spec-verify.results.json is missing for BUILD_GATE completion"
@@ -2440,6 +2446,287 @@ def self_test() -> int:
         assert blocked.returncode == 0, blocked.stderr
         print("PASS iter-0112 BUILD_GATE sealed outcome owns the verdict floor")
 
+        def test_interrupted_build_gate() -> None:
+            # Iter-0119 R1-R5: interrupted observations bind only to BLOCKED,
+            # without changing their bytes or bypassing archive/receipt guards.
+            work = (devlyn / "interrupted-build-gate").resolve()
+            active = work / ".devlyn"
+            active.mkdir(parents=True)
+            state_file = active / "pipeline.state.json"
+            summary = active / "spec-verify.results.json"
+            runner = process_evidence_module()
+            archive_spec = importlib.util.spec_from_file_location(
+                "interrupted_archive", pathlib.Path(__file__).with_name("archive_run.py"),
+            )
+            assert archive_spec is not None and archive_spec.loader is not None
+            archive = importlib.util.module_from_spec(archive_spec)
+            archive_spec.loader.exec_module(archive)
+            fixture = {
+                "version": "3.0", "run_id": "rs-interrupted-build-gate",
+                "source": {"type": "spec", "spec_path": "spec.md"},
+                "phases": {"build_gate": None, "final_report": None},
+                "process_evidence": None,
+            }
+            do_spawn(fixture, "build_gate", 0, None, None, "claude", None)
+            write_state(state_file, fixture)
+            open_bytes = state_file.read_bytes()
+            relative = runner.manifest_relative_path(fixture, "build_gate")
+            manifest = work / relative
+            obligations = [
+                runner.normalize_obligation({
+                    "id": f"verification-command-{index:04d}", "phase": "build_gate",
+                    "argv": [sys.executable, "-c", (
+                        "import os; os.write(1, b'observed\\x00\\xff\\n'); "
+                        f"os.write(2, b'diagnostic\\r\\n'); raise SystemExit({exit_code})"
+                    )],
+                })
+                for index, exit_code in enumerate((0, 7, 0), 1)
+            ]
+            (work / "spec.md").write_text("# Interrupted build fixture\n", encoding="utf-8")
+            (work / "spec.expected.json").write_text(json.dumps({
+                "process_evidence": obligations,
+            }), encoding="utf-8")
+            assert runner.declared_obligations(work, fixture, "build_gate") == obligations
+            for obligation in obligations[:2]:
+                runner.capture_process(
+                    work, manifest, fixture["run_id"], "build_gate", 0, obligation,
+                )
+            manifest_bytes = manifest.read_bytes()
+            document = loads_strict_json(manifest_bytes.decode("utf-8"))
+            assert [entry["expectation_met"] for entry in document["entries"]] == [True, False]
+            assert [entry["outcome"] for entry in document["entries"]] == [
+                {"kind": "exit", "exit_code": code, "signal": None} for code in (0, 7)
+            ]
+            observed = {path: path.read_bytes() for path in manifest.parent.iterdir()}
+            assert set(observed) == {manifest} | {
+                manifest.parent / f"verification-command-{index:04d}.{stream}"
+                for index in (1, 2) for stream in ("stdout", "stderr")
+            }
+            carrier = runner.validate_manifest(
+                work, relative, fixture["run_id"], "build_gate", 0,
+                require_expectations=False,
+            )
+            cli_env = {key: value for key, value in os.environ.items()
+                       if not key.startswith("DEVLYN_INVOCATION_")}
+            cli_env["PYTHONDONTWRITEBYTECODE"] = "1"
+
+            def cli(*args: str) -> subprocess.CompletedProcess[str]:
+                return subprocess.run(
+                    [sys.executable, str(pathlib.Path(__file__).resolve()),
+                     "--devlyn-dir", ".devlyn", "--phase", "build_gate", *args],
+                    cwd=work, env=cli_env, capture_output=True, text=True, check=False,
+                )
+
+            def rejected(*args: str, error: str = "BLOCKED:process-evidence-invalid") -> None:
+                before = state_file.read_bytes()
+                result = cli(*args)
+                assert result.returncode != 0, result.stdout
+                assert error in result.stderr, result.stderr
+                assert state_file.read_bytes() == before
+
+            def archived(state: dict) -> None:
+                paths = archive.dynamic_evidence_artifacts(active, state)
+                assert set(paths) == set(observed)
+                assert {path: path.read_bytes() for path in paths} == observed
+                assert {path: path.read_bytes() for path in manifest.parent.iterdir()} == observed
+
+            def terminal() -> dict:
+                state = read_state(state_file)
+                entry = state["phases"]["build_gate"]
+                assert entry["verdict"] == "BLOCKED"
+                assert entry["completed_at"] is not None and entry["duration_ms"] >= 0
+                assert entry["model_effective"] is None
+                assert entry.get("invocation_receipt") is None
+                assert state["phases"]["final_report"] is None
+                assert state["process_evidence"] == [carrier]
+                assert not summary.exists() and not summary.is_symlink()
+                archived(state)
+                return state
+
+            completed = cli("complete", "--verdict", "BLOCKED")
+            assert completed.returncode == 0, completed.stderr
+            bound = terminal()
+            print("PASS iter-0119 absent-summary BLOCKED persists exact five-file evidence")
+
+            for control in ("unbound", "tampered", "manifest", "binding", "malformed", "duplicate"):
+                candidate = copy.deepcopy(bound)
+                extra = manifest.parent / "unexpected.stdout"
+                stream = manifest.parent / "verification-command-0001.stdout"
+                if control == "unbound":
+                    extra.write_bytes(b"unbound")
+                elif control == "tampered":
+                    stream.write_bytes(b"tampered")
+                elif control == "manifest":
+                    manifest.write_text("{", encoding="utf-8")
+                elif control == "malformed":
+                    candidate["process_evidence"] = [{}]
+                elif control == "duplicate":
+                    candidate["process_evidence"].append(copy.deepcopy(carrier))
+                else:
+                    candidate["process_evidence"][0]["manifest"]["sha256"] = "0" * 64
+                try:
+                    archive.dynamic_evidence_artifacts(active, candidate)
+                except archive.ArchiveError as exc:
+                    if control == "duplicate":
+                        assert "duplicate state-bound process-evidence" in str(exc), str(exc)
+                    else:
+                        assert ("unbound process-evidence" if control == "unbound" else
+                                "invalid bound process evidence") in str(exc), str(exc)
+                else:
+                    raise AssertionError(f"archive accepted {control}")
+                extra.unlink(missing_ok=True)
+                stream.write_bytes(observed[stream])
+                manifest.write_bytes(manifest_bytes)
+            archived(bound)
+
+            state_file.write_bytes(open_bytes)
+            for verdict in ("PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "FAIL"):
+                rejected("complete", "--verdict", verdict, error="spec-verify.results.json is missing")
+            rejected("complete", error="spec-verify.results.json is missing")
+            manifest.unlink()
+            rejected("complete", "--verdict", "BLOCKED")
+            manifest.write_text("{", encoding="utf-8")
+            rejected("complete", "--verdict", "BLOCKED")
+            for control in ("run_id", "phase", "round", "expectation", "expectation_met",
+                            "duplicate", "path", "bytes", "sha256"):
+                altered = copy.deepcopy(document)
+                entry = altered["entries"][1]
+                if control in {"run_id", "phase", "round"}:
+                    altered[control] = {"run_id": "rs-wrong", "phase": "implement", "round": 1}[control]
+                elif control == "expectation":
+                    entry["expectation"]["exit_code"] = "zero"
+                elif control == "expectation_met":
+                    entry[control] = True
+                elif control == "duplicate":
+                    altered["entries"].append(copy.deepcopy(entry))
+                else:
+                    entry["stdout"][control] = {
+                        "path": "../escaped.stdout", "bytes": entry["stdout"]["bytes"] + 1,
+                        "sha256": "0" * 64,
+                    }[control]
+                manifest.write_text(json.dumps(altered), encoding="utf-8")
+                rejected("complete", "--verdict", "BLOCKED")
+            manifest.write_bytes(manifest_bytes)
+            stream = manifest.parent / "verification-command-0001.stdout"
+            stream.write_bytes(b"tampered")
+            rejected("complete", "--verdict", "BLOCKED")
+            stream.write_bytes(observed[stream])
+            outside = devlyn / "escaped-evidence"
+            for path in (manifest, manifest.parent / "verification-command-0001.stdout"):
+                outside.write_bytes(observed[path])
+                path.unlink()
+                path.symlink_to(outside)
+                rejected("complete", "--verdict", "BLOCKED")
+                path.unlink()
+                path.write_bytes(observed[path])
+            bad_prior = copy.deepcopy(carrier)
+            bad_prior["manifest"]["sha256"] = "0" * 64
+            for invalid, error in (
+                ({}, "state.process_evidence must be null or an array"),
+                ([{}], "state process-evidence carrier has an invalid shape"),
+                ([bad_prior], "bound process evidence manifest digest mismatch"),
+                ([carrier], "duplicate state carrier"),
+            ):
+                candidate = copy.deepcopy(fixture)
+                candidate["process_evidence"] = invalid
+                write_state(state_file, candidate)
+                rejected("complete", "--verdict", "BLOCKED", error=error)
+            state_file.write_bytes(open_bytes)
+
+            commands = runner.bound_carrier_summary_commands(work, carrier)
+            wrong_commands = copy.deepcopy(commands)
+            wrong_commands[1]["pass"] = True
+            wrong_carrier = copy.deepcopy(carrier)
+            wrong_carrier["round"] = 1
+            for content in (
+                "{", "[]", json.dumps({"commands": {}}),
+                json.dumps({"commands": commands, "process_evidence": None}),
+                json.dumps({"commands": commands, "process_evidence": wrong_carrier}),
+                json.dumps({"commands": wrong_commands, "process_evidence": carrier}),
+            ):
+                summary.write_text(content, encoding="utf-8")
+                rejected("complete", "--verdict", "BLOCKED")
+            summary.unlink()
+            summary.mkdir()
+            rejected("complete", "--verdict", "BLOCKED")
+            summary.rmdir()
+            summary.symlink_to(active / "absent-summary")
+            rejected("complete", "--verdict", "BLOCKED")
+            summary.unlink()
+            # A valid summary symlink retains the existing outcome floor.
+            target = devlyn / "valid-summary.json"
+            target.write_text(json.dumps({
+                "commands": commands, "process_evidence": carrier,
+            }), encoding="utf-8")
+            summary.symlink_to(target)
+            for verdict in ("PASS", "PASS_WITH_ISSUES"):
+                rejected("complete", "--verdict", verdict, error="mismatch cannot complete")
+            completed = cli("complete", "--verdict", "FAIL")
+            assert completed.returncode == 0, completed.stderr
+            summarized = read_state(state_file)
+            assert summarized["phases"]["build_gate"]["verdict"] == "FAIL"
+            assert summarized["process_evidence"] == [carrier]
+            archived(summarized)
+            summary.unlink()
+            print("PASS iter-0119 ineligible verdicts, invalid summaries and integrity controls preserve state")
+
+            # Valid nonzero receipt: transition stays atomic; standalone
+            # completion persists BLOCKED before reporting the receipt error.
+            prompt = active / "build_gate.prompt.0"
+            prompt.write_text("inspect interrupted build\n", encoding="utf-8")
+            session = active / "build_gate.worker-session.0.jsonl"
+            session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
+            receipt = active / "build_gate.invocation.0.json"
+            model = "gpt-5.6-sol"
+            candidate = copy.deepcopy(fixture)
+            candidate["phases"]["build_gate"].update({
+                "engine": "codex", "model_requested": model,
+                "prompt_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
+            })
+            write_state(state_file, candidate)
+            receipts = invocation_receipt_module()
+            receipts.start_receipt(
+                work, receipt, fixture["run_id"], "build_gate", 0, str(prompt), str(session),
+                ["-C", str(work), "-s", "workspace-write", "-m", model,
+                 "-c", "sandbox_workspace_write.network_access=true", "inspect interrupted build"],
+            )
+            receipts.finish_receipt(work, receipt, 7)
+            receipt_bytes = receipt.read_bytes()
+            error = "BLOCKED:invocation-receipt-invalid: Codex invocation exited 7"
+            rejected(
+                "transition", "--verdict", "BLOCKED", "--engine-session-log", str(session),
+                "--next-phase", "final_report", "--next-round", "0", error=error,
+            )
+            completed = cli(
+                "complete", "--verdict", "BLOCKED", "--engine-session-log", str(session),
+            )
+            assert completed.returncode == 1, completed.stdout
+            assert completed.stderr.strip() == error, completed.stderr
+            terminal()
+            assert receipt.read_bytes() == receipt_bytes
+            print("PASS iter-0119 nonzero receipt persists BLOCKED before exit1; transition stays atomic")
+
+            candidate = copy.deepcopy(bound)
+            do_spawn(candidate, "build_gate", 1, None, None, "claude", None)
+            write_state(state_file, candidate)
+            next_relative = runner.manifest_relative_path(candidate, "build_gate")
+            runner.capture_process(
+                work, work / next_relative, fixture["run_id"], "build_gate", 1, obligations[0],
+            )
+            next_carrier = runner.validate_manifest(
+                work, next_relative, fixture["run_id"], "build_gate", 1,
+                require_expectations=False,
+            )
+            completed = cli("complete", "--verdict", "BLOCKED")
+            assert completed.returncode == 0, completed.stderr
+            appended = read_state(state_file)
+            assert appended["process_evidence"] == [carrier, next_carrier]
+            assert appended["phases"]["build_gate"]["verdict"] == "BLOCKED"
+            assert {path: path.read_bytes() for path in observed} == observed
+            assert set(observed).issubset(archive.dynamic_evidence_artifacts(active, appended))
+
+        test_interrupted_build_gate()
+
         # complete() before spawn() must fail loudly, not silently invent data.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
@@ -3787,7 +4074,6 @@ def self_test() -> int:
             ["git", "show", "-s", "--format=%s", "HEAD"], cwd=exact_repo,
             check=True, capture_output=True, text=True,
         ).stdout.strip() == "chore(pipeline): closure-restore round 1"
-        import importlib.util
         gate_spec = importlib.util.spec_from_file_location(
             "f7_carrier_gate", pathlib.Path(__file__).resolve().parents[3]
             / "benchmark/ceiling/scripts/f7-carrier-gate.py",

@@ -3495,7 +3495,7 @@ if ! grep -Fq '"max_observed_pair_solo_wall_ratio": 2.2506234413965087' benchmar
 fi
 if make_temp_dir package_results /tmp/devlyn-lint-package-results.XXXXXX \
   && make_temp_dir package_audit /tmp/devlyn-lint-package-audit.XXXXXX \
-  && make_temp_file package_audit_stdout /tmp/devlyn-lint-package-audit.XXXXXX.out; then
+  && make_temp_file package_audit_stdout /tmp/devlyn-lint-package-audit.out.XXXXXX; then
   cp -R benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof "$package_results/"
   cp -R benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1 "$package_results/"
   for rejected_run in \
@@ -3603,7 +3603,7 @@ PY
 else
   offenders="${offenders}"$'\n'"packaged pair evidence subset could not allocate temporary audit workspace"
 fi
-if make_temp_file pack_json /tmp/devlyn-lint-pack.XXXXXX.json \
+if make_temp_file pack_json /tmp/devlyn-lint-pack.json.XXXXXX \
   && make_temp_dir pack_cache /tmp/devlyn-lint-pack-cache.XXXXXX; then
   if npm_config_cache="$pack_cache" npm pack --dry-run --json > "$pack_json" 2>/dev/null; then
     if ! node - "$pack_json" <<'NODE'
@@ -4062,7 +4062,7 @@ else
   else
     bad "idgen temp files unavailable; cannot verify determinism"
   fi
-  if make_temp_dir tmp_bad && make_temp_file idgen_nan_out /tmp/pair-plan-idgen-nan.XXXXXX.out; then
+  if make_temp_dir tmp_bad && make_temp_file idgen_nan_out /tmp/pair-plan-idgen-nan.out.XXXXXX; then
     cp -R "$fixture/." "$tmp_bad/"
     printf '{"verification_commands": NaN}\n' > "$tmp_bad/expected.json"
     if python3 "$idgen" --fixture "$tmp_bad" --generated-at 2026-04-29T18:30:00Z >"$idgen_nan_out" 2>&1; then
@@ -4073,7 +4073,7 @@ else
     rm -rf "$tmp_bad" "$idgen_nan_out"
   fi
 
-  if make_temp_file bad_plan && make_temp_file plan_lint_nan_out /tmp/pair-plan-lint-nan.XXXXXX.out; then
+  if make_temp_file bad_plan && make_temp_file plan_lint_nan_out /tmp/pair-plan-lint-nan.out.XXXXXX; then
     printf '{"schema_version": NaN}\n' > "$bad_plan"
     if python3 benchmark/auto-resolve/scripts/pair-plan-lint.py --plan "$bad_plan" --quiet >"$plan_lint_nan_out" 2>&1; then
       bad "pair-plan-lint.py accepted NaN in pair-plan.json"
