@@ -2,7 +2,7 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current guidance reconciled: 2026-09-05 (0114; policy and claim boundaries).
+Current guidance reconciled: 2026-09-06 (0120; model adaptation, efficiency and decision authority; prior 0114 claim boundaries retained).
 Value axes refined: 2026-07-10 (user directive,
 HANDOFF Block 8: raw coding correctness is the engine floor, the moat is
 intent fidelity / decomposition / collaboration synergy / design rigor /
@@ -21,6 +21,18 @@ The user's working contract, in their own framing:
 - "Eventually compose into a single AI Agent organisation that operates autonomously, pyx-style."
 
 For that to be real, the harness has to be **overwhelmingly better than bare prompting**. Marginally better is a research curiosity. The gap has to be wide enough that spawning 5-10 parallel runs is *trivially obvious value* over a single human prompting Claude or Codex once.
+
+### Model capability, efficiency and decision authority (2026-09-06)
+
+The user delegates the final architectural decision to the root orchestrator. Actual Fable 5.1 and Grok 4.6 supply independent advice; unanimity is not a decision gate. Root may substantially change or replace the structure and update intent/vision when evidence supports a better result. Preserve truthful failed experiments and resolve evidenced defects; advisory review does not mean ignoring counterexamples. [0120](iterations/0120-model-adaptation-direction.md) records the consultation and root decision.
+
+- **Shared contract, measured adaptation.** Keep common intent, quality, scope and evidence contracts with small model/version-specific deltas where they help. Current `/devlyn:resolve` remains the entry point and phase graph remains the baseline. Neither the current graph nor a rewrite is the objective; compare simpler alternatives before adding machinery. A model that needs no special delta gets none.
+- **Vertical allocation and horizontal review are separate axes.** Assign bounded work by measured role fitness, not model names or a universal intelligence ladder. Difficult implementation and source judgment may require strong models too. Preserve independent peer-model verification: judges inspect requirements/code/raw evidence before seeing other judgments. Fresh context and model diversity are distinct; evaluate additional valid findings, misses, false positives and repair cost. A substantiated blocker is resolved with evidence, never outvoted.
+- **Useful automatic defaults, explicit control.** Prefer existing settings; separate worker selection from review authority when the role comparison supports it. Users should be able to override roles per project and per run, see resolved engine/model/effort and understand unavailable routes. Do not infer fitness from availability or silently promote a changed CLI default. A profile/router is a candidate, not an already shipped guarantee.
+- **Quality first; OUTPUT is the primary token target.** Preserve intent completeness, correctness and failure behavior while reducing whole-run provider output, wall-time and monetary cost. The user's explicit value-for-money mandate supersedes the earlier cost-framing ban. Count orchestration, workers, judges, generated code/tools, retries and handoffs; report reasoning as a component when included in output, never twice. Missing telemetry is unknown, not zero. Input/cache savings and shorter prose alone do not establish output savings. First remove duplicate generation and script reproducible execution/aggregation; lower effort or compressed decision evidence requires matched quality evidence.
+- **Fair replacement, not automatic replacement.** Register old/new model × current/candidate harness comparisons plus each model's minimally scaffolded baseline. Keep model-supported settings/tools/resources explicit; native-best configurations with different settings are a separate practical comparison. Use repeated trials, blind calibrated judgments and confirmation tasks disjoint from all tuning exposure. Distinguish model ability, harness suppression, interaction and selection bias. Promote by role only after reliable quality/efficiency evidence; an older model winning fairly is valid. Existing seat/checkup instruments have coverage and exact-identity gaps, and are not a complete migration service.
+
+These are adopted objectives and design constraints, not measured superiority or feature completion. Current 0118 acceptance evidence and A16 apparatus/results remain immutable. New comparisons get their own registration; do not retune historical exams to make a model, pair or harness win.
 
 ### Value axes for frontier engines (user directive 2026-07-10, HANDOFF Block 8)
 
@@ -105,7 +117,7 @@ The historical creative-plugin proposal named `/design-system` and `/team-design
 - **No guesswork** — every additional LLM/phase combination requires falsifiable acceptance gate before it ships.
 - **No workaround** — silent fallbacks, hardcoded model names, `any`-typed adapter slots, etc. are rejected in coordination layer just as they are in product code. Required unavailable engines fail closed with `BLOCKED:<engine>-unavailable`.
 - **Worldclass production-ready** — zero CRITICAL findings on multi-LLM coordination paths. Pair-mode failures (Codex unavailable, model drift, API rate-limit) must surface user-visible, not silently degrade.
-- **Best practice** — adapter files follow each model's official prompt-engineering guide (Anthropic guide for Claude, OpenAI guide for GPT). When a third model is added, its official guide is the contract.
+- **Best practice** — use each model's official guidance to form adapter hypotheses, then retain deltas supported by representative comparisons. Vendor guidance does not override the user's contract or prove local performance.
 
 This block is the standing commitment. Any redesign Phase that contradicts it is a defect.
 

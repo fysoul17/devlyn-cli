@@ -1,7 +1,7 @@
 # HANDOFF — for the next session
 
 **Read order on cold start (mandatory)**:
-1. **This file, START-HERE**, then [0118 xhigh parking checkpoint](iterations/0118-concurrent-admission.md#xhigh-parking-checkpoint--2026-09-06) — three-run state, custody and bounded resume steps. Read the older blocked checkpoint only for its historical evidence.
+1. **This file, START-HERE**, then [0118 current continuation](iterations/0118-concurrent-admission.md#current-continuation--2026-09-06) — accepted run, custody and current frontier. Older parking sections are historical evidence, not active instructions.
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + ceiling contract + ops test #17 + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
@@ -12,17 +12,25 @@ Subject to explicit user directives (including the bounded 0118 exception), if a
 
 ---
 
-## 🚦 START-HERE — 2026-09-06 / 0118 USER-PARKED, CODE ACCEPTANCE INCOMPLETE
+## 🚦 START-HERE — 2026-09-07 / 0118 ACCEPTED; 0120 NEXT
 
-**Parking completed at 2026-09-06 10:05:45 KST; 0118 code is not accepted.** The newest sidecar `rs-20260906T003602Z-a377c8b5b37c` passed PLAN and fresh Fable probe derivation; its two baseline probes reproduced the bugs in 0.373s/2.294s. Actual Astra IMPLEMENT copied seven frozen files, then exited1 on Codex usage limit before the four mirror copies or post-fix checks. It is now canonically **BLOCKED and archived**. FINISH checked7/offenders0; no partial bytes were changed during parking. The [xhigh checkpoint](iterations/0118-concurrent-admission.md#xhigh-parking-checkpoint--2026-09-06) owns exact identities, verified custody, and the resume sequence.
+**0118 full R5 acceptance closed PASS_WITH_ISSUES**, run `rs-20260906T132050Z-dc69e1c4b8e9`. Fresh BUILD6/6 and independent MECHANICAL6/6 passed; actual Astra/Grok final PASS and Fable PASS_WITH_ISSUES leave two LOW/nonbinding advisories. Exact eleven-file implementation `9d70cd8fb213f039924edbe80e310f06b55d41b9` and the single closure DECISIONS append `318ac89a2996573e37a1c35764557c21a1347ada` are pushed to `origin/codex/0118-acceptance-r5-20260906`. The [current checkpoint](iterations/0118-concurrent-admission.md#current-continuation--2026-09-06) owns archived state/report, 353-file durable custody, source-backed adjudications and the superseded original route. No active R5 run remains. Its reviewed historical document bytes remain frozen; this main checkpoint carries the current frontier.
 
-**Preserve three distinct runs:** original `devlyn-cli-0118-concurrent-sessions` remains unclosed IMPLEMENT2 PASS / BUILD0 FAIL, with the complete frozen11-file delta. Old `devlyn-cli-0118-precommit-acceptance` retains that same delta and its BLOCKED archive (old BUILD/MECHANICAL6/6; missing final Fable/valid Grok). New `devlyn-cli-0118-acceptance-r2` retains partial7 plus four old `.agents` mirrors; never treat it as the complete delta. No implementation commit or main adoption.
+**0119 dependency is accepted and pushed** as `9df4f59330d8e80c5a6b5e6a0c317a3738c1b4ef` on `origin/codex/0119-interrupted-build-r1-20260906`. Its original full run remains NEEDS_WORK; separate fresh verify-only PASS_WITH_ISSUES supplies the omitted original allocation evidence and retains one LOW advisory. R4 and the superseded original0118 are archived BLOCKED, not retroactive successes. Other partial/invalid attempts remain preserved in the linked checkpoint. Main runtime adoption remains a separate integration step.
 
-**Next session, xhigh:** follow the checkpoint's bounded steps; do not bootstrap or invoke old helpers immediately. The corrected Grok operator has actual Fable OPERATOR:GO and Grok validated PASS, **operator only**. The full-product prompt and success-closure helper still use the old audit schema and need alignment before fresh acceptance. Restore actual required-seat availability once after the user resumes; the Codex provider's Sep12 4:33PM message had no explicit timezone and is not an availability guarantee. No scheduled retry. Preserve both BLOCKED archives and all original rounds; no same-run replay or final approval inferred from old/synthetic evidence. A16 waiter stays stopped, outcomes NOT_INSPECTED.
+**Next: [0120](iterations/0120-model-adaptation-direction.md)** — test the smallest removal of duplicated model reporting with correct whole-run OUTPUT accounting, then measured model profiles/role separation. The user authorizes final decisions, commits/pushes and next package version **3.0.0**. Keep the current resolve entry and measured quality requirements. A16 remains user-parked; do not restart, retune or use its outcomes for new candidate selection. Broad superiority and 3.0.0 release readiness remain unproven.
 
 User restart line:
 
-> autoresearch/HANDOFF.md의 START-HERE와 0118 xhigh parking checkpoint를 읽고, 파킹된 증거를 보존하면서 적힌 재개 순서대로 3-seat 협업을 이어가줘.
+> autoresearch/HANDOFF.md의 START-HERE와 0120 방향을 읽고, 완료된 검증과 실패 증거를 보존하면서 3.0.0을 위한 하네스 개선·비교·커밋·푸시를 계속해줘.
+
+### Adopted model-adaptation direction — 2026-09-06
+
+The user delegates final decisions, including substantial structural change, to root; actual Fable 5.1/Grok 4.6 opinions are independent advice, not a unanimity gate. [NORTH-STAR](NORTH-STAR.md#model-capability-efficiency-and-decision-authority-2026-09-06) owns the updated objective; [0120](iterations/0120-model-adaptation-direction.md) records actual consultations, root's named disagreements and ordered work. Quality/intent completeness remain primary; whole-run OUTPUT, time and value are optimization axes, input/cache secondary. The user explicitly permits cost/value trade-offs, superseding the older cost-framing ban. Verified work may be committed and pushed; the user confirmed **3.0.0** as the next package version. Preserve the existing published/tagged 2.0.0.
+
+Direction: shared contract plus small measured model/version deltas; vertical role allocation alongside horizontal independent peer review; usable defaults and role overrides; fair old/new × current/candidate comparisons with each model's minimal baseline and separately reported native-best settings. Root chose duplicate-generation/scripted-reporting work before adding role knobs. Current executor couples IMPLEMENT/CLEANUP/primary VERIFY; independent worker/reviewer selection is a candidate, not shipped automatic routing. Preserve recorded negative experiments and frozen0118/A16; no superiority or savings claim follows from advice.
+
+Verified measurement caveat for installed Codex0.153.4: human `tokens used` combines uncached input and output; JSON output includes its reasoning component. The current layer-lift aggregate therefore is not pure output for this version. Version-matched official source and two actual receipt reconciliations are in main `.devlyn/0118-resume-check-20260906T0749/usage-semantics/NOTES.md` (also in R4 custody). Correct measurement in a separate registered comparison; do not double-count reasoning or treat failed/missing telemetry as zero, and do not alter frozen A16 apparatus/results.
 
 ### Accepted 0117/A16 and 0114 background
 
@@ -46,7 +54,7 @@ Original product, frozen panels and historical run state are preserved. The cand
 
 ## Binding seat/lane rules (consolidated; details in the cited iters)
 
-- Current actual 3-seat roles and design-row limits are owned by [0118](iterations/0118-concurrent-admission.md#three-seat-collaboration); current execution and missing code acceptance by its [xhigh checkpoint](iterations/0118-concurrent-admission.md#xhigh-parking-checkpoint--2026-09-06). This supersedes older executor/model shorthand below; Fable token economy remains HARD. Matrix arms only on a quiet account outside 23:00–01:00 KST; delegated edits = ONE writer at a time + digest pins in seat prompts (0105 race).
+- Current actual 3-seat roles and design-row limits are owned by [0118](iterations/0118-concurrent-admission.md#three-seat-collaboration); accepted code and preserved failed attempts by its [current checkpoint](iterations/0118-concurrent-admission.md#current-continuation--2026-09-06). This supersedes older executor/model shorthand below; Whole-run OUTPUT optimization remains binding; the user reports lifting model quotas, and actual launch receipts govern availability. Matrix arms only on a quiet account outside 23:00–01:00 KST; delegated edits = ONE writer at a time + digest pins in seat prompts (0105 race).
 - Seat recipes (user direction 2026-09-05: codex `gpt-6-astra` + grok 4.6):
   terra = `codex-monitored.sh -s workspace-write -c model_reasoning_effort=xhigh`
   (omit `-m` → CLI default `gpt-6-astra`); sol = same wrapper read-only;
@@ -84,7 +92,7 @@ Original product, frozen panels and historical run state are preserved. The cand
 ## ⛔ Hard operating rules (binding)
 
 1. **Pair-review IS the work** — every non-trivial claim pair-verified at write time; open cited file:line yourself; R-final before commit when results surprise.
-2. **Cost framing is BANNED** (memory `feedback_no_cost_talk.md`, HARD). Axes: effectiveness × accuracy × reasonable wall-time.
+2. **Quality-preserving value optimization** (user supersession 2026-09-06, 0120): optimize whole-run OUTPUT, wall-time and monetary cost while preserving intent completeness and correctness. The former cost-framing ban is historical.
 3. **Verify before claim** — every cited file:line opened at citation time; stale references caused fabrication risk in past iters.
 4. **Explain simply** (Korean, decision-maker view) — conclusion + options + recommendation; no internal label walls in user-facing summaries.
 5. **Greenfield interface, NOT mechanisms** — any redesign edit must justify why a learned mechanism changes (not just relocates).
@@ -109,7 +117,7 @@ Per `feedback_codex_collaboration_not_consult.md`; round-shape v2 (2026-07-04). 
     "<prompt>"
   ```
   Output to file (`> /tmp/codex-<topic>/response.log 2>&1`); never pipe wrapper stdout (iter-0009 contract). `-s workspace-write` for delegated implementation; implementation is delegated to Codex CLI per `feedback_implementation_to_codex_2026_07_05`.
-- **Adapter/prompt iters** must cite the official vendor prompt guides (Anthropic + OpenAI) as acceptance — "guide section X.Y says Z", not "I think this is better".
+- **Adapter/prompt iters** cite official vendor guidance for the hypothesis and measured local evidence for acceptance, per NORTH-STAR's model-adaptation contract.
 
 ---
 

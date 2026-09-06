@@ -30,14 +30,15 @@ The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the s
 
 **Categorical reliability (Codex GPT-5.5 verdict 2026-04-29, ultimate-goal consult)** — per Q2 of that consult, "overwhelmingly better" is *not* an average margin number; it is **expected utility under categorical reliability**. The harness must systematically *not* fail the task classes bare prompting systematically *does* fail (spec-compliance, multi-file scope, build-gate-detected runtime errors, security CRITICAL findings, silent-catch / hardcoded-value / `any` / `@ts-ignore` violations, scope leaks). Mission 1 ships only when this asymmetry is empirically clear, not when an average lift hits a number.
 
-**0118 exception — USER PARKED 2026-09-06:** the user's concurrent same-project tasks/sessions request permits bounded bootstrap admission protection. [0118 xhigh checkpoint](iterations/0118-concurrent-admission.md#xhigh-parking-checkpoint--2026-09-06) owns the three-run state: original frozen implementation unclosed; old full acceptance BLOCKED; newest acceptance BLOCKED/archived after Codex quota interrupted seven-file delivery before four mirror copies. Grok operator recovery is approved, product acceptance remains incomplete. Mission 1 floor/ceiling and the frozen 0113 quality-and-efficiency comparison stay open and separate. No fleet, automatic placement, merge/shared-resource guarantee or main adoption of 0118/0115/0116.
+**0118 exception — accepted 2026-09-07 KST:** the user's concurrent same-project tasks/sessions request permits bounded bootstrap admission protection. [Current0118 checkpoint](iterations/0118-concurrent-admission.md#current-continuation--2026-09-06) owns full R5 PASS_WITH_ISSUES, BUILD6/6 plus independent MECHANICAL6/6, actual final trio, two retained LOW advisories and pushed implementation `9d70cd8`. Original/failed acceptance histories are preserved. Mission1 floor/ceiling and frozen A16 remain open and separate; no fleet, lifetime lease, automatic placement or merge/shared-resource guarantee follows. Main adoption of0118 is a separate integration step;0115/0116 remain separate candidates.
 
 **Open work (2026-09-06)**:
-- 0114/A15 corrects 0113 outcome retention, per-run token anchors and launch isolation before fresh collection; quick12 is a screen, full32 the confirmatory layer instrument. See HANDOFF START-HERE.
+- [0120 model adaptation direction](iterations/0120-model-adaptation-direction.md): root decides after independent actual Fable/Grok advice. Single-task deterministic execution/reporting, model-specific deltas, role separation and fair replacement comparisons are authorized candidates; preserve quality and measure whole-run OUTPUT/time/value before adoption. This authorization does not reopen frozen A16 or imply a fleet/platform build.
+- 0114/A15 corrects 0113 outcome retention, per-run token anchors and launch isolation before fresh collection; quick12/full32 retain their historical frozen0113 screen/confirmation roles. New0120 confirmation excludes every task exposed during tuning; those old labels alone do not establish independence. See HANDOFF START-HERE.
 - Continue the existing 0070 intent-closure direction; the aggregate/off-resolve closure kernel is designed, not fully shipped. Post-panel changes follow both quality and efficiency, with the observed SURFACE_CLOSE false-halt candidate first (0114).
 - The full #15 real-project trial remains open; the 0035 prelim did not close its external-developer/existing-codebase axes.
 
-**Hard NO list during Mission 1 (subject only to the bounded 0118 exception above)**:
+**Hard NO list during Mission 1 (subject to the bounded 0118 exception and explicit 0120 single-task authorization above)**:
 - ❌ No worktree-per-task substrate work. Stays single-worktree on `main`.
 - ❌ No parallel-fleet smoke (N≥2 simultaneous runs). Single task only.
 - ❌ No resource-lease helper / SQLite leases / port pool. Defaults stay (single dev server on 5173 is fine for one user).
@@ -45,7 +46,7 @@ The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the s
 - ❌ No queue-length / wait-time instrumentation (parallel-readiness signals — out of scope).
 - ❌ No multi-agent coordination, knowledge-base sharing, self-replanning, audit manifest infrastructure beyond what `pipeline.state.json` already gives.
 - ❌ No qwen / gemma / local-model arm exploration (NORTH-STAR ops test #11 stays deferred).
-- ❌ No cross-vendor / model-agnostic infrastructure work.
+- ❌ No generic cross-vendor platform build; the authorized 0120 single-task profile/role/evaluation candidates are in scope.
 - ❌ No "skill description tuning to expand trigger surface." Description stays scoped to actual capabilities.
 
 **Ceiling addendum (2026-07-06/07, HANDOFF Block 7 — binding)**: Mission 1's
