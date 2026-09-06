@@ -1,7 +1,7 @@
 # HANDOFF — for the next session
 
 **Read order on cold start (mandatory)**:
-1. **This file, START-HERE**, then [0118 blocked checkpoint](iterations/0118-concurrent-admission.md#final-acceptance-blocked-checkpoint--2026-09-06) — actual two-run state, immutable custody and missing final approvals before continuation
+1. **This file, START-HERE**, then [0118 xhigh parking checkpoint](iterations/0118-concurrent-admission.md#xhigh-parking-checkpoint--2026-09-06) — three-run state, custody and bounded resume steps. Read the older blocked checkpoint only for its historical evidence.
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + ceiling contract + ops test #17 + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
@@ -12,15 +12,17 @@ Subject to explicit user directives (including the bounded 0118 exception), if a
 
 ---
 
-## 🚦 START-HERE — 2026-09-06 / 0118 FINAL ACCEPTANCE BLOCKED
+## 🚦 START-HERE — 2026-09-06 / 0118 USER-PARKED, CODE ACCEPTANCE INCOMPLETE
 
-**0118 implementation is frozen; final acceptance is incomplete.** Full precommit acceptance passed BUILD6/6, fresh CLEANUP after a preserved cache finding, and independent MECHANICAL6/6. Actual Astra final PASS; Fable stopped at session quota, and Grok raw PASS failed a mismatched operator prompt/tool/validator contract. Sidecar `rs-20260905T174917Z-4fcdaacca51b` is canonically BLOCKED and archived. Original `rs-20260905T164734Z-f5936cf6fc73` remains unclosed at IMPLEMENT2 PASS / BUILD0 FAIL. [0118 checkpoint](iterations/0118-concurrent-admission.md#final-acceptance-blocked-checkpoint--2026-09-06) owns exact hashes, raw failures, 762-file verified custody and continuation constraints. No implementation commit or main adoption.
+**Parking completed at 2026-09-06 10:05:45 KST; 0118 code is not accepted.** The newest sidecar `rs-20260906T003602Z-a377c8b5b37c` passed PLAN and fresh Fable probe derivation; its two baseline probes reproduced the bugs in 0.373s/2.294s. Actual Astra IMPLEMENT copied seven frozen files, then exited1 on Codex usage limit before the four mirror copies or post-fix checks. It is now canonically **BLOCKED and archived**. FINISH checked7/offenders0; no partial bytes were changed during parking. The [xhigh checkpoint](iterations/0118-concurrent-admission.md#xhigh-parking-checkpoint--2026-09-06) owns exact identities, verified custody, and the resume sequence.
 
-**Next session:** read that checkpoint and the candidate `.devlyn/0118/RESUME.md` before invoking any prepared operator. Preserve both worktrees' identical frozen delta and original rounds. Fable's CLI reports a 2026-09-06 06:00 KST reset; availability still needs verification. Reconcile Grok's visible review contract with its validator before fresh acceptance; never treat invalid raw PASS or an archived BLOCKED as approval. The original commit/reentry helpers remain blocked by missing full acceptance. Do not repeat tests/models merely on cold start. A16 waiter remains stopped, outcomes NOT_INSPECTED; preserve its stop receipts and frozen artifacts, with no duplicate waiter or collection relaunch.
+**Preserve three distinct runs:** original `devlyn-cli-0118-concurrent-sessions` remains unclosed IMPLEMENT2 PASS / BUILD0 FAIL, with the complete frozen11-file delta. Old `devlyn-cli-0118-precommit-acceptance` retains that same delta and its BLOCKED archive (old BUILD/MECHANICAL6/6; missing final Fable/valid Grok). New `devlyn-cli-0118-acceptance-r2` retains partial7 plus four old `.agents` mirrors; never treat it as the complete delta. No implementation commit or main adoption.
+
+**Next session, xhigh:** follow the checkpoint's bounded steps; do not bootstrap or invoke old helpers immediately. The corrected Grok operator has actual Fable OPERATOR:GO and Grok validated PASS, **operator only**. The full-product prompt and success-closure helper still use the old audit schema and need alignment before fresh acceptance. Restore actual required-seat availability once after the user resumes; the Codex provider's Sep12 4:33PM message had no explicit timezone and is not an availability guarantee. No scheduled retry. Preserve both BLOCKED archives and all original rounds; no same-run replay or final approval inferred from old/synthetic evidence. A16 waiter stays stopped, outcomes NOT_INSPECTED.
 
 User restart line:
 
-> autoresearch/HANDOFF.md의 START-HERE부터 이어서, 3-seat 협업 규칙을 지키며 0118을 진행해줘.
+> autoresearch/HANDOFF.md의 START-HERE와 0118 xhigh parking checkpoint를 읽고, 파킹된 증거를 보존하면서 적힌 재개 순서대로 3-seat 협업을 이어가줘.
 
 ### Accepted 0117/A16 and 0114 background
 
@@ -44,7 +46,7 @@ Original product, frozen panels and historical run state are preserved. The cand
 
 ## Binding seat/lane rules (consolidated; details in the cited iters)
 
-- Current actual 3-seat roles, design-row limits and pending final-code trio are owned by [0118](iterations/0118-concurrent-admission.md#three-seat-collaboration). This supersedes older executor/model shorthand below; Fable token economy remains HARD. Matrix arms only on a quiet account outside 23:00–01:00 KST; delegated edits = ONE writer at a time + digest pins in seat prompts (0105 race).
+- Current actual 3-seat roles and design-row limits are owned by [0118](iterations/0118-concurrent-admission.md#three-seat-collaboration); current execution and missing code acceptance by its [xhigh checkpoint](iterations/0118-concurrent-admission.md#xhigh-parking-checkpoint--2026-09-06). This supersedes older executor/model shorthand below; Fable token economy remains HARD. Matrix arms only on a quiet account outside 23:00–01:00 KST; delegated edits = ONE writer at a time + digest pins in seat prompts (0105 race).
 - Seat recipes (user direction 2026-09-05: codex `gpt-6-astra` + grok 4.6):
   terra = `codex-monitored.sh -s workspace-write -c model_reasoning_effort=xhigh`
   (omit `-m` → CLI default `gpt-6-astra`); sol = same wrapper read-only;

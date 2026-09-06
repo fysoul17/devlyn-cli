@@ -1,8 +1,58 @@
 # 0118 — concurrent bootstrap admission
 
-**2026-09-06 checkpoint: implementation is frozen; final acceptance is BLOCKED.** Full precommit acceptance reached final review after passing its gates. Actual Astra passed; Fable hit a session quota and Grok raw PASS failed the operator input/tool contract. The sidecar is canonically BLOCKED and archived; the original run remains unclosed. No code commit or main adoption.
+**2026-09-06: USER-PARKED; final code acceptance is incomplete.** The original frozen implementation remains unclosed. Both acceptance sidecars are now archived BLOCKED: the older one at final review, the newest at partial IMPLEMENT after Codex quota. Start with the [xhigh parking checkpoint](#xhigh-parking-checkpoint--2026-09-06); older checkpoints below preserve their historical evidence. No code commit or main adoption.
 
 Candidate: `/Users/aipalm/Documents/GitHub/devlyn-cli-0118-concurrent-sessions`, branch `codex/0118-concurrent-sessions-20260906`, original base `4acfc3cb6071f5c2923b3f3ceeebd03c88460a18` (`4acfc3c`). [Owner spec](/Users/aipalm/Documents/GitHub/devlyn-cli-0118-concurrent-sessions/docs/specs/0118-concurrent-admission/spec.md) and sibling `spec.expected.json` own requirements and command bounds. Owner spec/context checkpoint is `1990893e085704fe6a99e2bbca927844c71bb57f`; implementation remains uncommitted. No DECISIONS entry until final implementation closure.
+
+## xhigh parking checkpoint — 2026-09-06
+
+User requested completing the interrupted work and parking enough context for a future xhigh session. **This attempt is terminally closed, not successfully accepted.** Actual Codex worker quota prevented further canonical implementation. No retry/model/test replay or source/mirror edits were performed during parking. Principles: **No guesswork** (raw failure and exact file identities), **No workaround** (failed receipt stays failed), **No overengineering / Optimized** (reuse approved evidence; replace stale resume instructions), **Production ready** (explicit terminal blocker).
+
+### Three runs — do not conflate
+
+All three candidate worktrees retain HEAD `1990893e085704fe6a99e2bbca927844c71bb57f` and unchanged indices. Common parent directory: `/Users/aipalm/Documents/GitHub/`.
+
+| Worktree / run | Parked state |
+| --- | --- |
+| `devlyn-cli-0118-concurrent-sessions` / `rs-20260905T164734Z-f5936cf6fc73` | Original active state remains IMPLEMENT2 PASS / BUILD0 FAIL, global0. Complete frozen11-file delta, no implementation commit/durability/reentry. |
+| `devlyn-cli-0118-precommit-acceptance` / `rs-20260905T174917Z-4fcdaacca51b` | Older BLOCKED archive, complete frozen11. Its BUILD6/6, CLEANUP1 and MECHANICAL6/6 remain valid only for that run; actual Astra PASS, Fable quota and invalid Grok prevent acceptance. |
+| `devlyn-cli-0118-acceptance-r2` / `rs-20260906T003602Z-a377c8b5b37c` | New BLOCKED archive at `.devlyn/runs/<run_id>/`; PLAN PASS, Fable probes PASS, IMPLEMENT0 quota. Seven non-`.agents` files match frozen bytes/modes; all four `.agents` mirrors still match HEAD. BUILD/CLEANUP/VERIFY never ran. |
+
+Complete frozen diff SHA256 `fb3268277edc55e8b3f6a7b393f8b2af4be36420489b179128e65636a76b093e`; newest partial7 diff SHA256 `213c687e299bd76a2d5ae8d581dacce851ee82df37e88f493ab21658d87ef555`. The latter happens also to equal the old canonical-only review projection; hash equality alone does not make a full delivery. Spec/expected remain `c0df06d92f29b8fa3f1049489e0f1e53bb041c38b84786c0b2c3c4fd012c54c7` / `1c31ddb9c9972cee93fbf0405fa13c0a029a2b94b3a508bd71149f8fd8dc1b76`.
+
+### Actual latest results and custody
+
+New `.devlyn/0118-precommit/base-probe.{0,1}.result.json` records exits1 in **0.373318s / 2.294492s**, no timeout. `base-probe-classification.json` accepts the two actual baseline bugs: unfinished ownership replaced; both synchronized starts admitted. These are red evidence, not new post-fix PASS. The actual IMPLEMENT stream ends `turn.failed` on usage limit after seven copies. Recursive readiness search found no `source-ready.r0.json`, `mirror-ack.r0.json`, or `implement-evidence.r0.json`. Known worker/operator PIDs45465/45485/52649/52650 and waiter45397 were absent; no signals or restarts were needed.
+
+At **2026-09-06 01:05:45 UTC / 10:05:45 KST**, canonical FINAL_REPORT completion and archive succeeded. FINISH ran exit0, checked7/offenders0, without skips/reverts. Archived state SHA256 `16cee47de15d3314574694fa710f81218f5fedf802a8225a6c4d51c6cd8b027c`; report SHA256 `81c6ebaee8abaa4fc9c60e415c071ee8997131e81619103714716ffb5af51789`. Main `.devlyn/0118-park-20260906/closure.completed.json` and neighboring raw command receipts own this observation. All four worktrees' HEAD/index/diff were unchanged through closure.
+
+Canonical nuance: standalone IMPLEMENT `complete --verdict BLOCKED --engine-session-log ...` persisted completed BLOCKED but returned1, `BLOCKED:invocation-receipt-invalid: Codex invocation exited 1`. This is expected from `state-phase-write.py:1801–1809,4275–4279`; atomic `transition` would abort before saving. FINAL_REPORT was opened separately after the halt. `model_effective` stays null; the failed invocation is not state-bound by that API. Its actual receipt/session were separately hash-verified and preserved, never repaired or hand-bound. Lifecycle duration includes interruption/parking delay; wrapper elapsed90s is the available worker duration. Provider retry text said Sep12,2026 4:33PM without explicit timezone; it is not future availability evidence.
+
+**Durable bundle:** [OUTPUT.json](/Users/aipalm/.local/share/nx01/iter0118/20260906T010319Z-codex-quota-park-rs-20260906T003602Z-a377c8b5b37c/OUTPUT.json). Prearchive manifest preserves278 byte/hash/mode-verified files (9,300,899 bytes), SHA256 `aec8e338c125d73d31c0cb4d7a5110f28dc9d87f9b977b3ad49f5b932e4441f7`; final OUTPUT also binds actual archive/closure/context. Whole r2 `.devlyn`, main recovery operator, exact delivered files and spec are included, including auxiliary files canonical archive does not own. Earlier 762-file custody remains immutable and owns the original/older sidecar history.
+
+### Operator recovery — accepted scope and remaining traps
+
+Main `.devlyn/0118-resume-20260906/` owns actual Astra R1 authoring (exit0), Fable `fable-operator-final.stdout` **OPERATOR: GO** (exit0, is_error=false, no denials), and Grok `grok-operator-final.validation.json` **validated PASS, zero findings**. Grok read all456 lines/32,597 bytes in one successful exact read. These approve **operator recovery only**, not product code. Frozen `final-grok-run.py` SHA256 `bd133d894f9aacb86c493420ea0d4200a2564305612332c9e117a5d7450266db`; `operator-r1-note.md` explains the correction: calibrate old reads against old bytes, prepare new paths/data, derive pagination budget and validate actual complete fresh reads. Old invalid raw never becomes approval. The full new product packet has not run through this operator.
+
+Before another acceptance, align these **ignored operator files**, through actual Astra with Fable/Grok review of material contract changes; do not change product/spec for an infrastructure failure:
+
+| Current file | Required alignment before use |
+| --- | --- |
+| main `final-grok-run.py:28–32,261` | ROOT is main, output must be under ROOT/.devlyn, SHARED is `.agents/skills/_shared`, and sibling `pagination-evidence-r1.json` is required. Copy/repin for the new acceptance root and seal exact dependencies. Preserve pagination's old raw/manifest paths as intentional historical calibration; never blanket-replace them. |
+| r2 `prepare-judges.py:86` | Generated Grok prompt still advertises three tools. Correct operator permits only `read_file` and appends an exact derived read plan. Reconcile visible prompt, actual argv, sealed source/derived prompt and validator. Six calls is not a universal cap; 1000lines/65,397bytes is an observed preparation bound, not transport guarantee. |
+| r2 `close-pass-run.py:226,241–244` | Stale source-prompt==emitted-prompt assertion, three-tool expectation and removed `failed_reads`/`actual_read_paths` keys. Current audit uses `errors`, `pairing_ok`, `exact_reads`, `coverage`, `required_calls`. Preserve complete exact-byte coverage, correct pairing, exact derived count and all hash seals; do not merely remove failing assertions. |
+| r2 `close-blocked-run.py` | VERIFY1/Fable-quota-specific helper; not a general halt handler. It was **not** used for this IMPLEMENT quota closure. |
+| original `commit-approved-r2.py:7,11` / `reenter-build-r2.py:22,24` | Still point to the older BLOCKED sidecar. Repin copies only to an actual future PASS archive/trio. Keep all original state/spec/diff/finding/commit/durability guards. |
+
+### Bounded next-session sequence
+
+1. **Read only first:** HANDOFF START-HERE → this checkpoint → NORTH-STAR/PRINCIPLES/MISSIONS. Validate OUTPUT/manifests and the three actual run/file identities. Read `.devlyn/0118/RESUME.md` for the chosen root. A16 stays parked/NOT_INSPECTED; main product stays frozen. Do not scan historical streams unless a named assertion fails.
+2. **After the user resumes:** check actual required-seat availability and live writers once. No scheduled quota retry, repeated cold-start suites, seat substitution or model pin change. Keep actual Astra executor, Fable design/verification, Grok static judge; xhigh phase workers, one writer, `--pair-verify`. Native audits supplement these seats.
+3. **Prepare one new isolated full acceptance** at owner HEAD1990893 after the operator alignment above. Preserve original/full11, old BLOCKED and newest partial7/BLOCKED unchanged. Generate new run/manifest/phase identities; do not unarchive/replay r2 or reuse its receipts as fresh execution. Operator-only approvals remain bounded to their exact bytes; review changed contracts before use.
+4. **Execute in bounded phases:** fresh PLAN → Fable RISK_PROBES and actual baseline classification → Astra copies exact7 → parent copies exact4 after this new worker's source-ready receipt and writes the pinned mirror ack within240s → child validates all11/parity/focused result → BUILD → inspection-only CLEANUP with before/after HEAD/index/deliverable snapshots → independent MECHANICAL → actual final Astra/Fable/Grok → FINISH/FINAL_REPORT/archive. Keep network=false except BUILD=true, inherited invocation variables cleared for nested commands, and bytecode suppression. Preserve every failed round; no ad-hoc replacement of phase evidence.
+5. **Only actual full PASS archive/trio:** repin guarded original commit/reentry helpers to that winner. The real original checkpoint is `chore(pipeline): implement fix round 2`; invocation round stays2, global fix count0→1. Run actual durability and reentry; `reenter-build-r2.py` opens BUILD2 but does not launch its worker. Original fresh remaining gates/closure still follow. Then custody, final DECISIONS/context closure; main adoption/push remains separate and unauthorized here.
+
+Each step ends with a concrete receipt or blocker. If quota recurs, close that attempt honestly and park; no spec amendment or test retuning for quota. No broader harness superiority, full-session ownership or worldclass readiness follows from this bounded correction.
 
 ## Resume checkpoint — 2026-09-06
 
@@ -79,7 +129,7 @@ Fable/Astra findings are incorporated design proposals, not independent final-co
 
 ## Prepared operator and resume
 
-The original outer launch `rs-20260905T163949Z-92682731824c` ended BLOCKED during nested worker initialization; its 143-file custody and no-product-change state are preserved. Root then dispatched actual canonical CLI phases directly in `rs-20260905T164734Z-f5936cf6fc73`. Do not relaunch the old bootstrap or reset its rounds: IMPLEMENT2 is complete and BUILD0 failure is retained. The [blocked checkpoint](#final-acceptance-blocked-checkpoint--2026-09-06) owns the current two-run state and continuation constraints.
+The original outer launch `rs-20260905T163949Z-92682731824c` ended BLOCKED during nested worker initialization; its 143-file custody and no-product-change state are preserved. Root then dispatched actual canonical CLI phases directly in `rs-20260905T164734Z-f5936cf6fc73`. Do not relaunch the old bootstrap or reset its rounds: IMPLEMENT2 is complete and BUILD0 failure is retained. The [xhigh checkpoint](#xhigh-parking-checkpoint--2026-09-06) owns the current three-run state and continuation constraints.
 
 Operator contract: explicit `CLAUDE_SKILL_DIR=<candidate>/config/skills/devlyn:resolve`, no main fallback or global install; outer workspace-write with network=true, no isolated mode or inherited invocation variables. Fresh canonical phase receipts use network=false for PLAN/IMPLEMENT/CLEANUP and true for BUILD_GATE. Run primary Astra with actual Fable pair; parent owns final Grok and final trio acceptance. Preserve canonical routed phases, independent mechanical checks and raw failures; do not substitute an ad-hoc implementation.
 
@@ -95,4 +145,4 @@ Original [PARK packet](/Users/aipalm/.local/share/nx01/iter0118/park-20260905T16
 
 Restart line:
 
-> autoresearch/HANDOFF.md의 START-HERE부터 이어서, 3-seat 협업 규칙을 지키며 0118을 진행해줘.
+> autoresearch/HANDOFF.md의 START-HERE와 0118 xhigh parking checkpoint를 읽고, 파킹된 증거를 보존하면서 적힌 재개 순서대로 3-seat 협업을 이어가줘.
