@@ -353,3 +353,7 @@ R1 `rs-20260906T173436Z-5a086a70590e` passed admission and failed before PLAN ou
 ## 0121.1 — missing-output PLAN failure repair accepted and pushed (2026-09-07)
 
 Root accepted `bb29173d51fdef001e64ae6199d6976b4d6952b0` on origin/main: absent-output BLOCKED PLAN records completion/null digest while preserving attestation errors; only FINAL_REPORT may follow, with work and special-event bypasses rejected. Finish-gate behavior remains unchanged. Required full lint passed in 183.8078s; native MEDIUM closed; actual Grok canonical PASS0; Fable remains advisory due its extra recap, with LOW mirror evidence supplied. [0121](iterations/0121-blocked-plan-output.md) owns custody and known 79,601 external OUTPUT subtotal; whole-task usage is unknown. R1 remains immutable BLOCKED, R2 is a separate calibration, A16 stays parked and 3.0.0 unreleased.
+
+## 0120.4 — R2 closed BLOCKED; preserve evidence and stage R3 separately (2026-09-07)
+
+R2 exposed an omitted native thread-writer-lock permission; accepted 0121 correctly completed the failed PLAN and allowed non-PASS archive. [The R2 checkpoint](iterations/0120-model-adaptation-direction.md#ordinary-entry-r2--archived-blocked) owns immutable custody, failed task acceptance and known 5,028 OUTPUT including 1,011 reasoning; failed-child/whole-run usage remains unknown. Fresh R3 uses the same accepted runtime, with current diagnostic and launch decisions owned by separate receipts. No R1/R2 repair, performance claim, A16 restart or 3.0.0 release follows.
