@@ -1,7 +1,7 @@
 # HANDOFF — for the next session
 
 **Read order on cold start (mandatory)**:
-1. **This file, START-HERE**, then [0121 accepted repair](iterations/0121-blocked-plan-output.md) and [0120 entry calibration](iterations/0120-model-adaptation-direction.md#ordinary-entry-r3--archived-blocked). [0118 current continuation](iterations/0118-concurrent-admission.md#current-continuation--2026-09-06) owns its closed acceptance and custody; older parking sections are historical evidence.
+1. **This file, START-HERE**, then [0121 accepted repair](iterations/0121-blocked-plan-output.md) and [0120 R4 running checkpoint](iterations/0120-model-adaptation-direction.md#ordinary-entry-r4--running-checkpoint). [0118 current continuation](iterations/0118-concurrent-admission.md#current-continuation--2026-09-06) owns its closed acceptance and custody; older parking sections are historical evidence.
 2. [`NORTH-STAR.md`](NORTH-STAR.md) — goal + floor contract (L0/L1/L2, ops tests 1-16) + ceiling contract + ops test #17 + pair-mode policy
 3. [`PRINCIPLES.md`](PRINCIPLES.md) — pre-flight 0 + #1-#7 (every iter cites)
 4. [`MISSIONS.md`](MISSIONS.md) — Mission 1 active + ceiling addendum + roadmap to endgame + hard NO list
@@ -22,7 +22,7 @@ Subject to explicit user directives (including the bounded 0118 exception), if a
 
 **R3 is archived BLOCKED**, run `rs-20260906T191639Z-987777d6da66` on `bb29173`. Native PLAN startup and exact local Astra attestation succeeded, but three shell/file tool calls failed when applying a nested macOS sandbox; no plan or implementation followed. Accepted 0121 correctly persisted completed BLOCKED/null output while retaining valid `model_effective`, then allowed the non-PASS archive. Expected checks remain 3/5; old tests 6/6. [0120](iterations/0120-model-adaptation-direction.md#ordinary-entry-r3--archived-blocked) owns immutable assessment/custody and reconciled CLI-subtree OUTPUT 6,936; broader whole-run output and cost remain UNKNOWN. R1–R3 and failed no-turn diagnostic histories remain unchanged.
 
-**Next: review the scoped fixed-job launcher candidate** outside the parent's OS sandbox, preserving the worker's managed workspace-write policy and native tools. Implementation/review is in progress; the new boundary is not accepted and no R4 has launched. The reporting candidate stays rejected, A16 parked, and **3.0.0** unreleased.
+**R4 is running**, started 2026-09-06T20:52:42.398856Z, driver PID `88284`. [Its checkpoint](iterations/0120-model-adaptation-direction.md#ordinary-entry-r4--running-checkpoint) binds the single registration, advisory/parser caveat, HOME guard (23 tests passed) and local OS probe (12 checks passed). Root authorized this calibration with thirty Codex runtime grants removed from its profile; acceptance remains unproven. Preserve the active run without coaching/replay, then assess retained evidence. Earlier negatives remain immutable; reporting stays rejected, A16 parked, and **3.0.0** unreleased.
 
 User restart line:
 
