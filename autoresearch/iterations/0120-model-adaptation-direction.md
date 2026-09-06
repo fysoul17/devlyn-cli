@@ -100,7 +100,11 @@ Separate [closure deviation](../../.devlyn/0120-harness-direction-20260906/entry
 
 Durable custody: `~/.local/share/nx01/iter0120/20260906T212842Z-entry-calibration-r4-blocked-9eg_f4rm/OUTPUT.json`, SHA `17e564c389cd5c2a6b43b3191195e5c9cb1fa1141fe738ffc805ec5275899d61`: 1,342 files/376 directories, 25,061,897 bytes verified. Eight source trees retain original/score work, full launcher history, accounting, source packets and separate future contract; two reproducible node_modules trees are excluded.
 
-Next: root accepted [common F1 contract r1](../../.devlyn/0120-harness-direction-20260906/f1-full-suite-contract-r1/CORRECTION.md), expected SHA `8cc8446e8e3298e13658b0aeb5ef0026ce375ee9559e5aa9fd9e7a410c15c385`: replace only the CLI-only test command, feed identical amended bytes to future sibling/evaluator, and preserve human requirements/tests. Enforce fail-fast render→complete→archive before another run. No R5 registration/launch yet; all negatives remain immutable, A16 parked and 3.0.0 unreleased.
+Owner correction: root accepted [common F1 contract r1](../../.devlyn/0120-harness-direction-20260906/f1-full-suite-contract-r1/CORRECTION.md), expected SHA `8cc8446e8e3298e13658b0aeb5ef0026ce375ee9559e5aa9fd9e7a410c15c385`: replace only the CLI-only test command, feed identical amended bytes to future sibling/evaluator, and preserve human requirements/tests. Enforce fail-fast render→complete→archive. All negatives remain immutable, A16 parked and 3.0.0 unreleased.
+
+## Ordinary entry R5 — running
+
+R5 started **2026-09-06T21:43:51.032219Z**, driver `31003`. [Registration](../../.devlyn/0120-harness-direction-20260906/entry-calibration-r5/registration.json) SHA `8f439e8050f7527f74a6174e2a411a7884a42be4ac74dee8f745c64dc643e5b1` binds launch-plan SHA `5b15bd7c669af2f6eaca099fe0f2c22c771a5612147508e4fc3289d41739a0f0`. The [protocol](../../.devlyn/0120-harness-direction-20260906/entry-calibration-r5/protocol.md) uses the fresh common full-suite contract in both sibling/evaluator and clarifies existing report ordering; it adds no product guard. Runtime/model settings and other gates remain unchanged. No terminal result yet; preserve the single run without coaching/replay. [Supplemental reconciliation](../../.devlyn/0120-harness-direction-20260906/reconciliation-own-output-r1/reconcile.py), SHA `1bfa98c18f4af74c291f855deb9b0dca68247ec2a087b0c646c9557df3b850e1`, is accepted only for known own counters; old strict coverage/UNKNOWN and whole-run limits remain.
 
 ## Source basis and verification
 
