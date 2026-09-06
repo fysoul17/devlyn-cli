@@ -105,7 +105,7 @@ Engine: PLAN is orchestrator-fixed and never inherits `--engine`, an executor pi
 
 Subagent output (writes `.devlyn/plan.md`): file list to touch, risk list (out-of-scope expansions, ambiguous spec sections), acceptance restatement (what `## Verification` actually requires verbatim). For large work only, PLAN may add a fourth section `## Execution phases` under the conditions in `references/phases/plan.md`; a phase block missing a runnable `gate:` line disqualifies the whole section — treat the run as single-phase and log the disqualification.
 
-State write: each PLAN receipt carries spawn-known `round`, `started_at`, `triggered_by`, `engine`, `model_requested`, and `prompt_sha256`; completion enriches it with `completed_at`, `duration_ms`, `verdict`, nullable `model_effective`, and the exact `.devlyn/plan.md` `output_sha256`. Every later state mutation rehashes that output. Never edit PLAN to widen scope after completion; only the bounded PLAN re-spawn may replace its receipt.
+State write: each PLAN receipt carries spawn-known `round`, `started_at`, `triggered_by`, `engine`, `model_requested`, and `prompt_sha256`; completion adds `completed_at`, `duration_ms`, `verdict`, nullable `model_effective`, and `output_sha256` under `references/state-schema.md`. Later mutations rehash bound output. Never edit PLAN to widen scope after completion; only the bounded PLAN re-spawn may replace its receipt.
 
 After return:
 1. If `.devlyn/plan.md` lists zero files → halt with verdict `BLOCKED:plan-empty`.

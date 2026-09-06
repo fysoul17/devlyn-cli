@@ -146,12 +146,19 @@ def write_state(state_path: pathlib.Path, state: dict) -> None:
         raise
 
 
-def validate_plan_output(state: dict, devlyn: pathlib.Path | None) -> None:
+def validate_plan_output(state: dict, devlyn: pathlib.Path | None, phase: str) -> None:
     plan = (state.get("phases") or {}).get("plan")
     if not isinstance(plan, dict) or plan.get("completed_at") is None:
         return
     expected = plan.get("output_sha256")
     if expected is None and state.get("version") != "3.0":
+        return
+    if (
+        expected is None and "output_sha256" in plan and plan.get("verdict") == "BLOCKED"
+        and devlyn is not None and not os.path.lexists(devlyn / "plan.md")
+    ):
+        if phase != "final_report":
+            raise SystemExit("BLOCKED:plan-output-missing: only final_report is allowed")
         return
     if not isinstance(expected, str) or SHA256_RE.fullmatch(expected) is None:
         raise SystemExit("BLOCKED:plan-integrity-invalid: phases.plan.output_sha256 is missing")
@@ -173,11 +180,18 @@ def bind_plan_output(state: dict, devlyn: pathlib.Path | None) -> None:
     if devlyn is None:
         raise SystemExit("BLOCKED:plan-integrity-invalid: .devlyn is required to bind PLAN output")
     plan_path = devlyn / "plan.md"
-    try:
-        digest = hashlib.sha256(plan_path.read_bytes()).hexdigest()
-    except OSError as exc:
-        raise SystemExit(f"BLOCKED:plan-integrity-invalid: cannot read {plan_path}: {exc}") from exc
-    state["phases"]["plan"]["output_sha256"] = digest
+    plan = state["phases"]["plan"]
+    if (
+        plan.get("verdict") == "BLOCKED" and plan.get("output_sha256") is None
+        and not os.path.lexists(plan_path)
+    ):
+        digest = None
+    else:
+        try:
+            digest = hashlib.sha256(plan_path.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise SystemExit(f"BLOCKED:plan-integrity-invalid: cannot read {plan_path}: {exc}") from exc
+    plan["output_sha256"] = digest
 
 
 def process_evidence_module():
@@ -1536,7 +1550,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     # other field this script doesn't own) survives a fix-loop respawn.
     phases_value = state.get("phases")
     entry = phases_value.get(phase) if isinstance(phases_value, dict) else None
-    validate_plan_output(state, devlyn)
+    validate_plan_output(state, devlyn, phase)
     if phase == "plan":
         history = entry.get("history", []) if isinstance(entry, dict) else []
         if not isinstance(history, list):
@@ -1698,7 +1712,7 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             f"error: phases.{phase} already completed — respawn before completing again"
         )
     if phase != "plan":
-        validate_plan_output(state, devlyn)
+        validate_plan_output(state, devlyn, phase)
     if phase == "plan" and entry.get("prompt_sha256") is not None:
         missing = [field for field in PLAN_SPAWN_RECEIPT_FIELDS if field not in entry]
         if missing:
@@ -3956,6 +3970,209 @@ def self_test() -> int:
         assert wrong_path_state["phases"]["implement"]["verdict"] == "BLOCKED"
         print("PASS iter-0112 canonical Codex invocation receipt and session ownership")
 
+        # Iter-0121: rs-20260906T173436Z-5a086a70590e exited 1 with an
+        # empty canonical session and no plan. Exercise the real CLI writes.
+        receipt_state_path = receipt_devlyn / "pipeline.state.json"
+        missing_plan_output = receipt_devlyn / "plan.md"
+        missing_plan_output.unlink()
+        plan_session.write_bytes(b"")
+        plan_path.unlink()
+        receipt_runner.start_receipt(
+            receipt_work, plan_path, plan_state["run_id"], "plan", 0,
+            str(plan_prompt), str(plan_session),
+            ["--json", "-C", str(receipt_work), "-s", "workspace-write",
+             "-m", plan_model, "-c",
+             "sandbox_workspace_write.network_access=false", "plan exactly"],
+        )
+        receipt_runner.finish_receipt(receipt_work, plan_path, 1)
+        failed_receipt_bytes = plan_path.read_bytes()
+
+        def receipt_cli(phase: str, *event_args: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [sys.executable, script, "--devlyn-dir", str(receipt_devlyn),
+                 "--phase", phase, *event_args],
+                cwd=receipt_work, capture_output=True, text=True, check=False,
+            )
+
+        write_state(receipt_state_path, {
+            "version": "3.0", "run_id": plan_state["run_id"],
+            "engine": "codex", "phases": {},
+        })
+        result = receipt_cli(
+            "plan", "spawn", "--round", "0", "--engine", "codex",
+            "--model", plan_model, "--prompt-sha256", plan_prompt_sha,
+        )
+        assert result.returncode == 0, result.stderr
+        open_plan_bytes = receipt_state_path.read_bytes()
+        blocked_args = (
+            "--verdict", "BLOCKED", "--engine-session-log", str(plan_session),
+        )
+        result = receipt_cli("plan", "complete", *blocked_args)
+        assert result.returncode == 1, result.stderr
+        assert "BLOCKED:invocation-receipt-invalid: Codex invocation exited 1" in result.stderr, result.stderr
+        blocked_plan = read_state(receipt_state_path)["phases"]["plan"]
+        assert blocked_plan["verdict"] == "BLOCKED"
+        assert blocked_plan["output_sha256"] is None
+        assert blocked_plan["model_effective"] is None
+        assert blocked_plan["completed_at"] is not None
+        assert blocked_plan["duration_ms"] == round((
+            parse_iso(blocked_plan["completed_at"]) - parse_iso(blocked_plan["started_at"])
+        ).total_seconds() * 1000)
+        assert blocked_plan["duration_ms"] >= 0
+        assert not os.path.lexists(missing_plan_output)
+        assert plan_path.read_bytes() == failed_receipt_bytes
+        print("PASS iter-0121 failed PLAN worker persists BLOCKED timing/null output and receipt error")
+
+        for phase, event_args in [
+            (phase, (
+                "spawn", "--round", "1" if phase == "plan" else "0",
+                "--triggered-by", "plan", "--engine", "codex",
+                "--model", plan_model, "--prompt-sha256", plan_prompt_sha,
+            )) for phase in sorted(PHASE_NAMES - {"final_report"})
+        ] + [
+            ("surface_close", ("surface-skip",)),
+            ("surface_close", ("surface-check", "--authorized-surface-json", "[]")),
+            ("surface_close", ("surface-adjudication-recover", "--authorized-surface-json", "[]")),
+            ("surface_close", ("surface-rollback",)),
+            ("implement", ("durability-enforce", "--round", "1", "--origin-phase", "verify")),
+        ]:
+            before = receipt_state_path.read_bytes()
+            result = receipt_cli(phase, *event_args)
+            assert result.returncode == 1, (phase, event_args, result.stderr)
+            assert "BLOCKED:plan-output-missing" in result.stderr, (phase, event_args, result.stderr)
+            assert receipt_state_path.read_bytes() == before
+        result = receipt_cli("final_report", "spawn", "--round", "0")
+        assert result.returncode == 0, result.stderr
+        result = receipt_cli("final_report", "complete", "--verdict", "BLOCKED")
+        assert result.returncode == 0, result.stderr
+        terminal_state = read_state(receipt_state_path)
+        assert terminal_state["phases"]["plan"] == blocked_plan
+        assert terminal_state["phases"]["final_report"]["completed_at"] is not None
+        assert terminal_state["phases"]["final_report"]["verdict"] == "BLOCKED"
+        print("PASS iter-0121 missing-output BLOCKED permits final closure and refuses all work spawns/special events")
+
+        # Non-BLOCKED requests cannot obtain the exception via failed attestation.
+        for verdict in sorted(VALID_VERDICTS - {"BLOCKED"}):
+            receipt_state_path.write_bytes(open_plan_bytes)
+            result = receipt_cli(
+                "plan", "complete", "--verdict", verdict,
+                "--engine-session-log", str(plan_session),
+            )
+            assert result.returncode == 1, (verdict, result.stderr)
+            assert "BLOCKED:plan-integrity-invalid" in result.stderr
+            assert receipt_state_path.read_bytes() == open_plan_bytes
+        for next_phase in ("implement", "probe_derive", "final_report"):
+            result = receipt_cli(
+                "plan", "transition", *blocked_args, "--next-phase", next_phase,
+                "--next-round", "0", "--next-engine", "claude",
+            )
+            assert result.returncode == 1, result.stderr
+            assert "Codex invocation exited 1" in result.stderr
+            assert receipt_state_path.read_bytes() == open_plan_bytes
+        plan_path.write_text("{", encoding="utf-8")
+        result = receipt_cli("plan", "complete", *blocked_args)
+        assert result.returncode == 1, result.stderr
+        assert "BLOCKED:invocation-receipt-invalid" in result.stderr
+        malformed_plan = read_state(receipt_state_path)["phases"]["plan"]
+        assert malformed_plan["verdict"] == "BLOCKED"
+        assert malformed_plan["model_effective"] is None
+        assert malformed_plan["output_sha256"] is None
+        assert malformed_plan["completed_at"] is not None
+
+        # Even attested BLOCKED completion cannot transition into more work.
+        plan_path.unlink()
+        receipt_runner.start_receipt(
+            receipt_work, plan_path, plan_state["run_id"], "plan", 0,
+            str(plan_prompt), str(plan_session),
+            ["--json", "-C", str(receipt_work), "-s", "workspace-write",
+             "-m", plan_model, "-c",
+             "sandbox_workspace_write.network_access=false", "plan exactly"],
+        )
+        receipt_runner.finish_receipt(receipt_work, plan_path, 0)
+        receipt_state_path.write_bytes(open_plan_bytes)
+        for next_phase in ("implement", "probe_derive"):
+            result = receipt_cli(
+                "plan", "transition", *blocked_args, "--next-phase", next_phase,
+                "--next-round", "0", "--next-engine", "claude",
+            )
+            assert result.returncode == 1, result.stderr
+            assert "BLOCKED:plan-output-missing" in result.stderr
+            assert receipt_state_path.read_bytes() == open_plan_bytes
+        result = receipt_cli(
+            "plan", "transition", *blocked_args, "--next-phase", "final_report",
+            "--next-round", "0",
+        )
+        assert result.returncode == 0, result.stderr
+        absent_transition_bytes = receipt_state_path.read_bytes()
+        assert read_state(receipt_state_path)["phases"]["plan"]["model_effective"] == plan_model
+        print("PASS iter-0121 non-BLOCKED output requirement, malformed receipt and atomic transitions")
+
+        for path_kind in ("file", "directory", "dangling-symlink", "unreadable"):
+            if path_kind == "directory":
+                missing_plan_output.mkdir()
+            elif path_kind == "dangling-symlink":
+                missing_plan_output.symlink_to(receipt_devlyn / "missing-target")
+            else:
+                missing_plan_output.write_bytes(b"## Files to touch\n")
+                if path_kind == "unreadable":
+                    missing_plan_output.chmod(0)
+            try:
+                receipt_state_path.write_bytes(absent_transition_bytes)
+                result = receipt_cli("final_report", "complete", "--verdict", "BLOCKED")
+                assert result.returncode == 1, (path_kind, result.stderr)
+                assert "BLOCKED:plan-integrity-invalid" in result.stderr
+                assert receipt_state_path.read_bytes() == absent_transition_bytes
+                if path_kind in {"directory", "dangling-symlink"} or (
+                    path_kind == "unreadable" and not os.access(missing_plan_output, os.R_OK)
+                ):
+                    receipt_state_path.write_bytes(open_plan_bytes)
+                    result = receipt_cli("plan", "complete", *blocked_args)
+                    assert result.returncode == 1, (path_kind, result.stderr)
+                    assert "BLOCKED:plan-integrity-invalid" in result.stderr
+                    assert receipt_state_path.read_bytes() == open_plan_bytes
+            finally:
+                if path_kind == "directory":
+                    missing_plan_output.rmdir()
+                else:
+                    if path_kind == "unreadable":
+                        missing_plan_output.chmod(0o600)
+                    missing_plan_output.unlink()
+        print("PASS iter-0121 lexical absence rejects existing/nonregular/unreadable output")
+
+        # BLOCKED with bytes still binds them, including across legal correction.
+        missing_plan_output.write_bytes(b"## Files to touch\n")
+        receipt_state_path.write_bytes(open_plan_bytes)
+        result = receipt_cli("plan", "complete", *blocked_args)
+        assert result.returncode == 0, result.stderr
+        bound_bytes = receipt_state_path.read_bytes()
+        assert read_state(receipt_state_path)["phases"]["plan"]["output_sha256"] == hashlib.sha256(
+            missing_plan_output.read_bytes()
+        ).hexdigest()
+        result = receipt_cli(
+            "plan", "spawn", "--round", "1", "--triggered-by", "plan",
+            "--engine", "codex", "--model", plan_model,
+            "--prompt-sha256", plan_prompt_sha_1,
+        )
+        assert result.returncode == 0, result.stderr
+        correction_bytes = receipt_state_path.read_bytes()
+        missing_plan_output.unlink()
+        result = receipt_cli(
+            "plan", "complete", "--verdict", "BLOCKED",
+            "--engine-session-log", str(plan_session_1),
+        )
+        assert result.returncode == 1, result.stderr
+        assert "BLOCKED:plan-integrity-invalid" in result.stderr
+        assert receipt_state_path.read_bytes() == correction_bytes
+        for changed in (False, True):
+            if changed:
+                missing_plan_output.write_bytes(b"altered plan\n")
+            receipt_state_path.write_bytes(bound_bytes)
+            result = receipt_cli("final_report", "spawn", "--round", "0")
+            assert result.returncode == 1, result.stderr
+            assert "BLOCKED:plan-integrity-" in result.stderr
+            assert receipt_state_path.read_bytes() == bound_bytes
+        print("PASS iter-0121 BLOCKED output binding rejects deletion/tampering and lost correction output")
+
         retained_log.unlink()
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
@@ -4416,6 +4633,7 @@ def main() -> int:
     if args.event == "durability-enforce":
         if args.phase != "implement":
             ap.error("durability-enforce is valid only for --phase implement")
+        validate_plan_output(state, devlyn, args.phase)
         _persist_durability_event(
             pathlib.Path.cwd(), devlyn, state, state_path, args.origin_phase, args.round,
         )
@@ -4425,6 +4643,7 @@ def main() -> int:
     if args.event in surface_events:
         if args.phase != "surface_close":
             ap.error(f"{args.event} is valid only for --phase surface_close")
+        validate_plan_output(state, devlyn, args.phase)
         if args.event == "surface-skip":
             do_surface_skip(state)
             write_state(state_path, state)
