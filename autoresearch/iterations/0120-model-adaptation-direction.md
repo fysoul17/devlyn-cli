@@ -25,16 +25,30 @@ Durable custody: `~/.local/share/nx01/iter0120/20260906T130002Z-advisory-consult
 ## Ordered implementation frontier
 
 - 0119 and full0118 acceptance are closed and pushed; the [0118 checkpoint](0118-concurrent-admission.md#current-continuation--2026-09-06) preserves exact artifacts, negative histories and remaining advisories. Main73919fa integrates their exact sources with package3.0.0; full lint/pack checks passed. This is the new candidate-comparison baseline, not a performance result.
-- Correct output/identity accounting in the next scoped comparison, alongside a concrete subtractive candidate. Reuse working instruments; do not create an instrument-only chain or modify A16. Pre-register quality/failure/completeness and output/wall/cost readouts before running.
-- Compare removal of duplicate model reporting and scripted known checks. Preserve raw decision evidence and required independent verification; do not claim repeated test execution is redundant merely because source hashes match.
-- Compare worker/reviewer separation and model deltas on representative tasks. Add the smallest user-facing controls justified by those results, with sensible defaults, explicit overrides and visible resolved values.
+- The first reporting screen below reconciles four actual call outputs; full-pipeline accounting remains pending. Reuse those instruments alongside concrete candidates; do not create an instrument-only chain or modify A16. Pre-register quality/failure/completeness and output/wall/cost readouts before running.
+- Reporting candidate-r1 failed its advancement conditions and is stopped. Preserve raw evidence and required independent verification; file size is not generated tokens, and matching source hashes do not prove repeated tests redundant.
+- Next compare worker/reviewer separation and model deltas on representative tasks, with exact identities and metered orchestration/children. Existing phase model fields permit an experimental comparison before adding public controls. Add only controls justified by results, with sensible defaults, explicit overrides and visible resolved values.
 - Run fair replacement comparisons and reassess larger structural changes only when the earlier results identify a concrete limitation. No world-best claim without NORTH-STAR's existing ceiling gate.
 
-## First concrete candidate
+## First candidate — stopped after four reporting calls
 
-Remove only the BUILD reference requirement to copy raw output into `build_gate.log.md`, plus its installed mirror. Keep concise outcomes, SKIP reasons, findings/necessary interpretation and links to existing sealed results/raw streams; preserve gate output absent from those artifacts. Historical0118/0119 workers generated copying code despite those existing artifacts. Those code bytes demonstrate the mechanism, not token savings. No new reporting service, model/effort change, omitted gate or reduced independent review is proposed.
+Candidate-r1 removed only the BUILD reference requirement to copy raw output into `build_gate.log.md`, retaining outcomes, SKIP reasons, findings/interpretation, relative evidence links and all raw output absent from sealed artifacts, including step4 diagnostics. Patch SHA `acc32e07ad175e34b69f3a9106847654226645a74eaee4bb5fe9646ac0fb208c` remains experimental; product requirements are unchanged.
 
-The ignored preregistration draft is `.devlyn/0120-harness-direction-20260906/build-log-candidate.prereg.draft.md`; execution remains pending root’s final fixture/accounting bindings. Compare current/candidate on the same frozen model and per-role settings. A common measurement capture is needed on both arms because current human Codex judge output is not pure OUTPUT and the interactive parent is unmetered. Preserve every raw message but keep the canonical human stdout semantics; missing counters stay unknown. Requested/resolved model identity and available observations are explicit, with provider-internal aliasing a stated limit. No same-model pilot result substitutes for the later six-cell replacement comparison.
+The frozen `reporting-screen-r0/PROTOCOL.md` supersedes the earlier draft's eight-run proposal: four fresh Astra xhigh reporting calls on one authentic R5 BUILD snapshot, A/B then B/A, common capture, no gate execution. Registration SHA `914cfdd0ebe415865553895b4f936b508593d78541aa40390884ac981a561722` predates calls. Root recorded preservation before opening efficiency: all input bytes unchanged, 88 archived files match and 95 local links resolve. Actual Fable5.1 retained one cosmetic LOW in an A report; actual Grok4.6 found none. No report was repaired.
+
+| Aggregate of two calls per arm | Existing A | Candidate B |
+|---|---:|---:|
+| Provider output, reasoning included once | 8,908 | 9,824 |
+| Wall seconds | 331.888 | 355.477 |
+| Report bytes | 50,828 | 17,462 |
+
+**DO_NOT_ADVANCE_CANDIDATE**: output increased in both pairs and by 10.3% overall; wall increased 7.1%, while report bytes fell 65.6%. Existing reports were assembled by generated scripts appending raw files; candidate calls generated report bodies directly. This observed mechanism does not assign token costs to individual operations. The registered rule forbids rescue reruns, top-ups, adoption or eight-full-run expansion. Actual Fable final decision review PASS0 and independent arithmetic reconciliation support this closure.
+
+Evidence root: main `.devlyn/0120-harness-direction-20260906/reporting-screen-r0/`; `RESULT.json` SHA `9692b8529f681dd0f31b6a8cd0e228a24796664711c76e9450ea0ff62a4b8e78`. Four native thread receipts reconcile 27 response records and 18,732 output tokens, with no observed model children/bypass; native child coverage remains unproven. This is successful-snapshot reporting only, not failure diagnosis, full-pipeline quality or population performance. Six separate external reviews used 63,833 output tokens; the known report/review subtotal 82,565 excludes earlier direction advice 14,012, doc editing 1,168 and unmetered interactive research/agents. Total experiment output and billed money remain unknown.
+
+Durable custody: `~/.local/share/nx01/iter0120/20260906T164401Z-reporting-screen-stopped/OUTPUT.json`, SHA `6260d3272bcd93f862e58cbc8fdf8440610054a0d667f0393ad3723004a0e494`, 465 files/15,675,217 bytes verified. Includes protocol, raw calls/rollouts, source snapshots, reviews, accounting and results. Earlier drafts/invalid review-format evidence remain preserved, not rewritten as passes.
+
+Separately, main `216ffcf` corrects three stale model-default claims in canonical/mirrored `_shared/codex-config.md`: ordinary workers can inherit user configuration; isolated reviews ignore it and use their route's CLI default. Omission is not identity or fitness proof. No invocation or routing changed. Full skill lint passed 180.901s; worker partial mirror delivery and root's exact protected-mirror copy are recorded in the custody bundle.
 
 ## Source basis and verification
 
