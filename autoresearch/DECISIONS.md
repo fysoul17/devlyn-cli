@@ -378,3 +378,7 @@ Legacy-r3 `rs-20260907T125028Z-7632e5bb9f47` closes canonical PASS_WITH_ISSUES w
 ## 0127 — source instruction order accepted; native conformance pending (2026-09-07)
 
 Pusheda218592 corrects the observed local contradictions using existing state operations: checkpoint before its HEAD assignment, atomic CLEANUP→VERIFY, initial/normal/bypass/repair VERIFY identity before MECHANICAL, and exact PLAN prompt without added LF. Root source/API review and one full lint182.775s pass; [0127](iterations/0127-phase-handoff-order.md) owns19-file evidence. No new runtime enforcement or native-conformance claim follows from wording. Preserve0123 functional acceptance/departures; verify actual behavior on the next independently scoped ordinary task.0124 remains frozen and0125 unimplemented.
+
+## 0124 — context deletion rejected after frozen quality assessment (2026-09-07)
+
+Four operationally valid Fable5.1/medium A/B B/A reports yield0/4 canonical literal-ID bindings: both A advisory-only, both B omission. Independent opaque grading and root source adjudication froze before resource readout. Both B observations are faster and smaller, but failed quality forbids promotion. Root RESULTc8ff7914 closes NO_ACCURACY_SIGNAL; [0124](iterations/0124-judge-context.md) owns300-file custody and known20,739 OUTPUT including11,321 thinking once, whole study UNKNOWN. No retry, confirmation, heldout selection or product adoption.0125 BUILD-call subtraction receives separate bounded design advice, not automatic approval from this result.
