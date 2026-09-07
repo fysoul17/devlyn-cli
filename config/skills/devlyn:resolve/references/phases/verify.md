@@ -218,9 +218,11 @@ it only through this distinct monitored route:
 CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s read-only -c model_reasoning_effort=high "<primary prompt>" >.devlyn/codex-judge.stdout 2>.devlyn/codex-judge.stderr
 ```
 
-Omit `-m` and every bypass flag; do not pipe either stream. On primary exit
+This command supplies unconfigured defaults. Explicit judge profiles use
+`SKILL.md#explicit-role-dispatch` for validated model/effort options and
+round-scoped evidence. Omit bypass flags; do not pipe either stream. On primary exit
 124, write `.devlyn/verify.primary.timeout.json` with exactly
-`{"engine": "<state.engine>", "budget_seconds": 600}` before merge. The
+`{"engine": "<resolved-primary-engine>", "budget_seconds": 600}` before merge. The
 marker is primary-only authority: malformed, wrong-engine, or wrong-budget
 content BLOCKs; a valid marker preserves all canonical primary findings and
 floors `judge` at `BLOCKED`, including when findings/stdout are empty. It never
@@ -230,7 +232,7 @@ existing missing/invalid primary-output behavior remains fail-closed.
 Codex pair-JUDGE keeps the monitored
 `codex-monitored.sh` route with
 `CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600` and
-`-c model_reasoning_effort=medium`; isolation blocks user config, AGENTS.md,
+unconfigured default `-c model_reasoning_effort=medium`; isolation blocks user config, AGENTS.md,
 hooks, and project rules from hidden context/tool side effects. Do not pipe it
 to `tail`, `head`, `grep`, `sed`, or `awk`; capture stdout/stderr directly.
 Every other resolved OTHER engine follows `_shared/adapters/<name>.md`
