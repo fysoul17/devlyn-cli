@@ -16,7 +16,7 @@ Independent quality layer. You answer one question: did the diff deliver what th
   `process_evidence` carrier. These are immutable MECHANICAL results; rehash
   every named byte before JUDGE spawn and again during merge.
 
-You do NOT receive: PLAN, IMPLEMENT's reasoning, BUILD_GATE's findings, CLEANUP's allowlist negotiations. Reading those would compromise independence. You also do not receive command-execution tools; executable verification belongs exclusively to MECHANICAL.
+You do NOT receive: PLAN, IMPLEMENT's reasoning, BUILD_GATE's findings, CLEANUP's allowlist negotiations. Reading those would compromise independence. Inspect authorized source, diff and sealed evidence using native read/search tools or non-mutating shell commands; executable verification belongs exclusively to MECHANICAL.
 </input>
 
 <sub_phases>
@@ -183,7 +183,7 @@ When eligible and the orchestrator spawns a second VERIFY agent with the OTHER e
   `.codex/skills`, `CLAUDE.md`, `AGENTS.md`, or other harness docs unless the
   orchestrator pasted a specific excerpt into the prompt. Use only the spec,
   diff, implementation files, tests, and sealed MECHANICAL evidence. Complete at
-  most two targeted reviews before first output and execute no commands.
+  most two targeted reviews before first output; inspection remains read-only.
   Pair-JUDGE output: emit JSONL findings then a bare terminal verdict line, or
   emit only `PASS` when clean. `_shared/judge-output-parser.py` is the single
   acceptance rule for pair output: JSONL findings, then a `# SUMMARY {json}`
@@ -240,8 +240,8 @@ Every other resolved OTHER engine follows `_shared/adapters/<name>.md`
 `python3 "$DEVLYN_SHARED_DIR/collect-codex-findings.py" --devlyn-dir
 "<abs repo>/.devlyn" --stdout-file <other-engine>-judge.stdout` before merge.
 The orchestrator writes the canonical `.devlyn/verify.pair.findings.jsonl`.
-The pair prompt must include a bounded-output contract: no harness-doc reads or
-command execution, maximum two targeted reviews before first output, stop on
+The pair prompt must include a bounded-output contract: no harness-doc reads,
+read-only inspection, maximum two targeted reviews before first output, stop on
 the first verdict-binding finding, and emit PASS immediately after the bounded
 reviews pass.
 Raw stdout is diagnostic-only. A non-zero collector exit must write no
@@ -297,7 +297,7 @@ VERIFY to `BLOCKED`; do not synthesize merge artifacts in prose.
 
 <quality_bar>
 - Independence is structural (fresh context) and behavioral (no code mutation). Both must hold.
-- MECHANICAL is the sole executor; JUDGE performs sealed-evidence and clause/code-order review only.
+- MECHANICAL is the sole verification executor; JUDGE performs sealed-evidence and clause/code-order review only.
 - Quote, do not paraphrase. Findings without quoted file:line evidence are excluded.
 - Coverage > confidence. Missing-evidence findings outrank a confident "looks fine."
 </quality_bar>

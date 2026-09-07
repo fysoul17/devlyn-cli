@@ -1356,7 +1356,9 @@ for file in \
   .agents/skills/devlyn:resolve/references/phases/verify.md
 do
   if ! grep -Fq 'executable verification belongs exclusively to MECHANICAL' "$file" \
-    || ! grep -Fq 'execute no commands' "$file" \
+    || ! grep -Fq 'native read/search tools or non-mutating shell commands' "$file" \
+    || ! grep -Fq 'JUDGE does not execute literal verification, lint, test, build, risk-probe, or' "$file" \
+    || ! grep -Fq 'newly invented interaction commands.' "$file" \
     || ! grep -Fq '.devlyn/<primary-engine>-judge.stdout' "$file" \
     || ! grep -Fq '.devlyn/<other-engine>-judge.stdout' "$file" \
     || ! grep -Fq 'process-evidence manifest and raw stdout/stderr streams' "$file"; then
@@ -1367,6 +1369,17 @@ do
     || grep -Fq 'Execute at most two targeted probes' "$file" \
     || grep -Fq "repo's CLI/API/test runner" "$file"; then
     bad "$file — stale JUDGE command-execution instruction remains"
+    verification_provenance_missing=1
+  fi
+done
+for file in \
+  config/skills/devlyn:resolve/SKILL.md \
+  .agents/skills/devlyn:resolve/SKILL.md \
+  config/skills/devlyn:resolve/references/phases/verify.md \
+  .agents/skills/devlyn:resolve/references/phases/verify.md
+do
+  if grep -Eiq 'executes? no commands|no code-mutation or command-execution tools|do not receive command-execution tools' "$file"; then
+    bad "$file — blanket JUDGE inspection prohibition remains"
     verification_provenance_missing=1
   fi
 done
