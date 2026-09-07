@@ -15,7 +15,7 @@ Engine requirements have two classes:
 
 Two configurable roles; the orchestrator role is whichever CLI the user opened and is not configurable here.
 
-- **Executor** (IMPLEMENT / CLEANUP / primary VERIFY judge): explicit `--engine` flag > `cwd/.devlyn/engines.json` `executor` > built-in default `claude`. No parent-directory or global config lookup. Requires an adapter that is executor-eligible (below).
+- **Executor** (IMPLEMENT / CLEANUP / primary VERIFY judge): explicit `--engine` flag > `cwd/.devlyn/engines.json` `executor` > invoking skill's orchestrator-supported default. No parent-directory or global config lookup. Requires an adapter that is executor-eligible (below).
 - **Pair judge** (VERIFY pair-JUDGE, risk-probe derivation): first entry of `engines.json` `pair_judge_priority` that is (a) adapter-valid, (b) pair-judge-eligible (below), (c) not the primary judge engine, (d) available. When the key or file is absent: the binary claude↔codex complement.
 
 Validation is fail-closed: malformed JSON, any engine name without a `_shared/adapters/<name>.md` adapter file under `DEVLYN_SHARED_DIR`, or an adapter that declares itself ineligible for the requested role, halts with report-level `BLOCKED:invalid-engine-config` naming the offending entry. This is the plug-in point for new engines — ship an adapter file and the name becomes valid with zero skill-body changes. Availability probe default is `command -v <name>`; an adapter may declare a different probe. A pin is an explicit route (same promise class as `--engine`): pinned-but-unavailable → `BLOCKED:<engine>-unavailable`, never a silent downgrade. `engines.json` is machine-local config — not committed, not archived (`archive_run.py` moves only `PER_RUN_PATTERNS`).

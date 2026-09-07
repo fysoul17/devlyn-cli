@@ -6,6 +6,8 @@ devlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required)
 
 This contract serves one goal: any capable engine — Claude, GPT/Codex, or a future adapter-equipped model — takes a user's intent (prompt, spec, or queue entry) end-to-end to shipped, engineer-quality software, hands-free, with consistent quality across engines. The harness must measurably out-earn bare prompting, and every added layer (pair mode, probes, gates) must out-earn the layer below it. When rules below conflict or feel ambiguous in context, resolve toward this goal.
 
+`/devlyn:resolve` keeps a common contract and canonical phases with engine adapter guidance; model/version-specific adaptation requires measured evidence.
+
 ## Core principles
 
 Seven rules govern every change. Cite them by name when a decision touches one.
@@ -15,7 +17,7 @@ Seven rules govern every change. Cite them by name when a decision touches one.
 3. **No guesswork** — verify with the actual files, logs, diffs, and run output before forming conclusions. State the falsifiable prediction BEFORE the experiment; record raw results AFTER. Retroactive prediction edits are dishonest.
 4. **Worldclass** — code that survives review at a non-trivial codebase. Zero CRITICAL, zero HIGH security/design findings on the shippable path.
 5. **Best practice** — idiomatic for the language and framework. Use standard primitives; do not hand-roll what the library already provides.
-6. **Optimized** — efficient on the resource that matters (wall-time, tokens, attention, cognitive load on the next reader). "Slower but more thoughtful" is not free. Each layer of composition or process must beat the simpler baseline.
+6. **Optimized** — prioritize correctness and complete user-intent fulfillment, then total time to a correctly verified solution including review and rework, then provider OUTPUT and monetary cost. More output is acceptable when it improves correctness or verified-resolution time.
 7. **Production ready** — error states are explicit and visible; behavior under failure is what the user expects, not silent corruption.
 
 Three discipline rules govern HOW the principles are applied:
@@ -40,14 +42,14 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 | Role | Default | Manual override |
 |---|---|---|
 | Orchestrator — conversation, handoff, loop driving | whichever CLI you open (contract is symmetric: CLAUDE.md ↔ AGENTS.md). Measured status 2026-07-05: Claude Code + omp run the full phase-gated pipeline; in the iter-0061 minimal-repo trivial-add shape on this machine, Codex CLI also ran it when the project carried the devlyn AGENTS.md (ordinary invocation, 4/4); without project AGENTS.md, the same shape silently skipped the pipeline (iter-0040 F6, 4/4) | switch CLIs; the file artifacts (spec/queue/state) carry over |
-| Executor — IMPLEMENT/CLEANUP + primary VERIFY judge; PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin | `claude` | `--engine <name>` per run, or `/devlyn:engines executor <name>` (durable pin) |
+| Executor — IMPLEMENT/CLEANUP + primary VERIFY judge; PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin | canonical skill's orchestrator-supported default | `--engine <name>` per run, or `/devlyn:engines executor <name>` (durable pin) |
 | Pair judge — default for VERIFY; conditional for risk probes | first available OTHER engine (claude↔codex) | `/devlyn:engines pair <name>,...`; `--no-pair` opts out |
 
 `/devlyn:engines` with no args shows the current role table, detected engines, and how to pin or clear — the pins live in `.devlyn/engines.json`.
 
-`.devlyn/engines.json` is machine-local — not committed, not archived. Pins are promises: a pinned unavailable engine stops with `BLOCKED:<engine>-unavailable`; a name without a `_shared/adapters/<name>.md` adapter stops with `BLOCKED:invalid-engine-config`. New engines (GLM, pi-agent backends) plug in by shipping an adapter file — no skill changes. Codex BUILD/IMPLEMENT and PLAN-pair remain research-only paths behind explicit `--engine codex`.
+`.devlyn/engines.json` is machine-local — not committed, not archived. Pins are promises: a pinned unavailable engine stops with `BLOCKED:<engine>-unavailable`; a name without a `_shared/adapters/<name>.md` adapter stops with `BLOCKED:invalid-engine-config`. New engines (GLM, pi-agent backends) plug in by shipping an adapter file — no skill changes.
 
-**The executor pin binds the orchestrator in plain conversation too, not only inside a skill run.** When you would do implementation work directly and executor is pinned to a non-default engine, route that work through the pin — run it via `/devlyn:resolve` (which reads the pin at PHASE 0), or delegate to that engine — instead of editing as `claude`. No pin / no `.devlyn/engines.json` → unchanged (`claude`). The pair-judge pin stays pipeline-scoped.
+**The executor pin binds the orchestrator in plain conversation too, not only inside a skill run.** When you would do implementation work directly and executor is pinned to a non-default engine, route that work through the pin — run it via `/devlyn:resolve` (which reads the pin at PHASE 0), or delegate to that engine. No pin / no `.devlyn/engines.json` → use the canonical skill's orchestrator-supported default. The pair-judge pin stays pipeline-scoped.
 
 ### Conversational handoff + loop engineering — the default entry for all work
 
@@ -158,7 +160,7 @@ A finding without one of these forms is excluded. Vague findings produce vague f
 
 ## Codex invocation
 
-When `/devlyn:resolve` or `/devlyn:ideate` route a phase to Codex (`--engine codex`, default VERIFY pair, or conditional risk-probe routing), the wrapper-form contract lives in `config/skills/_shared/codex-config.md` (or `.claude/skills/_shared/codex-config.md` once installed). Omit `-m <model>` — the CLI's current flagship is used automatically. MCP is not in the loop. If Codex is required and unavailable, stop with `BLOCKED:codex-unavailable` and setup guidance.
+For Codex model selection, receipts, isolation and availability, follow the invoked skill's sibling `_shared/codex-config.md` and `_shared/engine-preflight.md` (`config/skills/_shared/` in this repository).
 
 ## Working Mode
 
