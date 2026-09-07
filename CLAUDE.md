@@ -4,9 +4,7 @@ devlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required)
 
 ## North Star
 
-This contract serves one goal: any capable engine — Claude, GPT/Codex, or a future adapter-equipped model — takes a user's intent (prompt, spec, or queue entry) end-to-end to shipped, engineer-quality software, hands-free, with consistent quality across engines. The harness must measurably out-earn bare prompting, and every added layer (pair mode, probes, gates) must out-earn the layer below it. When rules below conflict or feel ambiguous in context, resolve toward this goal.
-
-`/devlyn:resolve` keeps a common contract and canonical phases with engine adapter guidance; model/version-specific adaptation requires measured evidence.
+This contract serves one goal: any capable engine — Claude, GPT/Codex, or a future adapter-equipped model — takes a user's intent (prompt, spec, or queue entry) end-to-end to shipped, engineer-quality software, hands-free, with consistent quality across engines. When rules below conflict or feel ambiguous in context, resolve toward this goal.
 
 ## Core principles
 
@@ -17,7 +15,7 @@ Seven rules govern every change. Cite them by name when a decision touches one.
 3. **No guesswork** — verify with the actual files, logs, diffs, and run output before forming conclusions. State the falsifiable prediction BEFORE the experiment; record raw results AFTER. Retroactive prediction edits are dishonest.
 4. **Worldclass** — code that survives review at a non-trivial codebase. Zero CRITICAL, zero HIGH security/design findings on the shippable path.
 5. **Best practice** — idiomatic for the language and framework. Use standard primitives; do not hand-roll what the library already provides.
-6. **Optimized** — prioritize correctness and complete user-intent fulfillment, then total time to a correctly verified solution including review and rework, then provider OUTPUT and monetary cost. More output is acceptable when it improves correctness or verified-resolution time.
+6. **Optimized** — use efficient code and avoid unnecessary work without sacrificing correctness or the user's requirements.
 7. **Production ready** — error states are explicit and visible; behavior under failure is what the user expects, not silent corruption.
 
 Three discipline rules govern HOW the principles are applied:
@@ -41,7 +39,7 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 
 | Role | Default | Manual override |
 |---|---|---|
-| Orchestrator — conversation, handoff, loop driving | whichever CLI you open (contract is symmetric: CLAUDE.md ↔ AGENTS.md). Measured status 2026-07-05: Claude Code + omp run the full phase-gated pipeline; in the iter-0061 minimal-repo trivial-add shape on this machine, Codex CLI also ran it when the project carried the devlyn AGENTS.md (ordinary invocation, 4/4); without project AGENTS.md, the same shape silently skipped the pipeline (iter-0040 F6, 4/4) | switch CLIs; the file artifacts (spec/queue/state) carry over |
+| Orchestrator — conversation, handoff, loop driving | whichever CLI you open (contract is symmetric: CLAUDE.md ↔ AGENTS.md) | switch CLIs; the file artifacts (spec/queue/state) carry over |
 | Executor — IMPLEMENT/CLEANUP + primary VERIFY judge; PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin | canonical skill's orchestrator-supported default | `--engine <name>` per run, or `/devlyn:engines executor <name>` (durable pin) |
 | Pair judge — default for VERIFY; conditional for risk probes | first available OTHER engine (claude↔codex) | `/devlyn:engines pair <name>,...`; `--no-pair` opts out |
 
@@ -129,10 +127,6 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 **Stopping rule.** A task is done when the user's stated goal is closed AND no off-path work was added. If you find yourself hesitating because "I should also do Z" — Z is drift. Note it for follow-up, do not execute.
 <!-- runtime-principles:section=goal-locked:end -->
 
-## Evolution loop — orchestrator-neutral continuation
-
-Any orchestrating engine (Claude, Codex, or future) continuing harness / loop-engineering work cold-starts from `autoresearch/HANDOFF.md` (read order inside), then `autoresearch/NORTH-STAR.md` (goal + floor/ceiling contracts + ops-test gates) and `autoresearch/PRINCIPLES.md`. Instruments and gates are scripts + files, never model memory. The pair partner is the strongest available OTHER engine — the protocol is direction-symmetric (iter-0060). On any model/version change, re-certify engine seats with the seat-fitness instrument before re-pinning `.devlyn/engines.json` (NORTH-STAR ceiling contract; iter-0064).
-
 ## Error Handling Philosophy
 
 **No silent fallbacks.** Handle errors explicitly and show the user what happened.
@@ -171,7 +165,7 @@ For Codex model selection, receipts, isolation and availability, follow the invo
 
 ## Skill Boundary Policy
 
-The runtime pipeline surface is two skills — `/devlyn:resolve` and `/devlyn:ideate` — plus `/devlyn:design-ui` for creative UI exploration and two utilities added on explicit user direction: `/devlyn:engines` (engine-role config, iter-0038) and `/devlyn:queue` (intent-queue status/add/drain, iter-0039). `/devlyn:resolve` runs PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY inline; verification, cleanup, and security review (delegated to the native `security-review` Claude Code skill from BUILD_GATE) all live inside the pipeline. There are no standalone `/devlyn:review`, `/devlyn:evaluate`, or `/devlyn:team-resolve` surfaces. `/devlyn:design-ui` spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer). `/devlyn:reap` is an optional user-invoked skill in `optional-skills/`; resolve never delegates to it.
+The runtime pipeline surface is two skills — `/devlyn:resolve` and `/devlyn:ideate` — plus `/devlyn:design-ui` for creative UI exploration and two utilities: `/devlyn:engines` (engine-role config) and `/devlyn:queue` (intent-queue status/add/drain). `/devlyn:resolve` runs PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY inline; verification, cleanup, and security review (delegated to the native `security-review` Claude Code skill from BUILD_GATE) all live inside the pipeline. There are no standalone `/devlyn:review`, `/devlyn:evaluate`, or `/devlyn:team-resolve` surfaces. `/devlyn:design-ui` spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer). `/devlyn:reap` is an optional user-invoked skill in `optional-skills/`; resolve never delegates to it.
 
 Browser validation runs directly from BUILD_GATE using whichever toolchain is available (Chrome MCP, Playwright, or curl-tier fallback) — there is no separate `/devlyn:browser-validate` skill.
 

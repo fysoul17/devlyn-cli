@@ -2,7 +2,7 @@
 
 Every iteration must be checked against pre-flight 0 plus principles #1-#7 before it ships. Each principle has a concrete operational test — not a vibe, not a slogan. If a principle has no operational test in this file, it is decoration and gets cut on the next pass.
 
-These principles live HERE (referenced from iteration files) rather than in CLAUDE.md because they are the contract for *evolving* the harness, not for *executing* it. CLAUDE.md is the doctrine the harness reads at run time; this file is the doctrine the iteration loop reads at change time. Different cadence, different audience.
+These principles live HERE rather than in the installed AGENTS.md and CLAUDE.md: those files guide customer task execution. Keep harness research goals, measurement protocols, model comparisons and iteration history in autoresearch. For installer or skill edits in the devlyn-cli source repo, run `bash scripts/lint-skills.sh`.
 
 These five principles serve the **outer goal** in [`NORTH-STAR.md`](NORTH-STAR.md). Read NORTH-STAR.md first if you are picking this up cold — it tells you what "passes" actually means in terms of the L0 / L1 / L2 layer contracts.
 
