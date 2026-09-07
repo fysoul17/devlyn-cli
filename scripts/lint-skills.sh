@@ -1735,6 +1735,34 @@ else
   while IFS= read -r f; do bad "$f"; done <<< "$shared_path_offenders"
 fi
 
+section "Check 10a2: Bounded non-interactive calls discard inherited input"
+if python3 - <<'PY'
+import json, subprocess, sys
+
+prompt = "sealed argv prompt\n두 번째 줄"
+poison = b"OPERATOR_HEREDOC_SHOULD_NOT_BECOME_USER_INPUT\n"
+child = (
+    "import json,sys,time; "
+    "print(json.dumps({'argv':sys.argv[1:],'stdin_hex':sys.stdin.buffer.read().hex()},ensure_ascii=False),flush=True); "
+    "print('stderr preserved',file=sys.stderr,flush=True); "
+    "time.sleep(float(sys.argv[2])); raise SystemExit(int(sys.argv[3]))"
+)
+for label, delay, code, expected_exit in (("normal", 0, 0, 0), ("nonzero", 0, 17, 17), ("timeout", 30, 0, 124)):
+    args = [prompt, str(delay), str(code)]
+    result = subprocess.run(
+        [sys.executable, "config/skills/_shared/run-bounded.py", "1", "--", sys.executable, "-c", child, *args],
+        input=poison, capture_output=True, timeout=9,
+    )
+    assert result.returncode == expected_exit, (label, result.returncode)
+    assert json.loads(result.stdout) == {"argv": args, "stdin_hex": ""}, (label, result.stdout)
+    assert result.stderr == b"stderr preserved\n", (label, result.stderr)
+PY
+then
+  ok "run-bounded.py closes child stdin and preserves argv, streams, exits and timeout"
+else
+  bad "run-bounded.py inherited-input/exit/timeout regression failed"
+fi
+
 # ---------------------------------------------------------------------------
 # 10b. Shared routing docs must describe the current 2-skill surface.
 #      A stale auto-resolve/preflight/ideate-CHALLENGE reference can misroute

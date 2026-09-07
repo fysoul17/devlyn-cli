@@ -21,7 +21,7 @@ def main(argv: list[str]) -> int:
     if argv[2] != "--":
         return fail("expected -- before command")
 
-    child = subprocess.Popen(argv[3:], start_new_session=True)
+    child = subprocess.Popen(argv[3:], stdin=subprocess.DEVNULL, start_new_session=True)
     try:
         return child.wait(timeout=seconds)
     except subprocess.TimeoutExpired:
