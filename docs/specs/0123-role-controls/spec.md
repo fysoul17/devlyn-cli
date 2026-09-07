@@ -60,6 +60,10 @@ The verification below gates explicit control, compatibility, identity, independ
 
 ## Verification
 
+### Observed inspection-contract repair (2026-09-07)
+
+The ordinary installed `8de469d` run's first VERIFY round supplied the Codex judge with file paths and required README line citations while forbidding all command execution. The attested Astra/high call returned only `BLOCKED`; no successful source read was observed. Dispatch identity passed, but the unchanged merge correctly blocked the missing canonical finding. This is an input/access-contract defect, not evidence of a filesystem denial. The inherited wording came from iter0111 (`53f1436`): its observed failure was duplicate lint execution and a false sandbox-based product finding, not read-only source inspection. In `devlyn:resolve/SKILL.md` and `references/phases/verify.md`, replace the blanket prohibition with native read/search tools or non-mutating shell inspection of the authorized source, diff and sealed evidence. Preserve no mutation, no verification/lint/test/build/probe or invented-scenario execution, the existing sandbox/isolation, independent contexts, review bounds, parser and verdict floors. Update only the affected existing lint contract and mirrors. Keep the active installed run and historical evidence unchanged; validate the repaired source through a separate ordinary installation/run. This repair makes the existing review contract executable across engines; it makes no accuracy or speed superiority claim.
+
 - `python3 config/skills/_shared/role-config.py --self-test` — precedence, compatibility, validation, atomic writes, supported capabilities and no mid-run reread.
 - `python3 config/skills/_shared/judge-role-evidence.py --self-test` — strict native evidence/transport, mismatch/rejection/timeout cases and retained raw identities; this helper stays separate from mutation receipts.
 - `python3 config/skills/_shared/verify-merge-findings.py --self-test` — opposite worker/primary engines, primary timeout ownership and unchanged binding findings/defaults.
