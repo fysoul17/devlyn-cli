@@ -12,7 +12,9 @@ Subject to explicit user directives (including the bounded 0118 exception), if a
 
 ---
 
-## 🚦 START-HERE — 2026-09-07 / 0122 ACCEPTED; CUSTOMER ENTRY CONTEXT CORRECTED
+## 🚦 START-HERE — 2026-09-07 / FABLE EFFORT SCREEN REGISTERED
+
+**Active frontier:** [0120 Fable effort development](iterations/0120-model-adaptation-direction.md#fable-effort-development--registered-four-call-screen), registered before output at08:02:51Z. Four serial medium/high/high/medium native calls use identical exposed F23 evidence; quality assessments freeze before efficiency. No retries, replacements or automatic adoption. Root owns launch/terminal state in `.devlyn/0120-harness-direction-20260906/judge-effort-development-r0/`; inspect that registration before continuing. The original worker-policy pilot remains closed, its three unlaunched rows NOT_RUN. Customer entry correction and0122 below are accepted; this new comparison changes no installed defaults.
 
 **0118 full R5 acceptance closed PASS_WITH_ISSUES**, run `rs-20260906T132050Z-dc69e1c4b8e9`. Fresh BUILD6/6 and independent MECHANICAL6/6 passed; actual Astra/Grok final PASS and Fable PASS_WITH_ISSUES leave two LOW/nonbinding advisories. Exact eleven-file implementation `9d70cd8fb213f039924edbe80e310f06b55d41b9` and the single closure DECISIONS append `318ac89a2996573e37a1c35764557c21a1347ada` are pushed to `origin/codex/0118-acceptance-r5-20260906`. The [current checkpoint](iterations/0118-concurrent-admission.md#current-continuation--2026-09-06) owns archived state/report, 353-file durable custody, source-backed adjudications and the superseded original route. No active R5 run remains. Its reviewed historical document bytes remain frozen; this main checkpoint carries the current frontier.
 
