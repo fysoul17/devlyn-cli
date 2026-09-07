@@ -8,8 +8,11 @@ import json
 import os
 import pathlib
 import re
+import signal
+import shutil
 import subprocess
 import tempfile
+import time
 
 
 SCHEMA_VERSION = "2.0"
@@ -361,7 +364,281 @@ def validate_receipt(
     }
 
 
+def monitor_descendant_regression() -> None:
+    with tempfile.TemporaryDirectory() as raw_tmp:
+        work = pathlib.Path(raw_tmp)
+        fixture_bin = work / "bin"
+        fixture_bin.mkdir()
+        release_marker = work / "release"
+        codex_pid_marker = work / "codex.pid"
+        sleep_marker = work / "sleep.tsv"
+        real_bash = shutil.which("bash")
+        real_sleep = shutil.which("sleep")
+        if real_bash is None or real_sleep is None:
+            raise AssertionError("monitor regression requires bash and sleep")
+        real_bash = str(pathlib.Path(real_bash).resolve(strict=True))
+        real_sleep = str(pathlib.Path(real_sleep).resolve(strict=True))
+
+        fake_codex = work / "fake-codex"
+        fake_codex.write_text(
+            f"#!{real_bash}\n"
+            "printf '%s\\n' \"$$\" > \"$DEVLYN_WATCHDOG_TEST_CODEX_PID\"\n"
+            "while [ ! -e \"$DEVLYN_WATCHDOG_TEST_RELEASE\" ]; do\n"
+            "  \"$DEVLYN_WATCHDOG_TEST_REAL_SLEEP\" 0.01\n"
+            "done\n",
+            encoding="utf-8",
+        )
+        fake_codex.chmod(0o755)
+        sleep_shim = fixture_bin / "sleep"
+        sleep_shim.write_text(
+            f"#!{real_bash}\n"
+            "printf '%s\\t%s\\n' \"$$\" \"${1-}\" >> "
+            "\"$DEVLYN_WATCHDOG_TEST_SLEEP_MARKER\"\n"
+            "exec \"$DEVLYN_WATCHDOG_TEST_REAL_SLEEP\" \"$@\"\n",
+            encoding="utf-8",
+        )
+        sleep_shim.chmod(0o755)
+
+        wrapper = pathlib.Path(__file__).resolve().with_name("codex-monitored.sh")
+        env = os.environ.copy()
+        for key in tuple(env):
+            if (
+                key.startswith("DEVLYN_INVOCATION_")
+                or key.startswith("DEVLYN_WATCHDOG_TEST_")
+                or key.startswith("CODEX_MONITORED_")
+                or key in {"CODEX_BLOCKED", "CODEX_REAL_BIN"}
+            ):
+                env.pop(key)
+        env.update({
+            "CODEX_BIN": str(fake_codex),
+            "CODEX_MONITORED_HEARTBEAT": "1",
+            "CODEX_MONITORED_TIMEOUT_SEC": "30",
+            "DEVLYN_WATCHDOG_TEST_CODEX_PID": str(codex_pid_marker),
+            "DEVLYN_WATCHDOG_TEST_RELEASE": str(release_marker),
+            "DEVLYN_WATCHDOG_TEST_SLEEP_MARKER": str(sleep_marker),
+            "DEVLYN_WATCHDOG_TEST_REAL_SLEEP": real_sleep,
+            "PATH": str(fixture_bin) + os.pathsep + env.get("PATH", ""),
+        })
+
+        wrapped: subprocess.Popen | None = None
+        fixture_groups: dict[int, set[int]] = {}
+        wrapper_pgid: int | None = None
+
+        def record_owned_process(pid: int, session_id: int) -> int | None:
+            try:
+                process_session = os.getsid(pid)
+                process_group = os.getpgid(pid)
+            except ProcessLookupError:
+                return None
+            except PermissionError as exc:
+                raise AssertionError(f"cannot inspect fixture pid {pid}: {exc}") from exc
+            if process_session != session_id:
+                raise AssertionError(
+                    f"fixture pid {pid} escaped session {session_id}: {process_session}"
+                )
+            fixture_groups.setdefault(process_group, set()).update({pid, process_group})
+            return process_group
+
+        def read_announced_groups(session_id: int) -> tuple[
+            tuple[int, int] | None, dict[str, tuple[int, int]]
+        ]:
+            codex_info = None
+            if codex_pid_marker.is_file():
+                raw_pid = codex_pid_marker.read_text(encoding="utf-8")
+                if raw_pid.endswith("\n") and re.fullmatch(r"[1-9][0-9]*\n", raw_pid):
+                    codex_pid = int(raw_pid.strip())
+                    codex_pgid = record_owned_process(codex_pid, session_id)
+                    if codex_pgid is not None:
+                        codex_info = (codex_pid, codex_pgid)
+                elif raw_pid.endswith("\n"):
+                    raise AssertionError(f"invalid fake Codex PID marker: {raw_pid!r}")
+
+            sleeps: dict[str, tuple[int, int]] = {}
+            if sleep_marker.is_file():
+                raw_sleeps = sleep_marker.read_text(encoding="utf-8")
+                complete = raw_sleeps if raw_sleeps.endswith("\n") else raw_sleeps.rsplit("\n", 1)[0]
+                for line in complete.splitlines():
+                    match = re.fullmatch(r"([1-9][0-9]*)\t([^\t]+)", line)
+                    if match is None:
+                        raise AssertionError(f"invalid monitor sleep marker: {line!r}")
+                    sleep_pid = int(match.group(1))
+                    sleep_pgid = record_owned_process(sleep_pid, session_id)
+                    if sleep_pgid is not None:
+                        sleeps[match.group(2)] = (sleep_pid, sleep_pgid)
+            return codex_info, sleeps
+
+        def owned_group_alive(pgid: int, session_id: int) -> bool:
+            for pid in fixture_groups.get(pgid, ()):
+                try:
+                    if os.getsid(pid) == session_id and os.getpgid(pid) == pgid:
+                        return True
+                except ProcessLookupError:
+                    continue
+                except PermissionError as exc:
+                    raise AssertionError(
+                        f"cannot inspect fixture process group {pgid}: {exc}"
+                    ) from exc
+            return False
+
+        def cleanup_fixture(session_id: int) -> list[str]:
+            failures: list[str] = []
+            if wrapped is None:
+                return failures
+            try:
+                read_announced_groups(session_id)
+            except (OSError, UnicodeError, AssertionError) as exc:
+                failures.append(f"announcement discovery failed: {exc}")
+
+            def live_groups() -> list[int]:
+                result = []
+                for pgid in sorted(fixture_groups):
+                    if pgid == os.getpgrp():
+                        failures.append(f"refused to signal current process group {pgid}")
+                        continue
+                    try:
+                        if owned_group_alive(pgid, session_id):
+                            result.append(pgid)
+                    except AssertionError as exc:
+                        failures.append(str(exc))
+                return result
+
+            for pgid in live_groups():
+                try:
+                    os.killpg(pgid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+                except PermissionError as exc:
+                    failures.append(f"TERM fixture process group {pgid} failed: {exc}")
+
+            term_deadline = time.monotonic() + 1.0
+            survivors = live_groups()
+            while survivors and time.monotonic() < term_deadline:
+                time.sleep(0.01)
+                survivors = live_groups()
+            for pgid in survivors:
+                try:
+                    os.killpg(pgid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                except PermissionError as exc:
+                    failures.append(f"KILL fixture process group {pgid} failed: {exc}")
+
+            kill_deadline = time.monotonic() + 1.0
+            survivors = live_groups()
+            while survivors and time.monotonic() < kill_deadline:
+                time.sleep(0.01)
+                survivors = live_groups()
+            if survivors:
+                failures.append(f"fixture process groups survived cleanup: {survivors}")
+
+            try:
+                wrapped.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                failures.append("wrapper wait exceeded cleanup deadline")
+                try:
+                    wrapped.kill()
+                except ProcessLookupError:
+                    pass
+                except PermissionError as exc:
+                    failures.append(f"direct wrapper KILL failed: {exc}")
+                try:
+                    wrapped.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    failures.append("wrapper remained alive after direct KILL")
+
+            try:
+                wrapped.communicate(timeout=1)
+            except subprocess.TimeoutExpired:
+                failures.append("captured stderr did not reach EOF during cleanup")
+                if wrapped.stderr is not None:
+                    wrapped.stderr.close()
+            return failures
+
+        try:
+            wrapped = subprocess.Popen(
+                [
+                    real_bash, str(wrapper), "-C", str(work), "-s", "workspace-write",
+                    "-m", "gpt-wrapper", "verify monitor cleanup",
+                ],
+                cwd=work,
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                start_new_session=True,
+            )
+            session_id = wrapped.pid
+            wrapper_pgid = record_owned_process(wrapped.pid, session_id)
+            if wrapper_pgid != wrapped.pid:
+                raise AssertionError(
+                    f"wrapper did not own its fixture session/process group: {wrapper_pgid}"
+                )
+
+            setup_deadline = time.monotonic() + 5.0
+            ready = None
+            while time.monotonic() < setup_deadline:
+                codex_info, sleeps = read_announced_groups(session_id)
+                heartbeat = sleeps.get("1")
+                watchdog = sleeps.get("30")
+                if codex_info is not None and heartbeat is not None and watchdog is not None:
+                    groups = {
+                        wrapper_pgid,
+                        codex_info[1],
+                        heartbeat[1],
+                        watchdog[1],
+                    }
+                    if len(groups) != 4:
+                        raise AssertionError(
+                            "wrapper, Codex, heartbeat, and watchdog did not own distinct groups: "
+                            f"{sorted(groups)}"
+                        )
+                    if all(owned_group_alive(pgid, session_id) for pgid in groups):
+                        ready = (codex_info, heartbeat, watchdog)
+                        break
+                if wrapped.poll() is not None:
+                    raise AssertionError(
+                        f"wrapper exited during monitor setup with code {wrapped.returncode}"
+                    )
+                time.sleep(0.01)
+            if ready is None:
+                sleep_detail = sleep_marker.read_text(encoding="utf-8") if sleep_marker.exists() else ""
+                raise AssertionError(
+                    "monitor setup did not announce live Codex/heartbeat=1/watchdog=30 "
+                    f"within 5 seconds: {sleep_detail!r}"
+                )
+
+            release_marker.write_bytes(b"release\n")
+            try:
+                _stdout, stderr = wrapped.communicate(timeout=5)
+            except subprocess.TimeoutExpired as exc:
+                raise AssertionError(
+                    "wrapper completion or captured stderr EOF exceeded 5 seconds "
+                    f"after release (returncode={wrapped.poll()})"
+                ) from exc
+            if wrapped.returncode != 0:
+                raise AssertionError(stderr.decode("utf-8", errors="replace"))
+            read_announced_groups(session_id)
+            survivors = [
+                pgid
+                for pgid in sorted(fixture_groups)
+                if owned_group_alive(pgid, session_id)
+            ]
+            if survivors:
+                raise AssertionError(
+                    f"wrapper returned while fixture process groups remained alive: {survivors}"
+                )
+        except BaseException as exc:
+            session_id = wrapped.pid if wrapped is not None else -1
+            cleanup_failures = cleanup_fixture(session_id)
+            if cleanup_failures:
+                raise AssertionError(
+                    f"monitor regression failed ({exc}); cleanup failed: "
+                    + "; ".join(cleanup_failures)
+                ) from exc
+            raise
+
+
 def self_test() -> int:
+    monitor_descendant_regression()
     with tempfile.TemporaryDirectory() as raw_tmp:
         work = pathlib.Path(raw_tmp)
         devlyn = work / ".devlyn"

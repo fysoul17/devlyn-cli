@@ -232,16 +232,25 @@ terminate_process_group() {
   kill -KILL -- "-$pgid" 2>/dev/null || true
 }
 
+terminate_monitor_group() {
+  local pid="$1"
+  kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+  kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+}
+
 forward_signal() {
   local sig="$1"
   if [ -n "${CODEX_PID:-}" ] && kill -0 "$CODEX_PID" 2>/dev/null; then
     kill -"$sig" -- "-$CODEX_PID" 2>/dev/null || kill -"$sig" "$CODEX_PID" 2>/dev/null || true
   fi
-  if [ -n "${HB_PID:-}" ] && kill -0 "$HB_PID" 2>/dev/null; then
-    kill -TERM "$HB_PID" 2>/dev/null || true
+  if [ -n "${HB_PID:-}" ]; then
+    terminate_monitor_group "$HB_PID"
+    HB_PID=""
   fi
-  if [ -n "${WATCHDOG_PID:-}" ] && kill -0 "$WATCHDOG_PID" 2>/dev/null; then
-    kill -TERM "$WATCHDOG_PID" 2>/dev/null || true
+  if [ -n "${WATCHDOG_PID:-}" ]; then
+    terminate_monitor_group "$WATCHDOG_PID"
+    WATCHDOG_PID=""
   fi
 }
 
@@ -277,7 +286,6 @@ fi
 set -m
 "$CODEX_BIN" exec "${CODEX_ARGS[@]}" < /dev/null &
 CODEX_PID=$!
-set +m
 printf '[codex-monitored] codex pid=%d\n' "$CODEX_PID" >&2
 
 heartbeat_loop "$CODEX_PID" &
@@ -289,17 +297,13 @@ if [ "$TIMEOUT_SEC" -gt 0 ]; then
   timeout_loop "$CODEX_PID" "$TIMEOUT_SEC" "$TIMEOUT_FLAG" &
   WATCHDOG_PID=$!
 fi
+set +m
 
 wait "$CODEX_PID"
 EXIT=$?
 terminate_process_group "$CODEX_PID" "post-exit-descendants"
-
-kill -TERM "$HB_PID" 2>/dev/null || true
-wait "$HB_PID" 2>/dev/null || true
-if [ -n "${WATCHDOG_PID:-}" ]; then
-  kill -TERM "$WATCHDOG_PID" 2>/dev/null || true
-  wait "$WATCHDOG_PID" 2>/dev/null || true
-fi
+CODEX_PID=""
+forward_signal TERM
 if [ -n "$TIMEOUT_FLAG" ] && [ -f "$TIMEOUT_FLAG" ]; then
   EXIT=124
 fi
