@@ -1,0 +1,30 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "python3 config/skills/_shared/role-config.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 120
+    },
+    {
+      "cmd": "python3 config/skills/_shared/judge-role-evidence.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 120
+    },
+    {
+      "cmd": "python3 config/skills/_shared/verify-merge-findings.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 180
+    },
+    {
+      "cmd": "bash scripts/lint-skills.sh",
+      "exit_code": 0,
+      "timeout_sec": 600
+    },
+    {
+      "cmd": "git diff --check",
+      "exit_code": 0,
+      "timeout_sec": 60
+    }
+  ],
+  "max_deps_added": 0
+}

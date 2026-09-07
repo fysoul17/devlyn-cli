@@ -13,14 +13,16 @@ the binding, the registration template (§9), and the tightening lane (§7).
 
 **Trigger**: a new model ID becomes available for a seat this repo pins
 (`.devlyn/engines.json`), or an existing pin's model version changes under it —
-`CLAUDE.md:132` requires seat re-certification on any model/version change
-BEFORE re-pinning. The user shorthand is "모델 체크업".
+[`NORTH-STAR.md`](../NORTH-STAR.md#multi-llm-evolution-direction-binding-for-devlynresolve)
+requires seat re-certification on model/version changes before re-pinning. The
+user shorthand is "모델 체크업".
 
 **It never writes a pin.** `seat-matrix.py` writes exactly two files,
 `seat-matrix-<date>.json` and `.md` (`benchmark/seats/seat-matrix.py:707-713`);
 `/devlyn:engines` is the only surface that touches `.devlyn/engines.json`
 (`config/skills/devlyn:engines/SKILL.md:43,45,47`). The verdict page is a
-decision input; the re-pin is a human act (§8).
+decision input; re-pinning requires operator authorization (§8), including an
+explicit delegation to the root orchestrator as in0120.
 
 ## 2. Operator preconditions (binding — all pre-existing hard rules)
 
@@ -377,7 +379,7 @@ name without a `_shared/adapters/<name>.md` file halts with
 `claude`, `codex`, `grok`, `omp` (`config/skills/_shared/adapters/`). **An exact
 model ID is therefore NOT a legal pin value.**
 
-- **Layer 1 — seat ENGINE change** (e.g. `codex` → `claude`): the human writes
+- **Layer 1 — seat ENGINE change** (e.g. `codex` → `claude`): the authorized operator applies
   the subcommand matching the SEAT UNDER DECISION — `executor <adapter-name>`
   for the executor seat, `pair <name>[,<name>...]` for the pair-judge seat;
   both surfaces exist and are not interchangeable
