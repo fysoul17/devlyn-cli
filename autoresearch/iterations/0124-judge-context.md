@@ -10,4 +10,4 @@ A separate evaluator receives exact opaque reports and common evidence without a
 
 Stage time is sampled dispatch-to-owned-quiescence, with wrapper time separate; it is not whole verified resolution time. Authentic response OUTPUT includes reasoning once; missing/auxiliary/operator/backend usage stays UNKNOWN. Accuracy precedes all resource diagnostics. See frozen PROTOCOL.md, QUALITY.md and ROOT-CLARIFICATION.md for exact criteria.
 
-At the latest checkpoint call01 is terminal exit0 with unchanged controller inputs and observed owned quiet; native validity remains to be closed before call02. The four outputs have not been graded or mapped to efficiency.0125 BUILD subtraction stays unimplemented;0127 separately corrects source instruction contradictions without changing this frozen packet.
+At the latest checkpoint all four calls are terminal exit0 with unchanged controller inputs; call01–03 native validity is closed VALID and call04 is under final review. The four outputs have not been graded or mapped to efficiency.0125 BUILD subtraction stays unimplemented;0127 separately corrects source instruction contradictions without changing this frozen packet.
