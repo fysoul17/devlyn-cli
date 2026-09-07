@@ -81,7 +81,7 @@ PLAN  →  IMPLEMENT  →  BUILD_GATE  →  CLEANUP  →  VERIFY (fresh subagent
 - **VERIFY** runs in a fresh subagent context with no code-mutation tools — findings only, structurally independent.
 - Git checkpoints at every phase for safe rollback. Fix-loop budget shared across BUILD_GATE and VERIFY (`--max-rounds N`, default 4).
 
-Common flags: `--engine claude|codex|auto` (default `claude`), `--bypass build-gate,cleanup`, `--pair-verify` (force pair-mode JUDGE in VERIFY), `--no-pair` (intentional solo VERIFY), `--risk-probes` / `--no-risk-probes`, `--perf` (per-phase timing).
+Common flags: `--engine claude|codex|omp` (default: the orchestrator-supported default), `--role-config <path>` (one-run worker/judge profiles, see below), `--bypass build-gate,cleanup`, `--pair-verify` (force pair-mode JUDGE in VERIFY), `--no-pair` (intentional solo VERIFY), `--risk-probes` / `--no-risk-probes`, `--perf` (per-phase timing).
 `--pair-verify` and `--no-pair` are mutually exclusive; using both stops with `BLOCKED:invalid-flags`.
 
 Free-form goals that ask for benchmark evidence, pair-evidence, risk-probe
@@ -106,20 +106,44 @@ Stack tasks to run back-to-back without supervision. `/devlyn:queue add "<intent
 devlyn separates three engine roles:
 
 - **Orchestrator** — the CLI you opened (Claude Code, Codex, or omp) that drives the conversation and loop. The contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the same phase-gated pipeline runs whichever you launch; the file artifacts (spec, queue, state) carry over if you switch.
-- **Executor** — IMPLEMENT / CLEANUP plus the primary VERIFY judge. Defaults to `claude`. PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin.
+- **Executor** (legacy) — the worker for IMPLEMENT / CLEANUP and their repair rounds, and the primary VERIFY judge, unless either is separately profiled (below). Defaults to the orchestrator-supported default. PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin. An absent primary profile follows the legacy executor, not an opt-in worker profile.
 - **Pair judge** — the first available *other* engine, default for VERIFY and conditional for risk probes.
 
-`--engine claude` (default) is the canonical implementation surface for IMPLEMENT, BUILD_GATE, and CLEANUP; PLAN always runs on the orchestrator's native worker. VERIFY/JUDGE runs pair mode by default when the OTHER engine is available.
+`--engine <name>` sets the legacy executor for one run as an engine-only entry (it clears any lower-precedence profile's model/effort). BUILD_GATE and risk-probe derivation keep their existing routes; PLAN always runs on the orchestrator's native worker. VERIFY/JUDGE runs pair mode by default when the OTHER engine is available.
 
-Pin roles durably with `/devlyn:engines` (no args shows the role table + detected engines; `executor <name>` / `pair <name>,...` / `clear` manage the pins, stored machine-local in `.devlyn/engines.json`). Pins fail closed: an unavailable pinned engine stops with `BLOCKED:<engine>-unavailable`, and a name with no `_shared/adapters/<name>.md` adapter stops with `BLOCKED:invalid-engine-config`. New engines plug in by shipping an adapter file — no skill changes.
+Pin roles durably with `/devlyn:engines` (no args shows the role table + detected engines; `executor <name>` / `pair <name>,...` / `role <worker|primary_judge|pair_judge> <JSON object>` / `role <name> clear` manage the pins, stored machine-local in `.devlyn/engines.json`; `clear` removes all legacy and role pins, preserves unrelated keys, and deletes an empty file). Pins fail closed: an unavailable pinned engine stops with `BLOCKED:<engine>-unavailable`, and a name with no `_shared/adapters/<name>.md` adapter stops with `BLOCKED:invalid-engine-config`. New engines plug in by shipping an adapter file — no skill changes.
 
-`--engine codex` routes IMPLEMENT to Codex — research-only at HEAD: iter-0020 closed Codex BUILD/IMPLEMENT below the quality floor on the 9-fixture suite (L2 vs L1 = −3.6, 3/8 gated fixtures cleared the +5 margin floor — release-readiness FAIL); iter-0033g + iter-0034 closed PLAN-pair as research-only with explicit unblock conditions (container/sandbox infra OR production telemetry capturing positive evidence of subagent introspection). Install the Codex CLI (https://platform.openai.com/docs/codex) and pass the flag explicitly to opt in:
+#### Explicit worker and judge profiles
+
+`.devlyn/engines.json` may add a `roles` object with `worker`, `primary_judge`, and `pair_judge` entries. Each entry requires `engine` and accepts an optional exact `model` ID and `effort`; unknown fields, aliases (`default`, `auto`, `opus`, `sonnet`, `fable`, `codex` as a model), null/empty values, and duplicate keys stop with `BLOCKED:invalid-engine-config`. Only the project's own `.devlyn/engines.json` is read — no parent or global lookup. Example (an example, not a default or ranking):
+
+```json
+{
+  "executor": "codex",
+  "pair_judge_priority": ["claude"],
+  "roles": {
+    "worker": {"engine": "codex", "model": "gpt-6-astra", "effort": "xhigh"},
+    "primary_judge": {"engine": "codex", "model": "gpt-6-astra", "effort": "high"},
+    "pair_judge": {"engine": "claude", "model": "claude-fable-5-1", "effort": "medium"}
+  }
+}
+```
+
+`--role-config <path>` supplies the same `{"roles": {...}}` object for one run only, with no other top-level keys; the flag may appear once.
+
+- **Precedence** — an entry replaces the lower one as a whole; model/effort never merge across engines. Worker and primary judge: run `--role-config` entry > `--engine` (engine-only) > project role entry > legacy executor/default. Pair judge: run entry > project entry > `pair_judge_priority` / the OTHER-engine complement. A missing `model`/`effort` keeps that route's current default and is shown as inherited/unresolved.
+- **Boundaries** — `worker` covers IMPLEMENT / CLEANUP and their repair rounds; `primary_judge` and `pair_judge` cover VERIFY only. PLAN stays orchestrator-fixed, BUILD_GATE keeps its existing route, and risk-probe derivation stays outside these controls. OTHER must differ from the primary by engine: an explicit same-engine pair is `BLOCKED:invalid-engine-config`. `--no-pair` is unchanged — explicit solo VERIFY; an unused pair entry is neither dispatched nor availability-checked.
+- **Initial explicit routes** — Codex worker/primary/pair accept exact `model` + `effort` (dispatched as `-m` / `-c model_reasoning_effort=`, validated against the installed Codex CLI's native model metadata for its version). Claude primary/pair judges run the read-only Claude CLI with `--model` / `--effort`, validated against the adapter's version/model capability declaration. The Claude worker stays the native `Agent` route and is engine-only: explicit `model`/`effort` on a Claude worker is `BLOCKED:unsupported-role-option` — a supported-route boundary, not a claim that Claude cannot implement. Other adapters (omp, grok) are engine-only for their eligible roles.
+- **Errors** — `BLOCKED:unsupported-role-option` names the role, engine and field with guidance; there is no clamp, fallback, substituted model, or weaker retry. An explicitly selected engine (flag, pin, or profile) that is unavailable stops with `BLOCKED:<engine>-unavailable`. A native warning that a requested option was ignored is a failed promise even at exit 0.
+- **Requested vs observed** — `/devlyn:engines` status prints each role's requested engine/model/effort, source and dispatch channel before dispatch; it describes a request and does not prove a native invocation happened. Effective model is reported only with its evidence basis, and effective effort stays unknown unless native evidence establishes it — invocation arguments prove dispatch, not provider-internal reasoning.
+
+`--engine codex` routes IMPLEMENT / CLEANUP to Codex as a supported engine-only route (exact model/effort via the profiles above). Historical record: iter-0020 closed Codex BUILD/IMPLEMENT below the quality floor on the 9-fixture suite (L2 vs L1 = −3.6, 3/8 gated fixtures cleared the +5 margin floor — release-readiness FAIL). Separately, PLAN-pair remains research-only: iter-0033g + iter-0034 closed it with explicit unblock conditions (container/sandbox infra OR production telemetry capturing positive evidence of subagent introspection). Install the Codex CLI (https://platform.openai.com/docs/codex) and pass the flag explicitly to opt in:
 
 ```
-/devlyn:resolve "fix the auth bug" --engine codex   # research-only
+/devlyn:resolve "fix the auth bug" --engine codex
 ```
 
-If Codex or Claude is absent when explicitly selected, or OTHER engine is absent under `--pair-verify`, the harness stops with `BLOCKED:<engine>-unavailable` and prints setup guidance. Automatic VERIFY absence is a reported solo route. Use `--no-pair` only when intentionally accepting solo VERIFY; use `--no-risk-probes` only when intentionally disabling automatic high-risk probes.
+If an engine is absent when explicitly selected by flag, pin, or role profile, or OTHER engine is absent under `--pair-verify`, the harness stops with `BLOCKED:<engine>-unavailable` and prints setup guidance. Automatic VERIFY absence is a reported solo route. Use `--no-pair` only when intentionally accepting solo VERIFY; use `--no-risk-probes` only when intentionally disabling automatic high-risk probes.
 
 ### Benchmark score runs
 
