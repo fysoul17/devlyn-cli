@@ -49,6 +49,7 @@ PER_RUN_PATTERNS = (
     # dispatch receipt. Round-scoped root files avoid engine-global scans.
     "*.worker-session.*.jsonl",
     "*.invocation.*.json",
+    "*.argv.*.json",
     "*.prompt.*",
     "risk-probes.jsonl",
     # Probe scripts referenced by risk-probes.jsonl preserve probes/<file>
@@ -346,6 +347,56 @@ def dynamic_invocation_artifacts(devlyn: pathlib.Path, state: dict) -> list[path
                         f"duplicate state-bound invocation artifact: {artifact.relative_to(work)}"
                     )
                 found[artifact] = None
+            if "role_argv" in record:
+                binding = record["role_argv"]
+                expected = f".devlyn/{phase_name}.argv.{document['round']}.json"
+                if not isinstance(binding, dict) or binding.get("path") != expected:
+                    raise ArchiveError("invalid state-bound worker argv path")
+                argv_file = work / expected
+                if argv_file.is_symlink() or not argv_file.is_file():
+                    raise ArchiveError("missing regular state-bound worker argv")
+                argv_raw = argv_file.read_bytes()
+                try:
+                    argv = json.loads(argv_raw)
+                except (ValueError, UnicodeError) as exc:
+                    raise ArchiveError("malformed state-bound worker argv") from exc
+                if (not isinstance(argv, list) or any(not isinstance(arg, str) for arg in argv)
+                        or len(argv_raw) != binding.get("bytes")
+                        or hashlib.sha256(argv_raw).hexdigest() != binding.get("sha256")
+                        or hashlib.sha256(json.dumps(argv, separators=(",", ":")).encode()).hexdigest() != receipt["argv_sha256"]):
+                    raise ArchiveError("altered state-bound worker argv")
+                found[argv_file] = None
+    return sorted(found)
+
+
+def dynamic_judge_role_artifacts(devlyn: pathlib.Path, state: dict) -> list[pathlib.Path]:
+    verify = state.get("phases", {}).get("verify", {})
+    if verify is None:
+        return []
+    if not isinstance(verify, dict) or not isinstance(verify.get("history", []), list):
+        raise ArchiveError("malformed VERIFY phase/history")
+    records = [verify] + (verify.get("history") or [])
+    found = set()
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        bindings = record.get("role_evidence") or {}
+        if not isinstance(bindings, dict):
+            raise ArchiveError("malformed state-bound judge role evidence")
+        for binding in bindings.values():
+            if not isinstance(binding, dict) or not isinstance(binding.get("artifacts"), list):
+                raise ArchiveError("malformed judge role artifact binding")
+            for artifact in [binding, *binding["artifacts"]]:
+                relative = pathlib.PurePosixPath(artifact.get("path", ""))
+                if len(relative.parts) != 2 or relative.parts[0] != ".devlyn":
+                    raise ArchiveError("judge role artifact path escapes canonical .devlyn")
+                path = devlyn / relative.name
+                if path.is_symlink() or not path.is_file():
+                    raise ArchiveError(f"missing regular judge role artifact: {relative}")
+                raw = path.read_bytes()
+                if hashlib.sha256(raw).hexdigest() != artifact.get("sha256") or len(raw) != artifact.get("bytes"):
+                    raise ArchiveError(f"altered judge role artifact: {relative}")
+                found.add(path)
     return sorted(found)
 
 
@@ -381,6 +432,8 @@ def archive_plan(devlyn: pathlib.Path, dest: pathlib.Path, state: dict) -> list[
     for source in dynamic_evidence_artifacts(devlyn, state):
         add(source, dest / source.relative_to(devlyn))
     for source in dynamic_invocation_artifacts(devlyn, state):
+        add(source, dest / source.relative_to(devlyn))
+    for source in dynamic_judge_role_artifacts(devlyn, state):
         add(source, dest / source.relative_to(devlyn))
     return moves
 
@@ -495,6 +548,14 @@ def completion_self_test() -> None:
 
 
 def self_test() -> int:
+    assert dynamic_judge_role_artifacts(pathlib.Path(".devlyn"), {"phases": {"verify": None}}) == []
+    assert dynamic_judge_role_artifacts(pathlib.Path(".devlyn"), {"phases": {}}) == []
+    try:
+        dynamic_judge_role_artifacts(pathlib.Path(".devlyn"), {"phases": {"verify": []}})
+    except ArchiveError:
+        pass
+    else:
+        raise AssertionError("malformed non-null VERIFY phase accepted")
     try:
         loads_strict_json('{"run_id":"a","run_id":"b"}')
     except ValueError as exc:

@@ -32,6 +32,7 @@ import json
 import os
 import pathlib
 import re
+import runpy
 import shutil
 import subprocess
 import sys
@@ -1533,11 +1534,59 @@ def append_phase_history(entry: dict, phase: str) -> None:
         fields = (
             "started_at", "verdict", "completed_at", "duration_ms",
             "invocation_receipt",
-        )
+        ) + (("role_argv",) if "role_argv" in entry else ())
+    elif phase == "verify":
+        fields = ("started_at", "verdict", "completed_at", "duration_ms", "round", "engine", "role_evidence")
     else:
         fields = ("started_at", "verdict", "completed_at", "duration_ms")
     history.append({field: entry.get(field) for field in fields})
     entry["history"] = history
+
+
+def role_config_module():
+    return runpy.run_path(pathlib.Path(__file__).with_name("role-config.py"))
+
+
+def bind_worker_role_argv(state, phase, entry, devlyn, receipt):
+    if phase not in {"implement", "cleanup"}:
+        return None
+    helper = role_config_module()
+    resolution = helper["snapshot"](state)
+    effort = resolution["roles"]["worker"]["effort_requested"] if resolution else None
+    if effort is None:
+        return None
+    path = devlyn / f"{phase}.argv.{entry['round']}.json"
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("explicit worker effort requires the retained native argv array")
+    raw = path.read_bytes()
+    argv = helper["loads"](raw)
+    if not isinstance(argv, list) or any(not isinstance(arg, str) for arg in argv):
+        raise ValueError("worker argv must be an array of strings")
+    if hashlib.sha256(json.dumps(argv, separators=(",", ":")).encode()).hexdigest() != receipt["argv_sha256"]:
+        raise ValueError("worker argv differs from the actual invocation receipt")
+    values = [argv[i + 1] for i, arg in enumerate(argv[:-1]) if arg in {"-c", "--config"}]
+    efforts = [value.split("=", 1)[1].strip('"') for value in values if value.startswith("model_reasoning_effort=")]
+    if efforts != [effort]:
+        raise ValueError("worker effort differs from the frozen explicit selection")
+    return {"path": ".devlyn/" + path.name, "sha256": hashlib.sha256(raw).hexdigest(),
+            "bytes": len(raw), "effort_requested": effort, "identity_basis": "invocation-argv"}
+
+
+def freeze_roles(state: dict, work: pathlib.Path, default_engine: str) -> dict:
+    helper = role_config_module()
+    existing = helper["snapshot"](state)
+    if existing is not None:
+        return existing
+    if any(isinstance(entry, dict) and entry.get("started_at") for entry in state.get("phases", {}).values()):
+        raise ValueError("BLOCKED:invalid-engine-config: roles must be frozen before phase dispatch")
+    resolved = helper["resolve"](
+        work, default_engine,
+        flag_engine=state.get("engine") if state.get("engine_source") == "flag" else None,
+        run_input=state.get("role_config_input"), no_pair=state.get("role_no_pair", False),
+    )
+    state["role_resolution"] = resolved
+    state["engine"], state["engine_source"] = resolved["legacy_engine"], resolved["legacy_source"]
+    return resolved
 
 
 def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
@@ -1546,6 +1595,16 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
              prompt_sha256: str | None = None,
              untracked_before: list[str] | None = None,
              devlyn: pathlib.Path | None = None) -> None:
+    if phase in {"implement", "cleanup", "verify"} and "role_resolution" in state:
+        resolution = role_config_module()["snapshot"](state)
+        selected = resolution["roles"]["primary_judge" if phase == "verify" else "worker"]
+        if engine is not None and engine != selected["engine"]:
+            raise SystemExit("BLOCKED:role-selection-mismatch: phase engine differs from frozen selection")
+        engine = selected["engine"]
+        wanted_model = selected["model_requested"]
+        if wanted_model is not None and model is not None and wanted_model != model:
+            raise SystemExit("BLOCKED:role-selection-mismatch: phase model differs from frozen selection")
+        model = wanted_model or model
     # Merge, don't replace: a phase-gated large run's `exec` progress (or any
     # other field this script doesn't own) survives a fix-loop respawn.
     phases_value = state.get("phases")
@@ -1635,6 +1694,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     append_phase_history(entry, phase)
     if phase in WORKER_SESSION_ARTIFACT_PHASES:
         entry.pop("invocation_receipt", None)
+        entry.pop("role_argv", None)
     entry["started_at"] = now_iso()
     entry["completed_at"] = None
     entry["duration_ms"] = None
@@ -1645,6 +1705,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     entry["sub_verdicts"] = None
     if phase == "verify":
         entry["judge_durations_ms"] = None
+        entry.pop("role_evidence", None)
     if engine is not None:
         entry["engine"] = engine
     elif (
@@ -1822,6 +1883,9 @@ def do_complete(state: dict, phase: str, verdict: str | None,
                 raise invocation_receipt_module().ReceiptError(
                     f"Codex invocation exited {receipt['exit_code']}"
                 )
+            role_argv = bind_worker_role_argv(state, phase, entry, devlyn, receipt)
+            if role_argv is not None:
+                entry["role_argv"] = role_argv
             entry["model_effective"] = entry.get("model_requested")
             entry["invocation_receipt"] = receipt
         except (OSError, UnicodeError, ValueError) as exc:
@@ -1917,6 +1981,43 @@ def do_surface_adjudication_recovery(state: dict, devlyn: pathlib.Path) -> str |
 
 def self_test() -> int:
     import time
+
+    with tempfile.TemporaryDirectory() as tmp:
+        work = pathlib.Path(tmp); devlyn = work / ".devlyn"; devlyn.mkdir()
+        helper = role_config_module()
+        config = {"roles": {"worker": {"engine": "codex", "model": "gpt-6-astra", "effort": "high"},
+                            "primary_judge": {"engine": "claude"}}}
+        (devlyn / "engines.json").write_bytes(helper["encoded"](config))
+        state = {"version": "3.0", "engine": "codex", "engine_source": "default", "phases": {}}
+        frozen = freeze_roles(state, work, "codex")
+        (devlyn / "engines.json").write_text('{"executor":"claude"}')
+        assert freeze_roles(state, work, "codex") == frozen
+        do_spawn(state, "verify", 0, None, None, None, None, devlyn=devlyn)
+        assert state["engine"] == "codex" and state["phases"]["verify"]["engine"] == "claude"
+        for phase in ("implement", "cleanup"):
+            before = copy.deepcopy(state)
+            try:
+                do_spawn(state, phase, 0, None, None, "claude", None, devlyn=devlyn)
+            except SystemExit:
+                pass
+            else:
+                raise AssertionError("wrong worker engine accepted")
+            assert state == before
+        argv = ["--json", "-m", "gpt-6-astra", "-c", "model_reasoning_effort=high", "task"]
+        receipt = {"argv_sha256": hashlib.sha256(json.dumps(argv, separators=(",", ":")).encode()).hexdigest()}
+        path = devlyn / "implement.argv.0.json"
+        path.write_text(json.dumps(argv))
+        binding = bind_worker_role_argv(state, "implement", {"round": 0}, devlyn, receipt)
+        assert binding["effort_requested"] == "high"
+        path.write_text(json.dumps([*argv, "extra"]))
+        try:
+            bind_worker_role_argv(state, "implement", {"round": 0}, devlyn, receipt)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("modified worker argv accepted")
+        assert bind_worker_role_argv(state, "build_gate", {}, devlyn, receipt) is None
+    print("PASS explicit roles: frozen primary/worker routing and actual worker argv binding")
 
     try:
         loads_strict_json('{"process_evidence":null,"process_evidence":[]}')
@@ -4565,6 +4666,8 @@ def main() -> int:
     ap.add_argument("--devlyn-dir", default=".devlyn")
     ap.add_argument("--phase", choices=sorted(PHASE_NAMES))
     ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--freeze-roles", action="store_true")
+    ap.add_argument("--default-engine", default="claude")
     sub = ap.add_subparsers(dest="event")
 
     spawn_p = sub.add_parser("spawn")
@@ -4617,6 +4720,19 @@ def main() -> int:
     args = ap.parse_args()
     if args.self_test:
         return self_test()
+
+    if args.freeze_roles:
+        devlyn = pathlib.Path(args.devlyn_dir)
+        state_path = devlyn / "pipeline.state.json"
+        try:
+            state = read_state(state_path)
+            result = freeze_roles(state, devlyn.resolve().parent, args.default_engine)
+            write_state(state_path, state)
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        except (ValueError, OSError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
 
     surface_events = {
         "surface-check", "surface-adjudication-recover", "surface-rollback", "surface-skip",

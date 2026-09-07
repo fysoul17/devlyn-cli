@@ -20,7 +20,7 @@ sys.dont_write_bytecode = True
 
 
 VALUE_FLAGS = {
-    "--max-rounds", "--engine", "--spec", "--verify-only", "--goal-file", "--bypass",
+    "--max-rounds", "--engine", "--spec", "--verify-only", "--goal-file", "--bypass", "--role-config",
 }
 BOOL_FLAGS = {"--pair-verify", "--no-pair", "--risk-probes", "--no-risk-probes", "--perf"}
 SINGLE_VALUE_FLAGS = VALUE_FLAGS - {"--bypass"}
@@ -186,6 +186,8 @@ def parse_flags(argv: list[str]) -> dict:
         "spec": values.get("--spec"),
         "verify_ref": values.get("--verify-only"),
         "goal_file": values.get("--goal-file"),
+        "role_config": values.get("--role-config"),
+        "no_pair": "--no-pair" in switches,
         "inline_goal": " ".join(positional),
         "pair_verify": "--pair-verify" in switches,
         "bypasses": bypasses,
@@ -430,6 +432,18 @@ def bootstrap(
             if parsed["mode"] == "verify-only":
                 outputs[devlyn / "external-diff.patch"] = capture_external_diff(cwd, parsed["verify_ref"])
 
+        role_input = None
+        if parsed["role_config"] is not None:
+            role_module = runpy.run_path(pathlib.Path(__file__).with_name("role-config.py"))
+            requested_path = pathlib.Path(parsed["role_config"])
+            if not requested_path.is_absolute():
+                requested_path = cwd / requested_path
+            try:
+                value, pin = role_module["read_config"](requested_path, run=True)
+            except ValueError as exc:
+                block("BLOCKED:invalid-engine-config", str(exc))
+            role_input = {**pin, "value": value}
+
         engine = parsed["engine"] or default_engine
         engine_source = "flag" if parsed["engine"] is not None else "default"
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -437,6 +451,8 @@ def bootstrap(
         run_id = now.strftime("rs-%Y%m%dT%H%M%SZ-") + secrets.token_hex(6)
         state = {
             "version": "3.0",
+            "role_config_input": role_input,
+            "role_no_pair": parsed["no_pair"],
             "run_id": run_id,
             "started_at": started_at,
             "session_id": os.environ.get("CLAUDE_CODE_SESSION_ID"),
@@ -909,6 +925,26 @@ def self_test() -> int:
 
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
+        role_work = root / "role-repo"
+        init_repo(role_work)
+        role_file = root / "roles.json"
+        for raw in (b"{", b'{"executor":"codex"}', b'{"roles":null}'):
+            role_file.write_bytes(raw)
+            try:
+                bootstrap(["--role-config", str(role_file), "fix app.py"], role_work, script_shared)
+            except BootstrapBlocked as exc:
+                assert exc.reason == "BLOCKED:invalid-engine-config"
+            else:
+                raise AssertionError("invalid per-run roles admitted")
+            assert not (role_work / ".devlyn/pipeline.state.json").exists()
+        role_raw = b'{"roles":{"worker":{"engine":"codex","model":"gpt-6-astra"}}}'
+        role_file.write_bytes(role_raw)
+        bootstrap(["--role-config", str(role_file), "--no-pair", "fix app.py"], role_work, script_shared)
+        staged_role = strict_json((role_work / ".devlyn/pipeline.state.json").read_text())
+        role_file.write_text("{}")
+        assert staged_role["role_config_input"]["sha256"] == sha256(role_raw)
+        assert staged_role["role_config_input"]["value"] == strict_json(role_raw.decode())
+        assert staged_role["role_no_pair"] is True
         work = root / "repo"
         init_repo(work)
         session_key = "CLAUDE_CODE_SESSION_ID"
@@ -925,6 +961,8 @@ def self_test() -> int:
             "engine": "claude",
             "engine_source": "default",
             "mode": "free-form",
+            "role_config_input": None,
+            "role_no_pair": False,
             "pair_verify": False,
             "complexity": None,
             "risk_profile": {
@@ -990,6 +1028,8 @@ def self_test() -> int:
         print("PASS bootstrap self-test session stamp: null-safe and env-present; engine flag passthrough")
 
         invalid_flag_cases = [
+            ["--role-config"],
+            ["--role-config", "a", "--role-config", "b", "fix app.py"],
             ["--pair-verify", "--no-pair", "fix", "app.py"],
             ["--goal-file", "goal.txt", "--spec", "spec.md"],
             ["--goal-file", "goal.txt", "--verify-only", "patch", "--spec", "spec.md"],

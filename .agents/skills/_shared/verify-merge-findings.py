@@ -243,6 +243,14 @@ def mechanical_evidence_outcome(devlyn: pathlib.Path) -> dict[str, Any] | None:
     return PROCESS_EVIDENCE["bound_carrier_outcome"](devlyn.parent.resolve(), carrier)
 
 
+ROLE_CONFIG = runpy.run_path(pathlib.Path(__file__).with_name("role-config.py"))
+JUDGE_ROLE_EVIDENCE = runpy.run_path(pathlib.Path(__file__).with_name("judge-role-evidence.py"))
+
+
+def resolved_primary_engine(state):
+    return ROLE_CONFIG["primary_engine"](state)
+
+
 def primary_timeout_blocker(id_: str, message: str) -> dict[str, Any]:
     return {
         "id": id_,
@@ -300,7 +308,10 @@ def read_primary_timeout_marker(
             "verify-primary-timeout-engine-mismatch",
             f"Cannot authenticate the primary timeout engine from pipeline.state.json: {exc}",
         )
-    expected_engine = state.get("engine") if isinstance(state, dict) else None
+    try:
+        expected_engine = resolved_primary_engine(state) if isinstance(state, dict) else None
+    except ValueError:
+        expected_engine = None
     if (
         not isinstance(expected_engine, str)
         or not expected_engine
@@ -308,7 +319,7 @@ def read_primary_timeout_marker(
     ):
         return None, primary_timeout_blocker(
             "verify-primary-timeout-engine-mismatch",
-            "Primary timeout engine does not match state.engine.",
+            "Primary timeout engine does not match the resolved primary judge.",
         )
     return {"engine": engine, "budget_seconds": budget_seconds}, None
 
@@ -461,6 +472,26 @@ def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str,
             source_verdicts["pair_judge"] = worse(
                 source_verdicts["pair_judge"], pair_verdict
             )
+    if (devlyn / "pipeline.state.json").is_file():
+        try:
+            state = loads_strict_json((devlyn / "pipeline.state.json").read_text())
+            required = JUDGE_ROLE_EVIDENCE["required_roles"](state)
+            if rank(source_verdicts.get("mechanical")) >= 2:
+                required = []
+            for role in required:
+                source = "judge" if role == "primary_judge" else "pair_judge"
+                if source_verdicts.get(source) in {"BLOCKED", "TIMEOUT"}:
+                    continue
+                try:
+                    JUDGE_ROLE_EVIDENCE["authenticate"](devlyn, state, role)
+                except (ValueError, OSError, TypeError, KeyError) as exc:
+                    source_verdicts[source] = "BLOCKED"
+                    findings.append({**primary_timeout_blocker("verify-role-evidence-invalid", str(exc)),
+                                     "source": source, "rule_id": "verify.role-evidence"})
+        except (ValueError, OSError, TypeError, KeyError) as exc:
+            source_verdicts["judge"] = "BLOCKED"
+            findings.append({**primary_timeout_blocker("verify-role-resolution-invalid", str(exc)),
+                             "rule_id": "verify.role-resolution"})
     return findings, source_verdicts
 
 
@@ -683,13 +714,16 @@ def verify_state_contract_violation(devlyn: pathlib.Path) -> dict[str, Any] | No
             "message": "pipeline.state.json must be a JSON object before VERIFY merge.",
             "file": "pipeline.state.json",
         }
-    engine = state.get("engine")
+    try:
+        engine = resolved_primary_engine(state)
+    except ValueError:
+        engine = None
     if not isinstance(engine, str) or not engine.strip():
         rule = "verify.state.engine-malformed"
         return {
             "id": rule,
             "rule_id": rule,
-            "message": "pipeline.state.json requires engine as a non-empty string before VERIFY merge.",
+            "message": "pipeline.state.json requires a valid primary engine before VERIFY merge.",
             "file": "pipeline.state.json",
         }
     if not state_uses_default_pair_contract(state):
@@ -1148,7 +1182,7 @@ def detect_pair_stdout_contract_violations(
     devlyn: pathlib.Path,
     source_verdicts: dict[str, str | None],
 ) -> list[dict[str, Any]]:
-    # The primary uses the executor engine name; only the OTHER engine's
+    # The primary uses its explicit phase engine, or the legacy executor; only the OTHER engine's
     # capture is pair evidence.
     timeout_marker, timeout_violation = read_pair_timeout_marker(devlyn)
     if timeout_violation is not None:
@@ -1203,7 +1237,7 @@ def detect_pair_stdout_contract_violations(
         ]
     state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
     assert isinstance(state, dict)
-    engine = state["engine"]
+    engine = resolved_primary_engine(state)
     assert isinstance(engine, str) and engine.strip()
     stdout_paths = canonical_other_judge_stdout(devlyn, engine)
     if not required and not pair_trigger_present(devlyn):
@@ -1397,6 +1431,19 @@ def write_state(devlyn: pathlib.Path, summary: dict[str, Any]) -> None:
     if not isinstance(verify, dict):
         verify = {}
         phases["verify"] = verify
+    role_evidence = {}
+    try:
+        required_roles = JUDGE_ROLE_EVIDENCE["required_roles"](state)
+    except ValueError as exc:
+        if summary.get("source_verdicts", {}).get("judge") != "BLOCKED":
+            raise SystemExit(str(exc)) from exc
+        required_roles = []  # Persist the invalid-resolution failure; no legacy dispatch.
+    for role in required_roles:
+        source = "judge" if role == "primary_judge" else "pair_judge"
+        if summary.get("source_verdicts", {}).get(source) in {"PASS", "PASS_WITH_ISSUES", "NEEDS_WORK"}:
+            role_evidence[role] = JUDGE_ROLE_EVIDENCE["authenticate"](devlyn, state, role)
+    if role_evidence:
+        verify["role_evidence"] = role_evidence
     verify["verdict"] = summary["verdict"]
     sub = verify.get("sub_verdicts")
     if sub is None:
@@ -1422,6 +1469,8 @@ def write_state(devlyn: pathlib.Path, summary: dict[str, Any]) -> None:
 
 
 def self_test() -> int:
+    import subprocess
+
     try:
         loads_strict_json('{"verdict":"PASS","verdict":"BLOCKED"}')
     except ValueError as exc:
@@ -1610,6 +1659,28 @@ def self_test() -> int:
         assert state["phases"]["verify"]["judge_durations_ms"] == {
             "judge": 23, "pair_judge": 31,
         }, state
+        original_state = (devlyn / "pipeline.state.json").read_bytes()
+        for malformed in (None, {}, {"roles": {}}):
+            bad_state = loads_strict_json(original_state)
+            bad_state["role_resolution"] = malformed
+            (devlyn / "pipeline.state.json").write_text(json.dumps(bad_state))
+            result = subprocess.run([sys.executable, str(pathlib.Path(__file__).resolve()),
+                                     "--devlyn-dir", str(devlyn), "--write-state"], capture_output=True, text=True)
+            assert result.returncode == 0 and "Traceback" not in result.stderr, result.stderr
+            persisted = loads_strict_json((devlyn / "pipeline.state.json").read_text())
+            assert persisted["phases"]["verify"]["verdict"] == "BLOCKED"
+            assert "verify-role-resolution-invalid" in (devlyn / "verify-merged.findings.jsonl").read_text()
+        (devlyn / "pipeline.state.json").write_bytes(original_state)
+        different_primary = {"engine": "codex", "phases": {"verify": {"engine": "claude"}}}
+        (devlyn / "pipeline.state.json").write_text(json.dumps(different_primary))
+        (devlyn / "verify.primary.timeout.json").write_text(json.dumps({"engine": "claude", "budget_seconds": 600}))
+        marker, violation = read_primary_timeout_marker(devlyn)
+        assert marker is not None and violation is None
+        different_primary["phases"]["verify"]["engine"] = None
+        (devlyn / "pipeline.state.json").write_text(json.dumps(different_primary))
+        assert read_primary_timeout_marker(devlyn)[1] is not None
+        (devlyn / "verify.primary.timeout.json").unlink()
+        (devlyn / "pipeline.state.json").write_bytes(original_state)
 
         (devlyn / "verify.findings.jsonl").unlink()
         findings, source_verdicts = read_findings(devlyn)

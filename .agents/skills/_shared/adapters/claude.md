@@ -24,7 +24,7 @@ two targeted probes; the invoking phase sets `--effort`, pair-JUDGE uses
 ```bash
 python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- claude -p "<judge prompt>" \
   --permission-mode dontAsk \
-  --allowedTools "Read,Grep,Glob,Bash(<repo test command> *)" \
+  --tools "Read,Grep,Glob" --allowedTools "Read,Grep,Glob" \
   --setting-sources project --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
   --effort medium \
   > .devlyn/claude-judge.stdout 2> .devlyn/claude-judge.stderr
@@ -85,3 +85,11 @@ You interpret instructions literally and explicitly. The official guide is expli
 3. **Overengineering**: do NOT add files, abstractions, error handling, validation, or "future flexibility" beyond what the spec asks. A bug fix doesn't need surrounding cleanup. The right complexity is the minimum needed for the current task.
 
 You do NOT need stronger imperatives ("CRITICAL!", "YOU MUST!") to follow rules. Normal phrasing is sufficient.
+
+## Explicit role capability
+
+`role-config.py` validates explicit CLI judge selections against this bounded native capability declaration. Source: Claude Code2.1.263 built-in Fable5.1 metadata (native SHA ef5d2909c8af49f31ab6d5487e90316777bc2fac170adfe8160716caa8aaf4f9, byte157907500; effort/max/xhigh gates159068038/159068443/159068839). This is option support, not model fitness. Unknown version/model pairs fail with actionable unsupported-role-option; engine-only defaults remain available. Native Agent workers have no validated exact-model/effort transport here, so explicit worker fields are rejected instead of switching channels.
+
+<!-- devlyn-effort 2.1.263 claude-fable-5-1 low,medium,high,xhigh,max -->
+
+For an explicit CLI judge profile, use the resolved `--model`/`--effort` in the bounded read-only invocation and add `--output-format json`. Follow the canonical resolve `JUDGE_STEM` round-scoped argv/prompt/raw capture and `judge-role-evidence.py` derivation contract. Only its exact derived result goes to the findings collector; never feed the JSON wrapper directly. Omitted options keep that role’s existing defaults.

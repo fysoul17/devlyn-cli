@@ -139,3 +139,11 @@ Follow-up notes: when `phases.surface_close.continued_after_block` is true, exac
 ## Archive contract
 
 PHASE 6 step 4 moves `PER_RUN_PATTERNS` plus every state-bound process manifest/raw stream and invocation receipt into `.devlyn/runs/<run_id>/`, preserving relative layout and rehashing each bound digest first. It includes every phase/round prompt and worker session, including BUILD_GATE, and revalidates the receipt's internal prompt/session digests; it never scans engine-global sessions. Unsafe paths, symlinks, missing files, digest mismatches, and destination collisions block archive visibly without changing the already-derived product verdict. Machine config stays; the last 10 completed runs remain.
+
+## Explicit role configuration
+
+PHASE0 `state-phase-write.py --freeze-roles --default-engine <orchestrator-default>` freezes `role_resolution` (legacy engine/source, three role entries, input paths/digests, snapshot digest). `role_config_input` holds only the validated per-run roles object and provenance; `role_no_pair` records that flag. No config reread after freezing. Missing legacy snapshots are compatible; present null/malformed snapshots fail. The helper does not launch models.
+
+`state.engine` remains the legacy executor for unchanged PLAN/BUILD/probe routing. IMPLEMENT/CLEANUP spawn enforce frozen worker engine/model. VERIFY spawn explicitly records the primary in `phases.verify.engine`; merge, timeout and OTHER exclusion use it, falling back only when absent. Requested settings are distinct from native-observed fields. Explicit Codex worker effort binds `role_argv` against the existing invocation argv digest; effort remains dispatch evidence, not provider-internal attestation.
+
+Successful explicit judges retain `<engine>-judge.r<round>.*` raw/prompt/argv/derived/evidence files; `verify.role_evidence` binds their hashes, observed model/nullable effort and named evidence basis. VERIFY history preserves those bindings. Merge alone binds successful evidence; archive rehashes every bound artifact. Canonical `<engine>-judge.stdout` is the current collector input and is never substituted for the immutable round raw. Failed raw remains diagnostic and cannot become a successful binding.

@@ -40,14 +40,14 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 | Role | Default | Manual override |
 |---|---|---|
 | Orchestrator — conversation, handoff, loop driving | whichever CLI you open (contract is symmetric: CLAUDE.md ↔ AGENTS.md) | switch CLIs; the file artifacts (spec/queue/state) carry over |
-| Executor — IMPLEMENT/CLEANUP + primary VERIFY judge; PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin | canonical skill's orchestrator-supported default | `--engine <name>` per run, or `/devlyn:engines executor <name>` (durable pin) |
+| Legacy executor — worker/primary unless separately profiled; PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin | canonical skill's orchestrator-supported default | `--engine <name>` per run, or `/devlyn:engines executor <name>` (durable pin) |
 | Pair judge — default for VERIFY; conditional for risk probes | first available OTHER engine (claude↔codex) | `/devlyn:engines pair <name>,...`; `--no-pair` opts out |
 
 `/devlyn:engines` with no args shows the current role table, detected engines, and how to pin or clear — the pins live in `.devlyn/engines.json`.
 
 `.devlyn/engines.json` is machine-local — not committed, not archived. Pins are promises: a pinned unavailable engine stops with `BLOCKED:<engine>-unavailable`; a name without a `_shared/adapters/<name>.md` adapter stops with `BLOCKED:invalid-engine-config`. New engines (GLM, pi-agent backends) plug in by shipping an adapter file — no skill changes.
 
-**The executor pin binds the orchestrator in plain conversation too, not only inside a skill run.** When you would do implementation work directly and executor is pinned to a non-default engine, route that work through the pin — run it via `/devlyn:resolve` (which reads the pin at PHASE 0), or delegate to that engine. No pin / no `.devlyn/engines.json` → use the canonical skill's orchestrator-supported default. The pair-judge pin stays pipeline-scoped.
+**The executor pin binds the orchestrator in plain conversation too, not only inside a skill run.** When you would do implementation work directly and executor is pinned to a non-default engine, route that work through the pin — run it via `/devlyn:resolve` (which reads the pin at PHASE 0), or delegate to that engine. No pin / no `.devlyn/engines.json` → use the canonical skill's orchestrator-supported default. The pair-judge pin stays pipeline-scoped. `/devlyn:engines role` configures explicit engine/model/effort for supported worker and judge routes; `/devlyn:resolve --role-config <path>` overrides roles for one run. Canonical skills define precedence, evidence and unsupported-route errors; absent profiles preserve existing defaults.
 
 ### Conversational handoff + loop engineering — the default entry for all work
 

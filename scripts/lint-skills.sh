@@ -58,6 +58,8 @@ fi
 critical_path_files=$(cat <<'EOF'
 _shared/process-evidence.py
 _shared/invocation-receipt.py
+_shared/role-config.py
+_shared/judge-role-evidence.py
 _shared/spec-verify-check.py
 _shared/judge-output-parser.py
 _shared/collect-codex-findings.py
@@ -212,7 +214,7 @@ fi
 
 # ---------------------------------------------------------------------------
 # 4. No model-pinned Claude references, any generation, except the adjudicated
-#    SURFACE_CLOSE envelope whose requested id must equal CLI arg and modelUsage.
+#    SURFACE_CLOSE envelope and the validated explicit-role capability declaration.
 # ---------------------------------------------------------------------------
 section "Check 4: No model-pinned Claude references"
 offenders=$(grep -RInE 'Claude (Opus|Sonnet|Haiku|Fable)|claude-(opus|sonnet|haiku|fable)-[0-9]' \
@@ -221,6 +223,7 @@ offenders=$(grep -RInE 'Claude (Opus|Sonnet|Haiku|Fable)|claude-(opus|sonnet|hai
   | grep -v 'config/skills/devlyn:auto-resolve-workspace/' \
   | grep -v 'config/skills/devlyn:ideate-workspace/' \
   | grep -v 'config/skills/preflight-workspace/' \
+  | grep -vE '^config/skills/_shared/adapters/claude\.md:[0-9]+:<!-- devlyn-effort 2\.1\.263 claude-fable-5-1 low,medium,high,xhigh,max -->$' \
   | grep -vE '^config/skills/devlyn:resolve/SKILL\.md:[0-9]+:Freeze .*--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --model claude-sonnet-5 --output-format json --strict-mcp-config --mcp-config '\''\{"mcpServers":\{\}\}'\''.*, recording the same model at SPW spawn\.' \
   | cut -d: -f1 \
   | sort -u \
@@ -398,6 +401,14 @@ check_skill_mirror_parity \
 
 # ---------------------------------------------------------------------------
 # 6b. VERIFY merge verdict binding self-test.
+for helper in role-config judge-role-evidence; do
+  if python3 "config/skills/_shared/$helper.py" --self-test >/dev/null 2>&1; then
+    ok "$helper.py self-test passed"
+  else
+    bad "$helper.py self-test failed"
+  fi
+done
+
 #     F23 full-pipeline prompt-fix rerun exposed a real failure where Codex
 #     pair-JUDGE emitted HIGH findings but state kept pair_judge as
 #     PASS_WITH_ISSUES. Routing severity must be deterministic, not prose.
