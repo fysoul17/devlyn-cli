@@ -403,6 +403,21 @@ def dynamic_judge_role_artifacts(devlyn: pathlib.Path, state: dict) -> list[path
 def archive_plan(devlyn: pathlib.Path, dest: pathlib.Path, state: dict) -> list[tuple[pathlib.Path, pathlib.Path]]:
     devlyn = devlyn.resolve()
     dest = dest.resolve(strict=False)
+    phases = state.get("phases")
+    final = phases.get("final_report") if isinstance(phases, dict) else None
+    if isinstance(final, dict) and "output_sha256" in final:
+        digest = final["output_sha256"]
+        artifacts = final.get("artifacts")
+        report = devlyn / "final-report.md"
+        if (
+            not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest)
+            or not isinstance(artifacts, dict)
+            or artifacts.get("log_file") != ".devlyn/final-report.md"
+            or report.is_symlink() or not report.is_file()
+        ):
+            raise ArchiveError("final-report binding or canonical file is invalid")
+        if hashlib.sha256(report.read_bytes()).hexdigest() != digest:
+            raise ArchiveError("final-report bytes differ from completed output_sha256")
     moves: list[tuple[pathlib.Path, pathlib.Path]] = []
     sources: set[pathlib.Path] = set()
     targets: set[pathlib.Path] = set()

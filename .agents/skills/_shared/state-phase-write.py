@@ -195,6 +195,33 @@ def bind_plan_output(state: dict, devlyn: pathlib.Path | None) -> None:
     plan["output_sha256"] = digest
 
 
+def final_report_digest(state: dict, devlyn: pathlib.Path | None, log_file: str | None) -> str:
+    try:
+        if devlyn is None or not log_file:
+            raise ValueError("--log-file must name .devlyn/final-report.md")
+        path = devlyn / "final-report.md"
+        supplied = pathlib.Path(log_file)
+        if supplied.parent.resolve() / supplied.name != devlyn.resolve() / path.name:
+            raise ValueError("--log-file must name the canonical final-report.md")
+        if path.is_symlink() or not path.is_file():
+            raise ValueError("final-report.md must be a nonsymlink regular file")
+        raw = path.read_bytes()
+        lines = raw.decode("utf-8").splitlines()
+        run_id = state.get("run_id")
+        prefix = "<!-- devlyn:final-report run_id="
+        if (
+            not isinstance(run_id, str) or not run_id or not lines
+            or lines[0] != f"{prefix}{run_id} -->"
+            or sum(line.startswith(prefix) for line in lines) != 1
+        ):
+            raise ValueError("first line must uniquely identify the current state.run_id")
+        if not any(line.strip() for line in lines[1:]):
+            raise ValueError("final-report.md body must not be empty")
+        return hashlib.sha256(raw).hexdigest()
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise SystemExit(f"BLOCKED:final-report-invalid: {exc}") from exc
+
+
 def process_evidence_module():
     global _PROCESS_EVIDENCE_MODULE
     if _PROCESS_EVIDENCE_MODULE is None:
@@ -1774,6 +1801,9 @@ def do_complete(state: dict, phase: str, verdict: str | None,
         )
     if phase != "plan":
         validate_plan_output(state, devlyn, phase)
+    if phase == "final_report":
+        report_digest = final_report_digest(state, devlyn, log_file)
+        log_file = ".devlyn/final-report.md"
     if phase == "plan" and entry.get("prompt_sha256") is not None:
         missing = [field for field in PLAN_SPAWN_RECEIPT_FIELDS if field not in entry]
         if missing:
@@ -1811,6 +1841,8 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             bind_plan_output(state, devlyn)
         else:
             entry.setdefault("output_sha256", None)
+    if phase == "final_report":
+        entry["output_sha256"] = report_digest
     if findings_file is not None or log_file is not None:
         artifacts = entry.setdefault("artifacts", {"findings_file": None, "log_file": None})
         if findings_file is not None:
@@ -1979,9 +2011,113 @@ def do_surface_adjudication_recovery(state: dict, devlyn: pathlib.Path) -> str |
     return None
 
 
+def final_report_self_test() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        work = pathlib.Path(tmp)
+        devlyn = work / ".devlyn"
+        devlyn.mkdir()
+        state_path = devlyn / "pipeline.state.json"
+        report = devlyn / "final-report.md"
+        script = pathlib.Path(__file__).resolve()
+        archive = script.with_name("archive_run.py")
+        run_id = "rs-final-report-0126"
+        write_state(state_path, {"version": "3.0", "run_id": run_id, "engine": "claude", "phases": {}})
+        command = [sys.executable, str(script), "--devlyn-dir", ".devlyn", "--phase", "final_report"]
+        spawned = subprocess.run(command + ["spawn", "--round", "0"], cwd=work, capture_output=True, text=True)
+        assert spawned.returncode == 0, spawned.stderr
+        before = state_path.read_bytes()
+        marker = f"<!-- devlyn:final-report run_id={run_id} -->\n"
+        valid = (marker + "# Report\nPASS_WITH_ISSUES — retained LOW finding.\n").encode("utf-8")
+        outside = work / "other.md"
+        outside.write_bytes(valid)
+        cases = (
+            "missing-argument", "missing-file", "empty", "blank-body", "stale",
+            "missing-marker", "duplicate-marker", "invalid-utf8", "directory", "symlink", "wrong-path",
+        )
+        for case in cases:
+            if report.is_dir() and not report.is_symlink():
+                report.rmdir()
+            else:
+                report.unlink(missing_ok=True)
+            args = ["--log-file", ".devlyn/final-report.md"]
+            if case == "missing-argument":
+                args = []
+            elif case == "empty":
+                report.write_bytes(b"")
+            elif case == "blank-body":
+                report.write_text(marker + " \t\n", encoding="utf-8")
+            elif case == "stale":
+                report.write_bytes(valid.replace(run_id.encode(), b"another-run"))
+            elif case == "missing-marker":
+                report.write_bytes(b"# Report\nBLOCKED\n")
+            elif case == "duplicate-marker":
+                report.write_bytes(valid + marker.encode())
+            elif case == "invalid-utf8":
+                report.write_bytes(marker.encode() + b"\xff")
+            elif case == "directory":
+                report.mkdir()
+            elif case == "symlink":
+                report.symlink_to(outside)
+            elif case == "wrong-path":
+                report.write_bytes(valid)
+                args = ["--log-file", str(outside)]
+            result = subprocess.run(command + ["complete", "--verdict", "PASS_WITH_ISSUES", *args],
+                                    cwd=work, capture_output=True, text=True)
+            assert result.returncode == 1 and "BLOCKED:final-report-invalid" in result.stderr, (case, result)
+            assert state_path.read_bytes() == before, case
+        report.write_bytes(valid)
+        result = subprocess.run(command + ["complete", "--verdict", "PASS_WITH_ISSUES", "--log-file", ".devlyn/final-report.md"],
+                                cwd=work, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        completed_bytes = state_path.read_bytes()
+        completed = read_state(state_path)
+        final = completed["phases"]["final_report"]
+        assert final["completed_at"] is not None and final["verdict"] == "PASS_WITH_ISSUES"
+        assert final["artifacts"]["log_file"] == ".devlyn/final-report.md"
+        assert final["output_sha256"] == hashlib.sha256(valid).hexdigest()
+        archive_command = [sys.executable, str(archive), "--devlyn-dir", ".devlyn"]
+        for case in ("missing", "altered", "null-digest", "malformed-digest", "wrong-path", "symlink"):
+            candidate = copy.deepcopy(completed)
+            report.unlink(missing_ok=True)
+            report.write_bytes(valid)
+            if case == "missing":
+                report.unlink()
+            elif case == "altered":
+                report.write_bytes(valid + b"changed after completion\n")
+            elif case in {"null-digest", "malformed-digest"}:
+                candidate["phases"]["final_report"]["output_sha256"] = None if case == "null-digest" else "invalid"
+            elif case == "wrong-path":
+                candidate["phases"]["final_report"]["artifacts"]["log_file"] = str(outside)
+            else:
+                report.unlink()
+                report.symlink_to(outside)
+            write_state(state_path, candidate)
+            before_archive = state_path.read_bytes()
+            result = subprocess.run(archive_command, cwd=work, capture_output=True, text=True)
+            assert result.returncode == 1 and "error: archive blocked:" in result.stderr, (case, result)
+            assert state_path.read_bytes() == before_archive, case
+            assert not (devlyn / "runs").exists(), case
+            if case != "missing":
+                assert report.is_symlink() if case == "symlink" else report.read_bytes() == (
+                    valid + b"changed after completion\n" if case == "altered" else valid
+                ), case
+        report.unlink()
+        report.write_bytes(valid)
+        state_path.write_bytes(completed_bytes)
+        result = subprocess.run(archive_command, cwd=work, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        target = devlyn / "runs" / run_id
+        assert (target / "final-report.md").read_bytes() == valid
+        assert (target / "pipeline.state.json").read_bytes() == completed_bytes
+        assert not state_path.exists() and not report.exists()
+        assert outside.read_bytes() == valid
+    print("PASS iter-0126 final report: 11 invalid CLI completions preserve state; exact binding/archive; 6 archive refusals preserve artifacts")
+
+
 def self_test() -> int:
     import time
 
+    final_report_self_test()
     with tempfile.TemporaryDirectory() as tmp:
         work = pathlib.Path(tmp); devlyn = work / ".devlyn"; devlyn.mkdir()
         helper = role_config_module()
@@ -4144,12 +4280,34 @@ def self_test() -> int:
             assert receipt_state_path.read_bytes() == before
         result = receipt_cli("final_report", "spawn", "--round", "0")
         assert result.returncode == 0, result.stderr
-        result = receipt_cli("final_report", "complete", "--verdict", "BLOCKED")
+        blocked_report = receipt_devlyn / "final-report.md"
+        blocked_report.write_text(
+            f"<!-- devlyn:final-report run_id={read_state(receipt_state_path)['run_id']} -->\n"
+            "# BLOCKED\nPLAN invocation failed; no PLAN output was produced.\n", encoding="utf-8",
+        )
+        result = receipt_cli("final_report", "complete", "--verdict", "BLOCKED", "--log-file", str(blocked_report))
         assert result.returncode == 0, result.stderr
         terminal_state = read_state(receipt_state_path)
         assert terminal_state["phases"]["plan"] == blocked_plan
         assert terminal_state["phases"]["final_report"]["completed_at"] is not None
         assert terminal_state["phases"]["final_report"]["verdict"] == "BLOCKED"
+        assert terminal_state["phases"]["final_report"]["output_sha256"] == hashlib.sha256(blocked_report.read_bytes()).hexdigest()
+        with tempfile.TemporaryDirectory() as archive_tmp:
+            archive_work = pathlib.Path(archive_tmp)
+            archive_devlyn = archive_work / ".devlyn"
+            archive_devlyn.mkdir()
+            retained = (receipt_state_path, blocked_report, plan_path, plan_prompt, plan_session)
+            for source in retained:
+                shutil.copy2(source, archive_devlyn / source.name)
+            archived = subprocess.run(
+                [sys.executable, str(pathlib.Path(script).with_name("archive_run.py"))],
+                cwd=archive_work, capture_output=True, text=True,
+            )
+            assert archived.returncode == 0, archived.stderr
+            destination = archive_devlyn / "runs" / terminal_state["run_id"]
+            assert not (archive_devlyn / "pipeline.state.json").exists()
+            assert not (destination / "plan.md").exists()
+            assert all((destination / source.name).read_bytes() == source.read_bytes() for source in retained)
         print("PASS iter-0121 missing-output BLOCKED permits final closure and refuses all work spawns/special events")
 
         # Non-BLOCKED requests cannot obtain the exception via failed attestation.
