@@ -1,6 +1,6 @@
 # 0129 — Mandatory requirement violations and advisory verdicts
 
-Status: SOURCE DIAGNOSTIC; ACTUAL FABLE/GROK ADVICE PREPARATION. No implementation or native comparison yet. Root owns the final scope.0124/0125/0128 remain closed; customer entries and model defaults remain unchanged.
+Status: SOURCE DIAGNOSTIC; ACTUAL FABLE/GROK SOURCE ADVICE AUTHORIZED. No implementation or native comparison yet. Root owns the final scope.0124/0125/0128 remain closed; customer entries and model defaults remain unchanged.
 
 The public0123 explicit-r2 primary judge recognized an unsupported customer `--engine auto` command, cited R1 and its BLOCKED result, yet emitted high-confidence MEDIUM/verdict_binding:false and called it pre-existing. Merge and final_report retained PWI; the pair judge returned PASS.0124 also contains recognized literal-ID violations dismissed as LOW for apparently unlikely downstream impact; other outputs omitted the defect. A classification correction cannot recover omitted findings.
 
@@ -11,3 +11,5 @@ Root's prospective proposal is `.devlyn/0129-mandatory-verdict-design-r0/PROPOSA
 Actual Fable5.1/Grok4.6 source advice will use one common pinned packet and bounded static read-only routes. No new state field, phase, voting system, automatic classifier or customer research text is proposed. Product changes require root's source-backed scope decision and a committed spec; validation must lead with required behavior and false-positive controls before time or OUTPUT. No model performance or general superiority claim follows this diagnosis.
 
 Principles: No guesswork (actual finding and merge/state path), No workaround (fulfillment versus impact at the verdict boundary), No overengineering (replace existing wording/flag handling), Production ready (unfulfilled customer contract must remain visible), Optimized (accuracy before verified time before OUTPUT).
+
+0129 source advice was authorized after independent source and launch preflight: common16-file73,902B packet, final preparation04e91533, Fable plane1a25a4c, Grok plan472add79. Each has one600-second native budget, independent output/session/process ownership and no retry; concurrent static advice is permitted. The original missing collector-alias line and serial-policy seals remain under named superseded directories. Root GOs bind the final exact plans. Product source stays pinned until both calls close; no broad accuracy or efficiency conclusion follows these consultations.
