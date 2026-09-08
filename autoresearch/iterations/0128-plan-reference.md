@@ -1,6 +1,6 @@
 # 0128 — Native Claude PLAN input reference
 
-Status: SOURCE CANDIDATE PUSHED; NATIVE DELIVERY/QUALITY/NEGATIVE GATES ADJUDICATED; WHOLE OUTPUT PROVENANCE PENDING. Spec: [0128](../../docs/specs/0128-plan-reference/spec.md). Root owns the decision; Fable/Grok advice is advisory.
+Status: CLOSED_NOT_ADOPTED_INSUFFICIENT_REGISTERED_BENEFIT. Separate source candidate remains pushed; no main adoption or ordinary confirmation. Spec: [0128](../../docs/specs/0128-plan-reference/spec.md). Root owns the decision; Fable/Grok advice is advisory.
 
 ## Why this iter exists
 
@@ -56,3 +56,11 @@ N1 actual failed Read at child9/result11 was followed only by directory listing 
 METRICS-r0b6041117 from the single frozen aggregation keeps whole OUTPUT UNKNOWN: all81 assistant rows are covered, but ten child message IDs carry differing snapshots. Parent OUTPUT7735/3035/3206/8068 is only partial. Registered positive phase times133.14776075/115.39520246/130.24106637/141.27564558s yield descriptive medians A137.212s/B122.818s (10.49% lower); no full-resolution or general advantage follows. Root requested one source-only final-event provenance audit allowed by the frozen rule before any differing snapshot can be selected; explicit stop_reason fields were found, with client synthesis/truncation still under examination. Original metrics/scorer stay unchanged; no new model or ordinary confirmation is authorized.
 
 The exact reviewed source is now committed/pushed separately as07b5c94891c861aa6ffe12fd4f68c53c223c631d, preserving main's pending delta. A disjoint public UTC month-clamp fixture/oracle passed prospective controls and independent source review; it is conditional preparation only, with no installation or native launch.0125 and its private reserved task remain closed/untouched.
+
+## Closed without adoption — 2026-09-08
+
+Root RESULTf1018aa6c2b5b78d25e3e4e61c5a556fcaa043368b00f208cfd9582c2ed8e49c preserves all positive/negative operational decisions, quality adjudication, original metrics and provenance criterion. No A delivery/semantic failure satisfies(a), and whole OUTPUT is UNKNOWN, so(b) is not established. Source-backed terminal-snapshot analysis70ec528d found actual unique tool_use stops, but native persistence catches/logs append errors: a synthetic-truncation notice could be omitted without a failed terminal receipt. No omission was observed. This permits only a conditional projection, not verified whole-provider use; root stopped before deriving those totals. Original scorer/METRICS-r0 remain unchanged. Parent-only savings and the descriptive10.49% stage-time decrease do not override the frozen continuation condition.
+
+The five native cells and their raw custody are complete; no further native cell, retry/topup or ordinary confirmation is allowed under this registration. Exact candidate07b5c948 remains pushed separately; main's six matching root-owned candidate files and normal ignored Claude mirrors were restored to the committed baseline, with no user changes reverted. Conditional ordinary task preparation, fixed13-case oracle/controls, reviewed staging source, actual3.0.0 tarball/install and proposed registration are preserved NOT_LAUNCHED. No ordinary root GO or session/state exists. The unchanged actual stage independently matched55 skill files and70 WORK entries; this preparation is not product acceptance and may not rescue0128.
+
+The next diagnostic follows the observed0123 mandatory-spec contradiction admitted as advisory MEDIUM. It will distinguish a real current contract gap from a model miss before any new source change. Future experiments must preserve the user's accuracy→verified speed→OUTPUT priority; this lesson does not retroactively relax0128. No broad performance, automatic-allocation, release or world-best claim follows.
