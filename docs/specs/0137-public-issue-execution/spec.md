@@ -1,0 +1,21 @@
+# 0137 — First ordinary execution of the public Click task
+
+## Prospective decision
+
+Continue the user's real-use goal after accepted installer repair30e686d. Use a fresh local Click checkout at6aabf099bfdd4c1e75fe8d0e0d4241372b988ab1 and the same externally reported issue3362. This is the first model execution of this public task:0135 never launched, and its original failure/WORK remain closed and unchanged.0137 has a separate candidate, registration, WORK, session and result. It cannot retrospectively rescue0135 or supply a matched comparison against it. No solution PR/patch has been opened by root; the public issue's cause discussion is known.
+
+Install an actual3.0.0 package from accepted30e686d using the existing isolated installer setup, with customer source/instructions preserved and no upstream remote. Reuse supported CPython3.12.9 and locked test/type/lint dependencies in an external venv. Before GO, retain source-bound environment, exact failing width65/ten-option reporter reproduction, ordinary pytest baseline and unchanged recursive Ruff passing after installation. If setup fails, stop before the model and retain it; no rule narrowing or task fix by root.
+
+## Fixed task and native route
+
+The customer task retains the reporter's exact five-line expected output, meaningful added regression coverage, existing assertions/formatting/API/dependencies, ordinary tests and configured static checks. Use the prior public task bundle with only its fresh path/id and `complexity: medium`. Named metadata delta: the prior `high` followed the template's exact-shape shorthand, but the actual task has no state mutation/ordering/failure interaction and a reviewer identified unrelated stateful obligations triggered by that classification. Medium reflects this localized formatting task; the observable acceptance is unchanged. Freeze this fresh bundle before GO. No intermediate prompt/spec/harness edits after launch.
+
+Reuse the existing ordinary `run-entry.py` byte-identically:3600s native,3610s wrapper,3630s overall and existing15s/10s/5s quiet/TERM/reap bounds. One normal installed `/devlyn:resolve --spec` instance owns all phases, independent review, permitted same-run repair and report/archive. Parent/PLAN requested Fable5.1/medium; worker/BUILD existing native Claude route; model-only Fable5.1 primary judge; Codex Astra/high OTHER. Keep ordinary foreground concurrency when available. Actual argv, role resolution, runtime versions, source/task/config hashes and exact session paths enter the launch plan. No paid probe, second outer invocation, output rescue or post-hoc regrade. Root does not edit Click business source/tests during execution.
+
+The prospective0135 owned-trust allowance is repeated explicitly: only native addition of the exact fresh WORK's `trust_level="trusted"` Codex project stanza may differ from prelaunch fixed config, proved by full before/after hashes and exact in-memory removal. The writer/effect remains UNKNOWN absent evidence; no manual global trust/config/auth changes. Record every other drift literally. Mutable native counters remain observational. The unchanged caller checks pins before dispatch; root records post-run pin changes separately.
+
+## Acceptance and stopping
+
+Native exit0/canonical PASS is insufficient. Independently rerun the original reproduction and project checks against produced source; inspect meaningful regression coverage, preserved original tests and permitted scope, phase/reviewer/report/archive bindings and observed owned quiet. Capture native completion and time through external acceptance, including review/rework; keep setup/operator overhead separate. Whole-provider OUTPUT stays UNKNOWN unless unambiguously supported by retained telemetry. No hidden/randomized/generalization/old-new-model or full external-developer Mission1 claim follows from this operator-selected issue.
+
+Failure closes this row without retry, replacement, manual business repair or relabeling. Root may separately fix a demonstrated harness failure. Local artifacts/commits only; no upstream contact/push, npm publication or tag. Defaults and closed experiments/A16 remain unchanged. Principles: No guesswork, No workaround, No overengineering, Production ready, Optimized. This run decides whether accepted installation can now deliver an ordinary real-project fix end to end.
