@@ -52,3 +52,11 @@ Record exact commands, exit codes, stdout/stderr and before/after file bytes:
 These installer checks are mandatory acceptance evidence in addition to syntax
 and full skill lint. Use temporary commands, not a committed test harness.
 Do not execute validation or installation during the active measured cohort.
+
+## Observed verification infrastructure amendment
+
+The first BUILD_GATE's npm pack exited 255 with EPERM opening the external
+`~/.npm/_cacache/tmp` cache, before installer execution. Keep npm's cache inside
+the acceptance command's owned temporary directory and expose captured pack
+stderr/stdout before raising on failure. The four cases and product scope stay
+unchanged; validate commit 5ee449c through a distinct verify-only run.
