@@ -1,0 +1,11 @@
+# 0130 — Native conformance of selected VERIFY judgment obligations
+
+Status: REGISTERED, NOT LAUNCHED. [Frozen registration](0130-verdict-behavior-registration.md) owns all inputs, four calls, grades and stop rules. No product changes or broad model-performance claim.
+
+Question: do actual Fable5.1/high and Grok4.6/requested-high, in four fresh single-submission sessions, bind an unsupported customer command and missing mandatory version option while accepting the corrected counterpart without invented repair obligations? Each sees only task/source/README plus exact accepted0129 canonical JUDGE lines54–72 and93–108. This deliberately excludes full resolve/VERIFY state and MECHANICAL; it is selected-obligation conformance, not full-pipeline validity or a causal old/new comparison.
+
+Before outputs, independent review corrected the original two-paired-call proposal and bounded stdin to1GiB, avoiding an unbounded Number-counter oracle defect. r0/r1 histories remain immutable. The final protocol explicitly supersedes stale receipt-input wording: external oracle controls are evaluator-only. Actual twelve fixed executions confirm defective4/6 and corrected6/6; version exit was observed with stdin write end still open, supported by the retained executed-source excerpt and receipts, not an independent OS-descriptor trace. RESULTdad7fe97 and final preparationb24768c3 own exact sources. Independent protocol/packet/controller reviews found no remaining blocker.
+
+Grok's known strict-context driver failure remains separately recorded. Source-backed results inside that declared native context cannot be aggregated with Fable as a four-row operational PASS. Freeze source quality before usage/time interpretation; no efficiency hypothesis is registered. Stop after four rows and assessment, no retry/topup/rescue. Closed0124/0125/0128 and A16 stay untouched;0129 instruction-coherence acceptance remains separate from native behavior.
+
+Principles: No guesswork (fixed applicable clauses, controls and pre-output criteria), No workaround (preserve failures/context limitations), No overengineering (reuse controllers and current findings format), Optimized (test mandatory repair and false positives before efficiency claims).
