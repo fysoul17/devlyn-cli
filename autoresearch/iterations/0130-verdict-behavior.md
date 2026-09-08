@@ -1,6 +1,6 @@
 # 0130 — Native conformance of selected VERIFY judgment obligations
 
-Status: FOUR REGISTERED CALLS LAUNCHED; ASSESSMENT PENDING. [Frozen registration](0130-verdict-behavior-registration.md) owns all inputs, four calls, grades and stop rules. No product changes or broad model-performance claim.
+Status: CLOSED_SELECTED_OBLIGATION_CONFORMANCE_WITH_GROK_CONTEXT_LIMIT. [Frozen registration](0130-verdict-behavior-registration.md) owns all inputs, four calls, grades and stop rules. No product changes or broad model-performance claim.
 
 Question: do actual Fable5.1/high and Grok4.6/requested-high, in four fresh single-submission sessions, bind an unsupported customer command and missing mandatory version option while accepting the corrected counterpart without invented repair obligations? Each sees only task/source/README plus exact accepted0129 canonical JUDGE lines54–72 and93–108. This deliberately excludes full resolve/VERIFY state and MECHANICAL; it is selected-obligation conformance, not full-pipeline validity or a causal old/new comparison.
 
@@ -11,3 +11,20 @@ Grok's known strict-context driver failure remains separately recorded. Source-b
 Principles: No guesswork (fixed applicable clauses, controls and pre-output criteria), No workaround (preserve failures/context limitations), No overengineering (reuse controllers and current findings format), Optimized (test mandatory repair and false positives before efficiency claims).
 
 Registration94140098 was committed/pushed4767e49 before exact-plan root GOs and native output. All four launched once at2026-09-08T05:05:05Z after102-pin/environment/absence recheck; custodian owns coordinator34881 and per-call start identities/owned observers. Fable rows completed before Grok; no public verdict or efficiency value has been disclosed to the assessor. The initial root GO preflight used relative instead of absolute plan spelling and asserted before writing GO; corrected checker input spelling is recorded without changing plans or any native call. No retry or replacement.
+
+## Final result — 2026-09-08
+
+All four registered native calls are terminal0/ownedquiet with assigned model emissions and byte-complete reads of the exact four submitted files. The fixed registration and original answers remain unchanged.
+
+| Native seat | Defective submission | Corrected submission | Operational limit |
+|---|---|---|---|
+| Fable5.1/high | Three HIGH findings, NEEDS_WORK; both required causes bind | PASS, no findings | Registered native route established |
+| Grok4.6/requested-high | Three HIGH findings, NEEDS_WORK; both required causes bind | PASS, no findings | Both controllers1; strict-context FAIL retains3MCP/14skills; effective effort UNKNOWN |
+
+Independent opaque semantic assessment manifest87028e2a and root source adjudication531d147b freeze all four quality grades PASS before model mapping. Root opened the task, both submitted sources/READMEs and all public answers: missing version dispatch contradicts TASK18–20, and README11's unsupported `--file` example contradicts TASK9–12/21–24. The third finding overlaps the version cause; no extra distinct cause or arbitrary finding-count gate is inferred. Corrected source5–6 supplies the exact version response before stdin; README11 uses input redirection. The registered finite task supports the clean PASS results.
+
+The actual unchanged canonical collector/parser/rank, byte-equal to db9cec0, accepted all four public answers; diagnostic receipt70a05086 records rank2 for each defective finding and rank0 for both clean answers. This is not a pipeline state, mechanical gate or merged run. All20 packet seals and assessment seals matched before/after. Model mapping437934db identifies coral/Fable-defective, dune/Grok-defective, alpine/Fable-corrected and basalt/Grok-corrected.
+
+Root RESULT `.devlyn/0130-native-conformance-r0/RESULT.json`, SHA `51867f8cd0c014f0e5bbbf4a10bc86e9c484b6da0014fe0bbca93dce6242776e`, closes the finite check. OPERATIONAL-AUDITfbec9535 and POST-SOURCE-PIN-CHECK42b585f5 retain all102 source pins unchanged. Grok's context failures are not waived or aggregated into four operational passes. MUTABLE-STATE-OBSERVATION96a3337f records changed prep/post Claude state without immediate-prelaunch/per-call snapshots; exhaustive effective-config isolation and concurrent causal attribution remain unavailable. The public extractor's original empty-text end-turn miscount and corrected zero-public-text filtering are retained; no native retry, answer rewrite or grade-rule change followed.
+
+This establishes conformance on the selected instructions and constructed cases within the recorded native contexts. It does not establish an improvement over prior instructions, heldout accuracy, model fitness, full VERIFY/resolve validity or general performance. Provider usage/timing were not opened for efficiency interpretation; no efficiency hypothesis was registered. No product edit or automatic role/default promotion follows. Next: repair the observed requested-versus-actual model identity gap in existing checkup tools before fair replacement comparisons. Closed0124/0125/0128 and A16 remain untouched;3.0.0 unpublished.
