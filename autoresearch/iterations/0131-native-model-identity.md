@@ -1,6 +1,6 @@
 # 0131 — Trustworthy Codex judge model identity
 
-Status: SOURCE FROZEN, FOCUSED/FULL LINT AND INDEPENDENT SOURCE REVIEW PASS; NATIVE ADVICE/DELIVERY PENDING.
+Status: SOURCE ADVICE CLOSED; PROSPECTIVE R1 CORRECTION REQUIRED; DELIVERY NOT LAUNCHED.
 
 The next model-selection decision is unsafe while the benchmark records an environment label without dispatching it. Source audit found no `-m` in `run_judge_quality.py`'s Codex route while `write_identity` records CODEX_MODEL/OPENAI_MODEL. The fake-route regression repeats the assumption, and seat-matrix's prefix attestation can replace identity with declared versions. The violated invariant is requested model → actual argv → observed native identity → associated scored rows. The [spec](../../docs/specs/0131-native-model-identity/spec.md) owns the bounded repair and pre-implementation checks; proposal `.devlyn/0131-model-identity-preparation-r0/PROPOSAL.md` SHA b0ab4d03dd90efa7ec068c40857e914833495c57c436c863b3013670ed110e92 records the source audit.
 
@@ -17,3 +17,9 @@ Register exactly two independent source-advisory calls on this frozen implementa
 Require actual model/prompt/read/source/raw/terminal/owned-process observations. Preserve malformed responses, missing coverage, availability failures and Grok's known strict-context controller failure; source-backed critique within its observed context is distinct from isolated operational validity. Native600s is not a total-controller or universal quiet guarantee. No efficacy/fitness/efficiency comparison or full VERIFY result is inferred. Root will resolve material source findings and preserve original opinions without retroactive repair.
 
 Two direct native identity-delivery checks (Astra/Sol, existing SC1-CLEAN prompt,300s each) are prepared separately in `.devlyn/0131-native-delivery-preparation-r0/`; they have no GO yet. Review final source advice first. If it requires a source change, preserve these unlaunched plans and refreeze prospective delivery on the corrected source before any delivery output. These are configuration-delivery checks, not a quality cohort or fair replacement decision.
+
+## Source-advice decision and prospective r1
+
+Both source calls are terminal and owned quiet. Fable native/controller0 returned PASS_WITH_ISSUES with six nonbinding findings (public answer3e9acb17); Grok native124/controller1 reached its registered600-second timeout and supplied no terminal advice, despite complete nine-file reading. Grok context limits remain; this is not the earlier completed-call strict-context failure. TERMINAL-AUDITb95a83b2 and POST-SOURCE-PIN-CHECK371bcffb preserve terminal evidence and all64 original pins. No repeat is authorized by this registration.
+
+Root's `.devlyn/0131-model-identity-advice-r0/ROOT-DECISION.json` accepts F2 after the independent one-shot offline reproduction (adjudication manifest95008e80): changed hit plus refreshed record hashes certifies unchanged empty findings. This named counterexample supersedes the original scoped PASS for acceptance, without altering that review. The spec's prospective r1 amendment requires strict derived-score consistency using the existing scorer, explicit terminal-parse certification documentation, and early model/destination preflight. Original source, test and advice artifacts stay immutable. r0 direct delivery stays NOT_LAUNCHED; the same two unused calls must be refrozen after correction.

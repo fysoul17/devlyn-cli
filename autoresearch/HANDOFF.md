@@ -12,7 +12,9 @@ Subject to explicit user directives (including the bounded 0118 exception), if a
 
 ---
 
-## 🚦 START-HERE — 2026-09-08 / 0130 BOUNDED CONFORMANCE CLOSED; MODEL-IDENTITY REPAIR PREPARATION
+## 🚦 START-HERE — 2026-09-08 / 0130 CLOSED; 0131 SOURCE-ADVICE CORRECTION
+
+**Current0131 update:** source advice is CLOSED/owned quiet: Fable returned six nonbinding issues; Grok timed out native124/controller1 with no terminal advice. The original r0 source review/lint PASS remains historical. Fable F2 was independently reproduced: a rebound stored score can falsely certify unchanged native output. Root accepts a narrow correction under the prospectively amended [0131 spec](../docs/specs/0131-native-model-identity/spec.md). Source r1 is next; both Astra/Sol direct delivery checks remain NOT_LAUNCHED and require refreezing on corrected source. Preserve original source/advice/delivery preparations; do not retry Grok.
 
 **0123 legacy-r3 is terminal:** canonical PASS_WITH_ISSUES; root `ACCEPTED_FUNCTIONAL_WITH_PROTOCOL_DEVIATIONS`. All six README clauses, default Claude worker/primary plus Codex OTHER, five BUILD and five independent MECHANICAL checks, final report binding/archive and owned quiet passed. Exact accepted README is pushed as `e62ef906d415cffe758c0893709f4f2e88512b06`; report guard remains `1b799d5898355cf8f430866e455e456cf8398159`. Run `rs-20260907T125028Z-7632e5bb9f47` returned0 after1588.635s (controller scope). Root decision `.devlyn/0123-role-controls-ordinary-legacy-r3/ROOT-DECISION.json`, SHA `71d40aa81737cbe79fa17eecb77d131ea1cc099e49bae192dd3c192a10746a6d`, owns scoped acceptance. No native process remains active. [0123](iterations/0123-role-controls.md) owns raw evidence and departures; [0126](iterations/0126-final-report-artifact.md) owns repair validation/custody.
 
