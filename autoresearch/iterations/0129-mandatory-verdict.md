@@ -1,0 +1,13 @@
+# 0129 — Mandatory requirement violations and advisory verdicts
+
+Status: SOURCE DIAGNOSTIC; ACTUAL FABLE/GROK ADVICE PREPARATION. No implementation or native comparison yet. Root owns the final scope.0124/0125/0128 remain closed; customer entries and model defaults remain unchanged.
+
+The public0123 explicit-r2 primary judge recognized an unsupported customer `--engine auto` command, cited R1 and its BLOCKED result, yet emitted high-confidence MEDIUM/verdict_binding:false and called it pre-existing. Merge and final_report retained PWI; the pair judge returned PASS.0124 also contains recognized literal-ID violations dismissed as LOW for apparently unlikely downstream impact; other outputs omitted the defect. A classification correction cannot recover omitted findings.
+
+Current canonical VERIFY requires every binding clause and HIGH for wrong behavior, but its binding-MEDIUM examples emphasize regressions and existing APIs/tests. The actual rank predicate honors explicit true only for MEDIUM; parser/merge preserve the reported values. This is a demonstrated semantic misclassification, not collector loss. Whether prompt framing contributed causally is still a hypothesis.
+
+Root's prospective proposal is `.devlyn/0129-mandatory-verdict-design-r0/PROPOSAL.md`. Replace existing binding prose with concrete applicable requirement fulfillment, keeping exact scope and real evidence mandatory. Challenge whether the smallest coherent implementation honors existing strict true at every severity or retains current mapping with an at-least-MEDIUM instruction. Preserve HIGH/CRITICAL floors, advisory style findings, ambiguity, historical results and existing output fields. A criterion_ref alone is insufficient because advisory findings may cite requirements too.
+
+Actual Fable5.1/Grok4.6 source advice will use one common pinned packet and bounded static read-only routes. No new state field, phase, voting system, automatic classifier or customer research text is proposed. Product changes require root's source-backed scope decision and a committed spec; validation must lead with required behavior and false-positive controls before time or OUTPUT. No model performance or general superiority claim follows this diagnosis.
+
+Principles: No guesswork (actual finding and merge/state path), No workaround (fulfillment versus impact at the verdict boundary), No overengineering (replace existing wording/flag handling), Production ready (unfulfilled customer contract must remain visible), Optimized (accuracy before verified time before OUTPUT).
