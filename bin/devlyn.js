@@ -690,14 +690,16 @@ function installInstructionsForCLI(cliKey) {
   if (!cli || !cli.baseInstructionsFile) return false;
 
   const destFile = path.join(process.cwd(), cli.instructionsFile);
+  const baseInstructionsSrc = path.join(__dirname, '..', cli.baseInstructionsFile);
   let content = null;
   if (fs.existsSync(destFile)) {
     const current = fs.readFileSync(destFile, 'utf8');
     if (current.includes(DEVLYN_AGENTS_MARKER)) {
       content = stripManagedBlock(current) + '\n';
+    } else {
+      log(`  → Preserved existing ${cli.instructionsFile}. Compare with the bundled template at ${baseInstructionsSrc} and merge relevant instructions.`, 'dim');
     }
   } else {
-    const baseInstructionsSrc = path.join(__dirname, '..', cli.baseInstructionsFile);
     if (fs.existsSync(baseInstructionsSrc)) {
       content = fs.readFileSync(baseInstructionsSrc, 'utf8');
     }
