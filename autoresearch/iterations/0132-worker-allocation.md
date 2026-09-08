@@ -1,6 +1,6 @@
 # 0132 — Worker allocation with fixed strong independent review
 
-Status: REGISTERED; A1 ACTIVE, OTHER THREE ROWS NOT AUTHORIZED.
+Status: CLOSED_INCOMPLETE_FIXED_CONFIG_DRIFT; B1/B2/A2 NOT_RUN.
 
 Mission1 decision: whether a Sol worker profile warrants disjoint confirmation under strong fixed design/review, after0131 source acceptance and actual identity delivery. The [spec](../../docs/specs/0132-worker-allocation/spec.md) owns the prospective intervention, input repairs, finite quality-first decision and preparation checks. Existing role-config suffices; no product/router/default change.
 
@@ -23,3 +23,13 @@ Root GO is still per-row after committed/pushed registration and live recheck. R
 ## A1 native admission
 
 Launch notice72c73d5b0129ad22521b85c4630e1b23b3390cc4 was pushed before ROOT-GO10ef264b. Fresh actual input/full-WORK/config/environment preflight passed; `.devlyn/0132-native-comparison-r0/cell-01/ROOT-ADMISSION.json` retains registration/commit/plan and hash-only mutable-state observations. Native caller admitted2026-09-08T07:40:07.898950Z (tool session74910), run rs-20260908T074033Z-5227ef40d08e, PLAN starts07:41:13.939Z. No terminal/quality/time comparison exists yet; rows B1/B2/A2 remain without GO. Native process cleanup belongs to the unchanged caller; root controls serial advancement and the registered assessments.
+
+## Registered closure
+
+Root RESULT8789b0a8 applies the frozen stop rule without rerun/replacement. A1 native/caller exit0, errornull, final observed-owned census empty, no cleanup signals; outer tool74910 is terminal0. Native controller duration1277.5712025000248s is unverified descriptive duration only. Pipeline metadata records PLAN/IMPLEMENT/BUILD/CLEANUP/VERIFY PASS and final report/archive, but independent quality/lifecycle/native-identity assessment is not completed or claimed.
+
+Terminal observatione7999788639594d90479b1ed64d70830e8b970b66a03a4ebeadf755ce92e0ab3 records one of129 fixed plan inputs changed: `/Users/aipalm/.codex/config.toml`, bac34278ac0eacb065fc58326adcc7751343990804520e0d968cbcaabdaec2fc/50,234B →2bd4cdf6f299299b485f5a63dd13e5644c72d489b778b815d7cb1ca7cd707ec8/50,367B. Mode0600/type/resolved path remain unchanged; other128 inputs and final raw bindings match. Actor/change time/effect are UNKNOWN at closure. The protocol declared this file fixed, so this is INCOMPLETE regardless of later attribution.
+
+B1/B2/A2 stay NOT_RUN, no GO/native output. Registered external mechanical checks and neutral semantic grades remain NOT_RUN for all rows; no paired ranking or correctly verified resolution time. No retry/topup/replacement/confirmation/default adoption or publication. An unrelated read-only root status display earlier assumed all phase values were dictionaries and failed on a null; its corrected metadata observation is retained separately and did not alter any registered source/caller/assessment.
+
+Separate source-only drift attribution may establish the exact safe configuration delta and a prospective remedy. It cannot rescue this comparison or relabel its evidence. All original common-input r0/r1, controls, staging/finalization amendments and unused WORKs remain; closure custody is being prepared.
