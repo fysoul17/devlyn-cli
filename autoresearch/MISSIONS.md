@@ -36,7 +36,7 @@ The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the s
 - [0120 model adaptation direction](iterations/0120-model-adaptation-direction.md): root decides after independent actual Fable/Grok advice. Single-task deterministic execution/reporting, model-specific deltas, role separation and fair replacement comparisons are authorized candidates; preserve quality and measure whole-run OUTPUT/time/value before adoption. This authorization does not reopen frozen A16 or imply a fleet/platform build.
 - 0114/A15 corrects 0113 outcome retention, per-run token anchors and launch isolation before fresh collection; quick12/full32 retain their historical frozen0113 screen/confirmation roles. New0120 confirmation excludes every task exposed during tuning; those old labels alone do not establish independence. See HANDOFF START-HERE.
 - Continue the existing 0070 intent-closure direction; the aggregate/off-resolve closure kernel is designed, not fully shipped. Post-panel changes follow both quality and efficiency, with the observed SURFACE_CLOSE false-halt candidate first (0114).
-- The full #15 real-project trial remains open; the 0035 prelim did not close its external-developer/existing-codebase axes.
+- The full #15 external-developer trial remains open. [0140](iterations/0140-delegated-real-task.md) completes a delegated existing-project task without rescue, but its small comparison does not establish quality/time superiority or causal pair value; copycat remains NOT_RUN under the registered stop condition.
 
 **Hard NO list during Mission 1 (subject to the bounded 0118 exception and explicit 0120 single-task authorization above)**:
 - ❌ No worktree-per-task substrate work. Stays single-worktree on `main`.
