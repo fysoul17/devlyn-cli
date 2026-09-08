@@ -590,7 +590,7 @@ def self_test() -> int:
         invocation["start_receipt"](
             work, prior_receipt, "run-1", "build_gate", 1,
             str(prior_prompt), str(prior_session),
-            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
+            ["--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
              "-c", "sandbox_workspace_write.network_access=true",
              "verify prior archive"],
         )
@@ -608,7 +608,7 @@ def self_test() -> int:
         invocation["start_receipt"](
             work, build_receipt, "run-1", "build_gate", 2,
             str(build_prompt), str(build_session),
-            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
+            ["--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
              "-c", "sandbox_workspace_write.network_access=true", "verify archive"],
         )
         invocation["finish_receipt"](work, build_receipt, 0)

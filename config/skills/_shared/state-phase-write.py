@@ -2938,7 +2938,7 @@ def self_test() -> int:
             receipts = invocation_receipt_module()
             receipts.start_receipt(
                 work, receipt, fixture["run_id"], "build_gate", 0, str(prompt), str(session),
-                ["-C", str(work), "-s", "workspace-write", "-m", model,
+                ["--json", "-C", str(work), "-s", "workspace-write", "-m", model,
                  "-c", "sandbox_workspace_write.network_access=true", "inspect interrupted build"],
             )
             receipts.finish_receipt(work, receipt, 7)
@@ -4072,10 +4072,11 @@ def self_test() -> int:
         receipt_runner.start_receipt(
             receipt_work, receipt_path, receipt_state["run_id"], "implement", 0,
             str(receipt_prompt), str(receipt_session),
-            ["-C", str(receipt_work), "-s", "workspace-write", "-m", receipt_model,
+            ["--json", "-C", str(receipt_work), "-s", "workspace-write", "-m", receipt_model,
              "-c", "sandbox_workspace_write.network_access=false", "implement exactly"],
         )
         receipt_runner.finish_receipt(receipt_work, receipt_path, 0)
+        rerouted_state = copy.deepcopy(receipt_state)
         assert do_complete(
             receipt_state, "implement", "PASS", None, None, None, None, None,
             str(receipt_session), devlyn=receipt_devlyn, work=receipt_work,
@@ -4086,6 +4087,30 @@ def self_test() -> int:
         assert receipt_entry["invocation_receipt"]["path"] == (
             ".devlyn/implement.invocation.0.json"
         )
+
+        # A native reroute remains a failed phase even after a successful terminal event.
+        receipt_session.write_text(
+            '{"type":"item.completed","item":{"type":"error",'
+            '"message":"model rerouted: gpt-5.6-sol -> other (Policy)"}}\n'
+            '{"type":"turn.completed"}\n', encoding="utf-8",
+        )
+        receipt_path.unlink()
+        receipt_runner.start_receipt(
+            receipt_work, receipt_path, rerouted_state["run_id"], "implement", 0,
+            str(receipt_prompt), str(receipt_session),
+            ["--json", "-C", str(receipt_work), "-s", "workspace-write", "-m", receipt_model,
+             "-c", "sandbox_workspace_write.network_access=false", "implement exactly"],
+        )
+        receipt_runner.finish_receipt(receipt_work, receipt_path, 0)
+        reroute_error = do_complete(
+            rerouted_state, "implement", "PASS", None, None, None, None, None,
+            str(receipt_session), devlyn=receipt_devlyn, work=receipt_work,
+        )
+        assert reroute_error and "model reroute" in reroute_error
+        assert rerouted_state["phases"]["implement"]["verdict"] == "BLOCKED"
+        do_spawn(rerouted_state, "implement", 1, None, None, "codex", receipt_model,
+                 prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn)
+        assert rerouted_state["phases"]["implement"]["history"][-1]["verdict"] == "BLOCKED"
 
         plan_prompt = receipt_devlyn / "plan.prompt.0"
         plan_prompt.write_text("plan exactly\n", encoding="utf-8")

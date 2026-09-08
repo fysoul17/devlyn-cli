@@ -160,6 +160,8 @@ def start_receipt(
     forbidden = sorted(DANGEROUS_FLAGS.intersection(argv))
     if forbidden:
         raise ReceiptError(f"forbidden Codex bypass flag: {forbidden[0]}")
+    if "--json" not in argv[:-1]:
+        raise ReceiptError("receipt-bound Codex invocation requires --json before the prompt")
     model = option_value(argv, "-m", "--model")
     sandbox = option_value(argv, "-s", "--sandbox")
     invocation_workdir = option_value(argv, "-C", "--cd")
@@ -357,7 +359,7 @@ def validate_receipt(
     raw = receipt_session.read_bytes()
     if sha256(raw) != receipt["session"]["sha256"]:
         raise ReceiptError("invocation worker-session digest mismatch")
-    for number, line in enumerate(raw.decode("utf-8").splitlines(), start=1):
+    for number, line in enumerate(raw.decode("utf-8").split("\n"), start=1):
         if not line.strip():
             continue
         try:
@@ -669,7 +671,7 @@ def self_test() -> int:
         session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
         receipt = devlyn / "implement.invocation.0.json"
         argv = [
-            "-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
+            "--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
             "-c", "sandbox_workspace_write.network_access=false", "do the task",
         ]
         start_receipt(work, receipt, "rs-receipt", "implement", 0, str(prompt), str(session), argv)
@@ -688,8 +690,11 @@ def self_test() -> int:
             ({"type": "item.completed", "item": {"type": "command_execution", "aggregated_output": reroute}}, False),
             ({"type": "item.completed", "item": {"type": "error", "message": "recoverable tool error"}}, False),
         ]
+        cases.append(({"type": "item.completed", "item": {
+            "type": "agent_message", "text": "ordinary \u2028 \u2029 \u0085 message",
+        }}, False))
         for event, blocked in cases:
-            raw = original_session + (json.dumps(event) + '\n{"type":"turn.completed"}\n').encode()
+            raw = original_session + (json.dumps(event, ensure_ascii=False) + '\n{"type":"turn.completed"}\n').encode()
             session.write_bytes(raw)
             receipt.unlink()
             start_receipt(work, receipt, "rs-receipt", "implement", 0, str(prompt), str(session), argv)
@@ -750,7 +755,7 @@ def self_test() -> int:
             start_receipt(
                 work, devlyn / "cleanup.invocation.0.json", "rs-receipt", "cleanup", 0,
                 str(prompt), str(devlyn / "cleanup.worker-session.0.jsonl"),
-                ["--dangerously-bypass-approvals-and-sandbox", "-s", "danger-full-access",
+                ["--json", "--dangerously-bypass-approvals-and-sandbox", "-s", "danger-full-access",
                  "-m", "gpt-test", "do the task"],
             )
         except ReceiptError as exc:
@@ -763,7 +768,7 @@ def self_test() -> int:
             start_receipt(
                 work, devlyn / "cleanup.invocation.0.json", "rs-receipt", "cleanup", 0,
                 str(cleanup_prompt), str(devlyn / "cleanup.worker-session.0.jsonl"),
-                ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
+                ["--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
                  "do the task"],
             )
         except ReceiptError as exc:
@@ -774,7 +779,7 @@ def self_test() -> int:
             start_receipt(
                 work, devlyn / "cleanup.invocation.0.json", "rs-receipt", "cleanup", 0,
                 str(cleanup_prompt), str(devlyn / "cleanup.worker-session.0.jsonl"),
-                ["-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
+                ["--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
                  "-c", "sandbox_workspace_write.network_access=true", "do the task"],
             )
         except ReceiptError as exc:
@@ -785,7 +790,7 @@ def self_test() -> int:
             start_receipt(
                 work, devlyn / "cleanup.invocation.0.json", "rs-receipt", "cleanup", 0,
                 str(cleanup_prompt), str(devlyn / "cleanup.worker-session.0.jsonl"),
-                ["-s", "danger-full-access", "-m", "gpt-test", "do the task"],
+                ["--json", "-s", "danger-full-access", "-m", "gpt-test", "do the task"],
             )
         except ReceiptError as exc:
             assert "must remain workspace-write" in str(exc)
@@ -795,7 +800,7 @@ def self_test() -> int:
             start_receipt(
                 work, devlyn / "cleanup.invocation.0.json", "rs-receipt", "cleanup", 0,
                 str(cleanup_prompt), str(devlyn / "cleanup.worker-session.0.jsonl"),
-                ["-C", str(devlyn), "-s", "workspace-write", "-m", "gpt-test",
+                ["--json", "-C", str(devlyn), "-s", "workspace-write", "-m", "gpt-test",
                  "-c", "sandbox_workspace_write.network_access=false", "do the task"],
             )
         except ReceiptError as exc:
@@ -821,7 +826,7 @@ def self_test() -> int:
             start_receipt(
                 work, build_receipt, "rs-wrapper", "build_gate", 0,
                 str(build_prompt), str(build_session),
-                ["-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
+                ["--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
                  "verify the task"],
             )
         except ReceiptError as exc:
@@ -832,7 +837,7 @@ def self_test() -> int:
             start_receipt(
                 work, build_receipt, "rs-wrapper", "build_gate", 0,
                 str(build_prompt), str(build_session),
-                ["-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
+                ["--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
                  "-c", "sandbox_workspace_write.network_access=true",
                  "-c", "sandbox_workspace_write.network_access=false",
                  "verify the task"],
@@ -849,7 +854,7 @@ def self_test() -> int:
                 start_receipt(
                     work, build_receipt, "rs-wrapper", "build_gate", 0,
                     str(build_prompt), str(build_session),
-                    ["-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
+                    ["--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
                      "-c", "sandbox_workspace_write.network_access=true",
                      "--config=" + alternate, "verify the task"],
                 )
@@ -865,7 +870,7 @@ def self_test() -> int:
         start_receipt(
             work, glued_receipt, "rs-glued", "build_gate", 1,
             str(glued_prompt), str(glued_session),
-            ["-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
+            ["--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper",
              "-c=sandbox_workspace_write.network_access=true", "verify glued config"],
         )
         finish_receipt(work, glued_receipt, 0)
@@ -877,6 +882,7 @@ def self_test() -> int:
         fake_codex = work / "fake-codex"
         fake_codex.write_text(
             "#!/usr/bin/env bash\n"
+            "touch native-started\n"
             "printf '%s\\n' '{\"type\":\"thread.started\"}'\n",
             encoding="utf-8",
         )
@@ -909,9 +915,20 @@ def self_test() -> int:
             "DEVLYN_INVOCATION_RECEIPT": str(build_receipt),
         })
         with build_session.open("wb") as stdout:
+            missing_json = subprocess.run(
+                ["bash", str(wrapper), "-C", str(work), "-s", "workspace-write",
+                 "-m", "gpt-wrapper", "-c",
+                 "sandbox_workspace_write.network_access=true", "verify the task"],
+                cwd=work, env=env, stdout=stdout, stderr=subprocess.PIPE,
+                check=False,
+            )
+        assert missing_json.returncode == 64 and b"requires --json" in missing_json.stderr, missing_json.stderr
+        assert build_session.read_bytes() == b"" and not (work / "native-started").exists()
+        assert not build_receipt.exists()
+        with build_session.open("wb") as stdout:
             wrapped = subprocess.run(
                 [
-                    "bash", str(wrapper), "-C", str(work), "-s", "workspace-write",
+                    "bash", str(wrapper), "--json", "-C", str(work), "-s", "workspace-write",
                     "-m", "gpt-wrapper", "-c",
                     "sandbox_workspace_write.network_access=true", "verify the task",
                 ],

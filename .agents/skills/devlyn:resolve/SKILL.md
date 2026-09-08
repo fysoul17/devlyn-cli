@@ -236,7 +236,7 @@ seven variables set to the active state identity:
 The session and receipt paths are `.devlyn/<phase>.worker-session.<round>.jsonl`
 and `.devlyn/<phase>.invocation.<round>.json`. These three paths are round-scoped
 so a retry cannot overwrite earlier prompt/session evidence. Every invocation
-must include `-c sandbox_workspace_write.network_access=<true|false>`: exactly
+must include `--json` and `-c sandbox_workspace_write.network_access=<true|false>`: exactly
 `true` for BUILD_GATE and exactly `false` for PLAN, IMPLEMENT, and CLEANUP, so
 user configuration cannot silently change the phase capability. Redirect wrapper stdout directly
 to that session path. The wrapper rejects bypass/yolo flags and any sandbox other
