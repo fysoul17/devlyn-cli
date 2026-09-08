@@ -1,6 +1,6 @@
 # 0128 — Native Claude PLAN input reference
 
-Status: IMPLEMENTED CANDIDATE; FINAL SOURCE ADVICE ACTIVE; NATIVE ACCEPTANCE PENDING. Spec: [0128](../../docs/specs/0128-plan-reference/spec.md). Root owns the decision; Fable/Grok advice is advisory.
+Status: IMPLEMENTED CANDIDATE; FINAL SOURCE ADVICE CLOSED; NATIVE SCREEN ACTIVE. Spec: [0128](../../docs/specs/0128-plan-reference/spec.md). Root owns the decision; Fable/Grok advice is advisory.
 
 ## Why this iter exists
 
@@ -30,3 +30,13 @@ Matching native Claude2.1.263 source and original advice Read results establish 
 Final implementation advice is launched under `.devlyn/0128-final-source-r0/review/`, common11-file145132-byte packet, master PREPARATION13d7f8d4…87cf9b4. Root independently rechecked86 preparation seals, Fable seals/fresh absence, environments, exact prompt argv and source freeze before one600s Fable and Grok each. Original controller routes are unchanged; their overlap is explicitly authorized for unmeasured independent source advice. Actual read/identity/context/quiet audits and root final findings disposition remain pending. Native screen preparation uses a new public JSON-command maintenance task; its three existing tests pass, and no screen model has launched.
 
 0125 closure metadata has durable custody at `~/.local/share/nx01/iter0125/20260908T014150Z-comparison-closure-wzs1b4pp/OUTPUT.json`, SHA226b4118b4cd1bcd1b13af49f09d63b2a0d2aadbfd3658c7348d47c6e66e4405:13 sources,37 files,382382 bytes; original A/B/private/source custody receipts and exact3ce7f6c closure docs retained without duplicating private payloads.
+
+## Source disposition and native launch — 2026-09-08
+
+Actual final Fable advice closed PWI10 nonbinding (one MEDIUM/nine LOW), native0/264.786s, full11-file145132-byte reads and exact identity/initial prompt/quiet. Audit SHA d75e4843358cf58de3c7347c9fec7f08e807813d4d3ea534765d0607741a04ba. Grok closed NEEDS_WORK2HIGH/1LOW, native0/full11 reads/quiet; audit2751a4925e44a518898efb00e08a8eed64789b4037e7d42e6221270486cba5ec retains contextFALSE3MCP/14skills, same-binary Python lexical alias and effective effort UNKNOWN. Neither raw verdict was upgraded. Root dispositions are `.devlyn/0128-source-validation-r0/ROOT-SOURCE-DECISION.json`1f797407bf656561793a25541db65529ec0b6d86c85cfb063e2a53e30e130c03.
+
+Before any screen output, root replaced the existing failure/truncation sentences with explicit remembered-text and matching-count wording; fixed the actually reproduced Bash3.2 nounset empty-array error; and made omp canonical delivery explicit. Source freeze1239d30475ce7151c0d2ccb32e5b0d8e1869b8731728f4b4d06c87a6f530c50b owns the revised bytes. Independent delta reconciliation passes. Actual Bash/zsh tests confirm omitted options produce zero argv entries and configured options preserve two entries, including a spaced path. Reviewed full lint exit0/188.915s, identical passing stdout06f9844d…34909; no further full-provider review was run or claimed for this small delta. Optional extra wrappers/tests/copying prose were rejected as unnecessary or retained as limitations; existing trigger parser includes plan.
+
+[Registration](0128-plan-reference-registration.md) was frozen/pushed9f857f2 before A1. Root independently checked123 manifest files, all five21-input/environment/scaffold/freshness bindings and prepared inventories. An initial unpublished root clean-git assumption failed on the deliberately prepared untracked plan.task-context; the corrected check requires exactly that sole sealed path without changing WORK. Native mutable-state policy7f0a6260 records `.claude.json` endpoints rather than falsely freezing client-written startup/session/usage bytes. Original r0/r1 receipts remain immutable; r2 reuses the same five WORKs/sessions, with only the declared source/observation revisions.
+
+A1 literal parent launched02:40:32UTC under call-01-r2, one600s native budget/610s wrapper/630s controller. Later cells remain root-GO gated. Operational evidence and opaque clause grading precede all counters. This is not yet a delivery/semantic/performance PASS or product adoption.
