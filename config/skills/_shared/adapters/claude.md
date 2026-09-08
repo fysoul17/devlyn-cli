@@ -88,7 +88,7 @@ You do NOT need stronger imperatives ("CRITICAL!", "YOU MUST!") to follow rules.
 
 ## Explicit role capability
 
-`role-config.py` validates explicit CLI judge selections against this bounded native capability declaration. Source: Claude Code2.1.263 built-in Fable5.1 metadata (native SHA ef5d2909c8af49f31ab6d5487e90316777bc2fac170adfe8160716caa8aaf4f9, byte157907500; effort/max/xhigh gates159068038/159068443/159068839). This is option support, not model fitness. Unknown version/model pairs fail with actionable unsupported-role-option; engine-only defaults remain available. Native Agent workers have no validated exact-model/effort transport here, so explicit worker fields are rejected instead of switching channels.
+`role-config.py` validates explicit CLI judge effort against this bounded native capability declaration. Source: Claude Code2.1.263 built-in Fable5.1 metadata (native SHA ef5d2909c8af49f31ab6d5487e90316777bc2fac170adfe8160716caa8aaf4f9, byte157907500; effort/max/xhigh gates159068038/159068443/159068839). This is option support, not model fitness. Unknown version/model effort support fails with actionable unsupported-role-option. Model-only requests pass the exact ID to the native CLI without this effort table and still require matching native result evidence; engine-only defaults remain available. Native Agent workers have no validated exact-model/effort transport here, so explicit worker fields are rejected instead of switching channels.
 
 <!-- devlyn-effort 2.1.263 claude-fable-5-1 low,medium,high,xhigh,max -->
 

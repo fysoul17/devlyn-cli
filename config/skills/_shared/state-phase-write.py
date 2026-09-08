@@ -1660,8 +1660,10 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
             raise SystemExit("error: phases.plan re-spawn requires --triggered-by")
     if phase == "surface_close" and engine != "claude":
         raise SystemExit("error: phases.surface_close spawn requires --engine claude")
-    if phase == "surface_close" and not model:
-        raise SystemExit("error: phases.surface_close spawn requires --model")
+    if phase == "surface_close" and model is not None and (
+        not isinstance(model, str) or not model.strip() or model != model.strip()
+    ):
+        raise SystemExit("error: phases.surface_close explicit --model must be a nonempty exact string")
     if phase == "surface_close" and isinstance(entry, dict) and (
         entry.get("started_at") is not None or entry.get("skipped_reason") is not None
     ):
@@ -1865,6 +1867,16 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             retained_session = candidate
 
     attestation_error = None
+    if phase == "surface_close":
+        canonical_result = (devlyn or pathlib.Path(".devlyn")) / "surface-close.output.json"
+        if engine_session_log is None or pathlib.Path(engine_session_log).resolve() != canonical_result.resolve():
+            attestation_error = (
+                "BLOCKED:model-attestation-failed: SURFACE_CLOSE requires canonical native JSON "
+                f"via --engine-session-log {canonical_result}"
+            )
+        else:
+            # Select the Claude JSON parser even if the caller used a .jsonl symlink alias.
+            engine_session_log = str(canonical_result)
     schema_v3_worker = (
         state.get("version") == "3.0"
         and artifact_phase is not None
@@ -3390,18 +3402,26 @@ def self_test() -> int:
             else:
                 raise AssertionError("SURFACE_CLOSE accepted a non-Claude engine")
             assert rejected_state == {"sentinel": True}
-        rejected_state = {"sentinel": True}
-        try:
-            do_spawn(
-                rejected_state, "surface_close", 0, None, pre_sha, "claude", None,
-                input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
-                untracked_before=["kept.txt"],
-            )
-        except SystemExit as exc:
-            assert "phases.surface_close spawn requires --model" in str(exc)
-        else:
-            raise AssertionError("SURFACE_CLOSE accepted a missing requested model")
-        assert rejected_state == {"sentinel": True}
+        for blank_model in ("", " ", " sonnet"):
+            rejected_state = {"sentinel": True}
+            try:
+                do_spawn(
+                    rejected_state, "surface_close", 0, None, pre_sha, "claude", blank_model,
+                    input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
+                    untracked_before=["kept.txt"],
+                )
+            except SystemExit as exc:
+                assert "explicit --model must be a nonempty exact string" in str(exc)
+            else:
+                raise AssertionError("SURFACE_CLOSE accepted an invalid requested model")
+            assert rejected_state == {"sentinel": True}
+        inherited_surface = {**copy.deepcopy(surface_state), "version": "3.0"}
+        do_spawn(
+            inherited_surface, "surface_close", 0, None, pre_sha, "claude", None,
+            input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
+            untracked_before=["kept.txt"],
+        )
+        assert inherited_surface["phases"]["surface_close"]["model_requested"] is None
         do_spawn(
             surface_state, "surface_close", 0, None, pre_sha, "claude", "sonnet",
             input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
@@ -3745,6 +3765,78 @@ def self_test() -> int:
         assert completed_surface["model_requested"] == "sonnet"
         assert completed_surface["model_effective"] == "sonnet"
         assert completed_surface["verdict"] == "PASS"
+
+        inherited_completion = copy.deepcopy(inherited_surface)
+        assert do_complete(
+            inherited_completion, "surface_close", "PASS", pre_sha, None, None,
+            None, None, str(wrapper_log), devlyn=work_devlyn,
+        ) is None
+        assert inherited_completion["phases"]["surface_close"]["model_requested"] is None
+        assert inherited_completion["phases"]["surface_close"]["model_effective"] == "sonnet"
+        replacement = copy.deepcopy(inherited_surface)
+        try:
+            do_complete(replacement, "surface_close", "PASS", None, None, None,
+                        None, "sonnet", str(wrapper_log), devlyn=work_devlyn)
+        except SystemExit as exc:
+            assert "cannot replace requested model" in str(exc)
+        else:
+            raise AssertionError("completion replaced inherited model selection")
+        assert replacement == inherited_surface
+
+        native_json = wrapper_log.read_bytes()
+        transcript_bytes = transcript.read_bytes()
+        foreign_log = work_devlyn / "foreign.output.json"
+        foreign_log.write_bytes(native_json)
+        for retained in (False, True):
+            if retained:
+                transcript.write_bytes(transcript_bytes)
+            else:
+                transcript.unlink()
+            for log in (None, str(foreign_log)):
+                rejected = copy.deepcopy(inherited_surface)
+                error = do_complete(rejected, "surface_close", "PASS", None, None, None,
+                                    None, None, log, devlyn=work_devlyn)
+                assert error and "canonical native JSON" in error
+                assert rejected["phases"]["surface_close"]["verdict"] == "BLOCKED"
+        for invalid_json in (
+            b"not JSON", b'{"result":"PASS"}',
+            b'{"modelUsage":{"model-a":{},"model-b":{}}}',
+            b'{"type":"turn_context","payload":{"model":"sonnet"}}\n',
+        ):
+            wrapper_log.write_bytes(invalid_json)
+            rejected = copy.deepcopy(inherited_surface)
+            assert do_complete(rejected, "surface_close", "PASS", None, None, None,
+                               None, None, str(wrapper_log), devlyn=work_devlyn)
+            assert rejected["phases"]["surface_close"]["verdict"] == "BLOCKED"
+        alias_log = work_devlyn / "aliased-native.jsonl"
+        alias_log.symlink_to(wrapper_log)
+        rejected = copy.deepcopy(inherited_surface)
+        assert do_complete(rejected, "surface_close", "PASS", None, None, None,
+                           None, None, str(alias_log), devlyn=work_devlyn)
+        wrapper_log.unlink()
+        rejected = copy.deepcopy(inherited_surface)
+        assert do_complete(rejected, "surface_close", "PASS", None, None, None,
+                           None, None, str(wrapper_log), devlyn=work_devlyn)
+        recovery_failure = copy.deepcopy(inherited_surface)
+        assert do_surface_adjudication_recovery(recovery_failure, work_devlyn)
+        assert recovery_failure["phases"]["surface_close"]["verdict"] == "BLOCKED"
+        assert not recovery_failure["phases"]["surface_close"].get("continued_after_block")
+        transition_state = copy.deepcopy(inherited_surface)
+        try:
+            do_transition(transition_state, "surface_close", "build_gate", "PASS", pre_sha,
+                          None, None, None, None, None, work_devlyn, 0, None, None, "claude", None)
+        except SystemExit as exc:
+            assert "canonical native JSON" in str(exc)
+        else:
+            raise AssertionError("SURFACE_CLOSE opened BUILD_GATE without native evidence")
+        assert transition_state == inherited_surface
+        wrapper_log.write_text('{"modelUsage":{"different-model":{"inputTokens":1}}}\n')
+        mismatch = copy.deepcopy(surface_state)
+        assert "model-attestation-mismatch" in do_complete(
+            mismatch, "surface_close", "PASS", None, None, None, None, None,
+            str(wrapper_log), devlyn=work_devlyn,
+        )
+        wrapper_log.write_bytes(native_json)
 
         recovery_state = loads_strict_json(json.dumps(surface_state))
         recovery_started_at = recovery_state["phases"]["surface_close"]["started_at"]

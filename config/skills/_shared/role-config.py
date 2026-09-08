@@ -281,10 +281,11 @@ def options(entry, role, *, model=None, version=None, cache=None, shared=SHARED)
         capability.update(path=str(path.resolve()), sha256=digest(raw))
     else:
         text = adapter(engine, judge=True, shared=shared)
-        matches = re.findall(r"^<!-- devlyn-effort (\S+) (\S+) ([a-z,]+) -->$", text, re.M)
-        levels = next((levels.split(",") for ver, selected, levels in matches if ver == version and selected == model), None)
-        if levels is None:
-            fail(detail + "; this Claude version/model has no validated adapter capability declaration", "unsupported-role-option")
+        if effort is not None:
+            matches = re.findall(r"^<!-- devlyn-effort (\S+) (\S+) ([a-z,]+) -->$", text, re.M)
+            levels = next((levels.split(",") for ver, selected, levels in matches if ver == version and selected == model), None)
+            if levels is None:
+                fail(detail + "; this Claude version/model has no validated adapter effort declaration; omit effort to select only the model", "unsupported-role-option")
         capability.update(path=str(shared / "adapters/claude.md"), sha256=digest(text.encode()))
     if effort is not None and effort not in levels:
         fail(f"{role}/{engine}/{model}: effort {effort!r} unsupported; supported: {', '.join(levels)}", "unsupported-role-option")
@@ -454,6 +455,28 @@ def self_test():
         explicit_effort = levels.split(",")[-1]
         assert options({"engine": "claude", "model_requested": known_model, "effort_requested": explicit_effort},
                        "primary_judge", version=version)["argv"][-1] == explicit_effort
+        for future_model, future_version in (("fixture-next-model", "9.0.0"), ("fixture-other-model", "9.1.0")):
+            future = {"engine": "claude", "model_requested": future_model, "effort_requested": None}
+            for judge in ("primary_judge", "pair_judge"):
+                result = options(future, judge, version=future_version)
+                assert result["argv"] == ["--model", future_model]
+                assert result["capability"]["native_version"] == future_version
+                assert result["capability"]["sha256"] == digest(adapter("claude", judge=True).encode())
+                try:
+                    options({**future, "effort_requested": "high"}, judge, version=future_version)
+                except ValueError as exc:
+                    assert "adapter effort declaration" in str(exc)
+                else:
+                    raise AssertionError("unknown judge effort support was assumed")
+        ineligible = work / "adapters"
+        ineligible.mkdir()
+        (ineligible / "claude.md").write_text("pair_judge: no\n")
+        try:
+            options(future, "primary_judge", version=future_version, shared=work)
+        except ValueError as exc:
+            assert "ineligible for judge" in str(exc)
+        else:
+            raise AssertionError("model-only selection bypassed adapter eligibility")
         for invalid in ({**entry, "effort_requested": "bogus"}, {"engine": "claude", "model_requested": "fixture-claude-model", "effort_requested": "high"}):
             try:
                 options(invalid, "worker", version="0.153.4", cache=cache)

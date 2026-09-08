@@ -213,8 +213,8 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 4. No model-pinned Claude references, any generation, except the adjudicated
-#    SURFACE_CLOSE envelope and the validated explicit-role capability declaration.
+# 4. No model-pinned Claude references, any generation, except the
+#    validated explicit-effort capability declaration.
 # ---------------------------------------------------------------------------
 section "Check 4: No model-pinned Claude references"
 offenders=$(grep -RInE 'Claude (Opus|Sonnet|Haiku|Fable)|claude-(opus|sonnet|haiku|fable)-[0-9]' \
@@ -224,7 +224,6 @@ offenders=$(grep -RInE 'Claude (Opus|Sonnet|Haiku|Fable)|claude-(opus|sonnet|hai
   | grep -v 'config/skills/devlyn:ideate-workspace/' \
   | grep -v 'config/skills/preflight-workspace/' \
   | grep -vE '^config/skills/_shared/adapters/claude\.md:[0-9]+:<!-- devlyn-effort 2\.1\.263 claude-fable-5-1 low,medium,high,xhigh,max -->$' \
-  | grep -vE '^config/skills/devlyn:resolve/SKILL\.md:[0-9]+:Freeze .*--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --model claude-sonnet-5 --output-format json --strict-mcp-config --mcp-config '\''\{"mcpServers":\{\}\}'\''.*, recording the same model at SPW spawn\.' \
   | cut -d: -f1 \
   | sort -u \
   || true)
@@ -609,7 +608,7 @@ if ! grep -Fq 'rollback_surface_delta' config/skills/_shared/state-phase-write.p
   || ! grep -Fq 'validate_surface_adjudication' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'validate_surface_execution' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'phases.surface_close spawn requires --engine claude' config/skills/_shared/state-phase-write.py \
-  || ! grep -Fq 'phases.surface_close spawn requires --model' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'SURFACE_CLOSE requires canonical native JSON' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'BLOCKED:surface-close-input-mismatch' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'surface-check' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'surface-rollback' config/skills/_shared/state-phase-write.py; then
@@ -625,7 +624,7 @@ for tree in config/skills .agents/skills; do
     || ! grep -Fq 'auto_surface_close_claude_unavailable' "$skill" \
     || ! grep -Fq 'canonical body VERBATIM' "$skill" \
     || ! grep -Fq 'run-bounded.py 600 -- claude -p' "$skill" \
-    || ! grep -Fq -- '--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --model claude-sonnet-5 --output-format json --strict-mcp-config --mcp-config '\''{"mcpServers":{}}'\''' "$skill" \
+    || ! grep -Fq -- '--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --output-format json --strict-mcp-config --mcp-config '\''{"mcpServers":{}}'\''' "$skill" \
     || ! grep -Fq '.devlyn/surface-close.output.json' "$skill" \
     || ! grep -Fq '**Common post-fix checkpoint (BUILD_GATE and VERIFY):**' "$skill" \
     || ! grep -Fq 'durability-enforce --round <n> --origin-phase <build_gate|verify>' "$skill" \
