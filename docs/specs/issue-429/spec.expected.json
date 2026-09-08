@@ -1,0 +1,36 @@
+{
+  "verification_commands": [
+    {"cmd": "PYTHONPATH=src python -m pytest -q", "exit_code": 0, "timeout_sec": 120},
+    {"cmd": "python -m ruff check --no-fix .", "exit_code": 0, "timeout_sec": 60},
+    {"cmd": "python -m ruff format --check .", "exit_code": 0, "timeout_sec": 60},
+    {"cmd": "python -m mypy", "exit_code": 0, "timeout_sec": 120},
+    {"cmd": "python -m pyright", "exit_code": 0, "timeout_sec": 120},
+    {"cmd": "uv pip install --python python --no-deps --reinstall . && python -m pyright --verifytypes itsdangerous --ignoreexternal", "exit_code": 0, "timeout_sec": 180},
+    {"cmd": "PYTHONPATH=src python docs/specs/issue-429/verify-runtime.py", "exit_code": 0, "timeout_sec": 60},
+    {"cmd": "python docs/specs/issue-429/verify-typing.py", "exit_code": 0, "timeout_sec": 120}
+  ],
+  "required_files": [
+    "docs/specs/issue-429/spec.md",
+    "docs/specs/issue-429/spec.expected.json",
+    "docs/specs/issue-429/verify-runtime.py",
+    "docs/specs/issue-429/verify-typing.py"
+  ],
+  "forbidden_files": [
+    "pyproject.toml",
+    "uv.lock",
+    "docs/specs/issue-429/spec.md",
+    "docs/specs/issue-429/spec.expected.json",
+    "docs/specs/issue-429/verify-runtime.py",
+    "docs/specs/issue-429/verify-typing.py"
+  ],
+  "spec_output_files": [
+    "src/itsdangerous/serializer.py",
+    "src/itsdangerous/timed.py",
+    "src/itsdangerous/url_safe.py",
+    "tests/test_itsdangerous/test_serializer.py",
+    "tests/test_itsdangerous/test_timed.py",
+    "tests/test_itsdangerous/test_url_safe.py",
+    "CHANGES.rst"
+  ],
+  "max_deps_added": 0
+}
