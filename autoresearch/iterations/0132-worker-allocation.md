@@ -1,6 +1,6 @@
 # 0132 — Worker allocation with fixed strong independent review
 
-Status: FINITE REGISTRATION READY; NO MODEL CALLS OR ROOT GO YET.
+Status: REGISTERED; A1 ACTIVE, OTHER THREE ROWS NOT AUTHORIZED.
 
 Mission1 decision: whether a Sol worker profile warrants disjoint confirmation under strong fixed design/review, after0131 source acceptance and actual identity delivery. The [spec](../../docs/specs/0132-worker-allocation/spec.md) owns the prospective intervention, input repairs, finite quality-first decision and preparation checks. Existing role-config suffices; no product/router/default change.
 
@@ -19,3 +19,7 @@ Common-input r0 completed one locked install and one full original suite (6/6PAS
 Supplement21cases5dd665d1/7bc08669 passed one14-control plumbing calibration; root hand-derived answer/source review30d407f9 also rechecked all1,257 raw/source files. Assessment SOURCE-FREEZEb1095d83 binds19 sources; two integrated copy/command-boundary controls pass once1.333s, retaining intermediate-mutation failure after restoration. Independent source review plus root27f18499 accept this bounded preparation, not model correctness. Root6100cb95 and final peer verify the four actual WORK/config/environment/profile/absence boundaries;159 distinct input pins match. Original caller88303ad1 is unchanged; the small launch shimf91c42e4 applies only the registered environment keys and execs it.
 
 Root GO is still per-row after committed/pushed registration and live recheck. Run at most A1/B1/B2/A2 serial, stop on operational/identity/measurement invalidity, no retry/topup/replacement. Full source semantics is assessed with assignment/timing masked before efficiency is disclosed. Quality first, correctly verified time second, OUTPUT descriptive/UNKNOWN where incomplete. This public development screen can only justify a separately registered disjoint confirmation; no profile/default or3.0.0 publication is authorized.
+
+## A1 native admission
+
+Launch notice72c73d5b0129ad22521b85c4630e1b23b3390cc4 was pushed before ROOT-GO10ef264b. Fresh actual input/full-WORK/config/environment preflight passed; `.devlyn/0132-native-comparison-r0/cell-01/ROOT-ADMISSION.json` retains registration/commit/plan and hash-only mutable-state observations. Native caller admitted2026-09-08T07:40:07.898950Z (tool session74910), run rs-20260908T074033Z-5227ef40d08e, PLAN starts07:41:13.939Z. No terminal/quality/time comparison exists yet; rows B1/B2/A2 remain without GO. Native process cleanup belongs to the unchanged caller; root controls serial advancement and the registered assessments.
