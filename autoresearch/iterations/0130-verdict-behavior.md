@@ -1,6 +1,6 @@
 # 0130 — Native conformance of selected VERIFY judgment obligations
 
-Status: REGISTERED, NOT LAUNCHED. [Frozen registration](0130-verdict-behavior-registration.md) owns all inputs, four calls, grades and stop rules. No product changes or broad model-performance claim.
+Status: FOUR REGISTERED CALLS LAUNCHED; ASSESSMENT PENDING. [Frozen registration](0130-verdict-behavior-registration.md) owns all inputs, four calls, grades and stop rules. No product changes or broad model-performance claim.
 
 Question: do actual Fable5.1/high and Grok4.6/requested-high, in four fresh single-submission sessions, bind an unsupported customer command and missing mandatory version option while accepting the corrected counterpart without invented repair obligations? Each sees only task/source/README plus exact accepted0129 canonical JUDGE lines54–72 and93–108. This deliberately excludes full resolve/VERIFY state and MECHANICAL; it is selected-obligation conformance, not full-pipeline validity or a causal old/new comparison.
 
@@ -9,3 +9,5 @@ Before outputs, independent review corrected the original two-paired-call propos
 Grok's known strict-context driver failure remains separately recorded. Source-backed results inside that declared native context cannot be aggregated with Fable as a four-row operational PASS. Freeze source quality before usage/time interpretation; no efficiency hypothesis is registered. Stop after four rows and assessment, no retry/topup/rescue. Closed0124/0125/0128 and A16 stay untouched;0129 instruction-coherence acceptance remains separate from native behavior.
 
 Principles: No guesswork (fixed applicable clauses, controls and pre-output criteria), No workaround (preserve failures/context limitations), No overengineering (reuse controllers and current findings format), Optimized (test mandatory repair and false positives before efficiency claims).
+
+Registration94140098 was committed/pushed4767e49 before exact-plan root GOs and native output. All four launched once at2026-09-08T05:05:05Z after102-pin/environment/absence recheck; custodian owns coordinator34881 and per-call start identities/owned observers. Fable rows completed before Grok; no public verdict or efficiency value has been disclosed to the assessor. The initial root GO preflight used relative instead of absolute plan spelling and asserted before writing GO; corrected checker input spelling is recorded without changing plans or any native call. No retry or replacement.
