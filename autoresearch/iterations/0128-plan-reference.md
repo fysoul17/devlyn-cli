@@ -1,0 +1,22 @@
+# 0128 — Native Claude PLAN input reference
+
+Status: DESIGN DECIDED; IMPLEMENTATION AND NATIVE ACCEPTANCE PENDING. Spec: [0128](../../docs/specs/0128-plan-reference/spec.md). Root owns the decision; Fable/Grok advice is advisory.
+
+## Why this iter exists
+
+Mission1 intent accuracy: closed0125 A's parent changed a body word while regenerating PLAN input; B was exact. Why did customer intent change? The native Agent field was generated afresh from a long rendered document. Why did its stored digest not prevent this? Claude state records intended document bytes, not actual native input. Replace that transcription with a short reference and measure actual returned content; do not pretend the old digest was a delivery guard. This revisits0127 only because body substitution is a new failure, unlike its semantically empty LF.0125 remains CLOSED_INCOMPLETE_OPERATIONAL_OTHER_QUOTA; separate BUILD candidate stays unadopted.
+
+## Root adjudication — 2026-09-08
+
+Original proposal SHA1e04c40c…f6b8b7c5 and all advice sources remain unchanged under `.devlyn/0128-plan-reference-design-r0/`. Both advisers received the same12-file72428-byte source packet; no private0125 task or reasoning was supplied.
+
+- Fable actual5.1/high, native0, exact initial prompt and all12 complete Reads: PASS_WITH_ISSUES12. Audit `consultations-r0/fable-audit/AUDIT.json`, SHA55df0fb2…10722b. F01/F02 binding MEDIUM are accepted: update initial and correction rounds together; stdout remains one canonical digest. F03/F04 retention is not read attestation; envelope absence does not prove literal transport and worker hash echoes add no proof. F05/F06 conflict on Bash fallback: choose native Read with complete range coverage, preserving worker capabilities; no required Bash or fallback. Parent sequential hash checks are explicitly TOCTOU-limited. F07 is accepted as an instruction/enforcement distinction; retrieval failure cannot authorize round1. F08 uses atomic writes and physical paths, but deleting unrelated stale envelopes in default mode is rejected as unnecessary scope. F09 native/semantic/source tests are adopted with a finite preregistration; F10/F11/F12 retain the minimal boundary, source limits and possibility of envelope transcription error.
+- Grok actual4.6/4.6-build, argv high (effective effort not emitted), native0, exact prompt and12 complete Reads: NEEDS_WORK6. Audit `consultations-r0/grok/audit-r0/REVIEW-RESULT.json`, SHA6d0e2795…dae586. Its original context validation remains FALSE (3 MCP/14 skills); Python argv lexical alias differs but resolves to the same binary, and delayed observer attachment remains disclosed. F0128-1 is accepted: no existing machine guard certifies native Read; BLOCKED completion is an explicit model workflow instruction, not fresh-context input validation. F0128-2/4 accept distinct document/envelope semantics and unchanged stdout/--output; F0128-3 accepts the unknown native completeness and TOCTOU limits but rejects model-generated same-buffer hashing as proof. Actual successful native content is required externally. F0128-5/6 retain archive/source limits and a losable native test. These replies establish design advice, not isolation PASS or product approval.
+
+The decision adds no state field, worker permission, dispatcher or transcript gate. Native Read is the minimum existing capability that can eliminate full-document parent generation. Sequential parent source hashes and observed returned content answer different questions and are never conflated. The committed spec owns requirements; the original proposal's stronger failure-route claims are superseded prospectively.
+
+## Prediction and acceptance
+
+Prediction: complete native returned PLAN content, unchanged source identity and all task clauses retained, with a smaller parent Agent argument. Accuracy/completeness is required before comparing total phase time or whole observed OUTPUT; a smaller prompt alone cannot pass. Source self-tests/lint, bounded actual native transport/semantic checks and negative-control limits remain pending. No performance/adoption claim yet.
+
+Principles check: pre-flight0 and #7 target the observed Mission1 intent failure; #1 subtracts full-body copying and reuses renderer/Read; #2 freezes prediction before outcomes; #3 fixes the transcription boundary; #4/#5 require source/native review and standard primitives; #6 leaves solo PLAN and all later pair mappings unchanged, and requires measuring added retrieval rather than assuming savings. Ship eligibility remains pending evidence.
