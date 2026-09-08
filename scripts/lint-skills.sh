@@ -56,6 +56,7 @@ fi
 # plus the `_shared/` kernel. Keep this list single-source so all installed
 # mirror parity checks cover the same files.
 critical_path_files=$(cat <<'EOF'
+_shared/.ruff.toml
 _shared/process-evidence.py
 _shared/invocation-receipt.py
 _shared/role-config.py
