@@ -354,6 +354,26 @@ def validate_receipt(
     )
     if supplied_session != receipt_session:
         raise ReceiptError("invocation receipt session path mismatch")
+    raw = receipt_session.read_bytes()
+    if sha256(raw) != receipt["session"]["sha256"]:
+        raise ReceiptError("invocation worker-session digest mismatch")
+    for number, line in enumerate(raw.decode("utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            event = loads_strict_json(line)
+        except ValueError as exc:
+            raise ReceiptError(f"invalid worker-session JSONL at line {number}: {exc}") from exc
+        if not isinstance(event, dict):
+            raise ReceiptError(f"worker-session event at line {number} must be an object")
+        item = event.get("item")
+        if (event.get("type") == "item.completed" and isinstance(item, dict)
+                and item.get("type") == "error" and isinstance(item.get("message"), str)
+                and item["message"].startswith("model rerouted: ")):
+            raise ReceiptError(
+                f"Codex reported model reroute at worker-session line {number}; "
+                "requested model was not preserved; inspect the retained session"
+            )
     return {
         "path": receipt_file.relative_to(work.resolve()).as_posix(),
         "sha256": sha256(receipt_file.read_bytes()),
@@ -659,6 +679,46 @@ def self_test() -> int:
             model="gpt-test", prompt_sha256=sha256(prompt.read_bytes()), session_path=session,
         )
         assert bound["sandbox"] == "workspace-write" and bound["exit_code"] == 0
+        original_session = session.read_bytes()
+        original_receipt = receipt.read_bytes()
+        reroute = "model rerouted: gpt-test -> another-model (Policy)"
+        cases = [
+            ({"type": "item.completed", "item": {"type": "error", "message": reroute}}, True),
+            ({"type": "item.completed", "item": {"type": "agent_message", "text": reroute}}, False),
+            ({"type": "item.completed", "item": {"type": "command_execution", "aggregated_output": reroute}}, False),
+            ({"type": "item.completed", "item": {"type": "error", "message": "recoverable tool error"}}, False),
+        ]
+        for event, blocked in cases:
+            raw = original_session + (json.dumps(event) + '\n{"type":"turn.completed"}\n').encode()
+            session.write_bytes(raw)
+            receipt.unlink()
+            start_receipt(work, receipt, "rs-receipt", "implement", 0, str(prompt), str(session), argv)
+            finish_receipt(work, receipt, 0)
+            sealed = receipt.read_bytes()
+            try:
+                validate_receipt(work, receipt, run_id="rs-receipt", phase="implement", round_=0,
+                                 model="gpt-test", prompt_sha256=sha256(prompt.read_bytes()), session_path=session)
+            except ReceiptError as exc:
+                assert blocked and "reported model reroute" in str(exc), str(exc)
+            else:
+                assert not blocked, "native reroute followed by success was accepted"
+            validate_receipt_artifacts(work, receipt, run_id="rs-receipt", phase="implement")
+            assert receipt.read_bytes() == sealed and session.read_bytes() == raw
+        for malformed in (b'{broken\n', b'null\n', b'{"type":"item.completed","type":"ignored"}\n'):
+            session.write_bytes(malformed)
+            receipt.unlink()
+            start_receipt(work, receipt, "rs-receipt", "implement", 0, str(prompt), str(session), argv)
+            finish_receipt(work, receipt, 0)
+            try:
+                validate_receipt(work, receipt, run_id="rs-receipt", phase="implement", round_=0,
+                                 model="gpt-test", prompt_sha256=sha256(prompt.read_bytes()), session_path=session)
+            except ReceiptError:
+                pass
+            else:
+                raise AssertionError("malformed worker event was accepted")
+            validate_receipt_artifacts(work, receipt, run_id="rs-receipt", phase="implement")
+        session.write_bytes(original_session)
+        receipt.write_bytes(original_receipt)
         plan_prompt = devlyn / "plan.prompt.0"
         plan_prompt.write_text("plan exactly\n", encoding="utf-8")
         plan_session = devlyn / "plan.worker-session.0.jsonl"

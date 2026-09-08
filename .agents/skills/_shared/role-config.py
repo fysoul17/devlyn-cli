@@ -210,8 +210,8 @@ def observations(state):
     for phase in ("implement", "cleanup"):
         entry = phases.get(phase)
         if isinstance(entry, dict) and entry.get("model_effective") and entry.get("verdict") in {"PASS", "PASS_WITH_ISSUES"} and entry.get("completed_at"):
-            basis = ("state-bound-invocation-receipt" if entry.get("invocation_receipt") else
-                     "completed-phase/session-model-attestation" if entry.get("engine") == "claude" else None)
+            basis = ("completed-phase/session-model-attestation"
+                     if entry.get("engine") == "claude" and not entry.get("invocation_receipt") else None)
             if basis:
                 result["worker"] = {"model_effective": entry["model_effective"], "effort_effective": None,
                                     "evidence_basis": basis}
@@ -363,9 +363,9 @@ def self_test():
         state = {"role_resolution": selected}
         path.write_bytes(encoded({"executor": "codex"}))
         assert snapshot(state) == selected
-        assert observations({"phases": {"implement": {"model_effective": "gpt-6-astra", "invocation_receipt": {"path": "fixture"}, "verdict": "PASS", "completed_at": "fixture",
+        assert observations({"phases": {"implement": {"engine": "codex", "model_effective": "gpt-6-astra", "invocation_receipt": {"path": "fixture"}, "verdict": "PASS", "completed_at": "fixture",
                                                       "role_argv": {"effort_requested": "high"}}, "verify": None}})["worker"] == {
-            "model_effective": "gpt-6-astra", "effort_effective": None, "evidence_basis": "state-bound-invocation-receipt"}
+            "model_effective": None, "effort_effective": None, "evidence_basis": None}
         attested = {"engine": "claude", "model_effective": "fixture-claude-model", "verdict": "PASS", "completed_at": "fixture"}
         assert observations({"phases": {"implement": attested}})["worker"] == {
             "model_effective": "fixture-claude-model", "effort_effective": None, "evidence_basis": "completed-phase/session-model-attestation"}

@@ -1918,7 +1918,7 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             role_argv = bind_worker_role_argv(state, phase, entry, devlyn, receipt)
             if role_argv is not None:
                 entry["role_argv"] = role_argv
-            entry["model_effective"] = entry.get("model_requested")
+            entry["model_effective"] = None  # The receipt binds argv, not an observed model.
             entry["invocation_receipt"] = receipt
         except (OSError, UnicodeError, ValueError) as exc:
             entry["model_effective"] = None
@@ -4081,7 +4081,8 @@ def self_test() -> int:
             str(receipt_session), devlyn=receipt_devlyn, work=receipt_work,
         ) is None
         receipt_entry = receipt_state["phases"]["implement"]
-        assert receipt_entry["model_effective"] == receipt_model
+        assert receipt_entry["model_effective"] is None
+        assert receipt_entry["model_requested"] == receipt_model
         assert receipt_entry["invocation_receipt"]["path"] == (
             ".devlyn/implement.invocation.0.json"
         )
@@ -4117,7 +4118,8 @@ def self_test() -> int:
             str(plan_session), devlyn=receipt_devlyn, work=receipt_work,
         ) is None
         plan_entry = plan_state["phases"]["plan"]
-        assert plan_entry["model_effective"] == plan_model
+        assert plan_entry["model_effective"] is None
+        assert plan_entry["model_requested"] == plan_model
         assert plan_entry["invocation_receipt"]["path"] == ".devlyn/plan.invocation.0.json"
         assert plan_entry["output_sha256"] == hashlib.sha256(
             (receipt_devlyn / "plan.md").read_bytes()
@@ -4363,7 +4365,7 @@ def self_test() -> int:
         )
         assert result.returncode == 0, result.stderr
         absent_transition_bytes = receipt_state_path.read_bytes()
-        assert read_state(receipt_state_path)["phases"]["plan"]["model_effective"] == plan_model
+        assert read_state(receipt_state_path)["phases"]["plan"]["model_effective"] is None
         print("PASS iter-0121 non-BLOCKED output requirement, malformed receipt and atomic transitions")
 
         for path_kind in ("file", "directory", "dangling-symlink", "unreadable"):
