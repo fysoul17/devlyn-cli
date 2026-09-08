@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import os
 import re
+import runpy
 import shlex
 import signal
 import subprocess
@@ -26,6 +28,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 CASES_DIR = HERE / "cases"
 RESULTS_DIR = HERE / "results"
+sys.dont_write_bytecode = True
+NATIVE = runpy.run_path(HERE.parents[2] / "config/skills/_shared/judge-role-evidence.py")
+IDENTITY_BASIS = "native-Codex-configuration-header"
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "gemma3:4b"
@@ -165,7 +170,104 @@ def terminate_process_group(pid):
             return
 
 
-def call_codex(prompt, scratch_dir, codex_command, stdout_path, stderr_path):
+def artifact(path):
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"not a regular artifact: {path.name}")
+    raw = path.read_bytes()
+    return {"path": path.name, "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw)}
+
+
+def read_artifact(directory, binding, expected_name):
+    if not isinstance(binding, dict) or binding.get("path") != expected_name or Path(expected_name).name != expected_name:
+        raise ValueError("artifact name differs from associated attempt/record")
+    path = directory / expected_name
+    if artifact(path) != binding:
+        raise ValueError(f"artifact changed: {expected_name}")
+    return path.read_bytes()
+
+
+def inspect_codex_attempt(directory, attempt, requested_model, stem):
+    """Recompute public identity and parse outcome from the exact retained attempt."""
+    native = None
+    identity_error = None
+    stdout = ""
+    stderr = ""
+    try:
+        argv = json.loads(read_artifact(directory, attempt["argv"], stem + ".argv.json"))
+        stdout = read_artifact(directory, attempt["stdout"], stem + ".stdout.txt").decode("utf-8", errors="replace")
+        stderr = read_artifact(directory, attempt["stderr"], stem + ".stderr.txt").decode("utf-8", errors="replace")
+        require, option = NATIVE["require"], NATIVE["option"]
+        require(isinstance(argv, list) and all(isinstance(arg, str) for arg in argv), "invalid argv")
+        require(option(argv, "-m", "--model") == requested_model, "requested model differs from argv")
+        cwd = Path(attempt["cwd"])
+        require(cwd.is_absolute() and option(argv, "-C", "--cd") == str(cwd), "attempt cwd differs from argv")
+        require(option(argv, "-s", "--sandbox") == "read-only", "argv sandbox differs")
+        configs = [argv[i + 1] for i, arg in enumerate(argv[:-1]) if arg in ("-c", "--config")]
+        require([item for item in configs if item.startswith("model_reasoning_effort=")] == ["model_reasoning_effort=xhigh"], "argv effort differs")
+        native = NATIVE["codex_header"](stderr)
+        diagnostics = stderr.partition("\nuser\n")[0]
+        require(not re.search(r"(?im)^.*(?:model|effort).*\b(?:ignor\w*|clamp\w*|unsupported|not supported)\b", diagnostics), "native rejected an option")
+        require(requested_model is None or native["model"] == requested_model, "native model differs from request")
+        require(Path(native["workdir"]).is_absolute() and Path(native["workdir"]).resolve() == cwd.resolve(), "native cwd differs")
+        require(native["sandbox"] == "read-only" and native["reasoning effort"] == "xhigh", "native sandbox/effort differs")
+        require(type(attempt["exit_code"]) is int and attempt["exit_code"] == 0 and attempt["transport_error"] is None, "native execution did not succeed")
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        identity_error = str(exc)
+    if attempt.get("transport_error"):
+        error = attempt["transport_error"]
+    elif attempt.get("exit_code") != 0:
+        error = f"transport_error: exit={attempt.get('exit_code')} stderr={stderr[:300]!r}"
+    elif identity_error:
+        error = f"identity_error: {identity_error}"
+    else:
+        parsed = extract_json_object(stdout)
+        error = None if parsed is not None else f"parse_error: raw={stdout[:300]!r}"
+        return parsed, error, native, identity_error
+    return None, error, native, identity_error
+
+
+def observed_codex_identity(directory, records, identity):
+    """Validate every record/attempt; legacy declarations are not native evidence."""
+    if identity.get("schema") != 1 or identity.get("identity_basis") != IDENTITY_BASIS:
+        raise ValueError("missing native identity contract")
+    requested = identity["model_requested"]
+    if requested is not None and (not isinstance(requested, str) or not requested.strip()):
+        raise ValueError("invalid requested model")
+    bindings = identity["records"]
+    names = [f"{record['case']}-rep{record['rep']}.json" for record in records]
+    if not records or len(names) != len(set(names)) or len(bindings) != len(records):
+        raise ValueError("missing or duplicate record association")
+    by_name = {binding["path"]: binding for binding in bindings}
+    actual_records = {path.name for path in directory.glob("*-rep*.json") if not path.name.endswith(".argv.json")}
+    if set(by_name) != set(names) or actual_records != set(names):
+        raise ValueError("record inventory differs")
+    observed = set()
+    artifacts = set()
+    for name, record in zip(names, records):
+        if json.loads(read_artifact(directory, by_name[name], name)) != record:
+            raise ValueError("record bytes differ")
+        attempts = record["attempts"]
+        if not isinstance(attempts, list) or len(attempts) not in (1, 2):
+            raise ValueError("missing or invalid attempt count")
+        for index, attempt in enumerate(attempts, 1):
+            previous_error = attempts[index - 2].get("error") if index > 1 else None
+            if attempt["attempt"] != index or (index > 1 and not (isinstance(previous_error, str) and previous_error.startswith("parse_error:"))):
+                raise ValueError("attempt order/retry differs")
+            stem = name[:-5] + f"-attempt{index}"
+            parsed, error, native, identity_error = inspect_codex_attempt(directory, attempt, requested, stem)
+            if identity_error or (attempt.get("native"), attempt.get("identity_error"), attempt["error"]) != (native, identity_error, error):
+                raise ValueError(identity_error or "attempt observations differ from raw")
+            observed.add((native["cli_version"], native["model"]))
+            artifacts.update(stem + suffix for suffix in (".argv.json", ".stdout.txt", ".stderr.txt"))
+        if record["parsed"] != parsed or record["error"] != error:
+            raise ValueError("final record differs from its terminal attempt")
+    actual = {path.name for suffix in ("argv.json", "stdout.txt", "stderr.txt") for path in directory.glob(f"*-attempt*.{suffix}")}
+    if actual != artifacts or len(observed) != 1:
+        raise ValueError("unassociated attempt artifacts or inconsistent native version/model")
+    return next(iter(observed))
+
+
+def call_codex(prompt, scratch_dir, codex_command, stdout_path, stderr_path, model_requested=None):
     cmd = [
         *codex_command,
         "exec",
@@ -178,8 +280,13 @@ def call_codex(prompt, scratch_dir, codex_command, stdout_path, stderr_path):
         "-C", str(scratch_dir),
         "-s", "read-only",
         "-c", "model_reasoning_effort=xhigh",
+        *(["-m", model_requested] if model_requested is not None else []),
         prompt,
     ]
+    argv_path = stdout_path.with_name(stdout_path.name.removesuffix(".stdout.txt") + ".argv.json")
+    argv_path.write_text(json.dumps(cmd, ensure_ascii=False) + "\n", encoding="utf-8")
+    returncode = None
+    transport_error = None
     try:
         with stdout_path.open("w", encoding="utf-8") as stdout, stderr_path.open("w", encoding="utf-8") as stderr:
             proc = subprocess.Popen(
@@ -203,24 +310,23 @@ def call_codex(prompt, scratch_dir, codex_command, stdout_path, stderr_path):
                     except OSError:
                         pass
                     proc.wait()
-                return None, "transport_error: timeout"
+                returncode = proc.returncode
+                transport_error = "transport_error: timeout"
     except FileNotFoundError:
-        return None, f"transport_error: command_not_found {codex_command[0]}"
-    if returncode != 0:
-        stderr_text = stderr_path.read_text(encoding="utf-8", errors="replace") if stderr_path.is_file() else ""
-        return None, f"transport_error: exit={returncode} stderr={stderr_text[:300]!r}"
-    stdout_text = stdout_path.read_text(encoding="utf-8", errors="replace")
-    parsed = extract_json_object(stdout_text)
-    if parsed is None:
-        return None, f"parse_error: raw={stdout_text[:300]!r}"
-    return parsed, None
+        transport_error = f"transport_error: command_not_found {codex_command[0]}"
+    attempt = {"cwd": str(scratch_dir), "exit_code": returncode, "transport_error": transport_error,
+               "argv": artifact(argv_path), "stdout": artifact(stdout_path), "stderr": artifact(stderr_path)}
+    parsed, error, native, identity_error = inspect_codex_attempt(stdout_path.parent, attempt, model_requested, argv_path.name.removesuffix(".argv.json"))
+    attempt.update(native=native, identity_error=identity_error)
+    return parsed, error, attempt
 
 
-def call_judge_with_retry(judge, prompt, scratch_dir, *, codex_command, judge_dir, artifact_stem):
+def call_judge_with_retry(judge, prompt, scratch_dir, *, codex_command, judge_dir, artifact_stem, model_requested=None):
     attempts = []
     parsed = None
     err = None
     for attempt in (1, 2):
+        evidence = {}
         if judge == "ollama":
             parsed, err = call_ollama(prompt)
         elif is_claude_judge(judge):
@@ -228,10 +334,10 @@ def call_judge_with_retry(judge, prompt, scratch_dir, *, codex_command, judge_di
         elif judge == "codex":
             stdout_path = judge_dir / f"{artifact_stem}-attempt{attempt}.stdout.txt"
             stderr_path = judge_dir / f"{artifact_stem}-attempt{attempt}.stderr.txt"
-            parsed, err = call_codex(prompt, scratch_dir, codex_command, stdout_path, stderr_path)
+            parsed, err, evidence = call_codex(prompt, scratch_dir, codex_command, stdout_path, stderr_path, model_requested)
         else:
             raise ValueError(f"unknown judge: {judge}")
-        attempts.append({"attempt": attempt, "error": err})
+        attempts.append({"attempt": attempt, "error": err, **evidence})
         if parsed is not None or not (err or "").startswith("parse_error:"):
             break
     return parsed, err, attempts
@@ -252,7 +358,7 @@ def probe_version(command, args):
     return text.splitlines()[0] if text else None
 
 
-def write_identity(judge, judge_dir, run_id, codex_command):
+def write_identity(judge, judge_dir, run_id, *, records=None, model_requested=None):
     if judge == "ollama":
         cli_version = probe_version(["ollama"], ["--version"])
         model = OLLAMA_MODEL
@@ -260,8 +366,18 @@ def write_identity(judge, judge_dir, run_id, codex_command):
         cli_version = probe_version(["claude"], ["--version"])
         model = judge
     elif judge == "codex":
-        cli_version = probe_version(codex_command, ["--version"])
-        model = os.environ.get("CODEX_MODEL") or os.environ.get("OPENAI_MODEL")
+        identity = {"schema": 1, "identity_basis": IDENTITY_BASIS, "model_requested": model_requested,
+                    "recorded_at_run_id": run_id, "cli_version": None, "model_id_or_alias": None,
+                    "identity_validated": False,
+                    "records": [artifact(judge_dir / f"{record['case']}-rep{record['rep']}.json") for record in records]}
+        try:
+            identity["cli_version"], identity["model_id_or_alias"] = observed_codex_identity(judge_dir, records, identity)
+            identity["identity_validated"] = True
+            identity["identity_error"] = None
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            identity["identity_error"] = str(exc)
+        (judge_dir / "identity.json").write_text(json.dumps(identity, indent=2) + "\n", encoding="utf-8")
+        return
     else:
         raise ValueError(f"unknown judge: {judge}")
     identity = {
@@ -300,6 +416,13 @@ def score_response(case, parsed):
 
 
 def run(reps, judges, *, run_id, results_dir, codex_command):
+    model_requested = os.environ.get("CODEX_MODEL") or os.environ.get("OPENAI_MODEL")
+    if "codex" in judges:
+        if model_requested is not None and not model_requested.strip():
+            raise ValueError("explicit whitespace-only Codex model request")
+        codex_results = results_dir / "codex"
+        if codex_results.exists() and any(codex_results.iterdir()):
+            raise ValueError("Codex measurement requires a fresh results directory; historical artifacts are not overwritten")
     cases = load_cases()
     scratch_dir = Path("/private/tmp/claude-501-judge-quality-scratch")
     scratch_dir.mkdir(parents=True, exist_ok=True)
@@ -310,7 +433,8 @@ def run(reps, judges, *, run_id, results_dir, codex_command):
     for judge in judges:
         judge_dir = results_dir / judge
         judge_dir.mkdir(parents=True, exist_ok=True)
-        write_identity(judge, judge_dir, run_id, codex_command)
+        if judge != "codex":
+            write_identity(judge, judge_dir, run_id)
         judge_results = []
         for case in cases:
             prompt = build_prompt(case)
@@ -322,10 +446,11 @@ def run(reps, judges, *, run_id, results_dir, codex_command):
                     codex_command=codex_command,
                     judge_dir=judge_dir,
                     artifact_stem=f"{case['id']}-rep{rep}",
+                    model_requested=model_requested,
                 )
 
                 record = {"case": case["id"], "rep": rep, "error": err}
-                if len(attempts) > 1 or err is not None:
+                if judge == "codex" or len(attempts) > 1 or err is not None:
                     record["attempts"] = attempts
                 if parsed is not None:
                     record["parsed"] = parsed
@@ -342,6 +467,8 @@ def run(reps, judges, *, run_id, results_dir, codex_command):
                 print(f"[{judge}] {case['id']} rep{rep}: "
                       f"hit={record.get('hit')} fp={record.get('false_positive')} err={err}",
                       file=sys.stderr)
+        if judge == "codex":
+            write_identity(judge, judge_dir, run_id, records=judge_results, model_requested=model_requested)
         all_results[judge] = judge_results
 
     summary_path = results_dir / "summary.json"

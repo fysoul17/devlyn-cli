@@ -7,6 +7,7 @@ import json
 import math
 import pathlib
 import re
+import runpy
 import sys
 import tempfile
 from typing import Any
@@ -22,6 +23,7 @@ SEATS = (
 )
 JUDGE_CERT_RECALL_MIN = 0.75
 JUDGE_CERT_FP_MAX = 0.125
+sys.dont_write_bytecode = True
 
 
 def reject_json_constant(token: str) -> None:
@@ -283,11 +285,12 @@ def collect_judge_quality_cells(
     date: str,
     engine_versions: dict[str, str],
     attest_run_prefix: str | None,
+    judge_quality_results: pathlib.Path | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
     cells: list[dict[str, Any]] = []
     certification: dict[str, dict[str, Any]] = {}
     meta = case_meta(root)
-    results = root / "benchmark/probes/judge-quality/results"
+    results = judge_quality_results if judge_quality_results is not None else root / "benchmark/probes/judge-quality/results"
     if not results.is_dir():
         return cells, certification
     for judge_dir in sorted(path for path in results.iterdir() if path.is_dir()):
@@ -304,6 +307,29 @@ def collect_judge_quality_cells(
         judge = judge_dir.name
         engine_alias = {"sonnet": "sonnet", "codex": "codex"}.get(judge, judge)
         identity_value, identity_source = model_from_identity(judge_dir / "identity.json", root)
+        identity_error = None
+        declared_identity = identity_value
+        if judge == "codex":
+            try:
+                identity = load_json(judge_dir / "identity.json")
+                if identity.get("identity_validated") is not True:
+                    raise ValueError("Codex identity is legacy-declared or unvalidated")
+                judge_api = runpy.run_path(pathlib.Path(__file__).resolve().parents[1] / "probes/judge-quality/run_judge_quality.py")
+                observed_version, observed_model = judge_api["observed_codex_identity"](judge_dir, records, identity)
+                if (observed_version, observed_model) != (identity.get("cli_version"), identity.get("model_id_or_alias")):
+                    raise ValueError("Codex run identity differs from native artifacts")
+                for record in records:
+                    expected = judge_api["score_response"]({"ground_truth": meta[record["case"]]}, record["parsed"])
+                    for field in ("hit", "false_positive"):
+                        if type(record[field]) is not type(expected[field]) or record[field] != expected[field]:
+                            raise ValueError(f"Codex {field} differs from native result and case ground truth")
+                    parse_error = record.get("parse_error", False)
+                    if type(parse_error) is not bool or parse_error != (record["parsed"] is None):
+                        raise ValueError("Codex parse_error differs from terminal parse result")
+                identity_value = model_value(observed_version, observed_model)
+            except (OSError, ValueError, TypeError, KeyError, AttributeError, IndexError) as exc:
+                identity_value, identity_source = None, None
+                identity_error = str(exc)
         defect = [r for r in records if meta.get(r["case"], {}).get("type") != "clean"]
         clean = [r for r in records if meta.get(r["case"], {}).get("type") == "clean"]
         hits = sum(1 for r in defect if r.get("hit") is True)
@@ -322,8 +348,11 @@ def collect_judge_quality_cells(
                 and strict_number(fp_rate)
                 and recall >= JUDGE_CERT_RECALL_MIN
                 and fp_rate <= JUDGE_CERT_FP_MAX
+                and (judge != "codex" or (identity_error is None and all(r.get("error") is None and r.get("parse_error") is not True for r in records)))
             ),
         }
+        if judge == "codex":
+            certification[judge].update(identity_error=identity_error, declared_identity=declared_identity)
         for metric, value, n in (
             ("recall_rate", recall, len(defect)),
             ("false_positive_rate", fp_rate, len(clean)),
@@ -340,7 +369,7 @@ def collect_judge_quality_cells(
                 artifact=rel(root, judge_dir),
                 model_version_value=identity_value,
                 model_version_source=identity_source,
-                attest_run_prefix=attest_run_prefix,
+                attest_run_prefix=None if judge == "codex" else attest_run_prefix,
             ))
     return cells, certification
 
@@ -607,11 +636,12 @@ def build_report(
     date: str,
     engine_versions: dict[str, str],
     attest_run_prefix: str | None,
+    judge_quality_results: pathlib.Path | None = None,
 ) -> dict[str, Any]:
     cells: list[dict[str, Any]] = []
     cells.extend(collect_compliance_cells(root, date, engine_versions, attest_run_prefix))
     cells.extend(collect_drift_cells(root, date, engine_versions, attest_run_prefix))
-    judge_cells, certification = collect_judge_quality_cells(root, date, engine_versions, attest_run_prefix)
+    judge_cells, certification = collect_judge_quality_cells(root, date, engine_versions, attest_run_prefix, judge_quality_results)
     cells.extend(judge_cells)
     cells.extend(collect_pair_judge_cells(root, date, engine_versions, attest_run_prefix))
     cells.extend(collect_implement_cells(root, date, engine_versions, attest_run_prefix))
@@ -692,6 +722,7 @@ def main() -> int:
     parser.add_argument("--date", help="YYYY-MM-DD; also used in output filename")
     parser.add_argument("--engine-versions", type=parse_engine_versions)
     parser.add_argument("--attest-run-prefix", help="recert run prefix whose alias-only result dirs attest current engine versions")
+    parser.add_argument("--judge-quality-results", type=pathlib.Path, help="read only this judge-quality results directory instead of the historical default")
     parser.add_argument("--repo-root", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2])
     parser.add_argument("--out-dir", type=pathlib.Path)
     args = parser.parse_args()
@@ -706,7 +737,7 @@ def main() -> int:
     root = args.repo_root.resolve()
     out_dir = args.out_dir or (root / "benchmark/seats")
     out_dir.mkdir(parents=True, exist_ok=True)
-    report = build_report(root, args.date, args.engine_versions, args.attest_run_prefix)
+    report = build_report(root, args.date, args.engine_versions, args.attest_run_prefix, args.judge_quality_results)
     out_json = out_dir / f"seat-matrix-{args.date}.json"
     out_md = out_dir / f"seat-matrix-{args.date}.md"
     out_json.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")

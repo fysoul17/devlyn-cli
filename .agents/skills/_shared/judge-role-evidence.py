@@ -58,13 +58,11 @@ def codex_header(stderr):
     require(len(starts) == 1, "missing or conflicting first native Codex header")
     header = prefix[starts[0].end():]
     require(header.endswith("\n--------"), "malformed native Codex header boundary")
-    fields = {}
+    fields = {"cli_version": "codex-cli " + starts[0].group(0).splitlines()[0].removeprefix("OpenAI Codex v")}
     for key in ("model", "workdir", "sandbox", "session id", "reasoning effort"):
         values = re.findall(r"^" + re.escape(key) + r": (.+)$", header, re.M)
         require(len(values) == 1 and bool(values[0].strip()), f"missing/conflicting native {key}")
         fields[key] = values[0]
-    require("[codex-monitored] isolated=1\n" in prefix, "missing actual isolation marker")
-    require(re.search(r"^\[codex-monitored\] start: .* timeout=600s ", prefix, re.M) is not None, "missing actual 600s bound")
     return fields
 
 
@@ -117,6 +115,8 @@ def describe(devlyn, state, role, exit_code):
         flags = [argv[i + 1] for i, item in enumerate(argv[:-1]) if item in {"-c", "--config"}]
         efforts = [flag.split("=", 1)[1].strip('"') for flag in flags if flag.startswith("model_reasoning_effort=")]
         require(len(efforts) == 1 and (not requested_effort or efforts[0] == requested_effort), "missing/conflicting requested effort")
+        require("[codex-monitored] isolated=1\n" in diagnostics, "missing actual isolation marker")
+        require(re.search(r"^\[codex-monitored\] start: .* timeout=600s ", diagnostics, re.M) is not None, "missing actual 600s bound")
         header = codex_header(stderr)
         require(Path(header["workdir"]).is_absolute() and Path(header["workdir"]).resolve() == devlyn.parent.resolve()
                 and header["sandbox"] == "read-only", "observed workdir/sandbox mismatch")
@@ -225,7 +225,7 @@ def self_test():
         else:
             raise AssertionError("different physical worktree accepted")
         (devlyn / "codex-judge.r0.argv.json").write_bytes(encoded(argv))
-        for bad in ("Warning: model effort unsupported and ignored\n" + header, "\nuser\n" + header, header.replace("\nmodel:", "\nmodel: gpt-5.6-sol\nmodel:"), header.replace("sandbox: read-only", "sandbox: workspace-write"), header.replace("model: gpt-6-astra", "model: gpt-5.6-sol")):
+        for bad in ("Warning: model effort unsupported and ignored\n" + header, "\nuser\n" + header, header.replace("\nmodel:", "\nmodel: gpt-5.6-sol\nmodel:"), header.replace("sandbox: read-only", "sandbox: workspace-write"), header.replace("model: gpt-6-astra", "model: gpt-5.6-sol"), header.replace("[codex-monitored] isolated=1\n", ""), header.replace("timeout=600s", "timeout=300s")):
             (devlyn / "codex-judge.r0.stderr").write_text(bad)
             try:
                 describe(devlyn, state, "pair_judge", 0)

@@ -87,6 +87,28 @@ not a defect).
   claude calls.
 - 2 reps per judge per case (24 calls per judge total).
 
+Codex uses the existing `CODEX_MODEL` then `OPENAI_MODEL` request as an actual
+`-m` argument on every attempt; neither set means native default selection.
+Its direct read-only route retains the 300-second bound and parse-only retry.
+Use a fresh `--results-dir`; existing Codex artifacts are never overwritten.
+Every attempt retains argv, stdout/stderr hashes, exit and native model/version,
+session, cwd, sandbox and effort. Identity comes from the first pre-prompt
+native header, with `OpenAI Codex vX` normalized to `codex-cli X`; raw header
+bytes remain intact. This observes CLI configuration, not provider internals.
+The run identity requires consistent evidence across all attempts, including
+parse-rejected attempts. Seat-matrix rechecks associated artifacts; unknown,
+conflicting or legacy-declared Codex judge identity cannot become current or
+certified through an environment label or run prefix. Stored hit/false-positive
+and parse-error fields must agree strictly with the existing scorer and terminal
+parse result; rebinding inconsistent scores does not qualify the run. A terminal
+parse failure retains observed identity and diagnostic metrics but disqualifies
+Codex certification. Scoring, parse-only retries, other engines and historical
+result files are unchanged. A whitespace-only explicit Codex model or occupied
+Codex destination is rejected before any judge dispatch in a mixed run.
+`recert-seats.sh` passes its run-local judge-quality directory to both the runner
+and seat-matrix's `--judge-quality-results`. An explicit missing tree stays
+unmeasured; omitting the consumer option retains the historical default tree.
+
 ## Scoring (100% mechanical — no LLM meta-judging)
 
 Per case, per rep, parse the judge's JSON response.

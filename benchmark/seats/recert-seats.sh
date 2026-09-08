@@ -55,6 +55,7 @@ SEATS_ROOT="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SEATS_ROOT/../.." && pwd)"
 PROBES_ROOT="$REPO_ROOT/benchmark/probes"
 STATUS_DIR="$SEATS_ROOT/results/$RUN_PREFIX"
+JUDGE_QUALITY_RESULTS="$STATUS_DIR/judge-quality"
 mkdir -p "$STATUS_DIR"
 STATUS_JSON="$STATUS_DIR/recert-status.json"
 
@@ -157,7 +158,8 @@ if [ ${#JUDGES[@]} -gt 0 ]; then
   IFS=','; JUDGES_CSV="${JUDGES[*]}"; unset IFS
   run_suite judge_quality \
     python3 "$PROBES_ROOT/judge-quality/run_judge_quality.py" \
-      --reps 2 --judges "$JUDGES_CSV" --run-id "$RUN_PREFIX-judge-quality"
+      --reps 2 --judges "$JUDGES_CSV" --run-id "$RUN_PREFIX-judge-quality" \
+      --results-dir "$JUDGE_QUALITY_RESULTS"
 fi
 
 CLAUDE_VERSION="$(claude --version 2>/dev/null | head -1 || true)"
@@ -189,7 +191,8 @@ run_suite seat_matrix \
   python3 "$SEATS_ROOT/seat-matrix.py" \
     --date "$DATE" \
     --engine-versions "$ENGINE_VERSIONS" \
-    --attest-run-prefix "$RUN_PREFIX"
+    --attest-run-prefix "$RUN_PREFIX" \
+    --judge-quality-results "$JUDGE_QUALITY_RESULTS"
 
 FAILURES_CSV=""
 if [ ${#FAILURES[@]} -gt 0 ]; then
