@@ -18,6 +18,8 @@ Actual Grok4.6 supplied four exact Reads and public PASS/zero findings, native0/
 
 The selected parity context omitted its declaration at line104 while describing the function too broadly; root opened the actual declaration and retained the one-line source-view limitation. The original packet and judgments were not rewritten.
 
+Durable custody: `/Users/aipalm/.local/share/nx01/iter0136/20260908T120703Z-closure-ohsb8f_j/OUTPUT.json`, SHA `ab7016d043afd1f85aa7564548d696d5ba6b5f2ca710a6883ad31aa0799ab1d3`,457 files/67 directories/6,625,495B. Source/destination/post-copy bytes, modes and types match;92 functional pins and75 references remain exact. Raw native bodies are opaque copies. The initial pre-copy indentation error is preserved; originals were not changed. Pointer: `.devlyn/0136-closure-custody-r0/custody.completed.json`.
+
 ## Consequence
 
 Return to an ordinary public-project task under a fresh registration and accepted installation. Accuracy/completeness, total verified solution time and whole-provider OUTPUT remain unmeasured by this source repair. Defaults, customer AGENTS.md/CLAUDE.md, closed prior experiments and parkedA16 remain unchanged;3.0.0 is unpublished. Principles: No workaround, No overengineering, No guesswork, Production ready, Optimized.
