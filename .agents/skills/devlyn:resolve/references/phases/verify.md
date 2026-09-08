@@ -90,13 +90,20 @@ without inventing a replacement command.
 
 **Coverage check**: before declaring done, confirm you have sealed evidence and code-order support for every spec axis. If an axis lacks declared MECHANICAL coverage, or the diff does not touch the code that produces it, set `state.verify.coverage_failed: true` and surface the missing-evidence finding rather than passing on assumption.
 
-**Verdict-binding severity check**: HIGH/CRITICAL findings are always
-verdict-binding. A MEDIUM finding is also verdict-binding when it identifies a
-concrete behavioral regression against the visible spec, an existing public
-contract, or an existing test contract. Examples: a previously valid input now
-errors, duplicate/idempotent handling regresses, warning/error semantics change
-for a real API path, or a focused existing regression test would fail. Advisory
-design/style concerns remain non-binding MEDIUM and produce `PASS_WITH_ISSUES`.
+**Verdict-binding check**: a demonstrated violation of an applicable mandatory
+task, public, or existing test contract is binding, including unmet new
+requirements and incorrect customer documentation. Quote the exact applicable
+clause and concrete file:line evidence. Small impact, rare inputs, or a
+pre-existing defect do not excuse that violation. A changed line or requirement
+reference alone does not establish applicability.
+
+Emit HIGH/CRITICAL as appropriate, or MEDIUM with literal `verdict_binding: true`.
+Do not label a binding finding LOW/INFO: the merge honors HIGH/CRITICAL and
+MEDIUM/true; confidence is reported but adds no merge threshold. Preferences,
+style, stronger inferred invariants, genuinely ambiguous clauses, and unrelated
+pre-existing issues are not demonstrated mandatory violations. Name the actual
+ambiguity or evidence limitation; do not substitute an impact argument.
+Advisory MEDIUM findings remain non-binding and produce `PASS_WITH_ISSUES`.
 
 **Anti-self-filter rule**: report every finding you observe, including ones you consider low-severity or low-confidence. Tag each with `confidence: high|medium|low` and let the harness's downstream filter rank them. Filtering at this stage suppresses recall.
 
@@ -167,12 +174,9 @@ solo. Never synthesize pair findings.
 
 When eligible and the orchestrator spawns a second VERIFY agent with the OTHER engine's adapter, both judgments are merged:
 - Any HIGH/CRITICAL finding either model surfaces is verdict-binding.
-- Any high-confidence MEDIUM finding either model surfaces is also
-  verdict-binding when it identifies a concrete behavioral regression against
-  the spec, public contract, or existing test contract. This includes
-  duplicate/idempotent/order-preservation regressions and real warning/error
-  behavior changes. Do not downgrade these to advisory simply because they are
-  not HIGH.
+- Any MEDIUM finding with literal `verdict_binding: true` is also binding.
+  Apply the same mandatory-clause, applicability and evidence check above;
+  neither impact nor pre-existing origin makes an applicable violation advisory.
 - Other lower-severity disagreements are logged but do not change the verdict.
 - The orchestrator handles merge; you only emit your own findings.
 - The second judge's job is adversarial complement, not a duplicate summary:
@@ -277,8 +281,8 @@ This deterministic merge is the routing source of truth for VERIFY. It writes
 `.devlyn/verify-merged.findings.jsonl`, `.devlyn/verify-merge.summary.json`, and
 updates `state.phases.verify.{verdict,sub_verdicts,merged}`. Branch on the
 merged state verdict, not on either model's prose verdict. Any HIGH/CRITICAL
-finding from either judge is `NEEDS_WORK`; a high-confidence MEDIUM must set
-`verdict_binding: true` to become `NEEDS_WORK`.
+finding from either judge is `NEEDS_WORK`; a MEDIUM must set literal
+`verdict_binding: true` to become `NEEDS_WORK`, regardless of confidence.
 
 Do not create, edit, truncate, or summarize `.devlyn/verify-merged.findings.jsonl`
 or `.devlyn/verify-merge.summary.json` by hand. Those files have exactly one
@@ -292,7 +296,7 @@ VERIFY to `BLOCKED`; do not synthesize merge artifacts in prose.
 - `.devlyn/spec-verify.results.json` plus its sealed VERIFY process-evidence manifest/raw streams — immutable JUDGE inputs.
 - `.devlyn/verify.findings.jsonl` — JUDGE findings.
 - `.devlyn/verify-merged.findings.jsonl` and `.devlyn/verify-merge.summary.json` — deterministic merge artifacts.
-- `phases.verify.{verdict, sub_verdicts, merged}` are written by `verify-merge-findings.py --write-state`, never by you (VERIFY agents have no code-mutation tools). `completed_at`/`duration_ms`/`artifacts` are recorded by the orchestrator via `state-phase-write.py` after this phase returns. `PASS` requires zero CRITICAL/HIGH findings, zero verdict-binding MEDIUM regressions, and coverage met.
+- `phases.verify.{verdict, sub_verdicts, merged}` are written by `verify-merge-findings.py --write-state`, never by you (VERIFY agents have no code-mutation tools). `completed_at`/`duration_ms`/`artifacts` are recorded by the orchestrator via `state-phase-write.py` after this phase returns. `PASS` requires zero CRITICAL/HIGH findings, zero verdict-binding MEDIUM findings, and coverage met.
 </output>
 
 <quality_bar>
