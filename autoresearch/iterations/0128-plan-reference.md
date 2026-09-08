@@ -1,6 +1,6 @@
 # 0128 — Native Claude PLAN input reference
 
-Status: DESIGN DECIDED; IMPLEMENTATION AND NATIVE ACCEPTANCE PENDING. Spec: [0128](../../docs/specs/0128-plan-reference/spec.md). Root owns the decision; Fable/Grok advice is advisory.
+Status: IMPLEMENTED CANDIDATE; FINAL SOURCE ADVICE ACTIVE; NATIVE ACCEPTANCE PENDING. Spec: [0128](../../docs/specs/0128-plan-reference/spec.md). Root owns the decision; Fable/Grok advice is advisory.
 
 ## Why this iter exists
 
@@ -20,3 +20,13 @@ The decision adds no state field, worker permission, dispatcher or transcript ga
 Prediction: complete native returned PLAN content, unchanged source identity and all task clauses retained, with a smaller parent Agent argument. Accuracy/completeness is required before comparing total phase time or whole observed OUTPUT; a smaller prompt alone cannot pass. Source self-tests/lint, bounded actual native transport/semantic checks and negative-control limits remain pending. No performance/adoption claim yet.
 
 Principles check: pre-flight0 and #7 target the observed Mission1 intent failure; #1 subtracts full-body copying and reuses renderer/Read; #2 freezes prediction before outcomes; #3 fixes the transcription boundary; #4/#5 require source/native review and standard primitives; #6 leaves solo PLAN and all later pair mappings unchanged, and requires measuring added retrieval rather than assuming savings. Ship eligibility remains pending evidence.
+
+## Implemented source checkpoint — 2026-09-08
+
+The three canonical files and normal mirrors implement the committed spec. Source freeze `d898af412e09f97daee1161528f7e8c0adaeca703c957a36760bb35d09e4202e` is retained in `.devlyn/0128-source-validation-r0/SOURCE-FREEZE.json`; runtime remains unadopted. Renderer self-test passes, including existing arbitrary-byte default rendering, one stdout canonical digest, physical path equivalence and sentinel-preserving collision rejection. Independent code review found no blockers and passed five additional temporary physical/symlink checks. Full final lint exited0 in186.402s; exact stdout SHA06f9844d…34909, stderr empty. An earlier full run also emitted All checks passed, but its detached exit status was not retained; that limitation stays in `lint-result.json`, and the final run has an actual captured exit.
+
+Matching native Claude2.1.263 source and original advice Read results establish available offset/limit and truncation metadata. They also expose partial-line truncation and CRLF/BOM/invalid-UTF8 transformation; exact external byte matching is therefore bounded to the frozen UTF-8/LF native screen, with source endpoints retained separately. No worker Bash/hash permission was added.
+
+Final implementation advice is launched under `.devlyn/0128-final-source-r0/review/`, common11-file145132-byte packet, master PREPARATION13d7f8d4…87cf9b4. Root independently rechecked86 preparation seals, Fable seals/fresh absence, environments, exact prompt argv and source freeze before one600s Fable and Grok each. Original controller routes are unchanged; their overlap is explicitly authorized for unmeasured independent source advice. Actual read/identity/context/quiet audits and root final findings disposition remain pending. Native screen preparation uses a new public JSON-command maintenance task; its three existing tests pass, and no screen model has launched.
+
+0125 closure metadata has durable custody at `~/.local/share/nx01/iter0125/20260908T014150Z-comparison-closure-wzs1b4pp/OUTPUT.json`, SHA226b4118b4cd1bcd1b13af49f09d63b2a0d2aadbfd3658c7348d47c6e66e4405:13 sources,37 files,382382 bytes; original A/B/private/source custody receipts and exact3ce7f6c closure docs retained without duplicating private payloads.
