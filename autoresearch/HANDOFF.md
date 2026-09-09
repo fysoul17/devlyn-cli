@@ -12,7 +12,9 @@ Subject to explicit user directives (including the bounded 0118 exception), if a
 
 ---
 
-## 🚦 START-HERE — 2026-09-08 / 3.0.0 PUBLISHED
+## 🚦 START-HERE — 2026-09-09 / MISSION 1 VALIDATION PREPARATION
+
+**Next work:** [0139](iterations/0139-mission1-validation.md) records the user's sequential remaining-gate request: independent real-project completion, fair quality/time and pair-value comparisons, then the ceiling/copycat comparison. Root decides with requested Fable5.1/Grok4.7 advice; temporary Opus5/Grok4.6 substitution is limited to usage limits or unsupported versions. Preparation is complete enough to identify admission gaps, not to launch: independent developer/task/acceptance/budget are pending; actual native probes returned Claude auth failure and Grok session filesystem denial. No requested Fable/Grok review, trial, comparison, default change or new superiority claim occurred. Existing closed rows and frozen A16 remain preserved.
 
 **Release completed:** [0138](iterations/0138-v3-release.md) records the user-authorized stable release. Signed `v3.0.0` pins `1209c2a`; npm `latest` is `3.0.0`, the OIDC workflow succeeded, and the downloaded package exactly matches the verified tarball. Full lint, package checks and independent Codex/Claude reviews passed; clean-directory npm execution reports `v3.0.0`. [GitHub release](https://github.com/fysoul17/devlyn-cli/releases/tag/v3.0.0). Historical no-publication statements below describe their original checkpoints; broader Mission 1 research remains open.
 
