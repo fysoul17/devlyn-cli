@@ -130,8 +130,10 @@ skill lint passed each time. Fresh Codex primary and Claude pair independently
 returned PASS with zero findings in 60.688s and 19.432s, concurrently. The primary
 native header identifies gpt-6-astra; the unconfigured Claude pair model is not
 claimed from its engine name. Prior Fable design consultations and the route
-probe have explicit Fable model receipts. Archive:
-`../devlyn-cli-0141-proportional-execution/.devlyn/runs/rs-20260909T122634Z-4e9dcb82d21a/`.
+probe have explicit Fable model receipts. During 3.0.1 branch cleanup, the full
+worktree evidence (including both run archives) was preserved and rehashed in
+`.devlyn/0141-proportional-execution/worktree-custody/ignored-evidence.tar.gz`;
+the adjacent `manifest.json` records every retained file before worktree removal.
 
 This development run itself took about 21 minutes through final report, excluding
 the earlier BLOCKED run and research. It is not small-task latency or a speed
