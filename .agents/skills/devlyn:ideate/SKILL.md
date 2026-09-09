@@ -109,7 +109,7 @@ Structural lint (inline check, no script needed):
 
 After lint passes:
 1. Write `<spec-dir>/<id>-<slug>/spec.md` (the spec).
-2. Generate `<spec-dir>/<id>-<slug>/spec.expected.json` from the spec's `## Verification` block + any `forbidden_patterns` / `required_files` / `forbidden_files` / `max_deps_added` the conversation surfaced.
+2. Generate `<spec-dir>/<id>-<slug>/spec.expected.json` following `references/spec-template.md` § "Sibling file: `spec.expected.json`" for constraint coverage, diff scope and guard controls.
 3. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` to validate the verification carrier shape, supported `complexity` frontmatter, and any present actionable solo-headroom hypothesis; if the spec uses a legacy inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`. If exit 2, fix the carrier/frontmatter/hypothesis and re-run.
 4. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` to validate sibling `spec.expected.json` against `_shared/expected.schema.json` plus sibling spec `complexity` frontmatter and any present actionable solo-headroom hypothesis; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`. If exit 2, fix the JSON/frontmatter/hypothesis and re-run.
 5. Print: `spec ready — /devlyn:resolve --spec <spec-path>`.
@@ -133,7 +133,7 @@ Prompt body: `references/from-spec-mode.md`.
 2. Lint structure (same checks as default mode).
 3. Identify missing pieces (no frontmatter, missing sections, malformed Verification block).
 4. Apply structural fixes only — do NOT reshape Requirements / Out-of-Scope content. The user's substantive intent is preserved.
-5. Generate `spec.expected.json` if absent (best-effort from `## Verification` block).
+5. Generate `spec.expected.json` if absent, following the same template carrier guidance as default mode.
 6. Write the normalized spec back to `<spec-dir>/<id>-<slug>/` (preserves original at `<path>` untouched unless user passes `--in-place`).
 7. Run both lint checks: `--check <spec-path>` and `--check-expected <expected-path>`.
 8. Lint pass → announce. Lint fail → surface the unfixable issue and exit non-zero. If the source is a pair-evidence candidate without an actionable solo-headroom hypothesis, the announcement must say `pair-evidence not ready` instead of implying measurement readiness.

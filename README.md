@@ -62,7 +62,7 @@ Skip ideate entirely if you have a spec or just want to describe the work — `/
 
 ### Step 2 — Resolve with `/devlyn:resolve`
 
-Hands-free pipeline for any coding task — bug fix, feature, refactor, debug, modify, PR review. Pass a spec, a free-form goal, or a diff to verify.
+Before writes, inspect requested files and relevant callers/tests. Clear, local, reversible, low-risk conversational edits with a decisive acceptance check run directly, honoring scope, constraints and executor pins; finish required checks and diff review, then report evidence. Material ambiguity, subsystem/design work, security/auth/payment/persistence/concurrency/public-API-contract changes or no decisive check use full `/devlyn:resolve`. Explicit resolve (including small tasks), formal specs and queue drains keep the full workflow below. Pass a spec, a free-form goal, or a diff to verify.
 
 ```
 /devlyn:resolve "fix the login bug"                                # free-form

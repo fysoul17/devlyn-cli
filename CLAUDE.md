@@ -49,9 +49,13 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 
 **The executor pin binds the orchestrator in plain conversation too, not only inside a skill run.** When you would do implementation work directly and executor is pinned to a non-default engine, route that work through the pin — run it via `/devlyn:resolve` (which reads the pin at PHASE 0), or delegate to that engine. No pin / no `.devlyn/engines.json` → use the canonical skill's orchestrator-supported default. The pair-judge pin stays pipeline-scoped. `/devlyn:engines role` configures explicit engine/model/effort for supported worker and judge routes; `/devlyn:resolve --role-config <path>` overrides roles for one run. Canonical skills define precedence, evidence and unsupported-route errors; absent profiles preserve existing defaults.
 
-### Conversational handoff + loop engineering — the default entry for all work
+### Conversational entry + full-route handoff
 
-The user does not invoke skills manually; the orchestrating model does. Small tasks: invoke `/devlyn:resolve "<goal>"` directly. Large tasks agreed in conversation:
+Before writes, inspect requested files and relevant callers/tests. Default to direct execution only for clear, local, reversible, low-risk work with a decisive existing or small task-specific acceptance check. Preserve requested behavior, scope, explicit constraints and the executor pin; make scoped edits, run required checks, review the final diff, and report changes with evidence. One concise route/check explanation suffices; ordinary direct work needs no spec, pipeline state, phase workers or extra approval.
+
+Use full `/devlyn:resolve` for material ambiguity, subsystem/design work, security/auth/payment/persistence/concurrency/public-API-contract changes, or inconclusive inspection/checks. Counts of lines, files or words alone do not establish low risk. Explicit resolve (even small), formal spec workflows and queue drains retain all canonical phases, independent verification, pins and failure handling. If new risk appears mid-edit, preserve the delta in the full run's scope/evidence; do not hide it in a new baseline or reconfirm existing authorization.
+
+The user does not invoke skills manually; the orchestrating model does. Large tasks agreed in conversation:
 
 1. Write the agreed contract to `docs/specs/<id>/spec.md` (+ `spec.expected.json` when mechanical verifications exist). Always a spec file for large work — a written spec is the user's reviewed contract; free-form large now assumes-and-logs instead of halting (zero-scope-signal goals still halt to ideate).
 2. Present a one-screen plan-contract summary — the user's single review checkpoint, BEFORE the pipeline starts.

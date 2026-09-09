@@ -1,6 +1,6 @@
 ---
 name: devlyn:resolve
-description: Hands-free pipeline for any coding task — bug fix, feature, refactor, debug, modify, PR review. Free-form goal or formal spec input. Plan → Implement → Build-gate → Cleanup → Verify (fresh subagent, findings-only). Mechanical-first verification; Verify dual-judge is default-when-available. Use when the user says "resolve this", "fix this", "implement this", "refactor this", "debug this", "review this PR", or wants hands-off completion.
+description: Hands-free full pipeline for explicit resolve requests, formal specs, queue drains, material ambiguity, subsystem/design work, security/auth/payment/persistence/concurrency/public-API-contract changes, or no decisive acceptance check. Free-form goal or formal spec input. Plan → Implement → Build-gate → Cleanup → Verify (fresh subagent, findings-only). Mechanical-first verification; Verify dual-judge is default-when-available. Clear, local, reversible, low-risk conversational edits with decisive checks default to direct execution; explicit small resolve keeps the full workflow.
 ---
 
 Orchestrator for the 2-skill harness pipeline. One fresh worker per phase; file-based handoff via `.devlyn/pipeline.state.json`. VERIFY spawns a fresh-context worker so independence is structural — not advisory.
@@ -63,7 +63,7 @@ Each phase routes to an engine and prepends the per-engine adapter header from `
 Three input shapes:
 
 1. **Free-form**: `/devlyn:resolve "fix the login bug"` (inline goal) or `/devlyn:resolve --goal-file <path>` (goal text read from a file — the devlynd `ResolveAdapter` launcher path, injection-safe). PHASE 0 runs the complexity classifier and either proceeds with an internal mini-spec (trivial), drafts focused questions for in-prompt resolution (medium), or synthesizes a best-effort spec with a logged `## Assumptions` block (large; zero-scope-signal goals halt). No mid-pipeline prompts in any branch.
-2. **Spec**: `/devlyn:resolve --spec docs/roadmap/phase-N/X.md`. Spec is read-only. Stage verification commands from sibling `spec.expected.json`; if absent, use the legacy `## Verification` JSON block.
+2. **Spec**: `/devlyn:resolve --spec docs/roadmap/phase-N/X.md`. Supplied specs and expected files are read-only inside resolve. Stage verification commands from sibling `spec.expected.json`; if absent, use the legacy `## Verification` JSON block.
 3. **Verify-only**: `/devlyn:resolve --verify-only <diff-or-PR-ref> --spec <path>`. Skips PHASE 1-4. Runs PHASE 5 (VERIFY) on the supplied diff against the spec.
 </modes>
 
