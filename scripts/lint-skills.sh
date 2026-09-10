@@ -66,6 +66,7 @@ _shared/judge-output-parser.py
 _shared/collect-codex-findings.py
 _shared/verify-merge-findings.py
 _shared/archive_run.py
+_shared/task-complete.py
 _shared/state-phase-write.py
 _shared/terminal-claim-check.py
 _shared/resolve-stop-hook.py
@@ -79,6 +80,8 @@ devlyn:resolve/SKILL.md
 devlyn:queue/SKILL.md
 devlyn:engines/SKILL.md
 devlyn:resolve/references/state-schema.md
+devlyn:resolve/references/task-completion.md
+devlyn:resolve/references/outer-loop.md
 devlyn:resolve/references/free-form-mode.md
 devlyn:resolve/references/phases/plan.md
 devlyn:resolve/references/phases/probe-derive.md
@@ -401,7 +404,7 @@ check_skill_mirror_parity \
 
 # ---------------------------------------------------------------------------
 # 6b. VERIFY merge verdict binding self-test.
-for helper in role-config judge-role-evidence; do
+for helper in role-config judge-role-evidence task-complete; do
   if python3 "config/skills/_shared/$helper.py" --self-test >/dev/null 2>&1; then
     ok "$helper.py self-test passed"
   else
