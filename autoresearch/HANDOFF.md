@@ -6,13 +6,22 @@ older records. [PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md) and
 [DECISIONS](DECISIONS.md) own enduring constraints/history. Inspect Git state and
 live runs; do not replay unrelated cold-start suites.
 
-## START-HERE — task completion accepted; delivery recorded by the owner
+## START-HERE — task completion shipped in 3.1.0
+
+[Task completion PR #4](https://github.com/fysoul17/devlyn-cli/pull/4) is
+merged at `81e9ead`; [release PR #5](https://github.com/fysoul17/devlyn-cli/pull/5)
+is merged at `6a5073f`. Signed [v3.1.0](https://github.com/fysoul17/devlyn-cli/releases/tag/v3.1.0)
+is published, npm `latest` is 3.1.0, and its registry `gitHead` matches the tag.
+All 515 public package members match verified local bytes/modes; fresh npm
+installation and CLI help pass. Existing task branches and acceptance/release
+worktrees were removed after verified custody. This final HANDOFF travels in a
+separately owned documentation task; its receipt handles merge and cleanup.
 
 Product verification is **PASS_WITH_ISSUES**, with zero CRITICAL/HIGH findings.
-The sole LOW advisory concerns manual recovery after an interrupted native
-worktree removal leaves a prunable registration. Finish gate is clean and the
-normal run is archived. PR #4 merge, current-task cleanup and release 3.1.0
-remain pending outer-owner delivery; published version is still 3.0.1.
+The sole LOW advisory concerns manual recovery when interrupted native worktree
+removal leaves a prunable registration; retry retains the resource safely.
+Finish gate is clean and the normal run is archived. The original delivery and
+release goal is complete; the four research priorities below remain future work.
 
 Accepted source: `491c38deaf5735dd14dc47fecdfc0a8a1c6806c6`, normal run
 `rs-20260910T022458Z-3f00122a0779`. The resumed run completed BUILD_GATE,
@@ -32,10 +41,17 @@ remain owner-managed; they cannot be retroactively enrolled.
 Existing project instructions are preserved by installation: reconcile them
 with the bundled AGENTS/CLAUDE templates to adopt completion guidance.
 
-Durable raw evidence, failed attempts, accepted archive, source recovery and
-cleanup receipts: `/Users/aipalm/.local/share/nx01/iter0143/20260910T022444Z-acceptance-r2/`
-(current archive in `work/.devlyn/runs/rs-20260910T022458Z-3f00122a0779/`;
-external custody must be completed before worktree removal). See [0143](iterations/0143-task-completion.md).
+Durable evidence and recovery root:
+`/Users/aipalm/.local/share/nx01/iter0143/20260910T022444Z-acceptance-r2/`.
+`final-custody/manifest.json` binds 398 entries and the source bundle; the accepted
+archive is `final-custody/files/.devlyn/runs/rs-20260910T022458Z-3f00122a0779/`.
+`feature-cleanup-result.json`, `release-workflow-result.json` and
+`public-release-3.1.0/PUBLIC-CHECK.json` record actual delivery and publication.
+Release receipt/custody lives under the retained checkout's
+`.git/devlyn-completion/6d3ed1352a9b2baea546ffc4/`; final documentation uses
+`.git/devlyn-completion/825ab2163b1d8a0823c2239f/`. Both were allocated before work.
+Git recovery refs have no automatic expiry. See [0143](iterations/0143-task-completion.md).
+
 Two September 9 runs remain historically BLOCKED. Codex availability recovered
 on September 10, so the proposed engine exception was unnecessary and pins did
 not change. This session's failed owner dispatch was stopped without source

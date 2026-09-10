@@ -1,10 +1,10 @@
 # 0143 — Owned task delivery and recoverable worktree cleanup
 
-2026-09-10 KST. **Product accepted PASS_WITH_ISSUES and archived; main merge, current-task cleanup and release pending.**
+2026-09-10 KST. **Product accepted PASS_WITH_ISSUES, merged and shipped as 3.1.0; owned source/release resources cleaned with recoverable custody.**
 The user requests truthful remaining-work handoff, removal of stale worktrees,
 and a completion boundary through commit/push/PR/main merge before owned-resource
 cleanup, with automatic completion or a configurable stop at PR. This record
-separates the completed one-time cleanup, accepted product and pending delivery.
+separates the one-time cleanup, accepted product and verified delivery.
 
 ## Current resumed checkpoint
 
@@ -28,7 +28,7 @@ validation in the shared URL reader, preserving exact revalidation on retry
 and cleanup. Four new tests cover early refusal, previously unsafe receipts,
 same-repository aliases and configuration changes. Red failures, 11 focused
 green tests and two owner regressions are retained in
-`work/.devlyn/remote-binding-development/`. All 19 original test bodies remain.
+`final-custody/files/.devlyn/remote-binding-development/`. All 19 original test bodies remain.
 
 BUILD round 2 passed literal helper tests (97.546s), full lint (277.339s),
 diff (0.021s), sealed P3 (85.545s), and both owner regressions. CLEANUP removed
@@ -47,11 +47,40 @@ acceptance. All three failed captures and original blocked runs remain retained.
 
 The repaired source was integrated into the original PR branch at `f85d61b`,
 with exact equality for all functional/contract paths; owner handoff metadata
-is separately reviewed. `source-acceptance.json` beside the checkout binds the
-accepted source, archive and matching path hashes. PR #4 merge and publication
-remain pending at this checkpoint. The immutable pending `quota-checkpoint/`
-contains 360 evidence entries and the verified source bundle; final external
-custody must also capture the successful archive before removal.
+is separately reviewed. `source-acceptance.json` binds the accepted source,
+archive and matching path hashes. PR #4 actually merged at `81e9ead` on
+2026-09-10T05:34:57Z. The original task branch and acceptance branch were
+compare-deleted, and native non-force removal deleted the acceptance worktree
+only after external custody verified all 398 entries, including 24 generated
+benchmark outputs/caches found by the ignored-file precheck. The initial owner
+removal command used a non-repository cwd and failed without changes; the retry
+used the retained repository. No force or unknown-process termination occurred.
+`feature-cleanup-result.json` records one retained checkout/main branch at that
+checkpoint. Immutable `quota-checkpoint/` and all original histories remain.
+
+Release PR #5 changed only package.json from 3.0.1 to 3.1.0; it merged at
+`6a5073fa61ae32cc4e7262520e8c3f65d7795b40`. The new helper was used with
+prospectively allocated release ownership, direct acceptance and exact evidence
+custody. It observed the actual merge, required owner writer cessation, then
+completed branch/worktree cleanup through its receipt. The release receipt is
+`.git/devlyn-completion/6d3ed1352a9b2baea546ffc4/receipt.json` in the retained root.
+
+The signed v3.1.0 tag verifies at that merge SHA. Publish workflow
+[34442063210](https://github.com/fysoul17/devlyn-cli/actions/runs/34442063210)
+succeeded; [GitHub release](https://github.com/fysoul17/devlyn-cli/releases/tag/v3.1.0)
+and npm latest=3.1.0 are observed. Registry gitHead matches the tag. All 515
+public package members match local file bytes and modes; compressed archive
+bytes differ, so no whole-tarball identity is claimed. Integrity/shasum checks,
+fresh npm install and installed CLI help pass. Packaged Claude/Codex installers
+also pass, including preserved customer instructions and resolved completion
+references; HOME/CODEX_HOME were not changed. Independent lock/runtime schemas
+were preserved. Raw publication evidence is under `public-release-3.1.0/` and
+`release-workflow-result.json` beside the final custody directory.
+
+Final documentation has its own prospective completion receipt
+`.git/devlyn-completion/825ab2163b1d8a0823c2239f/receipt.json`; it is a scoped
+owner metadata task, not an unverified product descendant. No new research,
+model substitution, reinterpretation of old BLOCKED runs or A16 restart occurred.
 
 Owner dispatch evidence is explicit: an invalid VERIFY transition argument
 allowed a prematurely launched IMPLEMENT r3; a duplicate dispatch truncated
@@ -124,8 +153,8 @@ point-in-time evidence, not a universal future writer lock.
 ## Original authorized product change and blocked attempts
 
 Owner-input commit `5e85f99` contains `docs/specs/task-completion/spec.md` and its
-expected file, the original HANDOFF WIP and byte-identical historical 0139. Current
-branch is `codex/0143-task-completion` in the retained checkout. The original run
+expected file, the original HANDOFF WIP and byte-identical historical 0139. The initial
+branch was `codex/0143-task-completion` in the retained checkout. The original run
 `rs-20260909T153949Z-e67a90ebc237` is archived **BLOCKED before IMPLEMENT**. Its
 PLAN native invocation took 400.047 seconds; the recorded PLAN phase was 452.632
 seconds including orchestration. Automatic Claude probe selection actually used
