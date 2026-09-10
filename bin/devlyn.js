@@ -18,6 +18,33 @@ const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui
 const DEVLYN_SKILL_DIR_STAMP = '__DEVLYN_SKILL_DIR__';
 const DEVLYN_INSTALL_MARKER = '.devlyn-install.json';
 
+function logicalSkillName(name) {
+  return name.replace(/\uF03A/g, ':');
+}
+
+function physicalSkillName(name) {
+  return process.platform === 'win32' ? name.replace(/:/g, '\uF03A') : name;
+}
+
+function skillPath(root, name) {
+  name = logicalSkillName(name);
+  const aliases = [...new Set([name, name.replace(/:/g, '\uF03A')])];
+  const entries = fs.existsSync(root) ? fs.readdirSync(root) : [];
+  const found = aliases.filter((alias) => entries.includes(alias));
+  if (found.length > 1) throw new Error(`Ambiguous skill aliases in ${root}: ${found.join(', ')}`);
+  return path.join(root, found[0] || physicalSkillName(name));
+}
+
+function preflightSkillDirs(source, target, names) {
+  for (const name of names) {
+    skillPath(source, name);
+    skillPath(target, name);
+  }
+  for (const relative of DEPRECATED_DIRS) {
+    skillPath(target, path.basename(relative));
+  }
+}
+
 // Cross-agent shared skills directory read by BOTH oh-my-pi and Pi. Verified
 // from the omp binary's skill-provider strings ("skills from .agents/skills —
 // project walk-up + user home") and Pi's docs ("~/.agents/skills/"). Installing
@@ -313,6 +340,8 @@ function listContents() {
 
 function cleanupDeprecated(targetDir) {
   let removed = 0;
+  const deprecated = DEPRECATED_DIRS.map((relPath) =>
+    [relPath, skillPath(path.join(targetDir, 'skills'), path.basename(relPath))]);
   for (const relPath of DEPRECATED_FILES) {
     const fullPath = path.join(targetDir, relPath);
     if (fs.existsSync(fullPath)) {
@@ -321,8 +350,7 @@ function cleanupDeprecated(targetDir) {
       removed++;
     }
   }
-  for (const relPath of DEPRECATED_DIRS) {
-    const fullPath = path.join(targetDir, relPath);
+  for (const [relPath, fullPath] of deprecated) {
     if (fs.existsSync(fullPath)) {
       fs.rmSync(fullPath, { recursive: true });
       log(`  ✕ ${relPath}/ (removed)`, 'dim');
@@ -337,13 +365,14 @@ function copyRecursive(src, dest, baseDir) {
 
   if (stats.isDirectory()) {
     // Never install dev workspaces, even when running from source repo.
-    if (UNSHIPPED_SKILL_DIRS.has(path.basename(src))) return;
+    if (UNSHIPPED_SKILL_DIRS.has(logicalSkillName(path.basename(src)))) return;
     if (!fs.existsSync(dest)) {
       fs.mkdirSync(dest, { recursive: true });
     }
 
     for (const item of fs.readdirSync(src)) {
-      copyRecursive(path.join(src, item), path.join(dest, item), baseDir);
+      const name = src === path.join(CONFIG_SOURCE, 'skills') ? physicalSkillName(logicalSkillName(item)) : item;
+      copyRecursive(path.join(src, item), path.join(dest, name), baseDir);
     }
   } else {
     const destDir = path.dirname(dest);
@@ -360,9 +389,19 @@ function clearInstallMarker(skillsDir) {
 }
 
 function assertCompleteSkillInstall(sourceSkillsDir, skillsDir, skillNames) {
-  const missing = skillNames.filter((skillName) =>
-    !fs.existsSync(path.join(sourceSkillsDir, skillName))
-      || !fs.existsSync(path.join(skillsDir, skillName)));
+  function complete(src, dest) {
+    if (!fs.existsSync(src) || !fs.existsSync(dest)) return false;
+    if (fs.statSync(src).isDirectory()) {
+      return fs.statSync(dest).isDirectory() && fs.readdirSync(src).every((name) =>
+        complete(path.join(src, name), path.join(dest, name)));
+    }
+    return fs.statSync(dest).isFile();
+  }
+  const missing = skillNames.filter((name) => {
+    const src = skillPath(sourceSkillsDir, name);
+    const dest = skillPath(skillsDir, name);
+    return !complete(src, dest) || (name !== '_shared' && !fs.existsSync(path.join(src, 'SKILL.md')));
+  });
   if (missing.length > 0) {
     throw new Error(`Incomplete devlyn skill install; missing: ${missing.join(', ')}`);
   }
@@ -440,11 +479,12 @@ const UNSHIPPED_SKILL_DIRS = new Set([
 // no counterpart in source. Dev workspaces are skipped entirely.
 function cleanManagedSkillDirs(sourceSkillsDir, targetSkillsDir) {
   if (!fs.existsSync(sourceSkillsDir) || !fs.existsSync(targetSkillsDir)) return 0;
+  preflightSkillDirs(sourceSkillsDir, targetSkillsDir, fs.readdirSync(sourceSkillsDir));
   let cleaned = 0;
   for (const entry of fs.readdirSync(sourceSkillsDir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    if (UNSHIPPED_SKILL_DIRS.has(entry.name)) continue;
-    const targetPath = path.join(targetSkillsDir, entry.name);
+    if (UNSHIPPED_SKILL_DIRS.has(logicalSkillName(entry.name))) continue;
+    const targetPath = skillPath(targetSkillsDir, entry.name);
     if (fs.existsSync(targetPath)) {
       fs.rmSync(targetPath, { recursive: true, force: true });
       cleaned++;
@@ -547,9 +587,11 @@ function multiSelect(items, preselectedIndices = []) {
 }
 
 function installLocalSkill(skillName) {
-  const src = path.join(OPTIONAL_SKILLS_SOURCE, skillName);
+  const src = skillPath(OPTIONAL_SKILLS_SOURCE, skillName);
   const targetDir = getTargetDir();
-  const dest = path.join(targetDir, 'skills', skillName);
+  const targets = new Set([path.join(targetDir, 'skills'), ...Object.values(CLI_TARGETS)
+    .map((cli) => cli.skillsDir).filter((dir) => dir && fs.existsSync(dir))]);
+  for (const target of targets) skillPath(target, skillName);
 
   if (!fs.existsSync(src)) {
     log(`   ⚠️  Skill "${skillName}" not found`, 'yellow');
@@ -557,7 +599,6 @@ function installLocalSkill(skillName) {
   }
 
   log(`\n🛠️  Installing ${skillName}...`, 'cyan');
-  copyRecursive(src, dest, targetDir);
 
   // Mirror to every CLI skill-loader directory that already exists so optional
   // skills are picked up by Codex/omp/Pi (and any future CLI with a skillsDir)
@@ -565,13 +606,12 @@ function installLocalSkill(skillName) {
   // create an agent install just because someone opted into a Claude-side skill.
   // De-dup by directory: omp and Pi share ~/.agents/skills, so the mirror runs
   // once per unique destination.
-  const mirrored = new Set();
-  for (const cli of Object.values(CLI_TARGETS)) {
-    if (!cli.skillsDir || mirrored.has(cli.skillsDir) || !fs.existsSync(cli.skillsDir)) continue;
-    mirrored.add(cli.skillsDir);
-    const cliDest = path.join(cli.skillsDir, skillName);
-    if (fs.existsSync(cliDest)) fs.rmSync(cliDest, { recursive: true, force: true });
-    copyRecursive(src, cliDest, cli.skillsDir);
+  for (const target of targets) {
+    fs.rmSync(skillPath(target, skillName), { recursive: true, force: true });
+    const dest = path.join(target, physicalSkillName(skillName));
+    copyRecursive(src, dest, target);
+    stampInstalledSkillDir(dest, dest);
+    assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, target, [skillName]);
   }
   return true;
 }
@@ -632,6 +672,7 @@ function installSkillsForCLI(cliKey) {
     fs.mkdirSync(cli.skillsDir, { recursive: true });
   }
   clearInstallMarker(cli.skillsDir);
+  preflightSkillDirs(sourceSkillsDir, cli.skillsDir, cli.skillsToInstall);
 
   const removed = cleanupDeprecated(path.dirname(cli.skillsDir));
   if (removed > 0) {
@@ -640,13 +681,14 @@ function installSkillsForCLI(cliKey) {
 
   let copied = 0;
   for (const skillName of cli.skillsToInstall) {
-    const src = path.join(sourceSkillsDir, skillName);
-    const dest = path.join(cli.skillsDir, skillName);
+    const src = skillPath(sourceSkillsDir, skillName);
+    const previous = skillPath(cli.skillsDir, skillName);
+    const dest = path.join(cli.skillsDir, physicalSkillName(skillName));
     if (!fs.existsSync(src)) continue;
     // Full replace per cleanManagedSkillDirs semantics: stale files in the
     // installed mirror would otherwise persist forever.
-    if (fs.existsSync(dest)) {
-      fs.rmSync(dest, { recursive: true, force: true });
+    if (fs.existsSync(previous)) {
+      fs.rmSync(previous, { recursive: true, force: true });
     }
     copyRecursive(src, dest, cli.skillsDir);
     stampInstalledSkillDir(dest, dest);
@@ -777,6 +819,10 @@ function installClaudeCore() {
   }
   copyRecursive(CONFIG_SOURCE, targetDir, targetDir);
   assertCompleteSkillInstall(path.join(CONFIG_SOURCE, 'skills'), skillsDir, DEVLYN_CORE_SKILLS);
+  for (const name of DEVLYN_CORE_SKILLS) {
+    const dest = skillPath(skillsDir, name);
+    stampInstalledSkillDir(dest, dest);
+  }
   writeInstallMarker(skillsDir);
 
   // Remove deprecated files from previous versions

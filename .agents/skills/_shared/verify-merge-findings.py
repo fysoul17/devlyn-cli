@@ -474,7 +474,7 @@ def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str,
             )
     if (devlyn / "pipeline.state.json").is_file():
         try:
-            state = loads_strict_json((devlyn / "pipeline.state.json").read_text())
+            state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
             required = JUDGE_ROLE_EVIDENCE["required_roles"](state)
             if rank(source_verdicts.get("mechanical")) >= 2:
                 required = []
@@ -1663,21 +1663,21 @@ def self_test() -> int:
         for malformed in (None, {}, {"roles": {}}):
             bad_state = loads_strict_json(original_state)
             bad_state["role_resolution"] = malformed
-            (devlyn / "pipeline.state.json").write_text(json.dumps(bad_state))
+            (devlyn / "pipeline.state.json").write_text(json.dumps(bad_state), encoding="utf-8")
             result = subprocess.run([sys.executable, str(pathlib.Path(__file__).resolve()),
-                                     "--devlyn-dir", str(devlyn), "--write-state"], capture_output=True, text=True)
+                                     "--devlyn-dir", str(devlyn), "--write-state"], capture_output=True, text=True, encoding="utf-8")
             assert result.returncode == 0 and "Traceback" not in result.stderr, result.stderr
-            persisted = loads_strict_json((devlyn / "pipeline.state.json").read_text())
+            persisted = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
             assert persisted["phases"]["verify"]["verdict"] == "BLOCKED"
-            assert "verify-role-resolution-invalid" in (devlyn / "verify-merged.findings.jsonl").read_text()
+            assert "verify-role-resolution-invalid" in (devlyn / "verify-merged.findings.jsonl").read_text(encoding="utf-8")
         (devlyn / "pipeline.state.json").write_bytes(original_state)
         different_primary = {"engine": "codex", "phases": {"verify": {"engine": "claude"}}}
-        (devlyn / "pipeline.state.json").write_text(json.dumps(different_primary))
-        (devlyn / "verify.primary.timeout.json").write_text(json.dumps({"engine": "claude", "budget_seconds": 600}))
+        (devlyn / "pipeline.state.json").write_text(json.dumps(different_primary), encoding="utf-8")
+        (devlyn / "verify.primary.timeout.json").write_text(json.dumps({"engine": "claude", "budget_seconds": 600}), encoding="utf-8")
         marker, violation = read_primary_timeout_marker(devlyn)
         assert marker is not None and violation is None
         different_primary["phases"]["verify"]["engine"] = None
-        (devlyn / "pipeline.state.json").write_text(json.dumps(different_primary))
+        (devlyn / "pipeline.state.json").write_text(json.dumps(different_primary), encoding="utf-8")
         assert read_primary_timeout_marker(devlyn)[1] is not None
         (devlyn / "verify.primary.timeout.json").unlink()
         (devlyn / "pipeline.state.json").write_bytes(original_state)
@@ -3433,4 +3433,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     raise SystemExit(main())

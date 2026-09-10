@@ -88,7 +88,29 @@ def describe(devlyn, state, role, exit_code):
         else:
             stderr = raw.decode()
     require(isinstance(argv, list) and all(isinstance(x, str) for x in argv), "argv must be an array of strings")
-    require(prompt in argv, "canonical prompt is not an exact dispatched argument")
+    file_mode = ((devlyn / (stem + ".prompt.transport.json")).exists()
+                 or ("--stdin-file" in argv if engine == "claude" else "-" in argv))
+    transport = None
+    if file_mode:
+        artifacts["transport"], _ = seal(devlyn, stem + ".prompt.transport.json")
+        transport = runpy.run_path(Path(__file__).with_name("invocation-receipt.py"))["validate_transport"](
+            devlyn / (stem + ".prompt.transport.json"), prompt.encode("utf-8"))
+        require(transport["exit_code"] == exit_code and transport["timeout_sec"] == 600, "file transport exit/budget mismatch")
+        if engine == "claude":
+            index = next((i for i, arg in enumerate(argv) if Path(arg).name == "run-bounded.py"), -1)
+            require(index >= 0 and argv[index + 1:index + 3] == ["600", "--stdin-file"]
+                    and len(argv) > index + 5 and argv[index + 4] == "--", "invalid bounded file transport")
+            require(Path(argv[index + 3]).resolve() == devlyn / (stem + ".prompt"), "bounded prompt path mismatch")
+            require(transport["command"] == argv[index + 5:] and prompt not in transport["command"], "bounded actual argv mismatch")
+            require("-p" in transport["command"] or "--print" in transport["command"], "Claude print mode missing")
+        else:
+            index = next((i for i, arg in enumerate(argv) if Path(arg).name == "codex-monitored.sh"), -1)
+            require(index >= 0, "monitored file transport missing")
+            isolation = ["--ignore-user-config", "--ignore-rules", "--ephemeral", "--disable", "codex_hooks", "--disable", "hooks"]
+            require(transport["isolated"] and transport["command"][1:] == ["exec", *isolation, *argv[index + 1:]], "actual isolated argv mismatch")
+            runpy.run_path(Path(__file__).with_name("invocation-receipt.py"))["file_prompt_args"](transport["command"][2:])
+    else:
+        require(prompt in argv, "canonical prompt is not an exact dispatched argument")
     diagnostics = stderr.partition("\nuser\n")[0] if engine == "codex" else stderr
     require(not re.search(r"(?im)^.*(?:model|effort).*\b(?:ignor\w*|clamp\w*|unsupported|not supported)\b", diagnostics), "native diagnostic rejected or ignored an explicit option")
     requested_model, requested_effort = entry.get("model_requested"), entry.get("effort_requested")
@@ -100,7 +122,7 @@ def describe(devlyn, state, role, exit_code):
                                ("--allowedTools", "Read,Grep,Glob"), ("--setting-sources", "project"), ("--output-format", "json")):
             require(option(argv, flag) == expected, f"Claude {flag} differs from read-only contract")
         require("--strict-mcp-config" in argv and loads(option(argv, "--mcp-config") or "null") == {"mcpServers": {}}, "Claude MCP isolation missing")
-        require(any(Path(arg).name == "run-bounded.py" and argv[i + 1:i + 3] == ["600", "--"] for i, arg in enumerate(argv)), "Claude 600s bound missing")
+        require(transport is not None or any(Path(arg).name == "run-bounded.py" and argv[i + 1:i + 3] == ["600", "--"] for i, arg in enumerate(argv)), "Claude 600s bound missing")
         if requested_effort:
             require(option(argv, "--effort") == requested_effort, "requested effort differs from argv")
         artifacts["raw"], raw = seal(devlyn, stem + ".output.json")
@@ -208,14 +230,18 @@ def self_test():
         receipt, _ = describe(devlyn, state, "pair_judge", 0)
         assert receipt["model_observed"] == "gpt-6-astra"
         alias = work / "logical-cwd"
-        alias.symlink_to(work, target_is_directory=True)
+        if sys.platform == "win32":
+            import subprocess
+            subprocess.run(["cmd.exe", "/d", "/c", "mklink", "/J", str(alias), str(work)], check=True, capture_output=True)
+        else:
+            alias.symlink_to(work, target_is_directory=True)
         alias_argv = [str(alias) if arg == str(work) else arg for arg in argv]
         alias_header = header.replace(f"workdir: {work}\n", f"workdir: {alias}\n")
         (devlyn / "codex-judge.r0.argv.json").write_bytes(encoded(alias_argv))
-        (devlyn / "codex-judge.r0.stderr").write_text(alias_header)
+        (devlyn / "codex-judge.r0.stderr").write_text(alias_header, encoding="utf-8")
         receipt, _ = describe(devlyn, state, "pair_judge", 0)
         assert receipt["artifacts"]["argv"]["sha256"] == digest(encoded(alias_argv))
-        assert (devlyn / "codex-judge.r0.stderr").read_text() == alias_header
+        assert (devlyn / "codex-judge.r0.stderr").read_text(encoding="utf-8") == alias_header
         elsewhere = work / "elsewhere"; elsewhere.mkdir()
         (devlyn / "codex-judge.r0.argv.json").write_bytes(encoded([str(elsewhere) if arg == str(work) else arg for arg in argv]))
         try:
@@ -226,7 +252,7 @@ def self_test():
             raise AssertionError("different physical worktree accepted")
         (devlyn / "codex-judge.r0.argv.json").write_bytes(encoded(argv))
         for bad in ("Warning: model effort unsupported and ignored\n" + header, "\nuser\n" + header, header.replace("\nmodel:", "\nmodel: gpt-5.6-sol\nmodel:"), header.replace("sandbox: read-only", "sandbox: workspace-write"), header.replace("model: gpt-6-astra", "model: gpt-5.6-sol"), header.replace("[codex-monitored] isolated=1\n", ""), header.replace("timeout=600s", "timeout=300s")):
-            (devlyn / "codex-judge.r0.stderr").write_text(bad)
+            (devlyn / "codex-judge.r0.stderr").write_text(bad, encoding="utf-8")
             try:
                 describe(devlyn, state, "pair_judge", 0)
             except ValueError:
@@ -270,4 +296,5 @@ def main():
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     raise SystemExit(main())

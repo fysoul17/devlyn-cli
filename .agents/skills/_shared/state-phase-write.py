@@ -2035,7 +2035,7 @@ def final_report_self_test() -> None:
         run_id = "rs-final-report-0126"
         write_state(state_path, {"version": "3.0", "run_id": run_id, "engine": "claude", "phases": {}})
         command = [sys.executable, str(script), "--devlyn-dir", ".devlyn", "--phase", "final_report"]
-        spawned = subprocess.run(command + ["spawn", "--round", "0"], cwd=work, capture_output=True, text=True)
+        spawned = subprocess.run(command + ["spawn", "--round", "0"], cwd=work, capture_output=True, text=True, encoding="utf-8")
         assert spawned.returncode == 0, spawned.stderr
         before = state_path.read_bytes()
         marker = f"<!-- devlyn:final-report run_id={run_id} -->\n"
@@ -2074,12 +2074,12 @@ def final_report_self_test() -> None:
                 report.write_bytes(valid)
                 args = ["--log-file", str(outside)]
             result = subprocess.run(command + ["complete", "--verdict", "PASS_WITH_ISSUES", *args],
-                                    cwd=work, capture_output=True, text=True)
+                                    cwd=work, capture_output=True, text=True, encoding="utf-8")
             assert result.returncode == 1 and "BLOCKED:final-report-invalid" in result.stderr, (case, result)
             assert state_path.read_bytes() == before, case
         report.write_bytes(valid)
         result = subprocess.run(command + ["complete", "--verdict", "PASS_WITH_ISSUES", "--log-file", ".devlyn/final-report.md"],
-                                cwd=work, capture_output=True, text=True)
+                                cwd=work, capture_output=True, text=True, encoding="utf-8")
         assert result.returncode == 0, result.stderr
         completed_bytes = state_path.read_bytes()
         completed = read_state(state_path)
@@ -2105,7 +2105,7 @@ def final_report_self_test() -> None:
                 report.symlink_to(outside)
             write_state(state_path, candidate)
             before_archive = state_path.read_bytes()
-            result = subprocess.run(archive_command, cwd=work, capture_output=True, text=True)
+            result = subprocess.run(archive_command, cwd=work, capture_output=True, text=True, encoding="utf-8")
             assert result.returncode == 1 and "error: archive blocked:" in result.stderr, (case, result)
             assert state_path.read_bytes() == before_archive, case
             assert not (devlyn / "runs").exists(), case
@@ -2116,7 +2116,7 @@ def final_report_self_test() -> None:
         report.unlink()
         report.write_bytes(valid)
         state_path.write_bytes(completed_bytes)
-        result = subprocess.run(archive_command, cwd=work, capture_output=True, text=True)
+        result = subprocess.run(archive_command, cwd=work, capture_output=True, text=True, encoding="utf-8")
         assert result.returncode == 0, result.stderr
         target = devlyn / "runs" / run_id
         assert (target / "final-report.md").read_bytes() == valid
@@ -2138,7 +2138,7 @@ def self_test() -> int:
         (devlyn / "engines.json").write_bytes(helper["encoded"](config))
         state = {"version": "3.0", "engine": "codex", "engine_source": "default", "phases": {}}
         frozen = freeze_roles(state, work, "codex")
-        (devlyn / "engines.json").write_text('{"executor":"claude"}')
+        (devlyn / "engines.json").write_text('{"executor":"claude"}', encoding="utf-8")
         assert freeze_roles(state, work, "codex") == frozen
         do_spawn(state, "verify", 0, None, None, None, None, devlyn=devlyn)
         assert state["engine"] == "codex" and state["phases"]["verify"]["engine"] == "claude"
@@ -2154,10 +2154,10 @@ def self_test() -> int:
         argv = ["--json", "-m", "gpt-6-astra", "-c", "model_reasoning_effort=high", "task"]
         receipt = {"argv_sha256": hashlib.sha256(json.dumps(argv, separators=(",", ":")).encode()).hexdigest()}
         path = devlyn / "implement.argv.0.json"
-        path.write_text(json.dumps(argv))
+        path.write_text(json.dumps(argv), encoding="utf-8")
         binding = bind_worker_role_argv(state, "implement", {"round": 0}, devlyn, receipt)
         assert binding["effort_requested"] == "high"
-        path.write_text(json.dumps([*argv, "extra"]))
+        path.write_text(json.dumps([*argv, "extra"]), encoding="utf-8")
         try:
             bind_worker_role_argv(state, "implement", {"round": 0}, devlyn, receipt)
         except ValueError:
@@ -2193,6 +2193,7 @@ def self_test() -> int:
                     "--phase", "plan", *event_args,
                 ],
                 capture_output=True, text=True, check=False,
+                encoding="utf-8",
             )
 
         def assert_plan_rejected_unchanged(
@@ -2340,6 +2341,7 @@ def self_test() -> int:
                 "--phase", "build_gate", "spawn", "--round", "0",
             ],
             capture_output=True, text=True, check=False,
+            encoding="utf-8",
         )
         assert blocked_plan_mutation.returncode != 0
         assert "BLOCKED:plan-integrity-mismatch" in blocked_plan_mutation.stderr
@@ -2491,6 +2493,7 @@ def self_test() -> int:
                     "--phase", "implement", event, *event_args,
                 ],
                 cwd=evidence_work, capture_output=True, text=True, check=False,
+                encoding="utf-8",
             )
 
         for event_args in (
@@ -2514,6 +2517,7 @@ def self_test() -> int:
                 "--phase", "implement", "--id", "red-first",
             ],
             cwd=evidence_work, capture_output=True, text=True, check=False,
+            encoding="utf-8",
         )
         assert captured.returncode == 0, captured.stderr
         manifest_rel = loads_strict_json(captured.stdout)["manifest_path"]
@@ -2553,6 +2557,7 @@ def self_test() -> int:
                     "--phase", "build_gate", event, *event_args,
                 ],
                 cwd=evidence_work, capture_output=True, text=True, check=False,
+                encoding="utf-8",
             )
 
         results_path = evidence_devlyn / "spec-verify.results.json"
@@ -2778,6 +2783,7 @@ def self_test() -> int:
                     [sys.executable, str(pathlib.Path(__file__).resolve()),
                      "--devlyn-dir", ".devlyn", "--phase", "build_gate", *args],
                     cwd=work, env=cli_env, capture_output=True, text=True, check=False,
+                    encoding="utf-8",
                 )
 
             def rejected(*args: str, error: str = "BLOCKED:process-evidence-invalid") -> None:
@@ -3126,6 +3132,7 @@ def self_test() -> int:
                 "--next-round", "0", "--next-engine", "claude",
             ],
             capture_output=True, text=True,
+            encoding="utf-8",
         )
         assert cli_transition.returncode == 0, cli_transition.stderr
         cli_receipt = loads_strict_json(cli_transition.stdout)
@@ -3372,6 +3379,7 @@ def self_test() -> int:
         subprocess.run(["git", "commit", "-qm", "base"], cwd=work, check=True)
         pre_sha = subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=work, check=True, capture_output=True, text=True,
+            encoding="utf-8",
         ).stdout.strip()
         work_devlyn = work / ".devlyn"
         work_devlyn.mkdir()
@@ -3441,6 +3449,7 @@ def self_test() -> int:
                     "--authorized-surface-json", json.dumps([entry]),
                 ],
                 cwd=work, capture_output=True, text=True,
+                encoding="utf-8",
             )
             if (
                 surface_check.returncode == 0
@@ -3830,7 +3839,7 @@ def self_test() -> int:
         else:
             raise AssertionError("SURFACE_CLOSE opened BUILD_GATE without native evidence")
         assert transition_state == inherited_surface
-        wrapper_log.write_text('{"modelUsage":{"different-model":{"inputTokens":1}}}\n')
+        wrapper_log.write_text('{"modelUsage":{"different-model":{"inputTokens":1}}}\n', encoding="utf-8")
         mismatch = copy.deepcopy(surface_state)
         assert "model-attestation-mismatch" in do_complete(
             mismatch, "surface_close", "PASS", None, None, None, None, None,
@@ -4348,6 +4357,7 @@ def self_test() -> int:
                 [sys.executable, script, "--devlyn-dir", str(receipt_devlyn),
                  "--phase", phase, *event_args],
                 cwd=receipt_work, capture_output=True, text=True, check=False,
+                encoding="utf-8",
             )
 
         write_state(receipt_state_path, {
@@ -4421,6 +4431,7 @@ def self_test() -> int:
             archived = subprocess.run(
                 [sys.executable, str(pathlib.Path(script).with_name("archive_run.py"))],
                 cwd=archive_work, capture_output=True, text=True,
+                encoding="utf-8",
             )
             assert archived.returncode == 0, archived.stderr
             destination = archive_devlyn / "runs" / terminal_state["run_id"]
@@ -4608,6 +4619,7 @@ def self_test() -> int:
             return subprocess.run(
                 ["git", "rev-parse", "HEAD"], cwd=repo, check=True,
                 capture_output=True, text=True,
+                encoding="utf-8",
             ).stdout.strip()
 
         def durability_fixture(
@@ -4668,6 +4680,7 @@ def self_test() -> int:
         assert subprocess.run(
             ["git", "show", "-s", "--format=%s", "HEAD"], cwd=exact_repo,
             check=True, capture_output=True, text=True,
+            encoding="utf-8",
         ).stdout.strip() == "chore(pipeline): closure-restore round 1"
         gate_spec = importlib.util.spec_from_file_location(
             "f7_carrier_gate", pathlib.Path(__file__).resolve().parents[3]
@@ -4794,6 +4807,7 @@ def self_test() -> int:
                      "--devlyn-dir", ".devlyn", "--phase", "verify", "spawn",
                      "--round", "1"],
                     cwd=target_repo, capture_output=True, text=True,
+                    encoding="utf-8",
                 )
                 assert reentry.returncode != 0
                 assert "closure-durability-receipt" in reentry.stderr
@@ -4813,12 +4827,14 @@ def self_test() -> int:
             [sys.executable, str(pathlib.Path(__file__).resolve()),
              "--devlyn-dir", ".devlyn", "--phase", "build_gate", "spawn", "--round", "1"],
             cwd=skipped_repo, capture_output=True, text=True,
+            encoding="utf-8",
         )
         assert skipped.returncode != 0 and "checkpoint receipt is missing" in skipped.stderr
         assert not (skipped_devlyn / "closure-durability.round-1.json").exists()
         assert subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=skipped_repo, check=True,
             capture_output=True, text=True,
+            encoding="utf-8",
         ).stdout.strip() == skipped_fix
 
         receipt_repo, receipt_devlyn, receipt_state, receipt_fix, _ = durability_fixture(
@@ -5180,4 +5196,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     raise SystemExit(main())

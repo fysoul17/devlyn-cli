@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import os, signal, subprocess, sys
+from pathlib import Path
+import runpy
+import subprocess
+import sys
+
+PLATFORM = runpy.run_path(Path(__file__).with_name("platform-support.py"))
 
 
 def fail(message: str) -> int:
@@ -11,34 +16,39 @@ def fail(message: str) -> int:
 
 def main(argv: list[str]) -> int:
     if len(argv) < 4:
-        return fail("usage: run-bounded.py <seconds> -- <cmd> [args...]")
+        return fail("usage: run-bounded.py <seconds> [--stdin-file <path>] -- <cmd> [args...]")
     try:
         seconds = int(argv[1])
     except ValueError:
         return fail("seconds must be a positive integer")
     if seconds <= 0:
         return fail("seconds must be a positive integer")
-    if argv[2] != "--":
+    index, prompt = 2, None
+    if argv[index] == "--stdin-file":
+        if len(argv) < 6:
+            return fail("--stdin-file requires a path and command")
+        prompt, index = argv[index + 1], index + 2
+    if argv[index] != "--" or not argv[index + 1:]:
         return fail("expected -- before command")
-
-    child = subprocess.Popen(argv[3:], stdin=subprocess.DEVNULL, start_new_session=True)
+    stream = None
     try:
-        return child.wait(timeout=seconds)
-    except subprocess.TimeoutExpired:
-        try:
-            os.killpg(child.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            return 124
-        try:
-            child.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            try:
-                os.killpg(child.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            child.wait()
-        return 124
+        command = argv[index + 1:]
+        actual = PLATFORM["native_argv"](command)
+        if prompt is not None:
+            transport = runpy.run_path(Path(__file__).with_name("invocation-receipt.py"))
+            stream, carrier, record = transport["prepare_transport"](prompt, command, actual, seconds)
+            transport["write_transport"](carrier, record)
+        code = PLATFORM["run_process"](actual, stream if stream is not None else subprocess.DEVNULL, seconds)
+        if prompt is not None:
+            transport["finish_transport"](carrier, code)
+        return code
+    except (OSError, ValueError) as exc:
+        return fail(str(exc))
+    finally:
+        if stream is not None:
+            stream.close()
 
 
 if __name__ == "__main__":
+    PLATFORM["configure_utf8"]()
     raise SystemExit(main(sys.argv))

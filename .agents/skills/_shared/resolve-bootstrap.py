@@ -252,7 +252,7 @@ def safe_goal_file(cwd: pathlib.Path, raw_path: str) -> bytes:
 
 
 def run_checked(command: list[str], cwd: pathlib.Path) -> None:
-    proc = subprocess.run(command, cwd=cwd, capture_output=True, text=True)
+    proc = subprocess.run(command, cwd=cwd, capture_output=True, text=True, encoding="utf-8")
     if proc.returncode != 0:
         detail = (proc.stderr or proc.stdout).strip() or "command failed"
         block("BLOCKED:invalid-flags", detail)
@@ -320,6 +320,7 @@ def base_branch(cwd: pathlib.Path) -> str | None:
         cwd=cwd,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     if proc.returncode == 1 and not proc.stdout.strip() and not proc.stderr.strip():
         return None
@@ -363,24 +364,18 @@ def require_clean_tracked_baseline(cwd: pathlib.Path) -> None:
 @contextlib.contextmanager
 def admission_lock(cwd: pathlib.Path):
     lock_path = pathlib.Path(git_text(cwd, "rev-parse", "--absolute-git-dir")) / "devlyn-bootstrap.lock"
-    try:
-        import fcntl
-        handle = lock_path.open("a+b")
-    except (ImportError, OSError) as exc:
-        block("BLOCKED:bootstrap-lock-unavailable", f"{cwd}: {lock_path}: {exc}")
-    # Closing releases flock on every exit; keep the inode for the next caller.
-    with handle:
+    with contextlib.ExitStack() as stack:
         try:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            stack.enter_context(runpy.run_path(pathlib.Path(__file__).with_name("platform-support.py"))["file_lock"](lock_path))
         except BlockingIOError:
             block(
                 "BLOCKED:bootstrap-contended",
                 f"Bootstrap admission is occupied at {cwd}. Retry from this root after admission finishes.",
             )
-        except (OSError, AttributeError) as exc:
+        except (ImportError, OSError, AttributeError) as exc:
             block("BLOCKED:bootstrap-lock-unavailable", f"{cwd}: {lock_path}: {exc}")
         for path in (cwd / ".devlyn", cwd / ".devlyn" / "runs"):
-            if path.is_symlink() or (path.exists() and not path.is_dir()):
+            if path.is_symlink() or path.resolve() != path or (path.exists() and not path.is_dir()):
                 block("BLOCKED:devlyn-path-redirect", f"{cwd}: require an unredirected directory at {path}")
         yield
 
@@ -502,6 +497,9 @@ def pathname_self_test() -> None:
     env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
     with tempfile.TemporaryDirectory() as tmp:
         for name in ("plain", "trailing ", "trailing\t", "trailing\n", "trailing\r\n"):
+            if os.name == "nt" and name != "plain":
+                print(f"SKIP POSIX-only pathname {name!r}: native Windows rejects/normalizes this name")
+                continue
             repo = pathlib.Path(tmp).resolve() / name
             repo.mkdir()
 
@@ -515,13 +513,13 @@ def pathname_self_test() -> None:
             for option, path in (("--show-toplevel", repo), ("--absolute-git-dir", repo / ".git")):
                 raw = git("rev-parse", option)
                 print(f"pathname {name!r} {option}: {raw!r}", flush=True)
-                assert raw == os.fsencode(path) + b"\n", raw
+                assert raw == os.fsencode(path.as_posix() if os.name == "nt" else path) + b"\n", raw
             command = [sys.executable, str(script), "pathname", "probe"]
             proc = subprocess.run(command, cwd=repo, env=env, capture_output=True, timeout=15)
             result = strict_json(proc.stdout)
             assert proc.returncode == 0 and result["ok"] and not proc.stderr, (name, proc, result)
             for option, path in (("--show-toplevel", repo), ("--absolute-git-dir", repo / ".git")):
-                assert git_text(repo, "rev-parse", option) == str(path)
+                assert git_text(repo, "rev-parse", option) == (path.as_posix() if os.name == "nt" else str(path))
             lock = repo / ".git" / "devlyn-bootstrap.lock"
             inode = lock.stat().st_ino
             devlyn = repo / ".devlyn"
@@ -565,7 +563,7 @@ def admission_self_test() -> None:
         git(repo, "init", "-q")
         git(repo, "config", "user.email", "test@example.com")
         git(repo, "config", "user.name", "Test")
-        (repo / "app.py").write_text("print('base')\n")
+        (repo / "app.py").write_text("print('base')\n", encoding="utf-8")
         git(repo, "add", "app.py")
         git(repo, "commit", "-qm", "base")
         inputs(repo)
@@ -581,7 +579,7 @@ def admission_self_test() -> None:
 
     def cli(repo, argv, extra_env=None):
         proc = subprocess.run([sys.executable, str(script), *argv], cwd=repo,
-                              env=extra_env or env, capture_output=True, text=True, timeout=15)
+                              env=extra_env or env, capture_output=True, text=True, timeout=15, encoding="utf-8")
         assert proc.stderr == "", (proc.returncode, proc.stdout, proc.stderr)
         result = strict_json(proc.stdout)
         assert proc.returncode == (0 if result["ok"] else 1), result
@@ -628,7 +626,13 @@ if action.startswith('temp:'):
         return replace(path, target)
     pathlib.Path.replace = held_replace
 signals.with_suffix('.ready').touch()
-if int(barrier) >= 0:
+if barrier.startswith('file:'):
+    deadline = time.monotonic() + 20
+    while not pathlib.Path(barrier[5:]).exists():
+        if time.monotonic() > deadline:
+            raise TimeoutError('native admission barrier was not released')
+        time.sleep(0.01)
+elif int(barrier) >= 0:
     os.read(int(barrier), 1)
     os.close(int(barrier))
 try:
@@ -646,7 +650,7 @@ print(json.dumps(result))
         first = cli(repo, modes[0])
         devlyn = repo / ".devlyn"
         state_path = devlyn / "pipeline.state.json"
-        initial = strict_json(state_path.read_text())
+        initial = strict_json(state_path.read_text(encoding="utf-8"))
         (devlyn / "engines.json").write_bytes(b'{"executor":"codex"}\n')
         (devlyn / "config.json").write_bytes(b'{"setting":true}\n')
         (devlyn / "unrelated.data").write_bytes(b"keep\n")
@@ -671,7 +675,7 @@ print(json.dumps(result))
             refusal(repo, modes[0], "BLOCKED:prior-run-unfinished")
         for verdict in ("PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED"):
             for timestamp in ("2024-02-29T23:59:59Z", "2024-02-29T23:59:59.123Z"):
-                state = strict_json(state_path.read_text())
+                state = strict_json(state_path.read_text(encoding="utf-8"))
                 state["phases"]["final_report"] = {"verdict": verdict, "completed_at": timestamp}
                 state_path.write_bytes(json_bytes(state))
                 raw = state_path.read_bytes()
@@ -706,7 +710,13 @@ print(json.dumps(result))
         identity = root / "identity"
         init(identity)
         alias = root / "alias"
-        alias.symlink_to(identity, target_is_directory=True)
+        def directory_link(link, target):
+            if os.name == "nt":
+                subprocess.run(["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(target)],
+                               check=True, capture_output=True)
+            else:
+                link.symlink_to(target, target_is_directory=True)
+        directory_link(alias, identity)
         sub = identity / "sub"
         sub.mkdir()
         detail = refusal(sub, ["--goal-file", "relative.txt"], "BLOCKED:worktree-root-required")["detail"]
@@ -731,20 +741,21 @@ print(json.dumps(result))
                     (target / "keep").write_bytes(b"untouched")
                 link = identity / relative
                 link.parent.mkdir(exist_ok=True)
-                link.symlink_to(target, target_is_directory=True)
+                directory_link(link, target)
                 before = snapshot(target)
                 result = refusal(identity, modes[0], "BLOCKED:devlyn-path-redirect")
-                assert str(link) in result["detail"] and link.is_symlink()
+                assert str(link) in result["detail"] and link.resolve() == target and (os.name == "nt" or link.is_symlink())
                 assert snapshot(target) == before
-                link.unlink()
+                link.rmdir() if os.name == "nt" else link.unlink()
         print("PASS admission identity: physical-root guidance, Git redirects including empty, live/dangling directory links")
 
         def launch(repo, signals, action, argv, barrier=-1):
             return subprocess.Popen(
                 [sys.executable, "-c", child, str(script), str(repo), str(signals),
                  action, str(barrier), json.dumps(argv)],
-                cwd=repo, env=env, pass_fds=(() if barrier < 0 else (barrier,)),
+                cwd=repo, env=env, **({} if os.name == "nt" else {"pass_fds": (() if barrier < 0 else (barrier,))}),
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                encoding="utf-8",
             )
 
         def receipt(proc):
@@ -762,14 +773,22 @@ print(json.dumps(result))
             other = ["goal", "B"] if i == 0 else [s.replace("spec.md", "spec-b.md").replace(
                 "external.patch", "external-b.patch") for s in argv]
             signals = [root / f"race-{i}-{label}" for label in ("A", "B")]
-            rfd, wfd = os.pipe()
+            if os.name == "nt":
+                barrier_file = root / f"race-{i}.barrier"
+                rfd = "file:" + str(barrier_file)
+            else:
+                rfd, wfd = os.pipe()
             procs = []
             try:
                 procs = [launch(race, signal, "hold", args, rfd)
                          for signal, args in zip(signals, (argv, other))]
-                os.close(rfd)
+                if os.name != "nt":
+                    os.close(rfd)
                 wait_for(lambda: all(s.with_suffix(".ready").exists() for s in signals))
-                os.close(wfd)
+                if os.name == "nt":
+                    barrier_file.touch()
+                else:
+                    os.close(wfd)
                 wait_for(lambda: any(s.with_suffix(".inside").exists() for s in signals)
                          and any(p.poll() is not None for p in procs))
                 holders = [j for j, s in enumerate(signals) if s.with_suffix(".inside").exists()]
@@ -840,9 +859,10 @@ print(json.dumps(result))
         assert not (failure / ".devlyn").exists()
         failure_lock = failure / ".git/devlyn-bootstrap.lock"
         failure_inode = failure_lock.stat().st_ino
-        import fcntl
-        for replacement in (patch.dict(sys.modules, {"fcntl": None}),
-                            patch.object(fcntl, "flock", side_effect=OSError("unsupported locking"))):
+        module = __import__("msvcrt" if os.name == "nt" else "fcntl")
+        operation = "locking" if os.name == "nt" else "flock"
+        for replacement in (patch.dict(sys.modules, {module.__name__: None}),
+                            patch.object(module, operation, side_effect=OSError("unsupported locking"))):
             with replacement:
                 try:
                     bootstrap(modes[0], failure, shared)
@@ -874,7 +894,7 @@ print(json.dumps(result))
                 inode = (dead / ".git/devlyn-bootstrap.lock").stat().st_ino
                 proc.kill()
                 stdout, stderr = proc.communicate(timeout=15)
-                assert proc.returncode == -9 and stdout == "" and stderr == "", (stdout, stderr)
+                assert proc.returncode == (1 if os.name == "nt" else -9) and stdout == "" and stderr == "", (proc.returncode, stdout, stderr)
             finally:
                 if proc.poll() is None:
                     proc.kill()
@@ -904,7 +924,7 @@ def self_test() -> int:
         subprocess.run(["git", "init", "-q"], cwd=path, check=True)
         subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=path, check=True)
         subprocess.run(["git", "config", "user.name", "Test"], cwd=path, check=True)
-        (path / "app.py").write_text("print('base')\n")
+        (path / "app.py").write_text("print('base')\n", encoding="utf-8")
         subprocess.run(["git", "add", "app.py"], cwd=path, check=True)
         subprocess.run(["git", "commit", "-qm", "base"], cwd=path, check=True)
 
@@ -917,7 +937,7 @@ def self_test() -> int:
 
     def complete_prior(path: pathlib.Path) -> None:
         state_path = path / ".devlyn" / "pipeline.state.json"
-        state = strict_json(state_path.read_text())
+        state = strict_json(state_path.read_text(encoding="utf-8"))
         state["phases"]["final_report"] = {
             "verdict": "PASS", "completed_at": "2026-09-06T00:00:00Z",
         }
@@ -940,8 +960,8 @@ def self_test() -> int:
         role_raw = b'{"roles":{"worker":{"engine":"codex","model":"gpt-6-astra"}}}'
         role_file.write_bytes(role_raw)
         bootstrap(["--role-config", str(role_file), "--no-pair", "fix app.py"], role_work, script_shared)
-        staged_role = strict_json((role_work / ".devlyn/pipeline.state.json").read_text())
-        role_file.write_text("{}")
+        staged_role = strict_json((role_work / ".devlyn/pipeline.state.json").read_text(encoding="utf-8"))
+        role_file.write_text("{}", encoding="utf-8")
         assert staged_role["role_config_input"]["sha256"] == sha256(role_raw)
         assert staged_role["role_config_input"]["value"] == strict_json(role_raw.decode())
         assert staged_role["role_no_pair"] is True
@@ -952,7 +972,7 @@ def self_test() -> int:
         prior_session = os.environ.pop(session_key, None)
         result = bootstrap(["fix", "app.py", "failing", "test"], work, script_shared)
         state_path = work / ".devlyn" / "pipeline.state.json"
-        state = strict_json(state_path.read_text())
+        state = strict_json(state_path.read_text(encoding="utf-8"))
         expected = {
             "version": "3.0",
             "run_id": state["run_id"],
@@ -994,7 +1014,10 @@ def self_test() -> int:
             "phases": {name: None for name in PHASE_NAMES},
             "verify": {"coverage_failed": False, "pair_trigger": None},
         }
-        schema = (script_shared.parent / "devlyn:resolve" / "references" / "state-schema.md").read_text()
+        schema_dirs = [script_shared.parent / name for name in ("devlyn:resolve", "devlyn\uF03Aresolve")
+                       if (script_shared.parent / name).is_dir()]
+        assert len(schema_dirs) == 1, schema_dirs
+        schema = (schema_dirs[0] / "references" / "state-schema.md").read_text(encoding="utf-8")
         assert '"version": "3.0"' in schema and all(f'"{name}"' in schema for name in PHASE_NAMES)
         assert state_path.read_bytes() == json_bytes(expected)
         assert result["state_sha256"] == sha256(json_bytes(expected))
@@ -1007,7 +1030,7 @@ def self_test() -> int:
         init_repo(detached)
         subprocess.run(["git", "checkout", "--detach", "-q"], cwd=detached, check=True)
         detached_result = bootstrap(["fix", "app.py"], detached, script_shared)
-        detached_state = strict_json((detached / ".devlyn" / "pipeline.state.json").read_text())
+        detached_state = strict_json((detached / ".devlyn" / "pipeline.state.json").read_text(encoding="utf-8"))
         assert detached_result["ok"] is True
         assert detached_state["base_ref"]["branch"] is None
         assert detached_state["base_ref"]["sha"] == git_text(detached, "rev-parse", "HEAD")
@@ -1016,7 +1039,7 @@ def self_test() -> int:
         complete_prior(work)
         os.environ[session_key] = "session-self-test"
         bootstrap(["--engine", "raw-engine", "--pair-verify", "fix", "app.py"], work, script_shared)
-        stamped = strict_json(state_path.read_text())
+        stamped = strict_json(state_path.read_text(encoding="utf-8"))
         assert stamped["session_id"] == "session-self-test"
         assert stamped["engine"] == "raw-engine" and stamped["engine_source"] == "flag"
         assert stamped["pair_verify"] is True
@@ -1063,6 +1086,7 @@ def self_test() -> int:
         cli_blocked = subprocess.run(
             [sys.executable, str(pathlib.Path(__file__).resolve()), "--pair-verify", "--no-pair"],
             cwd=blocked_work, capture_output=True, text=True,
+            encoding="utf-8",
         )
         assert cli_blocked.returncode == 1 and cli_blocked.stderr == ""
         assert strict_json(cli_blocked.stdout)["blocked"] == "BLOCKED:invalid-flags"
@@ -1070,7 +1094,7 @@ def self_test() -> int:
         print("PASS bootstrap self-test failure receipt: machine-only JSON, zero partial state")
 
         goal_file = blocked_work / "goal.txt"
-        goal_file.write_text(" \n")
+        goal_file.write_text(" \n", encoding="utf-8")
         try:
             bootstrap(["--goal-file", "goal.txt"], blocked_work, script_shared)
         except BootstrapBlocked as exc:
@@ -1135,7 +1159,8 @@ def self_test() -> int:
         spec_path = spec_dir / "spec.md"
         spec_path.write_text(
             "---\ncomplexity: medium\n---\n# Spec\n\n<!-- devlyn:verification -->\n"
-            "## Verification\n\n```json\n{\"verification_commands\":[{\"cmd\":\"printf ok\",\"stdout_contains\":[\"ok\"]}]}\n```\n"
+            "## Verification\n\n```json\n{\"verification_commands\":[{\"cmd\":\"printf ok\",\"stdout_contains\":[\"ok\"]}]}\n```\n",
+            encoding="utf-8",
         )
         spec_raw = spec_path.read_bytes()
         external_patch = work / ".devlyn" / "external-diff.patch"
@@ -1143,7 +1168,7 @@ def self_test() -> int:
         complete_prior(work)
         spec_result = bootstrap(["--spec", str(spec_path.relative_to(work))], work, script_shared)
         assert not external_patch.exists()
-        staged = strict_json((work / ".devlyn" / "spec-verify.json").read_text())
+        staged = strict_json((work / ".devlyn" / "spec-verify.json").read_text(encoding="utf-8"))
         assert staged["verification_commands"][0]["cmd"] == "printf ok"
         assert spec_result["source"]["spec_sha256"] == sha256(spec_raw)
         external_patch.write_bytes(b"stale free-form patch\n")
@@ -1152,14 +1177,14 @@ def self_test() -> int:
         assert not external_patch.exists()
         (spec_dir / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [{"cmd": "printf expected", "stdout_contains": ["expected"]}],
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         complete_prior(work)
         bootstrap(["--spec", str(spec_path.relative_to(work))], work, script_shared)
-        staged = strict_json((work / ".devlyn" / "spec-verify.json").read_text())
+        staged = strict_json((work / ".devlyn" / "spec-verify.json").read_text(encoding="utf-8"))
         assert staged["verification_commands"][0]["cmd"] == "printf expected"
         patch_raw = b"diff --git a/app.py b/app.py\nexact external bytes\x00\n"
         (work / "external.patch").write_bytes(patch_raw)
-        (work / "app.py").write_text("print('dirty verify-only input')\n")
+        (work / "app.py").write_text("print('dirty verify-only input')\n", encoding="utf-8")
         complete_prior(work)
         verify_result = bootstrap([
             "--verify-only", "external.patch", "--spec", str(spec_path.relative_to(work)),
@@ -1173,7 +1198,7 @@ def self_test() -> int:
         init_repo(dirty_work)
         bootstrap(["clean", "baseline"], dirty_work, script_shared)
         before_dirty = snapshot(dirty_work / ".devlyn")
-        (dirty_work / "app.py").write_text("print('unstaged')\n")
+        (dirty_work / "app.py").write_text("print('unstaged')\n", encoding="utf-8")
         for label in ("unstaged", "staged"):
             if label == "staged":
                 subprocess.run(["git", "add", "app.py"], cwd=dirty_work, check=True)
@@ -1192,16 +1217,16 @@ def self_test() -> int:
         init_repo(devlyn_work)
         (devlyn_work / ".devlyn").mkdir()
         owner_file = devlyn_work / ".devlyn" / "owner.txt"
-        owner_file.write_text("base\n")
+        owner_file.write_text("base\n", encoding="utf-8")
         subprocess.run(["git", "add", ".devlyn/owner.txt"], cwd=devlyn_work, check=True)
         subprocess.run(["git", "commit", "-qm", "track devlyn owner"], cwd=devlyn_work, check=True)
-        owner_file.write_text("dirty allowed\n")
+        owner_file.write_text("dirty allowed\n", encoding="utf-8")
         assert bootstrap(["devlyn", "allowed"], devlyn_work, script_shared)["ok"] is True
-        assert owner_file.read_text() == "dirty allowed\n"
+        assert owner_file.read_text(encoding="utf-8") == "dirty allowed\n"
 
         untracked_work = root / "untracked-repo"
         init_repo(untracked_work)
-        (untracked_work / "untracked.txt").write_text("allowed\n")
+        (untracked_work / "untracked.txt").write_text("allowed\n", encoding="utf-8")
         assert bootstrap(["untracked", "allowed"], untracked_work, script_shared)["ok"] is True
         print("PASS bootstrap self-test honest baseline: dirty owner blocked; .devlyn/untracked allowed")
 
@@ -1248,11 +1273,11 @@ def self_test() -> int:
             assert (prior_archive / name).is_file(), name
             if name not in {"pipeline.state.json", "goal.raw.txt"}:
                 assert not (prior_devlyn / name).exists(), name
-        assert strict_json((prior_devlyn / "pipeline.state.json").read_text())["run_id"] == replacement["run_id"]
+        assert strict_json((prior_devlyn / "pipeline.state.json").read_text(encoding="utf-8"))["run_id"] == replacement["run_id"]
         assert (prior_archive / "goal.raw.txt").read_bytes() == b"prior run"
         assert (prior_devlyn / "goal.raw.txt").read_bytes() == b"replacement run"
-        assert (prior_devlyn / "engines.json").read_text() == '{"executor":"codex"}\n'
-        assert (prior_devlyn / "unrelated.data").read_text() == "preserve\n"
+        assert (prior_devlyn / "engines.json").read_text(encoding="utf-8") == '{"executor":"codex"}\n'
+        assert (prior_devlyn / "unrelated.data").read_text(encoding="utf-8") == "preserve\n"
 
         for label, state_raw in (("missing", None), ("malformed", b"{\n")):
             unauthenticated = root / f"unauthenticated-{label}"
@@ -1276,7 +1301,8 @@ def self_test() -> int:
         init_repo(malformed_work)
         bad_spec = malformed_work / "spec.md"
         bad_spec.write_text(
-            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n{broken\n```\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n{broken\n```\n",
+            encoding="utf-8",
         )
         try:
             bootstrap(["--spec", "spec.md"], malformed_work, script_shared)
@@ -1319,4 +1345,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     raise SystemExit(main())

@@ -21,7 +21,7 @@
 #      clear message so the orchestrator can self-correct on retry.
 #      (Round 2 finding #1 fix: shim alone does not defeat `| tail`; the
 #      wrapper must reject the pipe shape directly.)
-#   2. Closes stdin (`< /dev/null`) — kills the codex 0.124.0 stdin hang.
+#   2. Closes stdin unless DEVLYN_CODEX_PROMPT_FILE supplies the sole prompt.
 #   3. Streams codex stdout to OUR stdout line-by-line — the orchestrator reads
 #      stdout as the subagent reply (per `_shared/codex-config.md`) so we MUST
 #      NOT swallow it (e.g. `tail -n 200`). codex stderr forwards to OUR stderr.
@@ -54,6 +54,7 @@
 #   CODEX_MONITORED_ALLOW_PIPED    — set non-empty to skip the pipe-stdout
 #                                     refusal. Reserved for tests; don't use
 #                                     in skill prompts.
+#   DEVLYN_CODEX_PROMPT_FILE      — exact binary stdin prompt; requires sole `-`.
 #   DEVLYN_INVOCATION_*             — run/phase/round/workdir/prompt/session/
 #                                     receipt identity. When any is set, all
 #                                     are required and the wrapper seals a
@@ -269,22 +270,17 @@ if [ -n "${CODEX_MONITORED_ISOLATED:-}" ]; then
   printf '[codex-monitored] isolated=1\n' >&2
 fi
 
-if [ -n "$RECEIPT_ENABLED" ]; then
-  RECEIPT_HELPER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/invocation-receipt.py"
-  python3 "$RECEIPT_HELPER" start \
-    --workdir "$DEVLYN_INVOCATION_WORKDIR" \
-    --receipt "$DEVLYN_INVOCATION_RECEIPT" \
-    --run-id "$DEVLYN_INVOCATION_RUN_ID" \
-    --phase "$DEVLYN_INVOCATION_PHASE" \
-    --round "$DEVLYN_INVOCATION_ROUND" \
-    --prompt-file "$DEVLYN_INVOCATION_PROMPT_FILE" \
-    --session-file "$DEVLYN_INVOCATION_SESSION_FILE" \
-    -- "${CODEX_ARGS[@]}" || exit 64
+RECEIPT_HELPER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/invocation-receipt.py"
+# Native Python owns Windows PIDs and the timeout tree; MSYS PIDs are different.
+if [ "${OS:-}" = Windows_NT ]; then
+  exec python3 "$RECEIPT_HELPER" dispatch --binary "$CODEX_BIN" \
+    --timeout "$TIMEOUT_SEC" --heartbeat "$HEARTBEAT_SEC" -- "${CODEX_ARGS[@]}" < /dev/null
 fi
 
-# Launch codex with stdin closed; output streams directly to OUR stdout/stderr.
+# The dispatcher snapshots file input, seals actual argv, then execs in this group.
 set -m
-"$CODEX_BIN" exec "${CODEX_ARGS[@]}" < /dev/null &
+python3 "$RECEIPT_HELPER" dispatch --binary "$CODEX_BIN" \
+  --timeout "$TIMEOUT_SEC" --heartbeat "$HEARTBEAT_SEC" -- "${CODEX_ARGS[@]}" < /dev/null &
 CODEX_PID=$!
 printf '[codex-monitored] codex pid=%d\n' "$CODEX_PID" >&2
 
@@ -308,11 +304,8 @@ if [ -n "$TIMEOUT_FLAG" ] && [ -f "$TIMEOUT_FLAG" ]; then
   EXIT=124
 fi
 
-if [ -n "$RECEIPT_ENABLED" ]; then
-  python3 "$RECEIPT_HELPER" finish \
-    --workdir "$DEVLYN_INVOCATION_WORKDIR" \
-    --receipt "$DEVLYN_INVOCATION_RECEIPT" \
-    --exit-code "$EXIT" || exit 64
+if [ -n "$RECEIPT_ENABLED" ] || [ -n "${DEVLYN_CODEX_PROMPT_FILE:-}" ]; then
+  python3 "$RECEIPT_HELPER" complete-dispatch --exit-code "$EXIT" || exit 64
 fi
 
 printf '[codex-monitored] codex exited: code=%d elapsed=%ds\n' \

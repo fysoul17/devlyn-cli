@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import fcntl
 import functools
 import hashlib
 import json
@@ -35,7 +34,7 @@ def require(condition, message):
 
 
 def command(argv, *, cwd=None, ok=(0,)):
-    result = subprocess.run(argv, cwd=cwd, capture_output=True, text=True)
+    result = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, encoding="utf-8")
     require(result.returncode in ok, f"{shlex.join(argv[:4])}: {result.stderr.strip() or result.stdout.strip()}")
     return result.stdout.strip()
 
@@ -51,23 +50,24 @@ def shared(name):
 
 def read_json(path):
     require(stat.S_ISREG(path.lstat().st_mode), f"JSON must be a nonsymlink regular file: {path}")
-    return shared("archive_run")["loads_strict_json"](path.read_text())
+    return shared("archive_run")["loads_strict_json"](path.read_text(encoding="utf-8"))
 
 
 def atomic_json(path, value):
     fd, temporary = tempfile.mkstemp(dir=path.parent, prefix=".receipt-")
     try:
-        with os.fdopen(fd, "w") as stream:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
             json.dump(value, stream, sort_keys=True, indent=2)
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
-        directory = os.open(path.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory)
-        finally:
-            os.close(directory)
+        if os.name != "nt":
+            directory = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
     finally:
         Path(temporary).unlink(missing_ok=True)
 
@@ -167,7 +167,7 @@ def repository_from_url(url):
 
 
 def policy(receipt, override):
-    config = subprocess.run(["git", "--git-dir", receipt["common_gitdir"], "config", "--local", "--get-all", "devlyn.completionMode"], capture_output=True, text=True)
+    config = subprocess.run(["git", "--git-dir", receipt["common_gitdir"], "config", "--local", "--get-all", "devlyn.completionMode"], capture_output=True, text=True, encoding="utf-8")
     require(config.returncode in {0, 1}, "cannot read local completion policy: " + config.stderr.strip())
     require(config.returncode == 1 or config.stdout in {"auto\n", "pr\n"}, "invalid local devlyn.completionMode; use auto|pr")
     value = config.stdout.strip() if config.returncode == 0 else None
@@ -412,7 +412,7 @@ def stopped_writers(work, *, linked):
     # The owner assertion covers its actual children; an OS observation catches
     # other currently open files/cwds, not future writers or a universal lease.
     if sys.platform == "darwin":
-        result = subprocess.run(["lsof", "-Fpn", "+D", str(work)], capture_output=True, text=True)
+        result = subprocess.run(["lsof", "-Fpn", "+D", str(work)], capture_output=True, text=True, encoding="utf-8")
         require(result.returncode in {0, 1} and not result.stderr.strip(), "writer observation unavailable; retain tree and inspect writers")
         pid = None
         for line in result.stdout.splitlines():
@@ -508,8 +508,11 @@ def cleanup(receipt, path, pr, writers_stopped):
 def locked_receipt(path):
     require(path.name == "receipt.json" and path.parent.parent.name == "devlyn-completion" and path == path.resolve(), "receipt must be its original external nonsymlink path")
     require(not (path.parent / "lock").is_symlink(), "receipt lock must not be a symlink")
-    with (path.parent / "lock").open("a+") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+    with contextlib.ExitStack() as stack:
+        try:
+            stack.enter_context(shared("platform-support")["file_lock"](path.parent / "lock", blocking=True))
+        except (ImportError, OSError, AttributeError) as exc:
+            raise CompletionError(f"receipt lock unavailable: {path}: {exc}") from exc
         receipt = read_json(path)
         require(path == Path(receipt["common_gitdir"]) / "devlyn-completion" / receipt["id"] / "receipt.json", "receipt/common Gitdir binding mismatch")
         require(receipt["id"] == hashlib.sha256(receipt["branch"].encode()).hexdigest()[:24] and receipt["branch"] not in {receipt["base"], "main", "master"}, "receipt branch ownership changed")
@@ -639,10 +642,10 @@ def self_test(names=None):
 FAKE_GH = r'''#!/usr/bin/env python3
 import json, os, pathlib, subprocess, sys
 p = pathlib.Path(os.environ['FIXTURE_GH'])
-d = json.loads(p.read_text()); a = sys.argv[1:]
-def save(): p.write_text(json.dumps(d))
+d = json.loads(p.read_text(encoding="utf-8")); a = sys.argv[1:]
+def save(): p.write_text(json.dumps(d), encoding="utf-8")
 def remote(ref):
-    r = subprocess.run([os.environ['REAL_GIT'], '--git-dir', d['bare'], 'rev-parse', '--verify', ref], capture_output=True, text=True)
+    r = subprocess.run([os.environ['REAL_GIT'], '--git-dir', d['bare'], 'rev-parse', '--verify', ref], capture_output=True, text=True, encoding="utf-8")
     return r.stdout.strip() if r.returncode == 0 else None
 if a[:2] == ['repo', 'view']:
     assert a[2:] == ['github.com/test/project', '--json', 'nameWithOwner,url,defaultBranchRef,mergeCommitAllowed'], 'unsupported gh repo view arguments: '+str(a)
@@ -673,8 +676,8 @@ elif a[:2] == ['pr', 'merge']:
     else:
         g = [os.environ['REAL_GIT'],'--git-dir',d['bare']]
         base = remote('refs/heads/main')
-        tree = subprocess.check_output(g+['rev-parse',sha+'^{tree}'],text=True).strip()
-        merge = subprocess.check_output(g+['commit-tree',tree,'-p',base,'-p',sha,'-m','merge fixture'],text=True).strip()
+        tree = subprocess.check_output(g+['rev-parse',sha+'^{tree}'],text=True, encoding="utf-8").strip()
+        merge = subprocess.check_output(g+['commit-tree',tree,'-p',base,'-p',sha,'-m','merge fixture'],text=True, encoding="utf-8").strip()
         subprocess.check_call(g+['update-ref','refs/heads/main',merge,base])
         d['pr'].update(state='MERGED',mergedAt='now',mergeCommit={'oid':merge})
     save()
@@ -686,22 +689,22 @@ else:
 GIT_WRAPPER = r'''#!/usr/bin/env python3
 import json, os, pathlib, subprocess, sys
 a = sys.argv[1:]
-p = pathlib.Path(os.environ['FIXTURE_GH']); d = json.loads(p.read_text())
+p = pathlib.Path(os.environ['FIXTURE_GH']); d = json.loads(p.read_text(encoding="utf-8"))
 if 'push' in a and any(x.startswith('--force-with-lease=') for x in a) and d.pop('remote_delete_race',False):
     subprocess.check_call([os.environ['REAL_GIT'],'--git-dir',d['bare'],'update-ref','refs/heads/'+d['pr']['headRefName'],d['race_sha']])
-    p.write_text(json.dumps(d))
+    p.write_text(json.dumps(d), encoding="utf-8")
 for operation in ('push', 'fetch', 'ls-remote'):
     if operation in a and 'origin' in a:
         prefix = a[:a.index(operation)]
-        url = subprocess.check_output([os.environ['REAL_GIT'], *prefix, 'remote', 'get-url', *(['--push'] if operation == 'push' else []), '--all', 'origin'], text=True).strip()
+        url = subprocess.check_output([os.environ['REAL_GIT'], *prefix, 'remote', 'get-url', *(['--push'] if operation == 'push' else []), '--all', 'origin'], text=True, encoding="utf-8").strip()
         if url in {'https://github.com/test/project.git', 'git@github.com:test/project.git', 'ssh://git@github.com/test/project.git'}:
             a[a.index('origin')] = d['bare']
         break
 r = subprocess.run([os.environ['REAL_GIT'],*a])
 event = 'delete' if 'push' in a and any(x.startswith(':refs/') for x in a) else 'push' if 'push' in a else 'remove' if 'worktree' in a and 'remove' in a else None
 if r.returncode == 0 and event:
-    d = json.loads(p.read_text()); d[event+'s'] = d.get(event+'s',0)+1
-    fail = d.pop('interrupt_'+event,False); p.write_text(json.dumps(d))
+    d = json.loads(p.read_text(encoding="utf-8")); d[event+'s'] = d.get(event+'s',0)+1
+    fail = d.pop('interrupt_'+event,False); p.write_text(json.dumps(d), encoding="utf-8")
     if fail: sys.exit(1)
 sys.exit(r.returncode)
 '''
@@ -717,7 +720,7 @@ class CompletionTests(unittest.TestCase):
         self.bin = self.root / "bin"
         self.bin.mkdir()
         self.data = self.root / "gh.json"
-        self.data.write_text(json.dumps({"bare": str(self.bare)}))
+        self.data.write_text(json.dumps({"bare": str(self.bare)}), encoding="utf-8")
         self.env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": str(self.root / "gitconfig"),
                     "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
@@ -728,13 +731,13 @@ class CompletionTests(unittest.TestCase):
                 del self.env[key]
         for name, body in (("gh", FAKE_GH), ("git", GIT_WRAPPER)):
             path = self.bin / name
-            path.write_text(body)
+            path.write_text(body, encoding="utf-8")
             path.chmod(0o755)
         self.env["PATH"] = str(self.bin) + os.pathsep + os.environ["PATH"]
         self.run_cmd(["git", "init", "--bare", "--initial-branch=main", str(self.bare)])
         self.run_cmd(["git", "init", "--initial-branch=main", str(self.work)])
-        (self.work / ".gitignore").write_text(".devlyn/\nignored/\n")
-        (self.work / "product").write_text("baseline\n")
+        (self.work / ".gitignore").write_text(".devlyn/\nignored/\n", encoding="utf-8")
+        (self.work / "product").write_text("baseline\n", encoding="utf-8")
         self.g("add", ".")
         self.g("commit", "-m", "baseline")
         self.g("remote", "add", "origin", "https://github.com/test/project.git")
@@ -742,7 +745,7 @@ class CompletionTests(unittest.TestCase):
         self.configure(pushs=0)
 
     def run_cmd(self, args, *, cwd=None, success=True):
-        r = subprocess.run(args, cwd=cwd or self.root, env=self.env, capture_output=True, text=True)
+        r = subprocess.run(args, cwd=cwd or self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
         if success:
             self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
         return r
@@ -751,8 +754,8 @@ class CompletionTests(unittest.TestCase):
         return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
 
     def configure(self, **values):
-        d = json.loads(self.data.read_text()); d.update(values)
-        self.data.write_text(json.dumps(d))
+        d = json.loads(self.data.read_text(encoding="utf-8")); d.update(values)
+        self.data.write_text(json.dumps(d), encoding="utf-8")
 
     def cli(self, *args, success=True, cwd=None):
         r = self.run_cmd([sys.executable, str(Path(__file__).resolve()), *map(str, args)], success=success, cwd=cwd)
@@ -769,47 +772,47 @@ class CompletionTests(unittest.TestCase):
 
     def accept(self, pipeline=False, queue=False, spec_expected=None):
         if spec_expected is not None:
-            (self.task / "spec.md").write_text("# Fixture\nProduct contains accepted bytes.\n")
-            (self.task / "spec.expected.json").write_text(json.dumps(spec_expected))
+            (self.task / "spec.md").write_text("# Fixture\nProduct contains accepted bytes.\n", encoding="utf-8")
+            (self.task / "spec.expected.json").write_text(json.dumps(spec_expected), encoding="utf-8")
             self.g("add", "spec.md", "spec.expected.json", work=self.task)
-        (self.task / "product").write_text("accepted\n")
+        (self.task / "product").write_text("accepted\n", encoding="utf-8")
         self.g("add", "product", work=self.task)
         self.g("commit", "-m", "scoped task", work=self.task)
         self.sha = self.g("rev-parse", "HEAD", work=self.task)
         evidence = self.task / ".devlyn"
         evidence.mkdir(exist_ok=True)
-        (evidence / "checks.txt").write_text("actual fixture check: accepted bytes\n")
+        (evidence / "checks.txt").write_text("actual fixture check: accepted bytes\n", encoding="utf-8")
         a = {"kind": "direct", "task": "fixture", "source_sha": self.sha,
              "checks": [{"command": "fixture byte assertion", "evidence": ".devlyn/checks.txt"}]}
-        self.assertEqual((self.task / "product").read_text(), "accepted\n")
+        self.assertEqual((self.task / "product").read_text(encoding="utf-8"), "accepted\n")
         if pipeline:
             a = {"kind": "pipeline", "task": "fixture", "source_sha": self.sha, "run_id": "fixture-run"}
             archive = evidence / "runs" / a["run_id"]
             archive.mkdir(parents=True)
             self.archive = archive
             report = "<!-- devlyn:final-report run_id=fixture-run -->\nFixture completed.\n"
-            (archive / "final-report.md").write_text(report)
+            (archive / "final-report.md").write_text(report, encoding="utf-8")
             phases = {n: {"started_at": "2026-09-10T00:00:00Z", "completed_at": "2026-09-10T00:00:01Z", "verdict": "PASS"}
                       for n in ("plan", "implement", "build_gate", "cleanup", "verify", "final_report")}
             phases["cleanup"]["post_sha"] = self.sha
             phases["final_report"].update(output_sha256=hashlib.sha256(report.encode()).hexdigest(), artifacts={"log_file": ".devlyn/final-report.md"})
             criteria = "# Fixture acceptance\nProduct contains accepted bytes.\n"
-            (archive / "criteria.generated.md").write_text(criteria)
+            (archive / "criteria.generated.md").write_text(criteria, encoding="utf-8")
             source = {"type": "generated", "criteria_path": ".devlyn/criteria.generated.md", "criteria_sha256": hashlib.sha256(criteria.encode()).hexdigest()}
             self.state = {"run_id": a["run_id"], "mode": "free-form", "source": source, "phases": phases, "process_evidence": None}
             if spec_expected is not None:
                 self.state["mode"] = "spec"
                 self.state["source"] = {"type": "spec", "spec_path": "spec.md", "spec_sha256": hashlib.sha256((self.task / "spec.md").read_bytes()).hexdigest()}
-            (archive / "pipeline.state.json").write_text(json.dumps(self.state))
-            (archive / "finish-gate.summary.json").write_text(json.dumps({"mode": self.state["mode"], "exit": 0, "offenders": 0, "checked": 1}))
-            (archive / "verify-merge.summary.json").write_text(json.dumps({"verdict": "PASS"}))
+            (archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
+            (archive / "finish-gate.summary.json").write_text(json.dumps({"mode": self.state["mode"], "exit": 0, "offenders": 0, "checked": 1}), encoding="utf-8")
+            (archive / "verify-merge.summary.json").write_text(json.dumps({"verdict": "PASS"}), encoding="utf-8")
         if queue:
-            (self.task / "queue.md").write_text("- [x] fixture\n")
+            (self.task / "queue.md").write_text("- [x] fixture\n", encoding="utf-8")
             self.g("add", "queue.md", work=self.task)
             self.g("commit", "-m", "terminal queue", work=self.task)
             a["queue"] = {"commit": self.g("rev-parse", "HEAD", work=self.task), "file": "queue.md"}
         self.acceptance = evidence / "acceptance.json"
-        self.acceptance.write_text(json.dumps(a))
+        self.acceptance.write_text(json.dumps(a), encoding="utf-8")
 
     def complete(self, *args, success=True, cwd=None, acceptance=True):
         command_args = ["complete", "--receipt", self.receipt]
@@ -843,11 +846,11 @@ class CompletionTests(unittest.TestCase):
         alias = "git@github.com:test/project.git"
         self.g("config", "url." + alias + ".insteadOf", intended)
         self.allocate(); self.accept()
-        self.assertEqual(json.loads(self.receipt.read_text())["remote_url"], {"literal": intended, "fetch": alias, "push": alias})
+        self.assertEqual(json.loads(self.receipt.read_text(encoding="utf-8"))["remote_url"], {"literal": intended, "fetch": alias, "push": alias})
         result, _ = self.complete("--mode", "pr")
         self.assertEqual(result["status"], "PR")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
-        self.assertEqual(json.loads(self.data.read_text())["pushs"], 1)
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8"))["pushs"], 1)
 
     def test_remote_rewrite_after_allocation_is_rejected(self):
         self.allocate(); self.accept()
@@ -868,9 +871,9 @@ class CompletionTests(unittest.TestCase):
         destination = "https://github.com/test/other.git"
         self.g("config", "url." + destination + ".insteadOf", "https://github.com/test/project.git")
         # Reproduce a receipt the old literal-only allocation check accepted.
-        receipt = json.loads(self.receipt.read_text())
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         receipt["remote_url"].update(fetch=destination, push=destination)
-        self.receipt.write_text(json.dumps(receipt))
+        self.receipt.write_text(json.dumps(receipt), encoding="utf-8")
         local_refs = self.g("show-ref")
         remote_refs = self.run_cmd(["git", "--git-dir", str(self.bare), "show-ref"]).stdout
         server = self.data.read_bytes()
@@ -891,17 +894,17 @@ class CompletionTests(unittest.TestCase):
         for _ in range(2):
             result, _ = self.complete("--mode", "auto")
             self.assertEqual(result["status"], "PENDING")
-        d = json.loads(self.data.read_text())
+        d = json.loads(self.data.read_text(encoding="utf-8"))
         self.assertEqual((d["creates"], d["merges"], d["pushs"]), (1, 1, 1))
 
     def test_in_place_retains_ignored_data(self):
         self.allocate(); self.accept()
         (self.task / "ignored").mkdir()
-        (self.task / "ignored" / "user.txt").write_text("retain me")
+        (self.task / "ignored" / "user.txt").write_text("retain me", encoding="utf-8")
         result, _ = self.complete("--writers-stopped")
         self.assertEqual(result["status"], "COMPLETE")
         self.assertEqual(self.g("branch", "--show-current"), "main")
-        self.assertEqual((self.task / "ignored/user.txt").read_text(), "retain me")
+        self.assertEqual((self.task / "ignored/user.txt").read_text(encoding="utf-8"), "retain me")
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
         again, _ = self.complete("--writers-stopped", acceptance=False)
@@ -915,7 +918,7 @@ class CompletionTests(unittest.TestCase):
         result, r = self.complete("--writers-stopped", success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertFalse(self.task.exists())
-        saved = json.loads(self.receipt.read_text())
+        saved = json.loads(self.receipt.read_text(encoding="utf-8"))
         recovered = self.receipt.parent / "custody" / ".devlyn/runs/fixture-run/final-report.md"
         self.assertEqual(hashlib.sha256(recovered.read_bytes()).hexdigest(), saved["files"][".devlyn/runs/fixture-run/final-report.md"]["sha256"])
         result, _ = self.complete("--writers-stopped", acceptance=False)
@@ -933,30 +936,30 @@ class CompletionTests(unittest.TestCase):
             if case == "unfinished": state["phases"]["verify"]["completed_at"] = None
             if case == "digest": state["phases"]["final_report"]["output_sha256"] = "0"*64
             if case == "source": state["phases"]["cleanup"]["post_sha"] = self.g("rev-parse", "main")
-            (self.archive / "pipeline.state.json").write_text(json.dumps(state))
+            (self.archive / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
             with self.subTest(case=case):
                 _, r = self.complete(success=False)
                 self.assertNotEqual(r.returncode, 0)
                 self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
-        (self.archive / "pipeline.state.json").write_text(json.dumps(original))
+        (self.archive / "pipeline.state.json").write_text(json.dumps(original), encoding="utf-8")
         for value in ("typo", "", " auto"):
             self.g("config", "--local", "devlyn.completionMode", value)
             _, r = self.complete("--mode", "pr", success=False)
             self.assertNotEqual(r.returncode, 0)
         result, _ = self.complete("--local-only")
         self.assertEqual(result["status"], "LOCAL_ONLY")
-        self.assertEqual(json.loads(self.data.read_text()).get("creates", 0), 0)
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("creates", 0), 0)
 
     def test_queue_only_and_unverified_descendant(self):
         self.allocate(); self.accept(pipeline=True, queue=True)
         result, _ = self.complete("--mode", "pr")
         self.assertEqual(result["status"], "PR")
-        (self.task / "product").write_text("unverified")
+        (self.task / "product").write_text("unverified", encoding="utf-8")
         self.g("add", "product", work=self.task)
         self.g("commit", "-m", "unverified", work=self.task)
         _, r = self.complete(success=False)
         self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(json.loads(self.data.read_text()).get("merges", 0), 0)
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("merges", 0), 0)
 
     def test_interrupted_external_effects(self):
         self.allocate(); self.accept()
@@ -966,7 +969,7 @@ class CompletionTests(unittest.TestCase):
             self.assertNotEqual(r.returncode, 0)
         result, _ = self.complete("--writers-stopped")
         self.assertEqual(result["status"], "COMPLETE")
-        d = json.loads(self.data.read_text())
+        d = json.loads(self.data.read_text(encoding="utf-8"))
         self.assertEqual((d["pushs"], d["creates"], d["merges"]), (1, 1, 1))
 
     def test_retains_unknown_dirty_locked_and_active_tree(self):
@@ -974,7 +977,7 @@ class CompletionTests(unittest.TestCase):
         for case in ("ignored", "dirty", "untracked", "locked", "cwd", "no-yield"):
             path = self.task / ("ignored/unknown" if case == "ignored" else "product" if case == "dirty" else "unknown")
             if case in {"ignored", "dirty", "untracked"}:
-                path.parent.mkdir(exist_ok=True); path.write_text("do not delete")
+                path.parent.mkdir(exist_ok=True); path.write_text("do not delete", encoding="utf-8")
             if case == "locked": self.g("worktree", "lock", str(self.task))
             with self.subTest(case=case):
                 _, r = self.complete(*([] if case == "no-yield" else ["--writers-stopped"]), cwd=self.task if case == "cwd" else None, success=False)
@@ -982,7 +985,7 @@ class CompletionTests(unittest.TestCase):
                 self.assertTrue(self.task.exists())
                 self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
             if case in {"ignored", "untracked"}: path.unlink()
-            if case == "dirty": path.write_text("accepted\n")
+            if case == "dirty": path.write_text("accepted\n", encoding="utf-8")
             if case == "locked": self.g("worktree", "unlock", str(self.task))
 
     def test_no_adoption_and_remote_head_race(self):
@@ -993,34 +996,34 @@ class CompletionTests(unittest.TestCase):
         self.run_cmd(["git", "--git-dir", str(self.bare), "update-ref", "refs/heads/task/fixture", self.g("rev-parse", "main")])
         _, r = self.complete(success=False)
         self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(json.loads(self.data.read_text()).get("merges",0), 0)
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("merges",0), 0)
 
     def test_concurrent_completions(self):
         self.allocate(); self.accept(); self.configure(pending=True)
         args = [sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(self.receipt), "--acceptance", str(self.acceptance)]
-        procs = [subprocess.Popen(args, cwd=self.root, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) for _ in range(2)]
+        procs = [subprocess.Popen(args, cwd=self.root, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8") for _ in range(2)]
         for proc in procs:
             out, err = proc.communicate(timeout=30)
             self.assertEqual(proc.returncode, 0, out+err)
-        d = json.loads(self.data.read_text())
+        d = json.loads(self.data.read_text(encoding="utf-8"))
         self.assertEqual((d["pushs"], d["creates"], d["merges"]), (1,1,1))
 
     def test_custody_failure_and_evidence_tamper(self):
         self.allocate(linked=True); self.accept()
         bad = self.receipt.parent / "custody/.devlyn/checks.txt"
         bad.parent.mkdir(parents=True)
-        bad.write_text("partial interrupted copy")
+        bad.write_text("partial interrupted copy", encoding="utf-8")
         _, r = self.complete("--writers-stopped", success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertTrue(self.task.exists())
-        self.assertEqual((self.task / ".devlyn/checks.txt").read_text(), "actual fixture check: accepted bytes\n")
+        self.assertEqual((self.task / ".devlyn/checks.txt").read_text(encoding="utf-8"), "actual fixture check: accepted bytes\n")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
         bad.unlink()  # Owner repairs only the identified corrupt fixture copy.
         self.complete("--mode", "pr")
-        (self.task / ".devlyn/checks.txt").write_text("altered after acceptance")
+        (self.task / ".devlyn/checks.txt").write_text("altered after acceptance", encoding="utf-8")
         _, r = self.complete("--mode", "auto", success=False)
         self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(json.loads(self.data.read_text()).get("merges",0), 0)
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("merges",0), 0)
 
     def test_actual_foreign_writer_and_registration(self):
         self.allocate(linked=True); self.accept()
@@ -1053,7 +1056,7 @@ class CompletionTests(unittest.TestCase):
         self.configure(merge_allowed=False)
         _, r = self.complete(success=False)
         self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(json.loads(self.data.read_text()).get("pushs",0), 0)
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
         self.complete("--mode", "pr")
         result, _ = self.complete()
         self.assertEqual(result["status"], "PR")
@@ -1068,15 +1071,15 @@ class CompletionTests(unittest.TestCase):
 
     def test_queue_commit_cannot_hide_product_changes(self):
         self.allocate(); self.accept(pipeline=True, queue=True)
-        (self.task / "product").write_text("unverified extra\n")
+        (self.task / "product").write_text("unverified extra\n", encoding="utf-8")
         self.g("add", "product", work=self.task)
         self.g("commit", "--amend", "--no-edit", work=self.task)
-        a = json.loads(self.acceptance.read_text())
+        a = json.loads(self.acceptance.read_text(encoding="utf-8"))
         a["queue"]["commit"] = self.g("rev-parse", "HEAD", work=self.task)
-        self.acceptance.write_text(json.dumps(a))
+        self.acceptance.write_text(json.dumps(a), encoding="utf-8")
         _, r = self.complete(success=False)
         self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(json.loads(self.data.read_text()).get("pushs",0), 0)
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
 
     def test_pipeline_sealed_process_evidence(self):
         self.allocate(); self.accept(pipeline=True)
@@ -1088,15 +1091,15 @@ class CompletionTests(unittest.TestCase):
         results = {"commands": evidence_module["bound_carrier_summary_commands"](self.task, carrier), "process_evidence": carrier}
         self.state["phases"]["verify"]["round"] = 0
         self.state["process_evidence"] = [carrier]
-        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state))
-        (self.archive / "spec-verify.results.json").write_text(json.dumps(results))
+        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
+        (self.archive / "spec-verify.results.json").write_text(json.dumps(results), encoding="utf-8")
         shutil.move(str(self.task / ".devlyn/process-evidence"), str(self.archive / "process-evidence"))
         stdout = self.archive / carrier["streams"][0]["stdout"]["path"].removeprefix(".devlyn/")
         before = stdout.read_bytes()
-        stdout.write_text("tampered")
+        stdout.write_text("tampered", encoding="utf-8")
         _, r = self.complete(success=False)
         self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(json.loads(self.data.read_text()).get("pushs",0), 0)
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
         stdout.write_bytes(before)
         result, _ = self.complete("--mode", "pr")
         self.assertEqual(result["status"], "PR")
@@ -1105,7 +1108,7 @@ class CompletionTests(unittest.TestCase):
         self.allocate(); self.accept()
         user_file = self.task / "ignored/user.txt"
         user_file.parent.mkdir()
-        user_file.write_text("retained user data")
+        user_file.write_text("retained user data", encoding="utf-8")
         self.configure(interrupt_delete=True)
         _, r = self.complete("--writers-stopped", success=False)
         self.assertNotEqual(r.returncode, 0)
@@ -1113,13 +1116,13 @@ class CompletionTests(unittest.TestCase):
         other = self.root / "advance"
         self.run_cmd(["git", "clone", str(self.bare), str(other)])
         (other / "ignored").mkdir()
-        (other / "ignored/user.txt").write_text("new upstream tracked file")
+        (other / "ignored/user.txt").write_text("new upstream tracked file", encoding="utf-8")
         self.g("add", "-f", "ignored/user.txt", work=other)
         self.g("commit", "-m", "upstream collision", work=other)
         self.g("push", "origin", "main", work=other)
         _, r = self.complete("--writers-stopped", acceptance=False, success=False)
         self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(user_file.read_text(), "retained user data")
+        self.assertEqual(user_file.read_text(encoding="utf-8"), "retained user data")
         self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
 
     def test_replaced_tree_and_unsafe_custody(self):
@@ -1138,21 +1141,21 @@ class CompletionTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("replaced", json.loads(r.stdout)["reason"])
         self.assertTrue(self.task.exists())
-        self.assertEqual(json.loads(self.data.read_text()).get("pushs",0), 0)
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
 
     def test_spec_source_and_report_binding(self):
         self.allocate(); self.accept(pipeline=True, spec_expected={"verification_commands": []})
         report = self.archive / "final-report.md"
         original = report.read_bytes()
-        report.write_text("<!-- devlyn:final-report run_id=another-run -->\nBody\n")
+        report.write_text("<!-- devlyn:final-report run_id=another-run -->\nBody\n", encoding="utf-8")
         self.state["phases"]["final_report"]["output_sha256"] = hashlib.sha256(report.read_bytes()).hexdigest()
-        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state))
+        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
         _, r = self.complete(success=False)
         self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(json.loads(self.data.read_text()).get("pushs",0), 0)
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
         report.write_bytes(original)
         self.state["phases"]["final_report"]["output_sha256"] = hashlib.sha256(original).hexdigest()
-        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state))
+        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
         result, _ = self.complete("--mode", "pr")
         self.assertEqual(result["status"], "PR")
 
@@ -1162,8 +1165,9 @@ class CompletionTests(unittest.TestCase):
         _, r = self.complete(success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("implement process evidence", json.loads(r.stdout)["reason"])
-        self.assertEqual(json.loads(self.data.read_text()).get("pushs",0), 0)
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     sys.exit(main())
