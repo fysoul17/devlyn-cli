@@ -130,15 +130,10 @@ if os.name == "nt":
                     ("PeakProcessMemoryUsed", ctypes.c_size_t),
                     ("PeakJobMemoryUsed", ctypes.c_size_t)]
 
-    class _JobAccounting(ctypes.Structure):
-        _fields_ = [("TotalUserTime", ctypes.c_longlong),
-                    ("TotalKernelTime", ctypes.c_longlong),
-                    ("ThisPeriodTotalUserTime", ctypes.c_longlong),
-                    ("ThisPeriodTotalKernelTime", ctypes.c_longlong),
-                    ("TotalPageFaultCount", wintypes.DWORD),
-                    ("TotalProcesses", wintypes.DWORD),
-                    ("ActiveProcesses", wintypes.DWORD),
-                    ("TotalTerminatedProcesses", wintypes.DWORD)]
+    class _JobProcessIds(ctypes.Structure):
+        _fields_ = [("NumberOfAssignedProcesses", wintypes.DWORD),
+                    ("NumberOfProcessIdsInList", wintypes.DWORD),
+                    ("ProcessIdList", ctypes.c_size_t * 1)]
 
     def _checked(result, function, _args):
         if not result:
@@ -153,6 +148,8 @@ if os.name == "nt":
         ("QueryInformationJobObject", [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p], wintypes.BOOL),
         ("AssignProcessToJobObject", [wintypes.HANDLE, wintypes.HANDLE], wintypes.BOOL),
         ("TerminateJobObject", [wintypes.HANDLE, wintypes.UINT], wintypes.BOOL),
+        ("OpenProcess", [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.HANDLE),
+        ("IsProcessInJob", [wintypes.HANDLE, wintypes.HANDLE, ctypes.POINTER(wintypes.BOOL)], wintypes.BOOL),
         ("GetCurrentProcess", [], wintypes.HANDLE),
         ("DuplicateHandle", [wintypes.HANDLE, wintypes.HANDLE, wintypes.HANDLE, ctypes.POINTER(wintypes.HANDLE), wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.BOOL),
         ("CloseHandle", [wintypes.HANDLE], wintypes.BOOL),
@@ -160,6 +157,9 @@ if os.name == "nt":
     ):
         _function = getattr(_kernel, _name)
         _function.argtypes, _function.restype, _function.errcheck = _args, _result, _checked
+
+    _kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    _kernel.WaitForSingleObject.restype = wintypes.DWORD  # WAIT_OBJECT_0 is successful zero, not BOOL.
 
     def _read_control(fd, count):
         deadline = time.monotonic() + 10
@@ -231,19 +231,49 @@ if os.name == "nt":
                         self.child._handle.Close()
             finally:
                 if self.handle is not None:
-                    try:
+                    with contextlib.ExitStack() as handles:
+                        handles.callback(_kernel.CloseHandle, self.handle)
+                        limits = _ExtendedLimits()  # Zero ActiveProcessLimit: no freed slot admits a new child.
+                        limits.BasicLimitInformation.LimitFlags = 0x2008  # KILL_ON_JOB_CLOSE | ACTIVE_PROCESS.
+                        _kernel.SetInformationJobObject(self.handle, 9, ctypes.byref(limits), ctypes.sizeof(limits))
+                        capacity = 1
+                        while True:
+                            buffer = ctypes.create_string_buffer(_JobProcessIds.ProcessIdList.offset + capacity * ctypes.sizeof(ctypes.c_size_t))
+                            ids = _JobProcessIds.from_buffer(buffer)
+                            try:
+                                _kernel.QueryInformationJobObject(self.handle, 3, buffer, len(buffer), None)
+                                break
+                            except OSError as exc:
+                                if exc.winerror != 234:  # ERROR_MORE_DATA: never accept a partial list.
+                                    raise
+                                capacity = max(capacity * 2, ids.NumberOfAssignedProcesses)
+                        members = []
+                        pids = (ctypes.c_size_t * ids.NumberOfProcessIdsInList).from_buffer(buffer, _JobProcessIds.ProcessIdList.offset)
+                        for pid in pids:
+                            try:
+                                process = _kernel.OpenProcess(0x101000, False, pid)  # SYNCHRONIZE | QUERY_LIMITED_INFORMATION.
+                            except OSError as exc:
+                                if exc.winerror == 87:  # Already gone; other open failures remain visible.
+                                    continue
+                                raise
+                            handles.callback(_kernel.CloseHandle, process)
+                            member = wintypes.BOOL()
+                            _kernel.IsProcessInJob(process, self.handle, ctypes.byref(member))
+                            if member.value:  # A reused PID in another job is not our process identity.
+                                members.append((pid, process))
+                        # Natural exits before capture do not prove pending I/O or historical object finalization.
                         _kernel.TerminateJobObject(self.handle, 1)
                         deadline = time.monotonic() + 5
-                        accounting = _JobAccounting()
-                        while True:
-                            _kernel.QueryInformationJobObject(self.handle, 1, ctypes.byref(accounting), ctypes.sizeof(accounting), None)
-                            if accounting.ActiveProcesses == 0:
-                                break
-                            if time.monotonic() >= deadline:
-                                raise OSError("Windows job teardown did not reach quiescence")
-                            time.sleep(0.01)
-                    finally:
-                        _kernel.CloseHandle(self.handle)
+                        for pid, process in members:
+                            remaining = max(0, int((deadline - time.monotonic()) * 1000))
+                            result = _kernel.WaitForSingleObject(process, remaining)
+                            if result == 258:  # WAIT_TIMEOUT.
+                                raise OSError(f"Windows job teardown timed out waiting for process {pid}")
+                            if result == 0xFFFFFFFF:  # WAIT_FAILED.
+                                error = ctypes.get_last_error()
+                                raise ctypes.WinError(error, f"WaitForSingleObject: {ctypes.FormatError(error)}")
+                            if result != 0:
+                                raise OSError(f"WaitForSingleObject: unexpected result {result} for process {pid}")
 
     def _job_bootstrap(argv):
         job, allow, ready = map(int, argv[:3])

@@ -6,6 +6,7 @@ Pass unittest class/method names for focused development checks. No model calls.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import locale
@@ -384,6 +385,10 @@ class NativeOwnershipTests(unittest.TestCase):
             ('WaitForSingleObject', [wintypes.HANDLE, wintypes.DWORD], wintypes.DWORD),
             ('TerminateProcess', [wintypes.HANDLE, wintypes.UINT], wintypes.BOOL),
             ('CloseHandle', [wintypes.HANDLE], wintypes.BOOL),
+            ('GetHandleInformation', [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)], wintypes.BOOL),
+            ('CreateEventW', [ctypes.c_void_p, wintypes.BOOL, wintypes.BOOL, wintypes.LPCWSTR], wintypes.HANDLE),
+            ('SetEvent', [wintypes.HANDLE], wintypes.BOOL),
+            ('QueryInformationJobObject', [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p], wintypes.BOOL),
         ):
             function = getattr(self.kernel, name); function.argtypes = args; function.restype = result
         self.temp = tempfile.TemporaryDirectory(prefix='devlyn-job-')
@@ -450,6 +455,398 @@ class NativeOwnershipTests(unittest.TestCase):
                     self.assertEqual(self.kernel.WaitForSingleObject(handle, 5000), 0)
             finally:
                 self.assertTrue(self.kernel.CloseHandle(handle))
+
+    @contextlib.contextmanager
+    def trace_job_handles(self):
+        kernel = self.scope['_kernel']
+        create, opened, close, wait = (getattr(kernel, name) for name in
+                                     ('CreateJobObjectW', 'OpenProcess', 'CloseHandle', 'WaitForSingleObject'))
+        trace = {'jobs': [], 'opened': [], 'closed': [], 'waited': []}
+        live = set()
+
+        def created(*args):
+            handle = create(*args); trace['jobs'].append(handle)
+            live.add(handle)
+            return handle
+
+        def retained(access, inherit, pid):
+            handle = opened(access, inherit, pid); trace['opened'].append((pid, handle))
+            live.add(handle)
+            return handle
+
+        def closed(handle):
+            result = close(handle)
+            value = getattr(handle, 'value', handle)
+            if value in live:
+                live.remove(value); trace['closed'].append(value)
+            flags = self.ctypes.c_ulong()
+            self.assertFalse(self.kernel.GetHandleInformation(value, self.ctypes.byref(flags)))
+            self.assertEqual(self.ctypes.get_last_error(), 6)
+            return result
+
+        def waited(handle, milliseconds):
+            trace['waited'].append((handle, milliseconds))
+            return wait(handle, milliseconds)
+
+        with patch.object(kernel, 'CreateJobObjectW', created), patch.object(kernel, 'OpenProcess', retained), \
+                patch.object(kernel, 'CloseHandle', closed), patch.object(kernel, 'WaitForSingleObject', waited):
+            try:
+                yield trace
+            finally:
+                # Failure cleanup is after the test's product assertions, never their oracle.
+                for handle in live:
+                    close(handle)
+
+    def assert_job_handles_closed(self, trace):
+        for handle in trace['jobs'] + [handle for _, handle in trace['opened']]:
+            self.assertEqual(trace['closed'].count(handle), 1, trace)
+
+    def pid_array(self, buffer):
+        count = self.ctypes.cast(buffer, self.ctypes.POINTER(self.ctypes.c_ulong))[1]
+        return (self.ctypes.c_size_t * count).from_address(self.ctypes.cast(buffer, self.ctypes.c_void_p).value + 8)
+
+    def job_pids(self, job):
+        buffer = self.ctypes.create_string_buffer(8 + 64 * self.ctypes.sizeof(self.ctypes.c_size_t))
+        self.assertTrue(self.kernel.QueryInformationJobObject(job, 3, buffer, len(buffer), None))
+        return list(self.pid_array(buffer))
+
+    def gated_job(self):
+        work = Path(tempfile.mkdtemp(prefix='gated-', dir=self.work))
+        prefix = 'Local\\devlyn-' + self.work.name + '-' + work.name + '-'
+        gates = {}
+        for name in ('ready', 'a_exit', 'spawn', 'c_ready', 'attempted', 'finish'):
+            handle = self.kernel.CreateEventW(None, True, False, prefix + name)
+            self.assertTrue(handle)
+            self.addCleanup(lambda handle=handle: self.assertTrue(self.kernel.CloseHandle(handle)))
+            gates[name] = handle
+        script = work / 'gated.py'
+        script.write_text(r'''
+import ctypes, pathlib, subprocess, sys
+from ctypes import wintypes
+k = ctypes.WinDLL('kernel32', use_last_error=True)
+k.OpenEventW.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.LPCWSTR]
+k.OpenEventW.restype = wintypes.HANDLE
+k.SetEvent.argtypes = [wintypes.HANDLE]
+k.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+k.WaitForSingleObject.restype = wintypes.DWORD
+k.CloseHandle.argtypes = [wintypes.HANDLE]
+prefix, role = sys.argv[1:]
+work = pathlib.Path(__file__).parent
+def gate(name, signal=False):
+    handle = k.OpenEventW(0x100002, False, prefix + name)
+    if not handle: raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        if signal:
+            if not k.SetEvent(handle): raise ctypes.WinError(ctypes.get_last_error())
+        elif k.WaitForSingleObject(handle, 15000) != 0:
+            raise RuntimeError('native fixture gate timed out: ' + name)
+    finally:
+        if not k.CloseHandle(handle): raise ctypes.WinError(ctypes.get_last_error())
+if role == 'A':
+    gate('a_exit')
+elif role == 'C':
+    (work / 'C.executed').touch()
+    gate('c_ready', True)
+    gate('finish')
+else:
+    a = subprocess.Popen([sys.executable, __file__, prefix, 'A'])
+    (work / 'A.pid').write_text(str(a.pid), encoding='utf-8')
+    gate('ready', True)
+    gate('spawn')
+    try:
+        c = subprocess.Popen([sys.executable, __file__, prefix, 'C'])
+    except OSError as exc:
+        outcome = str(exc.winerror)
+    else:
+        (work / 'C.pid').write_text(str(c.pid), encoding='utf-8')
+        gate('c_ready')
+        outcome = 'admitted'
+    (work / 'outcome').write_text(outcome, encoding='utf-8')
+    gate('attempted', True)
+    gate('finish')
+''', encoding='utf-8')
+        job = self.scope['_WindowsJob']()
+        job.start([sys.executable, str(script), prefix, 'B'], subprocess.DEVNULL)
+        self.assertEqual(self.kernel.WaitForSingleObject(gates['ready'], 8000), 0)
+        a = self.retain(int((work / 'A.pid').read_text(encoding='utf-8')))
+        b = self.retain(job.target_pid)
+        self.assertTrue(self.alive(a)); self.assertTrue(self.alive(b))
+        return job, gates, work, a, b
+
+    def test_child_after_initial_observation_is_captured_and_pid_buffer_grows(self):
+        kernel = self.scope['_kernel']
+        with self.trace_job_handles() as trace:
+            job, gates, work, a, b = self.gated_job()
+            set_limit, query = kernel.SetInformationJobObject, kernel.QueryInformationJobObject
+            initial, growth = [], []
+
+            def before_barrier(handle, kind, info, size):
+                self.assert_ceased(self.handles[job.child.pid])
+                initial.extend(self.job_pids(handle))
+                self.assertEqual(len(initial), 2)
+                self.assertTrue(self.kernel.SetEvent(gates['spawn']))
+                self.assertEqual(self.kernel.WaitForSingleObject(gates['attempted'], 8000), 0)
+                self.assertEqual((work / 'outcome').read_text(encoding='utf-8'), 'admitted')
+                c_pid = int((work / 'C.pid').read_text(encoding='utf-8'))
+                self.assertNotIn(c_pid, initial); self.assertTrue(self.alive(self.retain(c_pid)))
+                return set_limit(handle, kind, info, size)
+
+            def collect(*args):
+                self.assertEqual(args[1], 3, 'pre-kill member PIDs, not accounting')
+                try:
+                    return query(*args)
+                except OSError as exc:
+                    growth.append(exc.winerror)
+                    raise
+
+            with patch.object(kernel, 'SetInformationJobObject', before_barrier), \
+                    patch.object(kernel, 'QueryInformationJobObject', collect):
+                job.terminate()
+            self.assertEqual(growth, [234])
+            self.assertEqual({pid for pid, _ in trace['opened']},
+                             {*initial, int((work / 'C.pid').read_text(encoding='utf-8'))})
+            self.assertEqual({h for h, _ in trace['waited']}, {h for _, h in trace['opened']})
+            self.assert_all_ceased(); self.assert_job_handles_closed(trace)
+            print('native initial observation -> admitted C -> zero barrier -> ERROR_MORE_DATA -> capture/wait all', flush=True)
+
+    def test_zero_barrier_rejects_freed_slot_and_current_count_control_admits(self):
+        kernel = self.scope['_kernel']
+        for control in (False, True):
+            with self.subTest(current_count_control=control), self.trace_job_handles() as trace:
+                job, gates, work, a, b = self.gated_job()
+                set_limit, terminate = kernel.SetInformationJobObject, kernel.TerminateJobObject
+                boundaries = []
+
+                def barrier(handle, kind, info, size):
+                    limits = self.ctypes.cast(info, self.ctypes.POINTER(self.scope['_ExtendedLimits'])).contents
+                    self.assertEqual(limits.BasicLimitInformation.ActiveProcessLimit, 0)
+                    self.assertEqual(limits.BasicLimitInformation.LimitFlags, 0x2008)
+                    self.assert_ceased(self.handles[job.child.pid])
+                    self.assertEqual(len(self.job_pids(handle)), 2)
+                    if control:
+                        limits.BasicLimitInformation.ActiveProcessLimit = 2
+                    result = set_limit(handle, kind, info, size)
+                    readback = self.scope['_ExtendedLimits']()
+                    self.assertTrue(self.kernel.QueryInformationJobObject(handle, 9, self.ctypes.byref(readback), size, None))
+                    self.assertEqual(readback.BasicLimitInformation.LimitFlags, 0x2008)
+                    self.assertEqual(readback.BasicLimitInformation.ActiveProcessLimit, 2 if control else 0)
+                    self.assertTrue(self.kernel.SetEvent(gates['a_exit']))
+                    self.assertEqual(self.kernel.WaitForSingleObject(a, 8000), 0)
+                    self.assertTrue(self.alive(b))
+                    self.assertTrue(self.kernel.SetEvent(gates['spawn']))
+                    self.assertEqual(self.kernel.WaitForSingleObject(gates['attempted'], 8000), 0)
+                    self.assertEqual((work / 'outcome').read_text(encoding='utf-8'), 'admitted' if control else '1816')
+                    self.assertEqual((work / 'C.executed').exists(), control)
+                    if control:
+                        self.assertTrue(self.alive(self.retain(int((work / 'C.pid').read_text(encoding='utf-8')))))
+                    boundaries.append('A exited -> B attempted C')
+                    return result
+
+                def kill(handle, code):
+                    self.assertEqual(boundaries, ['A exited -> B attempted C'])
+                    if not control:
+                        self.assertEqual([pid for pid, _ in trace['opened']], [job.target_pid])
+                    return terminate(handle, code)
+
+                with patch.object(kernel, 'SetInformationJobObject', barrier), patch.object(kernel, 'TerminateJobObject', kill):
+                    job.terminate()
+                self.assert_all_ceased(); self.assert_job_handles_closed(trace)
+                print(f'native current-count-control={control}: barrier -> A exit -> C outcome=' +
+                      (work / 'outcome').read_text(encoding='utf-8') + ' -> retained members ceased', flush=True)
+
+    def test_natural_exit_after_enumeration_before_capture(self):
+        kernel = self.scope['_kernel']
+        with self.trace_job_handles() as trace:
+            job = self.scope['_WindowsJob'](); job.start(self.command, subprocess.DEVNULL)
+            leader, descendant = self.observe_tree()
+            leader_pid = job.target_pid
+            query = kernel.QueryInformationJobObject
+            collected = []
+
+            def exit_after_list(*args):
+                result = query(*args)
+                self.assertEqual(args[1], 3)
+                self.assertIn(leader_pid, self.pid_array(args[2]))
+                self.release.touch()
+                self.assertEqual(self.kernel.WaitForSingleObject(leader, 8000), 0)
+                self.assertTrue(self.alive(descendant))
+                collected.append('enumerated -> natural leader exit -> live descendant')
+                return result
+
+            with patch.object(kernel, 'QueryInformationJobObject', exit_after_list):
+                job.terminate()
+            self.assertEqual(len(collected), 1)
+            self.assertIn(int(self.ticks.with_suffix('.pid').read_text(encoding='utf-8')),
+                          [pid for pid, h in trace['opened'] if h in {w for w, _ in trace['waited']}])
+            self.assert_all_ceased(); self.assert_job_handles_closed(trace)
+            print('native enumeration -> natural exit before capture -> live descendant waited; '
+                  f'natural leader acquired={leader_pid in [pid for pid, _ in trace["opened"]]}; '
+                  'no claim about pre-capture pending I/O or historical process-object finalization', flush=True)
+
+    def test_stale_list_gone_and_different_job_identity(self):
+        kernel = self.scope['_kernel']
+        unrelated = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])
+        try:
+            with self.trace_job_handles() as trace:
+                job = self.scope['_WindowsJob'](); job.start(self.command, subprocess.DEVNULL)
+                leader, descendant = self.observe_tree()
+                gone = subprocess.Popen([sys.executable, '-c', 'pass'])
+                self.assertEqual(gone.wait(timeout=5), 0)
+                gone._handle.Close()
+                self.assertTrue(self.kernel.CloseHandle(self.handles.pop(gone.pid)))
+                self.assertFalse(self.kernel.OpenProcess(0x101000, False, gone.pid))
+                self.assertEqual(self.ctypes.get_last_error(), 87)
+                query, identity = kernel.QueryInformationJobObject, kernel.IsProcessInJob
+                rejected = []
+
+                def stale_list(handle, kind, buffer, size, needed):
+                    result = query(handle, kind, buffer, size, needed)
+                    self.assertEqual(kind, 3)
+                    pids = [unrelated.pid if pid == job.target_pid else pid for pid in self.pid_array(buffer)] + [gone.pid]
+                    header = self.ctypes.cast(buffer, self.ctypes.POINTER(self.ctypes.c_ulong))
+                    header[0] = len(pids)
+                    if size < 8 + len(pids) * self.ctypes.sizeof(self.ctypes.c_size_t):
+                        raise self.ctypes.WinError(234, 'identity-race fixture needs one stale PID slot')
+                    header[1] = len(pids)
+                    self.pid_array(buffer)[:] = pids
+                    return result
+
+                def checked_identity(handle, owned_job, member):
+                    result = identity(handle, owned_job, member)
+                    if (unrelated.pid, handle) in trace['opened']:
+                        self.assertFalse(self.ctypes.cast(member, self.ctypes.POINTER(self.ctypes.c_long))[0])
+                        rejected.append(handle)
+                    return result
+
+                with patch.object(kernel, 'QueryInformationJobObject', stale_list), \
+                        patch.object(kernel, 'IsProcessInJob', checked_identity):
+                    job.terminate()
+                self.assertEqual(len(rejected), 1)
+                self.assertNotIn(rejected[0], [h for h, _ in trace['waited']])
+                self.assertNotIn(gone.pid, [pid for pid, _ in trace['opened']])
+                self.assertTrue(self.alive(self.handles[unrelated.pid]))
+                self.assert_ceased(descendant)
+                self.assert_job_handles_closed(trace)
+                print('native stale-list fixture: real gone-87 skipped; substituted unrelated identity '
+                      'rejected, unwaited and unaffected; this is not observed OS PID recycling', flush=True)
+        finally:
+            if unrelated.poll() is None:
+                unrelated.kill()
+            unrelated.wait(timeout=5)
+
+    def test_retained_handles_block_until_signaled_with_one_deadline(self):
+        import threading
+        from types import SimpleNamespace
+        kernel = self.scope['_kernel']
+        with self.trace_job_handles() as trace:
+            job = self.scope['_WindowsJob'](); job.start(self.command, subprocess.DEVNULL)
+            self.observe_tree()
+            terminate, wait = kernel.TerminateJobObject, kernel.WaitForSingleObject
+            requested, entered, done = threading.Event(), threading.Event(), threading.Event()
+            errors = []
+
+            def deferred_termination(handle, code):
+                self.assertEqual((handle, code), (job.handle, 1))
+                requested.set()
+                return 1  # Scoped gate: the main thread makes this real native call below.
+
+            def blocking_wait(handle, milliseconds):
+                if not entered.is_set():
+                    self.assertTrue(requested.is_set()); self.assertTrue(self.alive(handle))
+                    self.assertGreater(milliseconds, 0)
+                    entered.set()
+                return wait(handle, milliseconds)
+
+            def teardown():
+                try:
+                    job.terminate()
+                except BaseException as exc:
+                    errors.append(exc)
+                finally:
+                    done.set()
+
+            clock = iter((100, 101, 103))  # One 5s deadline, decreasing remaining waits.
+            with patch.object(kernel, 'TerminateJobObject', deferred_termination), \
+                    patch.object(kernel, 'WaitForSingleObject', blocking_wait), \
+                    patch.dict(self.scope, time=SimpleNamespace(monotonic=lambda: next(clock))):
+                worker = threading.Thread(target=teardown); worker.start()
+                try:
+                    self.assertTrue(entered.wait(timeout=5), errors)
+                    self.assertFalse(done.is_set(), 'teardown returned while a retained member was live')
+                    terminate(job.handle, 1)
+                    self.assertTrue(done.wait(timeout=5))
+                finally:
+                    worker.join(timeout=6)
+            self.assertFalse(worker.is_alive()); self.assertEqual(errors, [])
+            self.assertEqual([ms for _, ms in trace['waited']], [4000, 2000])
+            self.assert_all_ceased(); self.assert_job_handles_closed(trace)
+            print('native deferred termination gate: retained handle nonsignaled -> teardown pending -> '
+                  'real TerminateJobObject -> signaled; shared deadline waits=4000,2000ms', flush=True)
+
+    def test_collection_wait_and_cleanup_errors_are_visible(self):
+        import signal
+        from types import SimpleNamespace
+        kernel = self.scope['_kernel']
+        teardown = self.scope['terminate_tree']
+        boundaries = ('SetInformationJobObject', 'QueryInformationJobObject', 'OpenProcess',
+                      'IsProcessInJob', 'TerminateJobObject', 'WaitForSingleObject',
+                      'deadline', 'interruption', 'CloseHandle')
+        for boundary in boundaries:
+            with self.subTest(boundary=boundary), self.trace_job_handles() as trace:
+                for path in (self.leader, self.ticks, self.ticks.with_suffix('.pid')):
+                    path.unlink(missing_ok=True)
+                previous = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
+                observations, reached = [], []
+
+                def fail_during_teardown(child, job):
+                    observations.extend(self.observe_tree())
+                    name = 'WaitForSingleObject' if boundary in ('deadline', 'interruption') else boundary
+                    actual = getattr(kernel, name)
+                    calls = 0
+
+                    def fault(*args):
+                        nonlocal calls
+                        calls += 1
+                        if boundary in ('OpenProcess', 'IsProcessInJob') and calls == 1:
+                            return actual(*args)  # Already acquired handles must still close.
+                        reached.append(boundary)
+                        if boundary == 'OpenProcess':
+                            raise self.ctypes.WinError(5, 'OpenProcess: injected access denied after capture')
+                        if boundary == 'interruption':
+                            raise KeyboardInterrupt('injected retained-wait interruption')
+                        if boundary == 'deadline':
+                            self.assertEqual(args[1], 0, 'expired remainder must not become INFINITE')
+                            return actual(event, args[1])  # Real WAIT_TIMEOUT on a nonsignaled native event.
+                        if boundary == 'CloseHandle':
+                            actual(*args)  # Release the real resource, then expose a real close failure.
+                            return actual(0)
+                        return actual(0, *args[1:])  # Real invalid-handle API failures.
+
+                    with contextlib.ExitStack() as inject:
+                        if boundary == 'deadline':
+                            event = self.kernel.CreateEventW(None, True, False, None)
+                            self.assertTrue(event); inject.callback(lambda: self.assertTrue(self.kernel.CloseHandle(event)))
+                            clock = iter((100, 106))
+                            inject.enter_context(patch.dict(self.scope, time=SimpleNamespace(monotonic=lambda: next(clock))))
+                        inject.enter_context(patch.object(kernel, name, fault))
+                        teardown(child, job)
+
+                expected = KeyboardInterrupt if boundary == 'interruption' else OSError
+                with patch.dict(self.scope, terminate_tree=fail_during_teardown), self.assertRaises(expected) as failure:
+                    self.platform['run_process'](self.command, subprocess.DEVNULL, .05)
+                self.assertTrue(reached, boundary)
+                self.assertIn('timed out' if boundary == 'deadline' else
+                              'interruption' if boundary == 'interruption' else boundary, str(failure.exception))
+                self.assertEqual({sig: signal.getsignal(sig) for sig in previous}, previous)
+                if boundary not in ('SetInformationJobObject', 'QueryInformationJobObject'):
+                    self.assertTrue(trace['opened'], 'failure must exercise retained-handle cleanup')
+                self.assert_job_handles_closed(trace)
+                # Error is already asserted. Observe last-job-handle kill safety, then fixture cleanup.
+                for handle in observations:
+                    self.assertEqual(self.kernel.WaitForSingleObject(handle, 5000), 0)
+                self.assert_all_ceased()
+                print(f'native {boundary}: visible {failure.exception}; acquired handles closed, '
+                      'last-handle kill observed, signal handlers restored', flush=True)
 
     def test_timeout_selected_then_leader_exit(self):
         import contextlib
