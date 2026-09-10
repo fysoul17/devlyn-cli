@@ -12,7 +12,9 @@ jobs:
   posix:
     runs-on: ubuntu-latest
     # Root in a private PID namespace can observe every process used by cleanup tests.
-    container: python:3.12-bookworm
+    container:
+      image: python:3.12-bookworm
+      options: --init
     timeout-minutes: 20
     steps:
       - name: Trust the container checkout for this job
@@ -150,7 +152,7 @@ jobs:
               raise RuntimeError('Native python3 route unavailable on PATH')
           checked('native-python3', ['python3', '-X', 'utf8=0', '-c',
                   'import locale,sys; print(sys.executable, sys.platform, sys.flags.utf8_mode, locale.getencoding(), flush=True); assert sys.platform == "win32" and sys.flags.utf8_mode == 0'])
-          checked('git-bash', ['bash', '--version'])
+          checked('git-bash', [str(git_bash), '--version'])
           npm_cli = pathlib.Path(shutil.which('npm.cmd')).parent / 'node_modules/npm/bin/npm-cli.js'
           checked('npm-version', ['node', str(npm_cli), '--version'])
           installed = root / 'installed'

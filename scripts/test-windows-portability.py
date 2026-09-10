@@ -374,6 +374,9 @@ print(payload, file=sys.stderr)
 class EngineTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.bash = shutil.which('bash')
+        if cls.bash is None:
+            raise RuntimeError('Bash unavailable on PATH')
         cls.temp = tempfile.TemporaryDirectory(prefix='devlyn-engines-')
         cls.root = Path(cls.temp.name).resolve()
         cls.prefix = cls.root / 'native 설치'
@@ -431,7 +434,7 @@ if (process.env.DEVLYN_TEST_LEAF) {
         stdout = stdout or self.work / 'stdout'
         stderr = self.work / 'stderr'
         with stdout.open('wb') as out, stderr.open('wb') as err:
-            result = subprocess.run(['bash', str(self.shared / 'codex-monitored.sh'), *map(str, args)],
+            result = subprocess.run([self.bash, str(self.shared / 'codex-monitored.sh'), *map(str, args)],
                                     cwd=self.work, env=self.env, stdin=subprocess.DEVNULL,
                                     stdout=out, stderr=err, timeout=20)
         if code is not None:
@@ -590,7 +593,7 @@ assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work
                 (self.devlyn / (stem + '.output.json')).write_bytes(result.stdout)
                 (self.devlyn / (stem + '.stderr')).write_bytes(result.stderr)
             else:
-                argv = ['bash', str(self.shared / 'codex-monitored.sh'), '-C', str(self.work), '-s', 'read-only', '-m', 'fixture-model', '-c', 'model_reasoning_effort=high', '-']
+                argv = [self.bash, str(self.shared / 'codex-monitored.sh'), '-C', str(self.work), '-s', 'read-only', '-m', 'fixture-model', '-c', 'model_reasoning_effort=high', '-']
                 self.env.update(DEVLYN_CODEX_PROMPT_FILE=str(prompt), CODEX_MONITORED_ISOLATED='1', CODEX_MONITORED_TIMEOUT_SEC='600')
                 self.monitor(argv[2:], self.devlyn / (stem + '.stdout'))
                 (self.devlyn / (stem + '.stderr')).write_bytes((self.work / 'stderr').read_bytes())

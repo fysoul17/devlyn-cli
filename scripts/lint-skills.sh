@@ -515,7 +515,7 @@ if ! grep -Fq 'PHASES = {"implement", "build_gate", "verify"}' config/skills/_sh
 fi
 
 section "Check 6b2: Codex invocation receipts are phase-owned"
-if python3 config/skills/_shared/invocation-receipt.py --self-test >/dev/null 2>&1; then
+if python3 config/skills/_shared/invocation-receipt.py --self-test; then
   ok "invocation-receipt.py self-test passed"
 else
   bad "invocation-receipt.py self-test failed"
