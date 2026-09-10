@@ -2,6 +2,7 @@
 """Capture and validate run-scoped process evidence without third-party dependencies."""
 from __future__ import annotations
 
+import runpy
 import argparse
 import hashlib
 import json
@@ -358,7 +359,7 @@ def capture_process(
     started = time.monotonic()
     try:
         proc = subprocess.run(
-            item.get("cmd") if "cmd" in item else item["argv"],
+            item.get("cmd") if "cmd" in item else runpy.run_path(pathlib.Path(__file__).with_name("platform-support.py"))["native_argv"](item["argv"]),
             cwd=work, shell="cmd" in item, capture_output=True,
             timeout=item["timeout_sec"], check=False,
         )
@@ -374,7 +375,7 @@ def capture_process(
         outcome = {"kind": "timeout", "exit_code": None, "signal": None}
     except OSError as exc:
         stdout = b""
-        stderr = os.fsencode(str(exc))
+        stderr = str(exc).encode("utf-8")
         outcome = {"kind": "spawn_error", "exit_code": None, "signal": None}
     return _append_entry(
         work, manifest_path, run_id, phase, round_, item["id"], _execution(item),
@@ -906,4 +907,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     raise SystemExit(main())

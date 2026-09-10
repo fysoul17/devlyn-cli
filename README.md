@@ -305,8 +305,13 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 ## Requirements
 
-- **Node.js 18+**
+- **Node.js 18+** and npm
+- **Python 3.11+** available as `python3`, and Git for the resolve harness
 - **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** installed and configured
+
+On native Windows, use native Node/npm and Python plus Git for Windows Bash for the shipped shell wrapper. Run `npx devlyn-cli -y` in the project; add Codex with `npx devlyn-cli agents codex`. npm extraction and installed directories use the legal U+F03A colon alias (for example `devlyn\uf03aresolve`); logical skill names remain `devlyn:resolve`. Do not rename them by hand. Harness text is UTF-8 without requiring `PYTHONUTF8`.
+
+Windows completion preserves the workspace, owned refs and recovery receipt when writer cessation cannot be proved, even after merge; resume guidance and delivery status remain separate from product verification. The portability workflow tests a POSIX-packed npm artifact on native Windows without checking out colon paths. A POSIX pass alone does not establish Windows support: acceptance requires the passing Windows job for the exact source SHA/artifact hashes.
 
 ## Contributing
 

@@ -89,6 +89,7 @@ Exit codes:
 
 from __future__ import annotations
 
+import runpy
 import importlib.util
 import json
 import hashlib
@@ -1012,7 +1013,7 @@ def resolve_required_risk_probe_requirements(
             return ([], err)
         reqs = (data or {}).get("required_risk_probe_requirements", [])
     else:
-        _section_found, block = extract_verification_block(source_md.read_text())
+        _section_found, block = extract_verification_block(source_md.read_text(encoding="utf-8"))
         if block is None:
             return ([], None)
         try:
@@ -1022,7 +1023,7 @@ def resolve_required_risk_probe_requirements(
         reqs = parsed.get("required_risk_probe_requirements", []) if isinstance(parsed, dict) else []
     if not isinstance(reqs, list):
         return ([], "required_risk_probe_requirements must be a list")
-    verification_text = extract_verification_text(source_md.read_text())
+    verification_text = extract_verification_text(source_md.read_text(encoding="utf-8"))
     for i, req in enumerate(reqs):
         err = validate_required_risk_probe_requirement(req, i, verification_text)
         if err:
@@ -1044,12 +1045,12 @@ def load_risk_probes(
     if source_md is None or not source_md.is_file():
         return ([], "risk-probes.jsonl exists but source markdown is unavailable")
 
-    verification_text = extract_verification_text(source_md.read_text())
+    verification_text = extract_verification_text(source_md.read_text(encoding="utf-8"))
     if not verification_text:
         return ([], "risk-probes.jsonl exists but source has no <!-- devlyn:verification --> section")
 
     probes: list[dict] = []
-    for index, line in enumerate(probes_path.read_text().splitlines()):
+    for index, line in enumerate(probes_path.read_text(encoding="utf-8").splitlines()):
         if not line.strip():
             continue
         try:
@@ -1099,7 +1100,7 @@ def read_source(work: Path, devlyn_dir: Path) -> tuple[str | None, Path | None]:
     if not state_path.is_file():
         return (None, None)
     try:
-        state = loads_strict_json(state_path.read_text())
+        state = loads_strict_json(state_path.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return (None, None)
     src = state.get("source") or {}
@@ -1123,7 +1124,7 @@ def read_state(devlyn_dir: Path) -> dict:
     if not state_path.is_file():
         return {}
     try:
-        data = loads_strict_json(state_path.read_text())
+        data = loads_strict_json(state_path.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return {}
     return data if isinstance(data, dict) else {}
@@ -1176,7 +1177,7 @@ def source_integrity_error(src_type: str | None, state: dict, source_md: Path | 
 
 def load_expected_contract(expected_path: Path) -> tuple[dict | None, str | None]:
     try:
-        data = loads_strict_json(expected_path.read_text())
+        data = loads_strict_json(expected_path.read_text(encoding="utf-8"))
     except ValueError as e:
         return (None, f"{expected_path} has invalid JSON: {e}")
     except OSError as e:
@@ -1198,7 +1199,7 @@ def stage_from_source(md: Path, devlyn_dir: Path) -> tuple[bool, str | None]:
     error=None → the sentinel is absent entirely (handwritten spec or
     generated source missing the contract).
     """
-    section_found, block = extract_verification_block(md.read_text())
+    section_found, block = extract_verification_block(md.read_text(encoding="utf-8"))
     if not section_found:
         return (False, None)
     if block is None:
@@ -1212,7 +1213,7 @@ def stage_from_source(md: Path, devlyn_dir: Path) -> tuple[bool, str | None]:
         return (False, f"`<!-- devlyn:verification -->` ```json``` block in {md}: {err}")
     normalized = {"verification_commands": data["verification_commands"]}
     devlyn_dir.mkdir(parents=True, exist_ok=True)
-    (devlyn_dir / "spec-verify.json").write_text(json.dumps(normalized, indent=2) + "\n")
+    (devlyn_dir / "spec-verify.json").write_text(json.dumps(normalized, indent=2) + "\n", encoding="utf-8")
     return (True, None)
 
 
@@ -1243,7 +1244,7 @@ def stage_from_expected(
         return (True, False, None, expected_path, data)
     normalized = {"verification_commands": commands}
     devlyn_dir.mkdir(parents=True, exist_ok=True)
-    (devlyn_dir / "spec-verify.json").write_text(json.dumps(normalized, indent=2) + "\n")
+    (devlyn_dir / "spec-verify.json").write_text(json.dumps(normalized, indent=2) + "\n", encoding="utf-8")
     return (True, True, None, expected_path, data)
 
 
@@ -1278,7 +1279,7 @@ def write_malformed_finding(
         "blocking": True,
         "status": "open",
     }
-    with findings_path.open("w") as fh:
+    with findings_path.open("w", encoding="utf-8") as fh:
         fh.write(json.dumps(finding) + "\n")
 
 
@@ -1300,7 +1301,7 @@ def write_risk_probe_integrity_finding(devlyn_dir: Path, error: str) -> None:
         "blocking": True,
         "status": "open",
     }
-    with findings_path.open("w") as fh:
+    with findings_path.open("w", encoding="utf-8") as fh:
         fh.write(json.dumps(finding) + "\n")
 
 
@@ -1321,14 +1322,14 @@ def diff_text_for_expected(work: Path, devlyn_dir: Path, state: dict) -> tuple[s
     external_diff = devlyn_dir / "external-diff.patch"
     if external_diff.is_file():
         try:
-            return (external_diff.read_text(), None)
+            return (external_diff.read_text(encoding="utf-8"), None)
         except OSError as e:
             return ("", f"cannot read {external_diff}: {e}")
     base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
     cmd = ["git", "diff"]
     if base_sha:
         cmd.append(base_sha)
-    proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True)
+    proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True, encoding="utf-8")
     if proc.returncode != 0:
         return ("", (proc.stderr or proc.stdout or "git diff failed").strip())
     return (proc.stdout or "", None)
@@ -1340,7 +1341,7 @@ def count_deps_added(work: Path, state: dict) -> int:
     if base_sha:
         cmd.append(base_sha)
     cmd.extend(["--", "package.json"])
-    proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True)
+    proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True, encoding="utf-8")
     if proc.returncode != 0:
         return 0
     in_deps = False
@@ -1365,7 +1366,7 @@ def changed_files(work: Path, state: dict, devlyn_dir: Path) -> list[str]:
     if external_diff.is_file():
         names: list[str] = []
         try:
-            external_text = external_diff.read_text()
+            external_text = external_diff.read_text(encoding="utf-8")
         except OSError:
             return []
         for line in external_text.splitlines():
@@ -1378,7 +1379,7 @@ def changed_files(work: Path, state: dict, devlyn_dir: Path) -> list[str]:
     cmd = ["git", "diff", "--name-only"]
     if base_sha:
         cmd.append(base_sha)
-    proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True)
+    proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True, encoding="utf-8")
     if proc.returncode != 0:
         return []
     return [line.strip() for line in (proc.stdout or "").splitlines() if line.strip()]
@@ -1856,7 +1857,7 @@ def run_check_mode(md_path: Path) -> int:
     if not md_path.is_file():
         print(f"[spec-verify --check] error: {md_path} not found", file=sys.stderr)
         return 2
-    text = md_path.read_text()
+    text = md_path.read_text(encoding="utf-8")
     frontmatter_err = validate_present_spec_complexity(text)
     if frontmatter_err:
         print(f"[spec-verify --check] {md_path}: {frontmatter_err}", file=sys.stderr)
@@ -1947,6 +1948,7 @@ def run_self_test() -> int:
                 cwd=help_tmp,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
             )
             if help_result.returncode != 0 or "usage:" not in help_result.stdout:
                 print(f"{help_flag} did not return usage successfully", file=sys.stderr)
@@ -1959,6 +1961,7 @@ def run_self_test() -> int:
             cwd=help_tmp,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if unknown_result.returncode != 2 or "unknown argument" not in unknown_result.stderr:
             print("unknown option did not fail closed", file=sys.stderr)
@@ -1988,15 +1991,15 @@ def run_self_test() -> int:
             else:
                 raise AssertionError(f"malformed brace glob accepted: {entry}")
         spec_md = work / "spec.md"
-        spec_md.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- probe must pass visible marker.\n")
+        spec_md.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- probe must pass visible marker.\n", encoding="utf-8")
         (devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(spec_md)}
-        }))
+        }), encoding="utf-8")
         (devlyn / "spec-verify.json").write_text(json.dumps({
             "verification_commands": [
                 {"cmd": "printf ok", "exit_code": 0, "stdout_contains": ["ok"]}
             ]
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         probes_dir = devlyn / "probes"
         probes_dir.mkdir()
         probe_script = probes_dir / "P1.py"
@@ -2018,7 +2021,7 @@ def run_self_test() -> int:
                 ],
             },
         }
-        (devlyn / "risk-probes.jsonl").write_text(json.dumps(risk_probe_payload) + "\n")
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(risk_probe_payload) + "\n", encoding="utf-8")
         loaded_probes, loaded_probe_error = load_risk_probes(
             devlyn, spec_md, require_present=True
         )
@@ -2068,7 +2071,7 @@ def run_self_test() -> int:
             inline_timeout_spec, inline_timeout_devlyn
         )
         inline_staged = loads_strict_json(
-            (inline_timeout_devlyn / "spec-verify.json").read_text()
+            (inline_timeout_devlyn / "spec-verify.json").read_text(encoding="utf-8")
         )
         if (
             not staged
@@ -2089,7 +2092,7 @@ def run_self_test() -> int:
                 "verification_commands": [
                     {"cmd": "printf ok", "timeout_sec": invalid_timeout}
                 ]
-            }) + "\n")
+            }) + "\n", encoding="utf-8")
             found, staged, sibling_error, _path, _data = stage_from_expected(
                 sibling_timeout_spec, sibling_timeout_devlyn
             )
@@ -2104,12 +2107,12 @@ def run_self_test() -> int:
             "verification_commands": [
                 {"cmd": "printf ok", "timeout_sec": 5}
             ]
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         found, staged, sibling_error, _path, _data = stage_from_expected(
             sibling_timeout_spec, sibling_timeout_devlyn
         )
         sibling_staged = loads_strict_json(
-            (sibling_timeout_devlyn / "spec-verify.json").read_text()
+            (sibling_timeout_devlyn / "spec-verify.json").read_text(encoding="utf-8")
         )
         if (
             not found
@@ -2149,23 +2152,24 @@ def run_self_test() -> int:
             "run_id": "rs-timeout-run",
             "source": {"type": "spec", "spec_path": str(timeout_run_spec)},
             "phases": {"build_gate": {"round": 2}},
-        }))
+        }), encoding="utf-8")
         timeout_run = subprocess.run(
             [sys.executable, script_path],
             cwd=timeout_run_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if timeout_run.returncode == 0:
             print("declared one-second timeout did not fail", file=sys.stderr)
             return 1
         timeout_document = loads_strict_json(
-            (timeout_run_devlyn / "spec-verify.results.json").read_text()
+            (timeout_run_devlyn / "spec-verify.results.json").read_text(encoding="utf-8")
         )
         timeout_results = timeout_document["commands"]
         timeout_findings = [
             loads_strict_json(line)
-            for line in (timeout_run_devlyn / output_findings_name()).read_text().splitlines()
+            for line in (timeout_run_devlyn / output_findings_name()).read_text(encoding="utf-8").splitlines()
             if line.strip()
         ]
         if (
@@ -2185,7 +2189,7 @@ def run_self_test() -> int:
             ".devlyn/process-evidence/rs-timeout-run/build_gate/round-2/manifest.json"
         )
         timeout_manifest = loads_strict_json(
-            (timeout_run_root / timeout_manifest_path).read_text()
+            (timeout_run_root / timeout_manifest_path).read_text(encoding="utf-8")
         )
         if (
             timeout_carrier.get("manifest", {}).get("path") != timeout_manifest_path
@@ -2249,7 +2253,7 @@ def run_self_test() -> int:
             "run_id": "rs-runner-env",
             "source": {"type": "spec", "spec_path": str(runner_env_spec)},
             "phases": {"verify": {"round": 3}},
-        }))
+        }), encoding="utf-8")
         runner_env = os.environ.copy()
         runner_env.update({
             "SPEC_VERIFY_PHASE": "verify_mechanical",
@@ -2262,9 +2266,10 @@ def run_self_test() -> int:
             env=runner_env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         runner_env_document = loads_strict_json(
-            (runner_env_devlyn / "spec-verify.results.json").read_text()
+            (runner_env_devlyn / "spec-verify.results.json").read_text(encoding="utf-8")
         )
         runner_env_results = runner_env_document["commands"]
         if runner_env_run.returncode != 0 or not runner_env_results[0].get("pass"):
@@ -2285,6 +2290,7 @@ def run_self_test() -> int:
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if validate_without_digest.returncode != 0:
             print("--validate-risk-probes rejected valid probes without digest", file=sys.stderr)
@@ -2296,6 +2302,7 @@ def run_self_test() -> int:
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if digest_run.returncode != 0:
             print("--print-risk-probes-digest rejected valid probes", file=sys.stderr)
@@ -2312,23 +2319,24 @@ def run_self_test() -> int:
             "risk_profile": {"risk_probes_enabled": True},
             "risk_probes_digest": risk_digest,
             "phases": {"build_gate": {"round": 4}},
-        }))
+        }), encoding="utf-8")
         good = subprocess.run(
             [sys.executable, script_path, "--include-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if good.returncode != 0:
             print(good.stderr, file=sys.stderr)
             return 1
         good_document = loads_strict_json(
-            (devlyn / "spec-verify.results.json").read_text()
+            (devlyn / "spec-verify.results.json").read_text(encoding="utf-8")
         )
         good_manifest_path = good_document.get("process_evidence", {}).get("manifest", {}).get("path")
         good_manifest = (
-            loads_strict_json((work / good_manifest_path).read_text())
+            loads_strict_json((work / good_manifest_path).read_text(encoding="utf-8"))
             if isinstance(good_manifest_path, str)
             else {}
         )
@@ -2349,6 +2357,7 @@ def run_self_test() -> int:
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if mutated_script.returncode == 0:
             print("--include-risk-probes accepted mutated probe script bytes", file=sys.stderr)
@@ -2362,13 +2371,14 @@ def run_self_test() -> int:
 
         mutated_payload = dict(risk_probe_payload)
         mutated_payload["id"] = "P1-mutated"
-        (devlyn / "risk-probes.jsonl").write_text(json.dumps(mutated_payload) + "\n")
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(mutated_payload) + "\n", encoding="utf-8")
         mutated_jsonl = subprocess.run(
             [sys.executable, script_path, "--include-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if mutated_jsonl.returncode == 0:
             print("--include-risk-probes accepted mutated risk-probes.jsonl bytes", file=sys.stderr)
@@ -2378,18 +2388,19 @@ def run_self_test() -> int:
             print("mutated risk-probes.jsonl did not emit correctness.risk-probe-integrity", file=sys.stderr)
             print(integrity_findings, file=sys.stderr)
             return 1
-        (devlyn / "risk-probes.jsonl").write_text(json.dumps(risk_probe_payload) + "\n")
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(risk_probe_payload) + "\n", encoding="utf-8")
 
         (devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(spec_md)},
             "risk_profile": {"risk_probes_enabled": True},
-        }))
+        }), encoding="utf-8")
         missing_digest = subprocess.run(
             [sys.executable, script_path, "--include-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if missing_digest.returncode == 0:
             print("--include-risk-probes accepted enabled risk probes with missing digest", file=sys.stderr)
@@ -2407,6 +2418,7 @@ def run_self_test() -> int:
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if missing_jsonl_digest.returncode != 2:
             print("--print-risk-probes-digest accepted missing risk-probes.jsonl", file=sys.stderr)
@@ -2420,13 +2432,14 @@ def run_self_test() -> int:
             "source": {"type": "spec", "spec_path": str(spec_md)},
             "risk_profile": {"risk_probes_enabled": True},
             "risk_probes_digest": risk_digest,
-        }))
+        }), encoding="utf-8")
         missing_required_probe = subprocess.run(
             [sys.executable, script_path, "--include-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if missing_required_probe.returncode == 0:
             print("--include-risk-probes accepted missing required risk-probes.jsonl", file=sys.stderr)
@@ -2439,13 +2452,14 @@ def run_self_test() -> int:
         (devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(spec_md)},
             "risk_profile": {"risk_probes_enabled": False},
-        }))
+        }), encoding="utf-8")
         missing_optional_probe = subprocess.run(
             [sys.executable, script_path, "--include-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if missing_optional_probe.returncode != 0:
             print("--include-risk-probes rejected optional missing risk-probes.jsonl", file=sys.stderr)
@@ -2455,13 +2469,14 @@ def run_self_test() -> int:
         (devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(spec_md)},
             "risk_profile": {"risk_probes_enabled": "true"},
-        }))
+        }), encoding="utf-8")
         malformed_risk_probe_state = subprocess.run(
             [sys.executable, script_path, "--include-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if malformed_risk_probe_state.returncode == 0:
             print("--include-risk-probes accepted non-boolean risk_probes_enabled", file=sys.stderr)
@@ -2474,13 +2489,14 @@ def run_self_test() -> int:
         (devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(spec_md)},
             "risk_profile": "enabled",
-        }))
+        }), encoding="utf-8")
         malformed_risk_profile = subprocess.run(
             [sys.executable, script_path, "--include-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if malformed_risk_profile.returncode == 0:
             print("--include-risk-probes accepted non-object risk_profile", file=sys.stderr)
@@ -2492,7 +2508,7 @@ def run_self_test() -> int:
 
         (devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(spec_md)}
-        }))
+        }), encoding="utf-8")
         (devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "P1",
             "derived_from": "probe must pass visible marker.",
@@ -2508,7 +2524,7 @@ def run_self_test() -> int:
                     "asserts_no_unexpected_output_keys",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
 
         good_complexity = work / "good-complexity.md"
         good_complexity.write_text(
@@ -2520,6 +2536,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if good_complexity_check.returncode != 0:
             print(good_complexity_check.stderr, file=sys.stderr)
@@ -2535,6 +2552,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if bad_complexity_check.returncode == 0:
             print("unsupported spec complexity was accepted", file=sys.stderr)
@@ -2556,6 +2574,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if weak_solo_check.returncode == 0:
             print("weak solo-headroom hypothesis was accepted by --check", file=sys.stderr)
@@ -2576,6 +2595,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if weak_descriptive_check.returncode == 0:
             print("descriptive backtick solo-headroom hypothesis was accepted by --check", file=sys.stderr)
@@ -2592,6 +2612,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if strong_solo_check.returncode != 0:
             print("actionable solo-headroom hypothesis was rejected by --check", file=sys.stderr)
@@ -2610,6 +2631,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if docs_style_solo_check.returncode != 0:
             print("docs-style solo-headroom hypothesis was rejected by --check", file=sys.stderr)
@@ -2627,6 +2649,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if weak_solo_ceiling_check.returncode == 0:
             print("weak solo ceiling avoidance was accepted by --check", file=sys.stderr)
@@ -2648,6 +2671,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if strong_solo_ceiling_check.returncode != 0:
             print("actionable solo ceiling avoidance was rejected by --check", file=sys.stderr)
@@ -2669,6 +2693,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if inline_mismatched_check.returncode == 0:
             print("mismatched inline solo-headroom command was accepted by --check", file=sys.stderr)
@@ -2693,6 +2718,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if inline_matched_check.returncode != 0:
             print("matched inline solo-headroom command was rejected by --check", file=sys.stderr)
@@ -2704,13 +2730,14 @@ def run_self_test() -> int:
             "derived_from": "probe must pass visible marker.",
             "cmd": "node $BENCH_FIXTURE_DIR/verifiers/hidden.js",
             "exit_code": 0,
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         bad = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if bad.returncode == 0:
             print("hidden verifier path was accepted", file=sys.stderr)
@@ -2725,13 +2752,14 @@ def run_self_test() -> int:
             "cmd": "python3 .devlyn/probes/Pscript.py",
             "stdout_contains": ["script-ok"],
         }
-        (devlyn / "risk-probes.jsonl").write_text(json.dumps(script_probe_payload) + "\n")
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(script_probe_payload) + "\n", encoding="utf-8")
         good_script_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if good_script_probe.returncode != 0:
             print("risk probe script file was rejected", file=sys.stderr)
@@ -2743,13 +2771,14 @@ def run_self_test() -> int:
             "id": "Pmixed",
             "cmd": "python3 .devlyn/probes/Pscript.py && python3 ./.devlyn/probes/P1.py",
         }
-        (devlyn / "risk-probes.jsonl").write_text(json.dumps(mixed_script_payload) + "\n")
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(mixed_script_payload) + "\n", encoding="utf-8")
         mixed_script_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if mixed_script_probe.returncode != 0:
             print("canonical and ./-alias probe script references were rejected", file=sys.stderr)
@@ -2780,13 +2809,14 @@ def run_self_test() -> int:
             "derived_from": "probe must pass visible marker.",
             "cmd": "python3 ./.devlyn/probes/missing.py",
             "exit_code": 0,
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         missing_script_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if missing_script_probe.returncode == 0:
             print("risk probe missing script file was accepted", file=sys.stderr)
@@ -2801,6 +2831,7 @@ def run_self_test() -> int:
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if missing_script_digest.returncode != 2:
             print("--print-risk-probes-digest accepted a missing referenced script", file=sys.stderr)
@@ -2822,13 +2853,14 @@ def run_self_test() -> int:
                 "derived_from": "probe must pass visible marker.",
                 "cmd": f"python3 {bad_form}",
                 "exit_code": 0,
-            }) + "\n")
+            }) + "\n", encoding="utf-8")
             bad_ref_probe = subprocess.run(
                 [sys.executable, script_path, "--validate-risk-probes"],
                 cwd=work,
                 env=env,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
             )
             bad_ref_digest = subprocess.run(
                 [sys.executable, script_path, "--print-risk-probes-digest"],
@@ -2836,6 +2868,7 @@ def run_self_test() -> int:
                 env=env,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
             )
             unrecognized = unrecognized_risk_probe_reference(f"python3 {bad_form}")
             expected_error = f"risk-probes[0].cmd has {unrecognized}"
@@ -2856,13 +2889,14 @@ def run_self_test() -> int:
             "derived_from": "probe must pass visible marker.",
             "cmd": "python3 .devlyn/probes/Phidden.py",
             "exit_code": 0,
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         hidden_script_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if hidden_script_probe.returncode == 0:
             print("risk probe script containing a hidden fixture path was accepted", file=sys.stderr)
@@ -2878,13 +2912,14 @@ def run_self_test() -> int:
             "derived_from": "probe must pass visible marker.",
             "cmd": "python3 .devlyn/probes/Pexternal.py",
             "exit_code": 0,
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         external_script_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if external_script_probe.returncode == 0:
             print("risk probe script containing an external URL was accepted", file=sys.stderr)
@@ -2894,13 +2929,14 @@ def run_self_test() -> int:
             print(external_script_probe.stderr, file=sys.stderr)
             return 1
 
-        (devlyn / "risk-probes.jsonl").write_text('{"id":NaN}\n')
+        (devlyn / "risk-probes.jsonl").write_text('{"id":NaN}\n', encoding="utf-8")
         bad_probe_nan = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if bad_probe_nan.returncode == 0:
             print("NaN risk-probes JSONL was accepted", file=sys.stderr)
@@ -2917,13 +2953,14 @@ def run_self_test() -> int:
             "exit_code": 0,
             "tags": ["error_contract"],
             "tag_evidence": {"error_contract": []},
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         bad_error_ref = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if bad_error_ref.returncode == 0:
             print("error_contract with unrelated derived_from was accepted", file=sys.stderr)
@@ -2951,13 +2988,14 @@ def run_self_test() -> int:
                     "asserts_no_unexpected_output_keys",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         bad_solo_headroom_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if bad_solo_headroom_probe.returncode == 0:
             print("risk probe missing solo-headroom command coverage was accepted", file=sys.stderr)
@@ -2982,13 +3020,14 @@ def run_self_test() -> int:
                     "asserts_no_unexpected_output_keys",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         bad_solo_headroom_derived_from = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if bad_solo_headroom_derived_from.returncode == 0:
             print("risk probe with unrelated solo-headroom derived_from was accepted", file=sys.stderr)
@@ -3029,7 +3068,8 @@ def run_self_test() -> int:
                         "asserts_no_unexpected_output_keys",
                     ],
                 },
-            }) + "\n"
+            }) + "\n",
+            encoding="utf-8",
         )
         late_solo_headroom_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
@@ -3037,6 +3077,7 @@ def run_self_test() -> int:
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if late_solo_headroom_probe.returncode == 0:
             print("solo-headroom command in a later risk probe was accepted", file=sys.stderr)
@@ -3057,13 +3098,14 @@ def run_self_test() -> int:
                     "asserts_no_unexpected_output_keys",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         prefix_solo_headroom_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if prefix_solo_headroom_probe.returncode == 0:
             print("solo-headroom command prefix match was accepted", file=sys.stderr)
@@ -3084,13 +3126,14 @@ def run_self_test() -> int:
                     "asserts_no_unexpected_output_keys",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         good_solo_headroom_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if good_solo_headroom_probe.returncode != 0:
             print("risk probe covering solo-headroom command was rejected", file=sys.stderr)
@@ -3112,17 +3155,19 @@ def run_self_test() -> int:
             "required_files": ["bin/cli.js"],
             "forbidden_files": [],
             "max_deps_added": 0,
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         spec_md.write_text(
             "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- solo-headroom hypothesis: solo_claude should miss duplicate handling.\n"
-            "- Observable command: `node check.js` exposes behavior.\n"
+            "- Observable command: `node check.js` exposes behavior.\n",
+            encoding="utf-8",
         )
         weak_sibling_solo = subprocess.run(
             [sys.executable, script_path, "--check-expected", str(expected_json)],
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if weak_sibling_solo.returncode == 0:
             print("weak sibling solo-headroom hypothesis was accepted by --check-expected", file=sys.stderr)
@@ -3143,6 +3188,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if mismatched_sibling_solo.returncode == 0:
             print("mismatched sibling solo-headroom command was accepted by --check-expected", file=sys.stderr)
@@ -3163,6 +3209,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if matched_sibling_solo.returncode != 0:
             print("matched sibling solo-headroom command was rejected by --check-expected", file=sys.stderr)
@@ -3180,6 +3227,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if docs_style_sibling_solo.returncode != 0:
             print("docs-style sibling solo-headroom command was rejected by --check-expected", file=sys.stderr)
@@ -3196,6 +3244,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if weak_sibling_solo_ceiling.returncode == 0:
             print("weak sibling solo ceiling avoidance was accepted by --check-expected", file=sys.stderr)
@@ -3216,18 +3265,20 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if strong_sibling_solo_ceiling.returncode != 0:
             print("actionable sibling solo ceiling avoidance was rejected by --check-expected", file=sys.stderr)
             print(strong_sibling_solo_ceiling.stderr, file=sys.stderr)
             return 1
 
-        spec_md.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- probe must pass visible marker.\n")
+        spec_md.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- probe must pass visible marker.\n", encoding="utf-8")
         expected_good = subprocess.run(
             [sys.executable, script_path, "--check-expected", str(expected_json)],
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if expected_good.returncode != 0:
             print(expected_good.stderr, file=sys.stderr)
@@ -3242,6 +3293,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if expected_bad_sibling_complexity.returncode == 0:
             print("unsupported sibling spec complexity was accepted by --check-expected", file=sys.stderr)
@@ -3250,14 +3302,15 @@ def run_self_test() -> int:
             print("--check-expected did not report unsupported sibling spec complexity", file=sys.stderr)
             print(expected_bad_sibling_complexity.stderr, file=sys.stderr)
             return 1
-        spec_md.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- probe must pass visible marker.\n")
+        spec_md.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- probe must pass visible marker.\n", encoding="utf-8")
 
-        expected_json.write_text(json.dumps({"verification_commands": []}) + "\n")
+        expected_json.write_text(json.dumps({"verification_commands": []}) + "\n", encoding="utf-8")
         expected_empty_runtime = subprocess.run(
             [sys.executable, script_path, "--check-expected", str(expected_json)],
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if expected_empty_runtime.returncode == 0:
             print("empty verification_commands should fail for runtime specs", file=sys.stderr)
@@ -3280,6 +3333,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if expected_empty_design.returncode != 0:
             print("empty verification_commands should be valid for pure-design specs", file=sys.stderr)
@@ -3298,6 +3352,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if pure_design_contradiction.returncode == 0:
             print("pure_design: true with non-empty verification_commands was accepted", file=sys.stderr)
@@ -3316,6 +3371,7 @@ def run_self_test() -> int:
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if pure_design_not_boolean.returncode == 0:
             print("non-boolean pure_design was accepted", file=sys.stderr)
@@ -3325,12 +3381,13 @@ def run_self_test() -> int:
             print(pure_design_not_boolean.stderr, file=sys.stderr)
             return 1
 
-        expected_json.write_text(json.dumps({"unknown": True}) + "\n")
+        expected_json.write_text(json.dumps({"unknown": True}) + "\n", encoding="utf-8")
         expected_bad = subprocess.run(
             [sys.executable, script_path, "--check-expected", str(expected_json)],
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if expected_bad.returncode == 0:
             print("spec.expected.json with unknown key was accepted", file=sys.stderr)
@@ -3338,23 +3395,25 @@ def run_self_test() -> int:
 
         expected_json.write_text(json.dumps({
             "verification_commands": [{"cmd": "printf ok", "stdout_contians": ["ok"]}]
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         expected_bad_command = subprocess.run(
             [sys.executable, script_path, "--check-expected", str(expected_json)],
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if expected_bad_command.returncode == 0:
             print("spec.expected.json command with unknown key was accepted", file=sys.stderr)
             return 1
 
-        expected_json.write_text("[1]\n")
+        expected_json.write_text("[1]\n", encoding="utf-8")
         expected_non_object = subprocess.run(
             [sys.executable, script_path, "--check-expected", str(expected_json)],
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if expected_non_object.returncode == 0:
             print("spec.expected.json top-level array was accepted", file=sys.stderr)
@@ -3367,12 +3426,13 @@ def run_self_test() -> int:
             print("spec.expected.json top-level array produced a traceback", file=sys.stderr)
             return 1
 
-        expected_json.write_text("{broken\n")
+        expected_json.write_text("{broken\n", encoding="utf-8")
         expected_invalid_json = subprocess.run(
             [sys.executable, script_path, "--check-expected", str(expected_json)],
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if expected_invalid_json.returncode == 0:
             print("invalid spec.expected.json was accepted", file=sys.stderr)
@@ -3385,12 +3445,13 @@ def run_self_test() -> int:
             print("invalid spec.expected.json produced a traceback", file=sys.stderr)
             return 1
 
-        expected_json.write_text('{"verification_commands": NaN}\n')
+        expected_json.write_text('{"verification_commands": NaN}\n', encoding="utf-8")
         expected_nan_json = subprocess.run(
             [sys.executable, script_path, "--check-expected", str(expected_json)],
             cwd=work,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if expected_nan_json.returncode == 0:
             print("NaN spec.expected.json was accepted", file=sys.stderr)
@@ -3426,6 +3487,7 @@ def run_self_test() -> int:
         )
         external_diff_base_sha = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=external_diff_root, text=True,
+            encoding="utf-8",
         ).strip()
         (external_diff_root / "outside.txt").write_text("worktree-only\n", encoding="utf-8")
         (external_diff_devlyn / "external-diff.patch").write_text(
@@ -3449,26 +3511,28 @@ def run_self_test() -> int:
             "base_ref": {"sha": external_diff_base_sha},
         }
         external_diff_state_path = external_diff_devlyn / "pipeline.state.json"
-        external_diff_state_path.write_text(json.dumps(external_diff_state) + "\n")
+        external_diff_state_path.write_text(json.dumps(external_diff_state) + "\n", encoding="utf-8")
         external_diff_free_form = subprocess.run(
             [sys.executable, script_path],
             cwd=external_diff_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         external_diff_findings_path = external_diff_devlyn / output_findings_name()
         external_diff_free_form_findings = (
-            external_diff_findings_path.read_text()
+            external_diff_findings_path.read_text(encoding="utf-8")
             if external_diff_findings_path.is_file()
             else ""
         )
         external_diff_state["mode"] = "verify-only"
-        external_diff_state_path.write_text(json.dumps(external_diff_state) + "\n")
+        external_diff_state_path.write_text(json.dumps(external_diff_state) + "\n", encoding="utf-8")
         external_diff_verify_only = subprocess.run(
             [sys.executable, script_path],
             cwd=external_diff_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if external_diff_free_form.returncode != 1:
             print("non-verify-only mode accepted .devlyn/external-diff.patch", file=sys.stderr)
@@ -3514,12 +3578,13 @@ def run_self_test() -> int:
                 "spec_path": str(integrity_spec),
                 "spec_sha256": "0" * 64,
             }
-        }))
+        }), encoding="utf-8")
         spec_bad_hash_run = subprocess.run(
             [sys.executable, script_path],
             cwd=spec_integrity,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if spec_bad_hash_run.returncode == 0:
             print("spec source with mismatched source.spec_sha256 was accepted", file=sys.stderr)
@@ -3536,17 +3601,18 @@ def run_self_test() -> int:
                 "spec_path": str(integrity_spec),
                 "spec_sha256": spec_hash,
             }
-        }))
+        }), encoding="utf-8")
         spec_hash_run = subprocess.run(
             [sys.executable, script_path],
             cwd=spec_integrity,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if spec_hash_run.returncode != 0:
             print(spec_hash_run.stderr, file=sys.stderr)
             return 1
-        staged_spec_hash = loads_strict_json((spec_integrity_devlyn / "spec-verify.json").read_text())
+        staged_spec_hash = loads_strict_json((spec_integrity_devlyn / "spec-verify.json").read_text(encoding="utf-8"))
         if staged_spec_hash.get("verification_commands", [{}])[0].get("cmd") != "printf spec-hash-ok":
             print("spec source with matching source.spec_sha256 was not staged", file=sys.stderr)
             return 1
@@ -3564,12 +3630,13 @@ def run_self_test() -> int:
         )
         (generated_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "generated", "criteria_path": str(generated_criteria)}
-        }))
+        }), encoding="utf-8")
         generated_missing_hash_run = subprocess.run(
             [sys.executable, script_path],
             cwd=generated_user,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if generated_missing_hash_run.returncode == 0:
             print("generated criteria without source.criteria_sha256 was accepted", file=sys.stderr)
@@ -3585,12 +3652,13 @@ def run_self_test() -> int:
                 "criteria_path": str(generated_criteria),
                 "criteria_sha256": "0" * 64,
             }
-        }))
+        }), encoding="utf-8")
         generated_bad_hash_run = subprocess.run(
             [sys.executable, script_path],
             cwd=generated_user,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if generated_bad_hash_run.returncode == 0:
             print("generated criteria with mismatched source.criteria_sha256 was accepted", file=sys.stderr)
@@ -3607,17 +3675,18 @@ def run_self_test() -> int:
                 "criteria_path": str(generated_criteria),
                 "criteria_sha256": generated_hash,
             }
-        }))
+        }), encoding="utf-8")
         generated_run = subprocess.run(
             [sys.executable, script_path],
             cwd=generated_user,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if generated_run.returncode != 0:
             print(generated_run.stderr, file=sys.stderr)
             return 1
-        staged_generated = loads_strict_json((generated_devlyn / "spec-verify.json").read_text())
+        staged_generated = loads_strict_json((generated_devlyn / "spec-verify.json").read_text(encoding="utf-8"))
         if staged_generated.get("verification_commands", [{}])[0].get("cmd") != "printf generated-ok":
             print("generated criteria carrier was not staged into .devlyn/spec-verify.json", file=sys.stderr)
             return 1
@@ -3633,12 +3702,13 @@ def run_self_test() -> int:
                 "criteria_path": str(generated_criteria),
                 "criteria_sha256": malformed_generated_hash,
             }
-        }))
+        }), encoding="utf-8")
         malformed_generated_run = subprocess.run(
             [sys.executable, script_path],
             cwd=generated_user,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if malformed_generated_run.returncode == 0:
             print("generated criteria without a JSON carrier was accepted", file=sys.stderr)
@@ -3654,26 +3724,28 @@ def run_self_test() -> int:
         real_devlyn.mkdir()
         real_spec = real_user / "spec.md"
         real_spec.write_text(
-            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- sibling command must print sibling-ok.\n"
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- sibling command must print sibling-ok.\n",
+            encoding="utf-8",
         )
         (real_user / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [
                 {"cmd": "printf sibling-ok", "stdout_contains": ["sibling-ok"]}
             ]
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         (real_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(real_spec)}
-        }))
+        }), encoding="utf-8")
         sibling_run = subprocess.run(
             [sys.executable, script_path],
             cwd=real_user,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if sibling_run.returncode != 0:
             print(sibling_run.stderr, file=sys.stderr)
             return 1
-        staged = loads_strict_json((real_devlyn / "spec-verify.json").read_text())
+        staged = loads_strict_json((real_devlyn / "spec-verify.json").read_text(encoding="utf-8"))
         if staged.get("verification_commands", [{}])[0].get("cmd") != "printf sibling-ok":
             print("sibling spec.expected.json was not staged into .devlyn/spec-verify.json", file=sys.stderr)
             return 1
@@ -3686,48 +3758,51 @@ def run_self_test() -> int:
         malformed_spec.write_text(
             "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n"
             "{\"verification_commands\":[{\"cmd\":\"printf inline-ok\"}]}\n"
-            "```\n"
+            "```\n",
+            encoding="utf-8",
         )
-        (malformed / "spec.expected.json").write_text(json.dumps({"unknown": True}) + "\n")
+        (malformed / "spec.expected.json").write_text(json.dumps({"unknown": True}) + "\n", encoding="utf-8")
         (malformed_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(malformed_spec)}
-        }))
+        }), encoding="utf-8")
         malformed_run = subprocess.run(
             [sys.executable, script_path],
             cwd=malformed,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if malformed_run.returncode == 0:
             print("malformed sibling spec.expected.json fell back to inline carrier", file=sys.stderr)
             return 1
 
         bench_spec = work / "bench-spec.md"
-        bench_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- benchmark pre-staged wins.\n")
+        bench_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- benchmark pre-staged wins.\n", encoding="utf-8")
         (work / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [
                 {"cmd": "printf wrong", "stdout_contains": ["wrong"]}
             ]
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         (devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(bench_spec)}
-        }))
+        }), encoding="utf-8")
         (devlyn / "spec-verify.json").write_text(json.dumps({
             "verification_commands": [
                 {"cmd": "printf bench-staged", "stdout_contains": ["bench-staged"]}
             ]
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         bench_pre_staged = subprocess.run(
             [sys.executable, script_path],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if bench_pre_staged.returncode != 0:
             print(bench_pre_staged.stderr, file=sys.stderr)
             return 1
-        staged_bench = loads_strict_json((devlyn / "spec-verify.json").read_text())
+        staged_bench = loads_strict_json((devlyn / "spec-verify.json").read_text(encoding="utf-8"))
         if staged_bench.get("verification_commands", [{}])[0].get("cmd") != "printf bench-staged":
             print("benchmark pre-staged contract was overwritten", file=sys.stderr)
             return 1
@@ -3737,15 +3812,15 @@ def run_self_test() -> int:
         verify_devlyn = verify_output / ".devlyn"
         verify_devlyn.mkdir()
         verify_spec = verify_output / "spec.md"
-        verify_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- verify mechanical output.\n")
+        verify_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- verify mechanical output.\n", encoding="utf-8")
         (verify_output / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [
                 {"cmd": "printf wrong", "stdout_contains": ["expected"]}
             ]
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         (verify_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(verify_spec)}
-        }))
+        }), encoding="utf-8")
         verify_env = os.environ.copy()
         verify_env.update({
             "SPEC_VERIFY_PHASE": "verify_mechanical",
@@ -3758,11 +3833,12 @@ def run_self_test() -> int:
             env=verify_env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if verify_output_run.returncode == 0:
             print("VERIFY output-mode failing command was accepted", file=sys.stderr)
             return 1
-        verify_findings = (verify_devlyn / "verify-mechanical.findings.jsonl").read_text()
+        verify_findings = (verify_devlyn / "verify-mechanical.findings.jsonl").read_text(encoding="utf-8")
         if '"phase": "verify_mechanical"' not in verify_findings or "VERIFY-MECH-" not in verify_findings:
             print("VERIFY output-mode did not route findings to verify-mechanical", file=sys.stderr)
             return 1
@@ -3772,7 +3848,8 @@ def run_self_test() -> int:
         contract_devlyn = contract_root / ".devlyn"
         contract_devlyn.mkdir()
         (contract_root / "package.json").write_text(
-            '{\n  "dependencies": {},\n  "devDependencies": {}\n}\n'
+            '{\n  "dependencies": {},\n  "devDependencies": {}\n}\n',
+            encoding="utf-8",
         )
         subprocess.run(["git", "init", "-q"], cwd=contract_root, check=True)
         subprocess.run(["git", "add", "-A"], cwd=contract_root, check=True)
@@ -3785,14 +3862,16 @@ def run_self_test() -> int:
             ["git", "rev-parse", "HEAD"],
             cwd=contract_root,
             text=True,
+            encoding="utf-8",
         ).strip()
         contract_spec = contract_root / "spec.md"
-        contract_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- expected contract checks.\n")
-        (contract_root / "app.js").write_text("try { work(); } catch { return null; }\n")
-        (contract_root / "forbidden.txt").write_text("forbidden\n")
+        contract_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- expected contract checks.\n", encoding="utf-8")
+        (contract_root / "app.js").write_text("try { work(); } catch { return null; }\n", encoding="utf-8")
+        (contract_root / "forbidden.txt").write_text("forbidden\n", encoding="utf-8")
         (contract_root / "package.json").write_text(
             '{\n  "dependencies": {\n    "left-pad": "1.3.0"\n  },\n'
-            '  "devDependencies": {}\n}\n'
+            '  "devDependencies": {}\n}\n',
+            encoding="utf-8",
         )
         (contract_root / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}],
@@ -3804,22 +3883,23 @@ def run_self_test() -> int:
             "required_files": ["required.txt"],
             "forbidden_files": ["forbidden.txt"],
             "max_deps_added": 0,
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         subprocess.run(["git", "add", "-A"], cwd=contract_root, check=True)
         (contract_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(contract_spec)},
             "base_ref": {"sha": base_sha},
-        }))
+        }), encoding="utf-8")
         contract_run = subprocess.run(
             [sys.executable, script_path],
             cwd=contract_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if contract_run.returncode == 0:
             print("expected contract violations were accepted", file=sys.stderr)
             return 1
-        findings_text = (contract_devlyn / output_findings_name()).read_text()
+        findings_text = (contract_devlyn / output_findings_name()).read_text(encoding="utf-8")
         for rule_id in (
             "correctness.forbidden-pattern",
             "correctness.required-file-missing",
@@ -3837,13 +3917,14 @@ def run_self_test() -> int:
             "exit_code": 0,
             "tags": ["boundary_overlap"],
             "tag_evidence": {"boundary_overlap": ["one_minute_overlap"]},
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         weak = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=work,
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if weak.returncode == 0:
             print("incomplete boundary_overlap evidence was accepted", file=sys.stderr)
@@ -3857,11 +3938,12 @@ def run_self_test() -> int:
         error_spec.write_text(
             "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- Invalid input must print JSON error object `{ \"error\": \"bad_input\" }` to stderr and exit 2.\n"
-            "- Malformed input must exit 2 and print stderr JSON with keys `code` and `detail`; values are implementation-defined.\n"
+            "- Malformed input must exit 2 and print stderr JSON with keys `code` and `detail`; values are implementation-defined.\n",
+            encoding="utf-8",
         )
         (error_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(error_spec)}
-        }))
+        }), encoding="utf-8")
         (error_devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "P6",
             "derived_from": "Invalid input must print a JSON error object to stderr and exit 2.",
@@ -3872,12 +3954,13 @@ def run_self_test() -> int:
                 "stdout_stderr_contract": ["asserts_named_stream_output"],
                 "error_contract": ["asserts_error_payload_or_stderr"],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         weak_error_contract = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=error_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if weak_error_contract.returncode == 0:
             print("error_contract without exit-code evidence was accepted", file=sys.stderr)
@@ -3896,12 +3979,13 @@ def run_self_test() -> int:
                     "asserts_nonzero_or_exit_2",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         weak_stdio_contract = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=error_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if weak_stdio_contract.returncode == 0:
             print("stdout_stderr_contract without stream evidence was accepted", file=sys.stderr)
@@ -3926,12 +4010,13 @@ def run_self_test() -> int:
                     "visible_text_names_exact_json_error_object",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         missing_exact_error_object = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=error_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if missing_exact_error_object.returncode == 0:
             print(
@@ -3961,12 +4046,13 @@ def run_self_test() -> int:
                     "asserts_exact_error_object",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         strong_json_error_shape_contract = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=error_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if strong_json_error_shape_contract.returncode != 0:
             print("JSON error object shape_contract with exact object evidence was rejected", file=sys.stderr)
@@ -3993,12 +4079,13 @@ def run_self_test() -> int:
                     "asserts_no_unexpected_output_keys",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         error_exit_shape_contract = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=error_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if error_exit_shape_contract.returncode != 0:
             print("error-exit shape_contract without visible exact error object was rejected", file=sys.stderr)
@@ -4012,11 +4099,12 @@ def run_self_test() -> int:
         http_error_spec = http_error_root / "spec.md"
         http_error_spec.write_text(
             "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
-            "- An invalid query returns HTTP 400 with JSON error body `{ \"error\": \"invalid_query\", \"field\": \"per_page\" }`.\n"
+            "- An invalid query returns HTTP 400 with JSON error body `{ \"error\": \"invalid_query\", \"field\": \"per_page\" }`.\n",
+            encoding="utf-8",
         )
         (http_error_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(http_error_spec)}
-        }))
+        }), encoding="utf-8")
         (http_error_devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "P8b",
             "derived_from": (
@@ -4029,12 +4117,13 @@ def run_self_test() -> int:
             "tag_evidence": {
                 "http_error_contract": ["asserts_http_error_status"],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         incomplete_http_error_contract = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=http_error_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if incomplete_http_error_contract.returncode == 0:
             print("http_error_contract without payload evidence was accepted", file=sys.stderr)
@@ -4061,12 +4150,13 @@ def run_self_test() -> int:
                     "visible_text_names_exact_json_error_object",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         weak_exact_error_shape_contract = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=http_error_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if weak_exact_error_shape_contract.returncode == 0:
             print("exact error body shape_contract without exact object evidence was accepted", file=sys.stderr)
@@ -4094,12 +4184,13 @@ def run_self_test() -> int:
                     "asserts_exact_error_object",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         strong_exact_error_shape_contract = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=http_error_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if strong_exact_error_shape_contract.returncode != 0:
             print("exact error body shape_contract with exact object evidence was rejected", file=sys.stderr)
@@ -4114,11 +4205,12 @@ def run_self_test() -> int:
         shape_spec.write_text(
             "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- On success, output is one JSON object with keys `applied`, `rejected`, and `accounts`; "
-            "`rejected` rows have keys `id` and `reason`.\n"
+            "`rejected` rows have keys `id` and `reason`.\n",
+            encoding="utf-8",
         )
         (shape_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(shape_spec)}
-        }))
+        }), encoding="utf-8")
         (shape_devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "P8e",
             "derived_from": (
@@ -4129,12 +4221,13 @@ def run_self_test() -> int:
             "exit_code": 0,
             "tags": ["shape_contract"],
             "tag_evidence": {},
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         weak_shape_contract = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=shape_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if weak_shape_contract.returncode == 0:
             print("shape_contract without any evidence was accepted", file=sys.stderr)
@@ -4156,12 +4249,13 @@ def run_self_test() -> int:
                     "asserts_no_unexpected_output_keys",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         strong_shape_contract = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=shape_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if strong_shape_contract.returncode != 0:
             print("shape_contract with exact key evidence was rejected", file=sys.stderr)
@@ -4181,7 +4275,8 @@ def run_self_test() -> int:
         required_spec.write_text(
             "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- A failed all-or-nothing operation must roll back tentative state "
-            "so later orders can use the released stock.\n"
+            "so later orders can use the released stock.\n",
+            encoding="utf-8",
         )
         (required_root / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}],
@@ -4194,10 +4289,10 @@ def run_self_test() -> int:
                     ),
                 },
             ],
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         (required_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(required_spec)}
-        }))
+        }), encoding="utf-8")
         (required_devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "P14",
             "derived_from": (
@@ -4213,12 +4308,13 @@ def run_self_test() -> int:
                     "later_entity_fails_or_reroutes",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         missing_declared_requirement = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=required_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if missing_declared_requirement.returncode == 0:
             print(
@@ -4250,12 +4346,13 @@ def run_self_test() -> int:
                     "later_entity_uses_released_state",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         covered_declared_requirement = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=required_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if covered_declared_requirement.returncode != 0:
             print(
@@ -4271,12 +4368,13 @@ def run_self_test() -> int:
             "required_risk_probe_requirements": [
                 {"tag": "not-a-real-tag", "derived_from": "irrelevant"},
             ],
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         malformed_requirement_tag = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=required_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if malformed_requirement_tag.returncode == 0:
             print("required_risk_probe_requirements with an unknown tag was accepted", file=sys.stderr)
@@ -4287,12 +4385,13 @@ def run_self_test() -> int:
             "required_risk_probe_requirements": [
                 {"tag": "rollback_state", "derived_from": "text not present in the spec"},
             ],
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         malformed_requirement_derived_from = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=required_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if malformed_requirement_derived_from.returncode == 0:
             print(
@@ -4310,11 +4409,12 @@ def run_self_test() -> int:
         atomic_batch_spec.write_text(
             "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
             "- A POST with one valid + one invalid item returns `400`, AND a subsequent GET returns the same list as before the import.\n"
-            "- A POST with all-valid items returns `201`, and the items appear in GET output in order with distinct ids.\n"
+            "- A POST with all-valid items returns `201`, and the items appear in GET output in order with distinct ids.\n",
+            encoding="utf-8",
         )
         (atomic_batch_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(atomic_batch_spec)}
-        }))
+        }), encoding="utf-8")
         (atomic_batch_devlyn / "risk-probes.jsonl").write_text(json.dumps({
             "id": "P13b",
             "derived_from": (
@@ -4330,12 +4430,13 @@ def run_self_test() -> int:
                     "asserts_store_unchanged_after_failure",
                 ],
             },
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         incomplete_atomic_batch_probe = subprocess.run(
             [sys.executable, script_path, "--validate-risk-probes"],
             cwd=atomic_batch_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if incomplete_atomic_batch_probe.returncode == 0:
             print("atomic_batch_state without success-order evidence was accepted", file=sys.stderr)
@@ -4350,15 +4451,15 @@ def run_self_test() -> int:
         (scope_root / "lib").mkdir()
         (scope_root / "lib2").mkdir()
         (scope_root / "data").mkdir()
-        (scope_root / "bin" / "cli.js").write_text("module.exports = {};\n")
-        (scope_root / "lib" / "keep.js").write_text("module.exports = {};\n")
-        (scope_root / "lib2" / "keep.js").write_text("module.exports = {};\n")
-        (scope_root / "data" / "usage-stats.json").write_text("{}\n")
+        (scope_root / "bin" / "cli.js").write_text("module.exports = {};\n", encoding="utf-8")
+        (scope_root / "lib" / "keep.js").write_text("module.exports = {};\n", encoding="utf-8")
+        (scope_root / "lib2" / "keep.js").write_text("module.exports = {};\n", encoding="utf-8")
+        (scope_root / "data" / "usage-stats.json").write_text("{}\n", encoding="utf-8")
         scope_spec = scope_root / "spec.md"
-        scope_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- scope gate checks.\n")
+        scope_spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- scope gate checks.\n", encoding="utf-8")
         (scope_root / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}],
-        }) + "\n")
+        }) + "\n", encoding="utf-8")
         subprocess.run(["git", "init", "-q"], cwd=scope_root, check=True)
         subprocess.run(["git", "add", "-A"], cwd=scope_root, check=True)
         subprocess.run(
@@ -4368,11 +4469,12 @@ def run_self_test() -> int:
         )
         scope_base_sha = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=scope_root, text=True,
+            encoding="utf-8",
         ).strip()
         (scope_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(scope_spec)},
             "base_ref": {"sha": scope_base_sha},
-        }))
+        }), encoding="utf-8")
         (scope_root / "preexisting.local").write_text("pre-existing untracked\n", encoding="utf-8")
         # Writer parity: --write-untracked-baseline must share the reader's
         # parser — untracked DIRECTORIES expand to per-file paths and
@@ -4384,6 +4486,7 @@ def run_self_test() -> int:
         write_baseline_run = subprocess.run(
             [sys.executable, script_path, "--write-untracked-baseline"],
             cwd=scope_root, capture_output=True, text=True,
+            encoding="utf-8",
         )
         if write_baseline_run.returncode != 0:
             print("--write-untracked-baseline failed", file=sys.stderr)
@@ -4399,30 +4502,33 @@ def run_self_test() -> int:
         scope_build_gate_env["SPEC_VERIFY_PHASE"] = "build_gate"
 
         # Test 1: no .devlyn/plan.md at all -> fail-closed CRITICAL, not a no-op.
-        (scope_root / "bin" / "cli.js").write_text("module.exports = { ok: true };\n")
+        (scope_root / "bin" / "cli.js").write_text("module.exports = { ok: true };\n", encoding="utf-8")
         missing_plan_run = subprocess.run(
             [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
             capture_output=True, text=True,
+            encoding="utf-8",
         )
         if missing_plan_run.returncode == 0:
             print("BUILD_GATE accepted a run with no plan.md", file=sys.stderr)
             return 1
-        if "scope.authorized-surface-malformed" not in scope_findings_path.read_text():
+        if "scope.authorized-surface-malformed" not in scope_findings_path.read_text(encoding="utf-8"):
             print("missing plan.md did not emit scope.authorized-surface-malformed", file=sys.stderr)
             return 1
 
         # Test 2: plan.md present but no authorized_surface json block -> malformed.
         (scope_devlyn / "plan.md").write_text(
-            "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## 1. Files to touch\n\n- `bin/cli.js` (edit): ship the fix.\n"
+            "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## 1. Files to touch\n\n- `bin/cli.js` (edit): ship the fix.\n",
+            encoding="utf-8",
         )
         malformed_block_run = subprocess.run(
             [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
             capture_output=True, text=True,
+            encoding="utf-8",
         )
         if malformed_block_run.returncode == 0:
             print("BUILD_GATE accepted plan.md with no authorized_surface block", file=sys.stderr)
             return 1
-        if "scope.authorized-surface-malformed" not in scope_findings_path.read_text():
+        if "scope.authorized-surface-malformed" not in scope_findings_path.read_text(encoding="utf-8"):
             print("missing authorized_surface block did not emit scope.authorized-surface-malformed", file=sys.stderr)
             return 1
         malformed_print_surface = subprocess.run(
@@ -4438,15 +4544,18 @@ def run_self_test() -> int:
             (scope_devlyn / "plan.md").write_text(
                 "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## 1. Files to touch\n\n"
                 "```json\n"
-                + json.dumps({"authorized_surface": [entry]}) + "\n```\n"
+                + json.dumps({"authorized_surface": [entry]}) + "\n```\n",
+                encoding="utf-8",
             )
             brace_build_gate = subprocess.run(
                 [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
                 capture_output=True, text=True,
+                encoding="utf-8",
             )
             brace_print_surface = subprocess.run(
                 [sys.executable, script_path, "--print-authorized-surface"], cwd=scope_root,
                 capture_output=True, text=True,
+                encoding="utf-8",
             )
             findings_text = scope_findings_path.read_text(encoding="utf-8")
             if (
@@ -4466,9 +4575,10 @@ def run_self_test() -> int:
             "- `bin/cli.js` (edit): ship the fix.\n\n"
             "```json\n"
             '{"authorized_surface": ["bin/cli.js", "lib/**", "authorized-but-uncreated.txt"]}\n'
-            "```\n"
+            "```\n",
+            encoding="utf-8",
         )
-        (scope_root / "lib" / "new.js").write_text("module.exports = { created: true };\n")
+        (scope_root / "lib" / "new.js").write_text("module.exports = { created: true };\n", encoding="utf-8")
         print_surface = subprocess.run(
             [sys.executable, script_path, "--print-authorized-surface"],
             cwd=scope_root,
@@ -4490,16 +4600,18 @@ def run_self_test() -> int:
         missing_baseline_run = subprocess.run(
             [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
             capture_output=True, text=True,
+            encoding="utf-8",
         )
         if missing_baseline_run.returncode == 0:
             print("BUILD_GATE accepted missing .devlyn/untracked.baseline", file=sys.stderr)
             return 1
-        if "untracked.baseline" not in scope_findings_path.read_text():
+        if "untracked.baseline" not in scope_findings_path.read_text(encoding="utf-8"):
             print("missing untracked baseline did not emit a scope finding", file=sys.stderr)
             return 1
         rewrite_baseline_run = subprocess.run(
             [sys.executable, script_path, "--write-untracked-baseline"],
             cwd=scope_root, capture_output=True, text=True,
+            encoding="utf-8",
         )
         if rewrite_baseline_run.returncode != 0:
             print("--write-untracked-baseline re-run failed", file=sys.stderr)
@@ -4507,29 +4619,31 @@ def run_self_test() -> int:
         in_scope_run = subprocess.run(
             [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
             capture_output=True, text=True,
+            encoding="utf-8",
         )
         if in_scope_run.returncode != 0:
             print("in-scope-only diff was rejected", file=sys.stderr)
             print(in_scope_run.stderr, file=sys.stderr)
             return 1
-        if "scope." in scope_findings_path.read_text():
+        if "scope." in scope_findings_path.read_text(encoding="utf-8"):
             print("in-scope-only diff produced a spurious scope finding", file=sys.stderr)
-            print(scope_findings_path.read_text(), file=sys.stderr)
+            print(scope_findings_path.read_text(encoding="utf-8"), file=sys.stderr)
             return 1
 
         # Test 4: directory grant covers lib/**; an out-of-scope file must be
         # flagged, and the fix_hint must never suggest self-authorization.
-        (scope_root / "lib" / "keep.js").write_text("module.exports = { touched: true };\n")
-        (scope_root / "data" / "usage-stats.json").write_text('{"leaked": true}\n')
-        (scope_root / "data" / "scratch.json").write_text('{"untracked": true}\n')
+        (scope_root / "lib" / "keep.js").write_text("module.exports = { touched: true };\n", encoding="utf-8")
+        (scope_root / "data" / "usage-stats.json").write_text('{"leaked": true}\n', encoding="utf-8")
+        (scope_root / "data" / "scratch.json").write_text('{"untracked": true}\n', encoding="utf-8")
         out_of_scope_run = subprocess.run(
             [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
             capture_output=True, text=True,
+            encoding="utf-8",
         )
         if out_of_scope_run.returncode == 0:
             print("out-of-scope file was accepted", file=sys.stderr)
             return 1
-        out_of_scope_lines = scope_findings_path.read_text().splitlines()
+        out_of_scope_lines = scope_findings_path.read_text(encoding="utf-8").splitlines()
         out_of_scope_findings = [loads_strict_json(line) for line in out_of_scope_lines if line.strip()]
         flagged_files = {f["file"] for f in out_of_scope_findings if f.get("rule_id") == "scope.out-of-scope-file"}
         if "data/usage-stats.json" not in flagged_files:
@@ -4558,14 +4672,15 @@ def run_self_test() -> int:
 
         # Test 5: lib2/keep.js must NOT be covered by the lib/** grant
         # (directory-prefix boundary, not a bare string-prefix match).
-        (scope_root / "lib2" / "keep.js").write_text("module.exports = { touched: true };\n")
+        (scope_root / "lib2" / "keep.js").write_text("module.exports = { touched: true };\n", encoding="utf-8")
         subprocess.run(
             [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
             capture_output=True, text=True,
+            encoding="utf-8",
         )
         boundary_flagged = {
             loads_strict_json(line)["file"]
-            for line in scope_findings_path.read_text().splitlines() if line.strip()
+            for line in scope_findings_path.read_text(encoding="utf-8").splitlines() if line.strip()
         }
         if "lib2/keep.js" not in boundary_flagged:
             print("lib/** incorrectly matched lib2/keep.js (directory-prefix boundary bug)", file=sys.stderr)
@@ -4585,8 +4700,9 @@ def run_self_test() -> int:
         subprocess.run(
             [sys.executable, script_path], cwd=scope_root, env=verify_mech_env,
             capture_output=True, text=True,
+            encoding="utf-8",
         )
-        verify_mech_findings = (scope_devlyn / "verify-mechanical.findings.jsonl").read_text()
+        verify_mech_findings = (scope_devlyn / "verify-mechanical.findings.jsonl").read_text(encoding="utf-8")
         if "scope." in verify_mech_findings:
             print("VERIFY MECHANICAL ran the BUILD_GATE-only authorized_surface gate", file=sys.stderr)
             print(verify_mech_findings, file=sys.stderr)
@@ -4850,7 +4966,7 @@ def main() -> int:
             return 0
     else:
         try:
-            spec = loads_strict_json(spec_path.read_text())
+            spec = loads_strict_json(spec_path.read_text(encoding="utf-8"))
         except (ValueError, OSError) as e:
             print(f"[spec-verify] error: cannot parse {spec_path}: {e}", file=sys.stderr)
             return 2
@@ -5145,12 +5261,12 @@ def main() -> int:
     results_path.write_text(json.dumps({
         "commands": results,
         "process_evidence": evidence_carrier,
-    }, indent=2) + "\n")
+    }, indent=2) + "\n", encoding="utf-8")
 
     # Append findings (jsonl). BUILD_GATE merge step concatenates this onto
     # build_gate.findings.jsonl; never overwrite the orchestrator's own gate
     # findings. Truncate this file each run since it is a per-round artifact.
-    with findings_path.open("w") as fh:
+    with findings_path.open("w", encoding="utf-8") as fh:
         for f in findings:
             fh.write(json.dumps(f) + "\n")
 
@@ -5181,4 +5297,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     sys.exit(main())

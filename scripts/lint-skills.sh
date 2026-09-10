@@ -58,6 +58,7 @@ fi
 critical_path_files=$(cat <<'EOF'
 _shared/.ruff.toml
 _shared/process-evidence.py
+_shared/platform-support.py
 _shared/invocation-receipt.py
 _shared/role-config.py
 _shared/judge-role-evidence.py
@@ -405,7 +406,7 @@ check_skill_mirror_parity \
 # ---------------------------------------------------------------------------
 # 6b. VERIFY merge verdict binding self-test.
 for helper in role-config judge-role-evidence task-complete; do
-  if python3 "config/skills/_shared/$helper.py" --self-test >/dev/null 2>&1; then
+  if python3 "config/skills/_shared/$helper.py" --self-test; then
     ok "$helper.py self-test passed"
   else
     bad "$helper.py self-test failed"
@@ -514,7 +515,7 @@ if ! grep -Fq 'PHASES = {"implement", "build_gate", "verify"}' config/skills/_sh
 fi
 
 section "Check 6b2: Codex invocation receipts are phase-owned"
-if python3 config/skills/_shared/invocation-receipt.py --self-test >/dev/null 2>&1; then
+if python3 config/skills/_shared/invocation-receipt.py --self-test; then
   ok "invocation-receipt.py self-test passed"
 else
   bad "invocation-receipt.py self-test failed"
@@ -627,7 +628,7 @@ for tree in config/skills .agents/skills; do
     || ! grep -Fq 'executor flag/pin' "$skill" \
     || ! grep -Fq 'auto_surface_close_claude_unavailable' "$skill" \
     || ! grep -Fq 'canonical body VERBATIM' "$skill" \
-    || ! grep -Fq 'run-bounded.py 600 -- claude -p' "$skill" \
+    || ! grep -Fq 'run-bounded.py 600 --stdin-file .devlyn/surface-close.prompt.<round> --record-transport -- claude -p' "$skill" \
     || ! grep -Fq -- '--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --output-format json --strict-mcp-config --mcp-config '\''{"mcpServers":{}}'\''' "$skill" \
     || ! grep -Fq '.devlyn/surface-close.output.json' "$skill" \
     || ! grep -Fq '**Common post-fix checkpoint (BUILD_GATE and VERIFY):**' "$skill" \
@@ -824,7 +825,7 @@ if ! grep -Fq 'spec.expected.json top-level array produced a traceback' config/s
   || ! grep -Fq 'NaN risk-probes JSONL did not report invalid numeric constant' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'def reject_json_constant' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'loads_strict_json(line)' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'loads_strict_json(expected_path.read_text())' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'loads_strict_json(expected_path.read_text(encoding="utf-8"))' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'top-level must be a JSON object' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'has invalid JSON' config/skills/_shared/spec-verify-check.py; then
   bad "spec-verify-check.py self-test must fail malformed spec.expected.json cleanly without traceback"
@@ -1564,7 +1565,7 @@ fi
 # ---------------------------------------------------------------------------
 section "Check 10a0: Codex primary VERIFY budget is bounded and mirrored"
 primary_verify_missing=0
-primary_verify_route='CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s read-only -c model_reasoning_effort=high "<primary prompt>" >.devlyn/codex-judge.stdout 2>.devlyn/codex-judge.stderr'
+primary_verify_route='DEVLYN_CODEX_PROMPT_FILE="<primary-prompt-file>" CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s read-only -c model_reasoning_effort=high - >.devlyn/codex-judge.stdout 2>.devlyn/codex-judge.stderr'
 for file in \
   config/skills/devlyn:resolve/SKILL.md \
   .agents/skills/devlyn:resolve/SKILL.md \

@@ -22,7 +22,7 @@ two targeted probes; the invoking phase sets `--effort`, pair-JUDGE uses
 `medium`):
 
 ```bash
-python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- claude -p "<judge prompt>" \
+python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 --stdin-file "<judge-prompt-file>" --record-transport -- claude -p \
   --permission-mode dontAsk \
   --tools "Read,Grep,Glob" --allowedTools "Read,Grep,Glob" \
   --setting-sources project --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
@@ -30,6 +30,7 @@ python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- claude -p "<judge prompt>" \
   > .devlyn/claude-judge.stdout 2> .devlyn/claude-judge.stderr
 ```
 
+- Write the complete prompt as exact UTF-8 file bytes; no positional prompt or shell substitution. With `--record-transport`, the runner snapshots stdin and exclusively creates `<judge-prompt-file>.transport.json` to bind actual native argv and delivered bytes; an existing carrier rejects dispatch. Preserve it for explicit judge-role authentication. Ordinary `--stdin-file` reads require no output or writable input directory; without it, stdin remains DEVNULL.
 - Omit `--model` — the CLI's configured default is used (zero-touch, same
   rule as codex-config.md's "omit `-m`").
 - `dontAsk` denies anything not allowlisted (official guide: "denies
@@ -46,7 +47,7 @@ python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 -- claude -p "<judge prompt>" \
   `.devlyn/verify.pair.findings.jsonl`. Raw stdout stays diagnostic at
   `.devlyn/claude-judge.stdout`; `verify-merge-findings.py` blocks the run
   if stdout contains findings the canonical file lacks.
-- Exit 124 is a wall-budget abort (kills the process group) → the orchestrator
+- Exit 124 is a wall-budget abort (terminates the native child process tree; POSIX process group) → the orchestrator
   writes `.devlyn/verify.pair.timeout.json`; budget abort ≠ availability failure
   and the fail-closed availability rules above are unchanged.
 - Do not pipe stdout (`| tail`, `| grep`); capture to file. Non-zero exit other

@@ -2,6 +2,8 @@
 """Create and validate run-owned Codex invocation receipts."""
 from __future__ import annotations
 
+import runpy
+
 import argparse
 import hashlib
 import json
@@ -11,6 +13,7 @@ import re
 import signal
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -21,6 +24,7 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 DANGEROUS_FLAGS = {"--dangerously-bypass-approvals-and-sandbox", "--yolo"}
 NETWORK_ACCESS_CONFIG = "sandbox_workspace_write.network_access"
+PLATFORM = runpy.run_path(pathlib.Path(__file__).with_name("platform-support.py"))
 
 
 class ReceiptError(ValueError):
@@ -121,6 +125,95 @@ def sandbox_network_access(argv: list[str], phase: str) -> bool:
     return enabled
 
 
+def file_prompt_args(argv):
+    """File mode accepts one explicit stdin prompt and no positional competitors."""
+    values = {"-C", "--cd", "-s", "--sandbox", "-m", "--model", "-c", "--config",
+              "-o", "--output-last-message", "--output-schema", "--color", "--enable",
+              "--disable", "--add-dir"}
+    flags = {"--json", "--ignore-user-config", "--ignore-rules", "--ephemeral",
+             "--skip-git-repo-check", "--full-auto"}
+    positional = []
+    index = 0
+    while index < len(argv):
+        token = argv[index]
+        if token in values:
+            if index + 1 >= len(argv):
+                raise ReceiptError(f"{token} requires a value")
+            index += 2
+        elif any(token.startswith(key + "=") for key in values) or token in flags:
+            index += 1
+        elif token == "--":
+            positional.extend(argv[index + 1:])
+            break
+        elif token == "-" or not token.startswith("-"):
+            positional.append(token)
+            index += 1
+        else:
+            raise ReceiptError(f"unsupported Codex file-transport option: {token}")
+    if positional != ["-"]:
+        raise ReceiptError("file transport requires the sole prompt argument '-'; competing prompts are forbidden")
+
+
+def prepare_transport(prompt_path, command, argv, seconds, *, isolated=False):
+    path = pathlib.Path(prompt_path).resolve(strict=True)
+    with PLATFORM["open_stdin"](path) as source:
+        raw = source.read()
+    record = {"schema_version": 1, "transport": "stdin-file",
+              "prompt": {"path": str(path), "sha256": sha256(raw), "bytes": len(raw)},
+              "command": command, "argv": argv, "timeout_sec": seconds, "isolated": isolated,
+              "status": "started", "exit_code": None}
+    carrier = path.with_name(path.name + ".transport.json")
+    if carrier.exists():
+        raise ReceiptError(f"prompt transport already exists: {carrier}")
+    stream = tempfile.TemporaryFile("w+b")
+    try:
+        stream.write(raw)
+        stream.seek(0)
+    except BaseException:
+        stream.close()
+        raise
+    return stream, carrier, record
+
+
+def write_transport(path, record):
+    with path.open("xb") as stream:
+        stream.write((json.dumps(record, sort_keys=True) + "\n").encode("utf-8"))
+
+
+def finish_transport(path, exit_code):
+    record = read_receipt(path)
+    if record.get("status") != "started":
+        raise ReceiptError("prompt transport is not open")
+    record.update(status="completed", exit_code=exit_code)
+    atomic_write(path, record)
+
+
+def validate_transport(path, prompt_raw):
+    record = read_receipt(path)
+    if set(record) != {"schema_version", "transport", "prompt", "command", "argv", "timeout_sec", "isolated", "status", "exit_code"}:
+        raise ReceiptError("invalid prompt transport shape")
+    prompt = record["prompt"]
+    if not isinstance(prompt, dict) or set(prompt) != {"path", "sha256", "bytes"}:
+        raise ReceiptError("invalid delivered prompt binding")
+    if (record["schema_version"] != 1 or record["transport"] != "stdin-file"
+            or record["status"] != "completed" or type(record["exit_code"]) is not int
+            or type(record["timeout_sec"]) is not int or record["timeout_sec"] < 0
+            or type(record["isolated"]) is not bool
+            or prompt["sha256"] != sha256(prompt_raw) or type(prompt["bytes"]) is not int
+            or prompt["bytes"] != len(prompt_raw)):
+        raise ReceiptError("delivered prompt/transport mismatch")
+    original = pathlib.Path(prompt["path"])
+    # Custody may relocate this sealed bundle; rehash its local prompt, not a live source tree.
+    if (not original.is_absolute() or path.name != original.name + ".transport.json"
+            or path.with_name(original.name).read_bytes() != prompt_raw):
+        raise ReceiptError("transport prompt path/bytes mismatch")
+    command, actual = record["command"], record["argv"]
+    if not all(isinstance(args, list) and args and all(isinstance(arg, str) for arg in args)
+               for args in (command, actual)) or len(actual) < len(command) or actual[len(actual) - len(command) + 1:] != command[1:]:
+        raise ReceiptError("transport actual argv mismatch")
+    return record
+
+
 def start_receipt(
     work: pathlib.Path,
     receipt_path: pathlib.Path,
@@ -130,6 +223,7 @@ def start_receipt(
     prompt_path: str,
     session_path: str,
     argv: list[str],
+    *, transport: dict | None = None,
 ) -> None:
     if receipt_path.exists():
         raise ReceiptError(f"invocation receipt already exists: {receipt_path}")
@@ -205,7 +299,12 @@ def start_receipt(
         prompt_argument = prompt_raw.decode("utf-8").rstrip("\n")
     except UnicodeError as exc:
         raise ReceiptError("invocation prompt is not UTF-8") from exc
-    if not argv or argv[-1] != prompt_argument:
+    if transport is not None:
+        file_prompt_args(argv)
+        if (transport["prompt"] != {"path": str(prompt_file), "sha256": sha256(prompt_raw), "bytes": len(prompt_raw)}
+                or transport["command"][1:] != ["exec", *argv]):
+            raise ReceiptError("delivered prompt file/bytes or actual argv does not match the canonical invocation")
+    elif not argv or argv[-1] == "-" or argv[-1] != prompt_argument:
         raise ReceiptError("Codex prompt argument does not match the canonical prompt file")
 
     atomic_write(receipt_file, {
@@ -222,6 +321,7 @@ def start_receipt(
         "argv_sha256": sha256(json.dumps(argv, separators=(",", ":")).encode("utf-8")),
         "status": "started",
         "exit_code": None,
+        **({"transport": {"path": prompt_relative + ".transport.json", "sha256": None}} if transport is not None else {}),
     })
 
 
@@ -252,6 +352,9 @@ def finish_receipt(work: pathlib.Path, receipt_path: pathlib.Path, exit_code: in
     }
     receipt["status"] = "completed"
     receipt["exit_code"] = exit_code
+    if "transport" in receipt:
+        carrier, _ = relative_file(work, receipt["transport"]["path"], "prompt transport", require=True)
+        receipt["transport"]["sha256"] = sha256(carrier.read_bytes())
     atomic_write(receipt_path, receipt)
 
 
@@ -267,7 +370,7 @@ def validate_receipt_artifacts(
         work, str(receipt_path), "invocation receipt", require=True,
     )
     receipt = read_receipt(receipt_file)
-    if set(receipt) != {
+    if set(receipt) - {"transport"} != {
         "schema_version", "run_id", "phase", "round", "engine", "model",
         "sandbox", "sandbox_network_access", "prompt", "session", "argv_sha256",
         "status", "exit_code",
@@ -309,6 +412,22 @@ def validate_receipt_artifacts(
         or sha256(prompt_file.read_bytes()) != prompt["sha256"]
     ):
         raise ReceiptError("invocation prompt digest mismatch")
+    if "transport" in receipt:
+        binding = receipt["transport"]
+        if not isinstance(binding, dict) or set(binding) != {"path", "sha256"} or binding["path"] != prompt["path"] + ".transport.json":
+            raise ReceiptError("invocation transport binding is invalid")
+        carrier, _ = relative_file(work, binding["path"], "prompt transport", require=True)
+        if sha256(carrier.read_bytes()) != binding["sha256"]:
+            raise ReceiptError("invocation transport digest mismatch")
+        transport = validate_transport(carrier, prompt_file.read_bytes())
+        argv = transport["command"][2:]
+        file_prompt_args(argv)
+        if (transport["command"][1:2] != ["exec"] or transport["exit_code"] != receipt["exit_code"]
+                or sha256(json.dumps(argv, separators=(",", ":")).encode("utf-8")) != receipt["argv_sha256"]
+                or option_value(argv, "-m", "--model") != receipt["model"]
+                or option_value(argv, "-s", "--sandbox") != receipt["sandbox"]
+                or sandbox_network_access(argv, phase) != receipt["sandbox_network_access"]):
+            raise ReceiptError("invocation actual argv/capability mismatch")
     session = receipt["session"]
     if not isinstance(session, dict) or set(session) != {"path", "sha256", "bytes"}:
         raise ReceiptError("invocation receipt session binding is invalid")
@@ -387,6 +506,9 @@ def validate_receipt(
 
 
 def monitor_descendant_regression() -> None:
+    if os.name == "nt":
+        print("SKIP POSIX shell process-group fixture; test-windows-portability.py exercises native Node/Python trees")
+        return
     with tempfile.TemporaryDirectory() as raw_tmp:
         work = pathlib.Path(raw_tmp)
         fixture_bin = work / "bin"
@@ -428,7 +550,7 @@ def monitor_descendant_regression() -> None:
                 key.startswith("DEVLYN_INVOCATION_")
                 or key.startswith("DEVLYN_WATCHDOG_TEST_")
                 or key.startswith("CODEX_MONITORED_")
-                or key in {"CODEX_BLOCKED", "CODEX_REAL_BIN"}
+                or key in {"CODEX_BLOCKED", "CODEX_REAL_BIN", "DEVLYN_CODEX_PROMPT_FILE"}
             ):
                 env.pop(key)
         env.update({
@@ -879,6 +1001,9 @@ def self_test() -> int:
             model="gpt-wrapper", prompt_sha256=sha256(glued_prompt.read_bytes()),
             session_path=glued_session,
         )["sandbox_network_access"] is True
+        if os.name == "nt":
+            print("SKIP POSIX executable-shell wrapper fixtures; native npm worker/judge transport is covered by test-windows-portability.py")
+            return 0
         fake_codex = work / "fake-codex"
         fake_codex.write_text(
             "#!/usr/bin/env bash\n"
@@ -903,6 +1028,7 @@ def self_test() -> int:
         assert b"forbidden Codex sandbox" in widened.stderr
         assert widened.stdout == b""
         env = os.environ.copy()
+        env.pop("DEVLYN_CODEX_PROMPT_FILE", None)
         env.update({
             "CODEX_BIN": str(fake_codex),
             "CODEX_MONITORED_HEARTBEAT": "1",
@@ -952,6 +1078,7 @@ def self_test() -> int:
         wrapped_plan_session = devlyn / "plan.worker-session.1.jsonl"
         wrapped_plan_receipt = devlyn / "plan.invocation.1.json"
         plan_env = os.environ.copy()
+        plan_env.pop("DEVLYN_CODEX_PROMPT_FILE", None)
         plan_env.update({
             "CODEX_BIN": str(fake_codex),
             "CODEX_MONITORED_HEARTBEAT": "1",
@@ -995,6 +1122,56 @@ def self_test() -> int:
     return 0
 
 
+def complete_dispatch(exit_code):
+    prompt = os.environ.get("DEVLYN_CODEX_PROMPT_FILE")
+    if prompt:
+        path = pathlib.Path(prompt).resolve()
+        finish_transport(path.with_name(path.name + ".transport.json"), exit_code)
+    if os.environ.get("DEVLYN_INVOCATION_RECEIPT"):
+        work = pathlib.Path(os.environ["DEVLYN_INVOCATION_WORKDIR"]).resolve()
+        path = pathlib.Path(os.environ["DEVLYN_INVOCATION_RECEIPT"])
+        finish_receipt(work, path if path.is_absolute() else work / path, exit_code)
+
+
+def dispatch_codex(args):
+    argv = args.argv[1:] if args.argv[:1] == ["--"] else args.argv
+    command = [args.binary, "exec", *argv]
+    actual = PLATFORM["native_argv"](command)
+    prompt = os.environ.get("DEVLYN_CODEX_PROMPT_FILE")
+    if prompt == "":
+        raise ReceiptError("DEVLYN_CODEX_PROMPT_FILE must name a readable prompt file")
+    stream, carrier, transport = None, None, None
+    try:
+        if prompt:
+            file_prompt_args(argv)
+            stream, carrier, transport = prepare_transport(
+                prompt, command, actual, args.timeout,
+                isolated=bool(os.environ.get("CODEX_MONITORED_ISOLATED")),
+            )
+        if os.environ.get("DEVLYN_INVOCATION_RECEIPT"):
+            env = os.environ
+            work = pathlib.Path(env["DEVLYN_INVOCATION_WORKDIR"]).resolve()
+            path = pathlib.Path(env["DEVLYN_INVOCATION_RECEIPT"])
+            start_receipt(work, path if path.is_absolute() else work / path,
+                          env["DEVLYN_INVOCATION_RUN_ID"], env["DEVLYN_INVOCATION_PHASE"],
+                          int(env["DEVLYN_INVOCATION_ROUND"]), env["DEVLYN_INVOCATION_PROMPT_FILE"],
+                          env["DEVLYN_INVOCATION_SESSION_FILE"], argv, transport=transport)
+        if transport is not None:
+            write_transport(carrier, transport)
+        if os.name != "nt":
+            if stream is not None:
+                os.dup2(stream.fileno(), 0)
+            os.execvp(actual[0], actual)
+        code = PLATFORM["run_process"](actual, stream if stream is not None else subprocess.DEVNULL,
+                                       args.timeout, heartbeat=args.heartbeat)
+        complete_dispatch(code)
+        print(f"[codex-monitored] codex exited: code={code}", file=sys.stderr)
+        return code
+    finally:
+        if stream is not None:
+            stream.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true")
@@ -1012,11 +1189,22 @@ def main() -> int:
     finish.add_argument("--workdir", required=True)
     finish.add_argument("--receipt", required=True)
     finish.add_argument("--exit-code", type=int, required=True)
+    dispatch = subparsers.add_parser("dispatch")
+    dispatch.add_argument("--binary", required=True)
+    dispatch.add_argument("--timeout", type=int, required=True)
+    dispatch.add_argument("--heartbeat", type=int, required=True)
+    dispatch.add_argument("argv", nargs=argparse.REMAINDER)
+    completed = subparsers.add_parser("complete-dispatch")
+    completed.add_argument("--exit-code", type=int, required=True)
     args = parser.parse_args()
     if args.self_test:
         return self_test()
     try:
-        if args.action == "start":
+        if args.action == "dispatch":
+            return dispatch_codex(args)
+        elif args.action == "complete-dispatch":
+            complete_dispatch(args.exit_code)
+        elif args.action == "start":
             argv = args.argv[1:] if args.argv[:1] == ["--"] else args.argv
             start_receipt(
                 pathlib.Path(args.workdir).resolve(), pathlib.Path(args.receipt), args.run_id,
@@ -1038,4 +1226,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
+    raise SystemExit(PLATFORM["system_exit_code"](main()))

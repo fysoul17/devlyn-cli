@@ -535,7 +535,7 @@ def completion_self_test() -> None:
         for i, final in enumerate(invalid):
             path = runs / f"indeterminate-{i:02d}" / "pipeline.state.json"
             path.parent.mkdir()
-            path.write_text(json.dumps({"run_id": path.parent.name, "phases": {"final_report": final}}))
+            path.write_text(json.dumps({"run_id": path.parent.name, "phases": {"final_report": final}}), encoding="utf-8")
             preserved.append(path)
         for i, raw in enumerate((b"{", b"\xff", b"null", b'{"phases":{}}', b'{"run_id":[]}')):
             path = runs / f"malformed-{i}" / "pipeline.state.json"
@@ -545,14 +545,14 @@ def completion_self_test() -> None:
         for i, pattern in enumerate(BOOTSTRAP_TEMP_PATTERNS):
             path = runs / f"residue-{i}" / "pipeline.state.json"
             path.parent.mkdir()
-            path.write_text(json.dumps({"run_id": path.parent.name, "phases": {"final_report": valid[0]}}))
+            path.write_text(json.dumps({"run_id": path.parent.name, "phases": {"final_report": valid[0]}}), encoding="utf-8")
             residue = path.with_name(pattern.replace("*", "interrupted"))
             residue.write_bytes(b"interrupted initialization")
             preserved.extend((path, residue))
         for i in range(12):
             path = runs / f"complete-{i:02d}" / "pipeline.state.json"
             path.parent.mkdir()
-            path.write_text(json.dumps({"run_id": path.parent.name, "phases": {"final_report": valid[i % 8]}}))
+            path.write_text(json.dumps({"run_id": path.parent.name, "phases": {"final_report": valid[i % 8]}}), encoding="utf-8")
         before = {p: p.read_bytes() for p in preserved}
         assert prune(runs) == 2
         assert {p: p.read_bytes() for p in preserved} == before
@@ -901,6 +901,7 @@ def self_test() -> int:
             [sys.executable, str(pathlib.Path(__file__).resolve()), "--devlyn-dir", str(bad)],
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         assert blocked_cli.returncode == 1
         assert "error: archive blocked:" in blocked_cli.stderr
@@ -948,4 +949,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     raise SystemExit(main())

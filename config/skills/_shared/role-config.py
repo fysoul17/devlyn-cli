@@ -2,6 +2,7 @@
 """Resolve explicit devlyn roles; no model dispatch or lifecycle changes."""
 from __future__ import annotations
 
+import runpy
 import argparse
 import hashlib
 import json
@@ -58,7 +59,7 @@ def adapter(engine, judge=False, shared=SHARED):
     path = shared / "adapters" / f"{engine}.md"
     if not path.is_file():
         fail(f"no adapter for {engine}")
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     field = "pair_judge" if judge else "executor"
     if re.search(rf"^{field}: no\s*$", text, re.M):
         fail(f"{engine} is ineligible for {'judge' if judge else 'worker'}")
@@ -238,7 +239,7 @@ def native_version(engine):
     if binary is None:
         fail(f"install/authenticate {engine} and retry", f"{engine}-unavailable")
     try:
-        proc = subprocess.run([binary, "--version"], capture_output=True, text=True, timeout=20)
+        proc = subprocess.run(runpy.run_path(Path(__file__).with_name("platform-support.py"))["native_argv"]([binary, "--version"]), capture_output=True, text=True, timeout=20, encoding="utf-8")
     except (OSError, subprocess.SubprocessError) as exc:
         fail(f"{engine} --version failed: {exc}; install/authenticate the native CLI and retry", f"{engine}-unavailable")
     if proc.returncode != 0:
@@ -402,7 +403,7 @@ def self_test():
         for role, arguments in (("pair_judge", ["--value", '{"engine":"claude"}']),
                                 ("worker", ["--value", "{"]), ("worker", [])):
             proc = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--workdir", str(work),
-                                   "--set-role", role, *arguments], capture_output=True, text=True)
+                                   "--set-role", role, *arguments], capture_output=True, text=True, encoding="utf-8")
             assert proc.returncode == 1 and "BLOCKED:invalid-engine-config" in proc.stderr, proc.stderr
             assert "Traceback" not in proc.stderr and path.read_bytes() == before
         path.write_bytes(encoded({"executor": "claude", "pair_judge_priority": ["codex"]}))
@@ -420,7 +421,7 @@ def self_test():
         assert status["roles"]["primary_judge"]["availability"] == "CLI-unavailable"
         before = path.read_bytes()
         proc = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--workdir", str(work)],
-                              capture_output=True, text=True, env={**os.environ, "PATH": str(work / "no-binaries")})
+                              capture_output=True, text=True, env={**os.environ, "PATH": str(work / "no-binaries")}, encoding="utf-8")
         assert proc.returncode == 0 and loads(proc.stdout)["roles"]["pair_judge"]["engine"] is None, proc.stderr
         assert path.read_bytes() == before
         for engine in (None, ""):
@@ -470,7 +471,7 @@ def self_test():
                     raise AssertionError("unknown judge effort support was assumed")
         ineligible = work / "adapters"
         ineligible.mkdir()
-        (ineligible / "claude.md").write_text("pair_judge: no\n")
+        (ineligible / "claude.md").write_text("pair_judge: no\n", encoding="utf-8")
         try:
             options(future, "primary_judge", version=future_version, shared=work)
         except ValueError as exc:
@@ -549,4 +550,5 @@ def main():
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     raise SystemExit(main())

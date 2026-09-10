@@ -2,6 +2,7 @@
 """Deterministic PHASE 6 final-diff gate for /devlyn:resolve."""
 from __future__ import annotations
 
+import runpy
 import argparse
 import importlib.util
 import json
@@ -43,6 +44,7 @@ def git(work: pathlib.Path, *args: str) -> subprocess.CompletedProcess[str]:
         cwd=str(work),
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
 
 
@@ -329,7 +331,7 @@ def write_state(devlyn: pathlib.Path, state: dict) -> None:
 
 def read_findings(devlyn: pathlib.Path) -> list[dict]:
     path = devlyn / FINDINGS_NAME
-    return [SPEC_VERIFY.loads_strict_json(line) for line in path.read_text().splitlines() if line.strip()]
+    return [SPEC_VERIFY.loads_strict_json(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def read_summary(devlyn: pathlib.Path) -> dict:
@@ -515,4 +517,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     raise SystemExit(main())

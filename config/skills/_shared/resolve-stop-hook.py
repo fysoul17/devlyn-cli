@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import runpy
 import fnmatch
 import hashlib
 import importlib.util
@@ -281,7 +282,7 @@ def self_test() -> int:
     assert hashlib.sha256(block_state.read_bytes()).hexdigest() == before_sha
     assert len(receipts) == 1
     assert any(fnmatch.fnmatch(receipts[0].name, pattern) for pattern in archive_module.PER_RUN_PATTERNS)
-    assert json.loads(receipts[0].read_text())["stop_hook_active"] is True
+    assert json.loads(receipts[0].read_text(encoding="utf-8"))["stop_hook_active"] is True
 
     absent = scratch / "control-a-absent"
     absent.mkdir()
@@ -354,4 +355,5 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     raise SystemExit(main())

@@ -36,6 +36,8 @@ Emit findings to `.devlyn/verify-mechanical.findings.jsonl`. Each match = one fi
 
 ### JUDGE (fresh-context grading)
 
+On the constrained Windows read route, the orchestrator supplies the complete spec/expected contract, accepted source SHA/diff, relevant source/tests with file:line locators, and validated sealed MECHANICAL results/manifests/required raw streams inline. Judge that supplied evidence without running tools. Missing, truncated or unbound inputs produce a verdict-binding BLOCKED finding. Retain fresh context, read-only sandbox, isolation, model/effort and bounded output; never widen permissions. This route addresses observed policy-denied reads, not a universal Windows sandbox limitation.
+
 Grade the diff against the spec on rubric axes:
 
 - **Spec compliance** — did every Requirement get an `evidence` record pointing at code that satisfies it?
@@ -219,10 +221,10 @@ generic `.devlyn/verify-judge.stdout`. When the primary engine is Codex, invoke
 it only through this distinct monitored route:
 
 ```bash
-CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s read-only -c model_reasoning_effort=high "<primary prompt>" >.devlyn/codex-judge.stdout 2>.devlyn/codex-judge.stderr
+DEVLYN_CODEX_PROMPT_FILE="<primary-prompt-file>" CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s read-only -c model_reasoning_effort=high - >.devlyn/codex-judge.stdout 2>.devlyn/codex-judge.stderr
 ```
 
-This command supplies unconfigured defaults. Explicit judge profiles use
+Write the complete prompt to the named file as exact UTF-8 bytes before launch and retain its generated `.transport.json` carrier. This command supplies unconfigured defaults. Explicit judge profiles use
 `SKILL.md#explicit-role-dispatch` for validated model/effort options and
 round-scoped evidence. Omit bypass flags; do not pipe either stream. On primary exit
 124, write `.devlyn/verify.primary.timeout.json` with exactly
@@ -233,7 +235,7 @@ floors `judge` at `BLOCKED`, including when findings/stdout are empty. It never
 produces `PASS`, a solo verdict, or pair-style `TIMEOUT`; without the marker,
 existing missing/invalid primary-output behavior remains fail-closed.
 
-Codex pair-JUDGE keeps the monitored
+Codex pair-JUDGE sets `DEVLYN_CODEX_PROMPT_FILE="<pair-prompt-file>"` with sole prompt `-` and keeps the monitored
 `codex-monitored.sh` route with
 `CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600` and
 unconfigured default `-c model_reasoning_effort=medium`; isolation blocks user config, AGENTS.md,

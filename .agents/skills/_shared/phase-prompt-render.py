@@ -2,6 +2,7 @@
 """Render exact phase-prompt bytes and print their SHA-256 digest."""
 from __future__ import annotations
 
+import runpy
 import argparse
 import hashlib
 import os
@@ -178,4 +179,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
     raise SystemExit(main())
