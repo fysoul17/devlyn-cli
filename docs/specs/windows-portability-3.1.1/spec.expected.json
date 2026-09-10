@@ -6,5 +6,5 @@
     {"cmd": "git diff --check", "exit_code": 0, "timeout_sec": 60}
   ],
   "max_deps_added": 0,
-  "forbidden_files": ["package.json", "autoresearch/HANDOFF.md", ".devlyn/engines.json"]
+  "forbidden_files": ["package.json", "autoresearch/HANDOFF.md", ".devlyn/engines.json", "AGENTS.md", "CLAUDE.md"]
 }

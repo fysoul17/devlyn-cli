@@ -24,57 +24,71 @@ Codex currently supports native Windows sandboxing; the supplied read rejection
 is evidence for an inline read-only review route, not proof that Windows has no
 sandbox. A real Windows runner is required before declaring Windows verified.
 
-## Findings-backed outer iterations
+## Findings-backed continuation
+
+The user renewed the Windows production-ready repair and explicitly authorized
+Opus 5 until the Fable limit resets, with actual Grok 4.6 technical advice. This
+is a fresh authorized continuation, not a reopening of the terminal outer 3/3
+cycle. Prior runs `rs-20260910T063702Z-2e30f88365b2`,
+`rs-20260910T101056Z-8a1facf9f0ba` and
+`rs-20260910T133516Z-33423a3fae82` retain their failed verdicts and unchanged
+budgets 4/4, 0/4 and 0/4. The last run halted on an empty IMPLEMENT repair;
+its candidate and passing checks are not product acceptance.
 
 Original input `4758808614ccfd3941c3ed7894e5726321bb9654` through unaccepted
-checkpoint `a6782ffcc032deab796bdff6d71794e2a5110453` remains the full 53-path
-product review surface. Run `rs-20260910T063702Z-2e30f88365b2` exhausted its
-unchanged 4/4 budget and is preserved under `.devlyn/runs/` with verdict
-`BLOCKED:build-gate-exhausted`; this amendment starts outer iteration 2 of 3.
+candidate `5d0cd66bce3acac9054fe2df5c49b4b2a26df511` remains the complete
+53-path product review surface, including the retained junction snapshot fix.
+PLAN and both fresh judges receive the hashed original-to-candidate patch and
+path manifest, prior failed evidence, and the eventual original-to-final and
+fresh-run product diffs. Owner spec commits remain separately identified;
+the new run's actual committed owner HEAD does not accept inherited product code.
 
-Native CI `34461164783` on that checkpoint passed POSIX and 16 Windows
-portability cases (one inapplicable skip), but failed the full bootstrap
-self-test at `resolve-bootstrap.py:576`: `snapshot()` treats a dangling nested
-junction as a file because `is_symlink()` is false. Its archived raw log SHA256
-is `698f210ce53ba4dd2424ec3f449666e6a90ef59d9f74455cb130affe8750035e`.
-Correct only this observed fixture boundary: snapshot root and nested, live and
-dangling directory redirects as link identities without traversing their targets.
-Preserve every refusal and before/after byte assertion. R1-R7 remain binding.
+Native diagnostic CI `34495191929` used the unchanged 5d npm artifact. In five
+ordered leader-exit/live-descendant cases, immediate retained-handle waits were
+nonsignaled and later signaled. No newer numeric application tick was observed
+after teardown, but one case changed the tick file to empty bytes; do not claim
+absence of observable side effects. The omitted-teardown control kept running.
+Native diagnostic CI `34496720924` accepted ACTIVE_PROCESS_LIMIT=0 with readback
+0 and rejected B's later child creation with error 1816 after A exited. Its
+current-count control admitted and executed C in the freed slot. In both modes,
+job accounting and PID lists became empty while retained process handles were
+still nonsignaled. These bounded observations establish neither arbitrary
+membership coverage nor a complete termination protocol; raw diagnostic evidence
+remains separate from the failed product verdict and future acceptance.
 
-Bootstrap the new normal run from its actual committed HEAD. Owner inputs are
-this linked spec amendment; inherited product changes remain unaccepted.
-PLAN and both fresh judges receive a separately hashed original-to-checkpoint
-diff and path manifest; both judges additionally receive the original-to-final
-product diff and fresh-run diff. Seal whole-task scope and final-source identity
-with mechanical evidence. Acceptance requires the full normal phase graph,
-post-CLEANUP mechanical checks including separately sealed bootstrap self-test,
-both independent judges, finish gate, successful archive and actual passing
-POSIX/Windows CI on the final accepted source. Checkpoints alone are not passes.
+R4 requires descendant cessation when the runner returns 124 and completion of
+bounded waits for captured job members; it does not promise finalization of every
+historical process object. After the existing bootstrap reap, set the job's active
+process limit to zero before collecting member PIDs and retaining their handles,
+then terminate the job and wait those retained handles. Preserve KILL_ON_JOB_CLOSE.
+Grow the PID buffer on ERROR_MORE_DATA, verify retained identities with
+IsProcessInJob, and tolerate only proven gone ERROR_INVALID_PARAMETER or a proven
+different job identity. API failures and wait timeouts remain visible errors;
+close every retained handle on every exit. Replace the accounting-zero oracle;
+post-kill re-enumeration cannot establish completion (CI `34496720924`).
 
-Outer iteration 2 ended BLOCKED as run `rs-20260910T101056Z-8a1facf9f0ba`,
-preserved with budget 0/4 and final report SHA256
-`448a79b47b26855cf507e315351aceed6316a026ef95a9d3b7540dabb212361a`.
-Checkpoint `6f7c6cfcf90b167d7135999d81f6d8953c5a6d3e` fixed the junction
-snapshot and passed native CI `34466453563` (raw log SHA256
-`736160489e3ce4bd3b1787dd9e7b7401bb52b431f9ac34aeddeadbd1746f66d2`).
-The required pair judge hit a native session limit; the primary independently
-found HIGH `VERIFY-PRIMARY-001`: `platform-support.py:106-107` skips Windows
-tree teardown when the leader exits after timeout selection at line 156 but
-before `finally`. The fixture at `scripts/test-windows-portability.py:363`
-keeps the leader alive and does not cover surviving descendants in that race.
+Retain the deterministic timeout-selection → actual leader-exit → teardown race,
+known-live descendant signaling, unchanged truncate/tick assertions and return
+124. Native regressions must cover attempted child creation after an initial
+membership observation and the zero-admission boundary, including A exiting to
+free capacity before B attempts C; preserve the admitted-child negative control.
+Also cover natural exit during collection, gone/reused PID identity handling,
+retained-handle waits and visible API/timeout failures. Prefer deterministic gates
+and native handles over timing loops. A member exiting naturally before capture
+is a distinct boundary: do not claim its pending I/O or process-object cleanup is
+complete without evidence. Do not weaken existing assertions, insert blind test
+waits or require a full-lifecycle event ledger without an observed need.
 
-This amendment starts the final outer iteration 3 of 3. Preserve process-tree
-ownership independently of leader lifetime, including the launch-to-ownership
-boundary, without shell argument concatenation or orphan-prone PID rediscovery.
-Use supported native primitives, preserve visible errors, normal child exit
-codes, exact stdin/argv and existing POSIX behavior. A deterministic native
-regression must order timeout selection, actual leader exit, and teardown while
-a descendant remains live, then verify descendant cessation and return 124.
-Retain the fixed root/nested live/dangling snapshot assertions and all inherited
-checks. Full original-to-final 53-path review includes both unaccepted
-checkpoints; owner spec amendments are separate inputs. The resumed required
-pair judge must actually use `claude-fable-5-1`, through a task-local model-only
-role profile and matching native evidence; global pins/settings stay unchanged.
+The required OTHER pair uses a task-local model-only `claude-opus-5` profile and
+matching current native identity evidence while the authorized substitution is
+in force. Grok advice supplements independent review. Global pins/settings and
+every AGENTS.md/CLAUDE.md remain unchanged; no Windows instruction exceptions.
+
+Commit the linked owner bundle before a fresh normal run; freeze it during the
+run. Acceptance requires all canonical phases, post-CLEANUP mechanical evidence
+including the separately sealed bootstrap self-test, independent primary/pair
+judgments, finish gate, successful archive and actual passing POSIX/Windows CI
+on the final source. Preserve R1-R7 and all inherited regressions.
 
 ## Requirements
 
