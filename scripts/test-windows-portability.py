@@ -820,7 +820,7 @@ else:
                         if boundary == 'CloseHandle':
                             actual(*args)  # Release the real resource, then expose a real close failure.
                             return actual(0)
-                        return actual(0, *args[1:])  # Real invalid-handle API failures.
+                        return actual(-1 if boundary == 'QueryInformationJobObject' else 0, *args[1:])  # NULL queries the caller's job.
 
                     with contextlib.ExitStack() as inject:
                         if boundary == 'deadline':
