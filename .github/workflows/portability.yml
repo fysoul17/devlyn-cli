@@ -15,7 +15,13 @@ jobs:
     container: python:3.12-bookworm
     timeout-minutes: 20
     steps:
+      - name: Trust the container checkout for this job
+        shell: bash
+        run: |
+          printf 'GIT_CONFIG_COUNT=1\nGIT_CONFIG_KEY_0=safe.directory\nGIT_CONFIG_VALUE_0=%s\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
+        with:
+          set-safe-directory: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -31,11 +37,16 @@ jobs:
           git diff --check 2>&1 | tee "$RUNNER_TEMP/portability/logs/diff.log" || checks_failed=1
           exit "$checks_failed"
       - name: Pack, identify and test npm artifact
+        id: pack
         if: ${{ !cancelled() }}
         shell: python
         run: |
           import hashlib, json, os, pathlib, shutil, subprocess, sys
-          assert subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip() == os.environ['GITHUB_SHA']
+          def check_source():
+              assert subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip() == os.environ['GITHUB_SHA']
+              subprocess.run(['git', 'diff', '--exit-code', 'HEAD', '--'], check=True)
+              subprocess.run(['git', 'diff', '--cached', '--exit-code', 'HEAD', '--'], check=True)
+          check_source()
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'portability'
           package = root / 'package'
           driver = root / 'driver'
@@ -45,22 +56,27 @@ jobs:
           tarball = package / json.loads(result)[0]['filename']
           test = driver / 'test-windows-portability.py'
           shutil.copyfile('scripts/test-windows-portability.py', test)
+          check_source()
+          assert test.read_bytes() == subprocess.check_output([
+              'git', 'show', os.environ['GITHUB_SHA'] + ':scripts/test-windows-portability.py']), 'Copied driver differs from accepted source'
           identity = {'source_sha': os.environ['GITHUB_SHA'], 'sha256': {
               p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (tarball, test)}}
           (package / 'identity.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write('source_bound=true\n')
           print('POSIX tested artifact: ' + json.dumps(identity), flush=True)
           installed = root / 'installed'
           subprocess.run(['npm', 'install', '--prefix', str(installed), '--cache', str(root / 'npm-cache'),
                           '--offline', '--ignore-scripts', '--no-audit', '--no-fund', str(tarball)], check=True)
           subprocess.run([sys.executable, str(test), '--package-root', str(installed / 'node_modules/devlyn-cli')], check=True)
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.pack.outputs.source_bound == 'true' }}
         with:
           name: npm-package
           path: ${{ runner.temp }}/portability/package/
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.pack.outputs.source_bound == 'true' }}
         with:
           name: portability-driver
           path: ${{ runner.temp }}/portability/driver/
