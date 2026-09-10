@@ -24,7 +24,7 @@ Codex currently supports native Windows sandboxing; the supplied read rejection
 is evidence for an inline read-only review route, not proof that Windows has no
 sandbox. A real Windows runner is required before declaring Windows verified.
 
-## Findings-backed outer iteration 2
+## Findings-backed outer iterations
 
 Original input `4758808614ccfd3941c3ed7894e5726321bb9654` through unaccepted
 checkpoint `a6782ffcc032deab796bdff6d71794e2a5110453` remains the full 53-path
@@ -50,6 +50,31 @@ with mechanical evidence. Acceptance requires the full normal phase graph,
 post-CLEANUP mechanical checks including separately sealed bootstrap self-test,
 both independent judges, finish gate, successful archive and actual passing
 POSIX/Windows CI on the final accepted source. Checkpoints alone are not passes.
+
+Outer iteration 2 ended BLOCKED as run `rs-20260910T101056Z-8a1facf9f0ba`,
+preserved with budget 0/4 and final report SHA256
+`448a79b47b26855cf507e315351aceed6316a026ef95a9d3b7540dabb212361a`.
+Checkpoint `6f7c6cfcf90b167d7135999d81f6d8953c5a6d3e` fixed the junction
+snapshot and passed native CI `34466453563` (raw log SHA256
+`736160489e3ce4bd3b1787dd9e7b7401bb52b431f9ac34aeddeadbd1746f66d2`).
+The required pair judge hit a native session limit; the primary independently
+found HIGH `VERIFY-PRIMARY-001`: `platform-support.py:106-107` skips Windows
+tree teardown when the leader exits after timeout selection at line 156 but
+before `finally`. The fixture at `scripts/test-windows-portability.py:363`
+keeps the leader alive and does not cover surviving descendants in that race.
+
+This amendment starts the final outer iteration 3 of 3. Preserve process-tree
+ownership independently of leader lifetime, including the launch-to-ownership
+boundary, without shell argument concatenation or orphan-prone PID rediscovery.
+Use supported native primitives, preserve visible errors, normal child exit
+codes, exact stdin/argv and existing POSIX behavior. A deterministic native
+regression must order timeout selection, actual leader exit, and teardown while
+a descendant remains live, then verify descendant cessation and return 124.
+Retain the fixed root/nested live/dangling snapshot assertions and all inherited
+checks. Full original-to-final 53-path review includes both unaccepted
+checkpoints; owner spec amendments are separate inputs. The resumed required
+pair judge must actually use `claude-fable-5-1`, through a task-local model-only
+role profile and matching native evidence; global pins/settings stay unchanged.
 
 ## Requirements
 
@@ -126,6 +151,9 @@ cleanup. The outer owner coordinates actual Windows CI and release separately.
   installer and subprocess boundaries, exact non-ASCII stdin bytes, absent-file
   rejection without child execution, lock contention versus unavailable locks,
   prompt/evidence mismatch rejection, legacy transport and process-tree timeout.
+  Native Windows includes deterministic timeout-selection → leader-exit → tree
+  teardown ordering, descendant cessation, normal leader exit with descendants,
+  and error/launch ownership boundaries; successful leaders retain exit codes.
   Platform-specific tests run on their actual platform and identify skips.
 - `python3 config/skills/_shared/resolve-bootstrap.py --self-test` exits 0,
   including root/nested live/dangling redirect refusal and unchanged snapshots.
