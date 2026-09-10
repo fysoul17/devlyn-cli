@@ -10,7 +10,7 @@ complexity: high
 
 The user supplied a native Windows npm install failure and a successful pipeline
 only after local patches for locking, encoding, prompt transport and timeouts.
-Current source still compares logical colon skill names with npm's Windows
+The original input compared logical colon skill names with npm's Windows
 U+F03A extraction names (`bin/devlyn.js:362`), imports fcntl in bootstrap locking
 (`resolve-bootstrap.py:367`), closes bounded subprocess stdin and kills POSIX
 groups (`run-bounded.py:24`), and closes monitored Codex stdin. The current
@@ -23,6 +23,33 @@ behavior, exact prompt/evidence bytes and fail-closed safety contracts.
 Codex currently supports native Windows sandboxing; the supplied read rejection
 is evidence for an inline read-only review route, not proof that Windows has no
 sandbox. A real Windows runner is required before declaring Windows verified.
+
+## Findings-backed outer iteration 2
+
+Original input `4758808614ccfd3941c3ed7894e5726321bb9654` through unaccepted
+checkpoint `a6782ffcc032deab796bdff6d71794e2a5110453` remains the full 53-path
+product review surface. Run `rs-20260910T063702Z-2e30f88365b2` exhausted its
+unchanged 4/4 budget and is preserved under `.devlyn/runs/` with verdict
+`BLOCKED:build-gate-exhausted`; this amendment starts outer iteration 2 of 3.
+
+Native CI `34461164783` on that checkpoint passed POSIX and 16 Windows
+portability cases (one inapplicable skip), but failed the full bootstrap
+self-test at `resolve-bootstrap.py:576`: `snapshot()` treats a dangling nested
+junction as a file because `is_symlink()` is false. Its archived raw log SHA256
+is `698f210ce53ba4dd2424ec3f449666e6a90ef59d9f74455cb130affe8750035e`.
+Correct only this observed fixture boundary: snapshot root and nested, live and
+dangling directory redirects as link identities without traversing their targets.
+Preserve every refusal and before/after byte assertion. R1-R7 remain binding.
+
+Bootstrap the new normal run from its actual committed HEAD. Owner inputs are
+this linked spec amendment; inherited product changes remain unaccepted.
+PLAN and both fresh judges receive a separately hashed original-to-checkpoint
+diff and path manifest; both judges additionally receive the original-to-final
+product diff and fresh-run diff. Seal whole-task scope and final-source identity
+with mechanical evidence. Acceptance requires the full normal phase graph,
+post-CLEANUP mechanical checks including separately sealed bootstrap self-test,
+both independent judges, finish gate, successful archive and actual passing
+POSIX/Windows CI on the final accepted source. Checkpoints alone are not passes.
 
 ## Requirements
 
@@ -100,7 +127,9 @@ cleanup. The outer owner coordinates actual Windows CI and release separately.
   rejection without child execution, lock contention versus unavailable locks,
   prompt/evidence mismatch rejection, legacy transport and process-tree timeout.
   Platform-specific tests run on their actual platform and identify skips.
-- `python3 config/skills/_shared/resolve-bootstrap.py --self-test` exits 0.
+- `python3 config/skills/_shared/resolve-bootstrap.py --self-test` exits 0,
+  including root/nested live/dangling redirect refusal and unchanged snapshots.
+  Capture this full command separately in BUILD_GATE and post-CLEANUP evidence.
 - `python3 config/skills/_shared/task-complete.py --self-test` exits 0.
 - `bash scripts/lint-skills.sh` exits 0 with existing checks intact and canonical
   mirrors identical; `git diff --check` exits 0.

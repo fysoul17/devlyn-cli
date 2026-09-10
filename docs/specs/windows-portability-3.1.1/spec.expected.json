@@ -1,6 +1,7 @@
 {
   "verification_commands": [
     {"cmd": "python3 scripts/test-windows-portability.py", "exit_code": 0, "timeout_sec": 180},
+    {"cmd": "python3 config/skills/_shared/resolve-bootstrap.py --self-test", "exit_code": 0, "timeout_sec": 180},
     {"cmd": "bash scripts/lint-skills.sh", "exit_code": 0, "timeout_sec": 600},
     {"cmd": "git diff --check", "exit_code": 0, "timeout_sec": 60}
   ],
