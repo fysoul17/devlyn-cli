@@ -77,6 +77,8 @@ For every direct complete→spawn handoff, call `state-phase-write.py ... --phas
 
 ## PHASE 0: PARSE + CLASSIFY + ROUTE
 
+Outer-owner boundary: before normal task writes, follow `references/task-completion.md` for prospective task-branch ownership (linked worktree optional) and `references/outer-loop.md` for owner-input commits. Existing branches cannot be retroactively adopted. Verify-only does not allocate or publish; phase workers never own delivery.
+
 1. Run the bootstrap once with the exact tokenized `<pipeline_config>` and this orchestrator's default engine from `<engine_routing>`:
 
    ```bash
@@ -378,6 +380,8 @@ Open the `final_report` span through the predecessor's `state-phase-write.py --d
 5. Complete the span with `state-phase-write.py --devlyn-dir .devlyn --phase final_report complete --verdict <bare enum> --log-file .devlyn/final-report.md` — the enum class of the terminal verdict (`BLOCKED:<reason>` → `BLOCKED`; `NEEDS_WORK` / `PASS_WITH_ISSUES` / `PASS` unchanged) — BEFORE archive runs (archive prune skips runs whose `final_report.verdict` is null). The writer validates the canonical nonsymlink regular file, current run marker and nonempty body, then binds its exact bytes; validation failure leaves the phase open. Never hand-edit lifecycle fields in `pipeline.state.json` (`references/state-schema.md` § Write protocol).
 
 6. **Archive** — invoke the deterministic script: `python3 "$DEVLYN_SHARED_DIR/archive_run.py"`. The script reads `run_id` from `.devlyn/pipeline.state.json`, moves the static per-run artifact set (`PER_RUN_PATTERNS` remains the single ownership list) plus every state-bound process-evidence manifest/raw stream into `.devlyn/runs/<run_id>/`, preserves evidence-relative layout, and rehashes bound bytes before any move. An unsafe/missing/altered evidence path or destination collision reports archive failure without changing the already-derived product verdict. It then best-effort prunes to the last 10 completed runs. Archive must run; running this step as deterministic-script-not-prose ensures the move actually happens (iter-0033a Smoke 3 caught a case where the agent claimed archive ran without moving the files).
+
+After successful normal-run archive, return to the outer owner for `references/task-completion.md`. A queue owner first commits its terminal queue transition, then completes once. Honor local-only/no-push; report delivery pending/failure separately from the archived product verdict. This is outside the phase graph.
 
 ## State management
 

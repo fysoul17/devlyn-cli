@@ -1,0 +1,25 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "python3 config/skills/_shared/task-complete.py --self-test",
+      "exit_code": 0,
+      "timeout_sec": 180
+    },
+    {
+      "cmd": "bash scripts/lint-skills.sh",
+      "exit_code": 0,
+      "timeout_sec": 600
+    },
+    {
+      "cmd": "git diff --check",
+      "exit_code": 0,
+      "timeout_sec": 60
+    }
+  ],
+  "max_deps_added": 0,
+  "forbidden_files": [
+    "package.json",
+    "bin/devlyn.js",
+    "autoresearch/iterations/0139-mission1-validation.md"
+  ]
+}

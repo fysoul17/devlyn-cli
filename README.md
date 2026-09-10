@@ -62,7 +62,7 @@ Skip ideate entirely if you have a spec or just want to describe the work — `/
 
 ### Step 2 — Resolve with `/devlyn:resolve`
 
-Before writes, inspect requested files and relevant callers/tests. Clear, local, reversible, low-risk conversational edits with a decisive acceptance check run directly, honoring scope, constraints and executor pins; finish required checks and diff review, then report evidence. Material ambiguity, subsystem/design work, security/auth/payment/persistence/concurrency/public-API-contract changes or no decisive check use full `/devlyn:resolve`. Explicit resolve (including small tasks), formal specs and queue drains keep the full workflow below. Pass a spec, a free-form goal, or a diff to verify.
+Before writes, inspect requested files and relevant callers/tests. Clear, local, reversible, low-risk conversational edits with a decisive acceptance check run directly, honoring scope, constraints and executor pins; finish required checks and diff review, then accept the scoped commit for owner completion below. Material ambiguity, subsystem/design work, security/auth/payment/persistence/concurrency/public-API-contract changes or no decisive check use full `/devlyn:resolve`. Explicit resolve (including small tasks), formal specs and queue drains keep the full workflow below. Pass a spec, a free-form goal, or a diff to verify.
 
 ```
 /devlyn:resolve "fix the login bug"                                # free-form
@@ -97,9 +97,21 @@ golden fixture, risk-probe, or pair-evidence candidate must also include
 difference from rejected or solo-saturated controls such as `S2`-`S6`; without
 that, `/devlyn:resolve` stops with `BLOCKED:solo-ceiling-avoidance-required`.
 
+Accepted tasks default to owner completion: scoped commit → push → PR → normal
+protected merge → recoverable cleanup of prospectively owned resources. Set
+`git config --local devlyn.completionMode pr` to stop at a PR, or `auto` to restore
+the default; `task-complete.py complete --mode auto|pr` overrides one task.
+Local-only/no-push instructions take precedence. Linked worktrees are optional;
+existing branches cannot be adopted. Full runs require successful archive before
+delivery; direct tasks use their actual checks and root acceptance. Verify-only
+never publishes. Pending checks or unsupported merge policy retain resources and
+report a receipt-based resume command separately from product verification.
+See [task completion](config/skills/devlyn:resolve/references/task-completion.md)
+for allocation, acceptance, writer cessation and recovery.
+
 ### Queue multiple intents for unattended drain — `/devlyn:queue`
 
-Stack tasks to run back-to-back without supervision. `/devlyn:queue add "<intent>"` appends to `docs/specs/queue.md` (an ordered checklist); `/devlyn:queue drain` runs each item serially — spec it, run the resolve outer loop, mark `[x]` done or `[F]` blocked with a reason, then move on. A blocked item never halts the queue, and unattended runs only take scope-narrowing, reversible defaults — anything user-visible or ambiguous is marked `[F] needs-review` for you to adjudicate afterward. `/devlyn:queue` with no args shows status.
+Stack tasks to run back-to-back without supervision. `/devlyn:queue add "<intent>"` appends to `docs/specs/queue.md` (an ordered checklist); `/devlyn:queue drain` runs each item serially — spec it, run the resolve outer loop, commit `[x]` done or `[F]` blocked with a reason, then complete eligible delivery once. Product verdict and delivery status are separate. A blocked product otherwise never halts the queue; pending delivery retains its branch, and the next item requires separate safe placement. Unattended runs only take scope-narrowing, reversible defaults — anything user-visible or ambiguous is marked `[F] needs-review` for you to adjudicate afterward. `/devlyn:queue` with no args shows status.
 
 ### Engine roles — auto-detected, pinnable with `/devlyn:engines`
 
