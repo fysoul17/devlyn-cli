@@ -1,10 +1,10 @@
 # 0143 — Owned task delivery and recoverable worktree cleanup
 
-2026-09-10 KST. **Source checks and final Codex review PASS; Fable 5.1 quota blocks final acceptance, main merge and release.**
+2026-09-10 KST. **Product accepted PASS_WITH_ISSUES and archived; main merge, current-task cleanup and release pending.**
 The user requests truthful remaining-work handoff, removal of stale worktrees,
 and a completion boundary through commit/push/PR/main merge before owned-resource
 cleanup, with automatic completion or a configurable stop at PR. This record
-separates the completed one-time cleanup from the not-yet-verified product change.
+separates the completed one-time cleanup, accepted product and pending delivery.
 
 ## Current resumed checkpoint
 
@@ -33,16 +33,25 @@ green tests and two owner regressions are retained in
 BUILD round 2 passed literal helper tests (97.546s), full lint (277.339s),
 diff (0.021s), sealed P3 (85.545s), and both owner regressions. CLEANUP removed
 eight generated cache files with no source change. Final MECHANICAL passed
-all four commands. Final Codex review then returned PASS with zero findings
-(native 117.969s); required Fable review returned HTTP429 with zero usage.
-The user reported recovery and selected same-Fable continuation; two retries still returned the same quota error. CLI login is healthy; no
-auth-override environment variables are present. Account confirmation is pending.
-No alternate-model permission was given. The current normal run is retained pending that required review. A byte/mode-verified
-checkpoint of 360 owned evidence entries and a verified 16,187,930-byte source
-bundle is retained in `quota-checkpoint/` beside the checkout.
+all four commands. Final Codex review returned PASS with zero findings
+(native 117.969s). Three Fable quota attempts returned HTTP429 with zero usage;
+after the user restored availability, the fourth native invocation used exactly
+`claude-fable-5-1` and completed in 114.786s. It returned one LOW, non-binding,
+low-confidence `PAIR-001` advisory: interruption during native worktree removal
+may leave a prunable registration that safely blocks retry, requiring manual
+recovery. No CRITICAL/HIGH finding remains. Canonical merge is
+**PASS_WITH_ISSUES**, finish gate exits 0 (15 paths, zero offenders), and the
+run-bound final report and 134 artifacts were actually archived with zero prunes.
+No engine exception was used. The earlier Fable PASS on 9107142 is not the final
+acceptance. All three failed captures and original blocked runs remain retained.
+
 The repaired source was integrated into the original PR branch at `f85d61b`,
 with exact equality for all functional/contract paths; owner handoff metadata
-records the pending result. PR #4 remains draft and no main merge is claimed.
+is separately reviewed. `source-acceptance.json` beside the checkout binds the
+accepted source, archive and matching path hashes. PR #4 merge and publication
+remain pending at this checkpoint. The immutable pending `quota-checkpoint/`
+contains 360 evidence entries and the verified source bundle; final external
+custody must also capture the successful archive before removal.
 
 Owner dispatch evidence is explicit: an invalid VERIFY transition argument
 allowed a prematurely launched IMPLEMENT r3; a duplicate dispatch truncated
@@ -112,7 +121,7 @@ No old candidate was merged merely to clean its branch. In particular 0115/0116,
 reclassify their rejected/invalid/partial experiments. Process observations are
 point-in-time evidence, not a universal future writer lock.
 
-## Authorized product change — acceptance pending
+## Original authorized product change and blocked attempts
 
 Owner-input commit `5e85f99` contains `docs/specs/task-completion/spec.md` and its
 expected file, the original HANDOFF WIP and byte-identical historical 0139. Current

@@ -6,43 +6,42 @@ older records. [PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md) and
 [DECISIONS](DECISIONS.md) own enduring constraints/history. Inspect Git state and
 live runs; do not replay unrelated cold-start suites.
 
-## START-HERE — source checks and Codex review pass; Fable quota still blocks delivery
+## START-HERE — task completion accepted; delivery recorded by the owner
 
-Current candidate source is `491c38d` on `codex/0143-acceptance-r2`.
-Normal run `rs-20260910T022458Z-3f00122a0779` has passed PLAN, probes,
-IMPLEMENT, BUILD_GATE, CLEANUP and final MECHANICAL. Final Codex review is
-PASS with zero findings. **Required Fable 5.1 review is still pending**:
-three native invocations returned HTTP429 with zero model usage, including
-two retries after the user reported recovery. CLI login is healthy with no auth-override environment variables; account
-confirmation was requested. The user explicitly chose to continue with Fable; no Grok exception or engine/pin change is authorized.
-Do not treat the prior Fable PASS on `9107142` as review of the repaired source.
+Product verification is **PASS_WITH_ISSUES**, with zero CRITICAL/HIGH findings.
+The sole LOW advisory concerns manual recovery after an interrupted native
+worktree removal leaves a prunable registration. Finish gate is clean and the
+normal run is archived. PR #4 merge, current-task cleanup and release 3.1.0
+remain pending outer-owner delivery; published version is still 3.0.1.
 
+Accepted source: `491c38deaf5735dd14dc47fecdfc0a8a1c6806c6`, normal run
+`rs-20260910T022458Z-3f00122a0779`. The resumed run completed BUILD_GATE,
+CLEANUP, final mechanical checks and fresh Codex/Fable 5.1 review.
 The first review found HIGH `VERIFY-PRIMARY-001`: Git `insteadOf` could
 redirect publication to another repository. The repair validates literal,
-effective fetch and effective push repository identities before allocation,
-resume and cleanup. Four regressions cover rejection and same-repository
-aliases. An earlier owner check also fixed the actual `gh repo view`
-positional argument and unsupported JSON-field query. Both fixes and queue
-guidance now belong to the candidate; main merge and release remain pending.
+effective fetch and effective push repository identities before allocation and
+again on resume/cleanup. Four regressions preserve rejection and legitimate
+same-repository aliases. An earlier owner check also repaired the actual
+`gh repo view` positional argument and unsupported JSON-field query.
 
-The retained PR is [#4](https://github.com/fysoul17/devlyn-cli/pull/4),
-kept draft until the required review and normal-run final report/archive succeed.
-The current verification checkout and owner launchers are under
-`/Users/aipalm/.local/share/nx01/iter0143/20260910T022444Z-acceptance-r2/`.
-Its `RECOVERY.md` and byte-verified `quota-checkpoint/` preserve 360 evidence
-entries and a verified source bundle. `ownership.json` and the active
-`work/.devlyn/` state, review-source, prior-verify and quota artifacts identify exact source,
-checks, failed review and retry. Preserve all before removing the checkout.
-Continue with the same frozen source/evidence; do not repeat source recovery
-or reinterpret a failed invocation as acceptance. See
-[0143](iterations/0143-task-completion.md) for the current checkpoint.
+Current behavior: prospective task ownership, exact accepted source, PR reuse,
+protected merge and recoverable owned-resource cleanup.
+`git config --local devlyn.completionMode pr` stops at PR; unset/default
+`auto` continues through eligible merge and cleanup. Existing branches/trees
+remain owner-managed; they cannot be retroactively enrolled.
+Existing project instructions are preserved by installation: reconcile them
+with the bundled AGENTS/CLAUDE templates to adopt completion guidance.
 
-The two September 9 runs remain historically BLOCKED. Codex quota recovered
-on September 10; the earlier proposed Codex-route exception became unnecessary.
-This session's owner dispatch mistake was stopped without source changes and
-was not accepted; the repair came from a fresh attested worker. The last
-published version remains 3.0.1. No main merge, current-branch cleanup or new
-release is claimed by this checkpoint.
+Durable raw evidence, failed attempts, accepted archive, source recovery and
+cleanup receipts: `/Users/aipalm/.local/share/nx01/iter0143/20260910T022444Z-acceptance-r2/`
+(current archive in `work/.devlyn/runs/rs-20260910T022458Z-3f00122a0779/`;
+external custody must be completed before worktree removal). See [0143](iterations/0143-task-completion.md).
+Two September 9 runs remain historically BLOCKED. Codex availability recovered
+on September 10, so the proposed engine exception was unnecessary and pins did
+not change. This session's failed owner dispatch was stopped without source
+changes; its corrupted capture was not accepted, and a fresh attested worker
+performed the repair. Inactive/crashed-session intervals are not active model
+execution time.
 
 ## Legacy worktree cleanup and recovery
 
