@@ -18,6 +18,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = None
@@ -369,6 +370,305 @@ print(payload, file=sys.stderr)
                 before = marker.read_bytes(); time.sleep(.2); self.assertEqual(marker.read_bytes(), before)
                 wait_for(lambda: not process_running(int(marker.with_suffix('.pid').read_text(encoding='utf-8'))))
                 print('bounded descendant ceased stubborn=' + str(stubborn) + ' native pid=' + marker.with_suffix('.pid').read_text(encoding='utf-8'), flush=True)
+
+
+@unittest.skipUnless(os.name == 'nt', 'native Windows job ownership and DWORD exit codes')
+class NativeOwnershipTests(unittest.TestCase):
+    def setUp(self):
+        import ctypes
+        from ctypes import wintypes
+        self.ctypes = ctypes
+        self.kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        for name, args, result in (
+            ('OpenProcess', [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.HANDLE),
+            ('WaitForSingleObject', [wintypes.HANDLE, wintypes.DWORD], wintypes.DWORD),
+            ('TerminateProcess', [wintypes.HANDLE, wintypes.UINT], wintypes.BOOL),
+            ('CloseHandle', [wintypes.HANDLE], wintypes.BOOL),
+        ):
+            function = getattr(self.kernel, name); function.argtypes = args; function.restype = result
+        self.temp = tempfile.TemporaryDirectory(prefix='devlyn-job-')
+        self.addCleanup(self.temp.cleanup)
+        self.work = Path(self.temp.name)
+        self.shared = (PACKAGE_ROOT or ROOT) / 'config/skills/_shared'
+        self.platform = helper('platform-support')
+        self.scope = self.platform['run_process'].__globals__
+        self.handles = {}
+        self.addCleanup(self.reap_fixture)
+        owner = self
+        class ObservedLaunch(subprocess.Popen):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                owner.retain(self.pid)
+        observer = patch.object(subprocess, 'Popen', ObservedLaunch)
+        observer.start(); self.addCleanup(observer.stop)
+        self.release = self.work / 'release'
+        self.ticks = self.work / 'ticks'
+        self.leader = self.work / 'leader.pid'
+        leaf = self.work / 'leaf.py'
+        leaf.write_text("import os,pathlib,sys,time\np=pathlib.Path(sys.argv[1]); p.with_suffix('.pid').write_text(str(os.getpid()),encoding='utf-8')\nwhile True:\n p.write_bytes(str(time.monotonic_ns()).encode()); time.sleep(.02)\n", encoding='utf-8')
+        target = self.work / 'target.py'
+        target.write_text("import subprocess,sys,os,pathlib,time,ctypes\nsubprocess.Popen([sys.executable,sys.argv[1],sys.argv[2]])\npathlib.Path(sys.argv[3]).write_text(str(os.getpid()),encoding='utf-8')\ndeadline=time.monotonic()+15\nwhile not pathlib.Path(sys.argv[4]).exists():\n if time.monotonic()>deadline: raise RuntimeError('fixture release timeout')\n time.sleep(.01)\nexit=ctypes.windll.kernel32.ExitProcess; exit.argtypes=[ctypes.c_uint]; exit.restype=None; exit(int(sys.argv[5]))\n", encoding='utf-8')
+        self.command = [sys.executable, str(target), str(leaf), str(self.ticks), str(self.leader), str(self.release), '19']
+
+    def retain(self, pid):
+        if pid not in self.handles:
+            handle = self.kernel.OpenProcess(0x100001 | 0x1000, False, pid)
+            if not handle:
+                raise self.ctypes.WinError(self.ctypes.get_last_error())
+            self.handles[pid] = handle
+        return self.handles[pid]
+
+    def alive(self, handle):
+        result = self.kernel.WaitForSingleObject(handle, 0)
+        self.assertIn(result, (0, 258))
+        return result == 258
+
+    def observe_tree(self):
+        wait_for(lambda: self.leader.exists() and self.ticks.exists() and self.ticks.with_suffix('.pid').exists())
+        leader = self.retain(int(self.leader.read_text(encoding='utf-8')))
+        descendant = self.retain(int(self.ticks.with_suffix('.pid').read_text(encoding='utf-8')))
+        self.assertTrue(self.alive(leader)); self.assertTrue(self.alive(descendant))
+        before = self.ticks.read_bytes()
+        wait_for(lambda: self.ticks.read_bytes() != before)
+        return leader, descendant
+
+    def assert_ceased(self, handle):
+        self.assertFalse(self.alive(handle), 'owned process survived product teardown')
+
+    def assert_all_ceased(self):
+        for handle in self.handles.values():
+            self.assert_ceased(handle)
+
+    def reap_fixture(self):
+        # Retained handles reap failed fixtures; this runs AFTER product assertions.
+        self.release.touch()
+        for handle in self.handles.values():
+            try:
+                if self.alive(handle):
+                    if not self.kernel.TerminateProcess(handle, 1):
+                        raise self.ctypes.WinError(self.ctypes.get_last_error())
+                    self.assertEqual(self.kernel.WaitForSingleObject(handle, 5000), 0)
+            finally:
+                self.assertTrue(self.kernel.CloseHandle(handle))
+
+    def test_timeout_selected_then_leader_exit(self):
+        import contextlib
+        import io
+        events = []
+        messages = io.StringIO()
+        teardown = self.scope['terminate_tree']
+
+        def after_timeout(child, job=None):
+            events.append('timeout selected')
+            leader, descendant = self.observe_tree()
+            bootstrap = self.retain(child.pid)
+            self.release.touch()
+            wait_for(lambda: not self.alive(leader))
+            events.append('actual leader exited')
+            self.assertEqual(child.wait(timeout=5), 19)
+            self.assert_ceased(bootstrap)
+            self.assertTrue(self.alive(descendant))
+            events.append('descendant live')
+            events.append('teardown')
+            teardown(child, job) if job is not None else teardown(child)
+            self.assert_ceased(descendant)
+            events.append('descendant ceased')
+            before = self.ticks.read_bytes(); time.sleep(.15)
+            self.assertEqual(self.ticks.read_bytes(), before)
+
+        with patch.dict(self.scope, terminate_tree=after_timeout), contextlib.redirect_stderr(messages):
+            result = self.platform['run_process'](self.command, subprocess.DEVNULL, 1, heartbeat=1)
+        self.assertEqual(result, 124)
+        self.assert_all_ceased()
+        self.assertIn('codex pid=' + self.leader.read_text(encoding='utf-8'), messages.getvalue())
+        self.assertIn('timeout:', messages.getvalue())
+        self.assertEqual(events, ['timeout selected', 'actual leader exited', 'descendant live', 'teardown', 'descendant ceased'])
+        print('native ownership: ' + ' -> '.join(events) + ' -> result=124', flush=True)
+
+    def test_normal_exit_early_spawn_and_full_exit_code(self):
+        import threading
+        for code in (0, 7, 0x80000000, 0xC0000005, 0xFFFFFFFF):
+            with self.subTest(code=hex(code)):
+                self.release.unlink(missing_ok=True)
+                for path in (self.leader, self.ticks, self.ticks.with_suffix('.pid')):
+                    path.unlink(missing_ok=True)
+                observations, errors = [], []
+
+                def release_live_tree():
+                    try:
+                        observations.extend(self.observe_tree())
+                    except BaseException as exc:
+                        errors.append(exc)
+                    finally:
+                        self.release.touch()
+
+                observer = threading.Thread(target=release_live_tree)
+                observer.start()
+                try:
+                    result = self.platform['run_process']([*self.command[:-1], str(code)], subprocess.DEVNULL, 20)
+                finally:
+                    observer.join(timeout=10)
+                self.assertFalse(observer.is_alive()); self.assertEqual(errors, [])
+                self.assertEqual(result, code)
+                for handle in observations:
+                    self.assert_ceased(handle)
+                self.assert_all_ceased()
+                print(f'native normal leader exit={code} earliest-spawn descendant ceased', flush=True)
+
+    def test_cli_exit_codes_and_transport_completion(self):
+        prompt = self.work / 'prompt'; prompt.write_bytes(PAYLOAD + b'\x00\xff')
+        target = 'import ctypes,sys; sys.stdout.buffer.write(sys.stdin.buffer.read()); sys.stdout.buffer.flush(); exit=ctypes.windll.kernel32.ExitProcess; exit.argtypes=[ctypes.c_uint]; exit.restype=None; exit(int(sys.argv[-1]))'
+        for code in (0x80000000, 0xC0000005, 0xFFFFFFFF):
+            for route in ('bounded', 'monitored-dispatch', 'monitored-bash'):
+                with self.subTest(code=hex(code), route=route):
+                    carrier = prompt.with_name(prompt.name + '.transport.json')
+                    carrier.unlink(missing_ok=True)
+                    env = environment()
+                    if route == 'bounded':
+                        command = [sys.executable, self.shared / 'run-bounded.py', '10', '--stdin-file', prompt,
+                                   '--record-transport', '--', sys.executable, '-c', target, str(code)]
+                    else:
+                        # Native dispatcher used by codex-monitored.sh; preserve real Python CLI finalization.
+                        env['DEVLYN_CODEX_PROMPT_FILE'] = str(prompt)
+                        command = [sys.executable, self.shared / 'invocation-receipt.py', 'dispatch', '--binary', sys.executable,
+                                   '--timeout', '10', '--heartbeat', '0', '--', '-c', target, '-']
+                        # Python receives "exec" as a script name from the dispatcher.
+                        (self.work / 'exec').write_text(target.replace('int(sys.argv[-1])', str(code)), encoding='utf-8')
+                    if route == 'monitored-bash':
+                        bash = shutil.which('bash')
+                        self.assertIsNotNone(bash, 'Git Bash is required for the monitored boundary')
+                        # MSYS encodes native statuses into its shell status. Compare the real
+                        # direct exec boundary; the native dispatcher/carrier must still retain DWORD.
+                        reference = run([bash, '-c', 'exec "$@"', 'fixture', sys.executable, '-c',
+                                         target, str(code)], code=None)
+                        env.update(CODEX_BIN=sys.executable, CODEX_MONITORED_TIMEOUT_SEC='10',
+                                   CODEX_MONITORED_HEARTBEAT='1')
+                        with (self.work / 'stdout').open('wb') as out, (self.work / 'stderr').open('wb') as err:
+                            result = subprocess.run([bash, str(self.shared / 'codex-monitored.sh'), '-'],
+                                                    cwd=self.work, env=env, stdin=subprocess.DEVNULL,
+                                                    stdout=out, stderr=err, timeout=20)
+                        self.assertEqual(result.returncode, reference.returncode, (self.work / 'stderr').read_bytes())
+                        self.assertEqual((self.work / 'stdout').read_bytes(), prompt.read_bytes())
+                    else:
+                        result = run(command, cwd=self.work, env=env, code=code)
+                        self.assertEqual(result.stdout, prompt.read_bytes())
+                    record = json.loads(carrier.read_text(encoding='utf-8'))
+                    self.assertEqual(record['exit_code'], code)
+                    self.assertEqual(record['status'], 'completed')
+                    self.assertEqual(record['argv'][0], sys.executable)
+                    self.assert_all_ceased()
+                    print(f'native {route} target/transport exit={code} observed CLI exit={result.returncode} exact stdin', flush=True)
+
+    def test_admission_and_launch_errors_do_not_dispatch(self):
+        kernel = self.scope['_kernel']
+        for boundary in ('setup', 'enrollment', 'bootstrap launch', 'target launch'):
+            with self.subTest(boundary=boundary):
+                if boundary == 'setup':
+                    actual = kernel.SetInformationJobObject
+                    injection = patch.object(kernel, 'SetInformationJobObject',
+                                             lambda job, kind, info, size: actual(job, -1, info, size))
+                elif boundary == 'enrollment':
+                    actual = kernel.DuplicateHandle
+                    injection = patch.object(kernel, 'DuplicateHandle',
+                                             lambda source, job, target, out, access, inherit, options:
+                                             actual(source, job, target, out, 4, inherit, 0))  # QUERY, without ASSIGN_PROCESS.
+                elif boundary == 'bootstrap launch':
+                    injection = patch.object(sys, 'executable', str(self.work / 'missing-python.exe'))
+                else:
+                    injection = patch.dict(self.scope)  # Real target CreateProcess failure after enrollment.
+                command = [str(self.work / 'missing-target.exe')] if boundary == 'target launch' else self.command
+                with injection, self.assertRaises(OSError) as failure:
+                    self.platform['run_process'](command, subprocess.DEVNULL, 1)
+                self.assertTrue(str(failure.exception))
+                self.assertFalse(self.leader.exists()); self.assertFalse(self.ticks.exists())
+                self.assert_all_ceased()
+                print(f'native {boundary}: visible error={failure.exception}; no target dispatch', flush=True)
+
+    def test_target_cannot_break_away(self):
+        target = r'''
+import subprocess, sys
+try:
+    escaped = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'],
+                               creationflags=subprocess.CREATE_BREAKAWAY_FROM_JOB)
+except OSError as exc:
+    assert exc.winerror == 5, exc
+else:
+    escaped.kill(); escaped.wait()
+    raise AssertionError('target escaped the owned job')
+'''
+        self.assertEqual(self.platform['run_process']([sys.executable, '-c', target], subprocess.DEVNULL, 10), 0)
+        self.assert_all_ceased()
+        print('native target CREATE_BREAKAWAY_FROM_JOB refused with access denied', flush=True)
+
+    def test_error_after_native_launch_before_authorization(self):
+        actual = subprocess.Popen
+        owner = self
+        for failure in (OSError('fixture after native launch'), KeyboardInterrupt('fixture launch interruption')):
+            class InterruptedLaunch(actual):
+                def __init__(self, *args, **kwargs):
+                    super().__init__(*args, **kwargs)
+                    owner.retain(self.pid)
+                    raise failure
+
+            with patch.object(subprocess, 'Popen', InterruptedLaunch), self.assertRaises(type(failure)):
+                self.platform['run_process'](self.command, subprocess.DEVNULL, 1)
+            self.assertFalse(self.leader.exists()); self.assertFalse(self.ticks.exists())
+            for handle in self.handles.values():
+                self.assert_ceased(handle)
+        print('native post-CreateProcess error/interruption: bootstrap reaped, authorization withheld', flush=True)
+
+    def test_signal_before_popen_records_native_handle(self):
+        import signal
+        reached = []
+        class InterruptedCreation(subprocess.Popen):
+            def _close_pipe_fds(self, *args):
+                super()._close_pipe_fds(*args)
+                # CPython calls this after CreateProcess, before assigning _handle/pid.
+                reached.append(True)
+                signal.raise_signal(signal.SIGINT)
+
+        with patch.object(subprocess, 'Popen', InterruptedCreation), self.assertRaises(SystemExit) as failure:
+            self.platform['run_process'](self.command, subprocess.DEVNULL, 1)
+        self.assertEqual(reached, [True]); self.assertEqual(failure.exception.code, 130)
+        self.assertFalse(self.leader.exists()); self.assertFalse(self.ticks.exists())
+        self.assert_all_ceased()
+        print('native signal before Popen handle assignment: exit=130, bootstrap reaped, no target dispatch', flush=True)
+
+    def test_error_after_target_launch_before_owner_return(self):
+        read = self.scope['_read_control']
+        observations = []
+
+        def fail_after_target(fd, count):
+            result = read(fd, count)
+            if count == 4:
+                observations.extend(self.observe_tree())
+                raise OSError('fixture after target creation before owner return')
+            return result
+
+        with patch.dict(self.scope, _read_control=fail_after_target), self.assertRaisesRegex(OSError, 'fixture after target'):
+            self.platform['run_process'](self.command, subprocess.DEVNULL, 1)
+        for handle in observations:
+            self.assert_ceased(handle)
+        self.assert_all_ceased()
+        print('native target-launch error: owned leader and descendant ceased', flush=True)
+
+    def test_teardown_error_is_visible_and_last_handle_kills(self):
+        kernel = self.scope['_kernel']
+        actual = kernel.TerminateJobObject
+        observations = []
+
+        def deny_teardown(job, code):
+            # The runner has reaped its bootstrap; the target still awaits our barrier.
+            observations.extend(self.observe_tree())
+            return actual(0, code)  # Real ERROR_INVALID_HANDLE, not a simulated success.
+
+        with patch.object(kernel, 'TerminateJobObject', deny_teardown), self.assertRaisesRegex(OSError, 'TerminateJobObject'):
+            self.platform['run_process'](self.command, subprocess.DEVNULL, 1)
+        for handle in observations:
+            wait_for(lambda: not self.alive(handle))
+            self.assert_ceased(handle)
+        self.assert_all_ceased()
+        print('native teardown error propagated; final job-handle release ceased descendants', flush=True)
 
 
 class EngineTests(unittest.TestCase):

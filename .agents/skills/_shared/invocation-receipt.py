@@ -1227,4 +1227,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["configure_utf8"]()
-    raise SystemExit(main())
+    raise SystemExit(PLATFORM["system_exit_code"](main()))
