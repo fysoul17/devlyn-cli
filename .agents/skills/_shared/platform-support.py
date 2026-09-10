@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -21,14 +22,19 @@ def configure_utf8():
             stream.reconfigure(encoding="utf-8", errors="strict")
 
 
+def open_stdin(path):
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NONBLOCK", 0))
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        os.close(fd)
+        raise ValueError(f"stdin file is not a regular file: {path}")
+    return os.fdopen(fd, "rb")
+
+
 @contextlib.contextmanager
 def file_lock(path, *, blocking=False):
     with Path(path).open("a+b") as handle:
         if os.name == "nt":
             import msvcrt
-            if os.fstat(handle.fileno()).st_size == 0:
-                handle.write(b"\0")
-                handle.flush()
             while True:
                 handle.seek(0)
                 try:

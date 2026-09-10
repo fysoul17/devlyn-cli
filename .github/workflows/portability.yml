@@ -11,26 +11,31 @@ permissions:
 jobs:
   posix:
     runs-on: ubuntu-latest
+    # Root in a private PID namespace can observe every process used by cleanup tests.
+    container: python:3.12-bookworm
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - name: Validate POSIX source
+        shell: bash
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           echo "POSIX source SHA: $GITHUB_SHA"
-          bash scripts/lint-skills.sh
-          python3 config/skills/_shared/resolve-bootstrap.py --self-test
-          git diff --check
+          mkdir -p "$RUNNER_TEMP/portability/logs"
+          checks_failed=0
+          bash scripts/lint-skills.sh 2>&1 | tee "$RUNNER_TEMP/portability/logs/lint.log" || checks_failed=1
+          python3 config/skills/_shared/resolve-bootstrap.py --self-test 2>&1 | tee "$RUNNER_TEMP/portability/logs/bootstrap.log" || checks_failed=1
+          git diff --check 2>&1 | tee "$RUNNER_TEMP/portability/logs/diff.log" || checks_failed=1
+          exit "$checks_failed"
       - name: Pack, identify and test npm artifact
+        if: ${{ !cancelled() }}
         shell: python
         run: |
           import hashlib, json, os, pathlib, shutil, subprocess, sys
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip() == os.environ['GITHUB_SHA']
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'portability'
           package = root / 'package'
           driver = root / 'driver'
@@ -49,18 +54,27 @@ jobs:
                           '--offline', '--ignore-scripts', '--no-audit', '--no-fund', str(tarball)], check=True)
           subprocess.run([sys.executable, str(test), '--package-root', str(installed / 'node_modules/devlyn-cli')], check=True)
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: npm-package
           path: ${{ runner.temp }}/portability/package/
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: portability-driver
           path: ${{ runner.temp }}/portability/driver/
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: posix-evidence
+          path: ${{ runner.temp }}/portability/logs/
+          if-no-files-found: error
 
   windows:
     needs: posix
+    if: ${{ !cancelled() }}
     runs-on: windows-2025
     timeout-minutes: 15
     steps:
@@ -145,9 +159,19 @@ jobs:
           assert resolve.is_dir() and 'name: devlyn:resolve' in (resolve / 'SKILL.md').read_text(encoding='utf-8')
           print('Real CLI complete-install marker and legal resolve directory passed', flush=True)
 
-          checked('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)])
-          checked('bootstrap-self-test', [sys.executable, '-X', 'utf8=0',
-                  str(package / 'config/skills/_shared/resolve-bootstrap.py'), '--self-test'])
+          failed = []
+          for label, command in (
+              ('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)]),
+              ('bootstrap-self-test', [sys.executable, '-X', 'utf8=0',
+                  str(package / 'config/skills/_shared/resolve-bootstrap.py'), '--self-test']),
+          ):
+              try:
+                  checked(label, command)
+              except subprocess.CalledProcessError as error:
+                  print(str(error), flush=True)
+                  failed.append(label)
+          if failed:
+              raise RuntimeError('Native checks failed: ' + ', '.join(failed))
       - uses: actions/upload-artifact@v4
         if: always()
         with:

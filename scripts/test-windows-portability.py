@@ -21,7 +21,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = None
-PAYLOAD = '한국어 프롬프트 — “정확 바이트” …\r\n마지막\n\n'.encode('utf-8')
+SHORT_PAYLOAD = '한국어 프롬프트 — “정확 바이트” …\r\n마지막\n\n'.encode('utf-8')
+PAYLOAD = SHORT_PAYLOAD * 1024
 
 
 def environment():
@@ -133,10 +134,10 @@ m._compile(source + '\\n' + process.argv[3], filename);
                     (package or self.package) / 'bin/devlyn.js', body], cwd=self.project, env=self.env, code=code)
 
     def roots(self):
-        return [self.project / '.claude/skills', self.home / '.codex/skills', self.home / '.agents/skills']
+        return [self.project / '.claude/skills', self.home / '.codex/skills', self.home / '.agents/skills', self.home / '.grok/skills']
 
     def test_pack_install_reinstall_optional_stamps(self):
-        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi']); installLocalSkill('devlyn:reap');")
+        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']); installLocalSkill('devlyn:reap');")
         name = 'devlyn\uf03aresolve' if os.name == 'nt' else 'devlyn:resolve'
         optional = 'devlyn\uf03areap' if os.name == 'nt' else 'devlyn:reap'
         for root in self.roots():
@@ -151,7 +152,7 @@ m._compile(source + '\\n' + process.argv[3], filename);
             (root / 'user-skill').mkdir(); (root / 'user-skill/keep').write_bytes(b'user')
             old = 'devlyn\uf03aauto-resolve' if os.name == 'nt' else 'devlyn:auto-resolve'
             (root / old).mkdir()
-        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi']); installLocalSkill('devlyn:reap');")
+        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']); installLocalSkill('devlyn:reap');")
         for root in self.roots():
             self.assertFalse((root / name / 'stale').exists())
             self.assertFalse((root / optional / 'stale').exists())
@@ -216,16 +217,45 @@ class ProcessTests(unittest.TestCase):
         result = run([sys.executable, self.bounded, '10', '--', str(self.work / 'missing-command')], code=2)
         self.assertIn(b'error:', result.stderr)
 
+    def test_large_stdin_reuse_without_evidence_output(self):
+        self.assertGreaterEqual(len(PAYLOAD), 64 * 1024)
+        command = [sys.executable, self.bounded, '10', '--stdin-file', self.prompt, '--',
+                   sys.executable, '-c', 'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())']
+        for _ in range(2):
+            self.assertEqual(run(command).stdout, PAYLOAD)
+            self.assertEqual(list(self.work.iterdir()), [self.prompt])
+        carrier = self.prompt.with_name(self.prompt.name + '.transport.json')
+        carrier.write_bytes(b'prior sealed invocation')
+        self.assertEqual(run(command).stdout, PAYLOAD)
+        self.assertEqual(carrier.read_bytes(), b'prior sealed invocation')
+
+    def test_explicit_transport_is_fresh_and_ordinary_read_preserves_it(self):
+        child = [sys.executable, '-c', 'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())']
+        command = [sys.executable, self.bounded, '10', '--stdin-file', self.prompt, '--record-transport', '--', *child]
+        self.assertEqual(run(command).stdout, PAYLOAD)
+        carrier = self.prompt.with_name(self.prompt.name + '.transport.json')
+        original = carrier.read_bytes()
+        record = helper('invocation-receipt')['validate_transport'](carrier, PAYLOAD)
+        self.assertEqual(record['exit_code'], 0)
+        rejected = run(command, code=2)
+        self.assertIn(b'transport already exists', rejected.stderr)
+        self.assertEqual(rejected.stdout, b'')
+        self.assertEqual(run([sys.executable, self.bounded, '10', '--stdin-file', self.prompt, '--', *child]).stdout, PAYLOAD)
+        self.assertEqual(carrier.read_bytes(), original)
+
     def test_utf8_imports_and_cli_with_utf8_mode_disabled(self):
         program = r'''
-import io, json, locale, pathlib, runpy, sys
+import codecs, io, json, locale, pathlib, runpy, sys
 shared, work = map(pathlib.Path, sys.argv[1:])
-if sys.platform == 'win32':
-    locale.setlocale(locale.LC_CTYPE, 'Korean_Korea.949')
-    assert locale.getencoding().lower() in ('cp949', '949'), locale.getencoding()
+with io.TextIOWrapper(io.BytesIO()) as default_text:
+    default_encoding = default_text.encoding
 print(json.dumps({'platform':sys.platform,'utf8_mode':sys.flags.utf8_mode,
-                  'locale':locale.getencoding(),'stdout':sys.stdout.encoding}), flush=True)
+                  'locale':locale.getencoding(),'default_textio':default_encoding,
+                  'stdin':sys.stdin.encoding,'stdout':sys.stdout.encoding,'stderr':sys.stderr.encoding}), flush=True)
 assert sys.flags.utf8_mode == 0
+if sys.platform == 'win32':
+    assert codecs.lookup(locale.getencoding()).name != 'utf-8', locale.getencoding()
+    assert codecs.lookup(default_encoding).name == codecs.lookup(locale.getencoding()).name
 payload = '한국어 — “판정” …'
 role = runpy.run_path(shared / 'role-config.py')
 assert role['adapter']('codex').encode('utf-8') == (shared / 'adapters/codex.md').read_bytes()
@@ -238,16 +268,18 @@ md = work / 'spec.md'
 md.write_text('# 한국어\n<!-- devlyn:verification -->\n## Verification\n```json\n'+json.dumps({'verification_commands':[{'cmd':'echo 한국어'}]},ensure_ascii=False)+'\n```\n', encoding='utf-8')
 assert spec['stage_from_source'](md, work / '.devlyn') == (True, None)
 assert json.loads((work / '.devlyn/spec-verify.json').read_text(encoding='utf-8'))['verification_commands'][0]['cmd'] == 'echo 한국어'
-# Model the failing cp949 CLI stream, then use the actual entrypoint setup.
+# Explicit cp949 streams are distinct from the observed native ANSI default.
 sys.stdout.reconfigure(encoding='cp949', errors='strict')
 sys.stderr.reconfigure(encoding='cp949', errors='strict')
+print(json.dumps({'stream_fixture':'cp949','stdout':sys.stdout.encoding,'stderr':sys.stderr.encoding}), flush=True)
 runpy.run_path(shared / 'platform-support.py')['configure_utf8']()
 print(payload)
 print(payload, file=sys.stderr)
 '''
         result = run([sys.executable, '-X', 'utf8=0', '-c', program, self.shared, self.work])
         observed = json.loads(result.stdout.splitlines()[0]); print('observed encoding ' + json.dumps(observed), flush=True)
-        if os.name != 'nt': print('SKIP native Windows cp949 locale; cp949 streams and UTF8-disabled imports exercised', flush=True)
+        print('explicit cp949 streams ' + result.stdout.splitlines()[1].decode('ascii'), flush=True)
+        if os.name != 'nt': print('SKIP native Windows ANSI defaults; cp949 streams and UTF8-disabled imports exercised', flush=True)
         self.assertIn('한국어 — “판정” …'.encode(), result.stdout)
         self.assertIn('한국어 — “판정” …'.encode(), result.stderr)
         env = environment(); env['PYTHONUTF8'] = '0'
@@ -419,6 +451,7 @@ if (process.env.DEVLYN_TEST_LEAF) {
         return prompt, session, receipt, args
 
     def test_worker_exact_transport_legacy_and_tampering(self):
+        self.assertGreaterEqual(len(PAYLOAD), 64 * 1024)
         prompt, session, receipt, args = self.worker()
         self.monitor([*args, '-'], session)
         self.assertEqual(bytes.fromhex(self.seen()['stdin']), PAYLOAD)
@@ -437,20 +470,16 @@ if (process.env.DEVLYN_TEST_LEAF) {
         with self.assertRaisesRegex(ValueError, 'digest mismatch'):
             validate()
         carrier.write_bytes(original)
-        # Retained receipts must remain self-contained when custody relocates the worktree.
-        archived = self.work / 'custody'; shutil.copytree(self.devlyn, archived / '.devlyn')
-        receipts['validate_receipt_artifacts'](archived, archived / '.devlyn' / receipt.name,
-                                             run_id='rs-native', phase='implement')
         self.assertNotEqual(self.monitor([*args, '-'], session, code=None), 0)  # Same-round receipt reuse.
         self.env.pop('DEVLYN_CODEX_PROMPT_FILE')
         for key in tuple(self.env):
             if key.startswith('DEVLYN_INVOCATION_'): self.env.pop(key)
-        self.monitor([*args, PAYLOAD.decode().rstrip('\n')])
+        self.monitor([*args, SHORT_PAYLOAD.decode().rstrip('\n')])
         self.assertEqual(bytes.fromhex(self.seen()['stdin']), b'')
 
     def test_rejects_competing_missing_and_mismatched_before_launch(self):
         prompt, session, receipt, args = self.worker()
-        for arguments in ([*args, '-', 'competing'], [*args, '-', '-'], [*args, PAYLOAD.decode()], [*args, '--unknown', '-']):
+        for arguments in ([*args, '-', 'competing'], [*args, '-', '-'], [*args, SHORT_PAYLOAD.decode()], [*args, '--unknown', '-']):
             self.assertNotEqual(self.monitor(arguments, session, code=None), 0)
             self.assertFalse((self.work / 'seen.json').exists()); self.assertFalse(receipt.exists())
         self.env['DEVLYN_CODEX_PROMPT_FILE'] = ''
@@ -470,11 +499,51 @@ if (process.env.DEVLYN_TEST_LEAF) {
         with self.assertRaisesRegex(ValueError, 'prompt digest mismatch'):
             helper('invocation-receipt')['validate_receipt_artifacts'](self.work, receipt, run_id='rs-native', phase='implement')
 
+    def test_archived_transport_completion_uses_custody_bytes(self):
+        prompt, session, receipt, args = self.worker()
+        self.monitor([*args, '-'], session)
+        binding = helper('invocation-receipt')['validate_receipt'](
+            self.work, receipt, run_id='rs-native', phase='implement', round_=0, model='fixture-model',
+            prompt_sha256=hashlib.sha256(PAYLOAD).hexdigest(), session_path=session)
+        phases = {name: {'started_at': '2026-09-10T00:00:00Z', 'completed_at': '2026-09-10T00:00:01Z', 'verdict': 'PASS'}
+                  for name in ('plan', 'implement', 'build_gate', 'cleanup', 'verify', 'final_report')}
+        phases['implement']['invocation_receipt'] = binding
+        phases['cleanup']['post_sha'] = 'a' * 40
+        report = b'<!-- devlyn:final-report run_id=rs-native -->\nTransport fixture completed.\n'
+        (self.devlyn / 'final-report.md').write_bytes(report)
+        phases['final_report'].update(output_sha256=hashlib.sha256(report).hexdigest(),
+                                      artifacts={'log_file': '.devlyn/final-report.md'})
+        (self.devlyn / 'criteria.generated.md').write_bytes(SHORT_PAYLOAD)
+        state = {'run_id': 'rs-native', 'mode': 'free-form', 'phases': phases, 'process_evidence': None,
+                 'source': {'type': 'generated', 'criteria_path': '.devlyn/criteria.generated.md',
+                            'criteria_sha256': hashlib.sha256(SHORT_PAYLOAD).hexdigest()}}
+        for name, value in (('pipeline.state.json', state), ('verify-merge.summary.json', {'verdict': 'PASS'}),
+                            ('finish-gate.summary.json', {'mode': 'free-form', 'exit': 0, 'offenders': 0})):
+            (self.devlyn / name).write_text(json.dumps(value), encoding='utf-8')
+        helper('archive_run')['move_artifacts'](self.devlyn, self.devlyn / 'runs/rs-native')
+        self.assertFalse(prompt.exists())
+        complete = helper('task-complete')
+        files = {path.relative_to(self.work).as_posix(): complete['file_record'](path)
+                 for path in self.devlyn.rglob('*') if path.is_file()}
+        custody = self.root / ('custody-' + self.work.name)
+        complete['custody'](self.work, custody, files)
+        prompt.write_bytes(b'mutable prompt from a later invocation')
+        acceptance = {'run_id': 'rs-native', 'source_sha': 'a' * 40}
+        complete['pipeline_acceptance'](custody, acceptance, files, self.root)
+        retained = custody / '.devlyn/runs/rs-native' / prompt.name
+        retained.write_bytes(b'tampered custody prompt')
+        with self.assertRaisesRegex(complete['CompletionError'], 'prompt digest mismatch'):
+            complete['pipeline_acceptance'](custody, acceptance, files, self.root)
+
     def test_native_shim_literal_argv_and_version(self):
         argv = ['', '한국어 space', '"quotes"', "'single'", 'a&b|c>sentinel', '%PATH%', '$(touch sentinel)', '^', 'line\nline']
         prompt = self.work / 'prompt'; prompt.write_bytes(PAYLOAD)
-        run([sys.executable, self.shared / 'run-bounded.py', '10', '--stdin-file', prompt, '--', 'codex', *argv], env=self.env)
-        self.assertEqual(self.seen()['argv'], argv); self.assertEqual(bytes.fromhex(self.seen()['stdin']), PAYLOAD)
+        self.assertGreaterEqual(len(PAYLOAD), 64 * 1024)
+        command = [sys.executable, self.shared / 'run-bounded.py', '10', '--stdin-file', prompt, '--', 'codex', *argv]
+        for _ in range(2):
+            run(command, env=self.env)
+            self.assertEqual(self.seen()['argv'], argv); self.assertEqual(bytes.fromhex(self.seen()['stdin']), PAYLOAD)
+        self.assertFalse(prompt.with_name(prompt.name + '.transport.json').exists())
         self.assertFalse((self.work / 'sentinel').exists())
         code = "import runpy,sys; print(runpy.run_path(sys.argv[1])['native_version']('codex'))"
         self.assertEqual(run([sys.executable, '-c', code, self.shared / 'role-config.py'], env=self.env).stdout.strip(), b'1.2.3')
@@ -513,7 +582,7 @@ assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work
         for engine, selected in [('claude','primary_judge'), ('codex','pair_judge')]:
             stem = engine + '-judge.r0'; prompt = self.devlyn / (stem + '.prompt'); prompt.write_bytes(PAYLOAD)
             if engine == 'claude':
-                argv = [sys.executable, str(self.shared / 'run-bounded.py'), '600', '--stdin-file', str(prompt), '--', 'claude', '-p',
+                argv = [sys.executable, str(self.shared / 'run-bounded.py'), '600', '--stdin-file', str(prompt), '--record-transport', '--', 'claude', '-p',
                         '--model','fixture-claude-model','--effort','high','--permission-mode','dontAsk','--tools','Read,Grep,Glob',
                         '--allowedTools','Read,Grep,Glob','--setting-sources','project','--output-format','json',
                         '--strict-mcp-config','--mcp-config','{"mcpServers":{}}']
@@ -528,6 +597,11 @@ assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work
             self.assertEqual(bytes.fromhex(self.seen()['stdin']), PAYLOAD)
             argv_path = self.devlyn / (stem + '.argv.json')
             argv_path.write_bytes(role['encoded'](argv))
+            if engine == 'claude':
+                argv_path.write_bytes(role['encoded']([arg for arg in argv if arg != '--record-transport']))
+                with self.assertRaisesRegex(ValueError, 'invalid bounded file transport'):
+                    judge['describe'](self.devlyn, state, selected, 0)
+                argv_path.write_bytes(role['encoded'](argv))
             disguised = argv[:-1] + [PAYLOAD.decode()] if engine == 'codex' else argv[:3] + argv[5:] + [PAYLOAD.decode()]
             argv_path.write_bytes(role['encoded'](disguised))
             with self.assertRaises(ValueError):

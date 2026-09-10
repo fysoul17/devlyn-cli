@@ -12,7 +12,6 @@ import pathlib
 import re
 import signal
 import shutil
-import stat
 import subprocess
 import sys
 import tempfile
@@ -157,11 +156,7 @@ def file_prompt_args(argv):
 
 def prepare_transport(prompt_path, command, argv, seconds, *, isolated=False):
     path = pathlib.Path(prompt_path).resolve(strict=True)
-    fd = os.open(path, os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NONBLOCK", 0))
-    if not stat.S_ISREG(os.fstat(fd).st_mode):
-        os.close(fd)
-        raise ReceiptError(f"stdin file is not a regular file: {path}")
-    with os.fdopen(fd, "rb") as source:
+    with PLATFORM["open_stdin"](path) as source:
         raw = source.read()
     record = {"schema_version": 1, "transport": "stdin-file",
               "prompt": {"path": str(path), "sha256": sha256(raw), "bytes": len(raw)},

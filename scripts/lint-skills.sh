@@ -406,7 +406,7 @@ check_skill_mirror_parity \
 # ---------------------------------------------------------------------------
 # 6b. VERIFY merge verdict binding self-test.
 for helper in role-config judge-role-evidence task-complete; do
-  if python3 "config/skills/_shared/$helper.py" --self-test >/dev/null 2>&1; then
+  if python3 "config/skills/_shared/$helper.py" --self-test; then
     ok "$helper.py self-test passed"
   else
     bad "$helper.py self-test failed"
@@ -628,7 +628,7 @@ for tree in config/skills .agents/skills; do
     || ! grep -Fq 'executor flag/pin' "$skill" \
     || ! grep -Fq 'auto_surface_close_claude_unavailable' "$skill" \
     || ! grep -Fq 'canonical body VERBATIM' "$skill" \
-    || ! grep -Fq 'run-bounded.py 600 --stdin-file .devlyn/surface-close.prompt.<round> -- claude -p' "$skill" \
+    || ! grep -Fq 'run-bounded.py 600 --stdin-file .devlyn/surface-close.prompt.<round> --record-transport -- claude -p' "$skill" \
     || ! grep -Fq -- '--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --output-format json --strict-mcp-config --mcp-config '\''{"mcpServers":{}}'\''' "$skill" \
     || ! grep -Fq '.devlyn/surface-close.output.json' "$skill" \
     || ! grep -Fq '**Common post-fix checkpoint (BUILD_GATE and VERIFY):**' "$skill" \

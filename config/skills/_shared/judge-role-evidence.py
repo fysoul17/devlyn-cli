@@ -99,9 +99,9 @@ def describe(devlyn, state, role, exit_code):
         if engine == "claude":
             index = next((i for i, arg in enumerate(argv) if Path(arg).name == "run-bounded.py"), -1)
             require(index >= 0 and argv[index + 1:index + 3] == ["600", "--stdin-file"]
-                    and len(argv) > index + 5 and argv[index + 4] == "--", "invalid bounded file transport")
+                    and len(argv) > index + 6 and argv[index + 4:index + 6] == ["--record-transport", "--"], "invalid bounded file transport")
             require(Path(argv[index + 3]).resolve() == devlyn / (stem + ".prompt"), "bounded prompt path mismatch")
-            require(transport["command"] == argv[index + 5:] and prompt not in transport["command"], "bounded actual argv mismatch")
+            require(transport["command"] == argv[index + 6:] and prompt not in transport["command"], "bounded actual argv mismatch")
             require("-p" in transport["command"] or "--print" in transport["command"], "Claude print mode missing")
         else:
             index = next((i for i, arg in enumerate(argv) if Path(arg).name == "codex-monitored.sh"), -1)
