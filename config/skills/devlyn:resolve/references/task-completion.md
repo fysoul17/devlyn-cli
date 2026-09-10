@@ -93,7 +93,7 @@ outside that checkout. An OS process observation supplements the owner assertion
 neither the receipt nor a scan guarantees exclusion of future writers. Unknown
 writers, inaccessible process state, caller cwd inside the tree, dirty/untracked
 files, changed refs/Gitdir/registration or locks retain the affected resources.
-Do not kill unknown processes or force worktree removal to make completion pass.
+On native Windows, locking and file durability are supported, but the helper cannot prove writer cessation and reports `writer observation unsupported on this platform; retain workspace`. Even `--writers-stopped` cannot authorize deletion without that observation: retain the workspace, refs and external receipt/custody, report delivery separately, and preserve the receipt-based resume command. Do not kill unknown processes or force worktree removal to make completion pass.
 
 The receipt directory holds byte-verified `custody/`, `manifest.json` and a guarded
 `refs/devlyn/completed/<id>` recovery ref. Archive/check evidence is copied there

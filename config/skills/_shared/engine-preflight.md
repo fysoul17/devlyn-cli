@@ -49,6 +49,8 @@ Do not report a downgraded successful run when a required engine is missing.
 
 ## Canonical cross-engine invocations
 
+For native Windows, use native Node/npm and Python (`python3` on PATH), with Git for Windows Bash for the shipped shell wrapper. Supported npm engine shims resolve to native argv; unsupported/malformed shims fail visibly. Deliver multiline prompts from files: Codex uses `DEVLYN_CODEX_PROMPT_FILE` with explicit `-`; Claude uses `run-bounded.py 600 --stdin-file <prompt-file> -- claude -p`. Retain generated transport evidence. A policy-denied Codex judge read uses the complete inline no-tools packet in `_shared/codex-config.md#constrained-windows-judge-reads`, keeping read-only isolation and the selected role.
+
 After the availability check passes, Codex keeps the monitored `codex-monitored.sh`
 path; every other resolved OTHER engine follows `_shared/adapters/<name>.md`
 `## Invocation`. Capture `.devlyn/<name>-judge.stdout`, then normalize it with

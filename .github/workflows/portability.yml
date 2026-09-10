@@ -1,0 +1,156 @@
+name: Windows portability
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  posix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate POSIX source
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "POSIX source SHA: $GITHUB_SHA"
+          bash scripts/lint-skills.sh
+          python3 config/skills/_shared/resolve-bootstrap.py --self-test
+          git diff --check
+      - name: Pack, identify and test npm artifact
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, shutil, subprocess, sys
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'portability'
+          package = root / 'package'
+          driver = root / 'driver'
+          package.mkdir(parents=True)
+          driver.mkdir()
+          result = subprocess.check_output(['npm', 'pack', '--ignore-scripts', '--json', '--pack-destination', str(package)])
+          tarball = package / json.loads(result)[0]['filename']
+          test = driver / 'test-windows-portability.py'
+          shutil.copyfile('scripts/test-windows-portability.py', test)
+          identity = {'source_sha': os.environ['GITHUB_SHA'], 'sha256': {
+              p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (tarball, test)}}
+          (package / 'identity.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8')
+          print('POSIX tested artifact: ' + json.dumps(identity), flush=True)
+          installed = root / 'installed'
+          subprocess.run(['npm', 'install', '--prefix', str(installed), '--cache', str(root / 'npm-cache'),
+                          '--offline', '--ignore-scripts', '--no-audit', '--no-fund', str(tarball)], check=True)
+          subprocess.run([sys.executable, str(test), '--package-root', str(installed / 'node_modules/devlyn-cli')], check=True)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}/portability/package/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portability-driver
+          path: ${{ runner.temp }}/portability/driver/
+          if-no-files-found: error
+
+  windows:
+    needs: posix
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      # Artifact-only: a full Git checkout contains illegal Windows colon paths.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}/portability/package
+      - uses: actions/download-artifact@v4
+        with:
+          name: portability-driver
+          path: ${{ runner.temp }}/portability/driver
+      - name: Native install, real CLI smoke and full harness regressions
+        shell: python
+        env:
+          PYTHONUTF8: '0'
+        run: |
+          import codecs, ctypes, hashlib, io, json, locale, os, pathlib, shutil, subprocess, sys
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'portability'
+          logs = root / 'logs'
+          logs.mkdir()
+          identity = json.loads((root / 'package/identity.json').read_text(encoding='utf-8'))
+          with io.TextIOWrapper(io.BytesIO()) as default_text:
+              default_encoding = default_text.encoding
+          observed = {'platform': sys.platform, 'python': sys.executable, 'utf8_mode': sys.flags.utf8_mode,
+                      'locale': locale.getencoding(), 'default_textio': default_encoding,
+                      'stdin': sys.stdin.encoding, 'stdout': sys.stdout.encoding, 'stderr': sys.stderr.encoding,
+                      'windows_acp': ctypes.windll.kernel32.GetACP(), **identity}
+          (logs / 'identity.json').write_text(json.dumps(observed, indent=2) + '\n', encoding='utf-8')
+          print('Native Windows tested artifact: ' + json.dumps(observed), flush=True)
+          assert sys.platform == 'win32' and sys.flags.utf8_mode == 0, observed
+          assert codecs.lookup(default_encoding).name != 'utf-8', observed
+          assert identity['source_sha'] == os.environ['GITHUB_SHA'], identity
+          tarball, = (root / 'package').glob('*.tgz')
+          driver = root / 'driver/test-windows-portability.py'
+          for path in (tarball, driver):
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == identity['sha256'][path.name], path
+
+          def checked(label, command, **kwargs):
+              with (logs / (label + '.log')).open('wb') as output:
+                  result = subprocess.run(command, stdout=output, stderr=subprocess.STDOUT, **kwargs)
+              sys.stdout.buffer.write((logs / (label + '.log')).read_bytes())
+              sys.stdout.buffer.flush()
+              result.check_returncode()
+
+          checked('node-version', ['node', '--version'])
+          git_bash = pathlib.Path(shutil.which('git')).parent.parent / 'bin/bash.exe'
+          assert git_bash.is_file(), git_bash
+          os.environ['PATH'] = os.pathsep.join((str(git_bash.parent), os.environ['PATH']))
+          if not shutil.which('python3'):
+              raise RuntimeError('Native python3 route unavailable on PATH')
+          checked('native-python3', ['python3', '-X', 'utf8=0', '-c',
+                  'import locale,sys; print(sys.executable, sys.platform, sys.flags.utf8_mode, locale.getencoding(), flush=True); assert sys.platform == "win32" and sys.flags.utf8_mode == 0'])
+          checked('git-bash', ['bash', '--version'])
+          npm_cli = pathlib.Path(shutil.which('npm.cmd')).parent / 'node_modules/npm/bin/npm-cli.js'
+          checked('npm-version', ['node', str(npm_cli), '--version'])
+          installed = root / 'installed'
+          checked('npm-install', ['node', str(npm_cli), 'install', '--prefix', str(installed),
+                  '--cache', str(root / 'npm-cache'), '--offline', '--ignore-scripts', '--no-audit', '--no-fund', str(tarball)])
+          package = installed / 'node_modules/devlyn-cli'
+
+          # Exercise the real bin entrypoint; the driver's compiled installer fixture removes the CLI tail.
+          project = root / 'cli-project'
+          project.mkdir()
+          agent_home = root / 'cli-agent-home'
+          agent_home.mkdir()
+          preload = root / 'homedir.cjs'
+          preload.write_text("require('os').homedir = () => process.env.DEVLYN_TEST_HOME;\n", encoding='utf-8')
+          child_env = dict(os.environ, DEVLYN_TEST_HOME=str(agent_home))
+          checked('cli-entrypoint', ['node', '--require', str(preload), str(package / 'bin/devlyn.js'), '-y'],
+                  cwd=project, env=child_env)
+          skills = project / '.claude/skills'
+          marker = json.loads((skills / '.devlyn-install.json').read_text(encoding='utf-8'))
+          assert marker['package'] == 'devlyn-cli', marker
+          resolve = skills / 'devlyn\uf03aresolve'
+          assert resolve.is_dir() and 'name: devlyn:resolve' in (resolve / 'SKILL.md').read_text(encoding='utf-8')
+          print('Real CLI complete-install marker and legal resolve directory passed', flush=True)
+
+          checked('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)])
+          checked('bootstrap-self-test', [sys.executable, '-X', 'utf8=0',
+                  str(package / 'config/skills/_shared/resolve-bootstrap.py'), '--self-test'])
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-evidence
+          path: ${{ runner.temp }}/portability/logs/
+          if-no-files-found: error
