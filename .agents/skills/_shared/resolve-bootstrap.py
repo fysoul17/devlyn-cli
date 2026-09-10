@@ -569,13 +569,24 @@ def admission_self_test() -> None:
         inputs(repo)
 
     def snapshot(path):
-        if not path.exists() and not path.is_symlink():
+        try:
+            pending = [(path, path.lstat())]
+        except FileNotFoundError:
             return {}
-        return {
-            str(p.relative_to(path)): (str(p.readlink()) if p.is_symlink()
-                                      else None if p.is_dir() else p.read_bytes())
-            for p in (path, *path.rglob("*"))
-        }
+        result = {}
+        while pending:
+            p, metadata = pending.pop()
+            key = str(p.relative_to(path))
+            if stat.S_ISLNK(metadata.st_mode) or (
+                os.name == "nt" and metadata.st_reparse_tag == stat.IO_REPARSE_TAG_MOUNT_POINT
+            ):
+                result[key] = str(p.readlink())
+            elif stat.S_ISDIR(metadata.st_mode):
+                result[key] = None
+                pending.extend((child, child.lstat()) for child in p.iterdir())
+            else:
+                result[key] = p.read_bytes()
+        return result
 
     def cli(repo, argv, extra_env=None):
         proc = subprocess.run([sys.executable, str(script), *argv], cwd=repo,
@@ -743,6 +754,11 @@ print(json.dumps(result))
                 link.parent.mkdir(exist_ok=True)
                 directory_link(link, target)
                 before = snapshot(target)
+                assert before == ({} if dangling else {".": None, "keep": b"untouched"})
+                expected = {".": str(link.readlink())} if relative == ".devlyn" else {
+                    ".": None, "runs": str(link.readlink()),
+                }
+                assert snapshot(identity / ".devlyn") == expected
                 result = refusal(identity, modes[0], "BLOCKED:devlyn-path-redirect")
                 assert str(link) in result["detail"] and link.resolve() == target and (os.name == "nt" or link.is_symlink())
                 assert snapshot(target) == before
