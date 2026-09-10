@@ -6,44 +6,42 @@ older records. [PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md) and
 [DECISIONS](DECISIONS.md) own enduring constraints/history. Inspect Git state and
 live runs; do not replay unrelated cold-start suites.
 
-## START-HERE — cleanup complete; delivery blocked on required verification
+## START-HERE — source checks and Codex review pass; Fable quota still blocks delivery
 
-Candidate implementation `26f40e5` is on `codex/0143-task-completion` in the sole
-retained checkout. It adds task completion through PR/merge and recoverable owned
-resource cleanup, with local `devlyn.completionMode=auto|pr` (default `auto`).
-**This candidate is not fully accepted or shipped.** The implementation was pushed at
-`26f40e5`; owner follow-up commits are recorded by draft [PR #4](https://github.com/fysoul17/devlyn-cli/pull/4) is open.
-Main merge, branch cleanup and follow-up release are pending. Last published version is
-3.0.1 ([0142](iterations/0142-v3.0.1-release.md)); a new version is unconfirmed.
+Current candidate source is `491c38d` on `codex/0143-acceptance-r2`.
+Normal run `rs-20260910T022458Z-3f00122a0779` has passed PLAN, probes,
+IMPLEMENT, BUILD_GATE, CLEANUP and final MECHANICAL. Final Codex review is
+PASS with zero findings. **Required Fable 5.1 review is still pending**:
+two native invocations returned HTTP429 with zero model usage, including
+the retry after the user reported recovery. The user explicitly chose to
+continue with Fable; no Grok exception or engine/pin change is authorized.
+Do not treat the prior Fable PASS on `9107142` as review of the repaired source.
 
-Required run `rs-20260909T155758Z-064c8649a367` is archived BLOCKED after the Codex
-BUILD worker hit its usage limit (native exit 1, 436.920s). Three sealed literal
-commands passed: helper 80.906s, full lint 273.846s and diff 0.018s; two owner
-regressions passed 6.757s. No P1/final results carrier was emitted, so BUILD is
-not accepted. CLEANUP and independent primary/pair VERIFY are NOT_RUN. Finish
-gate passed for truthful BLOCKED closure; archive retains 38 files. Read
-`.devlyn/runs/rs-20260909T155758Z-064c8649a367/final-report.md` for exact native
-phase durations. Its roughly seven-hour inactive conversation interval is not
-active model execution time. Raw evidence and a verified source bundle are retained
-at `/Users/aipalm/.local/share/nx01/iter0143/20260909T234909Z/`; see its `RECOVERY.md`.
+The first review found HIGH `VERIFY-PRIMARY-001`: Git `insteadOf` could
+redirect publication to another repository. The repair validates literal,
+effective fetch and effective push repository identities before allocation,
+resume and cleanup. Four regressions cover rejection and same-repository
+aliases. An earlier owner check also fixed the actual `gh repo view`
+positional argument and unsupported JSON-field query. Both fixes and queue
+guidance now belong to the candidate; main merge and release remain pending.
 
-Root's question about a task-local Fable CLI worker / fresh in-app Codex reviewer
-exception to the quota-blocked pinned route is **pending with no answer**. Do not
-silently change pins or treat waiting as authorization. Before delivery, complete
-verification through an available authorized route. A fresh installation reproduced
-the repository-only pointer in AGENTS/CLAUDE; the owner subsequently replaced those
-two references with a path relative to the installed resolve skill. The fix is a
-separate direct documentation follow-up after the BLOCKED archive, not a passing
-full run. The Claude/Codex installation regression passed and is recorded in the current
-[0143 milestone](iterations/0143-task-completion.md); deployment remains pending.
-The read-only owner spec is [task-completion](../docs/specs/task-completion/spec.md).
+The retained PR is [#4](https://github.com/fysoul17/devlyn-cli/pull/4),
+kept draft until the required review and normal-run final report/archive succeed.
+The current verification checkout and owner launchers are under
+`/Users/aipalm/.local/share/nx01/iter0143/20260910T022444Z-acceptance-r2/`.
+Its `ownership.json`, `work/.devlyn/pipeline.state.json`, `review-source.json`,
+`prior-verify-r0/` and Fable quota-attempt artifacts identify exact source,
+checks, failed review and retry. Preserve all before removing the checkout.
+Continue with the same frozen source/evidence; do not repeat source recovery
+or reinterpret a failed invocation as acceptance. See
+[0143](iterations/0143-task-completion.md) for the current checkpoint.
 
-Earlier run `rs-20260909T153949Z-e67a90ebc237` remains BLOCKED before IMPLEMENT:
-automatic Claude probe used actual Opus 5 and read forbidden installed-skill input;
-root terminated it and accepted no probe artifact. Its initial four mirror
-mismatches later disappeared for an unknown reason. R1's later owner mirror
-refresh is separately recorded in `installed-refresh/manifest.json`; do not
-rewrite R0's unknown cause or either failed run as successful validation.
+The two September 9 runs remain historically BLOCKED. Codex quota recovered
+on September 10; the earlier proposed Codex-route exception became unnecessary.
+This session's owner dispatch mistake was stopped without source changes and
+was not accepted; the repair came from a fresh attested worker. The last
+published version remains 3.0.1. No main merge, current-branch cleanup or new
+release is claimed by this checkpoint.
 
 ## Legacy worktree cleanup and recovery
 

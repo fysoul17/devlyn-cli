@@ -155,7 +155,9 @@ def remote_url(receipt):
     # --get-url expands insteadOf; compare the stored literal remote config as
     # well, while preserving Git's normal transport configuration.
     literal = gref(receipt, "config", "--get-all", "remote." + receipt["remote"] + ".url")
-    return {"literal": literal, "fetch": values[0], "push": values[1]}
+    urls = {"literal": literal, "fetch": values[0], "push": values[1]}
+    require(all(repository_from_url(url).lower() == receipt["repository"].lower() for url in urls.values()), "repository differs from remote")
+    return urls
 
 
 def repository_from_url(url):
@@ -186,7 +188,6 @@ def allocate(args):
                "anchor": str(work), "linked": bool(args.worktree), "allocation": "allocating"}
     policy(receipt, None)
     receipt["remote_url"] = remote_url(receipt)
-    require(repository_from_url(receipt["remote_url"]["literal"]).lower() == args.repository.lower(), "repository differs from remote")
     require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
     require(not ref_sha(receipt, "refs/heads/"+args.branch), "existing branch cannot be adopted")
     require(git(work, "symbolic-ref", "--short", "HEAD") == args.base, "allocate from the retained base checkout")
@@ -366,7 +367,7 @@ def gh(receipt, *args):
 
 
 def repo_policy(receipt):
-    info = json.loads(gh(receipt, "repo", "view", "--json", "nameWithOwner,url,defaultBranchRef,mergeCommitAllowed,autoMergeAllowed"))
+    info = json.loads(command(["gh", "repo", "view", "github.com/"+receipt["repository"], "--json", "nameWithOwner,url,defaultBranchRef,mergeCommitAllowed"]))
     require(info["nameWithOwner"].lower() == receipt["repository"].lower() and info["url"].lower() == "https://github.com/"+receipt["repository"].lower(), "GitHub repository identity changed")
     require(info["defaultBranchRef"]["name"] == receipt["base"] and receipt["branch"] != info["defaultBranchRef"]["name"], "base/default branch changed; retain resources")
     return info
@@ -633,8 +634,8 @@ def self_test(names=None):
     return 0 if result.wasSuccessful() else 1
 
 
-# Fixtures use real Git, isolated global config and a local bare remote. Only gh
-# is fake; command wrappers inject interruption AFTER real filesystem effects.
+# Fixtures use real Git and isolated config. Wrappers translate only transport
+# to the local bare remote and inject interruption AFTER real effects; gh is fake.
 FAKE_GH = r'''#!/usr/bin/env python3
 import json, os, pathlib, subprocess, sys
 p = pathlib.Path(os.environ['FIXTURE_GH'])
@@ -644,7 +645,8 @@ def remote(ref):
     r = subprocess.run([os.environ['REAL_GIT'], '--git-dir', d['bare'], 'rev-parse', '--verify', ref], capture_output=True, text=True)
     return r.stdout.strip() if r.returncode == 0 else None
 if a[:2] == ['repo', 'view']:
-    print(json.dumps({'nameWithOwner':'test/project', 'url':'https://github.com/test/project', 'defaultBranchRef':{'name':'main'}, 'mergeCommitAllowed':d.get('merge_allowed',True), 'autoMergeAllowed':d.get('auto_allowed',True)}))
+    assert a[2:] == ['github.com/test/project', '--json', 'nameWithOwner,url,defaultBranchRef,mergeCommitAllowed'], 'unsupported gh repo view arguments: '+str(a)
+    print(json.dumps({'nameWithOwner':'test/project', 'url':'https://github.com/test/project', 'defaultBranchRef':{'name':'main'}, 'mergeCommitAllowed':d.get('merge_allowed',True)}))
 elif a[:2] == ['pr', 'list']:
     assert '--repo' in a and a[a.index('--repo')+1] == 'github.com/test/project'
     print(json.dumps([d['pr']] if d.get('pr') else []))
@@ -688,6 +690,13 @@ p = pathlib.Path(os.environ['FIXTURE_GH']); d = json.loads(p.read_text())
 if 'push' in a and any(x.startswith('--force-with-lease=') for x in a) and d.pop('remote_delete_race',False):
     subprocess.check_call([os.environ['REAL_GIT'],'--git-dir',d['bare'],'update-ref','refs/heads/'+d['pr']['headRefName'],d['race_sha']])
     p.write_text(json.dumps(d))
+for operation in ('push', 'fetch', 'ls-remote'):
+    if operation in a and 'origin' in a:
+        prefix = a[:a.index(operation)]
+        url = subprocess.check_output([os.environ['REAL_GIT'], *prefix, 'remote', 'get-url', *(['--push'] if operation == 'push' else []), '--all', 'origin'], text=True).strip()
+        if url in {'https://github.com/test/project.git', 'git@github.com:test/project.git', 'ssh://git@github.com/test/project.git'}:
+            a[a.index('origin')] = d['bare']
+        break
 r = subprocess.run([os.environ['REAL_GIT'],*a])
 event = 'delete' if 'push' in a and any(x.startswith(':refs/') for x in a) else 'push' if 'push' in a else 'remove' if 'worktree' in a and 'remove' in a else None
 if r.returncode == 0 and event:
@@ -713,8 +722,7 @@ class CompletionTests(unittest.TestCase):
                     "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
                     "FIXTURE_GH": str(self.data), "REAL_GIT": shutil.which("git"),
-                    "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": f"url.{self.bare}.insteadOf",
-                    "GIT_CONFIG_VALUE_0": "https://github.com/test/project.git"}
+                    "GIT_CONFIG_COUNT": "0", "GIT_ALLOW_PROTOCOL": "file"}
         for key in list(self.env):
             if key in {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"}:
                 del self.env[key]
@@ -808,6 +816,71 @@ class CompletionTests(unittest.TestCase):
         if acceptance:
             command_args += ["--acceptance", self.acceptance]
         return self.cli(*command_args, *args, success=success, cwd=cwd)
+
+    def test_reject_repository_rewrite_before_allocation(self):
+        intended = "https://github.com/test/project.git"
+        destination = "https://github.com/test/other.git"
+        self.g("config", "url." + destination + ".insteadOf", intended)
+        self.assertEqual(self.g("config", "--get", "remote.origin.url"), intended)
+        self.assertEqual(self.g("remote", "get-url", "--all", "origin"), destination)
+        self.assertEqual(self.g("remote", "get-url", "--push", "--all", "origin"), destination)
+        local_refs = self.g("show-ref")
+        remote_refs = self.run_cmd(["git", "--git-dir", str(self.bare), "show-ref"]).stdout
+        server = self.data.read_bytes()
+        result, r = self.cli("allocate", "--repo", self.work, "--task", "fixture", "--branch", "task/fixture", "--repository", "test/project", "--base", "main", "--worktree", self.root / "linked", success=False)
+        self.assertEqual(self.g("show-ref"), local_refs, r.stdout)
+        self.assertEqual(self.run_cmd(["git", "--git-dir", str(self.bare), "show-ref"]).stdout, remote_refs)
+        self.assertEqual(self.data.read_bytes(), server)
+        self.assertEqual(self.g("branch", "--show-current"), "main")
+        self.assertFalse((self.root / "linked").exists())
+        self.assertFalse((self.work / ".git/devlyn-completion").exists())
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("repository differs from remote", result["reason"])
+
+    def test_same_repository_transport_alias(self):
+        intended = "https://github.com/test/project.git"
+        alias = "git@github.com:test/project.git"
+        self.g("config", "url." + alias + ".insteadOf", intended)
+        self.allocate(); self.accept()
+        self.assertEqual(json.loads(self.receipt.read_text())["remote_url"], {"literal": intended, "fetch": alias, "push": alias})
+        result, _ = self.complete("--mode", "pr")
+        self.assertEqual(result["status"], "PR")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+        self.assertEqual(json.loads(self.data.read_text())["pushs"], 1)
+
+    def test_remote_rewrite_after_allocation_is_rejected(self):
+        self.allocate(); self.accept()
+        self.g("config", "url.git@github.com:test/project.git.insteadOf", "https://github.com/test/project.git")
+        local_refs = self.g("show-ref")
+        remote_refs = self.run_cmd(["git", "--git-dir", str(self.bare), "show-ref"]).stdout
+        server = self.data.read_bytes()
+        result, r = self.complete(success=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("remote URL changed since allocation", result["reason"])
+        self.assertEqual(self.g("show-ref"), local_refs)
+        self.assertEqual(self.run_cmd(["git", "--git-dir", str(self.bare), "show-ref"]).stdout, remote_refs)
+        self.assertEqual(self.data.read_bytes(), server)
+        self.assertTrue(self.task.exists())
+
+    def test_reject_previously_bound_repository_rewrite(self):
+        self.allocate(); self.accept()
+        destination = "https://github.com/test/other.git"
+        self.g("config", "url." + destination + ".insteadOf", "https://github.com/test/project.git")
+        # Reproduce a receipt the old literal-only allocation check accepted.
+        receipt = json.loads(self.receipt.read_text())
+        receipt["remote_url"].update(fetch=destination, push=destination)
+        self.receipt.write_text(json.dumps(receipt))
+        local_refs = self.g("show-ref")
+        remote_refs = self.run_cmd(["git", "--git-dir", str(self.bare), "show-ref"]).stdout
+        server = self.data.read_bytes()
+        result, r = self.complete(success=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("repository differs from remote", result["reason"])
+        self.assertEqual(self.g("show-ref"), local_refs)
+        self.assertEqual(self.run_cmd(["git", "--git-dir", str(self.bare), "show-ref"]).stdout, remote_refs)
+        self.assertEqual(self.data.read_bytes(), server)
+        self.assertTrue(self.task.exists())
 
     def test_pr_pending_and_retry(self):
         self.allocate(); self.accept()

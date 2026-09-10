@@ -1,10 +1,53 @@
 # 0143 — Owned task delivery and recoverable worktree cleanup
 
-2026-09-10 KST. **Legacy housekeeping complete; implementation present, required acceptance BLOCKED, draft PR open, merge and release pending.**
+2026-09-10 KST. **Source checks and final Codex review PASS; Fable 5.1 quota blocks final acceptance, main merge and release.**
 The user requests truthful remaining-work handoff, removal of stale worktrees,
 and a completion boundary through commit/push/PR/main merge before owned-resource
 cleanup, with automatic completion or a configurable stop at PR. This record
 separates the completed one-time cleanup from the not-yet-verified product change.
+
+## Current resumed checkpoint
+
+The September 10 continuation created the explicitly owned acceptance checkout
+at `/Users/aipalm/.local/share/nx01/iter0143/20260910T022444Z-acceptance-r2/work`
+from committed spec baseline `5e85f99`, preserving both original BLOCKED runs.
+Actual Codex availability succeeded, so no executor exception was needed.
+Two more obsolete branches already reachable from main were removed with
+recovery refs; their receipt is `.devlyn/0143-worktree-shipping/remaining-branch-cleanup-20260910.json`.
+
+Run `rs-20260910T022458Z-3f00122a0779` reapplied the candidate, corrected
+the queue's unsafe always-advance summary, and repaired the actual GitHub CLI
+repository query. Native `gh repo view` requires a positional repository
+and rejects the unused `autoMergeAllowed` field; the fake boundary now
+rejects those invalid forms. BUILD then passed on `9107142`.
+
+The first independent Codex review found HIGH `VERIFY-PRIMARY-001` while
+Fable passed: literal-only repository checks allowed a Git `insteadOf`
+rewrite to another repository. Source `491c38d` replaces that check with
+validation in the shared URL reader, preserving exact revalidation on retry
+and cleanup. Four new tests cover early refusal, previously unsafe receipts,
+same-repository aliases and configuration changes. Red failures, 11 focused
+green tests and two owner regressions are retained in
+`work/.devlyn/remote-binding-development/`. All 19 original test bodies remain.
+
+BUILD round 2 passed literal helper tests (97.546s), full lint (277.339s),
+diff (0.021s), sealed P3 (85.545s), and both owner regressions. CLEANUP removed
+eight generated cache files with no source change. Final MECHANICAL passed
+all four commands. Final Codex review then returned PASS with zero findings
+(native 117.969s); required Fable review returned HTTP429 with zero usage.
+The user reported recovery and selected same-Fable continuation; the first
+retry still returned the same quota error. No alternate-model permission
+was given. The current normal run is retained pending that required review.
+
+Owner dispatch evidence is explicit: an invalid VERIFY transition argument
+allowed a prematurely launched IMPLEMENT r3; a duplicate dispatch truncated
+its capture and was refused by the receipt guard. The original child was stopped
+after exact cwd verification, with no source changes. Its completion was BLOCKED,
+not accepted, and fresh IMPLEMENT r4 performed the repair (518.970s).
+The failed attempt and state evidence remain in `resume-20260910-r0/`.
+The later source checkpoint was amended to the canonical required fix-round
+message before its durability gate passed. Inactive conversation intervals
+are distinct from the native durations above.
 
 ## Cause and responsibility
 
@@ -147,22 +190,8 @@ after successful installs; its error is preserved and the same installation was
 collected through the actual SKILL.md parent. No installer retry was hidden. This
 proves the two documentation pointers, not full product acceptance.
 
-The pinned Codex CLI route is quota-blocked. Root has a pending user question for
-a task-local exception using Fable CLI workers and a fresh in-app Codex reviewer;
-no answer or authorization is recorded. Do not silently change persistent pins
-or infer consent from elapsed time. Required acceptance must finish via an
-available authorized route; retain both original BLOCKED archives.
-
-Final fields for the owner to replace from actual evidence:
-
-- Candidate implementation: `26f40e5`; two-line install-pointer correction applied as an owner follow-up; Claude/Codex installation regression **PASS**.
-- Complete BUILD, CLEANUP, independent VERIFY and accepted product result:
-  **PENDING**. Both previous full runs remain archived BLOCKED.
-- Draft [PR #4](https://github.com/fysoul17/devlyn-cli/pull/4): pushed head `26f40e5`.
-  Accepted review, observed main merge SHA and current branch cleanup **PENDING**.
-- Follow-up publication: planned under the user's prior deployment authorization
-  after acceptance/delivery; version/tag/publication **UNCONFIRMED**. Last released
-  baseline remains 3.0.1. Product phase workers do not publish.
+The original Codex-quota checkpoint below remains historical. The resumed
+checkpoint above supersedes its candidate/source/availability and delivery status.
 
 ## Handoff subtraction and remaining frontier
 
