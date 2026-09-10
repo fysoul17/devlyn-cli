@@ -12,9 +12,9 @@ Current candidate source is `491c38d` on `codex/0143-acceptance-r2`.
 Normal run `rs-20260910T022458Z-3f00122a0779` has passed PLAN, probes,
 IMPLEMENT, BUILD_GATE, CLEANUP and final MECHANICAL. Final Codex review is
 PASS with zero findings. **Required Fable 5.1 review is still pending**:
-two native invocations returned HTTP429 with zero model usage, including
-the retry after the user reported recovery. The user explicitly chose to
-continue with Fable; no Grok exception or engine/pin change is authorized.
+three native invocations returned HTTP429 with zero model usage, including
+two retries after the user reported recovery. CLI login is healthy with no auth-override environment variables; account
+confirmation was requested. The user explicitly chose to continue with Fable; no Grok exception or engine/pin change is authorized.
 Do not treat the prior Fable PASS on `9107142` as review of the repaired source.
 
 The first review found HIGH `VERIFY-PRIMARY-001`: Git `insteadOf` could
@@ -29,8 +29,9 @@ The retained PR is [#4](https://github.com/fysoul17/devlyn-cli/pull/4),
 kept draft until the required review and normal-run final report/archive succeed.
 The current verification checkout and owner launchers are under
 `/Users/aipalm/.local/share/nx01/iter0143/20260910T022444Z-acceptance-r2/`.
-Its `ownership.json`, `work/.devlyn/pipeline.state.json`, `review-source.json`,
-`prior-verify-r0/` and Fable quota-attempt artifacts identify exact source,
+Its `RECOVERY.md` and byte-verified `quota-checkpoint/` preserve 360 evidence
+entries and a verified source bundle. `ownership.json` and the active
+`work/.devlyn/` state, review-source, prior-verify and quota artifacts identify exact source,
 checks, failed review and retry. Preserve all before removing the checkout.
 Continue with the same frozen source/evidence; do not repeat source recovery
 or reinterpret a failed invocation as acceptance. See

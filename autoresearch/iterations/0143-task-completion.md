@@ -35,9 +35,14 @@ diff (0.021s), sealed P3 (85.545s), and both owner regressions. CLEANUP removed
 eight generated cache files with no source change. Final MECHANICAL passed
 all four commands. Final Codex review then returned PASS with zero findings
 (native 117.969s); required Fable review returned HTTP429 with zero usage.
-The user reported recovery and selected same-Fable continuation; the first
-retry still returned the same quota error. No alternate-model permission
-was given. The current normal run is retained pending that required review.
+The user reported recovery and selected same-Fable continuation; two retries still returned the same quota error. CLI login is healthy; no
+auth-override environment variables are present. Account confirmation is pending.
+No alternate-model permission was given. The current normal run is retained pending that required review. A byte/mode-verified
+checkpoint of 360 owned evidence entries and a verified 16,187,930-byte source
+bundle is retained in `quota-checkpoint/` beside the checkout.
+The repaired source was integrated into the original PR branch at `f85d61b`,
+with exact equality for all functional/contract paths; owner handoff metadata
+records the pending result. PR #4 remains draft and no main merge is claimed.
 
 Owner dispatch evidence is explicit: an invalid VERIFY transition argument
 allowed a prematurely launched IMPLEMENT r3; a duplicate dispatch truncated
