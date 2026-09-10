@@ -366,7 +366,7 @@ def gh(receipt, *args):
 
 
 def repo_policy(receipt):
-    info = json.loads(gh(receipt, "repo", "view", "--json", "nameWithOwner,url,defaultBranchRef,mergeCommitAllowed,autoMergeAllowed"))
+    info = json.loads(command(["gh", "repo", "view", "github.com/"+receipt["repository"], "--json", "nameWithOwner,url,defaultBranchRef,mergeCommitAllowed"]))
     require(info["nameWithOwner"].lower() == receipt["repository"].lower() and info["url"].lower() == "https://github.com/"+receipt["repository"].lower(), "GitHub repository identity changed")
     require(info["defaultBranchRef"]["name"] == receipt["base"] and receipt["branch"] != info["defaultBranchRef"]["name"], "base/default branch changed; retain resources")
     return info
@@ -644,7 +644,8 @@ def remote(ref):
     r = subprocess.run([os.environ['REAL_GIT'], '--git-dir', d['bare'], 'rev-parse', '--verify', ref], capture_output=True, text=True)
     return r.stdout.strip() if r.returncode == 0 else None
 if a[:2] == ['repo', 'view']:
-    print(json.dumps({'nameWithOwner':'test/project', 'url':'https://github.com/test/project', 'defaultBranchRef':{'name':'main'}, 'mergeCommitAllowed':d.get('merge_allowed',True), 'autoMergeAllowed':d.get('auto_allowed',True)}))
+    assert a[2:] == ['github.com/test/project', '--json', 'nameWithOwner,url,defaultBranchRef,mergeCommitAllowed'], 'unsupported gh repo view arguments: '+str(a)
+    print(json.dumps({'nameWithOwner':'test/project', 'url':'https://github.com/test/project', 'defaultBranchRef':{'name':'main'}, 'mergeCommitAllowed':d.get('merge_allowed',True)}))
 elif a[:2] == ['pr', 'list']:
     assert '--repo' in a and a[a.index('--repo')+1] == 'github.com/test/project'
     print(json.dumps([d['pr']] if d.get('pr') else []))
