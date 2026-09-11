@@ -282,16 +282,13 @@ def init_spec_source(
         block("BLOCKED:invalid-flags", f"spec unreadable: {raw_path}: {exc}")
     helper = shared_dir / "spec-verify-check.py"
     expected = path.with_name("spec.expected.json")
-    if expected.is_file():
-        run_checked([sys.executable, str(helper), "--check-expected", str(expected)], cwd)
-    else:
-        run_checked([sys.executable, str(helper), "--check", str(path)], cwd)
     module = load_spec_helper(shared_dir)
     if expected.is_file():
         found, _staged, error, _expected_path, _data = module.stage_from_expected(path, staging_dir)
         if not found or error:
             block("BLOCKED:invalid-flags", error or f"expected contract not found: {expected}")
     else:
+        run_checked([sys.executable, str(helper), "--check", str(path)], cwd)
         _staged, error = module.stage_from_source(path, staging_dir)
         if error:
             block("BLOCKED:invalid-flags", error)
@@ -1209,6 +1206,34 @@ def self_test() -> int:
         assert external_patch.read_bytes() == patch_raw
         subprocess.run(["git", "restore", "app.py"], cwd=work, check=True)
         print("PASS bootstrap self-test patch lifecycle: full-mode removal + dirty verify-only exact capture")
+
+        for valid_named in (True, False):
+            named_work = root / f"named-spec-{valid_named}"
+            init_repo(named_work)
+            named_spec = named_work / "X.md"
+            named_spec.write_text(
+                "---\ncomplexity: " + ("medium" if valid_named else "hihg") + "\n---\n# Named spec\n",
+                encoding="utf-8",
+            )
+            (named_work / "spec.md").write_text(
+                "---\ncomplexity: " + ("hihg" if valid_named else "medium") + "\n---\n# Unrelated spec\n",
+                encoding="utf-8",
+            )
+            (named_work / "spec.expected.json").write_text(json.dumps({
+                "verification_commands": [{"cmd": "printf named-contract"}],
+            }), encoding="utf-8")
+            try:
+                result = bootstrap(["--spec", "X.md"], named_work, script_shared)
+            except BootstrapBlocked as exc:
+                assert not valid_named and exc.reason == "BLOCKED:invalid-flags", exc
+                assert "frontmatter complexity" in exc.detail, exc.detail
+                assert not (named_work / ".devlyn").exists()
+            else:
+                assert valid_named, "invalid named spec was accepted via unrelated spec.md"
+                assert result["source"]["spec_path"] == "X.md"
+                assert result["source"]["spec_sha256"] == sha256(named_spec.read_bytes())
+                staged = strict_json((named_work / ".devlyn/spec-verify.json").read_text(encoding="utf-8"))
+                assert staged["verification_commands"] == [{"cmd": "printf named-contract"}]
 
         dirty_work = root / "dirty-repo"
         init_repo(dirty_work)

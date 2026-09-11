@@ -880,8 +880,7 @@ def validate_expected_against_sibling_spec(spec_path: Path, data: object) -> str
     )
 
 
-def validate_sibling_spec_complexity(expected_path: Path) -> str | None:
-    spec_path = expected_path.with_name("spec.md")
+def validate_sibling_spec_complexity(spec_path: Path) -> str | None:
     if not spec_path.is_file():
         return None
     try:
@@ -1235,7 +1234,7 @@ def stage_from_expected(
     if err:
         return (True, False, err, expected_path, None)
     assert data is not None
-    err = validate_expected_against_sibling_spec(md, data)
+    err = validate_sibling_spec_complexity(md) or validate_expected_against_sibling_spec(md, data)
     if err:
         return (True, False, f"{expected_path}: {err}", expected_path, None)
     commands = data.get("verification_commands")
@@ -1917,7 +1916,7 @@ def run_check_expected_mode(expected_path: Path) -> int:
     if err:
         print(f"[spec-verify --check-expected] {expected_path}: shape error: {err}", file=sys.stderr)
         return 2
-    complexity_err = validate_sibling_spec_complexity(expected_path)
+    complexity_err = validate_sibling_spec_complexity(expected_path.with_name("spec.md"))
     if complexity_err:
         print(f"[spec-verify --check-expected] {expected_path}: shape error: {complexity_err}", file=sys.stderr)
         return 2
