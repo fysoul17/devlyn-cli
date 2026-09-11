@@ -41,7 +41,26 @@ without invoking resolve. Root Codex implements and decides after independent
 Fable 5.1 (or Opus 5) and Grok 4.6 review. WIP, A16 and closed/frozen experiments
 retain their existing boundaries. The four core priorities below remain open.
 
-## START-HERE — 0146 named-spec contract repair verified
+## START-HERE — 0147 semantic review screen: no promotion
+
+[0147](iterations/0147-constraint-review.md) registered eight fresh Fable/Grok
+reviews of the frozen 0140 source under minimal/current semantic-review
+instructions. All native calls completed, but only four Grok answers met the
+strict research JSON format; four fenced Fable answers are excluded. Formal
+result: **INCOMPLETE**. Grok's four usable answers all missed the forbidden new
+Any annotation. Qualitative inspection of Fable's readable answers also found
+no detection. No allowed patch was falsely blocked. This is an exposed,
+single-task component screen, not full VERIFY or general model/pair evidence.
+
+No prompt/model change is promoted; disjoint confirmation is **NOT_SELECTED /
+NOT_RUN** under the registered stop rule. Next, inspect whether authoring/carrying
+a task-specific executable constraint check omits a binding clause; reproduce
+that omission before repairing the path with violating and allowed controls.
+0147 does not establish a current carrier defect. The existing template already asks
+for suitable checks; another generic reviewer paragraph or universal Any
+scanner is not justified. Four broader priorities remain open.
+
+## Recent verified source repairs
 
 [0146](iterations/0146-named-spec-carriers.md) fixes the documented `X.md` plus
 `spec.expected.json` path across bootstrap, process evidence and completion.
@@ -57,8 +76,7 @@ and aligns Requirements/Constraints coverage with findings-only judges.
 [0144](iterations/0144-core-overhead.md) leaves priority 1 unproven and adds
 bounded duplicate-check/output guidance for priority 2. These three source
 repairs are verified; broad semantic recall, performance and causal pair value
-are not. Next, register a losable semantic-constraint review comparison with
-positive and allowed controls, then untouched confirmation before any claim.
+are not. The subsequent 0147 screen above provides no promotion evidence.
 Keep the four broader priorities below open; do not reopen frozen comparisons.
 
 ## Completed task completion — shipped in 3.1.0

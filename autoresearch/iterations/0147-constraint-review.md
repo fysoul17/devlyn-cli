@@ -86,4 +86,101 @@ headroom here; history does not guarantee a new miss.
 
 ## Actual results
 
-Pending the registered eight draws. Registration above remains immutable.
+**INCOMPLETE under the registered format gate; no semantic improvement
+observed.** All eight native calls completed successfully with the requested
+models and zero tool calls. Grok was requested as `grok-4.6` and reported
+`grok-4.6-build`; Fable reported `claude-fable-5-1`. Four Grok answers satisfy
+the strict JSON contract;
+all four Fable answers wrap otherwise readable JSON in Markdown fences and
+are excluded from the primary semantic denominator. No retry or format repair
+was used to make the registered gate pass.
+
+| Model / method | Strict usable | Binding detection | Allowed false blockers | Native seconds, R1 / R2 | Native OUTPUT, two draws |
+| --- | ---: | ---: | ---: | --- | ---: |
+| Fable / bare | 0/2 | N/A | N/A | 60.354 / 65.858 | 11,077 |
+| Fable / current | 0/2 | N/A | N/A | 90.637 / 80.739 | 15,623 |
+| Grok / bare | 2/2 | 0/2 | 0/6 | 249.586 / 252.223 | 28,758 |
+| Grok / current | 2/2 | 0/2 | 0/6 | 295.358 / 360.413 | 40,534 |
+
+The four usable Grok answers all miss the mandatory annotation violation.
+Root also inspected the fenced Fable answers as a separately labelled
+qualitative sensitivity check: none identifies or binds that violation, and
+none falsely blocks an allowed patch. Seven of eight readable answers quote
+the violating function signature while discussing test inheritance/naming;
+quoting `value: Any` without identifying its prohibition is not detection.
+No new substantiated mandatory counterexample changes the answer key.
+
+The current block added no valid detection. A descriptive fence-stripped union
+also adds none over repeated same-model review; the registered cross-model
+comparison is incomplete, and neither analysis tests the shipped targeted
+pair role. Native OUTPUT sums model-reported output once. Fable's total includes
+reported thinking and ancillary Haiku output; Grok exposes no separate
+reasoning breakdown. No cross-provider token-efficiency ranking follows.
+Input/cache/cost detail remains
+in raw receipts. These are review-call observations, not verified-resolution
+time, reliable speed ratios or whole-run cost.
+
+**Decision:** do not promote a new review instruction or claim current-method
+recall gains. Confirmation remains **NOT_SELECTED / NOT_RUN** under the stop
+rule. Preserve existing shipped behavior; this small extracted-component
+failure does not justify deleting learned checks or changing model defaults.
+Next inspect executable constraint coverage through the existing authoring/
+carrier path. This experiment does not establish a defect in that path; repair
+only a reproduced omission. Scope stays bounded under No overengineering:
+these controls license neither a universal Any scanner nor another generic
+review paragraph.
+
+## Evidence checks and limitations
+
+An independent read-only input audit verified the original packet, excerpt and
+four prompts, equal evidence within each comparison and reversed-only case
+order. Root verified all ten registered hashes, including the four runner
+copies, after execution. The 58,280-byte original packet includes its old
+header; reused evidence
+is 57,661 bytes with a framing LF before the closing tag. The treatment is the
+whole 5,397-byte block under the common wrapper, not one clause paragraph.
+Formatting perfectly separates providers after unmasking, and treatment
+vocabulary can disclose the arm. Metadata was hidden for scoring, but effective
+model/arm blinding is not established; the retained initial label error also
+shows that format alone did not supply root with the correct provider mapping.
+
+Root reconstructed the Python files, verified changed baselines against the
+Git blob IDs in the frozen diffs, applied all four patches, and compared
+function annotations by syntax and symbol. Only B introduces the prohibited
+parameter annotation, at line 130. This is a bounded fixture oracle, not a
+general semantic scanner. An initial scratch reconstruction included packet
+separator LFs as source EOF and failed to apply; correcting the framing and
+verifying blob IDs closed that control error. Model inputs remained unchanged.
+
+The research wrapper requests one JSON object without fences. The production
+pair parser separately tolerates bare fence lines but expects JSONL findings
+and a terminal verdict, so these whole contracts are not ordered by strictness.
+It was not used to parse these research answers. Fable's format failure is not
+evidence of a production parser defect. The 0140 run also had unspecified
+effort, a 120-second
+bound and a different output request; current observations cannot attribute a
+historical change to this method. Grok may advertise ambient MCP connections
+despite disable flags; zero observed calls is not full connection isolation.
+Grok reports 128 cache-read input tokens in each current-method draw and zero
+in each bare draw. Cache conditions were not controlled; these counts alone
+do not establish answer leakage or a context-isolation failure.
+
+`REGISTRATION.json`, native streams, `BLIND-GRADES.json`, `BLIND-KEY.json`,
+`NATIVE-RESULTS.json`, `ROOT-RESULT.json` and the source/control scripts preserve
+the decision. A generated initial root summary reversed provider labels before
+the unmask output was inspected; the corrected result uses the actual key,
+retains the initial bytes, and changes no blind score or verdict.
+
+Both independent final readout audits returned **PASS_WITH_ISSUES**, with zero
+tool calls. Root corrected the parser comparison, audit attribution and
+blinding/token/next-step qualifications, and added per-answer explanations
+after unmasking without rewriting blind grades. The scores and decision did
+not change. Advice treating true A/D compliance statements as false was
+rejected: those patches are allowed, and B's shared-source statements do not
+establish that the new test annotation was checked. Final audits had the
+revealed answer key and are not independent rediscovery or extra trial draws.
+
+Raw final reviews and root adjudication are in `.devlyn/0147-final/`. Input,
+stream and grade consistency checks pass; no installed source changed, so full
+skill lint is not applicable. Delivery/custody is separate from the experiment's
+INCOMPLETE verdict. No npm release/version bump.
