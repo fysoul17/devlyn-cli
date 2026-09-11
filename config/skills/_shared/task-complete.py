@@ -269,7 +269,7 @@ def pipeline_acceptance(work, acceptance, files, directory):
                 require(evidence_module["bound_carrier_outcome"](reconstructed, carrier)["verdict"] == "PASS", "required process evidence failed")
         source = state.get("source") or {}
         if source.get("spec_path"):
-            expected = Path(source["spec_path"]).with_suffix(".expected.json")
+            expected = Path(source["spec_path"]).with_name("spec.expected.json")
             original = safe_path(work, str(expected))
             if original.exists():
                 dest = safe_path(reconstructed, str(expected))
@@ -342,7 +342,8 @@ def bind_acceptance(receipt, path, supplied):
                     require(committed.returncode == 0 and committed.stdout == source_file.read_bytes(), "source contract changed since accepted commit")
                 bound_digest = source.get(key.replace("_path", "_sha256"))
                 require(file_record(source_file)["sha256"] == bound_digest, "source contract differs from run binding")
-                expected = str(Path(source[key]).with_suffix(".expected.json"))
+                source_path = Path(source[key])
+                expected = str(source_path.with_name("spec.expected.json") if key == "spec_path" else source_path.with_suffix(".expected.json"))
                 if safe_path(work, expected).exists():
                     paths.append(expected)
     else:
@@ -770,11 +771,11 @@ class CompletionTests(unittest.TestCase):
         self.task = Path(result["worktree"])
         return result
 
-    def accept(self, pipeline=False, queue=False, spec_expected=None):
+    def accept(self, pipeline=False, queue=False, spec_expected=None, spec_name="spec.md"):
         if spec_expected is not None:
-            (self.task / "spec.md").write_text("# Fixture\nProduct contains accepted bytes.\n", encoding="utf-8")
+            (self.task / spec_name).write_text("# Fixture\nProduct contains accepted bytes.\n", encoding="utf-8")
             (self.task / "spec.expected.json").write_text(json.dumps(spec_expected), encoding="utf-8")
-            self.g("add", "spec.md", "spec.expected.json", work=self.task)
+            self.g("add", spec_name, "spec.expected.json", work=self.task)
         (self.task / "product").write_text("accepted\n", encoding="utf-8")
         self.g("add", "product", work=self.task)
         self.g("commit", "-m", "scoped task", work=self.task)
@@ -802,7 +803,7 @@ class CompletionTests(unittest.TestCase):
             self.state = {"run_id": a["run_id"], "mode": "free-form", "source": source, "phases": phases, "process_evidence": None}
             if spec_expected is not None:
                 self.state["mode"] = "spec"
-                self.state["source"] = {"type": "spec", "spec_path": "spec.md", "spec_sha256": hashlib.sha256((self.task / "spec.md").read_bytes()).hexdigest()}
+                self.state["source"] = {"type": "spec", "spec_path": spec_name, "spec_sha256": hashlib.sha256((self.task / spec_name).read_bytes()).hexdigest()}
             (archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
             (archive / "finish-gate.summary.json").write_text(json.dumps({"mode": self.state["mode"], "exit": 0, "offenders": 0, "checked": 1}), encoding="utf-8")
             (archive / "verify-merge.summary.json").write_text(json.dumps({"verdict": "PASS"}), encoding="utf-8")
@@ -1162,6 +1163,22 @@ class CompletionTests(unittest.TestCase):
     def test_missing_required_process_evidence(self):
         expected = {"process_evidence": [{"id": "red-first", "phase": "implement", "argv": [sys.executable, "-c", "print('red')"], "exit_code": 0, "timeout_sec": 10}]}
         self.allocate(); self.accept(pipeline=True, spec_expected=expected)
+        _, r = self.complete(success=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("implement process evidence", json.loads(r.stdout)["reason"])
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
+
+    def test_named_spec_custody(self):
+        self.allocate(); self.accept(pipeline=True, spec_expected={"pure_design": True}, spec_name="X.md")
+        result, _ = self.complete("--mode", "pr")
+        self.assertEqual(result["status"], "PR")
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        self.assertIn("spec.expected.json", receipt["files"])
+        self.assertEqual((self.receipt.parent / "custody/spec.expected.json").read_bytes(), (self.task / "spec.expected.json").read_bytes())
+
+    def test_named_spec_missing_required_process_evidence(self):
+        expected = {"process_evidence": [{"id": "red-first", "phase": "implement", "argv": [sys.executable, "-c", "print('red')"], "exit_code": 0, "timeout_sec": 10}]}
+        self.allocate(); self.accept(pipeline=True, spec_expected=expected, spec_name="X.md")
         _, r = self.complete(success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("implement process evidence", json.loads(r.stdout)["reason"])

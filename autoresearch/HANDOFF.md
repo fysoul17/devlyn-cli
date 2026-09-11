@@ -41,26 +41,25 @@ without invoking resolve. Root Codex implements and decides after independent
 Fable 5.1 (or Opus 5) and Grok 4.6 review. WIP, A16 and closed/frozen experiments
 retain their existing boundaries. The four core priorities below remain open.
 
-## START-HERE — 0145 verification contract repair verified
+## START-HERE — 0146 named-spec contract repair verified
 
-[0145](iterations/0145-verify-coverage.md) fixes reproduced sibling-contract
-failures: valid pure-design was rejected or executed stale inline commands;
-empty runtime contracts could pass execution after failing authoring checks.
-The checker now honors sibling presence and reuses validation against the actual
-source. VERIFY covers Requirements/Constraints, allows justified unchanged-code
-and design evidence, retains executable obligations, and keeps JUDGE findings-only.
-Full lint, five new CLI regressions, six owner controls and independent final
-Fable/Grok source review complete: **PASS_WITH_ISSUES**, no CRITICAL/HIGH.
+[0146](iterations/0146-named-spec-carriers.md) fixes the documented `X.md` plus
+`spec.expected.json` path across bootstrap, process evidence and completion.
+Before the fix, named-spec obligations could be missed and the canonical contract
+omitted from custody. Valid/invalid source checks could inspect unrelated
+`spec.md`. Six before/after controls reproduce and close those failures; full
+lint (including 25 completion tests) and independent Fable/Grok source reviews
+complete: **PASS_WITH_ISSUES**, no CRITICAL/HIGH. LOW diagnostic/test-depth advice
+remains; one proposed dirty-contract bypass was disproved by the existing guard.
 
+[0145](iterations/0145-verify-coverage.md) fixes pure-design/stale-inline execution
+and aligns Requirements/Constraints coverage with findings-only judges.
 [0144](iterations/0144-core-overhead.md) leaves priority 1 unproven and adds
-bounded duplicate-check/output guidance for priority 2. Priority 3's semantic
-recall and priority 4's comparative quality/causal pair value remain unproven;
-do not turn these source fixes into performance claims. Next, reproduce and fix
-the pre-existing custom-spec carrier asymmetry: resolve documents `X.md` with
-sibling `spec.expected.json`, but process evidence and completion derive
-`X.expected.json`, and authoring preflight defaults to `spec.md`. Verify all
-three consumers; do not remove documented filename support. Future comparisons
-need fresh registration and untouched confirmation tasks.
+bounded duplicate-check/output guidance for priority 2. These three source
+repairs are verified; broad semantic recall, performance and causal pair value
+are not. Next, register a losable semantic-constraint review comparison with
+positive and allowed controls, then untouched confirmation before any claim.
+Keep the four broader priorities below open; do not reopen frozen comparisons.
 
 ## Completed task completion — shipped in 3.1.0
 

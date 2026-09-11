@@ -185,7 +185,7 @@ def _source_expected_path(work: pathlib.Path, state: dict) -> pathlib.Path | Non
     if not isinstance(spec_path, str) or not spec_path:
         raise EvidenceError("state.source.spec_path is missing")
     spec_rel = _safe_relative_path(spec_path, "state.source.spec_path")
-    expected = work.joinpath(*spec_rel.parts).with_suffix(".expected.json")
+    expected = work.joinpath(*spec_rel.parts).with_name("spec.expected.json")
     try:
         expected.resolve().relative_to(work.resolve())
     except (OSError, ValueError) as exc:
@@ -682,6 +682,21 @@ def self_test() -> int:
             "cmd": "printf raw-out; printf raw-err >&2; exit 7",
             "exit_code": 7, "stdout_contains": ["raw-outraw-err"],
         })
+        spec_dir = work / "docs"
+        spec_dir.mkdir()
+        (spec_dir / "X.md").write_text("# Named spec\n", encoding="utf-8")
+        expected = spec_dir / "spec.expected.json"
+        expected.write_text(json.dumps({
+            "process_evidence": [obligation],
+            "verification_commands": [{"cmd": "printf required"}],
+        }), encoding="utf-8")
+        (spec_dir / "X.expected.json").write_text("{}\n", encoding="utf-8")
+        named_state = {**state, "source": {"type": "spec", "spec_path": "docs/X.md"}}
+        assert declared_obligations(work, named_state, "implement") == [obligation]
+        assert mechanical_evidence_required(work, named_state)
+        expected.unlink()
+        assert declared_obligations(work, named_state, "implement") == []
+        assert not mechanical_evidence_required(work, named_state)
         entry = capture_process(work, manifest, state["run_id"], "implement", 0, obligation)
         assert entry["expectation_met"]
         assert (manifest.parent / "red-first.stdout").read_bytes() == b"raw-out"
