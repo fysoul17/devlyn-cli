@@ -36,15 +36,30 @@ ones. Optimal performance and cumulative amplification are goals to demonstrate,
 not established or per-task guarantees. This clarification supersedes the prior
 conversation's Pyx-first experiment recommendation and older fixed-fleet framing.
 Implementation, naming, team/learning policy and integration design remain open.
-Only this direction record is authorized; WIP, A16 and closed/frozen experiments
+The subsequent 2026-09-11 instruction authorizes sequential core improvements
+without invoking resolve. Root Codex implements and decides after independent
+Fable 5.1 (or Opus 5) and Grok 4.6 review. WIP, A16 and closed/frozen experiments
 retain their existing boundaries. The four core priorities below remain open.
 
-## START-HERE — task completion shipped in 3.1.0
+## START-HERE — 0144 bounded source improvement verified
+
+[0144](iterations/0144-core-overhead.md) leaves priority 1 unproven: stale local
+skill descriptions were observed, but no actual unnecessary full-route trace.
+Priority 2 now has shared authoring guidance against covered standalone checks
+and BUILD guidance retaining complete raw evidence without inventory dumps.
+Full lint and independent Fable/Grok review complete: **PASS_WITH_ISSUES**, no
+CRITICAL/HIGH; future adherence and speed gains remain unproven.
+Next, priority 3 has a source-level mismatch to resolve: VERIFY's blanket
+MECHANICAL/code-change coverage rule conflicts with pure-design/source-review
+obligations and unchanged-code preservation; its JUDGE state-write instruction
+also conflicts with the read-only role. Keep `coverage_failed` telemetry intact.
+
+## Completed task completion — shipped in 3.1.0
 
 [Task completion PR #4](https://github.com/fysoul17/devlyn-cli/pull/4) is
 merged at `81e9ead`; [release PR #5](https://github.com/fysoul17/devlyn-cli/pull/5)
 is merged at `6a5073f`. Signed [v3.1.0](https://github.com/fysoul17/devlyn-cli/releases/tag/v3.1.0)
-is published, npm `latest` is 3.1.0, and its registry `gitHead` matches the tag.
+was published as npm `latest` 3.1.0, with registry `gitHead` matching the tag.
 All 515 public package members match verified local bytes/modes; fresh npm
 installation and CLI help pass. Existing task branches and acceptance/release
 worktrees were removed after verified custody. This final HANDOFF travels in a

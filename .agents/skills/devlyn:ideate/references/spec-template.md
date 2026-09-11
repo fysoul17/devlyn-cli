@@ -96,7 +96,7 @@ python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-pat
 ```
 
 Map mechanically decidable rules from both Requirements and Constraints into the existing carriers. Validate each new guard with a violating control that fails and an allowed control that passes, preserving permitted pre-existing occurrences:
-- `verification_commands` ← `## Verification` + commands the conversation surfaced. For semantic annotation or exception-handling rules, use a suitable syntax-aware/executable check, preferring existing checks; explicitly retain uncovered semantics as source-review obligations.
+- `verification_commands` ← `## Verification` + commands the conversation surfaced. While drafting both Verification and its carrier, omit a standalone check only when another command in that contract runs the same assertions under the required execution conditions and propagates failure; describe that shared coverage in Verification and keep both carriers aligned. Preserve distinct scenarios and required independent verification; execute approved commands unchanged without reusing results across phases. For semantic annotation or exception-handling rules, use a suitable syntax-aware/executable check, preferring existing checks; explicitly retain uncovered semantics as source-review obligations.
 - `forbidden_patterns` ← literal syntax constraints only; regex does not prove semantics. It scans the whole file-filtered diff, including context, deletions and headers; additions-only guards must exclude those lines.
 - `required_files` / `forbidden_files` ← file requirements and exclusions in Requirements, Constraints and Out of Scope.
 - `max_deps_added` ← dependency limits in Requirements or Constraints (default 0 unless the spec licenses a new dep).
