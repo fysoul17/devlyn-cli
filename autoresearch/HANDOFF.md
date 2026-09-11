@@ -14,17 +14,20 @@ completion speed and whole-run efficiency/cost without requiring Pyx. Research,
 validate and ship core harness improvements for all CLI users first; adding
 memory is not a substitute for fixing the core's measured shortcomings.
 
-**pyx-memory is an optional amplification layer:** carry user/project intent,
+**pyx-memory is general-purpose memory, optionally amplifying Devlyn:** carry user/project intent,
 decisions and verified experience across engines and sessions to improve later
 choices and strategies. This per-installation experience loop is distinct from
 researching and distributing harness improvements. Storage/reinforcement alone
 does not prove learning, and strategy improvement does not imply weight training.
 
-**devlyn-os makes today's manual CLI and optional Pyx use accessible** through
-desktop intent input, suitable agent organization, execution, observation,
-intervention and verified results. OS expansion comes later. CLI-first development
-does not make it an OS dependency or fixed default; retain recommended-harness
-status and room for other harnesses/native execution.
+**A core devlyn-os vision is accessible graph engineering and loop engineering**
+for harnesses using devlyn-cli and optional Pyx. Make relationships (e.g. agents,
+tasks and dependencies) and result-driven execution, verification and replanning
+easy to design, run, observe and improve, with user intent and necessary
+intervention guiding the organization. A canvas, graph database or fixed workflow
+is not decided. OS expansion comes later; CLI-first development does not make it
+an OS dependency or fixed default. Retain recommended-harness status and room
+for other harnesses/native execution.
 
 Evaluate core versus strong native bare first, then Pyx's incremental value over
 that core, including retrieval/learning costs. Accuracy/intent completeness →
