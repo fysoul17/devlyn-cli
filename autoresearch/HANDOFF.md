@@ -41,18 +41,26 @@ without invoking resolve. Root Codex implements and decides after independent
 Fable 5.1 (or Opus 5) and Grok 4.6 review. WIP, A16 and closed/frozen experiments
 retain their existing boundaries. The four core priorities below remain open.
 
-## START-HERE — 0144 bounded source improvement verified
+## START-HERE — 0145 verification contract repair verified
 
-[0144](iterations/0144-core-overhead.md) leaves priority 1 unproven: stale local
-skill descriptions were observed, but no actual unnecessary full-route trace.
-Priority 2 now has shared authoring guidance against covered standalone checks
-and BUILD guidance retaining complete raw evidence without inventory dumps.
-Full lint and independent Fable/Grok review complete: **PASS_WITH_ISSUES**, no
-CRITICAL/HIGH; future adherence and speed gains remain unproven.
-Next, priority 3 has a source-level mismatch to resolve: VERIFY's blanket
-MECHANICAL/code-change coverage rule conflicts with pure-design/source-review
-obligations and unchanged-code preservation; its JUDGE state-write instruction
-also conflicts with the read-only role. Keep `coverage_failed` telemetry intact.
+[0145](iterations/0145-verify-coverage.md) fixes reproduced sibling-contract
+failures: valid pure-design was rejected or executed stale inline commands;
+empty runtime contracts could pass execution after failing authoring checks.
+The checker now honors sibling presence and reuses validation against the actual
+source. VERIFY covers Requirements/Constraints, allows justified unchanged-code
+and design evidence, retains executable obligations, and keeps JUDGE findings-only.
+Full lint, five new CLI regressions, six owner controls and independent final
+Fable/Grok source review complete: **PASS_WITH_ISSUES**, no CRITICAL/HIGH.
+
+[0144](iterations/0144-core-overhead.md) leaves priority 1 unproven and adds
+bounded duplicate-check/output guidance for priority 2. Priority 3's semantic
+recall and priority 4's comparative quality/causal pair value remain unproven;
+do not turn these source fixes into performance claims. Next, reproduce and fix
+the pre-existing custom-spec carrier asymmetry: resolve documents `X.md` with
+sibling `spec.expected.json`, but process evidence and completion derive
+`X.expected.json`, and authoring preflight defaults to `spec.md`. Verify all
+three consumers; do not remove documented filename support. Future comparisons
+need fresh registration and untouched confirmation tasks.
 
 ## Completed task completion — shipped in 3.1.0
 

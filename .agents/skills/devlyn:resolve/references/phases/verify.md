@@ -10,11 +10,13 @@ Independent quality layer. You answer one question: did the diff deliver what th
 - `spec.md` (or `.devlyn/criteria.generated.md` for free-form mode) — the contract.
 - `spec.expected.json` — the mechanical acceptance contract per `_shared/expected.schema.json`.
 - The cumulative diff against `state.base_ref.sha`.
-- The source hash (`state.source.spec_sha256` for spec mode, `state.source.criteria_sha256` for generated free-form mode) — re-read the source contract from disk and confirm the hash matches; if it does not, write `state.phases.verify.verdict: "BLOCKED"` with reason `source_sha256_mismatch` and stop.
-- `.devlyn/spec-verify.results.json` plus the validated VERIFY
+- The source hash (`state.source.spec_sha256` for spec mode, `state.source.criteria_sha256` for generated free-form mode) — re-read the source contract from disk and confirm the hash matches; if it does not, emit a verdict-binding finding with reason `source_sha256_mismatch` and terminal verdict `BLOCKED`, then stop reviewing without editing state.
+- `.devlyn/spec-verify.results.json` plus any required validated VERIFY
   process-evidence manifest and raw stdout/stderr streams named by its
   `process_evidence` carrier. These are immutable MECHANICAL results; rehash
-  every named byte before JUDGE spawn and again during merge.
+  every named byte before JUDGE spawn and again during merge. Valid pure-design
+  contracts with no executable obligations have `commands: []` and
+  `process_evidence: null`.
 
 You do NOT receive: PLAN, IMPLEMENT's reasoning, BUILD_GATE's findings, CLEANUP's allowlist negotiations. Reading those would compromise independence. Inspect authorized source, diff and sealed evidence using native read/search tools or non-mutating shell commands; executable verification belongs exclusively to MECHANICAL.
 </input>
@@ -40,14 +42,14 @@ On the constrained Windows read route, the orchestrator supplies the complete sp
 
 Grade the diff against the spec on rubric axes:
 
-- **Spec compliance** — did every Requirement get an `evidence` record pointing at code that satisfies it?
+- **Spec compliance** — does cited evidence show how every applicable Requirement and Constraint is satisfied?
 - **Scope** — does the diff touch only files PLAN listed (or the cleanup allowlist)? Out-of-scope file = HIGH finding `scope.out-of-scope-violation`.
 - **Quality** — does the implementation follow the framework's idiomatic patterns, or are there hand-rolled helpers replacing standard primitives? `design.unidiomatic-pattern` MEDIUM if so.
 - **Consistency** — internal style (naming, error shape, module boundaries) consistent with the surrounding code.
 
 **Bounded primary review**: the primary JUDGE makes one broad pass over the
 source contract, sealed MECHANICAL carrier, and cumulative diff, covering all
-four rubric axes and every binding Requirement clause. It then makes one
+four rubric axes and every binding Requirement and Constraint clause. It then makes one
 targeted interaction pass over the clauses the broad pass left unresolved.
 Before any third pass, emit the required terminal result. If R1–R8 or another
 spec axis remains uncovered, emit a verdict-binding BLOCKED coverage finding
@@ -55,7 +57,7 @@ instead of continuing or assuming PASS.
 
 For each finding, write file:line evidence. Do not paraphrase code; quote it.
 
-**Clause-level check**: split each Requirement into its binding clauses before
+**Clause-level check**: split each Requirement and Constraint into its binding clauses before
 you pass it. Words like `before`, `after`, `once`, `always`, `never`,
 `regardless`, `irrelevant`, `permanent`, `idempotent`, `duplicate`, `raw`, and
 `signature` usually encode a separate invariant. A passing verification command
@@ -90,7 +92,7 @@ risk probes and present in the sealed MECHANICAL evidence. Missing coverage is
 a verdict-binding finding; review the implementation's clause and code order
 without inventing a replacement command.
 
-**Coverage check**: before declaring done, confirm you have sealed evidence and code-order support for every spec axis. If an axis lacks declared MECHANICAL coverage, or the diff does not touch the code that produces it, set `state.verify.coverage_failed: true` and surface the missing-evidence finding rather than passing on assumption.
+**Coverage check**: account for every applicable Requirement and Constraint using sealed MECHANICAL evidence for required executable checks and cited source/design evidence for pure-design clauses or explicitly retained source-review obligations. Inspect applicable unchanged code and documentation; absence of a code change alone is not missing coverage. Source review never substitutes for required executable coverage. For any unsupported clause, emit a verdict-binding coverage finding identifying the missing evidence. JUDGE does not run checks or edit state; the orchestrator records `state.verify.coverage_failed: true` from coverage findings before merge.
 
 **Verdict-binding check**: a demonstrated violation of an applicable mandatory
 task, public, or existing test contract is binding, including unmet new

@@ -844,10 +844,9 @@ def validate_expected_shape(data) -> str | None:
     return None
 
 
-def validate_expected_against_sibling_spec(expected_path: Path, data: object) -> str | None:
+def validate_expected_against_sibling_spec(spec_path: Path, data: object) -> str | None:
     if not isinstance(data, dict):
         return None
-    spec_path = expected_path.with_name("spec.md")
     if not spec_path.is_file():
         return None
     try:
@@ -1236,6 +1235,9 @@ def stage_from_expected(
     if err:
         return (True, False, err, expected_path, None)
     assert data is not None
+    err = validate_expected_against_sibling_spec(md, data)
+    if err:
+        return (True, False, f"{expected_path}: {err}", expected_path, None)
     commands = data.get("verification_commands")
     if not commands:
         spec_path = devlyn_dir / "spec-verify.json"
@@ -1919,7 +1921,7 @@ def run_check_expected_mode(expected_path: Path) -> int:
     if complexity_err:
         print(f"[spec-verify --check-expected] {expected_path}: shape error: {complexity_err}", file=sys.stderr)
         return 2
-    sibling_err = validate_expected_against_sibling_spec(expected_path, _data)
+    sibling_err = validate_expected_against_sibling_spec(expected_path.with_name("spec.md"), _data)
     if sibling_err:
         print(f"[spec-verify --check-expected] {expected_path}: shape error: {sibling_err}", file=sys.stderr)
         return 2
@@ -3750,6 +3752,54 @@ def run_self_test() -> int:
             print("sibling spec.expected.json was not staged into .devlyn/spec-verify.json", file=sys.stderr)
             return 1
 
+        pure_prose = "# Design\n\n<!-- devlyn:verification -->\n## Verification\n\n- No runtime verification commands.\n"
+        stale_command = {"verification_commands": [{"cmd": "printf unexpected-command"}]}
+        pure_inline = pure_prose + "\n```json\n" + json.dumps(stale_command) + "\n```\n"
+        for name, filename, source, contract, expected_rule in (
+            ("pure-prose", "spec.md", pure_prose, {"pure_design": True}, None),
+            ("pure-inline", "design-notes.md", pure_inline, {"pure_design": True, "verification_commands": []}, None),
+            ("empty-runtime", "design-notes.md", pure_inline, {"verification_commands": []}, "correctness.spec-verify-malformed"),
+            ("contradictory-pure", "spec.md", pure_inline, {"pure_design": True, **stale_command}, "correctness.spec-verify-malformed"),
+            ("pure-required-file", "spec.md", pure_inline, {"pure_design": True, "required_files": ["missing.md"]}, "correctness.required-file-missing"),
+        ):
+            case_root = work / name
+            case_root.mkdir()
+            case_devlyn = case_root / ".devlyn"
+            case_devlyn.mkdir()
+            case_spec = case_root / filename
+            case_spec.write_text(source, encoding="utf-8")
+            (case_root / "spec.expected.json").write_text(json.dumps(contract), encoding="utf-8")
+            (case_devlyn / "spec-verify.json").write_text(json.dumps(stale_command), encoding="utf-8")
+            (case_devlyn / "pipeline.state.json").write_text(json.dumps({
+                "source": {"type": "spec", "spec_path": str(case_spec)},
+            }), encoding="utf-8")
+            case_run = subprocess.run(
+                [sys.executable, script_path], cwd=case_root,
+                capture_output=True, text=True, encoding="utf-8",
+            )
+            if case_run.returncode != (1 if expected_rule else 0):
+                print(f"{name}: sibling execution returned {case_run.returncode}: {case_run.stderr}", file=sys.stderr)
+                return 1
+            case_findings = [
+                loads_strict_json(line) for line in
+                (case_devlyn / output_findings_name()).read_text(encoding="utf-8").splitlines()
+            ]
+            if [finding["rule_id"] for finding in case_findings] != ([expected_rule] if expected_rule else []):
+                print(f"{name}: unexpected sibling findings: {case_findings}", file=sys.stderr)
+                return 1
+            case_results = case_devlyn / "spec-verify.results.json"
+            if expected_rule == "correctness.spec-verify-malformed":
+                if case_results.exists():
+                    print(f"{name}: malformed sibling reached command execution", file=sys.stderr)
+                    return 1
+            elif (
+                loads_strict_json(case_results.read_text(encoding="utf-8"))
+                != {"commands": [], "process_evidence": None}
+                or (case_devlyn / "spec-verify.json").exists()
+            ):
+                print(f"{name}: pure-design sibling ran or retained a stale command", file=sys.stderr)
+                return 1
+
         malformed = work / "malformed-sibling"
         malformed.mkdir()
         malformed_devlyn = malformed / ".devlyn"
@@ -4915,8 +4965,8 @@ def main() -> int:
                 print(f"[spec-verify] carrier malformed: {expected_error}", file=sys.stderr)
                 write_malformed_finding(devlyn_dir, expected_error, expected_path)
                 return 1
-            if expected_staged:
-                staged, error = (True, None)
+            if expected_found:
+                staged, error = (expected_staged, None)
             else:
                 staged, error = stage_from_source(source_md, devlyn_dir)
         else:
