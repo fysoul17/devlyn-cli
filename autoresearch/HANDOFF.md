@@ -1,10 +1,40 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-10 KST. Read this file, [NORTH-STAR](NORTH-STAR.md), then the
+Updated 2026-09-11 KST. Read this file, [NORTH-STAR](NORTH-STAR.md), then the
 current spec/source and relevant iteration. Current user instructions supersede
 older records. [PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md) and
 [DECISIONS](DECISIONS.md) own enduring constraints/history. Inspect Git state and
 live runs; do not replay unrelated cold-start suites.
+
+## Current owner direction — independent core, optional memory
+
+User clarification, 2026-09-11: **devlyn-cli is the independent core harness.**
+It must maximize model potential, quality, problem-solving capability, verified
+completion speed and whole-run efficiency/cost without requiring Pyx. Research,
+validate and ship core harness improvements for all CLI users first; adding
+memory is not a substitute for fixing the core's measured shortcomings.
+
+**pyx-memory is an optional amplification layer:** carry user/project intent,
+decisions and verified experience across engines and sessions to improve later
+choices and strategies. This per-installation experience loop is distinct from
+researching and distributing harness improvements. Storage/reinforcement alone
+does not prove learning, and strategy improvement does not imply weight training.
+
+**devlyn-os makes today's manual CLI and optional Pyx use accessible** through
+desktop intent input, suitable agent organization, execution, observation,
+intervention and verified results. OS expansion comes later. CLI-first development
+does not make it an OS dependency or fixed default; retain recommended-harness
+status and room for other harnesses/native execution.
+
+Evaluate core versus strong native bare first, then Pyx's incremental value over
+that core, including retrieval/learning costs. Accuracy/intent completeness →
+verified completion time → total cost; protect easy tasks and improve difficult
+ones. Optimal performance and cumulative amplification are goals to demonstrate,
+not established or per-task guarantees. This clarification supersedes the prior
+conversation's Pyx-first experiment recommendation and older fixed-fleet framing.
+Implementation, naming, team/learning policy and integration design remain open.
+Only this direction record is authorized; WIP, A16 and closed/frozen experiments
+retain their existing boundaries. The four core priorities below remain open.
 
 ## START-HERE — task completion shipped in 3.1.0
 
