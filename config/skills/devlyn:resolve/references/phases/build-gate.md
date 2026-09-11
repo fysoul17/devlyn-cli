@@ -59,7 +59,7 @@ Append all findings; do not stop on the first failure.
 
 <output>
 - `.devlyn/build_gate.findings.jsonl` — JSONL stream, one finding per line. Schema: `{id, rule_id, severity, file, line, message, fix_hint, criterion_ref}`.
-- `.devlyn/build_gate.log.md` — human-readable summary of which gates ran and their raw output.
+- `.devlyn/build_gate.log.md` — human-readable gate results with raw output or links to complete raw-output files, using sealed artifacts where available. Retain complete inventories/hash maps in `.devlyn/` files; report their paths, digests and relevant deltas instead of dumping them into the conversation.
 - Report `PASS` if zero CRITICAL/HIGH findings, `FAIL` for genuine product findings, or `BLOCKED:build-env-underprovisioned` only for the evidence-backed capability path above. A capability blocker leaves no product finding. Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py` from these artifacts.
 </output>
 
