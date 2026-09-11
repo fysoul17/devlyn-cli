@@ -844,6 +844,18 @@ def validate_expected_shape(data) -> str | None:
     return None
 
 
+def validate_inline_shape(data: object) -> str | None:
+    if isinstance(data, dict):
+        unknown = sorted(set(data) - {"verification_commands"})
+        if unknown:
+            return (
+                f"unsupported inline key(s): {', '.join(unknown)}; inline carriers "
+                "support only verification_commands. Encode these checks as commands, "
+                "or use a real spec with sibling spec.expected.json."
+            )
+    return validate_shape(data) or validate_expected_shape(data)
+
+
 def validate_expected_against_sibling_spec(spec_path: Path, data: object) -> str | None:
     if not isinstance(data, dict):
         return None
@@ -1206,7 +1218,7 @@ def stage_from_source(md: Path, devlyn_dir: Path) -> tuple[bool, str | None]:
         data = loads_strict_json(block)
     except ValueError as e:
         return (False, f"`<!-- devlyn:verification -->` ```json``` block in {md} has invalid JSON: {e}")
-    err = validate_shape(data)
+    err = validate_inline_shape(data)
     if err:
         return (False, f"`<!-- devlyn:verification -->` ```json``` block in {md}: {err}")
     normalized = {"verification_commands": data["verification_commands"]}
@@ -1893,7 +1905,7 @@ def run_check_mode(md_path: Path) -> int:
             file=sys.stderr,
         )
         return 2
-    err = validate_shape(data)
+    err = validate_inline_shape(data)
     if err:
         print(f"[spec-verify --check] {md_path}: shape error: {err}", file=sys.stderr)
         return 2
@@ -3691,6 +3703,54 @@ def run_self_test() -> int:
         if staged_generated.get("verification_commands", [{}])[0].get("cmd") != "printf generated-ok":
             print("generated criteria carrier was not staged into .devlyn/spec-verify.json", file=sys.stderr)
             return 1
+
+        inline_marker = generated_user / "inline-command-ran"
+        inline_command = "printf bad > inline-command-ran; printf bad"
+        for source_type in ("generated", "spec"):
+            for contract, diagnostic in (
+                ({"verification_commands": [{"cmd": inline_command}],
+                  "required_files": ["missing.txt"]}, "unsupported inline key(s): required_files"),
+                ({"verification_commands": [{"cmd": inline_command,
+                  "stdout_not_contians": ["bad"]}]}, "unknown key(s): stdout_not_contians"),
+                ({"verification_commands": [{"cmd": inline_command,
+                  "stdout_not_contains": ["bad"]}]}, None),
+            ):
+                inline_marker.unlink(missing_ok=True)
+                (generated_devlyn / output_findings_name()).unlink(missing_ok=True)
+                generated_criteria.write_text(
+                    "# Inline constraints\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n"
+                    + json.dumps(contract) + "\n```\n", encoding="utf-8",
+                )
+                prefix = "criteria" if source_type == "generated" else "spec"
+                (generated_devlyn / "pipeline.state.json").write_text(json.dumps({
+                    "source": {
+                        "type": source_type,
+                        f"{prefix}_path": str(generated_criteria),
+                        f"{prefix}_sha256": hashlib.sha256(generated_criteria.read_bytes()).hexdigest(),
+                    }
+                }), encoding="utf-8")
+                # A stale valid carrier must not bypass malformed source validation.
+                (generated_devlyn / "spec-verify.json").write_text(json.dumps({
+                    "verification_commands": [{"cmd": inline_command}]
+                }), encoding="utf-8")
+                inline_check = subprocess.run(
+                    [sys.executable, script_path, "--check", str(generated_criteria)],
+                    cwd=generated_user, capture_output=True, text=True, encoding="utf-8",
+                )
+                inline_run = subprocess.run(
+                    [sys.executable, script_path], cwd=generated_user,
+                    capture_output=True, text=True, encoding="utf-8",
+                )
+                assert inline_check.returncode == (2 if diagnostic else 0)
+                assert inline_run.returncode == 1
+                if diagnostic:
+                    assert diagnostic in inline_check.stderr and diagnostic in inline_run.stderr
+                    assert not inline_marker.exists(), "malformed inline constraint executed a command"
+                else:
+                    assert inline_marker.exists(), "valid inline output guard was not executed"
+                    assert "correctness.spec-literal-mismatch" in (
+                        generated_devlyn / output_findings_name()
+                    ).read_text(encoding="utf-8")
 
         generated_criteria.write_text(
             "# Criteria\n\n## Verification\n\n- generated criteria omitted its machine-readable carrier.\n",

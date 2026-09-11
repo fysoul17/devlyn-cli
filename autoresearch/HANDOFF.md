@@ -41,7 +41,29 @@ without invoking resolve. Root Codex implements and decides after independent
 Fable 5.1 (or Opus 5) and Grok 4.6 review. WIP, A16 and closed/frozen experiments
 retain their existing boundaries. The four core priorities below remain open.
 
-## START-HERE — 0147 semantic review screen: no promotion
+## START-HERE — 0148 rejects silently discarded inline constraints
+
+[0148](iterations/0148-inline-constraint-validation.md) reproduces a concrete
+generated/legacy-inline defect: unsupported sibling fields and misspelled command
+expectations could pass validation, disappear at staging/execution and produce
+false success. Both authoring `--check` and runtime staging now reject them;
+generated guidance names the actual commands-only inline carrier. Normal
+executable guards and sibling checks retain their behavior. Twenty-four before
+and twenty-four final CLI controls, source self-test and full lint pass.
+Independent Fable 5.1 **PASS_WITH_ISSUES** and Grok 4.6 **PASS** source reviews
+found no CRITICAL/HIGH. Root accepts the scoped repair; the task receipt owns
+delivery separately. No npm release.
+
+Compatibility is intentionally stricter: 30 historical Markdown contracts in
+the 144-file comparison now reject previously ignored keys. Historical records
+remain unchanged. This establishes a validation failure, not a general model
+authoring-omission rate or the cause of 0140/0147 misses. Next, inspect whether
+an explicit natural-language constraint becomes a suitable executable check on
+a fresh ordinary task, distinguishing absent checks from malformed carriers.
+The pre-staged benchmark runner's separate oracle-validation gap and generated
+pure-design guidance are recorded follow-ups; do not reopen frozen comparisons.
+
+## 0147 semantic review screen — no promotion
 
 [0147](iterations/0147-constraint-review.md) registered eight fresh Fable/Grok
 reviews of the frozen 0140 source under minimal/current semantic-review
@@ -53,12 +75,10 @@ no detection. No allowed patch was falsely blocked. This is an exposed,
 single-task component screen, not full VERIFY or general model/pair evidence.
 
 No prompt/model change is promoted; disjoint confirmation is **NOT_SELECTED /
-NOT_RUN** under the registered stop rule. Next, inspect whether authoring/carrying
-a task-specific executable constraint check omits a binding clause; reproduce
-that omission before repairing the path with violating and allowed controls.
-0147 does not establish a current carrier defect. The existing template already asks
-for suitable checks; another generic reviewer paragraph or universal Any
-scanner is not justified. Four broader priorities remain open.
+NOT_RUN** under the registered stop rule. 0148 separately reproduces and repairs
+an inline-validation defect; it does not explain this screen. The existing
+template already asks for suitable checks; another generic reviewer paragraph
+or universal Any scanner is not justified. Four broader priorities remain open.
 
 ## Recent verified source repairs
 
@@ -76,7 +96,8 @@ and aligns Requirements/Constraints coverage with findings-only judges.
 [0144](iterations/0144-core-overhead.md) leaves priority 1 unproven and adds
 bounded duplicate-check/output guidance for priority 2. These three source
 repairs are verified; broad semantic recall, performance and causal pair value
-are not. The subsequent 0147 screen above provides no promotion evidence.
+are not. The 0147 screen provides no promotion evidence; 0148 closes only the
+separately reproduced inline-validation mismatch.
 Keep the four broader priorities below open; do not reopen frozen comparisons.
 
 ## Completed task completion — shipped in 3.1.0
