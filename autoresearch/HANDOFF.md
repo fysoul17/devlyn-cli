@@ -41,7 +41,37 @@ without invoking resolve. Root Codex implements and decides after independent
 Fable 5.1 (or Opus 5) and Grok 4.6 review. WIP, A16 and closed/frozen experiments
 retain their existing boundaries. The four core priorities below remain open.
 
-## START-HERE — 0148 rejects silently discarded inline constraints
+## START-HERE — 0149 rejects invalid explicit agent targets
+
+[0149](iterations/0149-agent-target-guards.md) uses a fresh real CLI failure for
+constraint-authoring inspection: `agents cdoex` or an explicit empty target could
+auto-install detected agents and exit 0; inherited object names could report
+success. Dispatch now rejects undeclared explicit targets before installation,
+with a visible value/list diagnostic. Omitted-target detection, supported names
+and `all` retain their behavior. Root's 10 invalid/7 allowed cases pass in the
+packed artifact; a late-write/nonzero-exit control fails the filesystem checks.
+Full lint passes. Independent Fable 5.1 **PASS_WITH_ISSUES** and Grok 4.6
+**PASS** source reviews found no CRITICAL/HIGH or in-scope product defect.
+
+Both static authoring proposals retain the no-write clause and parse. Fable's
+unchanged commands accept the correct control and reject baseline/late-write
+controls; a separate post-observation quiet-log diagnostic attributes rejection
+to the filesystem snapshot. Grok's proposal reassigns HOME and is unexecuted
+under this session's owner execution rule; it is not scored as a pass or miss.
+No authoring prompt change or general model/pipeline claim follows. Proposals
+are measurement artifacts; only the root-owned CLI/test repair is product code.
+
+Delivery requires inspecting this PR's hosted checks. A prior Windows ownership
+test intermittently saw three Job Object PIDs where it expected two, with
+identical package/driver bytes passing another run; see 0149's linked logs.
+The unexpected PID's identity is unknown. Diagnose it before weakening a test or
+claiming harmless infrastructure. The generated pure-design authoring/runtime
+contradiction noted in 0148 remains the next bounded intent-fidelity repair.
+Broad semantic recall and production guard authoring remain open; repeating
+this static task or adding generic prose would not establish them. No npm
+release. Delivery/custody belongs to the task receipt.
+
+## 0148 rejects silently discarded inline constraints
 
 [0148](iterations/0148-inline-constraint-validation.md) reproduces a concrete
 generated/legacy-inline defect: unsupported sibling fields and misspelled command
@@ -57,11 +87,10 @@ delivery separately. No npm release.
 Compatibility is intentionally stricter: 30 historical Markdown contracts in
 the 144-file comparison now reject previously ignored keys. Historical records
 remain unchanged. This establishes a validation failure, not a general model
-authoring-omission rate or the cause of 0140/0147 misses. Next, inspect whether
-an explicit natural-language constraint becomes a suitable executable check on
-a fresh ordinary task, distinguishing absent checks from malformed carriers.
-The pre-staged benchmark runner's separate oracle-validation gap and generated
-pure-design guidance are recorded follow-ups; do not reopen frozen comparisons.
+authoring-omission rate or the cause of 0140/0147 misses. The bounded 0149
+authoring observation above does not generalize that coverage. The pre-staged
+benchmark runner's separate oracle-validation gap remains a recorded follow-up;
+do not reopen frozen comparisons.
 
 ## 0147 semantic review screen — no promotion
 
