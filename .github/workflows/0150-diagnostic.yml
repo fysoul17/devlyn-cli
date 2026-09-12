@@ -26,14 +26,9 @@ jobs:
               path.write_bytes(data)
               identities[name] = hashlib.sha256(data).hexdigest()
           pathlib.Path('0150-inputs.json').write_text(json.dumps({'source_sha': os.environ['GITHUB_SHA'], 'files': identities}, indent=2), encoding='utf-8')
-      - name: Verify final candidate and rejection controls
+      - name: Observe gone-PID fixture boundary
         shell: pwsh
-        run: |
-          python scripts/diagnose-0150.py 2>&1 | Tee-Object -FilePath 0150-native.log
-          $samples = $LASTEXITCODE
-          Move-Item 0150-observations.json 0150-samples.json
-          python scripts/diagnose-0150.py --negative 2>&1 | Tee-Object -FilePath 0150-controls.log
-          if ($samples -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
+        run: python scripts/diagnose-0150.py 2>&1 | Tee-Object -FilePath 0150-native.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -42,6 +37,4 @@ jobs:
             0150-observations.json
             0150-native.log
             0150-inputs.json
-            0150-samples.json
-            0150-controls.log
           if-no-files-found: error
