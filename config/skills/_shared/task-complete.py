@@ -204,6 +204,9 @@ def allocate(args):
     path = directory / "receipt.json"
     receipt["id"] = key
     receipt["recovery_ref"] = "refs/devlyn/completed/" + key
+    scratch = directory / "scratch"
+    scratch.mkdir()
+    receipt["scratch_identity"] = workspace_identity(scratch, directory)
     # Persist prospective intent BEFORE native creation. An interrupted allocation
     # stays visibly incomplete; a later call may not adopt whatever now exists.
     atomic_json(path, receipt)
@@ -215,7 +218,7 @@ def allocate(args):
     receipt["worktree_identity"] = workspace_identity(target, Path(receipt["worktree_gitdir"]))
     receipt["allocation"] = "owned"
     atomic_json(path, receipt)
-    return {"status": "ALLOCATED", "receipt": str(path), "worktree": str(target)}
+    return {"status": "ALLOCATED", "receipt": str(path), "worktree": str(target), "scratch": str(scratch)}
 
 
 def pipeline_acceptance(work, acceptance, files, directory):
@@ -438,6 +441,75 @@ def stopped_writers(work, *, linked):
         raise CompletionError("writer observation unsupported on this platform; retain workspace")
 
 
+def scratch_mounts():
+    if sys.platform.startswith("linux"):
+        rows = Path("/proc/self/mountinfo").read_text(encoding="utf-8").splitlines()
+        paths = []
+        for line in rows:
+            fields = line.split()
+            require(len(fields) >= 6, "cannot parse mount table; retain scratch")
+            paths.append(re.sub(r"\\([0-7]{3})", lambda m: chr(int(m[1], 8)), fields[4]))
+    elif sys.platform == "darwin":
+        paths = []
+        for line in command(["mount"]).splitlines():
+            description, separator, options = line.rpartition(" (")
+            candidates = [description[match.end():] for match in re.finditer(" on ", description)]
+            require(separator and options.endswith(")") and candidates, "cannot parse mount table; retain scratch")
+            # Darwin prints literal paths. Consider every possible separator so
+            # ' on ' in a device or directory name can only cause retention.
+            paths.extend(candidates)
+    else:
+        raise CompletionError("mount observation unsupported; retain scratch")
+    return [Path(value).resolve() for value in paths]
+
+
+def raise_walk_error(error):
+    raise error
+
+
+def clean_scratch(receipt, path, writers_stopped):
+    """Empty the owned build directory; keep its identity across resume/reuse."""
+    scratch = path.parent / "scratch"
+    if "scratch_identity" not in receipt:
+        return {"status": "NOT_OWNED"}
+    require(writers_stopped, "stop/yield scratch writers, then use --writers-stopped")
+    require(scratch == scratch.resolve() and scratch.is_dir(), "owned scratch missing or redirected; retain and inspect")
+    identity = receipt["scratch_identity"]
+    require(workspace_identity(scratch, path.parent) == identity, "scratch directory was replaced; retain")
+    require(shutil.rmtree.avoids_symlink_attacks, "safe scratch removal unsupported on this platform; retain")
+    require(not any(mount.is_relative_to(scratch) for mount in scratch_mounts()), "scratch contains a mounted filesystem; retain")
+    stopped_writers(scratch, linked=True)
+    size = 0
+    for directory, dirs, files in os.walk(scratch, followlinks=False, onerror=raise_walk_error):
+        require(not any(name.casefold() == ".git" for name in dirs + files), "scratch contains Git recovery data; move it to retained custody before cleanup")
+        for name in dirs + files:
+            item = Path(directory) / name
+            info = item.lstat()
+            require(info.st_dev == identity[0][0], "scratch contains a mounted filesystem; retain")
+            size += info.st_size if stat.S_ISREG(info.st_mode) else 0
+    stopped_writers(scratch, linked=True)
+    require(workspace_identity(scratch, path.parent) == identity, "scratch changed before removal; retain")
+    require(not any(mount.is_relative_to(scratch) for mount in scratch_mounts()), "scratch mount appeared before removal; retain")
+    for item in scratch.iterdir():
+        if item.is_dir() and not item.is_symlink():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
+    require(workspace_identity(scratch, path.parent) == identity and not any(scratch.iterdir()), "scratch changed during cleanup; retain and inspect")
+    result = {"status": "CLEAN", "logical_bytes_removed": size}
+    receipt["scratch_cleanup"] = result
+    atomic_json(path, receipt)
+    return result
+
+
+def clean_scratch_command(args):
+    path = Path(args.receipt).absolute()
+    with locked_receipt(path) as receipt:
+        result = clean_scratch(receipt, path, args.writers_stopped)
+        return {"status": "SCRATCH_CLEAN" if result["status"] == "CLEAN" else "SCRATCH_NOT_OWNED",
+                "receipt": str(path), "scratch_cleanup": result, "product_verdict_unchanged": True}
+
+
 def cleanup(receipt, path, pr, writers_stopped):
     require(pr["state"] == "MERGED" and pr.get("mergedAt") and pr.get("mergeCommit", {}).get("oid"), "actual matching merge evidence is required")
     require(writers_stopped, "wait actual children, stop/yield known writers, then resume with --writers-stopped")
@@ -523,11 +595,27 @@ def locked_receipt(path):
 
 def complete(args):
     path = Path(args.receipt).absolute()
-    resume = shlex.join([sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)])
+    resume = shlex.join([sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)] +
+                        (["--writers-stopped"] if args.writers_stopped else []))
     with locked_receipt(path) as receipt:
         def result(status):
-            return {"status": status, "receipt": str(path), "pr": receipt.get("pr_url"), "resume": resume,
-                    "acceptance": (receipt.get("acceptance") or {}).get("kind"), "product_verdict_unchanged": True}
+            scratch = {"status": "NOT_OWNED"}
+            if "scratch_identity" in receipt:
+                try:
+                    scratch = clean_scratch(receipt, path, args.writers_stopped)
+                except (CompletionError, OSError, ValueError, KeyError, TypeError, IndexError) as error:
+                    scratch = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
+                        sys.executable, str(Path(__file__).resolve()), "clean-scratch", "--receipt", str(path), "--writers-stopped"])}
+                    receipt["scratch_cleanup"] = scratch
+                    try:
+                        atomic_json(path, receipt)
+                    except OSError as record_error:
+                        scratch["record_error"] = str(record_error)
+            return {"status": "CLEANUP_PENDING" if status == "COMPLETE" and scratch["status"] == "RETAINED" else status,
+                    "delivery_status": status, "receipt": str(path), "pr": receipt.get("pr_url"), "resume": resume,
+                    "acceptance": (receipt.get("acceptance") or {}).get("kind"), "product_verdict_unchanged": True,
+                    "scratch_path": str(path.parent / "scratch") if "scratch_identity" in receipt else None,
+                    "scratch_cleanup": scratch}
         if args.local_only or receipt.get("local_only"):
             receipt["local_only"] = True
             atomic_json(path, receipt)
@@ -611,20 +699,24 @@ def main():
     completion.add_argument("--mode", choices=("auto", "pr"))
     completion.add_argument("--local-only", "--no-push", action="store_true")
     completion.add_argument("--writers-stopped", action="store_true")
+    scratch_cleanup = actions.add_parser("clean-scratch")
+    scratch_cleanup.add_argument("--receipt", required=True)
+    scratch_cleanup.add_argument("--writers-stopped", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         return self_test()
     if args.action is None:
-        parser.error("allocate or complete is required")
+        parser.error("allocate, complete or clean-scratch is required")
     try:
-        result = allocate(args) if args.action == "allocate" else complete(args)
+        result = (allocate(args) if args.action == "allocate" else
+                  clean_scratch_command(args) if args.action == "clean-scratch" else complete(args))
         print(json.dumps(result, sort_keys=True))
         return 0
-    except (CompletionError, OSError, ValueError, KeyError, TypeError, SystemExit) as exc:
+    except (CompletionError, OSError, ValueError, KeyError, TypeError, IndexError, SystemExit) as exc:
         result = {"status": "BLOCKED", "reason": str(exc)}
-        if args.action == "complete":
+        if args.action in {"complete", "clean-scratch"}:
             result["receipt"] = str(Path(args.receipt).absolute())
-            result["resume"] = shlex.join([sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", result["receipt"]])
+            result["resume"] = shlex.join([sys.executable, str(Path(__file__).resolve()), args.action, "--receipt", result["receipt"], *(["--writers-stopped"] if args.writers_stopped else [])])
         print(json.dumps(result, sort_keys=True))
         return 1
 
@@ -770,6 +862,133 @@ class CompletionTests(unittest.TestCase):
         self.receipt = Path(result["receipt"])
         self.task = Path(result["worktree"])
         return result
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_disposable_scratch_cleans_for_local_only_and_preserves_source(self):
+        result = self.allocate()
+        scratch = Path(result["scratch"])
+        (scratch / "target").mkdir()
+        (scratch / "target" / "object").write_bytes(b"rebuildable")
+        (self.task / "uncommitted-work").write_text("preserve")
+        result, _ = self.cli("complete", "--receipt", self.receipt, "--local-only", "--writers-stopped")
+        self.assertEqual(result["status"], "LOCAL_ONLY")
+        self.assertFalse(any(scratch.iterdir()))
+        self.assertEqual((self.task / "uncommitted-work").read_text(), "preserve")
+        self.assertEqual(result["scratch_cleanup"]["logical_bytes_removed"], 11)
+        result, _ = self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped")
+        self.assertEqual(result["status"], "SCRATCH_CLEAN")
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_scratch_rejects_active_writer_and_requires_owner_assertion(self):
+        scratch = Path(self.allocate()["scratch"])
+        result, _ = self.cli("clean-scratch", "--receipt", self.receipt, success=False)
+        self.assertIn("--writers-stopped", result["reason"])
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], cwd=scratch)
+        try:
+            result, _ = self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped", success=False)
+            self.assertIn("active process", result["reason"])
+            self.assertTrue(scratch.is_dir())
+        finally:
+            child.terminate()
+            child.wait(timeout=5)
+        self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped")
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_scratch_rejects_redirect_and_git_data_but_does_not_follow_child_links(self):
+        scratch = Path(self.allocate()["scratch"])
+        outside = self.root / "outside"
+        outside.mkdir()
+        (outside / "keep").write_text("source")
+        retained = scratch.with_name("retained")
+        scratch.rename(retained)
+        scratch.symlink_to(outside, target_is_directory=True)
+        result, _ = self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped", success=False)
+        self.assertIn("redirected", result["reason"])
+        scratch.unlink()
+        retained.rename(scratch)
+        (scratch / ".GiT").write_text("gitdir: elsewhere")
+        result, _ = self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped", success=False)
+        self.assertIn("Git recovery data", result["reason"])
+        (scratch / ".GiT").unlink()
+        (scratch / "external-link").symlink_to(outside, target_is_directory=True)
+        self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped")
+        self.assertEqual((outside / "keep").read_text(), "source")
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_scratch_reuse_and_partial_cleanup_keep_original_identity(self):
+        scratch = Path(self.allocate()["scratch"])
+        (scratch / "first-build").write_bytes(b"first")
+        self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped")
+        (scratch / "resumed-build").write_bytes(b"next")
+        result, _ = self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped")
+        self.assertEqual(result["scratch_cleanup"]["logical_bytes_removed"], 4)
+        self.assertFalse(any(scratch.iterdir()))
+        scratch.rename(scratch.with_name("original"))
+        scratch.mkdir()
+        (scratch / "foreign").write_text("preserve")
+        result, _ = self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped", success=False)
+        self.assertIn("replaced", result["reason"])
+        self.assertIn("--writers-stopped", result["resume"])
+        self.assertEqual((scratch / "foreign").read_text(), "preserve")
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_scratch_refusal_does_not_block_local_only_delivery(self):
+        scratch = Path(self.allocate()["scratch"])
+        (scratch / ".git").mkdir()
+        result, _ = self.cli("complete", "--receipt", self.receipt, "--local-only", "--writers-stopped")
+        self.assertEqual(result["status"], "LOCAL_ONLY")
+        self.assertEqual(result["scratch_cleanup"]["status"], "RETAINED")
+        self.assertIn("Git recovery data", result["scratch_cleanup"]["reason"])
+        self.assertEqual(json.loads(self.receipt.read_text())["scratch_cleanup"]["status"], "RETAINED")
+        self.assertTrue((scratch / ".git").is_dir())
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_scratch_refusal_reports_delivery_separately(self):
+        scratch = Path(self.allocate()["scratch"])
+        self.accept()
+        (scratch / ".git").mkdir()
+        result, _ = self.cli("complete", "--receipt", self.receipt, "--acceptance", self.acceptance, "--writers-stopped")
+        self.assertEqual(result["status"], "CLEANUP_PENDING")
+        self.assertEqual(result["delivery_status"], "COMPLETE")
+        self.assertEqual(result["scratch_cleanup"]["status"], "RETAINED")
+        self.assertIn("--writers-stopped", result["scratch_cleanup"]["resume"])
+        self.assertIn("--writers-stopped", result["resume"])
+        (scratch / ".git").rmdir()
+        result, _ = self.cli("complete", "--receipt", self.receipt, "--writers-stopped")
+        self.assertEqual(result["status"], "COMPLETE")
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_scratch_mount_and_scan_failure_preserve_contents(self):
+        from unittest.mock import patch
+        scratch = Path(self.allocate()["scratch"])
+        (scratch / "keep").write_text("retained")
+        receipt = json.loads(self.receipt.read_text())
+        with patch.dict(clean_scratch.__globals__, {"scratch_mounts": lambda: [scratch / "same-device-bind"]}):
+            with self.assertRaisesRegex(CompletionError, "mounted filesystem"):
+                clean_scratch(receipt, self.receipt, True)
+        def failed_walk(*args, **kwargs):
+            kwargs["onerror"](PermissionError("unreadable subtree"))
+        with patch.object(os, "walk", failed_walk):
+            with self.assertRaisesRegex(PermissionError, "unreadable subtree"):
+                clean_scratch(receipt, self.receipt, True)
+        self.assertEqual((scratch / "keep").read_text(), "retained")
+
+    def test_scratch_mount_table_parsing_preserves_ambiguous_literal_paths(self):
+        from unittest.mock import patch
+        target = "/task/scratch/name on inside\\040literal"
+        with patch.object(sys, "platform", "darwin"), patch.dict(scratch_mounts.__globals__, {
+            "command": lambda args: "device on source on " + target + " (local, journaled)",
+        }):
+            self.assertIn(Path(target).resolve(), scratch_mounts())
+        alias = self.root / "scratch-alias"
+        alias.symlink_to(self.root, target_is_directory=True)
+        with patch.object(sys, "platform", "darwin"), patch.dict(scratch_mounts.__globals__, {
+            "command": lambda args: "device on " + str(alias / "mounted") + " (local)",
+        }):
+            self.assertEqual(scratch_mounts(), [(self.root / "mounted").resolve()])
+        with patch.object(sys, "platform", "linux"), patch.object(Path, "read_text", return_value="truncated row"):
+            with self.assertRaisesRegex(CompletionError, "cannot parse mount table"):
+                scratch_mounts()
 
     def accept(self, pipeline=False, queue=False, spec_expected=None, spec_name="spec.md"):
         if spec_expected is not None:

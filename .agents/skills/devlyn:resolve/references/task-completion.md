@@ -24,6 +24,33 @@ names look generated. An interrupted allocation stays blocked for inspection;
 do not delete its receipt and enroll the resulting branch. Pre-existing tasks
 remain owner-managed and cannot use this helper retroactively.
 
+Allocation also returns a receipt-owned `scratch` directory. Put disposable
+build intermediates there (for example, set
+`CARGO_TARGET_DIR` to `<scratch>/target`). Keep source checkouts, Git data,
+lockfiles, reports and restart evidence outside scratch. Do not create unowned
+temporary build trees or preserve them by copying them into evidence custody.
+Prefer `TemporaryDirectory`/`finally` for short-lived test fixtures.
+
+After waiting for task writers, `complete --writers-stopped` empties this
+scratch on delivery returns, including local-only and pending-PR routes. To
+release build caches when parking or after a failed run, use:
+
+```sh
+python3 "$DEVLYN_SHARED_DIR/task-complete.py" clean-scratch \
+  --receipt '<returned receipt.json>' --writers-stopped
+```
+
+This empties only the prospectively owned scratch, preserves its directory
+identity for interrupted cleanup and later builds, checks live users and reports
+the logical byte count separately from actual free disk space. It does not depend on a product PASS or rewrite that verdict.
+Unknown historical roots, source/recovery data, shared caches and terminal
+history are never adopted or swept. A refused cleanup does not block source
+delivery; it stays visible in the handoff with its receipt and retry command
+(`CLEANUP_PENDING` after delivered source). No task is described as cleaned
+while owned disposable files remain. On resumption, finish any pending scratch
+cleanup before allocating more temporary storage. Rebuild from retained inputs
+when needed; cleanup is not an instruction to restart parked work.
+
 ## Accept a scoped commit
 
 Direct work: finish actual decisive checks and diff review, stage only the
