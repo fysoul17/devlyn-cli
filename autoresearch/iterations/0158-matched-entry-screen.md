@@ -78,3 +78,34 @@ Root oracle calibration: baseline existing suite passes; visible and independent
 contracts reject baseline; root gold passes all 19 test methods. Initial root
 preparation used an invalid expected key; corrected before registration, with
 original bytes and failed preflight retained. This is not a native task result.
+
+## 0158 closed infrastructure failure
+
+Bare native79.517s; solo native106.747s stopped before implementation because
+its parent workspace-write sandbox denied `.git/devlyn-bootstrap.lock`.
+Pair NOT_RUN, per registration. No full-route comparison established.
+Original streams, outputs and closure remain under `.devlyn/0158/`.
+A separately registered0158b apparatus correction uses the current workspace
+parent permission profile for all three fresh runs; original rows stay closed.
+
+## 0158b separately admitted corrected apparatus
+
+0158b repeats all three arms from unchanged task/oracle bytes. Only these new
+co-registered arms can be contrasted; old0158 rows are never pooled/minimized.
+All new parents use the current workspace danger-full-access profile; canonical
+nested worker/judge permissions remain unchanged. Actual native .git marker
+write succeeds in9.661s; an initial capability probe used nonexistent `python`,
+exited127, and is retained. Root also corrected broad skill-placeholder stamping
+to the actual installer assignment-only function before admission. Per-file
+parity passes; source/task/oracle identities are retained. Frozen metadata copy
+is another disclosed apparatus difference. This is not a one-factor0158 retry.
+
+Opus/Grok protocol advice requested stricter comparison, identity and capability
+checks. Root applies them: useful-tests/static review reported separately; only
+fixed common mechanical checks can establish screen exceedance. Three-way PASS
+or Grok first-error calibration failure means confirmation NOT_SELECTED. Opus
+is advisory-only because it also occupies the pair seat. No source changes or
+third apparatus registration; another infrastructure failure stops dependents.
+Full effective protocol/registration: `.devlyn/0158b/PROTOCOL.md` and
+`.devlyn/0158b/REGISTRATION.json`. Actual effective model, network egress and
+full ambient context remain unknown unless independently attested.
