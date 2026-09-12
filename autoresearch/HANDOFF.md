@@ -1,23 +1,39 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-12 17:25 KST — **0152 source accepted; delivery pending.**
+Updated 2026-09-12 18:51 KST — **0153 source accepted; CI/delivery next.**
 Read this file, [NORTH-STAR](NORTH-STAR.md), then the current source and iteration.
 Current user instructions supersede older records. [PRINCIPLES](PRINCIPLES.md),
 [MISSIONS](MISSIONS.md) and [DECISIONS](DECISIONS.md) retain enduring constraints.
 Inspect Git state and live runs; do not replay unrelated cold-start suites.
 
-## START-HERE — 0152 missing generated source integrity
+## START-HERE — 0153 benchmark pre-staged validation
 
-Latest owner instruction: **“autoresearch/HANDOFF.md 이어ㅓ서 진행”**.
-This resumes the 2026-09-12 14:55 parking. The earlier 16:00 stop time had been
-superseded by that parking request. Original work order remains:
-
-> autoresearch/HANDOFF.md 아직 안된것들 이어서 제대로 해줘. 하나씩 차근차근 검증 검수까지 확실하게 하고 resolve 쓰지말고 너가 순수하게 직접 해주고 검증은 fable 5.1과 (안되면 Opus 5) Grok 4.6과 같이 하고 넘어가고 끝까지 해줘.
+Latest owner instruction, 2026-09-12: **“오케이 그러면 1번부터 하나씩 검증해가며 진행해줘.”**
+The agreed sequence is benchmark pre-staged validation → ordinary small-request
+routing → full-route overhead → semantic constraint coverage → matched quality
+and pair-value comparison. Complete and verify each bounded change before
+advancing. Earlier direct-implementation/native-review authorization continues.
 
 Root implements directly; **no resolve invocation**. Review uses actual native
 `claude-fable-5-1` and `grok-4.6`, independently and read-only. Opus 5 is only a
 substitute when Fable is unavailable. Root decides after evidence, without a
 unanimity requirement. No source or model-performance claim follows from advice.
+
+### 0153 source ACCEPTED — delivery pending
+
+[0153](iterations/0153-benchmark-validation.md) adds strict existing carrier
+validation to pre-staged commands. All 36 before/after controls pass: 14 invalid
+cases now stop before execution/results refresh, 22 outcomes stay unchanged.
+Existing 35 nonempty benchmark carriers (144 full / 94 visible commands) retain
+validation. Checker self-test, guard-deletion regression, full lint (349.922s),
+mirror/scope checks pass. Native Fable 5.1 **PASS_WITH_ISSUES**, Grok 4.6 **PASS**;
+no in-scope CRITICAL/HIGH. Existing general carrier fix-hint LOW remains.
+
+Active checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+Receipt `f9d7c95fac90f43c8b4e3830`; `.devlyn/0153-evidence.tar.gz` owns source
+acceptance, `.devlyn/0153-delivery/` owns CI/merge. Finish matching-source hosted
+checks and delivery before moving to the ordinary-request routing investigation.
+The earlier research clone's HANDOFF WIP and original checkout remain preserved.
 
 ### 0149 delivery COMPLETE
 
@@ -68,26 +84,32 @@ source `dbc7a90063a87a01382d625a3655b1ea8f3ecb88` and downloaded driver hash
 POSIX/Windows package identities agree. Evidence: `.devlyn/0151-evidence.tar.gz`
 and `.devlyn/0151-delivery/`. No npm release.
 
-### 0152 source ACCEPTED — delivery pending
+### 0152 delivery COMPLETE
 
-[0152](iterations/0152-missing-generated-source.md) repairs missing generated
-criteria at the existing integrity guard on `codex/0152-missing-generated-source`,
-receipt `8d5a56901c2a69c495425638`. Root accepts **PASS_WITH_ISSUES**: all 26 missing
-source controls now exit 1 with the declared path, one CRITICAL finding and no
-commands/results refresh; the other 12 controls retain their behavior. Shipped
-regressions cover required-probe BUILD_GATE, benchmark staging and VERIFY reuse.
+[0152](iterations/0152-missing-generated-source.md) / [PR #21](https://github.com/fysoul17/devlyn-cli/pull/21)
+merged accepted `e244b153558f7014ebcba38c3fcee9d15b795e61` into main
+`76cb85b08e8d30275d8f20fef10837c4f68e4a30` at 2026-09-12T08:34:47Z. Receipt
+`8d5a56901c2a69c495425638` is **COMPLETE**; owned local/remote refs are removed
+and scratch is clean. Source acceptance/evidence remains immutable.
 
-Checker/bootstrap self-tests, subtraction/scope checks and full lint (269.115s)
-pass. The first lint's ignored `.claude` mirror mismatch was corrected; its failure
-is retained. Native Fable 5.1 **PASS_WITH_ISSUES** and Grok 4.6 **PASS** independent
-final source reviews found no in-scope CRITICAL/HIGH. A LOW generic fix-hint advisory
-remains. Source evidence is `.devlyn/0152-evidence.tar.gz`; delivery and hosted
-POSIX/native Windows CI use `.devlyn/0152-delivery/` and the existing receipt.
+All 38 before/after controls, checker/bootstrap self-tests, guard-deletion/scope
+checks and full lint (269.115s) pass. All 26 missing generated sources now fail
+with the declared path and one CRITICAL finding before command execution or
+results refresh; the other 12 outcomes remain unchanged. Native Fable 5.1
+**PASS_WITH_ISSUES**, Grok 4.6 **PASS**: zero in-scope CRITICAL/HIGH. Existing generic
+fix-hint LOW remains. The initial ignored-mirror lint failure is preserved.
 
-Next: finish exact-source integration verification, merge and owned-resource
-cleanup. The finding is an early checker omission; a full-pipeline false PASS
-has not been demonstrated. Existing downstream source/hash requirements stay.
-Benchmark-prestaged oracle grammar remains a separate follow-up.
+[PR CI 34683290987](https://github.com/fysoul17/devlyn-cli/actions/runs/34683290987)
+and push CI `34683288619` pass POSIX/native Windows. Actual PR integration
+`a00ccd7cb8e5835a7e9533985a8629851c410d8b` has the final merge's tree/parents;
+downloaded driver, package digest and packaged checker bytes match their declared
+identities and the accepted source. Windows/POSIX package identities agree.
+Evidence: `.devlyn/0152-evidence.tar.gz` and `.devlyn/0152-delivery/`.
+
+Next separate frontier: benchmark-prestaged oracle validation. This repair
+establishes early checker rejection; no full-pipeline false PASS or broad semantic
+coverage/model-performance claim. The four broader priorities remain open.
+A16 and frozen comparisons stay untouched. No npm release.
 
 Actual research checkout is the retained standalone clone:
 `/Users/aipalm/.local/share/nx01/iter0144/core-research`.
@@ -99,8 +121,8 @@ and branch `codex/research-park-20260912-1455` remain recoverable under receipt
 The original checkout's intentional HANDOFF WIP is preserved in
 `.devlyn/0151/original-handoff.md` with its hash before any synchronization.
 
-The separate benchmark-prestaged oracle-validation follow-up remains open;
-do not bundle it into 0152. All four broader priorities below remain **OPEN**.
+0153 closes the separate benchmark-prestaged validation follow-up at source;
+its delivery is pending above. All four broader priorities remain **OPEN**.
 A16, 0124/0125/0128 and frozen 0140/0147 comparisons remain parked/closed.
 No restart, regrade, superiority claim or npm release is implied.
 
