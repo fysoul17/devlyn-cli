@@ -1,10 +1,94 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-11 KST. Read this file, [NORTH-STAR](NORTH-STAR.md), then the
-current spec/source and relevant iteration. Current user instructions supersede
-older records. [PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md) and
-[DECISIONS](DECISIONS.md) own enduring constraints/history. Inspect Git state and
-live runs; do not replay unrelated cold-start suites.
+Updated 2026-09-12 16:06 KST — **RESUMED: 0149 delivered; 0151 source accepted; delivery next.**
+Read this file, [NORTH-STAR](NORTH-STAR.md), then the current source and iteration.
+Current user instructions supersede older records. [PRINCIPLES](PRINCIPLES.md),
+[MISSIONS](MISSIONS.md) and [DECISIONS](DECISIONS.md) retain enduring constraints.
+Inspect Git state and live runs; do not replay unrelated cold-start suites.
+
+## START-HERE — 0151 generated pure-design verification
+
+Latest owner instruction: **“autoresearch/HANDOFF.md 이어ㅓ서 진행”**.
+This resumes the 2026-09-12 14:55 parking. The earlier 16:00 stop time had been
+superseded by that parking request. Original work order remains:
+
+> autoresearch/HANDOFF.md 아직 안된것들 이어서 제대로 해줘. 하나씩 차근차근 검증 검수까지 확실하게 하고 resolve 쓰지말고 너가 순수하게 직접 해주고 검증은 fable 5.1과 (안되면 Opus 5) Grok 4.6과 같이 하고 넘어가고 끝까지 해줘.
+
+Root implements directly; **no resolve invocation**. Review uses actual native
+`claude-fable-5-1` and `grok-4.6`, independently and read-only. Opus 5 is only a
+substitute when Fable is unavailable. Root decides after evidence, without a
+unanimity requirement. No source or model-performance claim follows from advice.
+
+### 0149 delivery COMPLETE
+
+[PR #16](https://github.com/fysoul17/devlyn-cli/pull/16) merged at
+`f50ce5b9c269fc8aa8aea7ace7a5042e8aafbb72` on 2026-09-12 15:21 KST.
+Accepted source `a28334f002406495b9099f52fb501bd963e520d8` and its existing
+acceptance/evidence were unchanged. Receipt `04c8d7f4ab67f53f7e57352d` is
+**COMPLETE**; exact owned local/remote task refs are removed.
+
+[CI 34676753530 attempt 2](https://github.com/fysoul17/devlyn-cli/actions/runs/34676753530)
+passed POSIX and native Windows. Actual log/artifact source is
+`85e803e5f0999f918af971b3bc98c35fd3b72cc4`; its tree and parents matched the
+then-current PR merge ref `39701df496c4ab494092396df8603b3ed4c6cd45`.
+Driver SHA-256 `0fe43e1348c9dabd46d1f87e8f7844c0343406866856874401fee424b97f4f72`
+matches actual downloaded bytes; POSIX/Windows package identities agree.
+Source audit proves accepted 0149 PackageTests plus unchanged 0150 test classes.
+Prior stale-source failure `34676403494` and cancelled attempt 1 remain preserved,
+not regraded. Delivery evidence: `.devlyn/0149-resume-20260912-1515/`.
+
+### 0150 remains COMPLETE
+
+[0150](iterations/0150-windows-job-membership.md) / [PR #19](https://github.com/fysoul17/devlyn-cli/pull/19)
+merged accepted `512d588550da6240c7f6b01421a90c27b6a4e3e3` into main
+`4dfee99695702539f0ed3b1d2110c9a03a95c043`. Final push/PR checks
+`34676012206` / `34676025418` passed POSIX and native Windows. Independent native
+Fable/Grok source and diagnostic-delta reviews found zero CRITICAL/HIGH; full
+local lint passed. Production `platform-support.py` was unchanged. Exact fixture
+PID disappearance and actual OpenProcess error 87 are verified; the historical
+CI reference owner remains unknown. Existing optimized-Python timeout/failure
+cleanup LOW limits stay explicit. Receipt `fbe3985ee021a2112645ac15` COMPLETE;
+`.devlyn/0150-evidence.tar.gz` and receipt-bound bytes remain immutable.
+
+### 0151 source accepted — delivery follows existing receipt
+
+[0151](iterations/0151-generated-pure-design.md) is on
+`codex/0151-generated-pure-design`, baseline main
+`f50ce5b9c269fc8aa8aea7ace7a5042e8aafbb72`, prospective receipt
+`8f5f5ba32515beadb1f4ed47`. Root accepts explicit inline pure-design declaration,
+found/staged distinction, stale removal and existing probe/result/scope flow.
+No resolve invocation. Source acceptance/commit identity lives in the receipt.
+
+All 21 final CLI controls match predictions; checker/bootstrap self-tests,
+corrected UTF-8-disabled caller smoke, subtraction and scope controls pass.
+Final full lint **PASS**, 333.137s, final bytes unchanged. The original lint
+failure is preserved. Main source and final small-delta reviews both complete:
+Fable **PASS_WITH_ISSUES**, Grok **PASS**, zero established CRITICAL/HIGH in the
+scoped repair. Exact native identities, zero observed tools, canonical source
+hashes and skill mirror parity are bound in `.devlyn/0151/` and the immutable
+`.devlyn/0151-evidence.tar.gz`. Remaining LOW limits are in the iteration.
+
+Next: existing receipt owns PR creation/reuse, actual integration-source
+POSIX/native Windows checks, protected merge and owned cleanup. Do not amend
+accepted source or evidence. No npm release. After 0151 delivery, inspect the
+reproduced pre-existing missing-generated-file gate no-op as a separate bounded
+item; this is not yet a full-pipeline false-PASS finding or an implemented 0152.
+Benchmark-prestaged oracle validation remains another separate follow-up.
+
+Actual research checkout is the retained standalone clone:
+`/Users/aipalm/.local/share/nx01/iter0144/core-research`.
+Receipts and owned scratch live under `.git/devlyn-completion/<id>/`.
+Prior local-only parking checkpoint `6b3237998ed33943ee543fdcda06efc995872550`
+and branch `codex/research-park-20260912-1455` remain recoverable under receipt
+`b16b5000f139c4441795aa8a`; its scratch was cleaned. Preserve unrelated
+`.playwright-mcp/`, user changes, other sessions, A16 and frozen comparisons.
+The original checkout's intentional HANDOFF WIP is preserved in
+`.devlyn/0151/original-handoff.md` with its hash before any synchronization.
+
+The separate benchmark-prestaged oracle-validation follow-up remains open;
+do not bundle it into 0151. All four broader priorities below remain **OPEN**.
+A16, 0124/0125/0128 and frozen 0140/0147 comparisons remain parked/closed.
+No restart, regrade, superiority claim or npm release is implied.
 
 ## Current owner direction — independent core, optional memory
 
@@ -41,36 +125,6 @@ without invoking resolve. Root Codex implements and decides after independent
 Fable 5.1 (or Opus 5) and Grok 4.6 review. WIP, A16 and closed/frozen experiments
 retain their existing boundaries. The four core priorities below remain open.
 
-## START-HERE — 0149 rejects invalid explicit agent targets
-
-[0149](iterations/0149-agent-target-guards.md) uses a fresh real CLI failure for
-constraint-authoring inspection: `agents cdoex` or an explicit empty target could
-auto-install detected agents and exit 0; inherited object names could report
-success. Dispatch now rejects undeclared explicit targets before installation,
-with a visible value/list diagnostic. Omitted-target detection, supported names
-and `all` retain their behavior. Root's 10 invalid/7 allowed cases pass in the
-packed artifact; a late-write/nonzero-exit control fails the filesystem checks.
-Full lint passes. Independent Fable 5.1 **PASS_WITH_ISSUES** and Grok 4.6
-**PASS** source reviews found no CRITICAL/HIGH or in-scope product defect.
-
-Both static authoring proposals retain the no-write clause and parse. Fable's
-unchanged commands accept the correct control and reject baseline/late-write
-controls; a separate post-observation quiet-log diagnostic attributes rejection
-to the filesystem snapshot. Grok's proposal reassigns HOME and is unexecuted
-under this session's owner execution rule; it is not scored as a pass or miss.
-No authoring prompt change or general model/pipeline claim follows. Proposals
-are measurement artifacts; only the root-owned CLI/test repair is product code.
-
-Delivery requires inspecting this PR's hosted checks. A prior Windows ownership
-test intermittently saw three Job Object PIDs where it expected two, with
-identical package/driver bytes passing another run; see 0149's linked logs.
-The unexpected PID's identity is unknown. Diagnose it before weakening a test or
-claiming harmless infrastructure. The generated pure-design authoring/runtime
-contradiction noted in 0148 remains the next bounded intent-fidelity repair.
-Broad semantic recall and production guard authoring remain open; repeating
-this static task or adding generic prose would not establish them. No npm
-release. Delivery/custody belongs to the task receipt.
-
 ## 0148 rejects silently discarded inline constraints
 
 [0148](iterations/0148-inline-constraint-validation.md) reproduces a concrete
@@ -87,9 +141,11 @@ delivery separately. No npm release.
 Compatibility is intentionally stricter: 30 historical Markdown contracts in
 the 144-file comparison now reject previously ignored keys. Historical records
 remain unchanged. This establishes a validation failure, not a general model
-authoring-omission rate or the cause of 0140/0147 misses. The bounded 0149
-authoring observation above does not generalize that coverage. The pre-staged
-benchmark runner's separate oracle-validation gap remains a recorded follow-up;
+authoring-omission rate or the cause of 0140/0147 misses. Next, inspect whether
+an explicit natural-language constraint becomes a suitable executable check on
+a fresh ordinary task, distinguishing absent checks from malformed carriers.
+0149's bounded authoring inspection is recorded in its merged iteration above.
+The oracle-validation gap and generated pure-design guidance remain follow-ups;
 do not reopen frozen comparisons.
 
 ## 0147 semantic review screen — no promotion

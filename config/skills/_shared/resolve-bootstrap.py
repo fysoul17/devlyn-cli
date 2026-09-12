@@ -289,7 +289,7 @@ def init_spec_source(
             block("BLOCKED:invalid-flags", error or f"expected contract not found: {expected}")
     else:
         run_checked([sys.executable, str(helper), "--check", str(path)], cwd)
-        _staged, error = module.stage_from_source(path, staging_dir)
+        _found, _staged, error = module.stage_from_source(path, staging_dir)
         if error:
             block("BLOCKED:invalid-flags", error)
     staged_path = staging_dir / "spec-verify.json"
@@ -1184,6 +1184,16 @@ def self_test() -> int:
         staged = strict_json((work / ".devlyn" / "spec-verify.json").read_text(encoding="utf-8"))
         assert staged["verification_commands"][0]["cmd"] == "printf ok"
         assert spec_result["source"]["spec_sha256"] == sha256(spec_raw)
+        pure_spec = spec_dir / "design.md"
+        pure_spec.write_text(
+            "# Design\n\n<!-- devlyn:verification -->\n## Verification\n\n"
+            '```json\n{"pure_design":true,"verification_commands":[]}\n```\n',
+            encoding="utf-8",
+        )
+        complete_prior(work)
+        pure_result = bootstrap(["--spec", str(pure_spec.relative_to(work))], work, script_shared)
+        assert pure_result["source"]["spec_sha256"] == sha256(pure_spec.read_bytes())
+        assert not (work / ".devlyn/spec-verify.json").exists()
         external_patch.write_bytes(b"stale free-form patch\n")
         complete_prior(work)
         bootstrap(["fresh", "goal"], work, script_shared)

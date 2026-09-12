@@ -1298,7 +1298,7 @@ done
 for pattern in \
   'def stage_from_expected' \
   'stage_from_expected(' \
-  'expected_found, expected_staged, expected_error, expected_path' \
+  'contract_found, _staged, expected_error, expected_path' \
   'def expected_contract_findings' \
   'correctness.forbidden-pattern' \
   'scope.max-deps-added-exceeded' \

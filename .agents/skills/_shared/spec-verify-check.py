@@ -21,7 +21,8 @@ Default mode (BUILD_GATE invocation, no args):
   (3) For generated criteria and legacy handwritten specs without a sibling,
       source markdown extract reads `pipeline.state.json:
       source.{spec_path | criteria_path}` and extracts a `## Verification`
-      ```json``` block. If present, overwrite `.devlyn/spec-verify.json`.
+      ```json``` block. Stage executable commands; an explicit pure-design
+      contract removes stale `.devlyn/spec-verify.json` instead.
   (4) If no json block in source AND source.type=="generated": emit
       CRITICAL `correctness.spec-verify-malformed` so the fix-loop reruns
       BUILD.
@@ -846,14 +847,21 @@ def validate_expected_shape(data) -> str | None:
 
 def validate_inline_shape(data: object) -> str | None:
     if isinstance(data, dict):
-        unknown = sorted(set(data) - {"verification_commands"})
+        unknown = sorted(set(data) - {"verification_commands", "pure_design"})
         if unknown:
             return (
                 f"unsupported inline key(s): {', '.join(unknown)}; inline carriers "
-                "support only verification_commands. Encode these checks as commands, "
+                "support only verification_commands and pure_design. Encode these checks as commands, "
                 "or use a real spec with sibling spec.expected.json."
             )
-    return validate_shape(data) or validate_expected_shape(data)
+    error = validate_expected_shape(data)
+    if error:
+        return error
+    if isinstance(data, dict) and data.get("pure_design") is True:
+        if data.get("verification_commands") != []:
+            return "inline pure_design: true requires an explicit empty verification_commands list"
+        return None
+    return validate_shape(data)
 
 
 def validate_expected_against_sibling_spec(spec_path: Path, data: object) -> str | None:
@@ -1198,33 +1206,33 @@ def load_expected_contract(expected_path: Path) -> tuple[dict | None, str | None
     return (data, None)
 
 
-def stage_from_source(md: Path, devlyn_dir: Path) -> tuple[bool, str | None]:
+def stage_from_source(md: Path, devlyn_dir: Path) -> tuple[bool, bool, str | None]:
     """Materialize .devlyn/spec-verify.json from the json block in `md`.
 
-    Returns (staged, error). staged=True → wrote spec-verify.json. error
-    non-None → carrier was found but malformed (caller emits CRITICAL) —
-    this now also covers a `<!-- devlyn:verification -->` sentinel present
-    with no fenced ```json``` block inside it (the author clearly intended a
-    contract; a missing fence is a mistake, not a no-op). staged=False,
-    error=None → the sentinel is absent entirely (handwritten spec or
-    generated source missing the contract).
+    Returns (found, staged, error). found=False means no sentinel. A present
+    sentinel without a valid fenced JSON contract returns an error. A valid
+    pure-design contract removes stale staging and returns (True, False, None);
+    executable commands return (True, True, None) after writing spec-verify.json.
     """
     section_found, block = extract_verification_block(md.read_text(encoding="utf-8"))
     if not section_found:
-        return (False, None)
+        return (False, False, None)
     if block is None:
-        return (False, f"`<!-- devlyn:verification -->` section in {md} has no fenced ```json``` block")
+        return (True, False, f"`<!-- devlyn:verification -->` section in {md} has no fenced ```json``` block")
     try:
         data = loads_strict_json(block)
     except ValueError as e:
-        return (False, f"`<!-- devlyn:verification -->` ```json``` block in {md} has invalid JSON: {e}")
+        return (True, False, f"`<!-- devlyn:verification -->` ```json``` block in {md} has invalid JSON: {e}")
     err = validate_inline_shape(data)
     if err:
-        return (False, f"`<!-- devlyn:verification -->` ```json``` block in {md}: {err}")
+        return (True, False, f"`<!-- devlyn:verification -->` ```json``` block in {md}: {err}")
+    if data["verification_commands"] == []:
+        (devlyn_dir / "spec-verify.json").unlink(missing_ok=True)
+        return (True, False, None)
     normalized = {"verification_commands": data["verification_commands"]}
     devlyn_dir.mkdir(parents=True, exist_ok=True)
     (devlyn_dir / "spec-verify.json").write_text(json.dumps(normalized, indent=2) + "\n", encoding="utf-8")
-    return (True, None)
+    return (True, True, None)
 
 
 def stage_from_expected(
@@ -2060,7 +2068,7 @@ def run_self_test() -> int:
                 + "\n```\n",
                 encoding="utf-8",
             )
-            staged, inline_error = stage_from_source(
+            _found, staged, inline_error = stage_from_source(
                 inline_timeout_spec, inline_timeout_devlyn
             )
             if staged or not inline_error or "timeout_sec" not in inline_error:
@@ -2080,7 +2088,7 @@ def run_self_test() -> int:
             + "\n```\n",
             encoding="utf-8",
         )
-        staged, inline_error = stage_from_source(
+        _found, staged, inline_error = stage_from_source(
             inline_timeout_spec, inline_timeout_devlyn
         )
         inline_staged = loads_strict_json(
@@ -3814,50 +3822,134 @@ def run_self_test() -> int:
         pure_prose = "# Design\n\n<!-- devlyn:verification -->\n## Verification\n\n- No runtime verification commands.\n"
         stale_command = {"verification_commands": [{"cmd": "printf unexpected-command"}]}
         pure_inline = pure_prose + "\n```json\n" + json.dumps(stale_command) + "\n```\n"
-        for name, filename, source, contract, expected_rule in (
-            ("pure-prose", "spec.md", pure_prose, {"pure_design": True}, None),
-            ("pure-inline", "design-notes.md", pure_inline, {"pure_design": True, "verification_commands": []}, None),
-            ("empty-runtime", "design-notes.md", pure_inline, {"verification_commands": []}, "correctness.spec-verify-malformed"),
-            ("contradictory-pure", "spec.md", pure_inline, {"pure_design": True, **stale_command}, "correctness.spec-verify-malformed"),
-            ("pure-required-file", "spec.md", pure_inline, {"pure_design": True, "required_files": ["missing.md"]}, "correctness.required-file-missing"),
+        pure_contract = {"pure_design": True, "verification_commands": []}
+        for name, filename, source, contract, expected_rule, source_type in (
+            ("pure-prose", "spec.md", pure_prose, {"pure_design": True}, None, "spec"),
+            ("pure-inline", "design-notes.md", pure_inline, {"pure_design": True, "verification_commands": []}, None, "spec"),
+            ("empty-runtime", "design-notes.md", pure_inline, {"verification_commands": []}, "correctness.spec-verify-malformed", "spec"),
+            ("contradictory-pure", "spec.md", pure_inline, {"pure_design": True, **stale_command}, "correctness.spec-verify-malformed", "spec"),
+            ("pure-required-file", "spec.md", pure_inline, {"pure_design": True, "required_files": ["missing.md"]}, "correctness.required-file-missing", "spec"),
+            ("generated-pure", ".devlyn/criteria.generated.md", pure_contract, None, None, "generated"),
+            ("legacy-inline-pure", "design-notes.md", pure_contract, None, None, "spec"),
+            ("generated-empty-section", ".devlyn/criteria.generated.md", pure_prose, None, "correctness.spec-verify-malformed", "generated"),
+            ("generated-unmarked-empty", ".devlyn/criteria.generated.md", {"verification_commands": []}, None, "correctness.spec-verify-malformed", "generated"),
+            ("generated-false-empty", ".devlyn/criteria.generated.md", {**pure_contract, "pure_design": False}, None, "correctness.spec-verify-malformed", "generated"),
+            ("generated-missing-list", ".devlyn/criteria.generated.md", {"pure_design": True}, None, "correctness.spec-verify-malformed", "generated"),
+            ("generated-nonboolean-pure", ".devlyn/criteria.generated.md", {**pure_contract, "pure_design": 1}, None, "correctness.spec-verify-malformed", "generated"),
+            ("generated-contradictory-pure", ".devlyn/criteria.generated.md", {**stale_command, "pure_design": True}, None, "correctness.spec-verify-malformed", "generated"),
+            ("generated-unsupported-field", ".devlyn/criteria.generated.md", {**pure_contract, "required_files": ["missing.md"]}, None, "correctness.spec-verify-malformed", "generated"),
         ):
             case_root = work / name
             case_root.mkdir()
             case_devlyn = case_root / ".devlyn"
             case_devlyn.mkdir()
             case_spec = case_root / filename
+            if isinstance(source, dict):
+                source = pure_prose + "\n```json\n" + json.dumps(source) + "\n```\n"
             case_spec.write_text(source, encoding="utf-8")
-            (case_root / "spec.expected.json").write_text(json.dumps(contract), encoding="utf-8")
+            if contract is not None:
+                (case_root / "spec.expected.json").write_text(json.dumps(contract), encoding="utf-8")
             (case_devlyn / "spec-verify.json").write_text(json.dumps(stale_command), encoding="utf-8")
+            pointer = "criteria" if source_type == "generated" else "spec"
             (case_devlyn / "pipeline.state.json").write_text(json.dumps({
-                "source": {"type": "spec", "spec_path": str(case_spec)},
+                "source": {"type": source_type, pointer + "_path": str(case_spec),
+                           pointer + "_sha256": hashlib.sha256(case_spec.read_bytes()).hexdigest()},
             }), encoding="utf-8")
+            if contract is None:
+                case_check = subprocess.run(
+                    [sys.executable, script_path, "--check", str(case_spec)],
+                    cwd=case_root, capture_output=True, text=True, encoding="utf-8",
+                )
+                if case_check.returncode != (2 if expected_rule else 0):
+                    print(f"{name}: inline authoring returned {case_check.returncode}: {case_check.stderr}", file=sys.stderr)
+                    return 1
             case_run = subprocess.run(
                 [sys.executable, script_path], cwd=case_root,
                 capture_output=True, text=True, encoding="utf-8",
             )
             if case_run.returncode != (1 if expected_rule else 0):
-                print(f"{name}: sibling execution returned {case_run.returncode}: {case_run.stderr}", file=sys.stderr)
+                print(f"{name}: contract execution returned {case_run.returncode}: {case_run.stderr}", file=sys.stderr)
                 return 1
             case_findings = [
                 loads_strict_json(line) for line in
                 (case_devlyn / output_findings_name()).read_text(encoding="utf-8").splitlines()
             ]
             if [finding["rule_id"] for finding in case_findings] != ([expected_rule] if expected_rule else []):
-                print(f"{name}: unexpected sibling findings: {case_findings}", file=sys.stderr)
+                print(f"{name}: unexpected contract findings: {case_findings}", file=sys.stderr)
                 return 1
             case_results = case_devlyn / "spec-verify.results.json"
             if expected_rule == "correctness.spec-verify-malformed":
                 if case_results.exists():
-                    print(f"{name}: malformed sibling reached command execution", file=sys.stderr)
+                    print(f"{name}: malformed contract reached command execution", file=sys.stderr)
                     return 1
             elif (
                 loads_strict_json(case_results.read_text(encoding="utf-8"))
                 != {"commands": [], "process_evidence": None}
                 or (case_devlyn / "spec-verify.json").exists()
             ):
-                print(f"{name}: pure-design sibling ran or retained a stale command", file=sys.stderr)
+                print(f"{name}: pure-design contract ran or retained a stale command", file=sys.stderr)
                 return 1
+
+        generated_root = work / "generated-pure"
+        generated_devlyn = generated_root / ".devlyn"
+        for prestaged in (False, True):
+            if prestaged:
+                (generated_devlyn / "spec-verify.json").write_text(json.dumps(pure_contract), encoding="utf-8")
+            bench_pure = subprocess.run(
+                [sys.executable, script_path], cwd=generated_root,
+                env=dict(os.environ, BENCH_WORKDIR=str(generated_root)),
+                capture_output=True, text=True, encoding="utf-8",
+            )
+            if bench_pure.returncode != (1 if prestaged else 0):
+                print(f"pure-design benchmark precedence changed: {bench_pure.stderr}", file=sys.stderr)
+                return 1
+            if prestaged and "verification_commands must contain at least one entry" not in bench_pure.stderr:
+                print(f"prestaged empty benchmark did not fail command validation: {bench_pure.stderr}", file=sys.stderr)
+                return 1
+
+        generated_state_path = generated_devlyn / "pipeline.state.json"
+        generated_state = loads_strict_json(generated_state_path.read_text(encoding="utf-8"))
+        generated_state["risk_profile"] = {"risk_probes_enabled": True, "risk_probes_explicit": True}
+        generated_state_path.write_text(json.dumps(generated_state), encoding="utf-8")
+        missing_pure_probe = subprocess.run(
+            [sys.executable, script_path, "--include-risk-probes"], cwd=generated_root,
+            capture_output=True, text=True, encoding="utf-8",
+        )
+        if missing_pure_probe.returncode != 1 or "risk probes integrity failed" not in missing_pure_probe.stderr:
+            print(f"pure-design contract bypassed required probes: {missing_pure_probe.stderr}", file=sys.stderr)
+            return 1
+
+        generated_source = generated_devlyn / "criteria.generated.md"
+        generated_source.write_text(
+            generated_source.read_text(encoding="utf-8") + "\n- probe must pass visible marker.\n",
+            encoding="utf-8",
+        )
+        generated_state["source"]["criteria_sha256"] = hashlib.sha256(generated_source.read_bytes()).hexdigest()
+        (generated_devlyn / "probes").mkdir()
+        (generated_devlyn / "probes/P1.py").write_bytes(probe_script.read_bytes())
+        (generated_devlyn / "risk-probes.jsonl").write_text(json.dumps(risk_probe_payload) + "\n", encoding="utf-8")
+        generated_state["risk_probes_digest"], pure_probe_error = risk_probes_digest(generated_devlyn)
+        if pure_probe_error:
+            print(pure_probe_error, file=sys.stderr)
+            return 1
+        generated_state_path.write_text(json.dumps(generated_state), encoding="utf-8")
+        valid_pure_probe = subprocess.run(
+            [sys.executable, script_path, "--include-risk-probes"], cwd=generated_root,
+            capture_output=True, text=True, encoding="utf-8",
+        )
+        if valid_pure_probe.returncode != 0:
+            print(f"pure-design contract did not execute valid probe: {valid_pure_probe.stderr}", file=sys.stderr)
+            return 1
+        pure_probe_results = loads_strict_json((generated_devlyn / "spec-verify.results.json").read_text(encoding="utf-8"))
+        if (
+            len(pure_probe_results["commands"]) != 1
+            or pure_probe_results["commands"][0]["evidence_id"] != "risk-probe-0001"
+            or not pure_probe_results["commands"][0]["pass"]
+            or pure_probe_results["process_evidence"] is None
+            or (generated_devlyn / "spec-verify.json").exists()
+        ):
+            print("pure-design probe did not retain exactly one verified process result", file=sys.stderr)
+            return 1
 
         malformed = work / "malformed-sibling"
         malformed.mkdir()
@@ -4965,7 +5057,8 @@ def main() -> int:
     #      continue to legacy source-extract.
     #   3. Source-extract reads
     #      `pipeline.state.json:source.{spec_path | criteria_path}`. If it has
-    #      a json block, overwrite .devlyn/spec-verify.json with it.
+    #      a json block, stage its commands or clear stale staging for an
+    #      explicit pure-design contract.
     #   4. If source has no json block AND source.type=="generated":
     #      CRITICAL spec-verify-malformed — generated criteria must ship a
     #      verifiable contract per the generated-criteria output contract.
@@ -5005,6 +5098,7 @@ def main() -> int:
         return 1
     expected_data: dict | None = None
     expected_path: Path | None = None
+    contract_found = False
     if validate_risk_probes_only:
         _risk_probes, risk_error = load_risk_probes(
             devlyn_dir, source_md, require_present=True
@@ -5017,24 +5111,24 @@ def main() -> int:
         return 0
     if source_md is not None and not trust_bench_staged:
         if src_type == "spec":
-            expected_found, expected_staged, expected_error, expected_path, expected_data = stage_from_expected(
+            contract_found, _staged, expected_error, expected_path, expected_data = stage_from_expected(
                 source_md, devlyn_dir
             )
             if expected_error is not None:
                 print(f"[spec-verify] carrier malformed: {expected_error}", file=sys.stderr)
                 write_malformed_finding(devlyn_dir, expected_error, expected_path)
                 return 1
-            if expected_found:
-                staged, error = (expected_staged, None)
+            if contract_found:
+                error = None
             else:
-                staged, error = stage_from_source(source_md, devlyn_dir)
+                contract_found, _staged, error = stage_from_source(source_md, devlyn_dir)
         else:
-            staged, error = stage_from_source(source_md, devlyn_dir)
+            contract_found, _staged, error = stage_from_source(source_md, devlyn_dir)
         if error is not None:
             print(f"[spec-verify] carrier malformed: {error}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, error, source_md)
             return 1
-        if not staged:
+        if not contract_found:
             if src_type == "generated":
                 msg = (
                     f"generated {source_md.name} must include a "
@@ -5045,7 +5139,7 @@ def main() -> int:
                 write_malformed_finding(devlyn_dir, msg, source_md)
                 return 1
             # source.type=="spec", no block in spec markdown.
-            if not bench_mode and expected_data is None:
+            if not bench_mode:
                 # Real-user handwritten spec: silent no-op. Drop any stale
                 # pre-staged file so a killed prior run cannot poison this
                 # run's gate.
@@ -5067,11 +5161,10 @@ def main() -> int:
 
     commands: list[dict] = []
     if not spec_path.exists():
-        # No source markdown carrier AND no pre-staged file. Silent no-op
-        # for benchmark misconfigurations (no fixture to gate against) and
-        # for real-user runs without spec/criteria. Generated source case
-        # is handled above.
-        if expected_data is None:
+        # A declared pure-design contract continues through probes/results.
+        # Missing handwritten/benchmark contracts remain an opt-in no-op;
+        # missing generated contracts were rejected above.
+        if not contract_found:
             return 0
     else:
         try:

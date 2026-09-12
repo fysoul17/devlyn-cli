@@ -315,7 +315,7 @@ assert completion['read_json'](p)['message'] == payload
 spec = runpy.run_path(shared / 'spec-verify-check.py')
 md = work / 'spec.md'
 md.write_text('# 한국어\n<!-- devlyn:verification -->\n## Verification\n```json\n'+json.dumps({'verification_commands':[{'cmd':'echo 한국어'}]},ensure_ascii=False)+'\n```\n', encoding='utf-8')
-assert spec['stage_from_source'](md, work / '.devlyn') == (True, None)
+assert spec['stage_from_source'](md, work / '.devlyn') == (True, True, None)
 assert json.loads((work / '.devlyn/spec-verify.json').read_text(encoding='utf-8'))['verification_commands'][0]['cmd'] == 'echo 한국어'
 # Explicit cp949 streams are distinct from the observed native ANSI default.
 sys.stdout.reconfigure(encoding='cp949', errors='strict')
