@@ -1167,9 +1167,11 @@ def risk_probes_state_error(state: dict) -> str | None:
 
 
 def source_integrity_error(src_type: str | None, state: dict, source_md: Path | None) -> str | None:
-    if source_md is None:
-        return None
     src = state.get("source") if isinstance(state.get("source"), dict) else {}
+    if source_md is None:
+        if src_type == "generated":
+            return f"source.criteria_path must identify an existing generated criteria file; declared path: {src.get('criteria_path')!r}."
+        return None
     if src_type == "generated":
         field = "criteria_sha256"
         required = True
@@ -3649,6 +3651,55 @@ def run_self_test() -> int:
             "```\n",
             encoding="utf-8",
         )
+        generated_raw = generated_criteria.read_bytes()
+        generated_criteria.unlink()
+        missing_source_marker = generated_user / "missing-source-command-ran"
+        for pointer, bench, phase in (
+            ({}, False, "build_gate"),
+            ({"criteria_path": None}, False, "build_gate"),
+            ({"criteria_path": ""}, False, "build_gate"),
+            ({"criteria_path": ".devlyn/criteria.generated.md"}, False, "build_gate"),
+            ({"criteria_path": str(generated_criteria)}, False, "build_gate"),
+            ({"criteria_path": str(generated_user)}, False, "build_gate"),
+            ({"criteria_path": str(generated_criteria)}, True, "build_gate"),
+            ({"criteria_path": str(generated_criteria)}, False, "verify_mechanical"),
+        ):
+            (generated_devlyn / "pipeline.state.json").write_text(json.dumps({
+                "source": {"type": "generated", "criteria_sha256": hashlib.sha256(generated_raw).hexdigest(), **pointer},
+                "risk_profile": {"risk_probes_enabled": True},
+            }), encoding="utf-8")
+            (generated_devlyn / "spec-verify.json").write_text(json.dumps({
+                "verification_commands": [{"cmd": "printf unexpected > missing-source-command-ran"}],
+            }), encoding="utf-8")
+            missing_source_env = dict(os.environ, SPEC_VERIFY_PHASE=phase)
+            if bench:
+                missing_source_env["BENCH_WORKDIR"] = str(generated_user)
+            missing_source_run = subprocess.run(
+                [sys.executable, script_path, "--include-risk-probes"],
+                cwd=generated_user, env=missing_source_env,
+                capture_output=True, text=True, encoding="utf-8",
+            )
+            if (
+                missing_source_run.returncode != 1
+                or "source.criteria_path" not in missing_source_run.stderr
+                or f"declared path: {pointer.get('criteria_path')!r}" not in missing_source_run.stderr
+            ):
+                print(f"missing generated source was not rejected: {pointer}, {bench}, {phase}: {missing_source_run.stderr}", file=sys.stderr)
+                return 1
+            missing_findings = [loads_strict_json(line) for line in
+                                (generated_devlyn / output_findings_name()).read_text(encoding="utf-8").splitlines()]
+            if (
+                len(missing_findings) != 1
+                or missing_findings[0]["rule_id"] != "correctness.spec-verify-malformed"
+                or missing_findings[0]["severity"] != "CRITICAL"
+                or missing_findings[0]["file"] != ".devlyn/pipeline.state.json"
+                or missing_findings[0]["phase"] != phase
+                or missing_source_marker.exists()
+                or (generated_devlyn / "spec-verify.results.json").exists()
+            ):
+                print(f"missing generated source lost its finding or executed a stale command: {missing_findings}", file=sys.stderr)
+                return 1
+        generated_criteria.write_bytes(generated_raw)
         (generated_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "generated", "criteria_path": str(generated_criteria)}
         }), encoding="utf-8")
