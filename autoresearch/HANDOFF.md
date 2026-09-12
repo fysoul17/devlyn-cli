@@ -1,12 +1,12 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-12 18:51 KST — **0153 source accepted; CI/delivery next.**
+Updated 2026-09-12 19:13 KST — **0153 complete; 0154 historical routing/upgrade audit.**
 Read this file, [NORTH-STAR](NORTH-STAR.md), then the current source and iteration.
 Current user instructions supersede older records. [PRINCIPLES](PRINCIPLES.md),
 [MISSIONS](MISSIONS.md) and [DECISIONS](DECISIONS.md) retain enduring constraints.
 Inspect Git state and live runs; do not replay unrelated cold-start suites.
 
-## START-HERE — 0153 benchmark pre-staged validation
+## START-HERE — 0154 ordinary-entry instruction audit
 
 Latest owner instruction, 2026-09-12: **“오케이 그러면 1번부터 하나씩 검증해가며 진행해줘.”**
 The agreed sequence is benchmark pre-staged validation → ordinary small-request
@@ -19,21 +19,51 @@ Root implements directly; **no resolve invocation**. Review uses actual native
 substitute when Fable is unavailable. Root decides after evidence, without a
 unanimity requirement. No source or model-performance claim follows from advice.
 
-### 0153 source ACCEPTED — delivery pending
+### 0154 audit accepted — customer patch application pending
 
-[0153](iterations/0153-benchmark-validation.md) adds strict existing carrier
-validation to pre-staged commands. All 36 before/after controls pass: 14 invalid
-cases now stop before execution/results refresh, 22 outcomes stay unchanged.
-Existing 35 nonempty benchmark carriers (144 full / 94 visible commands) retain
-validation. Checker self-test, guard-deletion regression, full lint (349.922s),
-mirror/scope checks pass. Native Fable 5.1 **PASS_WITH_ISSUES**, Grok 4.6 **PASS**;
-no in-scope CRITICAL/HIGH. Existing general carrier fix-hint LOW remains.
+[0154](iterations/0154-ordinary-entry-audit.md) records that the user clarified
+most routine work before 3.1.0 started resolve, naming
+`devlyn-os-v1`, `ai-rag-hub`, and `archon-interface-v1`. Their historical
+CLAUDE.md line 54 explicitly mandated resolve for small tasks. Do not require a
+new current-version reproduction to acknowledge that historical report.
+
+Current CLAUDE files have proportional entry; all three AGENTS files lack it,
+and archon still labels loop engineering the default entry. An actual isolated
+installer check confirms old AGENTS bytes remain preserved with a merge notice;
+a new project receives the current contract. This is intentional preservation,
+not a failed package update. No speed/model-causality claim follows.
+
+Root prepared minimal route-only AGENTS patches under `.devlyn/0154/<project>/`.
+They pass apply checks and independent Fable 5.1/Grok 4.6 review. Customer files
+are unchanged. An explicit scope question is pending before writing into those
+three other repositories. Preserve their dirty skill/CLAUDE work. Existing
+engine-default/downgrade asymmetries are outside these route-only proposals.
 
 Active checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Receipt `f9d7c95fac90f43c8b4e3830`; `.devlyn/0153-evidence.tar.gz` owns source
-acceptance, `.devlyn/0153-delivery/` owns CI/merge. Finish matching-source hosted
-checks and delivery before moving to the ordinary-request routing investigation.
-The earlier research clone's HANDOFF WIP and original checkout remain preserved.
+0154 receipt `8793aed2ba033fe54961e3a7`, branch `codex/0154-ordinary-entry-audit`.
+The broader overhead, semantic coverage and matched-comparison priorities remain.
+
+### 0153 delivery COMPLETE
+
+[0153](iterations/0153-benchmark-validation.md) / PR #22 merged accepted
+`a187e586cfbb4d25f6970124f02b47682257405a` into main
+`9e70a697b01b232ffc27163d2d4694ebd0bb40be` at 2026-09-12T10:00:39Z.
+Receipt `f9d7c95fac90f43c8b4e3830` is COMPLETE; owned refs removed, scratch CLEAN.
+An initial cleanup observation caught transient process 4618; it exited without
+intervention and the receipt-based retry completed. No unknown process was killed.
+
+All 36 before/after controls, checker self-test, guard-deletion regression,
+full lint (349.922s), mirror/scope checks pass. Fourteen invalid cases now stop
+before execution/results refresh; 22 outcomes stay unchanged. Existing 35
+nonempty benchmark carriers (144 full / 94 visible commands) retain validation.
+Native Fable 5.1 PASS_WITH_ISSUES and Grok 4.6 PASS: no in-scope CRITICAL/HIGH;
+existing generic fix-hint LOW remains. Source evidence is immutable at
+`.devlyn/0153-evidence.tar.gz`; delivery is `.devlyn/0153-delivery/`.
+
+PR CI34686948870 and push CI34686946777 pass POSIX/native Windows. Actual PR
+integration `14d696340ded60c6a5348f30fd11599e3a8f35d9` has the final merge's
+tree/parents; package/driver/checker bytes and both OS identities match.
+Prior dirty research/original checkouts remain preserved. No npm release.
 
 ### 0149 delivery COMPLETE
 
@@ -106,12 +136,11 @@ downloaded driver, package digest and packaged checker bytes match their declare
 identities and the accepted source. Windows/POSIX package identities agree.
 Evidence: `.devlyn/0152-evidence.tar.gz` and `.devlyn/0152-delivery/`.
 
-Next separate frontier: benchmark-prestaged oracle validation. This repair
-establishes early checker rejection; no full-pipeline false PASS or broad semantic
-coverage/model-performance claim. The four broader priorities remain open.
-A16 and frozen comparisons stay untouched. No npm release.
+0152 establishes early checker rejection; no full-pipeline false PASS or broad
+semantic coverage/model-performance claim. Its benchmark-prestaged follow-up
+is closed by 0153 above. A16 and frozen comparisons stay untouched.
 
-Actual research checkout is the retained standalone clone:
+Prior research checkout, retained with its existing HANDOFF changes:
 `/Users/aipalm/.local/share/nx01/iter0144/core-research`.
 Receipts and owned scratch live under `.git/devlyn-completion/<id>/`.
 Prior local-only parking checkpoint `6b3237998ed33943ee543fdcda06efc995872550`
@@ -121,8 +150,8 @@ and branch `codex/research-park-20260912-1455` remain recoverable under receipt
 The original checkout's intentional HANDOFF WIP is preserved in
 `.devlyn/0151/original-handoff.md` with its hash before any synchronization.
 
-0153 closes the separate benchmark-prestaged validation follow-up at source;
-its delivery is pending above. All four broader priorities remain **OPEN**.
+0153 closes the separate benchmark-prestaged validation follow-up, including
+delivery. The four broader priorities are audited/continued in 0154 and later.
 A16, 0124/0125/0128 and frozen 0140/0147 comparisons remain parked/closed.
 No restart, regrade, superiority claim or npm release is implied.
 
