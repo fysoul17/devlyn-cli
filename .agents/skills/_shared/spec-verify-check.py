@@ -4040,7 +4040,7 @@ def run_self_test() -> int:
         }), encoding="utf-8")
         (devlyn / "spec-verify.json").write_text(json.dumps({
             "verification_commands": [
-                {"cmd": "printf bench-staged", "stdout_contains": ["bench-staged"]}
+                {"cmd": "printf bench-staged", "stdout_contains": ["bench-staged"], "contract_refs": ["R1"]}
             ]
         }) + "\n", encoding="utf-8")
         bench_pre_staged = subprocess.run(
@@ -4058,6 +4058,37 @@ def run_self_test() -> int:
         if staged_bench.get("verification_commands", [{}])[0].get("cmd") != "printf bench-staged":
             print("benchmark pre-staged contract was overwritten", file=sys.stderr)
             return 1
+
+        bench_marker = work / "bench-command-ran"
+        bench_command = {"cmd": "printf bad > bench-command-ran; printf bad"}
+        old_bench_results = (devlyn / "spec-verify.results.json").read_bytes()
+        for phase in ("build_gate", "verify_mechanical"):
+            for carrier, diagnostic in (
+                ({"verification_commands": [{**bench_command, "stdout_not_contians": ["bad"]}]}, "unknown key(s): stdout_not_contians"),
+                ({"verification_commands": [{**bench_command, "contract_refs": [""]}]}, "contract_refs must be a list of non-empty strings"),
+                ({"verification_commands": [bench_command], "required_files": ["missing.txt"]}, "unsupported inline key(s): required_files"),
+                ({"verification_commands": [bench_command], "pure_design": True}, "requires an explicit empty verification_commands list"),
+                ({"verification_commands": [], "pure_design": True}, "must contain at least one entry"),
+            ):
+                (devlyn / "spec-verify.json").write_text(json.dumps(carrier), encoding="utf-8")
+                rejected_bench = subprocess.run(
+                    [sys.executable, script_path], cwd=work,
+                    env={**env, "SPEC_VERIFY_PHASE": phase},
+                    capture_output=True, text=True, encoding="utf-8",
+                )
+                rejected_findings = [loads_strict_json(line) for line in
+                                     (devlyn / output_findings_name()).read_text(encoding="utf-8").splitlines()]
+                if (
+                    rejected_bench.returncode != 1 or diagnostic not in rejected_bench.stderr
+                    or bench_marker.exists()
+                    or (devlyn / "spec-verify.results.json").read_bytes() != old_bench_results
+                    or len(rejected_findings) != 1
+                    or rejected_findings[0]["rule_id"] != "correctness.spec-verify-malformed"
+                    or rejected_findings[0]["severity"] != "CRITICAL"
+                    or rejected_findings[0]["phase"] != phase
+                ):
+                    print(f"benchmark {phase} failed closed incorrectly for {carrier}: {rejected_bench.stderr}", file=sys.stderr)
+                    return 1
 
         verify_output = work / "verify-output"
         verify_output.mkdir()
@@ -5224,11 +5255,10 @@ def main() -> int:
             print(f"[spec-verify] error: cannot parse {spec_path}: {e}", file=sys.stderr)
             return 2
 
-        # iter-0019.8 (Codex R2 #2): apply full shape validation to pre-staged
-        # carriers too — bool exit_code, empty list, whitespace-only cmd were
-        # silently accepted on the benchmark path. Empty list is rejected
-        # because "all 0 commands passed" is vacuously true.
-        shape_err = validate_shape(spec)
+        # Pre-staged commands need the strict carrier vocabulary too: unknown
+        # expectations were silently ignored. Keep the nonempty shape gate;
+        # a benchmark's staged empty list must not become a pure-design pass.
+        shape_err = validate_shape(spec) or validate_inline_shape(spec)
         if shape_err:
             print(f"[spec-verify] error: {spec_path}: {shape_err}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, f"{spec_path}: {shape_err}", None)
