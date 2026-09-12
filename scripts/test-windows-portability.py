@@ -582,8 +582,10 @@ else:
 
             def before_barrier(handle, kind, info, size):
                 self.assert_ceased(self.handles[job.child.pid])
+                # Signaled bootstrap handles can precede removal from the job PID list.
+                wait_for(lambda: job.child.pid not in self.job_pids(handle))
                 initial.extend(self.job_pids(handle))
-                self.assertEqual(len(initial), 2)
+                self.assertEqual(set(initial), {job.target_pid, int((work / 'A.pid').read_text(encoding='utf-8'))})
                 self.assertTrue(self.kernel.SetEvent(gates['spawn']))
                 self.assertEqual(self.kernel.WaitForSingleObject(gates['attempted'], 8000), 0)
                 self.assertEqual((work / 'outcome').read_text(encoding='utf-8'), 'admitted')
@@ -622,7 +624,9 @@ else:
                     self.assertEqual(limits.BasicLimitInformation.ActiveProcessLimit, 0)
                     self.assertEqual(limits.BasicLimitInformation.LimitFlags, 0x2008)
                     self.assert_ceased(self.handles[job.child.pid])
-                    self.assertEqual(len(self.job_pids(handle)), 2)
+                    # Establish the exact starting members before testing admission limits.
+                    wait_for(lambda: job.child.pid not in self.job_pids(handle))
+                    self.assertEqual(set(self.job_pids(handle)), {job.target_pid, int((work / 'A.pid').read_text(encoding='utf-8'))})
                     if control:
                         limits.BasicLimitInformation.ActiveProcessLimit = 2
                     result = set_limit(handle, kind, info, size)
@@ -632,6 +636,7 @@ else:
                     self.assertEqual(readback.BasicLimitInformation.ActiveProcessLimit, 2 if control else 0)
                     self.assertTrue(self.kernel.SetEvent(gates['a_exit']))
                     self.assertEqual(self.kernel.WaitForSingleObject(a, 8000), 0)
+                    wait_for(lambda: int((work / 'A.pid').read_text(encoding='utf-8')) not in self.job_pids(handle))
                     self.assertTrue(self.alive(b))
                     self.assertTrue(self.kernel.SetEvent(gates['spawn']))
                     self.assertEqual(self.kernel.WaitForSingleObject(gates['attempted'], 8000), 0)
@@ -694,8 +699,19 @@ else:
                 self.assertEqual(gone.wait(timeout=5), 0)
                 gone._handle.Close()
                 self.assertTrue(self.kernel.CloseHandle(self.handles.pop(gone.pid)))
-                self.assertFalse(self.kernel.OpenProcess(0x101000, False, gone.pid))
-                self.assertEqual(self.ctypes.get_last_error(), 87)
+
+                def gone_pid():
+                    process = self.kernel.OpenProcess(0x101000, False, gone.pid)
+                    if not process:
+                        self.assertEqual(self.ctypes.get_last_error(), 87)
+                        return True
+                    try:
+                        self.assertFalse(self.alive(process), 'gone-PID fixture refers to a live process')
+                    finally:
+                        self.assertTrue(self.kernel.CloseHandle(process))
+                    return False
+
+                wait_for(gone_pid)
                 query, identity = kernel.QueryInformationJobObject, kernel.IsProcessInJob
                 rejected = []
 
