@@ -297,7 +297,7 @@ the BUILD_GATE process-evidence manifest and complete the phase as
 `BLOCKED:build-env-underprovisioned`, not as a product finding or substitute
 command. The worker:
 1. Detects language/framework via project files (`package.json`, `pyproject.toml`, etc.).
-2. Runs language-specific gates (tsc / lint / test).
+2. Runs language-specific gates (tsc / lint / test), deferring exact literal overlaps under `references/phases/build-gate.md`'s current-contract/current-round rule; task-context prompts must preserve that rule.
 3. Always runs `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --include-risk-probes` (verification_commands literal-match plus `.devlyn/risk-probes.jsonl` when present). If `state.risk_profile.risk_probes_enabled == true`, the script requires `.devlyn/risk-probes.jsonl`; a missing file is a CRITICAL mechanical blocker, not a silent solo run. The script routes each command through `process-evidence.py`; preserve `.devlyn/spec-verify.results.json` and its validated BUILD_GATE carrier for the state-bound archive flow.
 4. If diff touches web-surface files: run the browser tier with the repo's available toolchain (for example Playwright or curl).
 5. Emits `.devlyn/build_gate.findings.jsonl` + `.devlyn/build_gate.log.md`.
