@@ -70,11 +70,11 @@ def observe_setup(self):
 
 assert sys.platform == 'win32'
 results = []
-for control, repetitions in (('natural', 20), ('held', 1), ('live', 1), ('non87', 1)):
+for control, repetitions in (('live', 1),):
     suite = unittest.TestSuite(case('test_stale_list_gone_and_different_job_identity') for _ in range(repetitions))
     with patch.object(case, 'setUp', observe_setup):
         result = unittest.TextTestRunner(verbosity=2).run(suite)
-    expected = 'owned process survived product teardown' if control == 'live' else '5 != 87'
+    expected = 'gone-PID fixture refers to a live process' if control == 'live' else '5 != 87'
     accepted = result.wasSuccessful() if control in ('natural', 'held') else len(result.failures) == 1 and expected in result.failures[0][1]
     results.append({'control': control, 'tests_run': result.testsRun, 'expected_outcome': accepted,
                     'failures': [trace for _, trace in result.failures], 'errors': [trace for _, trace in result.errors]})

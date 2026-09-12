@@ -706,7 +706,7 @@ else:
                         self.assertEqual(self.ctypes.get_last_error(), 87)
                         return True
                     try:
-                        self.assert_ceased(process)
+                        self.assertFalse(self.alive(process), 'gone-PID fixture refers to a live process')
                     finally:
                         self.assertTrue(self.kernel.CloseHandle(process))
                     return False
