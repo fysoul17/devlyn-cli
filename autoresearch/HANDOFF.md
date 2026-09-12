@@ -1,12 +1,12 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-12 19:13 KST — **0153 complete; 0154 historical routing/upgrade audit.**
+Updated 2026-09-12 20:10 KST — **0154 applied locally; 0155 BUILD_GATE overlap source accepted.**
 Read this file, [NORTH-STAR](NORTH-STAR.md), then the current source and iteration.
 Current user instructions supersede older records. [PRINCIPLES](PRINCIPLES.md),
 [MISSIONS](MISSIONS.md) and [DECISIONS](DECISIONS.md) retain enduring constraints.
 Inspect Git state and live runs; do not replay unrelated cold-start suites.
 
-## START-HERE — 0154 ordinary-entry instruction audit
+## START-HERE — 0155 canonical/literal BUILD_GATE overlap
 
 Latest owner instruction, 2026-09-12: **“오케이 그러면 1번부터 하나씩 검증해가며 진행해줘.”**
 The agreed sequence is benchmark pre-staged validation → ordinary small-request
@@ -19,7 +19,25 @@ Root implements directly; **no resolve invocation**. Review uses actual native
 substitute when Fable is unavailable. Root decides after evidence, without a
 unanimity requirement. No source or model-performance claim follows from advice.
 
-### 0154 audit accepted — customer patch application pending
+### 0155 source accepted — CI/delivery next
+
+[0155](iterations/0155-build-gate-overlap.md) addresses a current canonical/literal
+repeat-scheduling requirement in BUILD_GATE and its parent overview. Only proven
+exact execution-contract matches may share a current literal invocation. Missing
+or non-exit deferred results run the canonical gate normally; literal failures,
+per-error findings, capability stops and post-CLEANUP VERIFY remain intact.
+No runtime cache or phase omission. Full lint PASS308.575s; final actual rendered
+prompts, scope/mirror and three runner timeout controls pass. Final native Fable
+PASS_WITH_ISSUES and Grok PASS, zero in-scope CRITICAL/HIGH. Earlier NEEDS_WORK
+advice and first mirror failure remain preserved. Retained advisory limits are
+in the iteration. No worker-adherence or speed improvement is yet measured.
+Source `.devlyn/0155-evidence.tar.gz`; finish matching-source CI and delivery
+before starting the next bounded semantic-coverage change.
+
+Active checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+0155 receipt `c0d5a372158bf1964fd8d14d`, branch `codex/0155-build-gate-overlap`.
+
+### 0154 delivery complete and customer patches applied
 
 [0154](iterations/0154-ordinary-entry-audit.md) records that the user clarified
 most routine work before 3.1.0 started resolve, naming
@@ -33,14 +51,19 @@ installer check confirms old AGENTS bytes remain preserved with a merge notice;
 a new project receives the current contract. This is intentional preservation,
 not a failed package update. No speed/model-causality claim follows.
 
-Root prepared minimal route-only AGENTS patches under `.devlyn/0154/<project>/`.
-They pass apply checks and independent Fable 5.1/Grok 4.6 review. Customer files
-are unchanged. An explicit scope question is pending before writing into those
-three other repositories. Preserve their dirty skill/CLAUDE work. Existing
-engine-default/downgrade asymmetries are outside these route-only proposals.
+User approved all three route-only AGENTS patches; applied locally at
+2026-09-12T10:46:36Z. Exact previously reviewed proposal bytes and whitespace
+pass; unrelated worktree/index diffs, untracked names, HEAD and branches remain
+unchanged. No customer commit/push. Evidence:
+`.devlyn/0154-local-application-20260912/`. Existing engine-default/downgrade
+asymmetries stay outside scope; no application approval remains pending.
 
-Active checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-0154 receipt `8793aed2ba033fe54961e3a7`, branch `codex/0154-ordinary-entry-audit`.
+CLI audit PR #23 merged accepted `afb992e4dbe97ceef7574a6a30404592976cc992` into
+main `9774517fb3b8688ea3d903100772d5419cdb4196` at 2026-09-12T10:27:06Z.
+Receipt `8793aed2ba033fe54961e3a7` COMPLETE, owned refs removed, scratch CLEAN.
+PR CI34688094964 and push CI34688092972 pass POSIX/native Windows; integration
+`14d75da86dc556fdb3d3cbaf56aa50fd58ce85cc` tree/parents match final merge and
+package bytes are unchanged. Source/delivery evidence remains immutable/separate.
 The broader overhead, semantic coverage and matched-comparison priorities remain.
 
 ### 0153 delivery COMPLETE
