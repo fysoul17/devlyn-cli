@@ -1,25 +1,94 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-12 — **0156 delivered; 0157 scope note and one adherence smoke accepted.**
-Read this file, [NORTH-STAR](NORTH-STAR.md), then the current source and iteration.
-Current user instructions supersede older records. [PRINCIPLES](PRINCIPLES.md),
-[MISSIONS](MISSIONS.md) and [DECISIONS](DECISIONS.md) retain enduring constraints.
-Inspect Git state and live runs; do not replay unrelated cold-start suites.
+Updated 2026-09-13 KST — **bounded steps1–5 handled; 0158b comparison closed**.
+Read this file, [NORTH-STAR](NORTH-STAR.md), then current source and
+[0158](iterations/0158-matched-entry-screen.md). Current user instructions
+supersede older records. [PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md)
+and [DECISIONS](DECISIONS.md) retain enduring constraints.
 
-## START-HERE — 0157 reuse the existing scope gate
+## START-HERE — finish current delivery, then resume in a new session
 
-Latest owner instruction, 2026-09-12: **“오케이 그러면 1번부터 하나씩 검증해가며 진행해줘.”**
-The agreed sequence is benchmark pre-staged validation → ordinary small-request
-routing → full-route overhead → semantic constraint coverage → matched quality
-and pair-value comparison. Complete and verify each bounded change before
-advancing. Earlier direct-implementation/native-review authorization continues.
+Latest user instructions: **“오케이 그러면 5번까지 진행.”**, then
+**“이번꺼 마치면 새 세션에서 이어서 할 수 있도록 핸드오프”**.
+Finish0158 delivery/owned cleanup, record its result and stop this session.
+Do not automatically start another native comparison or replay historical runs.
 
-Root implements directly; **no resolve invocation**. Review uses actual native
-`claude-fable-5-1` and `grok-4.6`, independently and read-only. Opus 5 is only a
-substitute when Fable is unavailable. Root decides after evidence, without a
-unanimity requirement. No source or model-performance claim follows from advice.
+Active retained checkout:
+`/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+0158 owner receipt:
+`.git/devlyn-completion/55e1668f55d8ad1ac52128ba/receipt.json`.
+Task branch `codex/0158-matched-comparison` exists only until safe delivery
+cleanup. Reobserve receipt and `.devlyn/0158-delivery/` for accepted SHA, PR,
+matching-source CI, merge and cleanup; this committed source record precedes
+those external events. COMPLETE means resume from clean main, not recreate the
+old task branch. If delivery is pending, resume this receipt before new work.
 
-### 0157 scope-gate authoring note — source accepted
+The original `/Users/aipalm/Documents/GitHub/devlyn-cli` still has user WIP in
+`.gitignore`, `autoresearch/HANDOFF.md` and untracked `.playwright-mcp/`.
+Preserve it. **This retained checkout's HANDOFF is the current continuation**;
+do not overwrite the original dirty copy or infer current status from it.
+
+## Completed sequence and observed result
+
+1. 0153 / PR22: pre-staged benchmark validation, 36 controls and CI passed.
+2. 0154 / PR23: historical mandatory resolve traced; user-approved route-only
+   AGENTS patches applied locally to devlyn-os-v1, ai-rag-hub and
+   archon-interface-v1. No customer commit/push or remaining patch approval.
+3. 0155 / PR24: exact BUILD_GATE/literal-check overlap may reuse one execution
+   under the same contract; required phases and failure handling preserved.
+4. 0156 / PR25 +0157 / PR26: sibling expected-file preflight and existing scope
+   gate guidance corrected. Component checks and one bounded native adherence
+   smoke passed. General semantic reliability remains unproved.
+5. 0158b: same small synthetic interval task, one draw each, frozen common checks:
+
+| Entry | Native wall | Common methods | Product |
+| --- | ---: | ---: | --- |
+| bare Codex | 76.859s | 19/19 | PASS |
+| full solo | 587.030s | 19/19 | PASS |
+| full pair | 778.903s | 19/19 | PASS |
+
+Scope/source review and meaningful new tests pass; both full phase/role/archive
+contracts pass. Blind Opus/Grok pass actual products and the two first-error
+calibration controls. **No added quality benefit observed; confirmation
+NOT_SELECTED/NOT_RUN.** These are native invocation walls; external fixed checks
+and shared blind review are separate. One ordered exposed task is not stable
+speed, causal pair, real-project or broad superiority evidence.
+
+Original0158 remains INCOMPLETE_INFRASTRUCTURE (parent denied bootstrap lock;
+separate bad placeholder stamp found before0158b). Its79.517s bare PASS and
+106.747s blocked solo are retained, pair NOT_RUN. No old/new pooling or rescue.
+Immutable raw source: `.devlyn/0158-evidence.tar.gz`, SHA256
+`35e35d9f3d6c7d544cd736be31651810c84094a89cbf07743eb0cfdf0113174d`.
+All six experiment receipts are LOCAL_ONLY, scratch CLEAN; fixture source/Git
+remain retained. No production checker/default/release is promoted by0158.
+
+## Next-session boundaries and frontier
+
+Root implements source directly. Full resolve is mandatory when explicitly
+entered;0158 invoked it only as the registered experimental treatment. Source
+advice uses actual native Fable5.1 and Grok4.6 independently/read-only; Opus5
+substitutes only when Fable is unavailable (latest actual evidence:0157 native429,
+not a fresh0158 probe). Root decides from evidence; unanimity is not a gate.
+
+First inspect Git status, the external receipt and actual CI/delivery evidence;
+finish owned scratch cleanup if pending. Never reread customer secrets or sweep
+unknown historical directories. Preserve frozen A16,0124/0125/0128,0140,0147,
+failed0156 authoring draw and closed0158/0158b; no reroll/regrade/copycat rescue.
+
+If the user continues, the frontier is a prospectively registered representative
+hard/real-task comparison that can distinguish intent/constraint completeness,
+with untouched confirmation reserved in advance; the independent human
+real-project trial (NORTH-STAR test15) remains open. Do not infer that more phases
+or a new router is needed from this screen. Broader Mission1 remains active.
+For future apparatus, use actual installer assignment stamping, verify parent
+capabilities before admission, keep nested canonical permissions and freeze
+source/task/model metadata. Ambient skill errors, unknown provider-effective
+Codex identity, inherited Opus effort and incomplete total output/cost telemetry
+remain explicit limitations. Do not start a new measurement in this session.
+
+## Earlier delivered work
+
+### 0157 scope-gate authoring note — delivery COMPLETE
 
 [0157](iterations/0157-authoring-scope-gate.md) connects check authoring to the
 existing BUILD_GATE `authorized_surface` gate, retaining stricter explicit file
@@ -38,8 +107,11 @@ holdout or general semantic-improvement claims. No fixture checker is promoted.
 Source `.devlyn/0157-evidence.tar.gz`; inspect the receipt and separate
 `.devlyn/0157-delivery/` for current CI/delivery status before retrying anything.
 
-Active checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-0157 receipt `1ef874fd940bcd78c554baf8`, branch `codex/0157-authoring-scope`.
+PR #26 merged accepted `5e01be6f33b7ea01c0af4367d7569f4b657ce1d1` into main
+`3c38564cb3bbc6102d645b8d5cf45613b1518029`. PR CI34696522639 and push
+CI34696520151 pass POSIX/native Windows; actual integration source and package
+bytes match accepted source. Receipt `1ef874fd940bcd78c554baf8` COMPLETE,
+owned task refs removed and scratch CLEAN. No npm release.
 
 ### 0156 delivery COMPLETE
 
