@@ -1,0 +1,32 @@
+name: 0150 native membership diagnosis
+on:
+  push:
+    branches: [codex/0150-windows-job-membership]
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            scripts/test-windows-portability.py
+            scripts/diagnose-0150.py
+            config/skills/_shared/platform-support.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Observe unchanged tests
+        shell: pwsh
+        run: python scripts/diagnose-0150.py 2>&1 | Tee-Object -FilePath 0150-native.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 0150-membership-observations
+          path: |
+            0150-observations.json
+            0150-native.log
+          if-no-files-found: error
