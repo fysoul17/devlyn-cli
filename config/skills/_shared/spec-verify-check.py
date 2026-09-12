@@ -39,14 +39,13 @@ Default mode (BUILD_GATE invocation, no args):
   run-fixture.sh's combined-stream matching semantics.
 
 Check mode (`--check <markdown_path>`):
-- Used by /devlyn:ideate after writing each item spec to validate that the
-  generated `## Verification` ```json``` block parses + matches the schema,
-  and that present `complexity` frontmatter has a supported value.
-- Exits 0 if the block is well-formed (or absent — ideate's check applies
-  to both new specs that include the block and pre-carrier handwritten
-  specs that omit it; absence is not failure here, only malformed JSON or
-  shape error is). Exits 2 on malformed json, shape error, or unsupported
-  `complexity` value.
+- Spec-source authoring preflight: a present sibling `spec.expected.json`
+  takes precedence; otherwise validate the legacy inline carrier. Validate
+  metadata against the given Markdown path, including non-canonical names.
+- Exits 2 on malformed carrier or metadata, without falling back from a bad
+  sibling to inline content. An absent sibling and sentinel retain opt-in
+  success. Never stages or executes commands. Generated-source runtime has
+  its own inline validation and must not use this sibling-precedence route.
 
 Expected-contract check mode (`--check-expected <json_path>`):
 - Used by /devlyn:ideate after writing sibling `spec.expected.json`.
@@ -1869,13 +1868,8 @@ def run_write_untracked_baseline(work: Path, devlyn_dir: Path) -> int:
 
 
 def run_check_mode(md_path: Path) -> int:
-    """`--check <markdown>` — validate the verification carrier without
-    running any commands. Used by /devlyn:ideate after item-spec write.
-
-    Exit 0: `<!-- devlyn:verification -->` sentinel absent OR section present
-    and well-formed.
-    Exit 2: sentinel present but the section is malformed — no fenced json
-    block, invalid JSON, or bad shape (so ideate can re-prompt).
+    """Validate a spec's authoritative sibling or legacy inline carrier;
+    return 0/2 without staging or execution. This is not generated-mode staging.
     """
     if not md_path.is_file():
         print(f"[spec-verify --check] error: {md_path} not found", file=sys.stderr)
@@ -1893,6 +1887,14 @@ def run_check_mode(md_path: Path) -> int:
     if solo_ceiling_err:
         print(f"[spec-verify --check] {md_path}: {solo_ceiling_err}", file=sys.stderr)
         return 2
+    expected_path = md_path.with_name("spec.expected.json")
+    if expected_path.is_file():
+        data, err = load_expected_contract(expected_path)
+        err = err or validate_expected_against_sibling_spec(md_path, data)
+        if err:
+            print(f"[spec-verify --check] {md_path}: sibling {expected_path}: {err}", file=sys.stderr)
+            return 2
+        return 0
     section_found, block = extract_verification_block(text)
     if not section_found:
         # Sentinel absent entirely — opt-in nature preserved for ideate (a
@@ -3855,6 +3857,13 @@ def run_self_test() -> int:
         (real_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(real_spec)}
         }), encoding="utf-8")
+        sibling_check = subprocess.run(
+            [sys.executable, script_path, "--check", str(real_spec)],
+            cwd=real_user, capture_output=True, text=True, encoding="utf-8",
+        )
+        if sibling_check.returncode != 0 or (real_devlyn / "spec-verify.json").exists():
+            print(f"sibling authoring failed or staged commands: {sibling_check.stderr}", file=sys.stderr)
+            return 1
         sibling_run = subprocess.run(
             [sys.executable, script_path],
             cwd=real_user,
@@ -3877,6 +3886,7 @@ def run_self_test() -> int:
         for name, filename, source, contract, expected_rule, source_type in (
             ("pure-prose", "spec.md", pure_prose, {"pure_design": True}, None, "spec"),
             ("pure-inline", "design-notes.md", pure_inline, {"pure_design": True, "verification_commands": []}, None, "spec"),
+            ("pure-bad-inline", "design-notes.md", pure_prose + "\n```json\n{broken\n```\n", {"pure_design": True}, None, "spec"),
             ("empty-runtime", "design-notes.md", pure_inline, {"verification_commands": []}, "correctness.spec-verify-malformed", "spec"),
             ("contradictory-pure", "spec.md", pure_inline, {"pure_design": True, **stale_command}, "correctness.spec-verify-malformed", "spec"),
             ("pure-required-file", "spec.md", pure_inline, {"pure_design": True, "required_files": ["missing.md"]}, "correctness.required-file-missing", "spec"),
@@ -3906,14 +3916,13 @@ def run_self_test() -> int:
                 "source": {"type": source_type, pointer + "_path": str(case_spec),
                            pointer + "_sha256": hashlib.sha256(case_spec.read_bytes()).hexdigest()},
             }), encoding="utf-8")
-            if contract is None:
-                case_check = subprocess.run(
-                    [sys.executable, script_path, "--check", str(case_spec)],
-                    cwd=case_root, capture_output=True, text=True, encoding="utf-8",
-                )
-                if case_check.returncode != (2 if expected_rule else 0):
-                    print(f"{name}: inline authoring returned {case_check.returncode}: {case_check.stderr}", file=sys.stderr)
-                    return 1
+            case_check = subprocess.run(
+                [sys.executable, script_path, "--check", str(case_spec)],
+                cwd=case_root, capture_output=True, text=True, encoding="utf-8",
+            )
+            if case_check.returncode != (2 if expected_rule == "correctness.spec-verify-malformed" else 0):
+                print(f"{name}: authoring returned {case_check.returncode}: {case_check.stderr}", file=sys.stderr)
+                return 1
             case_run = subprocess.run(
                 [sys.executable, script_path], cwd=case_root,
                 capture_output=True, text=True, encoding="utf-8",
