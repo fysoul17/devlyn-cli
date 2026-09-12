@@ -582,8 +582,10 @@ else:
 
             def before_barrier(handle, kind, info, size):
                 self.assert_ceased(self.handles[job.child.pid])
+                # Signaled bootstrap handles can precede removal from the job PID list.
+                wait_for(lambda: job.child.pid not in self.job_pids(handle))
                 initial.extend(self.job_pids(handle))
-                self.assertEqual(len(initial), 2)
+                self.assertEqual(set(initial), {job.target_pid, int((work / 'A.pid').read_text(encoding='utf-8'))})
                 self.assertTrue(self.kernel.SetEvent(gates['spawn']))
                 self.assertEqual(self.kernel.WaitForSingleObject(gates['attempted'], 8000), 0)
                 self.assertEqual((work / 'outcome').read_text(encoding='utf-8'), 'admitted')
@@ -622,7 +624,9 @@ else:
                     self.assertEqual(limits.BasicLimitInformation.ActiveProcessLimit, 0)
                     self.assertEqual(limits.BasicLimitInformation.LimitFlags, 0x2008)
                     self.assert_ceased(self.handles[job.child.pid])
-                    self.assertEqual(len(self.job_pids(handle)), 2)
+                    # Establish the exact starting members before testing admission limits.
+                    wait_for(lambda: job.child.pid not in self.job_pids(handle))
+                    self.assertEqual(set(self.job_pids(handle)), {job.target_pid, int((work / 'A.pid').read_text(encoding='utf-8'))})
                     if control:
                         limits.BasicLimitInformation.ActiveProcessLimit = 2
                     result = set_limit(handle, kind, info, size)
