@@ -1314,10 +1314,14 @@ switch (command) {
       log('\n🤖 Installing agents for all supported CLIs...', 'blue');
       const count = installSelectedCLITargets(Object.keys(CLI_TARGETS));
       log(`\n✅ Agents installed for ${count} CLI${count !== 1 ? 's' : ''}`, 'green');
-    } else if (subArg && CLI_TARGETS[subArg]) {
+    } else if (Object.keys(CLI_TARGETS).includes(subArg)) {
       // Install for a specific CLI
       installAgentsForCLI(subArg);
       log('\n✅ Done!', 'green');
+    } else if (subArg !== undefined) {
+      log(`Unknown CLI target: ${JSON.stringify(subArg)}`, 'yellow');
+      log(`Supported: ${Object.keys(CLI_TARGETS).join(', ')}, all`, 'dim');
+      process.exit(1);
     } else {
       // Auto-detect and install
       const detected = detectOtherCLIs();

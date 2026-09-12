@@ -138,6 +138,53 @@ m._compile(source + '\\n' + process.argv[3], filename);
     def roots(self):
         return [self.project / '.claude/skills', self.home / '.codex/skills', self.home / '.agents/skills', self.home / '.grok/skills']
 
+    def test_agents_invalid_target_preserves_files(self):
+        def snapshot(root):
+            return {str(p.relative_to(root)): (p.stat().st_mode, p.read_bytes() if p.is_file() else None)
+                    for p in root.rglob('*')}
+
+        for detected in (False, True):
+            for index, target in enumerate(('cdoex', '', 'constructor', '__proto__', 'toString')):
+                with self.subTest(detected=detected, target=target):
+                    case = self.case / f'invalid-{detected}-{index}'; case.mkdir()
+                    project = case / 'project'; project.mkdir()
+                    home = case / 'agent-home'; home.mkdir()
+                    if detected:
+                        (project / '.codex').mkdir(); (project / '.agents').mkdir()
+                    (project / 'keep.txt').write_bytes(b'project user bytes\r\n')
+                    for agent in ('.codex', '.agents', '.grok'):
+                        keep = home / agent / 'skills/user-skill/keep'
+                        keep.parent.mkdir(parents=True); keep.write_bytes(b'user bytes\x00')
+                    before = snapshot(case)
+                    env = {**self.env, 'DEVLYN_TEST_HOME': str(home)}
+                    result = run(['node', '--require', self.preload, self.package / 'bin/devlyn.js',
+                                  'agents', target], cwd=project, env=env, code=None)
+                    self.assertNotEqual(result.returncode, 0, result.stdout)
+                    output = (result.stdout + result.stderr).decode('utf-8')
+                    self.assertIn(json.dumps(target), output)
+                    for supported in ('codex', 'omp', 'pi', 'grok', 'all'):
+                        self.assertIn(supported, output)
+                    self.assertEqual(snapshot(case), before)
+
+    def test_agents_supported_and_automatic_targets(self):
+        cases = [([], False, set()), ([], True, {'.codex'}),
+                 (['all'], False, {'.codex', '.agents', '.grok'})]
+        cases += [([target], True, {directory}) for target, directory in
+                  (('codex', '.codex'), ('omp', '.agents'), ('pi', '.agents'), ('grok', '.grok'))]
+        for index, (arguments, detected, expected) in enumerate(cases):
+            with self.subTest(arguments=arguments, detected=detected):
+                case = self.case / f'valid-{index}'; case.mkdir()
+                project = case / 'project'; project.mkdir()
+                home = case / 'agent-home'; home.mkdir()
+                if detected:
+                    (project / '.codex').mkdir()
+                env = {**self.env, 'DEVLYN_TEST_HOME': str(home)}
+                run(['node', '--require', self.preload, self.package / 'bin/devlyn.js',
+                     'agents', *arguments], cwd=project, env=env)
+                installed = {p.name for p in home.iterdir() if (p / 'skills/.devlyn-install.json').is_file()}
+                self.assertEqual(installed, expected)
+                self.assertEqual((project / 'AGENTS.md').is_file(), bool(expected))
+
     def test_pack_install_reinstall_optional_stamps(self):
         self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']); installLocalSkill('devlyn:reap');")
         name = 'devlyn\uf03aresolve' if os.name == 'nt' else 'devlyn:resolve'
