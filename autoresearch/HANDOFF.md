@@ -1,12 +1,12 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-12 21:47 KST — **0155 delivered; 0156 preflight accepted, authoring screen failed.**
+Updated 2026-09-12 — **0156 delivered; 0157 scope note and one adherence smoke accepted.**
 Read this file, [NORTH-STAR](NORTH-STAR.md), then the current source and iteration.
 Current user instructions supersede older records. [PRINCIPLES](PRINCIPLES.md),
 [MISSIONS](MISSIONS.md) and [DECISIONS](DECISIONS.md) retain enduring constraints.
 Inspect Git state and live runs; do not replay unrelated cold-start suites.
 
-## START-HERE — 0156 sibling-aware authoring preflight
+## START-HERE — 0157 reuse the existing scope gate
 
 Latest owner instruction, 2026-09-12: **“오케이 그러면 1번부터 하나씩 검증해가며 진행해줘.”**
 The agreed sequence is benchmark pre-staged validation → ordinary small-request
@@ -19,7 +19,29 @@ Root implements directly; **no resolve invocation**. Review uses actual native
 substitute when Fable is unavailable. Root decides after evidence, without a
 unanimity requirement. No source or model-performance claim follows from advice.
 
-### 0156 source accepted — CI/delivery next
+### 0157 scope-gate authoring note — source accepted
+
+[0157](iterations/0157-authoring-scope-gate.md) connects check authoring to the
+existing BUILD_GATE `authorized_surface` gate, retaining stricter explicit file
+constraints and stating the phase/base-ref precondition. Only the common spec
+template note changes; the guard-validation sentence and Python/schema stay
+unchanged. Eighteen component cases and two auxiliary precondition/required-file
+controls match predictions. These verify the existing gate, not native reliability.
+Fable's actual 429 usage limit activates the authorized Opus 5 substitute;
+final Opus PASS_WITH_ISSUES / Grok PASS, root no in-scope CRITICAL/HIGH.
+Full lint PASS282.791s, scoped mirrors/whitespace and original guard-sentence
+preservation pass. One registered known-task native Codex draw PASS367.963s:
+all 18 outcomes match, including seven attributable annotation failures, with
+no duplicate whole-checkout scan, false block or retry. Original 0156 remains
+failed. Changed BUILD_GATE context and ambient skill warnings preclude causal,
+holdout or general semantic-improvement claims. No fixture checker is promoted.
+Source `.devlyn/0157-evidence.tar.gz`; inspect the receipt and separate
+`.devlyn/0157-delivery/` for current CI/delivery status before retrying anything.
+
+Active checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+0157 receipt `1ef874fd940bcd78c554baf8`, branch `codex/0157-authoring-scope`.
+
+### 0156 delivery COMPLETE
 
 [0156](iterations/0156-spec-authoring-preflight.md) fixes the actual ideate
 preflight rejecting template-style prose with valid sibling `spec.expected.json`.
@@ -41,9 +63,14 @@ warnings limit context-isolation claims. No full ideate/resolve run, general
 semantic improvement or model comparison is established. No fixture checker
 or template addition is promoted. Frozen 0140/0147 remain closed.
 
-Source `.devlyn/0156-evidence.tar.gz`; finish matching-source CI and delivery.
-Active checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-0156 receipt `4ffc705adfa9c741d9ab570e`, branch `codex/0156-semantic-authoring`.
+PR #25 merged accepted `03f07da1c790e6201f5c21f549b2c31a459170c6` into main
+`7b346ca82a773497b82a03678040434eaff5757a` at 2026-09-12T12:57:10Z.
+PR CI34694715840 and push CI34694713428 pass Linux/native Windows. Actual
+integration `96bdda36272b92890f02bc20691553e636b0a694` tree/parents match final
+merge; downloaded package/driver bytes and both OS identities match.
+Receipt `4ffc705adfa9c741d9ab570e` COMPLETE, owned refs removed, scratch CLEAN.
+Source `.devlyn/0156-evidence.tar.gz` remains immutable; delivery evidence is
+separate at `.devlyn/0156-delivery/`. No npm release.
 Broader semantic coverage and the matched bare/solo/pair comparison remain open.
 
 ### 0155 delivery COMPLETE
