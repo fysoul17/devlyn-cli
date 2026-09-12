@@ -699,8 +699,19 @@ else:
                 self.assertEqual(gone.wait(timeout=5), 0)
                 gone._handle.Close()
                 self.assertTrue(self.kernel.CloseHandle(self.handles.pop(gone.pid)))
-                self.assertFalse(self.kernel.OpenProcess(0x101000, False, gone.pid))
-                self.assertEqual(self.ctypes.get_last_error(), 87)
+
+                def gone_pid():
+                    process = self.kernel.OpenProcess(0x101000, False, gone.pid)
+                    if not process:
+                        self.assertEqual(self.ctypes.get_last_error(), 87)
+                        return True
+                    try:
+                        self.assert_ceased(process)
+                    finally:
+                        self.assertTrue(self.kernel.CloseHandle(process))
+                    return False
+
+                wait_for(gone_pid)
                 query, identity = kernel.QueryInformationJobObject, kernel.IsProcessInJob
                 rejected = []
 
