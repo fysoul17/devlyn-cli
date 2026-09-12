@@ -1,6 +1,7 @@
 """Temporary observation of the unchanged gone-PID fixture boundary."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import runpy
 import subprocess
@@ -24,7 +25,7 @@ def observe_setup(self):
 
     def launch(child, *args, **kwargs):
         initialize(child, *args, **kwargs)
-        if args[0][-2:] == ['-c', 'pass']:
+        if control == 'held' and args[0][-2:] == ['-c', 'pass']:
             handle = native_open(0x101001, False, child.pid)
             self.assertTrue(handle)
             held.append(handle)
@@ -39,7 +40,13 @@ def observe_setup(self):
         handle = native_open(access, inherit, pid)
         error = self.ctypes.get_last_error()
         if access == 0x101000:
-            record = {'pid': pid, 'handle': handle, 'open_error': error if not handle else None}
+            if control in ('live', 'non87'):
+                if handle:
+                    self.assertTrue(native_close(handle))
+                handle = native_open(access, inherit, os.getpid()) if control == 'live' else None
+                error = 5 if control == 'non87' else self.ctypes.get_last_error()
+            record = {'control': control, 'pid': pid, 'handle': handle, 'open_error': error if not handle else None,
+                      'injected_pid': os.getpid() if control == 'live' else None}
             if handle:
                 record['wait_result'] = self.kernel.WaitForSingleObject(handle, 0)
                 probes.add(handle)
@@ -62,11 +69,16 @@ def observe_setup(self):
 
 
 assert sys.platform == 'win32'
-suite = unittest.TestSuite([case('test_stale_list_gone_and_different_job_identity')])
-with patch.object(case, 'setUp', observe_setup):
-    result = unittest.TextTestRunner(verbosity=2).run(suite)
+results = []
+for control, repetitions in (('natural', 20), ('held', 1), ('live', 1), ('non87', 1)):
+    suite = unittest.TestSuite(case('test_stale_list_gone_and_different_job_identity') for _ in range(repetitions))
+    with patch.object(case, 'setUp', observe_setup):
+        result = unittest.TextTestRunner(verbosity=2).run(suite)
+    expected = 'owned process survived product teardown' if control == 'live' else '5 != 87'
+    accepted = result.wasSuccessful() if control in ('natural', 'held') else len(result.failures) == 1 and expected in result.failures[0][1]
+    results.append({'control': control, 'tests_run': result.testsRun, 'expected_outcome': accepted,
+                    'failures': [trace for _, trace in result.failures], 'errors': [trace for _, trace in result.errors]})
 Path('0150-observations.json').write_text(json.dumps({
     'driver_sha256': hashlib.sha256(driver.read_bytes()).hexdigest(),
-    'tests_run': result.testsRun, 'failures': len(result.failures), 'errors': len(result.errors),
-    'observations': observations}, indent=2) + '\n', encoding='utf-8')
-raise SystemExit(not result.wasSuccessful())
+    'results': results, 'observations': observations}, indent=2) + '\n', encoding='utf-8')
+raise SystemExit(not all(r['expected_outcome'] for r in results))
