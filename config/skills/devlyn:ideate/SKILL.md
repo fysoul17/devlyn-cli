@@ -110,7 +110,7 @@ Structural lint (inline check, no script needed):
 After lint passes:
 1. Write `<spec-dir>/<id>-<slug>/spec.md` (the spec).
 2. Generate `<spec-dir>/<id>-<slug>/spec.expected.json` following `references/spec-template.md` § "Sibling file: `spec.expected.json`" for constraint coverage, diff scope and guard controls.
-3. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` to validate the verification carrier shape, supported `complexity` frontmatter, and any present actionable solo-headroom hypothesis; if the spec uses a legacy inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`. If exit 2, fix the carrier/frontmatter/hypothesis and re-run.
+3. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` to validate the actual spec's carrier shape and supported `complexity` frontmatter. Sibling `spec.expected.json` takes precedence over the legacy inline `## Verification` JSON carrier; any present actionable solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`. If exit 2, fix the file named in the error and re-run.
 4. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` to validate sibling `spec.expected.json` against `_shared/expected.schema.json` plus sibling spec `complexity` frontmatter and any present actionable solo-headroom hypothesis; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`. If exit 2, fix the JSON/frontmatter/hypothesis and re-run.
 5. Print: `spec ready — /devlyn:resolve --spec <spec-path>`.
 

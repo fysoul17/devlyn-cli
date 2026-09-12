@@ -1,12 +1,12 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-12 20:10 KST — **0154 applied locally; 0155 BUILD_GATE overlap source accepted.**
+Updated 2026-09-12 21:47 KST — **0155 delivered; 0156 preflight accepted, authoring screen failed.**
 Read this file, [NORTH-STAR](NORTH-STAR.md), then the current source and iteration.
 Current user instructions supersede older records. [PRINCIPLES](PRINCIPLES.md),
 [MISSIONS](MISSIONS.md) and [DECISIONS](DECISIONS.md) retain enduring constraints.
 Inspect Git state and live runs; do not replay unrelated cold-start suites.
 
-## START-HERE — 0155 canonical/literal BUILD_GATE overlap
+## START-HERE — 0156 sibling-aware authoring preflight
 
 Latest owner instruction, 2026-09-12: **“오케이 그러면 1번부터 하나씩 검증해가며 진행해줘.”**
 The agreed sequence is benchmark pre-staged validation → ordinary small-request
@@ -19,7 +19,34 @@ Root implements directly; **no resolve invocation**. Review uses actual native
 substitute when Fable is unavailable. Root decides after evidence, without a
 unanimity requirement. No source or model-performance claim follows from advice.
 
-### 0155 source accepted — CI/delivery next
+### 0156 source accepted — CI/delivery next
+
+[0156](iterations/0156-spec-authoring-preflight.md) fixes the actual ideate
+preflight rejecting template-style prose with valid sibling `spec.expected.json`.
+`--check <actual-spec>` now selects the sibling before legacy inline content,
+validates against the actual named Markdown and fails closed on a bad sibling.
+No command execution/staging, schema flag or generated-runtime change.
+All 28 before/after controls, four hypothesis controls, subtraction/scope checks
+and full lint PASS284.247s. Native Fable PASS_WITH_ISSUES / Grok PASS on source
+and final wording; root zero in-scope CRITICAL/HIGH. Standalone
+`--check-expected` still uses its existing `spec.md` convention.
+
+The separately registered extracted authoring screen is **FAILED_PROPOSAL**:
+one native Codex draw, 354.966s, all ten shapes valid but all ten blocked by its
+own scope guard on runner-owned `.devlyn/pipeline.state.json`. No seven-case
+semantic-detection credit. Draw 2 **NOT_RUN**, per first-failure stop. A root
+diagnostic deleting only that call from a copy passes 3 allowed / rejects 7
+violations; original outcome and bytes stay unchanged. Ambient skill-load
+warnings limit context-isolation claims. No full ideate/resolve run, general
+semantic improvement or model comparison is established. No fixture checker
+or template addition is promoted. Frozen 0140/0147 remain closed.
+
+Source `.devlyn/0156-evidence.tar.gz`; finish matching-source CI and delivery.
+Active checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+0156 receipt `4ffc705adfa9c741d9ab570e`, branch `codex/0156-semantic-authoring`.
+Broader semantic coverage and the matched bare/solo/pair comparison remain open.
+
+### 0155 delivery COMPLETE
 
 [0155](iterations/0155-build-gate-overlap.md) addresses a current canonical/literal
 repeat-scheduling requirement in BUILD_GATE and its parent overview. Only proven
@@ -31,11 +58,14 @@ prompts, scope/mirror and three runner timeout controls pass. Final native Fable
 PASS_WITH_ISSUES and Grok PASS, zero in-scope CRITICAL/HIGH. Earlier NEEDS_WORK
 advice and first mirror failure remain preserved. Retained advisory limits are
 in the iteration. No worker-adherence or speed improvement is yet measured.
-Source `.devlyn/0155-evidence.tar.gz`; finish matching-source CI and delivery
-before starting the next bounded semantic-coverage change.
-
-Active checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-0155 receipt `c0d5a372158bf1964fd8d14d`, branch `codex/0155-build-gate-overlap`.
+PR #24 merged accepted `8988f7d716917cf1cacc6a1b7153ec3e3f6386e5` into main
+`6676f59920d62b0359d730a8ab44ff7739c2f953` at 2026-09-12T11:24:44Z.
+Receipt `c0d5a372158bf1964fd8d14d` COMPLETE, owned refs removed, scratch CLEAN.
+PR CI34690530002 and push CI34690527965 pass POSIX/native Windows. Actual
+integration `b03a9c4893316d8236d2007feb2e75fc874acd2d` tree/parents match final
+merge; changed package members and both OS identities match accepted source.
+Immutable source `.devlyn/0155-evidence.tar.gz`; `.devlyn/0155-delivery/` remains
+separate. No npm release or measured speed improvement.
 
 ### 0154 delivery complete and customer patches applied
 
