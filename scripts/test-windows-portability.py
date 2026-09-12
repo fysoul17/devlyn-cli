@@ -636,6 +636,7 @@ else:
                     self.assertEqual(readback.BasicLimitInformation.ActiveProcessLimit, 2 if control else 0)
                     self.assertTrue(self.kernel.SetEvent(gates['a_exit']))
                     self.assertEqual(self.kernel.WaitForSingleObject(a, 8000), 0)
+                    wait_for(lambda: int((work / 'A.pid').read_text(encoding='utf-8')) not in self.job_pids(handle))
                     self.assertTrue(self.alive(b))
                     self.assertTrue(self.kernel.SetEvent(gates['spawn']))
                     self.assertEqual(self.kernel.WaitForSingleObject(gates['attempted'], 8000), 0)
