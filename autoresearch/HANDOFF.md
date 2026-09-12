@@ -1,12 +1,12 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-12 16:06 KST — **RESUMED: 0149 delivered; 0151 source accepted; delivery next.**
+Updated 2026-09-12 17:25 KST — **0152 source accepted; delivery pending.**
 Read this file, [NORTH-STAR](NORTH-STAR.md), then the current source and iteration.
 Current user instructions supersede older records. [PRINCIPLES](PRINCIPLES.md),
 [MISSIONS](MISSIONS.md) and [DECISIONS](DECISIONS.md) retain enduring constraints.
 Inspect Git state and live runs; do not replay unrelated cold-start suites.
 
-## START-HERE — 0151 generated pure-design verification
+## START-HERE — 0152 missing generated source integrity
 
 Latest owner instruction: **“autoresearch/HANDOFF.md 이어ㅓ서 진행”**.
 This resumes the 2026-09-12 14:55 parking. The earlier 16:00 stop time had been
@@ -50,30 +50,44 @@ CI reference owner remains unknown. Existing optimized-Python timeout/failure
 cleanup LOW limits stay explicit. Receipt `fbe3985ee021a2112645ac15` COMPLETE;
 `.devlyn/0150-evidence.tar.gz` and receipt-bound bytes remain immutable.
 
-### 0151 source accepted — delivery follows existing receipt
+### 0151 delivery COMPLETE
 
-[0151](iterations/0151-generated-pure-design.md) is on
-`codex/0151-generated-pure-design`, baseline main
-`f50ce5b9c269fc8aa8aea7ace7a5042e8aafbb72`, prospective receipt
-`8f5f5ba32515beadb1f4ed47`. Root accepts explicit inline pure-design declaration,
-found/staged distinction, stale removal and existing probe/result/scope flow.
-No resolve invocation. Source acceptance/commit identity lives in the receipt.
+[0151](iterations/0151-generated-pure-design.md) / [PR #20](https://github.com/fysoul17/devlyn-cli/pull/20)
+merged accepted `aab93fae2ef337d6c8bf751a1cf7c84ad1f69945` into main
+`a301aa4dd57df4e0552cd51ed004fed3740a0430` at 2026-09-12 16:23 KST.
+Receipt `8f5f5ba32515beadb1f4ed47` is **COMPLETE**; owned local/remote refs
+are removed and scratch is clean. Source evidence remains immutable.
 
-All 21 final CLI controls match predictions; checker/bootstrap self-tests,
-corrected UTF-8-disabled caller smoke, subtraction and scope controls pass.
-Final full lint **PASS**, 333.137s, final bytes unchanged. The original lint
-failure is preserved. Main source and final small-delta reviews both complete:
-Fable **PASS_WITH_ISSUES**, Grok **PASS**, zero established CRITICAL/HIGH in the
-scoped repair. Exact native identities, zero observed tools, canonical source
-hashes and skill mirror parity are bound in `.devlyn/0151/` and the immutable
-`.devlyn/0151-evidence.tar.gz`. Remaining LOW limits are in the iteration.
+All 21 final CLI controls, checker/bootstrap self-tests, UTF-8-disabled caller
+smoke, subtraction/scope controls and full lint (333.137s) pass. Native Fable
+**PASS_WITH_ISSUES** and Grok **PASS** full-source/final-delta reviews found no
+established CRITICAL/HIGH in scope. [PR CI 34680286855](https://github.com/fysoul17/devlyn-cli/actions/runs/34680286855)
+and push CI `34680284277` pass POSIX/native Windows. Actual PR integration
+source `dbc7a90063a87a01382d625a3655b1ea8f3ecb88` and downloaded driver hash
+`c8984d8501d0761a8ea0b71a19e1d0c9c81c09dae79b6f37f8d58c94bd6fc698` match;
+POSIX/Windows package identities agree. Evidence: `.devlyn/0151-evidence.tar.gz`
+and `.devlyn/0151-delivery/`. No npm release.
 
-Next: existing receipt owns PR creation/reuse, actual integration-source
-POSIX/native Windows checks, protected merge and owned cleanup. Do not amend
-accepted source or evidence. No npm release. After 0151 delivery, inspect the
-reproduced pre-existing missing-generated-file gate no-op as a separate bounded
-item; this is not yet a full-pipeline false-PASS finding or an implemented 0152.
-Benchmark-prestaged oracle validation remains another separate follow-up.
+### 0152 source ACCEPTED — delivery pending
+
+[0152](iterations/0152-missing-generated-source.md) repairs missing generated
+criteria at the existing integrity guard on `codex/0152-missing-generated-source`,
+receipt `8d5a56901c2a69c495425638`. Root accepts **PASS_WITH_ISSUES**: all 26 missing
+source controls now exit 1 with the declared path, one CRITICAL finding and no
+commands/results refresh; the other 12 controls retain their behavior. Shipped
+regressions cover required-probe BUILD_GATE, benchmark staging and VERIFY reuse.
+
+Checker/bootstrap self-tests, subtraction/scope checks and full lint (269.115s)
+pass. The first lint's ignored `.claude` mirror mismatch was corrected; its failure
+is retained. Native Fable 5.1 **PASS_WITH_ISSUES** and Grok 4.6 **PASS** independent
+final source reviews found no in-scope CRITICAL/HIGH. A LOW generic fix-hint advisory
+remains. Source evidence is `.devlyn/0152-evidence.tar.gz`; delivery and hosted
+POSIX/native Windows CI use `.devlyn/0152-delivery/` and the existing receipt.
+
+Next: finish exact-source integration verification, merge and owned-resource
+cleanup. The finding is an early checker omission; a full-pipeline false PASS
+has not been demonstrated. Existing downstream source/hash requirements stay.
+Benchmark-prestaged oracle grammar remains a separate follow-up.
 
 Actual research checkout is the retained standalone clone:
 `/Users/aipalm/.local/share/nx01/iter0144/core-research`.
@@ -86,7 +100,7 @@ The original checkout's intentional HANDOFF WIP is preserved in
 `.devlyn/0151/original-handoff.md` with its hash before any synchronization.
 
 The separate benchmark-prestaged oracle-validation follow-up remains open;
-do not bundle it into 0151. All four broader priorities below remain **OPEN**.
+do not bundle it into 0152. All four broader priorities below remain **OPEN**.
 A16, 0124/0125/0128 and frozen 0140/0147 comparisons remain parked/closed.
 No restart, regrade, superiority claim or npm release is implied.
 
