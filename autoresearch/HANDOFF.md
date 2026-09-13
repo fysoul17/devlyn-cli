@@ -1,14 +1,16 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0169 actual comparison admitted; draws pending**.
+Updated 2026-09-14 KST — **0169 failed comparison assessed; report delivery pending**.
 
-## START-HERE — fulfill the omitted comparison
+## START-HERE — 0169 infrastructure result
 
-The user corrected “비교실험은 왜 안했지?” after0168. Root had incorrectly narrowed the requested Fable replacement/comparison completion to static review.0168/PR37 review delivery is complete, but the user's comparative-execution goal remained unmet. Do not treat static model PASS as comparative execution or use frozen-history rules to skip a newly authorized study.
+[0169](iterations/0169-actual-opus-comparison.md) is **INCOMPLETE_INFRASTRUCTURE**. Bare returned in159.367s; solo archived `BLOCKED:gate-scratch-permission` in823.405s, then its parent hit the usage limit. All seven native BUILD_GATE commands failed before checks because the registered scratch path was outside the worker workspace. The pre-registered infrastructure stopping rule leaves mandatory Opus pair **NOT_RUN**. Do not describe this as a complete three-arm comparison or pair-value evidence.
 
-[0169](iterations/0169-actual-opus-comparison.md) prospectively registers fresh bare → full solo → full Opus pair on the same original pytest15005 task. Codex Astra/high fixed; exact Opus5 mandatory OTHER, Grok4.6 independent advice. One draw per arm, same1800s native bound; no old patch injection or winning-task search. Known task, n=1, fixed order: ties/losses valid and timing delta observational only.
+The returned bare/solo products both pass69/69 behavior checks, all exact external gates and meaningful original-source negatives (98/32 assertion failures); original+new suites343/213 pass. Actual blinded Opus5 and Grok4.6 accept both; root accepts the common product floor. External source PASS does not regrade the failed pipeline. Registration46 inputs, native raw streams, final report and process/invocation evidence rehash unchanged; normal acceptance rejects solo. Parent usage is missing, so full solo output/cost remain UNKNOWN.
 
-Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch `codex/0169-actual-opus-comparison`; receipt `.git/devlyn-completion/a406ea24918e5c68f8c8ec9b/receipt.json`. Evidence/registration `.devlyn/0169/`. Source/environment and positive/negative gates qualified; actual Opus/Grok design advice resolved before admission. Execute native arms serially, inspect actual route/product evidence, report, deliver and clean owned scratch. No root task-source edits, outer retry or global engine-pin change.
+Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch `codex/0169-actual-opus-comparison`; owner receipt `.git/devlyn-completion/a406ea24918e5c68f8c8ec9b/receipt.json`. Evidence `.devlyn/0169/ROOT-RESULT.json`; delivery/cleanup status `.devlyn/0169-delivery/FINAL.md` once written supersedes this pending line. Finish only accepted report delivery and owned scratch cleanup. Source/Git/recovery data stay retained; no product publish, old draw restart, new comparison, task shopping, global pin change or release is authorized by this closeout. Any fresh measurement first needs actual worker write-path qualification.
+
+The user's0168 correction remains binding: static substitute reviews did not fulfill actual comparison.0169 supplies two real task draws and a concrete execution blocker, not a success claim.0167/0168 history is unchanged.
 
 0168 **REVIEW DELIVERY COMPLETE, COMPARISON NOT DONE**: PR37 accepted0d018a6ac6b2688710aeb6abbc10b5191cce2230 merged35d5b0170ddad4a8bdc1e5ca6b990f5f64b58837. Actual Opus/Grok static PASS, CI/package audit/ref and scratch cleanup COMPLETE; `.devlyn/0168-delivery/FINAL.md`. Its final sentence that separated comparative execution from the requested closure was a scope error, superseded by this correction. Original0167 BLOCKED/429 and all historical archives remain unchanged.
 
