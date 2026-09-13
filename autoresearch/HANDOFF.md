@@ -1,29 +1,59 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0166 source accepted; CI/delivery pending. 0165 COMPLETE**.
+Updated 2026-09-13 KST — **0167 draws closed; report acceptance/delivery pending**.
 
 ## START-HERE — authorized sequential core work
 
-Latest user instruction: **“오케이 그러면 제안대로 진행 차근차근 하나씩 끝까지.”**
-Root implements directly without resolve; independent actual Fable5.1 (Opus5
-when unavailable) and Grok4.6 reviews remain read-only. Complete and deliver each
-bounded item before the next. Do not turn open superiority goals into claims.
+User authorized **“제안대로 진행 차근차근 하나씩 끝까지.”** Root works directly;
+actual Fable5.1 (Opus5 when unavailable) and Grok4.6 advise read-only; root decides.
+0165/0166 are delivered. Small-task routing reconciliation was already applied in
+0154 and remains preserved. Do not turn the remaining quality frontier into a win.
 
 Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch
-`codex/0166-literal-file-constraints`, prospective receipt
-`.git/devlyn-completion/3512513c0efd116a18ef82b0/receipt.json`.
-Read [0166](iterations/0166-literal-file-constraints.md) and `.devlyn/0166/`.
-Root found two callers of the lossy changed-files reader: literal exclusions
-and PLAN scope. Candidate preserves Git paths, includes rename sources,
-constrains external patches to canonical a/b prefixes and makes errors visible.
-Live/external15-path controls pass; baseline missed8/11. Full checker tests and
-four subtraction controls pass their predictions. Full lint PASS324.241/272.645s;
-final bootstrap-only no-ext-diff fix then passes complete bootstrap self-test.
-Final native Fable/Grok full and delta reviews have no HIGH/CRITICAL; root
-PASS_WITH_ISSUES. Exact-source CI/merge/cleanup are still pending: consult
-`.devlyn/0166-delivery/FINAL.md` and receipt before resuming. Fable5.1 recovery
-is verified by actual native calls. No native authoring/full-pipeline gain is
-established by these deterministic controls.
+`codex/0167-fresh-matched-comparison`, receipt
+`.git/devlyn-completion/f5479fb1e70af22e63b67700/receipt.json`.
+Only HANDOFF and [0167](iterations/0167-fresh-matched-comparison.md) are tracked
+changes. All3 native draws have returned and observed owned writers are quiet.
+Bare139.321s and full solo1618.168s pass the external product floor; solo also
+passes the canonical archived normal-run acceptance validator. All3 returned
+patches pass69 behavior cases and all exact gates; tests249/188/263 respectively.
+Required Fable pair returns at946.205s BLOCKED: HTTP429 limit,0output/modelUsage{}.
+Its primary/mechanical checks pass but the success validator rejects it. This is
+time-to-block, not completed paired latency. Pair value remains UNKNOWN.
+
+Evidence `.devlyn/0167/`; registration SHA256
+13c022ae13d37a3631a98d742fa7cda55654188fdad7119209a3c006d8714991.
+Source pytest15005 pinned ff42276a55b99a315c304db882edf0e69de9fae3;
+other candidate bodies and reserved14995 remain unopened. All preparation and
+runtime failures are retained. No rerun, root product repair, cell substitution,
+upstream contact/PR or npm release. Standing Opus5 advisory fallback after Fable
+quota is disclosed; external Opus/Grok source advice does not replace the blocked
+required pair. Both accept the3 blinded source patches and correctly classify
+all4 source controls; root accepts with low notes, no HIGH/CRITICAL source finding.
+
+Next: final report/evidence review, immutable archive, scoped commit/PR, exact
+Linux/Windows CI/source/package audit, merge and owned generated-cache cleanup.
+Retain all source/Git; move only inventoried owned hook virtualenvs and generated
+mypy/Ruff/pytest caches into receipt scratch after writers stop. Source fixtures
+are private study evidence, with no upstream delivery. Final delivery status will
+live in `.devlyn/0167-delivery/FINAL.md`; no new task before this handoff completes.
+
+Full-route whole output/cost remain UNKNOWN: structured output3497/36340/33895,
+plus unsplit primary-judge counters50543/50045. No general speed/quality or causal
+patch-effect claim. Remaining frontier: available-capacity fresh pair evidence,
+actual phase writable-path qualification and rejected-transition dispatch control.
+
+0166 **COMPLETE**: PR35 accepted d207e72d0f03f434383970e79fa586b928fa0b6c,
+merged ca4cefe4d88c443783c18068833c1e237cc9a743. Receipt
+3512513c0efd116a18ef82b0 COMPLETE, Linux/Windows CI/source/package identity pass,
+owned refs removed, scratch CLEAN. See `.devlyn/0166-delivery/FINAL.md`.
+Immutable121-member archive SHA256
+`f1073ff06c549701625c9d93bfe02cd39aef9876f4141ce9309e8b76949261b0`.
+Source repairs literal Git-path enumeration and authoring; no broad native gain.
+The ROOT-DECISION scope-limit phrase “path-surface normalization” is not a
+confirmed defect: actual path_matches_surface uses exact/prefix/brace matching,
+without stripping/replacing file paths. Do not invent a normalization task.
+
 
 0165 **COMPLETE**: PR34, accepted8906683524b643f1fc4047b18dc6e462c3c48e21,
 mergeee9f185a6b4e564ae3b29cbd547ed814d5687792; receipt
