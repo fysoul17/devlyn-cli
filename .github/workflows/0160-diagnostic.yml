@@ -1,0 +1,39 @@
+name: 0160 native cessation diagnosis
+on:
+  push:
+    branches: [codex/0160-windows-bootstrap-cessation]
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download exact diagnostic source
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, urllib.request
+          identities = {}
+          for name in ('scripts/test-windows-portability.py', 'scripts/diagnose-0160.py', 'config/skills/_shared/platform-support.py'):
+              url = 'https://raw.githubusercontent.com/' + os.environ['GITHUB_REPOSITORY'] + '/' + os.environ['GITHUB_SHA'] + '/' + name
+              data = urllib.request.urlopen(url, timeout=30).read()
+              path = pathlib.Path(name)
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_bytes(data)
+              identities[name] = hashlib.sha256(data).hexdigest()
+          pathlib.Path('0160-inputs.json').write_text(json.dumps({'source_sha': os.environ['GITHUB_SHA'], 'files': identities}, indent=2), encoding='utf-8')
+      - name: Observe enrollment failure
+        shell: pwsh
+        run: python scripts/diagnose-0160.py 2>&1 | Tee-Object -FilePath 0160-native.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 0160-cessation-observations
+          path: |
+            0160-observations.json
+            0160-native.log
+            0160-inputs.json
+          if-no-files-found: error
