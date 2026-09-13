@@ -1,27 +1,39 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0159 stopped for preparation failure; products verified**.
-Read [NORTH-STAR](NORTH-STAR.md), [0159](iterations/0159-real-task-comparison.md)
-and this checkout's actual completion receipt. Current user instructions prevail.
+Updated 2026-09-13 KST — **0160 fixes Windows bootstrap cessation**.
+Read [NORTH-STAR](NORTH-STAR.md), [0160](iterations/0160-windows-bootstrap-cessation.md)
+and the actual completion receipt. Current user instructions prevail.
 [PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md), [DECISIONS](DECISIONS.md) bind.
 
 ## START-HERE — current delivery and result
 
-Latest user: “오케이 그러면 이어서 진행해줘봐.” This authorized the next harder
-real-task comparison after0158. Root research preparation is direct; actual
-Fable5.1/Grok4.6 read-only advice remains default, Opus5 on actual Fable unavailability.
-Current Fable probe returned429; actual Opus/Grok final design and source reviews
-passed. Root decides from evidence; no unanimity gate or source rescue.
+Latest user: “계속 진행”. Root directly repairs the Windows enrollment failure
+observed during0159 delivery; actual Fable5.1/Grok4.6 advise independently and
+root decides. No root resolve run or frozen comparison restart.
 
-Active retained checkout:
-`/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Owner receipt `.git/devlyn-completion/02105b2da7d861e3226f4313/receipt.json`;
-task branch `codex/0159-real-task-comparison` until safe delivery cleanup.
-This committed record precedes external delivery. Reobserve receipt and
-`.devlyn/0159-delivery/` for accepted SHA, PR, matching-source CI and cleanup.
-COMPLETE means continue from clean main, not recreate the task branch.
-The original `/Users/aipalm/Documents/GitHub/devlyn-cli` has unrelated WIP in
-`.gitignore`, `autoresearch/HANDOFF.md`, `.playwright-mcp/`; preserve it unchanged.
+Retained checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`;
+receipt `.git/devlyn-completion/9d0eba4bcbf942d4b5ed084a/receipt.json`, branch
+`codex/0160-windows-bootstrap-cessation` until safe cleanup. This committed record
+precedes delivery; reobserve receipt and `.devlyn/0160-delivery/` for accepted SHA,
+PR, exact-source CI and cleanup. COMPLETE means continue from clean main.
+Original `/Users/aipalm/Documents/GitHub/devlyn-cli` WIP in `.gitignore`,
+`autoresearch/HANDOFF.md`, `.playwright-mcp/` remains untouched.
+
+Native200 baseline:30 cached-code/unsignaled observations after Popen.wait,
+24 cessation assertion failures,12 secondary cleanup errors. Replace that cached
+wait with bounded native handle waiting, preserving timeout and close behavior.
+Native200 candidate: zero failures/errors. Real-process regression: baseline
+fails both cessation/timeout obligations; candidate passes. This closes the
+reproduced path, not arbitrary native API failure or a speed/quality comparison.
+Final reviews/checks/raw results live in `.devlyn/0160/`; source archive and
+separate delivery records retain the final acceptance boundaries.
+
+0159 delivery COMPLETE: PR28 merged accepted0607dc1 into
+8d8c59a2f85d316a7212a8dea693e2731c7f5f30. Receipt02105b2da7d861e3226f4313 COMPLETE,
+owned refs removed and scratch CLEAN. PR Linux/Windows passed; push Windows
+first failed enrollment cessation then passed one rerun. Both outcomes are
+retained in `.devlyn/0159-delivery/`, and motivated0160. Original0159 research
+verdict below is unchanged.
 
 ## 0159 — actual pytest lifecycle bug
 
