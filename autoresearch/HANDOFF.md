@@ -1,46 +1,63 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0161 validates project gate preparation**.
-Read [NORTH-STAR](NORTH-STAR.md), [0161](iterations/0161-project-gate-preparation.md)
+Updated 2026-09-13 KST — **0162 narrows unrepairable BUILD_GATE dispatch**.
+Read [NORTH-STAR](NORTH-STAR.md), [0162](iterations/0162-unrepairable-gate-dispatch.md)
 and the actual completion receipt. Current user instructions prevail.
 [PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md), [DECISIONS](DECISIONS.md) bind.
 
 ## START-HERE — current delivery and result
 
-Latest user: “오케이 계속 진행”. Root directly validates preparation after0159;
-actual Fable5.1/Grok4.6 advise independently, root decides. No model task, root
-resolve run, frozen comparison restart or production harness change.
+Latest user: “오케이 계속.” Root directly addresses the observed0159 repair
+worker that spent52.005s confirming prohibited missing tools and changed no
+product source. Actual Fable5.1/Grok4.6 advise; root decides, no unanimity gate.
 
 Retained checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`;
-receipt `.git/devlyn-completion/73d30959b3f411d8c463ec11/receipt.json`, branch
-`codex/0161-project-gate-preparation` until cleanup. This record precedes delivery;
-reobserve receipt and `.devlyn/0161-delivery/` for accepted SHA, PR, CI and cleanup.
+receipt `.git/devlyn-completion/bd8f368bce65a7433e68f9cf/receipt.json`, branch
+`codex/0162-unrepairable-gate-dispatch` until cleanup. This record precedes delivery;
+reobserve receipt and `.devlyn/0162-delivery/` for accepted SHA, PR, CI and cleanup.
 COMPLETE means continue from clean main. Original project WIP in `.gitignore`,
 `autoresearch/HANDOFF.md`, `.playwright-mcp/` remains untouched.
 
-0161 reproduced a second environment trap: combined dev+typing tools encounter
-NumPy stub syntax incompatible with the project's mypy Python3.10 target. Actual
-project pre-commit isolated tool environments pass original source. Frozen gold
-passes48 behavior checks but fails type/format; it remains frozen and cannot
-qualify a new fully gated comparison. Separately named preparation calibration
-uses a typed dynamic factory lookup: type/lint/format, existing58tests(+1skip),
-48 behavior checks and whole default pre-commit all pass without hook source edits.
-This is preparation evidence, not a model or performance comparison. Final
-Fable5.1/Grok4.6 PASS; initial invalid Fable response retained. Root raw audit PASS.
-Immutable `.devlyn/0161-evidence.tar.gz` (115 members), SHA256
-`d5e6ab3e315c22780d92daad0720cb1c40d687e9d9ad511b1c7c18635e5121f9`.
-Scratch CLEAN (563747391 logical bytes removed); hook source/Git retained separately.
-Environments were cleaned: rebuild from retained versions/routes before use.
-Follow0161's admission requirements before any fresh task. Preserve environment
-separation, exact commands, dependency versions and original/calibration identity.
+0162 changes only the parent FAIL branch and tracked mirror. A same-invocation
+probe, unchanged base-required external tool and explicit prohibition on every
+authorized supply route permit a parent halt before repair. Uncertainty/product
+failures/available routes retain repair. Mixed findings remain visible/unrepaired;
+phaseFAIL, raw streams and sealed manifests are not rewritten. No new schema,
+classification, phase, detector or installer. Root PASS_WITH_ISSUES after actual
+Fable NEEDS_WORK(MEDIUM/LOW) and Grok PASS(MEDIUM/LOW); zero final CRITICAL/HIGH.
+
+Registered extracted native Codex gpt-6-astra/high old→candidate screen: existing
+9/12 target decisions, candidate12/12;3 prohibited-tool cases switch REPAIR→HALT,
+9 controls retain REPAIR. One session/arm, supplied facts, not actual environment
+probe/dispatch/fullresolve.31.369s/26.375s are descriptive response times, not
+saved time. Schema-fixed FAIL/round0 earn no behavior-preservation credit.
+Actual full parent behavior and successful-resolution speed remain unproved.
+Initial local lint mirror failure retained; final full lint PASS318.525s.
+Immutable archive `.devlyn/0162-evidence.tar.gz`:67 members, SHA256
+`012f8eec71b457d127f8f92e59fc80167afe5580d66410654608c68b05e08501`. Cleanup/delivery: inspect the receipt and final delivery record.
+
+Next bounded test must exercise actual parent probe discovery and terminal
+evidence with product controls; do not claim dispatch savings from supplied-fact
+answers. No frozen0159 replay/regrade, reserved14995 opening or winning-task search.
+All earlier task/source boundaries below remain binding.
+
+0161 delivery COMPLETE: [PR30](https://github.com/fysoul17/devlyn-cli/pull/30),
+acceptedbdb398a merged693cc684a8104613ea1f718a32c6f8438283fdb1;
+receipt73d30959b3f411d8c463ec11 COMPLETE, Linux/Windows PR+push CI passed,
+source/package identity verified, owned refs removed. Isolated project gate
+preparation passes original source and separate new calibration; original gold
+still fails type/format and stays frozen. [0161](iterations/0161-project-gate-preparation.md)
+owns preparation requirements. Its115-member archive SHA256
+`d5e6ab3e315c22780d92daad0720cb1c40d687e9d9ad511b1c7c18635e5121f9` is unchanged.
+563747391 disposable bytes cleaned, hook source/Git retained. Rebuild and validate
+actual pinned environments/commands before any future task admission.
 
 0160 delivery COMPLETE: PR29 merged accepteddb9bc97 as
 c9a2d99d80bbe99894696ceaddeb71a70c44d735; receipt9d0eba4bcbf942d4b5ed084a COMPLETE,
-owned refs removed, scratch CLEAN. Final PR/push Linux+Windows passed; package
-and source identity verified. Native cached-code cessation baseline200 had24
-assertion failures; candidate200 zero. Actual Fable/Grok final reviews pass.
-[0160](iterations/0160-windows-bootstrap-cessation.md) and its separate delivery
-records retain the full evidence and limits; no general superiority claim.
+owned refs removed, scratch CLEAN. PR/push Linux+Windows passed, source/package
+identity verified. Native cached-code cessation baseline200 had24 assertion
+failures; candidate200 zero. [0160](iterations/0160-windows-bootstrap-cessation.md)
+retains evidence and limits; no general superiority claim.
 
 0159 delivery COMPLETE: PR28 merge8d8c59a2f85d316a7212a8dea693e2731c7f5f30;
 receipt02105b2da7d861e3226f4313 COMPLETE. Original research verdict below remains.
