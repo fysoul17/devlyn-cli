@@ -45,12 +45,23 @@ timeout assertions; candidate passes both, including handle closure. This
 controlled state checks the barrier; natural observations independently establish
 its producer. Both original and candidate source hashes were verified.
 
-Local portability passes35 tests with17 native-only skips. Independent actual
-Fable5.1 design review supports the replacement; Grok4.6's requested native
-smoking gun is satisfied. Root retains existing explicit kill-error behavior;
-the observed cached-code repair does not establish cleanup after arbitrary API
-failure. Final source review, full checks and delivery evidence are recorded
-separately under `.devlyn/0160/` and `.devlyn/0160-delivery/`.
+Local portability passes35 tests with17 native-only skips; full local lint passes.
+Actual Fable5.1 final source review APPROVE (76.911s), Grok4.6 PASS (153.791s);
+native identity, prompt/output hashes and zero tool calls verified. Root accepts
+PASS_WITH_ISSUES: no CRITICAL/HIGH/MEDIUM; existing exception-context behavior
+and the regression's5-second timeout cost are nonblocking advisories. Original
+kill failures still propagate; arbitrary native API-failure cleanup is not proved.
+
+Intermediate CI34728035489 passed native Windows but failed POSIX mirror parity:
+root initially pushed the canonical fix before its tracked installed mirror.
+The subsequent commit includes identical bytes in both; raw failure is retained.
+Final accepted-source PR/CI delivery remains separate.
+
+Immutable `.devlyn/0160-evidence.tar.gz` contains51 byte-verified members, SHA256
+`dec2655b68b3dded1d6fe3d68a0760fe97326fff30df09c7064d590f5626ed70`.
+Owned scratch CLEAN (1471024 logical bytes removed); source/Git and necessary
+raw records retained. Current delivery lives in `.devlyn/0160-delivery/`, receipt
+`9d0eba4bcbf942d4b5ed084a`. Follow [HANDOFF](../HANDOFF.md) and that receipt.
 
 **No guesswork / No workaround:** measured native signal, no test sleep or
 weakened assertion. **No overengineering / Optimized:** replace the existing wait;

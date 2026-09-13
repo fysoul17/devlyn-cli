@@ -25,8 +25,10 @@ wait with bounded native handle waiting, preserving timeout and close behavior.
 Native200 candidate: zero failures/errors. Real-process regression: baseline
 fails both cessation/timeout obligations; candidate passes. This closes the
 reproduced path, not arbitrary native API failure or a speed/quality comparison.
-Final reviews/checks/raw results live in `.devlyn/0160/`; source archive and
-separate delivery records retain the final acceptance boundaries.
+Full local checks pass; actual Fable5.1/Grok4.6 final reviews APPROVE/PASS.
+Immutable `.devlyn/0160-evidence.tar.gz` (51 members), SHA256
+`dec2655b68b3dded1d6fe3d68a0760fe97326fff30df09c7064d590f5626ed70`.
+Scratch CLEAN (1471024 logical bytes removed); separate delivery evidence applies.
 
 0159 delivery COMPLETE: PR28 merged accepted0607dc1 into
 8d8c59a2f85d316a7212a8dea693e2731c7f5f30. Receipt02105b2da7d861e3226f4313 COMPLETE,
