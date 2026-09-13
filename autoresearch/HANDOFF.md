@@ -1,45 +1,63 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0162 narrows unrepairable BUILD_GATE dispatch**.
-Read [NORTH-STAR](NORTH-STAR.md), [0162](iterations/0162-unrepairable-gate-dispatch.md)
+Updated 2026-09-13 KST — **0163 verifies actual parent early halt, no speed gain**.
+Read [NORTH-STAR](NORTH-STAR.md), [0163](iterations/0163-parent-gate-execution.md)
 and the actual completion receipt. Current user instructions prevail.
 [PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md), [DECISIONS](DECISIONS.md) bind.
 
 ## START-HERE — current delivery and result
 
-Latest user: “오케이 계속.” Root directly addresses the observed0159 repair
-worker that spent52.005s confirming prohibited missing tools and changed no
-product source. Actual Fable5.1/Grok4.6 advise; root decides, no unanimity gate.
+Latest user: “오케이 계속.” Root directly completed the actual parent branch
+component after0162's supplied-fact screen. Actual Fable5.1/Grok4.6 advise;
+root decides, no unanimity gate. No production source change in0163.
 
 Retained checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`;
-receipt `.git/devlyn-completion/bd8f368bce65a7433e68f9cf/receipt.json`, branch
-`codex/0162-unrepairable-gate-dispatch` until cleanup. This record precedes delivery;
-reobserve receipt and `.devlyn/0162-delivery/` for accepted SHA, PR, CI and cleanup.
+receipt `.git/devlyn-completion/aee33026a711686d04d93e0f/receipt.json`, branch
+`codex/0163-parent-gate-execution` until cleanup. This record precedes delivery;
+reobserve receipt and `.devlyn/0163-delivery/` for accepted SHA, PR, CI and cleanup.
 COMPLETE means continue from clean main. Original project WIP in `.gitignore`,
 `autoresearch/HANDOFF.md`, `.playwright-mcp/` remains untouched.
 
-0162 changes only the parent FAIL branch and tracked mirror. A same-invocation
-probe, unchanged base-required external tool and explicit prohibition on every
-authorized supply route permit a parent halt before repair. Uncertainty/product
-failures/available routes retain repair. Mixed findings remain visible/unrepaired;
-phaseFAIL, raw streams and sealed manifests are not rewritten. No new schema,
-classification, phase, detector or installer. Root PASS_WITH_ISSUES after actual
-Fable NEEDS_WORK(MEDIUM/LOW) and Grok PASS(MEDIUM/LOW); zero final CRITICAL/HIGH.
+Four registered serial native Codex gpt-6-astra/high parent draws, one/cell:
 
-Registered extracted native Codex gpt-6-astra/high old→candidate screen: existing
-9/12 target decisions, candidate12/12;3 prohibited-tool cases switch REPAIR→HALT,
-9 controls retain REPAIR. One session/arm, supplied facts, not actual environment
-probe/dispatch/fullresolve.31.369s/26.375s are descriptive response times, not
-saved time. Schema-fixed FAIL/round0 earn no behavior-preservation credit.
-Actual full parent behavior and successful-resolution speed remain unproved.
-Initial local lint mirror failure retained; final full lint PASS318.525s.
-Immutable archive `.devlyn/0162-evidence.tar.gz`:67 members, SHA256
-`012f8eec71b457d127f8f92e59fc80167afe5580d66410654608c68b05e08501`. Cleanup/delivery: inspect the receipt and final delivery record.
+| Case | Old parent | New parent | Result |
+| --- | --- | --- | --- |
+| prohibited missing tool | 149.924s,1 repair call | 151.345s,0 calls | actual bound probe and report-only blocker |
+| actual product error | 190.547s,1 repair call | 203.511s,1 call | identical app repair; exact root mypy/tests pass |
 
-Next bounded test must exercise actual parent probe discovery and terminal
-evidence with product controls; do not claim dispatch savings from supplied-fact
-answers. No frozen0159 replay/regrade, reserved14995 opening or winning-task search.
-All earlier task/source boundaries below remain binding.
+New missing-tool parent preserves FAIL/round0 and all entry evidence after
+actual interpreter/cwd/env/base-config/runner binding. Both controls repair only
+app.py through real fresh workers. Root exact post-draw gates pass0/0, three tests
+per control; initial failure streams stay unchanged. All observed writers quiet.
+**Retain0162's early-halt rule; no time reduction or added quality benefit observed.**
+One avoided31s child call is not saved total time. This is an extracted component
+with synthetic prior state and explicitly augmented root invocation context,
+not default worker evidence production or full resolve/superiority proof.
+
+Actual final Fable PASS172.052s / Grok PASS143.217s, zero CRITICAL/HIGH; root
+PASS_WITH_ISSUES retains disclosed MEDIUM/LOW evidence limitations.
+Immutable `.devlyn/0163-evidence.tar.gz`:280 members, SHA256
+`1c77b3699298b6b3b583dc258aaf7bc9fb8b1a81599f64d57d57d3edb43455bb`. Scratch CLEAN,119037021 disposable bytes removed.
+Delivery: inspect receipt and final delivery record. Preparation-only unsupported child --strict-config exit64
+and subsequent successful transport calibration both remain; no matrix retry.
+The native macOS environment normalization, cell-c truncated child test output,
+cell-d environment overlay and all warning/telemetry limits remain in0163.
+
+This closes the bounded0162 mechanism check. Do not start another timing-only
+measurement chain; future work needs an observed user failure or concrete source/
+policy decision (PRINCIPLES pre-flight0). Full successful-workflow speed/quality,
+default evidence production and broad Mission1/test15 remain open. No frozen0159
+replay/regrade, reserved14995 opening or winning-task search.
+
+0162 delivery COMPLETE: [PR31](https://github.com/fysoul17/devlyn-cli/pull/31),
+accepted2fdd813e5e73d3425d47d21729f8a9d0d33dfa16 merged
+87d4873f97b47032bb65608d2ec4c19c5a6cbd87; receiptbd8f368bce65a7433e68f9cf COMPLETE,
+Linux/Windows PR+push CI/source/package identity verified, owned refs removed,
+scratch CLEAN. [0162](iterations/0162-unrepairable-gate-dispatch.md) changed only
+the parent FAIL branch and tracked mirror. Supplied-fact old9/12→new12/12 is
+not actual dispatch proof;0163 now supplies bounded execution evidence above.
+Archive67 members SHA256
+`012f8eec71b457d127f8f92e59fc80167afe5580d66410654608c68b05e08501` unchanged.
 
 0161 delivery COMPLETE: [PR30](https://github.com/fysoul17/devlyn-cli/pull/30),
 acceptedbdb398a merged693cc684a8104613ea1f718a32c6f8438283fdb1;
