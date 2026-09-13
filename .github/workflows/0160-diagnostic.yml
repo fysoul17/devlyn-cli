@@ -24,6 +24,11 @@ jobs:
               path.parent.mkdir(parents=True, exist_ok=True)
               path.write_bytes(data)
               identities[name] = hashlib.sha256(data).hexdigest()
+          baseline_url = 'https://raw.githubusercontent.com/' + os.environ['GITHUB_REPOSITORY'] + '/8d8c59a2f85d316a7212a8dea693e2731c7f5f30/config/skills/_shared/platform-support.py'
+          baseline = pathlib.Path('baseline/config/skills/_shared/platform-support.py')
+          baseline.parent.mkdir(parents=True, exist_ok=True)
+          baseline.write_bytes(urllib.request.urlopen(baseline_url, timeout=30).read())
+          identities[str(baseline)] = hashlib.sha256(baseline.read_bytes()).hexdigest()
           pathlib.Path('0160-inputs.json').write_text(json.dumps({'source_sha': os.environ['GITHUB_SHA'], 'files': identities}, indent=2), encoding='utf-8')
       - name: Observe enrollment failure
         shell: pwsh

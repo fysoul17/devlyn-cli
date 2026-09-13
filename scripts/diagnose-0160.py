@@ -41,9 +41,18 @@ class Observe(case):
         self.assert_all_ceased()
 
 assert sys.platform == 'win32'
+controlled = []
+for label, source_root in [('baseline', Path('baseline').resolve()), ('candidate', None)]:
+    case.setUp.__globals__['PACKAGE_ROOT'] = source_root
+    check = unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite([
+        case('test_cached_exit_code_still_requires_native_cessation')]))
+    controlled.append({'source': label, 'successful': check.wasSuccessful(),
+                       'failures': [trace for _, trace in check.failures],
+                       'errors': [trace for _, trace in check.errors]})
+case.setUp.__globals__['PACKAGE_ROOT'] = None
 suite = unittest.TestSuite(Observe('test_enrollment') for _ in range(200))
 result = unittest.TextTestRunner(verbosity=1).run(suite)
-Path('0160-observations.json').write_text(json.dumps({'samples': observations,
+Path('0160-observations.json').write_text(json.dumps({'controlled': controlled, 'samples': observations,
     'failures': [trace for _, trace in result.failures], 'errors': [trace for _, trace in result.errors],
     'tests_run': result.testsRun}, indent=2), encoding='utf-8')
 print(json.dumps({'tests': result.testsRun, 'failures': len(result.failures), 'errors': len(result.errors)}))
