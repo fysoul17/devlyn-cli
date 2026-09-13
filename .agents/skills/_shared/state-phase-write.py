@@ -308,6 +308,36 @@ def bind_process_evidence(
                 raise runner.EvidenceError(
                     "spec-verify.results.json commands must be an array"
                 )
+            preflight_failure = "preflight_failure" in results
+            if preflight_failure:
+                failure = results["preflight_failure"]
+                if (
+                    not isinstance(failure, dict)
+                    or set(failure) != {"run_id", "phase", "round", "findings"}
+                    or failure["run_id"] != state.get("run_id")
+                    or failure["phase"] != phase
+                    or type(failure["round"]) is not int
+                    or failure["round"] != runner.phase_round(state, phase)
+                ):
+                    raise runner.EvidenceError("BUILD_GATE preflight failure identity is invalid")
+                record = failure["findings"]
+                if not isinstance(record, dict) or set(record) != {"path", "sha256"}:
+                    raise runner.EvidenceError("BUILD_GATE preflight failure findings binding is invalid")
+                path = runner._checked_file(work, record["path"], "preflight failure findings")
+                raw = path.read_bytes()
+                if hashlib.sha256(raw).hexdigest() != record["sha256"]:
+                    raise runner.EvidenceError("BUILD_GATE preflight failure findings digest mismatch")
+                findings = [loads_strict_json(line) for line in raw.decode("utf-8").splitlines() if line.strip()]
+                if len(findings) != 1 or not isinstance(findings[0], dict) or (
+                    findings[0].get("phase") != phase
+                    or findings[0].get("severity") != "CRITICAL"
+                    or findings[0].get("rule_id") not in {
+                        "correctness.spec-verify-malformed", "correctness.risk-probe-integrity",
+                    }
+                ):
+                    raise runner.EvidenceError("BUILD_GATE preflight failure requires its CRITICAL finding")
+                if verdict not in {"FAIL", "BLOCKED"}:
+                    raise runner.EvidenceError("BUILD_GATE preflight failure requires FAIL or BLOCKED verdict")
             carrier = results.get("process_evidence")
             if carrier is None:
                 if commands:
@@ -315,11 +345,11 @@ def bind_process_evidence(
                         "BUILD_GATE commands exist without a process-evidence carrier"
                     )
                 manifest_path = work / runner.manifest_relative_path(state, phase)
-                if manifest_path.exists():
+                if os.path.lexists(manifest_path):
                     raise runner.EvidenceError(
                         "BUILD_GATE manifest exists without a process-evidence carrier"
                     )
-                if runner.mechanical_evidence_required(work, state):
+                if not preflight_failure and runner.mechanical_evidence_required(work, state):
                     raise runner.EvidenceError(
                         "required BUILD_GATE evidence has no process-evidence carrier"
                     )
@@ -2995,6 +3025,108 @@ def self_test() -> int:
             assert set(observed).issubset(archive.dynamic_evidence_artifacts(active, appended))
 
         test_interrupted_build_gate()
+
+        def test_preflight_build_gate() -> None:
+            work = (devlyn / "preflight-build-gate").resolve()
+            active = work / ".devlyn"
+            active.mkdir(parents=True)
+            state_file = active / "pipeline.state.json"
+            results_file = active / "spec-verify.results.json"
+            checker = pathlib.Path(__file__).with_name("spec-verify-check.py")
+            env = {key: value for key, value in os.environ.items() if key not in {
+                "BENCH_WORKDIR", "SPEC_VERIFY_PHASE", "SPEC_VERIFY_FINDINGS_FILE",
+                "SPEC_VERIFY_FINDING_PREFIX",
+            } and not key.startswith("DEVLYN_INVOCATION_")}
+            runner = process_evidence_module()
+
+            def complete(verdict: str) -> subprocess.CompletedProcess[str]:
+                return subprocess.run(
+                    [sys.executable, str(pathlib.Path(__file__).resolve()),
+                     "--devlyn-dir", ".devlyn", "--phase", "build_gate", "complete",
+                     "--verdict", verdict, "--findings-file", ".devlyn/spec-verify-findings.jsonl"],
+                    cwd=work, env=env, capture_output=True, text=True, encoding="utf-8",
+                )
+
+            history = []
+            for round_, scenario in enumerate(("fresh", "language", "stale", "denied")):
+                fixture = {
+                    "version": "3.0", "run_id": "rs-preflight-build-gate",
+                    "source": {"type": "generated", "criteria_path": ".devlyn/criteria.generated.md"},
+                    "phases": {"build_gate": None}, "process_evidence": copy.deepcopy(history) or None,
+                }
+                do_spawn(fixture, "build_gate", round_, None, None, "claude", None)
+                write_state(state_file, fixture)
+                original_state = state_file.read_bytes()
+                results_file.unlink(missing_ok=True)
+                relative = runner.manifest_relative_path(fixture, "build_gate")
+                manifest = work / relative
+                obligation = {"id": "type-check", "phase": "build_gate",
+                              "argv": [sys.executable, "-c", "raise SystemExit(7)"]}
+                if scenario == "language":
+                    runner.capture_process(work, manifest, fixture["run_id"], "build_gate", round_, obligation)
+                elif scenario == "denied":
+                    runner.record_capability_denial(
+                        work, manifest, fixture["run_id"], "build_gate", round_, obligation,
+                        "subprocess", b"route denied subprocess",
+                    )
+                elif scenario == "stale":
+                    results_file.write_bytes(prior_results)
+                observed = {path: path.read_bytes() for path in manifest.parent.iterdir()} if manifest.exists() else {}
+                rejected = subprocess.run(
+                    [sys.executable, str(checker), "--include-risk-probes"],
+                    cwd=work, env=env, capture_output=True, text=True, encoding="utf-8",
+                )
+                assert rejected.returncode == 1 and "source.criteria_path" in rejected.stderr, rejected.stderr
+                results = loads_strict_json(results_file.read_text(encoding="utf-8"))
+                assert results["preflight_failure"]["round"] == round_
+                prior_results = results_file.read_bytes()
+                finding = active / "spec-verify-findings.jsonl"
+                finding_bytes = finding.read_bytes()
+                for verdict in ("PASS", "PASS_WITH_ISSUES", "NEEDS_WORK"):
+                    denied = complete(verdict)
+                    assert denied.returncode != 0 and "preflight failure requires" in denied.stderr, denied.stderr
+                    assert state_file.read_bytes() == original_state
+                if scenario == "denied":
+                    denied = complete("FAIL")
+                    assert denied.returncode != 0 and "capability denial requires BLOCKED" in denied.stderr
+                    assert state_file.read_bytes() == original_state
+                completed = complete("BLOCKED" if scenario == "denied" else "FAIL")
+                assert completed.returncode == 0, completed.stderr
+                bound = read_state(state_file)
+                assert bound["phases"]["build_gate"]["verdict"] == ("BLOCKED" if scenario == "denied" else "FAIL")
+                assert finding.read_bytes() == finding_bytes and results_file.read_bytes() == prior_results
+                assert {path: path.read_bytes() for path in observed} == observed
+                if observed:
+                    assert bound["process_evidence"] == [*history, results["process_evidence"]]
+                else:
+                    assert bound["process_evidence"] == (history or None) and results["commands"] == []
+                history = bound["process_evidence"] or []
+                for mutation in ("run", "phase", "round", "bool-round", "digest", "escape", "finding", "null"):
+                    state_file.write_bytes(original_state)
+                    altered = copy.deepcopy(results)
+                    failure = altered["preflight_failure"]
+                    if mutation in {"run", "phase", "round", "bool-round"}:
+                        field, value = {"run": ("run_id", "rs-other"), "phase": ("phase", "verify"),
+                                        "round": ("round", round_ + 1), "bool-round": ("round", True)}[mutation]
+                        failure[field] = value
+                    elif mutation == "null":
+                        altered["preflight_failure"] = None
+                    elif mutation == "finding":
+                        finding.write_bytes(b"{}\n")
+                        failure["findings"]["sha256"] = hashlib.sha256(finding.read_bytes()).hexdigest()
+                    else:
+                        failure["findings"]["path" if mutation == "escape" else "sha256"] = (
+                            "../outside.jsonl" if mutation == "escape" else "0" * 64
+                        )
+                    results_file.write_text(json.dumps(altered), encoding="utf-8")
+                    result = complete("FAIL")
+                    assert result.returncode != 0 and "BLOCKED:process-evidence-invalid" in result.stderr, (mutation, result.stderr)
+                    assert state_file.read_bytes() == original_state
+                    finding.write_bytes(finding_bytes)
+                results_file.write_bytes(prior_results)
+            print("PASS preflight rejection: actual checker-to-completion, success floors, identity/digest controls")
+
+        test_preflight_build_gate()
 
         # complete() before spawn() must fail loudly, not silently invent data.
         write_state(state_path, {"phases": {}})

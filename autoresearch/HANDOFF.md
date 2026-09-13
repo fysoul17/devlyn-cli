@@ -1,53 +1,37 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0163 verifies actual parent early halt, no speed gain**.
-Read [NORTH-STAR](NORTH-STAR.md), [0163](iterations/0163-parent-gate-execution.md)
-and the actual completion receipt. Current user instructions prevail.
-[PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md), [DECISIONS](DECISIONS.md) bind.
+Updated 2026-09-13 KST — **0164 implemented; final review pending account quota**.
+Read [0164](iterations/0164-build-gate-failure-evidence.md) and
+`.devlyn/0164/checkpoint.json` before acting. User chose default BUILD_GATE failure
+handoff improvement and explicitly permits Opus5 if Fable5.1 reaches its limit.
+Root implements directly without resolve. Native advisers stay read-only.
 
-## START-HERE — current delivery and result
+## START-HERE — 0164 source is not accepted or delivered
 
-Latest user: “오케이 계속.” Root directly completed the actual parent branch
-component after0162's supplied-fact screen. Actual Fable5.1/Grok4.6 advise;
-root decides, no unanimity gate. No production source change in0163.
+Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, task branch
+`codex/0164-build-gate-failure-evidence`, prospective receipt
+`.git/devlyn-completion/a8443958e66b4d00ba0ef847/receipt.json`.
+Completed checker preflight rejection now emits current failure results so the
+state writer can record FAIL and preserve original CRITICAL/raw observations.
+Interrupted/no-results behavior remains BLOCKED-only. Successful verdict and
+current evidence integrity checks remain strict.
 
-Retained checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`;
-receipt `.git/devlyn-completion/aee33026a711686d04d93e0f/receipt.json`, branch
-`codex/0163-parent-gate-execution` until cleanup. This record precedes delivery;
-reobserve receipt and `.devlyn/0163-delivery/` for accepted SHA, PR, CI and cleanup.
-COMPLETE means continue from clean main. Original project WIP in `.gitignore`,
-`autoresearch/HANDOFF.md`, `.playwright-mcp/` remains untouched.
+Checker/state self-tests,16 CLI controls, subtraction/scope/mirror checks and
+full lint319.097s pass. Fable5.1 and fallback Opus5 both returned session-limit
+responses (reset13:50 KST); final source review is outstanding, not waived.
+Grok final-source status is recorded in `.devlyn/0164/checkpoint.json`.
+Resume exact `.devlyn/0164/final/review.prompt.txt` after checking source hashes;
+address actual findings before source acceptance, hosted CI and receipt delivery.
+No npm release or frozen-study restart. Original project WIP remains untouched.
 
-Four registered serial native Codex gpt-6-astra/high parent draws, one/cell:
+0163 is already COMPLETE (PR32 mergecbd6970, receipt aee33026a711686d04d93e0f);
+its older pre-delivery wording below is historical, not work to resume.
 
-| Case | Old parent | New parent | Result |
-| --- | --- | --- | --- |
-| prohibited missing tool | 149.924s,1 repair call | 151.345s,0 calls | actual bound probe and report-only blocker |
-| actual product error | 190.547s,1 repair call | 203.511s,1 call | identical app repair; exact root mypy/tests pass |
-
-New missing-tool parent preserves FAIL/round0 and all entry evidence after
-actual interpreter/cwd/env/base-config/runner binding. Both controls repair only
-app.py through real fresh workers. Root exact post-draw gates pass0/0, three tests
-per control; initial failure streams stay unchanged. All observed writers quiet.
-**Retain0162's early-halt rule; no time reduction or added quality benefit observed.**
-One avoided31s child call is not saved total time. This is an extracted component
-with synthetic prior state and explicitly augmented root invocation context,
-not default worker evidence production or full resolve/superiority proof.
-
-Actual final Fable PASS172.052s / Grok PASS143.217s, zero CRITICAL/HIGH; root
-PASS_WITH_ISSUES retains disclosed MEDIUM/LOW evidence limitations.
-Immutable `.devlyn/0163-evidence.tar.gz`:280 members, SHA256
-`1c77b3699298b6b3b583dc258aaf7bc9fb8b1a81599f64d57d57d3edb43455bb`. Scratch CLEAN,119037021 disposable bytes removed.
-Delivery: inspect receipt and final delivery record. Preparation-only unsupported child --strict-config exit64
-and subsequent successful transport calibration both remain; no matrix retry.
-The native macOS environment normalization, cell-c truncated child test output,
-cell-d environment overlay and all warning/telemetry limits remain in0163.
-
-This closes the bounded0162 mechanism check. Do not start another timing-only
-measurement chain; future work needs an observed user failure or concrete source/
-policy decision (PRINCIPLES pre-flight0). Full successful-workflow speed/quality,
-default evidence production and broad Mission1/test15 remain open. No frozen0159
-replay/regrade, reserved14995 opening or winning-task search.
+[0163](iterations/0163-parent-gate-execution.md) retains its bounded actual
+parent halt result: one avoided repair invocation, no observed speed or quality
+gain. Its280-member archive remains unchanged at SHA256
+`1c77b3699298b6b3b583dc258aaf7bc9fb8b1a81599f64d57d57d3edb43455bb`.
+Do not restart frozen0159 or a timing-only measurement chain.
 
 0162 delivery COMPLETE: [PR31](https://github.com/fysoul17/devlyn-cli/pull/31),
 accepted2fdd813e5e73d3425d47d21729f8a9d0d33dfa16 merged

@@ -3673,6 +3673,7 @@ def run_self_test() -> int:
             (generated_devlyn / "spec-verify.json").write_text(json.dumps({
                 "verification_commands": [{"cmd": "printf unexpected > missing-source-command-ran"}],
             }), encoding="utf-8")
+            (generated_devlyn / "spec-verify.results.json").unlink(missing_ok=True)
             missing_source_env = dict(os.environ, SPEC_VERIFY_PHASE=phase)
             if bench:
                 missing_source_env["BENCH_WORKDIR"] = str(generated_user)
@@ -3697,7 +3698,7 @@ def run_self_test() -> int:
                 or missing_findings[0]["file"] != ".devlyn/pipeline.state.json"
                 or missing_findings[0]["phase"] != phase
                 or missing_source_marker.exists()
-                or (generated_devlyn / "spec-verify.results.json").exists()
+                or (generated_devlyn / "spec-verify.results.json").exists() != (phase == "build_gate")
             ):
                 print(f"missing generated source lost its finding or executed a stale command: {missing_findings}", file=sys.stderr)
                 return 1
@@ -3939,7 +3940,9 @@ def run_self_test() -> int:
                 return 1
             case_results = case_devlyn / "spec-verify.results.json"
             if expected_rule == "correctness.spec-verify-malformed":
-                if case_results.exists():
+                rejected_results = loads_strict_json(case_results.read_text(encoding="utf-8"))
+                if (rejected_results["commands"] != [] or rejected_results["process_evidence"] is not None
+                    or "preflight_failure" not in rejected_results):
                     print(f"{name}: malformed contract reached command execution", file=sys.stderr)
                     return 1
             elif (
@@ -4070,7 +4073,6 @@ def run_self_test() -> int:
 
         bench_marker = work / "bench-command-ran"
         bench_command = {"cmd": "printf bad > bench-command-ran; printf bad"}
-        old_bench_results = (devlyn / "spec-verify.results.json").read_bytes()
         for phase in ("build_gate", "verify_mechanical"):
             for carrier, diagnostic in (
                 ({"verification_commands": [{**bench_command, "stdout_not_contians": ["bad"]}]}, "unknown key(s): stdout_not_contians"),
@@ -4080,6 +4082,7 @@ def run_self_test() -> int:
                 ({"verification_commands": [], "pure_design": True}, "must contain at least one entry"),
             ):
                 (devlyn / "spec-verify.json").write_text(json.dumps(carrier), encoding="utf-8")
+                old_bench_results = (devlyn / "spec-verify.results.json").read_bytes()
                 rejected_bench = subprocess.run(
                     [sys.executable, script_path], cwd=work,
                     env={**env, "SPEC_VERIFY_PHASE": phase},
@@ -4090,7 +4093,8 @@ def run_self_test() -> int:
                 if (
                     rejected_bench.returncode != 1 or diagnostic not in rejected_bench.stderr
                     or bench_marker.exists()
-                    or (devlyn / "spec-verify.results.json").read_bytes() != old_bench_results
+                    or (phase == "verify_mechanical" and
+                        (devlyn / "spec-verify.results.json").read_bytes() != old_bench_results)
                     or len(rejected_findings) != 1
                     or rejected_findings[0]["rule_id"] != "correctness.spec-verify-malformed"
                     or rejected_findings[0]["severity"] != "CRITICAL"
@@ -5164,6 +5168,39 @@ def main() -> int:
     trust_bench_staged = bench_mode and pre_staged
     src_type, source_md = read_source(work, devlyn_dir)
     state = read_state(devlyn_dir)
+
+    def reject_preflight() -> int:
+        # A completed rejection is not an interrupted checker. Preserve actual
+        # earlier gate observations without inventing an executed command.
+        if validate_risk_probes_only or output_phase() != "build_gate":
+            return 1
+        runner = process_evidence_module()
+        phase, run_id, round_, relative = mechanical_evidence_identity(state, runner)
+        carrier = None
+        try:
+            if os.path.lexists(work / relative):
+                carrier = runner.validate_manifest(
+                    work, relative, run_id, phase, round_, require_expectations=False,
+                )
+            findings = devlyn_dir / output_findings_name()
+            result = {
+                "commands": runner.bound_carrier_summary_commands(work, carrier) if carrier else [],
+                "process_evidence": carrier,
+                "preflight_failure": {
+                    "run_id": run_id, "phase": phase, "round": round_,
+                    "findings": {
+                        "path": findings.relative_to(work).as_posix(),
+                        "sha256": hashlib.sha256(findings.read_bytes()).hexdigest(),
+                    },
+                },
+            }
+            (devlyn_dir / "spec-verify.results.json").write_text(
+                json.dumps(result, indent=2) + "\n", encoding="utf-8",
+            )
+        except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
+            print(f"[spec-verify] rejection evidence could not be finalized: {exc}", file=sys.stderr)
+        return 1
+
     external_diff = devlyn_dir / "external-diff.patch"
     if external_diff.is_file() and state.get("mode") != "verify-only":
         error = (
@@ -5181,12 +5218,12 @@ def main() -> int:
                 "intentionally verifying an external patch."
             ),
         )
-        return 1
+        return reject_preflight()
     integrity_error = source_integrity_error(src_type, state, source_md)
     if integrity_error:
         print(f"[spec-verify] carrier malformed: {integrity_error}", file=sys.stderr)
         write_malformed_finding(devlyn_dir, integrity_error, source_md)
-        return 1
+        return reject_preflight()
     expected_data: dict | None = None
     expected_path: Path | None = None
     contract_found = False
@@ -5197,7 +5234,7 @@ def main() -> int:
         if risk_error:
             print(f"[spec-verify] risk probes malformed: {risk_error}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, risk_error, devlyn_dir / "risk-probes.jsonl")
-            return 1
+            return reject_preflight()
         print("[spec-verify] risk probes valid", file=sys.stderr)
         return 0
     if source_md is not None and not trust_bench_staged:
@@ -5208,7 +5245,7 @@ def main() -> int:
             if expected_error is not None:
                 print(f"[spec-verify] carrier malformed: {expected_error}", file=sys.stderr)
                 write_malformed_finding(devlyn_dir, expected_error, expected_path)
-                return 1
+                return reject_preflight()
             if contract_found:
                 error = None
             else:
@@ -5218,7 +5255,7 @@ def main() -> int:
         if error is not None:
             print(f"[spec-verify] carrier malformed: {error}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, error, source_md)
-            return 1
+            return reject_preflight()
         if not contract_found:
             if src_type == "generated":
                 msg = (
@@ -5228,7 +5265,7 @@ def main() -> int:
                 )
                 print(f"[spec-verify] {msg}", file=sys.stderr)
                 write_malformed_finding(devlyn_dir, msg, source_md)
-                return 1
+                return reject_preflight()
             # source.type=="spec", no block in spec markdown.
             if not bench_mode:
                 # Real-user handwritten spec: silent no-op. Drop any stale
@@ -5271,19 +5308,19 @@ def main() -> int:
         if shape_err:
             print(f"[spec-verify] error: {spec_path}: {shape_err}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, f"{spec_path}: {shape_err}", None)
-            return 1
+            return reject_preflight()
         commands = list(spec["verification_commands"])
     if include_risk_probes:
         risk_state_error = risk_probes_state_error(state)
         if risk_state_error:
             print(f"[spec-verify] risk probes malformed: {risk_state_error}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, risk_state_error, Path("pipeline.state.json"))
-            return 1
+            return reject_preflight()
         integrity_error = risk_probe_integrity_error(state, devlyn_dir)
         if integrity_error:
             print(f"[spec-verify] risk probes integrity failed: {integrity_error}", file=sys.stderr)
             write_risk_probe_integrity_finding(devlyn_dir, integrity_error)
-            return 1
+            return reject_preflight()
         risk_probes, risk_error = load_risk_probes(
             devlyn_dir,
             source_md,
@@ -5292,7 +5329,7 @@ def main() -> int:
         if risk_error:
             print(f"[spec-verify] risk probes malformed: {risk_error}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, risk_error, devlyn_dir / "risk-probes.jsonl")
-            return 1
+            return reject_preflight()
         commands.extend(risk_probes)
 
     devlyn_dir.mkdir(parents=True, exist_ok=True)
