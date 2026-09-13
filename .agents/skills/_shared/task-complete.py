@@ -779,6 +779,14 @@ else:
     raise SystemExit('unexpected gh arguments: '+str(a))
 '''
 
+GIT_DISPATCH = r'''#!/bin/sh
+for arg do
+    case "$arg" in push|fetch|ls-remote|remove) exec python3 "$0.py" "$@";; esac
+done
+exec "$REAL_GIT" "$@"
+'''
+
+
 GIT_WRAPPER = r'''#!/usr/bin/env python3
 import json, os, pathlib, subprocess, sys
 a = sys.argv[1:]
@@ -822,7 +830,7 @@ class CompletionTests(unittest.TestCase):
         for key in list(self.env):
             if key in {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"}:
                 del self.env[key]
-        for name, body in (("gh", FAKE_GH), ("git", GIT_WRAPPER)):
+        for name, body in (("gh", FAKE_GH), ("git.py", GIT_WRAPPER), ("git", GIT_DISPATCH)):
             path = self.bin / name
             path.write_text(body, encoding="utf-8")
             path.chmod(0o755)

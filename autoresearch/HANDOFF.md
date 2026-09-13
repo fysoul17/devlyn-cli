@@ -1,30 +1,40 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0164 source accepted after Opus/Grok review**.
-Read [0164](iterations/0164-build-gate-failure-evidence.md) and
-the completion receipt below before acting. User chose default BUILD_GATE failure
-handoff improvement and explicitly permits Opus5 if Fable5.1 reaches its limit.
-Root implements directly without resolve. Native advisers stay read-only.
+Updated 2026-09-13 KST — **0165 source accepted PASS; consult delivery receipt**.
 
-## START-HERE — 0164 reviewed; consult receipt for delivery
+## START-HERE — authorized sequential core work
 
-Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, task branch
-`codex/0164-build-gate-failure-evidence`, prospective receipt
-`.git/devlyn-completion/a8443958e66b4d00ba0ef847/receipt.json`.
-Completed checker preflight rejection now emits current failure results so the
-state writer can record FAIL and preserve original CRITICAL/raw observations.
-Interrupted/no-results behavior remains BLOCKED-only. Successful verdict and
-current evidence integrity checks remain strict.
+Latest user instruction: **“오케이 그러면 제안대로 진행 차근차근 하나씩 끝까지.”**
+Root implements directly without resolve; independent actual Fable5.1 (Opus5
+when unavailable) and Grok4.6 reviews remain read-only. Complete and deliver each
+bounded item before the next. Do not turn open superiority goals into claims.
 
-Checker/state self-tests,16 CLI controls, subtraction/scope/mirror checks and full
-lint pass. Earlier quota responses remain preserved; user confirmed Opus availability.
-Actual Opus source review PASS_WITH_ISSUES58.035s led to explicit prior-read error
-classification and findings-merge guidance. Final delta Opus PASS31.525s/Grok
-PASS114.889s, zero tool calls; root adjudication PASS. Actual unreadable-file and
-ordinary null-carrier controls pass. Final evidence `.devlyn/0164-evidence.tar.gz`;
-`.devlyn/0164-delivery/final-source-audit.json` and the receipt own CI/merge/cleanup
-status. The older checkpoint is historical; do not repeat completed reviews.
-No npm release or frozen-study restart. Original project WIP remains untouched.
+Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch
+`codex/0165-gate-overhead`, receipt
+`.git/devlyn-completion/3d4eb2fe637a3eec6db882da/receipt.json`.
+Read [0165](iterations/0165-gate-overhead.md), its registered prediction and
+actual `.devlyn/0165/suite-*.json` before continuing. All four registered33-test suites pass: baseline184.890/candidate77.724/
+candidate61.160/baseline120.380s. Root adopted the exact candidate; both adjacent
+pairs clear15s/15%. Full lint PASS289.683s; final native Opus/Grok PASS.
+Consult `.devlyn/0165-delivery/FINAL.md` and the receipt for CI/merge/cleanup.
+Do not relaunch completed comparison cells.
+Native source reviews are under `consultation/` and `final-review/`.
+
+Sequence: (1) historical small-task routing source/customer reconciliation was
+already applied in0154; preserve it, with current adherence still unproved.
+(2)0165 tests fixture-only Git dispatch overhead with all33 checks retained.
+(3)Explicit-constraint coverage/semantic recall remains open after the bounded
+0148–0157 repairs. (4)Fresh matched comparative quality/pair value remains open;
+full pinned baseline/calibration gates must pass before admission. No frozen
+0159 or A16 replay, customer-secret reads or npm release.
+
+0164 is **COMPLETE**, PR33 accepted b618ae4b8d2bc8e9ec964f58e59f16404b2f33dd
+merged aab3022e8d97881714a2da69fe0131d1e5e33a8b. Receipt
+a8443958e66b4d00ba0ef847 COMPLETE; final Opus/Grok reviews, Linux/Windows CI,
+source/package audit and owned-ref/scratch cleanup are done. Inspect
+`.devlyn/0164-delivery/FINAL.md`; do not repeat its old quota/review checkpoint.
+Its immutable137-member archive remains unchanged at SHA256
+`2d21cc223213bb3b71c5e3e2881aa648677141aaa9e89b4ee46507f499df36d3`.
 
 0163 is already COMPLETE (PR32 mergecbd6970, receipt aee33026a711686d04d93e0f);
 its older pre-delivery wording below is historical, not work to resume.
