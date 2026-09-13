@@ -99,6 +99,10 @@ npm release. Evidence lives in `.devlyn/0167/`; source/Git fixtures are retained
 Report delivery and owned generated-cache cleanup are recorded separately under
 `.devlyn/0167-delivery/FINAL.md` after acceptance.
 
+The user-authorized [0168 substitute review](0168-opus-grok-review.md) subsequently
+completed with actual Opus 5 and Grok 4.6 PASS on the unchanged pair candidate.
+It leaves this original BLOCKED run and comparison results intact.
+
 The remaining frontier is a fresh admitted pair measurement with available
 capacity, actual phase writable-path qualification, and preventing dispatch after
 a rejected lifecycle transition. No frozen cell is reopened by this report.
