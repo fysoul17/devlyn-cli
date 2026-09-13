@@ -1,24 +1,18 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0168 substitute reviews PASS; report delivery pending**.
+Updated 2026-09-14 KST — **0169 failed comparison assessed; report delivery pending**.
 
-## START-HERE — Opus 5 / Grok review closure
+## START-HERE — 0169 infrastructure result
 
-The user authorized “여기 Fable 대신 Opus 5 와 Grok 으로 대체하고, 마무리 해줘.”
-[0168](iterations/0168-opus-grok-review.md) completes one fresh actual Opus 5 and
-Grok 4.6 static review of the unchanged 0167 pair candidate. Both PASS with zero
-findings; root accepts the source-review follow-up. 95 preserved inputs and 14 raw
-command streams rehash correctly. No product code, global pins or historical
-pipeline state changed. Original Fable HTTP429 run remains BLOCKED; pair incremental
-quality/value remains UNKNOWN. These are substitute reviews, not a new comparison.
+[0169](iterations/0169-actual-opus-comparison.md) is **INCOMPLETE_INFRASTRUCTURE**. Bare returned in159.367s; solo archived `BLOCKED:gate-scratch-permission` in823.405s, then its parent hit the usage limit. All seven native BUILD_GATE commands failed before checks because the registered scratch path was outside the worker workspace. The pre-registered infrastructure stopping rule leaves mandatory Opus pair **NOT_RUN**. Do not describe this as a complete three-arm comparison or pair-value evidence.
 
-Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch
-`codex/0168-opus-grok-review`, receipt
-`.git/devlyn-completion/7e700d6d62b390aeba471cdf/receipt.json`.
-Evidence `.devlyn/0168/` and immutable `.devlyn/0168-evidence.tar.gz`.
-Next: scoped report commit, exact Linux/Windows CI and package audit, merge and
-owned scratch cleanup. Final status: `.devlyn/0168-delivery/FINAL.md`.
-Original user checkout WIP and all prior source/evidence stay retained.
+The returned bare/solo products both pass69/69 behavior checks, all exact external gates and meaningful original-source negatives (98/32 assertion failures); original+new suites343/213 pass. Actual blinded Opus5 and Grok4.6 accept both; root accepts the common product floor. External source PASS does not regrade the failed pipeline. Registration46 inputs, native raw streams, final report and process/invocation evidence rehash unchanged; normal acceptance rejects solo. Parent usage is missing, so full solo output/cost remain UNKNOWN.
+
+Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch `codex/0169-actual-opus-comparison`; owner receipt `.git/devlyn-completion/a406ea24918e5c68f8c8ec9b/receipt.json`. Evidence `.devlyn/0169/ROOT-RESULT.json`; delivery/cleanup status `.devlyn/0169-delivery/FINAL.md` once written supersedes this pending line. Finish only accepted report delivery and owned scratch cleanup. Source/Git/recovery data stay retained; no product publish, old draw restart, new comparison, task shopping, global pin change or release is authorized by this closeout. Any fresh measurement first needs actual worker write-path qualification.
+
+The user's0168 correction remains binding: static substitute reviews did not fulfill actual comparison.0169 supplies two real task draws and a concrete execution blocker, not a success claim.0167/0168 history is unchanged.
+
+0168 **REVIEW DELIVERY COMPLETE, COMPARISON NOT DONE**: PR37 accepted0d018a6ac6b2688710aeb6abbc10b5191cce2230 merged35d5b0170ddad4a8bdc1e5ca6b990f5f64b58837. Actual Opus/Grok static PASS, CI/package audit/ref and scratch cleanup COMPLETE; `.devlyn/0168-delivery/FINAL.md`. Its final sentence that separated comparative execution from the requested closure was a scope error, superseded by this correction. Original0167 BLOCKED/429 and all historical archives remain unchanged.
 
 0167 **COMPLETE**: PR36 accepted b007ce61affece343cabc42104d7537493036100,
 merged c1228323413fd73dc2f84e47df8915d896f8d139; receipt
