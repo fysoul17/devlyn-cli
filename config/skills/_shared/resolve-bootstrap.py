@@ -333,7 +333,7 @@ def capture_external_diff(cwd: pathlib.Path, ref: str) -> bytes:
     if source.is_file():
         raw = source.read_bytes()
     else:
-        proc = subprocess.run(["git", "diff", "--binary", ref], cwd=cwd, capture_output=True)
+        proc = subprocess.run(["git", "diff", "--binary", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", ref], cwd=cwd, capture_output=True)
         if proc.returncode != 0:
             block("BLOCKED:invalid-flags", os.fsdecode(proc.stderr or proc.stdout).strip())
         raw = proc.stdout
@@ -1214,6 +1214,16 @@ def self_test() -> int:
         ], work, script_shared)
         assert verify_result["mode"] == "verify-only"
         assert external_patch.read_bytes() == patch_raw
+        subprocess.run(["git", "restore", "app.py"], cwd=work, check=True)
+        # Ambient no-prefix config must not change the reader's a/b contract.
+        (work / "app.py").write_text("print('prefix control')\n", encoding="utf-8")
+        settings = ["diff.noprefix"] + (["diff.external"] if os.name != "nt" else [])
+        for setting in settings:
+            subprocess.run(["git", "config", setting, "true"], cwd=work, check=True)
+            try:
+                assert b"diff --git a/app.py b/app.py\n" in capture_external_diff(work, "HEAD")
+            finally:
+                subprocess.run(["git", "config", "--unset", setting], cwd=work, check=True)
         subprocess.run(["git", "restore", "app.py"], cwd=work, check=True)
         print("PASS bootstrap self-test patch lifecycle: full-mode removal + dirty verify-only exact capture")
 

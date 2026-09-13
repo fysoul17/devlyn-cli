@@ -1,6 +1,6 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0165 source accepted PASS; consult delivery receipt**.
+Updated 2026-09-13 KST — **0166 source accepted; CI/delivery pending. 0165 COMPLETE**.
 
 ## START-HERE — authorized sequential core work
 
@@ -10,15 +10,29 @@ when unavailable) and Grok4.6 reviews remain read-only. Complete and deliver eac
 bounded item before the next. Do not turn open superiority goals into claims.
 
 Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch
-`codex/0165-gate-overhead`, receipt
-`.git/devlyn-completion/3d4eb2fe637a3eec6db882da/receipt.json`.
-Read [0165](iterations/0165-gate-overhead.md), its registered prediction and
-actual `.devlyn/0165/suite-*.json` before continuing. All four registered33-test suites pass: baseline184.890/candidate77.724/
-candidate61.160/baseline120.380s. Root adopted the exact candidate; both adjacent
-pairs clear15s/15%. Full lint PASS289.683s; final native Opus/Grok PASS.
-Consult `.devlyn/0165-delivery/FINAL.md` and the receipt for CI/merge/cleanup.
-Do not relaunch completed comparison cells.
-Native source reviews are under `consultation/` and `final-review/`.
+`codex/0166-literal-file-constraints`, prospective receipt
+`.git/devlyn-completion/3512513c0efd116a18ef82b0/receipt.json`.
+Read [0166](iterations/0166-literal-file-constraints.md) and `.devlyn/0166/`.
+Root found two callers of the lossy changed-files reader: literal exclusions
+and PLAN scope. Candidate preserves Git paths, includes rename sources,
+constrains external patches to canonical a/b prefixes and makes errors visible.
+Live/external15-path controls pass; baseline missed8/11. Full checker tests and
+four subtraction controls pass their predictions. Full lint PASS324.241/272.645s;
+final bootstrap-only no-ext-diff fix then passes complete bootstrap self-test.
+Final native Fable/Grok full and delta reviews have no HIGH/CRITICAL; root
+PASS_WITH_ISSUES. Exact-source CI/merge/cleanup are still pending: consult
+`.devlyn/0166-delivery/FINAL.md` and receipt before resuming. Fable5.1 recovery
+is verified by actual native calls. No native authoring/full-pipeline gain is
+established by these deterministic controls.
+
+0165 **COMPLETE**: PR34, accepted8906683524b643f1fc4047b18dc6e462c3c48e21,
+mergeee9f185a6b4e564ae3b29cbd547ed814d5687792; receipt
+3d4eb2fe637a3eec6db882da COMPLETE, Linux/Windows CI and source/package audit pass,
+owned refs removed and scratch CLEAN. [0165](iterations/0165-gate-overhead.md)
+retains all four33-test runs:184.890/77.724/61.160/120.380s, each PASS.
+Local fixture-suite savings only. Archive120 files SHA256
+`27b9f082bd8a1bc7af5b91c99e6d14bb6d55ad1b876d3111d4fff87e8e84530d`.
+See `.devlyn/0165-delivery/FINAL.md`; do not repeat completed cells.
 
 Sequence: (1) historical small-task routing source/customer reconciliation was
 already applied in0154; preserve it, with current adherence still unproved.
