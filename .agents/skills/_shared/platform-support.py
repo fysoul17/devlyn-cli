@@ -107,6 +107,7 @@ def system_exit_code(code):
 
 
 if os.name == "nt":
+    import _winapi
     import ctypes
     from ctypes import wintypes
     import msvcrt
@@ -226,7 +227,9 @@ if os.name == "nt":
                     try:
                         if self.child.poll() is None:
                             self.child.kill()
-                        self.child.wait(timeout=5)
+                        # kill() can cache an exit code before the native handle is signaled.
+                        if _winapi.WaitForSingleObject(self.child._handle, 5000) == _winapi.WAIT_TIMEOUT:
+                            raise subprocess.TimeoutExpired(self.child.args, 5)
                     finally:
                         self.child._handle.Close()
             finally:

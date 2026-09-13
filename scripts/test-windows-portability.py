@@ -1019,6 +1019,27 @@ else:
                     self.assert_all_ceased()
                     print(f'native {route} target/transport exit={code} observed CLI exit={result.returncode} exact stdin', flush=True)
 
+    def test_cached_exit_code_still_requires_native_cessation(self):
+        for exits in (True, False):
+            with self.subTest(exits=exits):
+                release = self.work / ('cached-release-' + str(exits))
+                child = subprocess.Popen([sys.executable, '-c',
+                                          'import pathlib,sys,time\nwhile not pathlib.Path(sys.argv[1]).exists(): time.sleep(.01)',
+                                          str(release)])
+                self.assertTrue(self.alive(self.retain(child.pid)))
+                # Model kill()'s observed cached-code state with a real unsignaled process.
+                child.returncode = 2
+                job = self.scope['_WindowsJob']()
+                job.child = child
+                if exits:
+                    release.touch()
+                    job.terminate()
+                    self.assert_ceased(self.retain(child.pid))
+                else:
+                    with self.assertRaises(subprocess.TimeoutExpired):
+                        job.terminate()
+                self.assertTrue(child._handle.closed)
+
     def test_admission_and_launch_errors_do_not_dispatch(self):
         kernel = self.scope['_kernel']
         for boundary in ('setup', 'enrollment', 'bootstrap launch', 'target launch'):
