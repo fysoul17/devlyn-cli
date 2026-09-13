@@ -44,7 +44,8 @@ rewrite both results and findings.
 - Checker and state-writer self-tests pass, including the unchanged0119
   interrupted-observation checks. New real checker-to-state CLI controls cover
   fresh rejection, prior language evidence, prior-round results and capability
-  denial;32 identity/digest/finding mutations reject without changing state.
+  denial;32 identity/digest/finding mutations and three prior-state/stream controls
+  reject without changing state.
 - Sixteen additional actual CLI controls pass: source/digest/inline/sibling/
   probe/prestaged failures, healthy execution, validation-only/VERIFY preservation,
   and dangling/corrupt manifests or raw streams. Earlier observations stay intact.
@@ -52,7 +53,7 @@ rewrite both results and findings.
   the explicit verdict guard admits an incorrect PASS. These deletions are not
   safe reductions. AST scope checks limit Python changes to main/binding and
   their self-tests; canonical and both installed mirrors match.
-- Full `bash scripts/lint-skills.sh`: PASS,319.097s. Final source hashes match the
+- Final `bash scripts/lint-skills.sh`: PASS,314.173s (initial source319.097s). Final source hashes match the
   review packet; `git diff --check` passes. No hosted CI or delivery is claimed.
 
 Initial harness failures remain in evidence: the first reproduction read the
@@ -68,13 +69,18 @@ Fable's initial log-design advice was usable; its subsequent failure-design repl
 contained simulated tool markup and is excluded. Actual observed tool calls were
 zero. Later Fable5.1 and the authorized Opus5 fallback both returned the account
 session-limit response, resetting at13:50 KST. Neither is a completed source review.
-Grok's final source review is pending; its earlier design advice and root's named
-0119 correction remain in `.devlyn/0164/`. No accepted source or merge is claimed.
+Grok's full-source packet timed out at605.057s without a final answer. The
+compact retry returned PASS_WITH_ISSUES in326.610s and exposed a null-carrier
+return bypassing prior-state integrity checks. Root removed that early return,
+added malformed-prior and tampered-prior-stream CLI controls, and reran the state
+self-test successfully. Actual Grok delta review PASS143.842s, no HIGH/CRITICAL, zero observed tool
+calls; final full lint PASS314.173s. Fable/Opus review is still pending. No accepted
+source, push, PR or merge is claimed.
 
 Retained checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
 Task branch: `codex/0164-build-gate-failure-evidence`; prospective completion receipt
 `a8443958e66b4d00ba0ef847`. Resume exact final-source review from
-`.devlyn/0164/final/review.prompt.txt`, adjudicate actual findings, then accept and
+`.devlyn/0164/final-source/review.prompt.txt`, adjudicate actual findings, then accept and
 deliver through the receipt. Preserve all raw failures. No frozen study replay,
 customer-file modification, model-performance claim or npm release.
 

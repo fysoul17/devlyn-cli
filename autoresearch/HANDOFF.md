@@ -17,10 +17,11 @@ Interrupted/no-results behavior remains BLOCKED-only. Successful verdict and
 current evidence integrity checks remain strict.
 
 Checker/state self-tests,16 CLI controls, subtraction/scope/mirror checks and
-full lint319.097s pass. Fable5.1 and fallback Opus5 both returned session-limit
+final full lint314.173s pass. Fable5.1 and fallback Opus5 both returned session-limit
 responses (reset13:50 KST); final source review is outstanding, not waived.
-Grok final-source status is recorded in `.devlyn/0164/checkpoint.json`.
-Resume exact `.devlyn/0164/final/review.prompt.txt` after checking source hashes;
+Grok final delta review PASS143.842s after its prior-integrity finding was fixed;
+no HIGH/CRITICAL or tool calls. `.devlyn/0164/checkpoint.json` records exact status.
+Resume exact `.devlyn/0164/final-source/review.prompt.txt` after checking source hashes;
 address actual findings before source acceptance, hosted CI and receipt delivery.
 No npm release or frozen-study restart. Original project WIP remains untouched.
 

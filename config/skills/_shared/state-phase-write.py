@@ -353,35 +353,34 @@ def bind_process_evidence(
                     raise runner.EvidenceError(
                         "required BUILD_GATE evidence has no process-evidence carrier"
                     )
-                state.setdefault("process_evidence", None)
-                return
-            round_ = runner.phase_round(state, phase)
-            manifest = carrier.get("manifest") if isinstance(carrier, dict) else None
-            if (
-                not isinstance(carrier, dict)
-                or carrier.get("phase") != phase
-                or carrier.get("round") != round_
-                or not isinstance(manifest, dict)
-                or manifest.get("path") != runner.manifest_relative_path(state, phase)
-            ):
-                raise runner.EvidenceError(
-                    "BUILD_GATE process-evidence carrier does not match the active run/round"
-                )
-            outcome = runner.validate_summary_commands(work, commands, carrier)
-            if outcome["verdict"] == "BLOCKED" and verdict != "BLOCKED":
-                denial = outcome["capability_denials"][0]
-                raise runner.EvidenceError(
-                    "BUILD_GATE capability denial requires BLOCKED verdict: "
-                    f"{denial['id']}:{denial['operation']}"
-                )
-            if (
-                outcome["verdict"] == "NEEDS_WORK"
-                and verdict in {"PASS", "PASS_WITH_ISSUES"}
-            ):
-                raise runner.EvidenceError(
-                    "BUILD_GATE process evidence mismatch cannot complete as "
-                    f"{verdict}: {','.join(outcome['failed_ids'])}"
-                )
+            else:
+                round_ = runner.phase_round(state, phase)
+                manifest = carrier.get("manifest") if isinstance(carrier, dict) else None
+                if (
+                    not isinstance(carrier, dict)
+                    or carrier.get("phase") != phase
+                    or carrier.get("round") != round_
+                    or not isinstance(manifest, dict)
+                    or manifest.get("path") != runner.manifest_relative_path(state, phase)
+                ):
+                    raise runner.EvidenceError(
+                        "BUILD_GATE process-evidence carrier does not match the active run/round"
+                    )
+                outcome = runner.validate_summary_commands(work, commands, carrier)
+                if outcome["verdict"] == "BLOCKED" and verdict != "BLOCKED":
+                    denial = outcome["capability_denials"][0]
+                    raise runner.EvidenceError(
+                        "BUILD_GATE capability denial requires BLOCKED verdict: "
+                        f"{denial['id']}:{denial['operation']}"
+                    )
+                if (
+                    outcome["verdict"] == "NEEDS_WORK"
+                    and verdict in {"PASS", "PASS_WITH_ISSUES"}
+                ):
+                    raise runner.EvidenceError(
+                        "BUILD_GATE process evidence mismatch cannot complete as "
+                        f"{verdict}: {','.join(outcome['failed_ids'])}"
+                    )
     except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
         raise SystemExit(f"BLOCKED:process-evidence-invalid: {exc}") from exc
     existing = state.get("process_evidence")
@@ -394,6 +393,9 @@ def bind_process_evidence(
             runner.validate_bound_carrier(work, prior)
     except runner.EvidenceError as exc:
         raise SystemExit(f"BLOCKED:process-evidence-invalid: {exc}") from exc
+    if carrier is None:
+        state.setdefault("process_evidence", None)
+        return
     if any(
         isinstance(item, dict)
         and item.get("phase") == carrier["phase"]
@@ -3124,6 +3126,24 @@ def self_test() -> int:
                     assert state_file.read_bytes() == original_state
                     finding.write_bytes(finding_bytes)
                 results_file.write_bytes(prior_results)
+                if scenario in {"fresh", "stale"}:
+                    state_file.write_bytes(original_state)
+                    malformed_prior = read_state(state_file)
+                    malformed_prior["process_evidence"] = {}
+                    write_state(state_file, malformed_prior)
+                    before = state_file.read_bytes()
+                    invalid = complete("FAIL")
+                    assert invalid.returncode != 0 and "null or an array" in invalid.stderr, invalid.stderr
+                    assert state_file.read_bytes() == before
+                    state_file.write_bytes(original_state)
+                if scenario == "stale":
+                    prior_stream = work / history[0]["streams"][0]["stdout"]["path"]
+                    saved = prior_stream.read_bytes()
+                    prior_stream.write_bytes(b"altered prior observation")
+                    invalid = complete("FAIL")
+                    assert invalid.returncode != 0 and "mismatch" in invalid.stderr, invalid.stderr
+                    assert state_file.read_bytes() == original_state
+                    prior_stream.write_bytes(saved)
             print("PASS preflight rejection: actual checker-to-completion, success floors, identity/digest controls")
 
         test_preflight_build_gate()
