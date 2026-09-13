@@ -147,13 +147,13 @@
     },
     "required_files": {
       "type": "array",
-      "description": "Files that must exist after the arm runs.",
+      "description": "Files specified by literal paths that must exist after the arm runs; globs are not expanded.",
       "items": { "type": "string", "minLength": 1 },
       "default": []
     },
     "forbidden_files": {
       "type": "array",
-      "description": "Files that must NOT appear in the arm's diff (e.g. tooling artifacts the spec didn't request).",
+      "description": "Exact Git-relative paths (forward slashes, no leading ./) that must NOT appear in the diff, including both rename names; globs and directory prefixes are not expanded.",
       "items": { "type": "string", "minLength": 1 },
       "default": []
     },

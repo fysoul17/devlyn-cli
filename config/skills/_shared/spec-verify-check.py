@@ -1344,7 +1344,7 @@ def diff_text_for_expected(work: Path, devlyn_dir: Path, state: dict) -> tuple[s
     external_diff = devlyn_dir / "external-diff.patch"
     if external_diff.is_file():
         try:
-            return (external_diff.read_text(encoding="utf-8"), None)
+            return (external_diff.read_text(encoding="utf-8", errors="surrogateescape"), None)
         except OSError as e:
             return ("", f"cannot read {external_diff}: {e}")
     base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
@@ -1383,28 +1383,46 @@ def count_deps_added(work: Path, state: dict) -> int:
     return count
 
 
-def changed_files(work: Path, state: dict, devlyn_dir: Path) -> list[str]:
+def changed_files(work: Path, state: dict, devlyn_dir: Path) -> tuple[list[str], str | None]:
     external_diff = devlyn_dir / "external-diff.patch"
     if external_diff.is_file():
         names: list[str] = []
         try:
-            external_text = external_diff.read_text(encoding="utf-8")
-        except OSError:
-            return []
-        for line in external_text.splitlines():
-            if line.startswith("diff --git "):
-                parts = line.split()
-                if len(parts) >= 4:
-                    names.append(parts[3].removeprefix("b/"))
-        return names
+            external_bytes = external_diff.read_bytes()
+        except OSError as error:
+            return ([], f"cannot read {external_diff}: {error}")
+        if not external_bytes:
+            return ([], None)
+        # Prefix depth is otherwise ambiguous (src/x becomes x with -p1).
+        headers = [line for line in external_bytes.split(b"\n") if line.startswith(b"diff --git ")]
+        if not headers or any(not re.fullmatch(
+            rb'diff --git (a/[^"\r]*|"a/(?:[^"\\]|\\.)*") (b/[^"\r]*|"b/(?:[^"\\]|\\.)*")\r?', line,
+        ) for line in headers):
+            return ([], "external diff requires Git a/ and b/ path prefixes; regenerate with git diff --binary --src-prefix=a/ --dst-prefix=b/")
+        # Statistics mode never applies the patch. Reverse parsing includes
+        # rename sources as well as destinations without parsing quoted headers.
+        for direction in ([], ["--reverse"]):
+            proc = subprocess.run(
+                ["git", "apply", "--numstat", "-z", "-p1", "--whitespace=nowarn", *direction], cwd=str(work),
+                input=external_bytes, capture_output=True,
+            )
+            if proc.returncode != 0:
+                return ([], (proc.stderr or proc.stdout).decode("utf-8", "replace").strip() or "git apply --numstat failed")
+            for record in proc.stdout.split(b"\0"):
+                if record:
+                    fields = record.split(b"\t", 2)
+                    if len(fields) != 3 or not fields[2]:
+                        return ([], "invalid git apply --numstat path record")
+                    names.append(fields[2].decode("utf-8", "surrogateescape"))
+        return (list(dict.fromkeys(names)), None)
     base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
-    cmd = ["git", "diff", "--name-only"]
+    cmd = ["git", "diff", "--name-only", "-z", "--no-renames"]
     if base_sha:
         cmd.append(base_sha)
-    proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True, encoding="utf-8")
+    proc = subprocess.run(cmd, cwd=str(work), capture_output=True)
     if proc.returncode != 0:
-        return []
-    return [line.strip() for line in (proc.stdout or "").splitlines() if line.strip()]
+        return ([], (proc.stderr or proc.stdout).decode("utf-8", "replace").strip() or "git diff --name-only failed")
+    return ([path.decode("utf-8", "surrogateescape") for path in proc.stdout.split(b"\0") if path], None)
 
 
 def expected_contract_findings(
@@ -1420,6 +1438,8 @@ def expected_contract_findings(
     findings: list[dict] = []
     seq = finding_start
     diff_text, diff_error = diff_text_for_expected(work, devlyn_dir, state)
+    paths, paths_error = changed_files(work, state, devlyn_dir) if expected_data.get("forbidden_files") else ([], None)
+    diff_error = diff_error or paths_error
     if diff_error and (
         expected_data.get("forbidden_patterns") or expected_data.get("forbidden_files")
     ):
@@ -1429,12 +1449,12 @@ def expected_contract_findings(
             "level": "error",
             "severity": "CRITICAL",
             "confidence": 1.0,
-            "message": f"Cannot compute diff for forbidden_patterns: {diff_error}",
+            "message": f"Cannot compute diff for expected contract: {diff_error}",
             "file": str(expected_path or "spec.expected.json"),
             "line": 1,
             "phase": output_phase(),
-            "criterion_ref": "spec.expected.json/forbidden_patterns",
-            "fix_hint": "Ensure pipeline.state.json has base_ref.sha or provide .devlyn/external-diff.patch.",
+            "criterion_ref": "spec.expected.json/forbidden_files" if paths_error else "spec.expected.json/forbidden_patterns",
+            "fix_hint": "Ensure base_ref.sha is valid and any external-diff.patch is a readable Git patch with a/ and b/ prefixes.",
             "blocking": True,
             "status": "open",
         })
@@ -1460,7 +1480,7 @@ def expected_contract_findings(
             "status": "open",
         })
         seq += 1
-    changed = set(changed_files(work, state, devlyn_dir))
+    changed = set(paths)
     for i, required in enumerate(expected_data.get("required_files", []) or []):
         if (work / required).exists():
             continue
@@ -1779,7 +1799,16 @@ def authorized_surface_findings(
 
     findings: list[dict] = []
     seq = finding_start
-    for path in changed_files(work, state, devlyn_dir):
+    paths, paths_error = changed_files(work, state, devlyn_dir)
+    if paths_error is not None:
+        return ([scope_finding(
+            finding_start,
+            "scope.authorized-surface-malformed",
+            f"Cannot read changed files: {paths_error}",
+            ".devlyn/external-diff.patch" if (devlyn_dir / "external-diff.patch").is_file() else ".devlyn/pipeline.state.json",
+            "Ensure base_ref.sha is valid and any external-diff.patch is a readable Git patch with a/ and b/ prefixes.",
+        )], finding_start + 1)
+    for path in paths:
         if path_matches_surface(path, surface):
             continue
         findings.append(scope_finding(
@@ -4737,6 +4766,84 @@ def run_self_test() -> int:
         if incomplete_atomic_batch_probe.returncode == 0:
             print("atomic_batch_state without success-order evidence was accepted", file=sys.stderr)
             return 1
+
+        # Literal diff paths must survive Git quoting, renames and both consumers.
+        literal_root = work / "literal-paths"
+        literal_root.mkdir()
+        literal_devlyn = literal_root / ".devlyn"
+        literal_devlyn.mkdir()
+        (literal_root / ".gitignore").write_text(".devlyn/\n", encoding="utf-8")
+        literal_names = ["plain.txt", "설정.txt", "my file.txt"]
+        if os.name != "nt":
+            literal_names += ["a\tb.txt", "a\nb.txt", " leading.txt", "trailing.txt ", 'quote".txt', "back\\slash.txt", "literal*.txt"]
+        for name in literal_names + ["old name.txt"]:
+            (literal_root / name).write_text("original\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q"], cwd=literal_root, check=True)
+        subprocess.run(["git", "add", "-A"], cwd=literal_root, check=True)
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "base"], cwd=literal_root, check=True)
+        for name in literal_names:
+            (literal_root / name).write_text("updated\n", encoding="utf-8")
+        subprocess.run(["git", "mv", "old name.txt", "new name.txt"], cwd=literal_root, check=True)
+        literal_names += ["old name.txt", "new name.txt"]
+        literal_state = {"base_ref": {"sha": "HEAD"}}
+        literal_expected = {"forbidden_files": literal_names}
+        (literal_devlyn / "untracked.baseline").write_text("", encoding="utf-8")
+        (literal_devlyn / "plan.md").write_text(
+            "<!-- devlyn:authorized-surface -->\n## Files to touch\n\n```json\n"
+            + json.dumps({"authorized_surface": literal_names}) + "\n```\n", encoding="utf-8",
+        )
+        literal_patch = subprocess.check_output(
+            ["git", "diff", "--binary", "--src-prefix=a/", "--dst-prefix=b/", "HEAD"], cwd=literal_root,
+        )
+        literal_external = literal_devlyn / "external-diff.patch"
+        for external in (False, True):
+            if external:
+                literal_external.write_bytes(literal_patch)
+            hits, _ = expected_contract_findings(literal_expected, None, literal_root, literal_devlyn, literal_state, 1)
+            assert len(hits) == len(literal_names) and all(hit["rule_id"] == "scope.forbidden-file-touched" for hit in hits), hits
+            scope_hits, _ = authorized_surface_findings(literal_root, literal_devlyn, literal_state, 1)
+            assert not scope_hits, scope_hits
+        edit = b"diff --git a/plain.txt b/plain.txt\n--- a/plain.txt\n+++ b/plain.txt\n@@ -1 +1 @@\n-original\n+updated\n"
+        (literal_devlyn / "plan.md").write_text(
+            '<!-- devlyn:authorized-surface -->\n## Files to touch\n\n```json\n{"authorized_surface":["untouched.txt"]}\n```\n', encoding="utf-8",
+        )
+        literal_external.write_bytes(edit)
+        scope_hits, _ = authorized_surface_findings(literal_root, literal_devlyn, literal_state, 1)
+        assert len(scope_hits) == 1 and scope_hits[0]["rule_id"] == "scope.out-of-scope-file", scope_hits
+        literal_external.write_bytes(edit.replace(b"+updated", b"+updated  "))
+        subprocess.run(["git", "config", "apply.whitespace", "error"], cwd=literal_root, check=True)
+        try:
+            names, error = changed_files(literal_root, literal_state, literal_devlyn)
+            assert names == ["plain.txt"] and error is None, (names, error)
+        finally:
+            subprocess.run(["git", "config", "--unset", "apply.whitespace"], cwd=literal_root, check=True)
+        for patch, paths in (
+            (b"", []),
+            (edit.replace(b"\n", b"\r\n"), ["plain.txt"]),
+            (b"diff --git a/logo.png b/logo.png\nindex 1111111..2222222 100644\nBinary files a/logo.png and b/logo.png differ\n", ["logo.png"]),
+            (b"diff --git a/script b/script\nold mode 100644\nnew mode 100755\n", ["script"]),
+            (b"diff --git a/keep.py b/new.py\nsimilarity index 100%\ncopy from keep.py\ncopy to new.py\n", ["new.py", "keep.py"]),
+        ):
+            literal_external.write_bytes(patch)
+            names, error = changed_files(literal_root, literal_state, literal_devlyn)
+            assert names == paths and error is None, (names, error)
+        for bad_patch in (
+            b"not a patch\n", b"\n", edit[:-5],
+            edit.replace(b"a/plain.txt", b"plain.txt").replace(b"b/plain.txt", b"plain.txt"),
+            edit.replace(b"a/plain.txt", b"src/plain.txt").replace(b"b/plain.txt", b"src/plain.txt"),
+            edit.replace(b"a/plain.txt", b"i/plain.txt").replace(b"b/plain.txt", b"w/plain.txt"),
+        ):
+            literal_external.write_bytes(bad_patch)
+            hits, _ = expected_contract_findings(literal_expected, None, literal_root, literal_devlyn, literal_state, 1)
+            assert len(hits) == 1 and hits[0]["rule_id"] == "correctness.expected-contract-unverifiable", hits
+            scope_hits, _ = authorized_surface_findings(literal_root, literal_devlyn, literal_state, 1)
+            assert len(scope_hits) == 1 and scope_hits[0]["file"] == ".devlyn/external-diff.patch", scope_hits
+        literal_external.unlink()
+        names, error = changed_files(literal_root, {"base_ref": {"sha": "missing-literal-ref"}}, literal_devlyn)
+        assert not names and error, (names, error)
+        assert subprocess.check_output(
+            ["git", "diff", "--binary", "--src-prefix=a/", "--dst-prefix=b/", "HEAD"], cwd=literal_root,
+        ) == literal_patch
 
         # iter-0046: PLAN-declared authorized_surface enforced at BUILD_GATE.
         scope_root = work / "scope-gate"
