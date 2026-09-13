@@ -1,24 +1,16 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0168 substitute reviews PASS; report delivery pending**.
+Updated 2026-09-13 KST — **0169 actual comparison admitted; draws pending**.
 
-## START-HERE — Opus 5 / Grok review closure
+## START-HERE — fulfill the omitted comparison
 
-The user authorized “여기 Fable 대신 Opus 5 와 Grok 으로 대체하고, 마무리 해줘.”
-[0168](iterations/0168-opus-grok-review.md) completes one fresh actual Opus 5 and
-Grok 4.6 static review of the unchanged 0167 pair candidate. Both PASS with zero
-findings; root accepts the source-review follow-up. 95 preserved inputs and 14 raw
-command streams rehash correctly. No product code, global pins or historical
-pipeline state changed. Original Fable HTTP429 run remains BLOCKED; pair incremental
-quality/value remains UNKNOWN. These are substitute reviews, not a new comparison.
+The user corrected “비교실험은 왜 안했지?” after0168. Root had incorrectly narrowed the requested Fable replacement/comparison completion to static review.0168/PR37 review delivery is complete, but the user's comparative-execution goal remained unmet. Do not treat static model PASS as comparative execution or use frozen-history rules to skip a newly authorized study.
 
-Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch
-`codex/0168-opus-grok-review`, receipt
-`.git/devlyn-completion/7e700d6d62b390aeba471cdf/receipt.json`.
-Evidence `.devlyn/0168/` and immutable `.devlyn/0168-evidence.tar.gz`.
-Next: scoped report commit, exact Linux/Windows CI and package audit, merge and
-owned scratch cleanup. Final status: `.devlyn/0168-delivery/FINAL.md`.
-Original user checkout WIP and all prior source/evidence stay retained.
+[0169](iterations/0169-actual-opus-comparison.md) prospectively registers fresh bare → full solo → full Opus pair on the same original pytest15005 task. Codex Astra/high fixed; exact Opus5 mandatory OTHER, Grok4.6 independent advice. One draw per arm, same1800s native bound; no old patch injection or winning-task search. Known task, n=1, fixed order: ties/losses valid and timing delta observational only.
+
+Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch `codex/0169-actual-opus-comparison`; receipt `.git/devlyn-completion/a406ea24918e5c68f8c8ec9b/receipt.json`. Evidence/registration `.devlyn/0169/`. Source/environment and positive/negative gates qualified; actual Opus/Grok design advice resolved before admission. Execute native arms serially, inspect actual route/product evidence, report, deliver and clean owned scratch. No root task-source edits, outer retry or global engine-pin change.
+
+0168 **REVIEW DELIVERY COMPLETE, COMPARISON NOT DONE**: PR37 accepted0d018a6ac6b2688710aeb6abbc10b5191cce2230 merged35d5b0170ddad4a8bdc1e5ca6b990f5f64b58837. Actual Opus/Grok static PASS, CI/package audit/ref and scratch cleanup COMPLETE; `.devlyn/0168-delivery/FINAL.md`. Its final sentence that separated comparative execution from the requested closure was a scope error, superseded by this correction. Original0167 BLOCKED/429 and all historical archives remain unchanged.
 
 0167 **COMPLETE**: PR36 accepted b007ce61affece343cabc42104d7537493036100,
 merged c1228323413fd73dc2f84e47df8915d896f8d139; receipt
