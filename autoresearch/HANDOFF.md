@@ -1,47 +1,33 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0167 draws closed; report acceptance/delivery pending**.
+Updated 2026-09-13 KST — **0168 substitute reviews PASS; report delivery pending**.
 
-## START-HERE — authorized sequential core work
+## START-HERE — Opus 5 / Grok review closure
 
-User authorized **“제안대로 진행 차근차근 하나씩 끝까지.”** Root works directly;
-actual Fable5.1 (Opus5 when unavailable) and Grok4.6 advise read-only; root decides.
-0165/0166 are delivered. Small-task routing reconciliation was already applied in
-0154 and remains preserved. Do not turn the remaining quality frontier into a win.
+The user authorized “여기 Fable 대신 Opus 5 와 Grok 으로 대체하고, 마무리 해줘.”
+[0168](iterations/0168-opus-grok-review.md) completes one fresh actual Opus 5 and
+Grok 4.6 static review of the unchanged 0167 pair candidate. Both PASS with zero
+findings; root accepts the source-review follow-up. 95 preserved inputs and 14 raw
+command streams rehash correctly. No product code, global pins or historical
+pipeline state changed. Original Fable HTTP429 run remains BLOCKED; pair incremental
+quality/value remains UNKNOWN. These are substitute reviews, not a new comparison.
 
 Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch
-`codex/0167-fresh-matched-comparison`, receipt
-`.git/devlyn-completion/f5479fb1e70af22e63b67700/receipt.json`.
-Only HANDOFF and [0167](iterations/0167-fresh-matched-comparison.md) are tracked
-changes. All3 native draws have returned and observed owned writers are quiet.
-Bare139.321s and full solo1618.168s pass the external product floor; solo also
-passes the canonical archived normal-run acceptance validator. All3 returned
-patches pass69 behavior cases and all exact gates; tests249/188/263 respectively.
-Required Fable pair returns at946.205s BLOCKED: HTTP429 limit,0output/modelUsage{}.
-Its primary/mechanical checks pass but the success validator rejects it. This is
-time-to-block, not completed paired latency. Pair value remains UNKNOWN.
+`codex/0168-opus-grok-review`, receipt
+`.git/devlyn-completion/7e700d6d62b390aeba471cdf/receipt.json`.
+Evidence `.devlyn/0168/` and immutable `.devlyn/0168-evidence.tar.gz`.
+Next: scoped report commit, exact Linux/Windows CI and package audit, merge and
+owned scratch cleanup. Final status: `.devlyn/0168-delivery/FINAL.md`.
+Original user checkout WIP and all prior source/evidence stay retained.
 
-Evidence `.devlyn/0167/`; registration SHA256
-13c022ae13d37a3631a98d742fa7cda55654188fdad7119209a3c006d8714991.
-Source pytest15005 pinned ff42276a55b99a315c304db882edf0e69de9fae3;
-other candidate bodies and reserved14995 remain unopened. All preparation and
-runtime failures are retained. No rerun, root product repair, cell substitution,
-upstream contact/PR or npm release. Standing Opus5 advisory fallback after Fable
-quota is disclosed; external Opus/Grok source advice does not replace the blocked
-required pair. Both accept the3 blinded source patches and correctly classify
-all4 source controls; root accepts with low notes, no HIGH/CRITICAL source finding.
-
-Next: final report/evidence review, immutable archive, scoped commit/PR, exact
-Linux/Windows CI/source/package audit, merge and owned generated-cache cleanup.
-Retain all source/Git; move only inventoried owned hook virtualenvs and generated
-mypy/Ruff/pytest caches into receipt scratch after writers stop. Source fixtures
-are private study evidence, with no upstream delivery. Final delivery status will
-live in `.devlyn/0167-delivery/FINAL.md`; no new task before this handoff completes.
-
-Full-route whole output/cost remain UNKNOWN: structured output3497/36340/33895,
-plus unsplit primary-judge counters50543/50045. No general speed/quality or causal
-patch-effect claim. Remaining frontier: available-capacity fresh pair evidence,
-actual phase writable-path qualification and rejected-transition dispatch control.
+0167 **COMPLETE**: PR36 accepted b007ce61affece343cabc42104d7537493036100,
+merged c1228323413fd73dc2f84e47df8915d896f8d139; receipt
+f5479fb1e70af22e63b67700 COMPLETE, Linux/Windows CI/package identity passed,
+owned refs removed and scratch CLEAN. See `.devlyn/0167-delivery/FINAL.md`.
+[0167](iterations/0167-fresh-matched-comparison.md) retains the bare/solo passes,
+blocked Fable pair and incomplete cost/causal evidence. Do not retry frozen draws.
+0165/0166 delivery and 0154 routing remain preserved. No new measurement or unrelated
+harness improvement is started by this closure.
 
 0166 **COMPLETE**: PR35 accepted d207e72d0f03f434383970e79fa586b928fa0b6c,
 merged ca4cefe4d88c443783c18068833c1e237cc9a743. Receipt
