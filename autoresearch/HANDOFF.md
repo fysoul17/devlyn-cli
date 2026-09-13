@@ -1,12 +1,12 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0164 implemented; final review pending account quota**.
+Updated 2026-09-13 KST — **0164 source accepted after Opus/Grok review**.
 Read [0164](iterations/0164-build-gate-failure-evidence.md) and
-`.devlyn/0164/checkpoint.json` before acting. User chose default BUILD_GATE failure
+the completion receipt below before acting. User chose default BUILD_GATE failure
 handoff improvement and explicitly permits Opus5 if Fable5.1 reaches its limit.
 Root implements directly without resolve. Native advisers stay read-only.
 
-## START-HERE — 0164 source is not accepted or delivered
+## START-HERE — 0164 reviewed; consult receipt for delivery
 
 Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, task branch
 `codex/0164-build-gate-failure-evidence`, prospective receipt
@@ -16,13 +16,14 @@ state writer can record FAIL and preserve original CRITICAL/raw observations.
 Interrupted/no-results behavior remains BLOCKED-only. Successful verdict and
 current evidence integrity checks remain strict.
 
-Checker/state self-tests,16 CLI controls, subtraction/scope/mirror checks and
-final full lint314.173s pass. Fable5.1 and fallback Opus5 both returned session-limit
-responses (reset13:50 KST); final source review is outstanding, not waived.
-Grok final delta review PASS143.842s after its prior-integrity finding was fixed;
-no HIGH/CRITICAL or tool calls. `.devlyn/0164/checkpoint.json` records exact status.
-Resume exact `.devlyn/0164/final-source/review.prompt.txt` after checking source hashes;
-address actual findings before source acceptance, hosted CI and receipt delivery.
+Checker/state self-tests,16 CLI controls, subtraction/scope/mirror checks and full
+lint pass. Earlier quota responses remain preserved; user confirmed Opus availability.
+Actual Opus source review PASS_WITH_ISSUES58.035s led to explicit prior-read error
+classification and findings-merge guidance. Final delta Opus PASS31.525s/Grok
+PASS114.889s, zero tool calls; root adjudication PASS. Actual unreadable-file and
+ordinary null-carrier controls pass. Final evidence `.devlyn/0164-evidence.tar.gz`;
+`.devlyn/0164-delivery/final-source-audit.json` and the receipt own CI/merge/cleanup
+status. The older checkpoint is historical; do not repeat completed reviews.
 No npm release or frozen-study restart. Original project WIP remains untouched.
 
 0163 is already COMPLETE (PR32 mergecbd6970, receipt aee33026a711686d04d93e0f);

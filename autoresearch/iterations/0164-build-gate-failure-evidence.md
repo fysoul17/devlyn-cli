@@ -3,7 +3,7 @@
 2026-09-13. User selected default BUILD_GATE failure-evidence inspection and
 improvement, with Opus5 permitted when Fable5.1 reaches its limit. Root implements
 directly, without resolve; native reviewers remain read-only advisers.
-**Local checks pass; source acceptance and delivery remain pending review.**
+**Root source verdict: PASS. Delivery is tracked separately by the receipt below.**
 
 ## Failure and minimum repair
 
@@ -34,7 +34,9 @@ null-carrier path and permits only FAIL/BLOCKED. Only this explicit rejection ca
 waive absent executable obligations. Existing manifest, summary and raw-stream
 validation still applies; capability denial still requires BLOCKED. Dangling
 manifest paths count as present evidence and cannot use the null-carrier path.
-Malformed evidence prevents finalization and is reported explicitly. Normal
+Malformed evidence prevents finalization and is reported explicitly. Retained prior
+observations must validate even on ordinary null-carrier completions; unreadable
+prior files report `BLOCKED:process-evidence-invalid` without changing state. Normal
 success, interrupted observations, VERIFY and validation-only behavior remain.
 The marker is local result metadata, not authentication against an actor able to
 rewrite both results and findings.
@@ -53,8 +55,13 @@ rewrite both results and findings.
   the explicit verdict guard admits an incorrect PASS. These deletions are not
   safe reductions. AST scope checks limit Python changes to main/binding and
   their self-tests; canonical and both installed mirrors match.
-- Final `bash scripts/lint-skills.sh`: PASS,314.173s (initial source319.097s). Final source hashes match the
-  review packet; `git diff --check` passes. No hosted CI or delivery is claimed.
+- `bash scripts/lint-skills.sh` passes; final run metadata is in
+  `.devlyn/0164/lint-opus-fix.json` (earlier runs314.173s/319.097s retained).
+  Final source hashes match the review packet; `git diff --check` passes.
+- Opus's unreadable-prior-file case was reproduced through the actual CLI, then
+  corrected and verified: explicit BLOCKED, no traceback, identical state bytes.
+  A portable injected-read-error self-test and ordinary null-carrier valid/invalid
+  prior controls pass. Initial open-span fixture setup failure remains recorded.
 
 Initial harness failures remain in evidence: the first reproduction read the
 wrong findings filename; two old self-test assertions equated any results file
@@ -63,7 +70,7 @@ observations. The first external risk-format fixture repeated the digest-error
 path; the corrected fixture calls the actual digest function and asserts the
 intended malformed-probe diagnostic. Initial artifacts were retained separately.
 
-## Review and continuation
+## Review and delivery
 
 Fable's initial log-design advice was usable; its subsequent failure-design reply
 contained simulated tool markup and is excluded. Actual observed tool calls were
@@ -74,18 +81,30 @@ compact retry returned PASS_WITH_ISSUES in326.610s and exposed a null-carrier
 return bypassing prior-state integrity checks. Root removed that early return,
 added malformed-prior and tampered-prior-stream CLI controls, and reran the state
 self-test successfully. Actual Grok delta review PASS143.842s, no HIGH/CRITICAL, zero observed tool
-calls; final full lint PASS314.173s. Fable/Opus review is still pending. No accepted
-source, push, PR or merge is claimed.
+calls. On the user's explicit Opus-available continuation, actual Opus5 final
+source review returned PASS_WITH_ISSUES58.035s, no HIGH/CRITICAL. Root accepted
+prior validation on ordinary null-carrier completions as intentional; fixed the
+reproduced prior-file error classification and named the original findings source
+and aggregate destination in guidance. The output override remains supported;
+pinning a fixed findings filename would break it.
+
+Actual final delta reviews: Opus5 PASS31.525s and Grok4.6 PASS114.889s, zero observed
+tool calls. These are read-only advice; root adjudicated every finding. Opus CLI
+also reported15 Haiku output tokens of ancillary usage, separate from the Opus
+review answer. Inherited pending-Claude wording in the earlier packet/answer is
+stale, not an outstanding review. Root accepts the bounded source change after
+local checks; no full native pipeline or performance claim follows from it.
 
 Retained checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
 Task branch: `codex/0164-build-gate-failure-evidence`; prospective completion receipt
-`a8443958e66b4d00ba0ef847`. Resume exact final-source review from
-`.devlyn/0164/final-source/review.prompt.txt`, adjudicate actual findings, then accept and
-deliver through the receipt. Preserve all raw failures. No frozen study replay,
-customer-file modification, model-performance claim or npm release.
+`a8443958e66b4d00ba0ef847`. Final evidence is `.devlyn/0164-evidence.tar.gz`;
+`.devlyn/0164-delivery/final-source-audit.json` and the external receipt report
+actual hosted CI, merge and cleanup once observed. The earlier checkpoint archive
+remains immutable and is not source acceptance. Preserve all raw failures. No
+frozen study replay, customer-file modification or npm release.
 
 **Principles1–6:** minimum producer/consumer repair for two observed constraints;
 no process wrapper or environment dump; explicit failure and evidence
 corruption handling; native advice and checks remain separate from shipment.
-Worldclass/Production-ready acceptance is pending the outstanding review, not
-inferred from green local tests.
+Worldclass/Production-ready acceptance includes actual native reviews, root
+adjudication and explicit failure-path checks; delivery remains a separate fact.

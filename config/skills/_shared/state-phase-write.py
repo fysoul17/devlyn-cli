@@ -391,7 +391,7 @@ def bind_process_evidence(
     try:
         for prior in existing:
             runner.validate_bound_carrier(work, prior)
-    except runner.EvidenceError as exc:
+    except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
         raise SystemExit(f"BLOCKED:process-evidence-invalid: {exc}") from exc
     if carrier is None:
         state.setdefault("process_evidence", None)
@@ -3144,6 +3144,24 @@ def self_test() -> int:
                     assert invalid.returncode != 0 and "mismatch" in invalid.stderr, invalid.stderr
                     assert state_file.read_bytes() == original_state
                     prior_stream.write_bytes(saved)
+                    from unittest.mock import patch
+                    read_bytes = pathlib.Path.read_bytes
+
+                    def unreadable_prior(path):
+                        if path == prior_stream:
+                            raise PermissionError("prior stream unreadable")
+                        return read_bytes(path)
+
+                    fixture = read_state(state_file)
+                    unchanged = copy.deepcopy(fixture)
+                    with patch.object(pathlib.Path, "read_bytes", unreadable_prior):
+                        try:
+                            bind_process_evidence(fixture, "build_gate", "FAIL", active, work)
+                        except SystemExit as exc:
+                            assert str(exc) == "BLOCKED:process-evidence-invalid: prior stream unreadable", exc
+                        else:
+                            raise AssertionError("unreadable prior evidence completed")
+                    assert fixture == unchanged and state_file.read_bytes() == original_state
             print("PASS preflight rejection: actual checker-to-completion, success floors, identity/digest controls")
 
         test_preflight_build_gate()
