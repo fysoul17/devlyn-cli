@@ -1,41 +1,49 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-13 KST — **0160 fixes Windows bootstrap cessation**.
-Read [NORTH-STAR](NORTH-STAR.md), [0160](iterations/0160-windows-bootstrap-cessation.md)
+Updated 2026-09-13 KST — **0161 validates project gate preparation**.
+Read [NORTH-STAR](NORTH-STAR.md), [0161](iterations/0161-project-gate-preparation.md)
 and the actual completion receipt. Current user instructions prevail.
 [PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md), [DECISIONS](DECISIONS.md) bind.
 
 ## START-HERE — current delivery and result
 
-Latest user: “계속 진행”. Root directly repairs the Windows enrollment failure
-observed during0159 delivery; actual Fable5.1/Grok4.6 advise independently and
-root decides. No root resolve run or frozen comparison restart.
+Latest user: “오케이 계속 진행”. Root directly validates preparation after0159;
+actual Fable5.1/Grok4.6 advise independently, root decides. No model task, root
+resolve run, frozen comparison restart or production harness change.
 
 Retained checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`;
-receipt `.git/devlyn-completion/9d0eba4bcbf942d4b5ed084a/receipt.json`, branch
-`codex/0160-windows-bootstrap-cessation` until safe cleanup. This committed record
-precedes delivery; reobserve receipt and `.devlyn/0160-delivery/` for accepted SHA,
-PR, exact-source CI and cleanup. COMPLETE means continue from clean main.
-Original `/Users/aipalm/Documents/GitHub/devlyn-cli` WIP in `.gitignore`,
+receipt `.git/devlyn-completion/73d30959b3f411d8c463ec11/receipt.json`, branch
+`codex/0161-project-gate-preparation` until cleanup. This record precedes delivery;
+reobserve receipt and `.devlyn/0161-delivery/` for accepted SHA, PR, CI and cleanup.
+COMPLETE means continue from clean main. Original project WIP in `.gitignore`,
 `autoresearch/HANDOFF.md`, `.playwright-mcp/` remains untouched.
 
-Native200 baseline:30 cached-code/unsignaled observations after Popen.wait,
-24 cessation assertion failures,12 secondary cleanup errors. Replace that cached
-wait with bounded native handle waiting, preserving timeout and close behavior.
-Native200 candidate: zero failures/errors. Real-process regression: baseline
-fails both cessation/timeout obligations; candidate passes. This closes the
-reproduced path, not arbitrary native API failure or a speed/quality comparison.
-Full local checks pass; actual Fable5.1/Grok4.6 final reviews APPROVE/PASS.
-Immutable `.devlyn/0160-evidence.tar.gz` (51 members), SHA256
-`dec2655b68b3dded1d6fe3d68a0760fe97326fff30df09c7064d590f5626ed70`.
-Scratch CLEAN (1471024 logical bytes removed); separate delivery evidence applies.
+0161 reproduced a second environment trap: combined dev+typing tools encounter
+NumPy stub syntax incompatible with the project's mypy Python3.10 target. Actual
+project pre-commit isolated tool environments pass original source. Frozen gold
+passes48 behavior checks but fails type/format; it remains frozen and cannot
+qualify a new fully gated comparison. Separately named preparation calibration
+uses a typed dynamic factory lookup: type/lint/format, existing58tests(+1skip),
+48 behavior checks and whole default pre-commit all pass without hook source edits.
+This is preparation evidence, not a model or performance comparison. Final
+Fable5.1/Grok4.6 PASS; initial invalid Fable response retained. Root raw audit PASS.
+Immutable `.devlyn/0161-evidence.tar.gz` (115 members), SHA256
+`d5e6ab3e315c22780d92daad0720cb1c40d687e9d9ad511b1c7c18635e5121f9`.
+Scratch CLEAN (563747391 logical bytes removed); hook source/Git retained separately.
+Environments were cleaned: rebuild from retained versions/routes before use.
+Follow0161's admission requirements before any fresh task. Preserve environment
+separation, exact commands, dependency versions and original/calibration identity.
 
-0159 delivery COMPLETE: PR28 merged accepted0607dc1 into
-8d8c59a2f85d316a7212a8dea693e2731c7f5f30. Receipt02105b2da7d861e3226f4313 COMPLETE,
-owned refs removed and scratch CLEAN. PR Linux/Windows passed; push Windows
-first failed enrollment cessation then passed one rerun. Both outcomes are
-retained in `.devlyn/0159-delivery/`, and motivated0160. Original0159 research
-verdict below is unchanged.
+0160 delivery COMPLETE: PR29 merged accepteddb9bc97 as
+c9a2d99d80bbe99894696ceaddeb71a70c44d735; receipt9d0eba4bcbf942d4b5ed084a COMPLETE,
+owned refs removed, scratch CLEAN. Final PR/push Linux+Windows passed; package
+and source identity verified. Native cached-code cessation baseline200 had24
+assertion failures; candidate200 zero. Actual Fable/Grok final reviews pass.
+[0160](iterations/0160-windows-bootstrap-cessation.md) and its separate delivery
+records retain the full evidence and limits; no general superiority claim.
+
+0159 delivery COMPLETE: PR28 merge8d8c59a2f85d316a7212a8dea693e2731c7f5f30;
+receipt02105b2da7d861e3226f4313 COMPLETE. Original research verdict below remains.
 
 ## 0159 — actual pytest lifecycle bug
 
