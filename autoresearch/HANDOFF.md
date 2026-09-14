@@ -1,14 +1,17 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-15 KST after the user's original-source correction.
+Updated 2026-09-15 KST during 0176 continuation.
 **Continue the agreed intent, goal, North Star and vision to completion.
 The devlyn-cli core improvement program / Mission 1 remains ACTIVE.**
-0175 and its delivery are COMPLETE; they are evidence for the ongoing program.
-The H fixture is a bounded diagnosis/calibration candidate, not the main goal.
-Read [the next-session plan](NEXT-SESSION-routing-boundary.md). Keep current
-routing, close known defects and verify improvements, then confirm on fresh
-repeated comparisons before changing general routing policy. This session only
-updates context; no new implementation or comparison has run.
+0175 and its delivery are COMPLETE. The source-alignment step selected
+[0176](iterations/0176-adapter-verification-authority.md): delete conflicting
+adapter-wide validation instructions while retaining canonical phase ownership.
+Source correction and eight role-decision probes are complete; both native
+reviews returned PASS_WITH_ISSUES, root addressed evidence gaps, and final lint
+passed. Confirm delivery in `.devlyn/0176-delivery/FINAL.md` and the receipt
+before the next H coverage/repair trace.
+The source audit and receipt are in `.devlyn/0176/` and
+`.git/devlyn-completion/7e38f433d6e6395e6275c24c/receipt.json`.
 
 ## Locked intent and continuation
 
@@ -86,8 +89,10 @@ not completed integration or authorization to launch every model at once.
 
 These remain active, worked serially through diagnosis, minimal source change,
 independent verification and delivery. Fixture polish or another benchmark alone
-does not complete the program. Start with the source-alignment step in the plan;
-after that scoped step closes, continue the next evidenced core improvement.
+does not complete the program. Source alignment is recorded in 0176. Close its
+verification/delivery first,
+then trace the remaining H authoring/check/review/repair omissions before
+selecting the next minimal core fix.
 
 ## Current evidence and interpretation
 
@@ -115,11 +120,13 @@ full resolve, with available OTHER-engine VERIFY pair. Explicit workflows,
 executor pins, opt-outs and unavailable-engine behavior retain their contracts.
 No new difficulty classifier or routing threshold is adopted by this handoff.
 
-For core research changes, the standing owner instruction remains: root implements
-directly without invoking resolve; actual Fable 5.1 (authorized Opus 5 substitute
-when unavailable) and Grok 4.6 provide independent advice. Root adjudicates.
-This differs from measured full solo/pair arms, which must execute their canonical
-pipeline. The general product routing above remains intact.
+Owner clarified 2026-09-15 KST: root implements, verifies and delivers directly
+by default; reserve resolve for especially very complex coding, testing the
+pipeline itself, or an explicit resolve request. Ordinary task categories alone
+do not mandate it. Actual Fable 5.1 (authorized Opus 5 substitute when unavailable)
+and Grok 4.6 provide independent core-research advice; root adjudicates. Measured
+full solo/pair arms still execute their canonical pipeline. This collaboration
+preference does not itself change the shipped customer routing policy.
 
 devlyn-cli is the independent core; Pyx is optional. Optimize intent correctness
 and completeness, then verified completion time including repairs, then total

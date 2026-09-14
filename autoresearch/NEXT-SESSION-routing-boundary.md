@@ -4,12 +4,17 @@ Updated 2026-09-15 KST. Continue the owner's unified vision and model-adaptation
 direction through devlyn-cli core improvements: model/harness fit, routing,
 overhead, intent/constraint coverage, verification/repair and comparative value.
 H is evidence within that program, not the predetermined main deliverable.
-**The next implementation and confirmation are NOT_RUN.** 0175's nine draws,
+**Current unit: 0176 adapter verification authority.** Source alignment and the
+subtractive correction are implemented; eight role-decision probes preserve
+both arms' decisions, without observed performance lift. Native Fable/Grok advice
+and final lint are complete; confirm delivery using HANDOFF's receipt and
+`.devlyn/0176-delivery/FINAL.md` before moving on. The next unit traces H authoring/check/review/repair evidence; that trace and
+any fresh full comparison remain NOT_RUN. 0175's nine draws,
 six final reviews, PR44 delivery and owned cleanup are COMPLETE; do not repeat.
 Start in `/Users/aipalm/.local/share/nx01/core-continuation-20260912` and read
 [HANDOFF](HANDOFF.md) plus the relevant evidence below.
 
-## 0. Resume the agreed goal; reconcile model guidance with implementation
+## 0. Resume the agreed goal; source alignment recorded in 0176
 
 Read the owner-provided unified vision, 0120 and the confirmed official Astra
 guide linked in HANDOFF. Its source is resolved; do not ask the user for it again.
