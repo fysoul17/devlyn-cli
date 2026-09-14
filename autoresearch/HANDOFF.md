@@ -1,6 +1,10 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-14 KST — **0170 actual draws ended; comparison incomplete**.
+Updated 2026-09-14 KST — **0171 direct repair verified; delivery pending; routing improvement next**.
+
+0171 is explicitly direct by user instruction: fix redundant staging ownership and transient process-census handling without invoking resolve or new paid comparison draws. Branch `codex/0171-direct-execution-repair`, receipt `.git/devlyn-completion/fe34f6e9550684ad19adafb1/receipt.json`, evidence `.devlyn/0171/`. Seven regression checks and skills lint pass; two failure regressions reject the frozen controller. See `autoresearch/iterations/0171-direct-execution-repair.md`. Registered0170 remains frozen. NEXT after this repair: user-requested direct/full routing improvement with unchanged measured quality; tell the user when starting. See the final pending entry in `docs/specs/queue.md`; do not let a default queue drain select unrelated older work first.
+
+0170 delivery is COMPLETE: PR39 accepted1fbd8004e2479100e5cc83671ef913ad651bfa95 merged5b4b00de8bc4bd81a14bdb33dfbef64c8db40585; Linux/Windows CI,516-package-byte audit, branch/scratch cleanup complete. `.devlyn/0170-delivery/FINAL.md` supersedes its historical pending status below. The actual full comparison remains incomplete.
 
 ## START-HERE — 0170 scratch fixed, later execution failures
 

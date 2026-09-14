@@ -192,3 +192,5 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   fires only where measured lift); fable is never a test arm; grok
   emission remains uncertified — no durable `pair grok` pin. Scope:
   measure first, then register improvements from the observed deltas.
+
+- [ ] NEXT after0171 (user priority2026-09-14; announce before starting): improve devlyn-cli direct/full routing so clear lightweight work does not incur unnecessary resolve phases, tokens or time. Investigate why existing direct-first rules (including0154) failed in actual use before adding policy. Preserve decisive acceptance checks, output quality, explicit scope and high-risk/full-route behavior; compare actual routing, correctness/regressions, observed tokens and wall time under matched conditions. No blanket resolve, weakened quality floor or static-only efficiency claim. Current0171 preparation repairs are explicitly direct; do not launch resolve for them.
