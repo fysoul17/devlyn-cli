@@ -1,12 +1,27 @@
 # Next session: continue core harness improvement
 
-Updated 2026-09-14. The user explicitly retains the overall devlyn-cli harness
-improvement program: routing, overhead, intent/constraint coverage, verification
-and repair, and comparative pair value. H is evidence within that program.
+Updated 2026-09-15 KST. Continue the owner's unified vision and model-adaptation
+direction through devlyn-cli core improvements: model/harness fit, routing,
+overhead, intent/constraint coverage, verification/repair and comparative value.
+H is evidence within that program, not the predetermined main deliverable.
 **The next implementation and confirmation are NOT_RUN.** 0175's nine draws,
 six final reviews, PR44 delivery and owned cleanup are COMPLETE; do not repeat.
 Start in `/Users/aipalm/.local/share/nx01/core-continuation-20260912` and read
 [HANDOFF](HANDOFF.md) plus the relevant evidence below.
+
+## 0. Reconcile original intent, official model guidance and current implementation
+
+Read the owner-provided unified vision and 0120 linked in HANDOFF. Recover the
+exact Astra prompting guide (currently unresolved; the existing adapter cites
+GPT-5.5), verify its version/content, and inspect the actual prompt, adapter,
+context and execution paths it could affect. Separate completed changes,
+remaining mismatches and untested ideas. Vendor advice supplies hypotheses, not
+local performance proof or permission to rewrite all phases.
+Choose the most consequential falsifiable core improvement from this evidence;
+the H diagnosis below is available if it serves that choice. Preserve the recent
+pair result without making all future work a routing benchmark or fixture repair.
+Structural changes remain possible under the existing core-research authorization;
+this context update starts no OS integration, model migration or experiment.
 
 ## 1. Diagnose the constraint and repair gap; close the H calibration defect
 
@@ -84,7 +99,7 @@ verified completion time including repairs, then observed cost. Calibrate common
 independent checks and anonymous review; qualify actual skill/catalog exposure.
 Unsplit cost counters remain UNKNOWN. Use inspected representation, ownership
 and oracle risks to evaluate a boundary; no invented universal difficulty score.
-After each scoped result, update the four active workstreams and continue the
+After each scoped result, update the active workstreams and continue the
 next supported core improvement. Neither fixture repair nor this screen closes
 Mission 1; evidence-backed reductions and fixes remain the product deliverable.
 
