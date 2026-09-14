@@ -9,26 +9,71 @@ six final reviews, PR44 delivery and owned cleanup are COMPLETE; do not repeat.
 Start in `/Users/aipalm/.local/share/nx01/core-continuation-20260912` and read
 [HANDOFF](HANDOFF.md) plus the relevant evidence below.
 
-## 0. Reconcile original intent, official model guidance and current implementation
+## 0. Resume the agreed goal; reconcile model guidance with implementation
 
 Read the owner-provided unified vision, 0120 and the confirmed official Astra
 guide linked in HANDOFF. Its source is resolved; do not ask the user for it again.
-Inspect the actual loaded prompt, skill, adapter, context and execution paths
-against its autonomy, instruction-priority, delegation and test-scope guidance.
+Treat Astra guidance as one model's evidence. Inspect the common contract and
+actual loaded prompts, skills, adapters and role capabilities for the selected
+engines/models. Claude/Grok and future Kimi/Qwen may need different tactics;
+do not copy Astra-specific rules globally or confuse a CLI with the model it runs.
 The existing adapter cites GPT-5.5; separate source age from behavioral mismatch.
 Account for already-shipped 0172/0174 entry changes rather than duplicating them.
-Separate completed changes,
-remaining mismatches and untested ideas. Vendor advice supplies hypotheses, not
+Separate completed changes, remaining mismatches and untested ideas.
+Vendor advice supplies hypotheses, not
 local performance proof or permission to rewrite all phases.
-Choose the most consequential falsifiable core improvement from this evidence;
+Within the agreed program, record the next bounded work unit, its success checks
+and remaining commitments once; resume that unit across session boundaries.
+Complete and verify it before advancing. Change the agreed goal/scope/sequence
+only through the evidence and user-decision rule in HANDOFF. New ideas go into
+remaining work rather than silently replacing the current task.
+Select a falsifiable core improvement from this evidence;
 the H diagnosis below is available if it serves that choice. Preserve the recent
 pair result without making all future work a routing benchmark or fixture repair.
 Structural changes remain possible under the existing core-research authorization;
 this context update starts no OS integration, model migration or experiment.
 
-## 1. Diagnose the constraint and repair gap; close the H calibration defect
+## 1. Implement and verify the selected core improvement
 
-First trace the frozen H spec, generated tests, primary/pair findings and repair
+Map any confirmed omission to the actual authoring, validation, review or repair
+contract and its callers. Follow the standing research execution instruction in
+[HANDOFF](HANDOFF.md); preserve current product routing and explicit pins.
+Reproduce a proposed core defect before changing source, make the smallest fix,
+then run relevant regression/acceptance checks and independent native reviews.
+Use fresh cases to test behavioral improvement; deliver accepted core changes
+with scoped commits, CI and owned cleanup. If the registered hypothesis is
+falsified, close that unit with its evidence and resume the agreed next work.
+Do not treat an inconclusive probe as completion or silently change the goal.
+Do not invent generic gates, model rules or new phases to justify the fixture result.
+
+## 2. Confirm proposed selection changes and continue the core loop
+
+Keep current direct/full+pair policy while fixing and using the observed better
+candidate. Pair's better H outcome is already observed. A general selection rule
+needs fresh evidence; isolating Opus-only causation is not a prerequisite to the
+repair or practical use of that result.
+
+If the selected unit proposes a general routing-policy change, pre-register a
+bounded confirmation with new tasks and repeated bare/solo/pair draws. Declare sample
+size, resource ceiling, stop rules and falsifiable prediction before any draw;
+use untouched cases, common source/requests/checks, matched primary settings,
+fresh sessions and balanced order. Distinguish prepared-spec execution from
+requirements discovery. Retain failures and internal repair costs; no favorable
+rerolls, tuning on confirmation or indefinite expansion until pair wins.
+
+Compare final substantive defects and contract completion first, then total
+verified completion time including repairs, then observed cost. Calibrate common
+independent checks and anonymous review; qualify actual skill/catalog exposure.
+Unsplit cost counters remain UNKNOWN. Use inspected representation, ownership
+and oracle risks to evaluate a boundary; no invented universal difficulty score.
+After each scoped result, update the active workstreams and continue the
+next supported core improvement. Neither fixture repair nor this screen closes
+Mission 1; evidence-backed reductions and fixes remain the product deliverable.
+
+## Reference packet: H diagnosis and calibration, only if selected
+
+If the selected core improvement needs this evidence, trace the frozen H spec,
+generated tests, primary/pair findings and repair
 rounds under `.devlyn/0175/work/` and `.devlyn/0175/H-{bare,solo,pair}/assessment/`.
 Determine why the original 14 independent checks/nominal positive missed numeric
 boundaries, why solo's repair remained partial, and how pair reached its better
@@ -69,42 +114,6 @@ acceptance. Verify representation boundaries of the chosen fix as well as the
 known example. Follow current route/pin and bounded repair rules; a review PASS
 does not override a failing requirement. Preserve original 0175 results and
 report this follow-up separately. Do not repair every frozen arm to re-rank them.
-
-## 2. Turn reproduced causes into verified core improvements
-
-Map any confirmed omission to the actual authoring, validation, review or repair
-contract and its callers. Follow the standing research execution instruction in
-[HANDOFF](HANDOFF.md); preserve current product routing and explicit pins.
-Reproduce a proposed core defect before changing source, make the smallest fix,
-then run relevant regression/acceptance checks and independent native reviews.
-Use fresh cases to test behavioral improvement; deliver accepted core changes
-with scoped commits, CI and owned cleanup. If no core cause is reproduced, record
-that limit and proceed to the next evidenced active workstream. Do not invent
-generic gates, model rules or new phases to justify the fixture result.
-
-## 3. Confirm selection changes and continue the core loop
-
-Keep current direct/full+pair policy while fixing and using the observed better
-candidate. Pair's better H outcome is already observed. A general selection rule
-needs fresh evidence; isolating Opus-only causation is not a prerequisite to the
-repair or practical use of that result.
-
-After the repair closes, pre-register a bounded confirmation with multiple new
-tasks and repeated bare/solo/pair draws before policy changes. Declare sample
-size, resource ceiling, stop rules and falsifiable prediction before any draw;
-use untouched cases, common source/requests/checks, matched primary settings,
-fresh sessions and balanced order. Distinguish prepared-spec execution from
-requirements discovery. Retain failures and internal repair costs; no favorable
-rerolls, tuning on confirmation or indefinite expansion until pair wins.
-
-Compare final substantive defects and contract completion first, then total
-verified completion time including repairs, then observed cost. Calibrate common
-independent checks and anonymous review; qualify actual skill/catalog exposure.
-Unsplit cost counters remain UNKNOWN. Use inspected representation, ownership
-and oracle risks to evaluate a boundary; no invented universal difficulty score.
-After each scoped result, update the active workstreams and continue the
-next supported core improvement. Neither fixture repair nor this screen closes
-Mission 1; evidence-backed reductions and fixes remain the product deliverable.
 
 Historical protocol: Git
 `701c43dcf7ae84446a2ca432d64131762e0232b2:autoresearch/NEXT-SESSION-routing-boundary.md`.
