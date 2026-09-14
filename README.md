@@ -31,12 +31,12 @@ That's it. The installer opens with a single **agent selector** — pick any com
 
 ---
 
-## How It Works — Two Skills, Full Cycle
+## How It Works — Direct Work or Full Pipeline
 
-devlyn-cli turns your AI coding agent into a hands-free development pipeline. The pipeline surface is two skills, with `/devlyn:design-ui` installed as the required creative UI surface:
+devlyn-cli supports direct execution for clear, low-risk work with decisive checks and a full pipeline for work that needs it. The pipeline surface is two skills, with `/devlyn:design-ui` installed as the required creative UI surface:
 
 ```
-ideate (optional)  →  resolve  →  ship
+inspect intent  →  direct work or full resolve  →  ship
 ```
 
 Non-Claude agents (Codex / omp / Pi / Grok): when one of these is selected, the workflows install as that agent's skills. In Codex / omp / Pi, use `$devlyn:ideate`, `$devlyn:resolve`, or `$devlyn:design-ui`; in Grok, use `/devlyn:ideate`, `/devlyn:resolve`, or `/devlyn:design-ui`, the same slash-command form as Claude Code.
@@ -60,7 +60,7 @@ Default mode produces a `docs/specs/<id>-<slug>/spec.md` plus `spec.expected.jso
 
 Skip ideate entirely if you have a spec or just want to describe the work — `/devlyn:resolve` accepts free-form goals too.
 
-### Step 2 — Resolve with `/devlyn:resolve`
+### Choose direct execution or `/devlyn:resolve`
 
 Before writes, inspect requested files and relevant callers/tests. Clear, local, reversible, low-risk conversational edits with a decisive acceptance check run directly, honoring scope, constraints and executor pins; finish required checks and diff review, then accept the scoped commit for owner completion below. Material ambiguity, subsystem/design work, security/auth/payment/persistence/concurrency/public-API-contract changes or no decisive check use full `/devlyn:resolve`. Explicit resolve (including small tasks), formal specs and queue drains keep the full workflow below. Pass a spec, a free-form goal, or a diff to verify.
 

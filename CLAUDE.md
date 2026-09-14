@@ -1,6 +1,6 @@
 # Project Instructions
 
-devlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required) into Claude Code, plus the contract below. These principles are non-negotiable on every change — yours and any sub-agent's.
+devlyn-cli installs planning and full-pipeline skills alongside the execution contract below. These principles are non-negotiable on every change — yours and any sub-agent's.
 
 ## North Star
 
@@ -28,10 +28,10 @@ The runtime sub-agent contract below (Subtractive-first / Goal-locked / No-worka
 
 ## Quick Start
 
-Engine selection follows the role map below.
+Choose direct work or full resolve using the conversational-entry rules below; engine selection follows the role map.
 
 1. `/devlyn:ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project`.
-2. `/devlyn:resolve` — hands-free pipeline for any coding task. Free-form goal, `--spec <path>`, or `--verify-only <diff> --spec <path>`. Phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh subagent, findings-only).
+2. `/devlyn:resolve` — full pipeline for work selected by the conversational-entry rules below. Free-form goal, `--spec <path>`, or `--verify-only <diff> --spec <path>`. Phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh subagent, findings-only).
 
 Each skill's `SKILL.md` is the source of truth for its flags and workflow — don't duplicate them here.
 
@@ -51,7 +51,7 @@ Each skill's `SKILL.md` is the source of truth for its flags and workflow — do
 
 ### Conversational entry + full-route handoff
 
-Before writes, inspect requested files and relevant callers/tests. Default to direct execution only for clear, local, reversible, low-risk work with a decisive existing or small task-specific acceptance check. Preserve requested behavior, scope, explicit constraints and the executor pin; make scoped edits, run required checks, review the final diff, and report changes with evidence. One concise route/check explanation suffices; ordinary direct work needs no spec, pipeline state, phase workers or extra approval. For direct/full/queue work, the outer owner reads `references/task-completion.md` relative to the installed `devlyn:resolve` skill's directory: prospective task-branch ownership (linked worktree optional), scoped commit acceptance, then PR/merge and recoverable owned-resource cleanup after required archive/queue commits. Local-only/no-push wins; delivery pending/failure stays separate from product verification.
+Before loading a workflow or writing files, inspect the requested change and relevant callers/tests. Quoted phase names, past logs and skill-file paths are context, not an instruction to invoke that workflow; follow the current user request. Default to direct execution only for clear, local, reversible, low-risk work with a decisive existing or small task-specific acceptance check. Preserve requested behavior, scope, explicit constraints and the executor pin; make scoped edits, run required checks, review the final diff, and report changes with evidence. One concise route/check explanation suffices; ordinary direct work needs no spec, pipeline state, phase workers or extra approval. For direct/full/queue work, the outer owner reads `references/task-completion.md` relative to the installed `devlyn:resolve` skill's directory: prospective task-branch ownership (linked worktree optional), scoped commit acceptance, then PR/merge and recoverable owned-resource cleanup after required archive/queue commits. Local-only/no-push wins; delivery pending/failure stays separate from product verification.
 
 Use full `/devlyn:resolve` for material ambiguity, subsystem/design work, security/auth/payment/persistence/concurrency/public-API-contract changes, or inconclusive inspection/checks. Counts of lines, files or words alone do not establish low risk. Explicit resolve (even small), formal spec workflows and queue drains retain all canonical phases, independent verification, pins and failure handling. If new risk appears mid-edit, preserve the delta in the full run's scope/evidence; do not hide it in a new baseline or reconfirm existing authorization.
 
