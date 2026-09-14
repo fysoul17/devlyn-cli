@@ -1,16 +1,14 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-14 KST — **0169 failed comparison assessed; report delivery pending**.
+Updated 2026-09-14 KST — **0170 admitted; actual comparison pending**.
 
-## START-HERE — 0169 infrastructure result
+## START-HERE — 0170 worker scratch boundary
 
-[0169](iterations/0169-actual-opus-comparison.md) is **INCOMPLETE_INFRASTRUCTURE**. Bare returned in159.367s; solo archived `BLOCKED:gate-scratch-permission` in823.405s, then its parent hit the usage limit. All seven native BUILD_GATE commands failed before checks because the registered scratch path was outside the worker workspace. The pre-registered infrastructure stopping rule leaves mandatory Opus pair **NOT_RUN**. Do not describe this as a complete three-arm comparison or pair-value evidence.
+The user authorized a fresh continuation after0169 delivery. [0170](iterations/0170-worker-scratch-boundary.md) qualifies the actual worker boundary, with14 exact gate results and8 permission outcomes matching predictions. Only per-arm gate and prepared precommit paths gain writes through temporary native config; no production/global change. Run registered bare -> full solo -> exact Opus pair draws, then independent source/route assessment and delivery. Do not substitute static review for actual comparison or restart frozen0169.
 
-The returned bare/solo products both pass69/69 behavior checks, all exact external gates and meaningful original-source negatives (98/32 assertion failures); original+new suites343/213 pass. Actual blinded Opus5 and Grok4.6 accept both; root accepts the common product floor. External source PASS does not regrade the failed pipeline. Registration46 inputs, native raw streams, final report and process/invocation evidence rehash unchanged; normal acceptance rejects solo. Parent usage is missing, so full solo output/cost remain UNKNOWN.
+Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch `codex/0170-worker-scratch-boundary`; receipt `.git/devlyn-completion/4bc74659f8b2ca24761d48e3/receipt.json`. `.devlyn/0170/REGISTRATION.json` and `ROOT-ADMISSION.md` govern this study. No task draw at this prospective checkpoint.
 
-Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch `codex/0169-actual-opus-comparison`; owner receipt `.git/devlyn-completion/a406ea24918e5c68f8c8ec9b/receipt.json`. Evidence `.devlyn/0169/ROOT-RESULT.json`; delivery/cleanup status `.devlyn/0169-delivery/FINAL.md` once written supersedes this pending line. Finish only accepted report delivery and owned scratch cleanup. Source/Git/recovery data stay retained; no product publish, old draw restart, new comparison, task shopping, global pin change or release is authorized by this closeout. Any fresh measurement first needs actual worker write-path qualification.
-
-The user's0168 correction remains binding: static substitute reviews did not fulfill actual comparison.0169 supplies two real task draws and a concrete execution blocker, not a success claim.0167/0168 history is unchanged.
+0169 **DELIVERY COMPLETE, COMPARISON INCOMPLETE**: PR38 accepted f124754cfd5ac50bec02438a9a755507ea6b1f84 merged8a48375bde2efbbd9479cafb2ba39ebe101e99c6; CI/package audit and owned-ref/scratch cleanup complete. Bare159.367s; solo823.405s archived BLOCKED:gate-scratch-permission before parent quota failure; pair NOT_RUN. Both returned products pass69/69 and external gates; this does not regrade native failure. Immutable archive335 files SHA256 `39183317db123005130aea569bf062aa9e4ba5e945775c0955d67e8ac6904d3c`. `.devlyn/0169-delivery/FINAL.md` is authoritative; no frozen draw rerun.
 
 0168 **REVIEW DELIVERY COMPLETE, COMPARISON NOT DONE**: PR37 accepted0d018a6ac6b2688710aeb6abbc10b5191cce2230 merged35d5b0170ddad4a8bdc1e5ca6b990f5f64b58837. Actual Opus/Grok static PASS, CI/package audit/ref and scratch cleanup COMPLETE; `.devlyn/0168-delivery/FINAL.md`. Its final sentence that separated comparative execution from the requested closure was a scope error, superseded by this correction. Original0167 BLOCKED/429 and all historical archives remain unchanged.
 
