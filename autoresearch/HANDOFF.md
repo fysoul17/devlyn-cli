@@ -1,13 +1,33 @@
 # HANDOFF — current continuation
 
 Updated 2026-09-15 KST after the user's original-source correction.
-**Continue improving the devlyn-cli core harness. Mission 1 remains ACTIVE.**
+**Continue the agreed intent, goal, North Star and vision to completion.
+The devlyn-cli core improvement program / Mission 1 remains ACTIVE.**
 0175 and its delivery are COMPLETE; they are evidence for the ongoing program.
 The H fixture is a bounded diagnosis/calibration candidate, not the main goal.
 Read [the next-session plan](NEXT-SESSION-routing-boundary.md). Keep current
 routing, close known defects and verify improvements, then confirm on fresh
 repeated comparisons before changing general routing policy. This session only
 updates context; no new implementation or comparison has run.
+
+## Locked intent and continuation
+
+Owner reaffirmed 2026-09-15 KST: preserve the agreed direction across sessions.
+Intent: users provide goals; Devlyn carries them to verified, complete results.
+Goal: improve the independent core harness across models and execution environments.
+North Star: maximize model capability and intent completeness, then verified
+completion speed and whole-run efficiency; demonstrate value against native use.
+Vision: adaptive multi-engine collaboration and accumulated experience, with
+optional Pyx and a future accessible devlyn-os product, as the unified source states.
+
+Finish the current agreed work unit before selecting another. Maintain completed,
+remaining, current and next work in the handoff. A new idea, one benchmark result,
+or session reset does not authorize a new objective or abandoned sequence.
+If a reproduced counterexample or concrete blocker invalidates the plan, record
+the named evidence, impact on commitments and proposed amendment. Changing the
+goal/scope or abandoning the agreed sequence requires the user's decision;
+implementation choices within scope remain autonomous. Do not ask again for
+already-authorized steps. Fixed intent does not freeze an unverified architecture.
 
 ## Original direction and model guidance — read before selecting work
 
@@ -36,6 +56,23 @@ The inspected [Codex adapter](../config/skills/_shared/adapters/codex.md) still 
 GPT-5.5. Audit the actual loaded instructions against Astra guidance; some existing
 rules may already agree. A source-version mismatch alone proves neither harm nor
 successful adaptation. This update records guidance, not a completed prompt migration.
+
+## Model adaptation boundary
+
+Astra guidance is model-specific evidence, not a universal prompt to copy into
+Claude, Grok, Kimi, Qwen or every local model. Keep common intent, completion,
+scope and evidence contracts; adapt tactics to the exact model/version and its
+runtime's actual tools, context, output, reasoning and delegation capabilities.
+CLI/engine, provider/model, execution environment and role are distinct axes.
+Use official guidance and each model's native baseline to test a small delta;
+add none when it brings no benefit. Capability/role gaps stay explicit.
+
+Current extension points are [engine adapters](../config/skills/_shared/adapters/README.md)
+and [role settings](../config/skills/_shared/engine-preflight.md#role-resolution).
+Engine headers are not yet universal model/version adaptation: explicit role
+options remain route-limited, and OTHER currently means another engine.
+The owner's local Kimi/Qwen examples confirm extensibility as a design requirement,
+not completed integration or authorization to launch every model at once.
 
 ## Active core improvement program
 
