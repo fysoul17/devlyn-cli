@@ -1,20 +1,40 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-14 KST — **0172 entry clarification verified; delivery pending**.
+Updated 2026-09-14 KST — **0173 native comparison completed; report delivery pending**.
 
-0172 started after explicitly notifying the user. Directly replaced blanket resolve summaries, moved direct eligibility to the start of the skill description and distinguished quoted logs from current invocation requests. Full-route criteria, phase runtime and check/pin/completion obligations remain unchanged. Native candidate supplied-fact screen: 14/14 (4 direct,10 full), zero tools. The baseline screen loaded live candidate/global skills, so it is not valid isolated A/B evidence; no causal quality/speed/token claim. See `autoresearch/iterations/0172-proportional-entry-clarification.md` and `.devlyn/0172/`. Receipt `b7649da4e4298d8b51342be1`; no resolve invocation or global/customer instruction rewrite.
+[0173](iterations/0173-native-comparison.md): original bare163.124s, solo1157.855s,
+pair904.434s; all common69/69 and seven external gates PASS. Both full runs pass
+unmodified canonical archive acceptance; pair actually ran exact Opus5. No
+root product repair or native retry. More full-route procedure produced no observed
+product-quality lift on this prepared task. Broader superiority remains unproved.
 
-0171 delivery is COMPLETE: PR40 accepted9fb739ba6c684137b252bce3e284c0461c43e4d5 merged4120c8d7ec6023a97228784c1e020c2cc5a6165c; seven regressions, skills lint, input integrity and Linux/Windows CI pass. Receiptfe34f6e9550684ad19adafb1 COMPLETE, owned scratch CLEAN. `.devlyn/0171/FINAL.md` supersedes prior pending status. No new paid task draw; registered0170 remains frozen and the full comparison incomplete.
+The original bare made no devlyn harness calls, but global devlyn skill descriptions
+still entered the reconstructed catalog. After the user's fairness question,
+a separately registered bare with all devlyn skill names disabled passed69/69 in
+178.291s; offline native rendering shows0 devlyn cards and21 unchanged other cards.
+This is supplemental evidence, not a replacement or captured provider input.
+All arms received the same prepared spec/gates; requirements discovery was not
+measured. Whole solo/pair output and cost stay UNKNOWN. Retain all raw results.
 
-0170 delivery is COMPLETE: PR39 accepted1fbd8004e2479100e5cc83671ef913ad651bfa95 merged5b4b00de8bc4bd81a14bdb33dfbef64c8db40585; Linux/Windows CI,516-package-byte audit, branch/scratch cleanup complete. `.devlyn/0170-delivery/FINAL.md` supersedes its historical pending status below. The actual full comparison remains incomplete.
+Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch
+`codex/0173-native-comparison`; receipt `cd6d856fa5d309abf98d9b16`.
+`.devlyn/0173-delivery/FINAL.md` supersedes pending delivery/cleanup once written.
+Do not rerun completed draws. Continue routing work only from an observed gap,
+with catalog isolation and unchanged quality checks; do not manufacture savings
+by repeating already-direct toy cases.
 
-## START-HERE — 0170 scratch fixed, later execution failures
+0172 COMPLETE: PR41 accepted14deceee0af37c534db1fa63771c1c9e583be84a,
+merged2502236fcecb1aa7848f330062cd113ad69649dd. Direct eligibility and log/invocation
+distinction now lead entry summaries; full checks/pins/phases remain. Its14/14
+supplied-fact screen was contaminated and proves no causal gain. Receipt
+b7649da4e4298d8b51342be1 and `.devlyn/0172-delivery/FINAL.md` record clean delivery.
 
-[0170](iterations/0170-worker-scratch-boundary.md) records all3 actual draws. Scratch preparation is fixed: actual solo7/7 gates pass. Bare167.520s completes; solo872.405s archives BLOCKED because the parent redundantly requested worker staging of an already committed test. Canonical rejection remains; outer protocol-failure continuation rule allowed the unmodified pair draw. Pair's controller then aborted IMPLEMENT on a2s process census timeout (452.241s controller, native return wall UNKNOWN); actual Opus NOT_REACHED. Two later identity-bound process observations prove known writers stopped. Original failure/state/streams remain intact.
-
-All three retained products pass69/69, exact external gates and452/368/223 tests; negative new tests yield155/100/31 assertions. This never upgrades a blocked/interrupted native route. Actual blind Opus/Grok and root accept all3 products and correctly classify4 controls. Report delivery and owned scratch cleanup remain pending at this checkpoint. Finish them without task rerolls or product repairs. Source/Git/recovery evidence remains retained. Any fresh comparison first needs staging-owner and process-observation qualification.
-
-Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch `codex/0170-worker-scratch-boundary`; receipt `.git/devlyn-completion/4bc74659f8b2ca24761d48e3/receipt.json`. Registered172 inputs unchanged; `.devlyn/0170/` contains original evidence and explicit derived reader/custody checks. No pipeline success, pair value or whole pair cost claim. `.devlyn/0170-delivery/FINAL.md` supersedes delivery/cleanup pending status when written.
+0171 COMPLETE: PR40 merge4120c8d; parent-only staging and bounded census repair,
+seven regressions plus Linux/Windows CI PASS. Receiptfe34f6e9550684ad19adafb1 and
+`.devlyn/0171/FINAL.md`. 0170 COMPLETE delivery: PR39 merge5b4b00de; original
+scratch failure fixed, but its solo remained BLOCKED and pair interrupted before
+Opus. `.devlyn/0170-delivery/FINAL.md` preserves archive, source and cleanup.
+These historical verdicts are unchanged by the new0173 draws.
 
 0169 **DELIVERY COMPLETE, COMPARISON INCOMPLETE**: PR38 accepted f124754cfd5ac50bec02438a9a755507ea6b1f84 merged8a48375bde2efbbd9479cafb2ba39ebe101e99c6; CI/package audit and owned-ref/scratch cleanup complete. Bare159.367s; solo823.405s archived BLOCKED:gate-scratch-permission before parent quota failure; pair NOT_RUN. Both returned products pass69/69 and external gates; this does not regrade native failure. Immutable archive335 files SHA256 `39183317db123005130aea569bf062aa9e4ba5e945775c0955d67e8ac6904d3c`. `.devlyn/0169-delivery/FINAL.md` is authoritative; no frozen draw rerun.
 
