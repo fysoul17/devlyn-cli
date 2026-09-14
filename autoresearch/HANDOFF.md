@@ -1,21 +1,31 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-14 KST — **0174 active entry application and native checks PASS; delivery pending**.
+Updated 2026-09-14 KST — **0175 screening COMPLETE; report delivery pending**.
 
-[0174](iterations/0174-applied-proportional-entry.md) applied the already-shipped0172
-entry changes to the user's actual AGENTS/CLAUDE and four active core descriptions.
-This closes the deployment gap; no new pipeline algorithm. Both native engines
-completed the direct whitespace fix with original regressions and8 independent
-cases, and chose FULL for all4 inspected risk/explicit-workflow cases. No full
-startup in those inspection-only diagnostics; no before/after speed claim.
-Original WIP preserved; legacy snapshot catalogs retained, not certified isolated.
+Read [0175](iterations/0175-routing-boundary.md). All nine registered native draws
+and six final blind Opus/Grok source reviews finished; never rerun completed cells.
+L/C: all routes pass, bare92.962s/111.211s, with no observed full quality lift.
+H: bare201.735s fails precision; solo1505.901s ends BLOCKED:verify-exhausted and
+still fails precision; pair1479.969s repairs precision and archives PASS. Both full
+precision findings came from Codex; first Opus missed it. All H products reject
+finite10**400 integers despite no contract range bound: none meets the full contract.
+Independent original14-method H checks and nominal positive missed these boundaries;
+control/oracle gaps and false reviewer claims are retained and fact-adjudicated.
+No runtime policy change, extra draws, root product rescue or npm release.
 
-**Next session, only after0174 closes:** read
-[NEXT-SESSION-routing-boundary.md](NEXT-SESSION-routing-boundary.md). User wants the
-bare/solo/pair difficulty boundary prepared for a fresh session, not run now.
-It specifies observable dimensions, bounded screening and untouched confirmation.
-No predetermined ordering, frozen draw reruns or new classifier by assumption.
-0174 receipt `ee68972bc783c408e0794935`; `.devlyn/0174-delivery/FINAL.md` is authoritative.
+Owned receipt `dd1a3ab3693da9b2602a1889`, branch `codex/0175-routing-boundary`.
+Retained evidence `.devlyn/0175/`; final delivery record will be
+`.devlyn/0175-delivery/FINAL.md`. Original checkout WIP remains untouched.
+Next frontier is an untouched bounded confirmation before any selection change;
+one synthetic task per class with prepared specs does not measure discovery or
+establish a threshold. The [prior plan](NEXT-SESSION-routing-boundary.md) is executed.
+
+0174 COMPLETE: PR43 merged accepted1874439ece249b5083d039d3b9fdcd1620ea4c3f as
+b6ecac152c4ef64bc1b19d88d932ef9e891a1b56; Linux/Windows CI and owned cleanup passed.
+Applied0172 entry text to actual user AGENTS/CLAUDE and four active descriptions.
+Original deployment WIP is intentional; `.devlyn/0174-delivery/FINAL.md` is authoritative.
+Both native engines completed DIRECT and selected FULL for four inspection-only
+risk/explicit cases; no full reruns, threshold proof or globally isolated catalog claim.
 
 0173 COMPLETE: PR42 accepted49e328e30f19dceb61388a9fc892180dcf80e8c1 merged
 9cdc5a11432e71f1eb6a3a9a878c6153d0893449; push/PR Linux+Windows PASS, owner refs
@@ -36,7 +46,6 @@ All arms received the same prepared spec/gates; requirements discovery was not
 measured. Whole solo/pair output and cost stay UNKNOWN. Retain all raw results.
 
 Retained checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Current0174 task branch: `codex/0174-proportional-entry`; after delivery use main.
 Do not resume the completed0173 branch or repeat its draws.
 
 0172 COMPLETE: PR41 accepted14deceee0af37c534db1fa63771c1c9e583be84a,

@@ -1,9 +1,9 @@
 # Next session: when does additional orchestration earn its cost?
 
-Prepared at the user's request during0174. **NOT RUN.** Finish0174 first;
-`.devlyn/0174-delivery/FINAL.md` is authoritative for its delivery/validation.
-Read this file and `autoresearch/HANDOFF.md` in the next session. Do not replay
-completed0173 draws, reopen parked A16, or infer a goal to exhaust a token budget.
+Prepared during0174; **executed as [0175](iterations/0175-routing-boundary.md)**
+on2026-09-14. Nine task draws and six final blind source reviews are complete.
+Read0175 and `HANDOFF.md` for results and remaining uncertainty. This document
+preserves the prospective plan; do not rerun its completed screen or0173/0174/A16.
 
 User objective: identify which observable task properties predict a useful
 difference between bare, solo and pair, then use evidence to improve selection.
