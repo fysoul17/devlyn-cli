@@ -1,6 +1,6 @@
 ---
 name: devlyn:resolve
-description: Hands-free full pipeline for explicit resolve requests, formal specs, queue drains, material ambiguity, subsystem/design work, security/auth/payment/persistence/concurrency/public-API-contract changes, or no decisive acceptance check. Free-form goal or formal spec input. Plan → Implement → Build-gate → Cleanup → Verify (fresh subagent, findings-only). Mechanical-first verification; Verify dual-judge is default-when-available. Clear, local, reversible, low-risk conversational edits with decisive checks default to direct execution; explicit small resolve keeps the full workflow.
+description: Skip for clear, local, reversible, low-risk edits with decisive checks; execute those directly. Use this full pipeline for explicit resolve requests, formal specs, queue drains, material ambiguity, subsystem/design work, security/auth/payment/persistence/concurrency/public-API-contract changes, or no decisive check. Quoted logs or skill paths alone are not invocation requests. Explicit small resolve retains all phases and independent verification. Verify dual-judge is default-when-available.
 ---
 
 Orchestrator for the 2-skill harness pipeline. One fresh worker per phase; file-based handoff via `.devlyn/pipeline.state.json`. VERIFY spawns a fresh-context worker so independence is structural — not advisory.

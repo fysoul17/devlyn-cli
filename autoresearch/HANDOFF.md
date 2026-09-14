@@ -1,8 +1,10 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-14 KST — **0171 direct repair verified; delivery pending; routing improvement next**.
+Updated 2026-09-14 KST — **0172 entry clarification verified; delivery pending**.
 
-0171 is explicitly direct by user instruction: fix redundant staging ownership and transient process-census handling without invoking resolve or new paid comparison draws. Branch `codex/0171-direct-execution-repair`, receipt `.git/devlyn-completion/fe34f6e9550684ad19adafb1/receipt.json`, evidence `.devlyn/0171/`. Seven regression checks and skills lint pass; two failure regressions reject the frozen controller. See `autoresearch/iterations/0171-direct-execution-repair.md`. Registered0170 remains frozen. NEXT after this repair: user-requested direct/full routing improvement with unchanged measured quality; tell the user when starting. See the final pending entry in `docs/specs/queue.md`; do not let a default queue drain select unrelated older work first.
+0172 started after explicitly notifying the user. Directly replaced blanket resolve summaries, moved direct eligibility to the start of the skill description and distinguished quoted logs from current invocation requests. Full-route criteria, phase runtime and check/pin/completion obligations remain unchanged. Native candidate supplied-fact screen: 14/14 (4 direct,10 full), zero tools. The baseline screen loaded live candidate/global skills, so it is not valid isolated A/B evidence; no causal quality/speed/token claim. See `autoresearch/iterations/0172-proportional-entry-clarification.md` and `.devlyn/0172/`. Receipt `b7649da4e4298d8b51342be1`; no resolve invocation or global/customer instruction rewrite.
+
+0171 delivery is COMPLETE: PR40 accepted9fb739ba6c684137b252bce3e284c0461c43e4d5 merged4120c8d7ec6023a97228784c1e020c2cc5a6165c; seven regressions, skills lint, input integrity and Linux/Windows CI pass. Receiptfe34f6e9550684ad19adafb1 COMPLETE, owned scratch CLEAN. `.devlyn/0171/FINAL.md` supersedes prior pending status. No new paid task draw; registered0170 remains frozen and the full comparison incomplete.
 
 0170 delivery is COMPLETE: PR39 accepted1fbd8004e2479100e5cc83671ef913ad651bfa95 merged5b4b00de8bc4bd81a14bdb33dfbef64c8db40585; Linux/Windows CI,516-package-byte audit, branch/scratch cleanup complete. `.devlyn/0170-delivery/FINAL.md` supersedes its historical pending status below. The actual full comparison remains incomplete.
 
