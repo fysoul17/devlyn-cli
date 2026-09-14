@@ -28,11 +28,14 @@ workflow structure against the actual model's official guidance and native
 capabilities. The phase graph is a working baseline, not an untouchable goal.
 Existing route contracts bind until a verified change replaces them.
 
-The user recalls supplying an Astra official prompting guide. **Exact original
-source not yet recovered.** The inspected [Codex adapter](../config/skills/_shared/adapters/codex.md)
-instead cites OpenAI's GPT-5.5 prompt-guidance URL. Do not conflate these sources
-or claim Astra guidance has been applied. Recover/verify the exact guide before
-using its recommendations; the older header alone does not prove behavioral harm.
+User supplied and root read the [official GPT-6 Astra guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6-astra#prompting-best-practices)
+on 2026-09-15 KST; **source identification is resolved**. Its prompting guidance
+covers autonomous follow-through, auditing influential/conflicting skills and
+AGENTS instructions, clear writing, deliberate delegation and proportionate tests.
+The inspected [Codex adapter](../config/skills/_shared/adapters/codex.md) still cites
+GPT-5.5. Audit the actual loaded instructions against Astra guidance; some existing
+rules may already agree. A source-version mismatch alone proves neither harm nor
+successful adaptation. This update records guidance, not a completed prompt migration.
 
 ## Active core improvement program
 
