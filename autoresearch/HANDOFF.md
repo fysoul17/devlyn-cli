@@ -1,12 +1,14 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-14 KST — **0170 admitted; actual comparison pending**.
+Updated 2026-09-14 KST — **0170 actual draws ended; comparison incomplete**.
 
-## START-HERE — 0170 worker scratch boundary
+## START-HERE — 0170 scratch fixed, later execution failures
 
-The user authorized a fresh continuation after0169 delivery. [0170](iterations/0170-worker-scratch-boundary.md) qualifies the actual worker boundary, with14 exact gate results and8 permission outcomes matching predictions. Only per-arm gate and prepared precommit paths gain writes through temporary native config; no production/global change. Run registered bare -> full solo -> exact Opus pair draws, then independent source/route assessment and delivery. Do not substitute static review for actual comparison or restart frozen0169.
+[0170](iterations/0170-worker-scratch-boundary.md) records all3 actual draws. Scratch preparation is fixed: actual solo7/7 gates pass. Bare167.520s completes; solo872.405s archives BLOCKED because the parent redundantly requested worker staging of an already committed test. Canonical rejection remains; outer protocol-failure continuation rule allowed the unmodified pair draw. Pair's controller then aborted IMPLEMENT on a2s process census timeout (452.241s controller, native return wall UNKNOWN); actual Opus NOT_REACHED. Two later identity-bound process observations prove known writers stopped. Original failure/state/streams remain intact.
 
-Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch `codex/0170-worker-scratch-boundary`; receipt `.git/devlyn-completion/4bc74659f8b2ca24761d48e3/receipt.json`. `.devlyn/0170/REGISTRATION.json` and `ROOT-ADMISSION.md` govern this study. No task draw at this prospective checkpoint.
+All three retained products pass69/69, exact external gates and452/368/223 tests; negative new tests yield155/100/31 assertions. This never upgrades a blocked/interrupted native route. Actual blind Opus/Grok and root accept all3 products and correctly classify4 controls. Report delivery and owned scratch cleanup remain pending at this checkpoint. Finish them without task rerolls or product repairs. Source/Git/recovery evidence remains retained. Any fresh comparison first needs staging-owner and process-observation qualification.
+
+Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch `codex/0170-worker-scratch-boundary`; receipt `.git/devlyn-completion/4bc74659f8b2ca24761d48e3/receipt.json`. Registered172 inputs unchanged; `.devlyn/0170/` contains original evidence and explicit derived reader/custody checks. No pipeline success, pair value or whole pair cost claim. `.devlyn/0170-delivery/FINAL.md` supersedes delivery/cleanup pending status when written.
 
 0169 **DELIVERY COMPLETE, COMPARISON INCOMPLETE**: PR38 accepted f124754cfd5ac50bec02438a9a755507ea6b1f84 merged8a48375bde2efbbd9479cafb2ba39ebe101e99c6; CI/package audit and owned-ref/scratch cleanup complete. Bare159.367s; solo823.405s archived BLOCKED:gate-scratch-permission before parent quota failure; pair NOT_RUN. Both returned products pass69/69 and external gates; this does not regrade native failure. Immutable archive335 files SHA256 `39183317db123005130aea569bf062aa9e4ba5e945775c0955d67e8ac6904d3c`. `.devlyn/0169-delivery/FINAL.md` is authoritative; no frozen draw rerun.
 
