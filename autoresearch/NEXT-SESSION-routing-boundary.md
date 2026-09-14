@@ -11,10 +11,13 @@ Start in `/Users/aipalm/.local/share/nx01/core-continuation-20260912` and read
 
 ## 0. Reconcile original intent, official model guidance and current implementation
 
-Read the owner-provided unified vision and 0120 linked in HANDOFF. Recover the
-exact Astra prompting guide (currently unresolved; the existing adapter cites
-GPT-5.5), verify its version/content, and inspect the actual prompt, adapter,
-context and execution paths it could affect. Separate completed changes,
+Read the owner-provided unified vision, 0120 and the confirmed official Astra
+guide linked in HANDOFF. Its source is resolved; do not ask the user for it again.
+Inspect the actual loaded prompt, skill, adapter, context and execution paths
+against its autonomy, instruction-priority, delegation and test-scope guidance.
+The existing adapter cites GPT-5.5; separate source age from behavioral mismatch.
+Account for already-shipped 0172/0174 entry changes rather than duplicating them.
+Separate completed changes,
 remaining mismatches and untested ideas. Vendor advice supplies hypotheses, not
 local performance proof or permission to rewrite all phases.
 Choose the most consequential falsifiable core improvement from this evidence;
