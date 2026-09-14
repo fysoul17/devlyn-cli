@@ -1,18 +1,44 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-14 after the user's routing and context corrections.
+Updated 2026-09-15 KST after the user's original-source correction.
 **Continue improving the devlyn-cli core harness. Mission 1 remains ACTIVE.**
 0175 and its delivery are COMPLETE; they are evidence for the ongoing program.
-The H fixture repair is a bounded diagnosis/calibration step, not the main goal.
+The H fixture is a bounded diagnosis/calibration candidate, not the main goal.
 Read [the next-session plan](NEXT-SESSION-routing-boundary.md). Keep current
 routing, close known defects and verify improvements, then confirm on fresh
 repeated comparisons before changing general routing policy. This session only
 updates context; no new implementation or comparison has run.
 
+## Original direction and model guidance — read before selecting work
+
+Owner source: `/Users/aipalm/Downloads/devlyn-unified-vision-handoff.md`
+(2026-09-11), especially sections 2–6 and 9. Pyx memory
+`8e213bb4-86b6-5fdc-b983-027d2b9bdb8b` records the same confirmed direction.
+Devlyn should amplify native model capability through task-appropriate roles,
+collaboration and experience transfer, with devlyn-cli independently useful and
+recommended rather than mandatory for devlyn-os. Pyx is optional to core value.
+Do not reduce the ambition to a safe wrapper, cheaper execution or fixture polish.
+Names, fixed phase graphs and team shapes are not the product's essence; the
+vision's design hypotheses are not already approved implementations.
+
+[0120](iterations/0120-model-adaptation-direction.md#user-authority-and-objective)
+authorizes evidence-backed substantial harness improvement or replacement, with
+root deciding after advisory reviews. Compare current prompts/context/roles and
+workflow structure against the actual model's official guidance and native
+capabilities. The phase graph is a working baseline, not an untouchable goal.
+Existing route contracts bind until a verified change replaces them.
+
+The user recalls supplying an Astra official prompting guide. **Exact original
+source not yet recovered.** The inspected [Codex adapter](../config/skills/_shared/adapters/codex.md)
+instead cites OpenAI's GPT-5.5 prompt-guidance URL. Do not conflate these sources
+or claim Astra guidance has been applied. Recover/verify the exact guide before
+using its recommendations; the older header alone does not prove behavioral harm.
+
 ## Active core improvement program
 
 | Workstream | Completed evidence | Remaining work |
 | --- | --- | --- |
+| Model/harness fit | 0120 adopted model adaptation and fair replacement as a direction, not a proven performance lift. | Check model-specific prompting, inherited process constraints, context/role allocation and structural alternatives against official guidance and actual results. |
 | Proportional routing | [0172](iterations/0172-proportional-entry-clarification.md) clarified entry; [0174](iterations/0174-applied-proportional-entry.md) applied it and checked native behavior. | Improve actual misrouting when reproduced; bounded cases do not prove general adherence. |
 | Full-run overhead | [0165](iterations/0165-gate-overhead.md) reduced fixture-gate cost; [0171](iterations/0171-direct-execution-repair.md) fixed staging/observation. | Locate and remove measured duplicate dispatch/context/report work while retaining checks and independent review. |
 | Intent/constraint coverage and repair closure | 0148–0157 fixed concrete validation/authoring failures; [0175](iterations/0175-routing-boundary.md) exposes remaining H coverage and repair gaps. | Trace spec → generated checks → review → repair; reproduce the core cause, then fix and verify it on fresh cases. |
@@ -20,7 +46,7 @@ updates context; no new implementation or comparison has run.
 
 These remain active, worked serially through diagnosis, minimal source change,
 independent verification and delivery. Fixture polish or another benchmark alone
-does not complete the program. Start with 0175's constraint/repair evidence;
+does not complete the program. Start with the source-alignment step in the plan;
 after that scoped step closes, continue the next evidenced core improvement.
 
 ## Current evidence and interpretation
