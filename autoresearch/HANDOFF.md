@@ -1,648 +1,83 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-14 KST — **0175 screening COMPLETE; report delivery pending**.
-
-Read [0175](iterations/0175-routing-boundary.md). All nine registered native draws
-and six final blind Opus/Grok source reviews finished; never rerun completed cells.
-L/C: all routes pass, bare92.962s/111.211s, with no observed full quality lift.
-H: bare201.735s fails precision; solo1505.901s ends BLOCKED:verify-exhausted and
-still fails precision; pair1479.969s repairs precision and archives PASS. Both full
-precision findings came from Codex; first Opus missed it. All H products reject
-finite10**400 integers despite no contract range bound: none meets the full contract.
-Independent original14-method H checks and nominal positive missed these boundaries;
-control/oracle gaps and false reviewer claims are retained and fact-adjudicated.
-No runtime policy change, extra draws, root product rescue or npm release.
-
-Owned receipt `dd1a3ab3693da9b2602a1889`, branch `codex/0175-routing-boundary`.
-Retained evidence `.devlyn/0175/`; final delivery record will be
-`.devlyn/0175-delivery/FINAL.md`. Original checkout WIP remains untouched.
-Next frontier is an untouched bounded confirmation before any selection change;
-one synthetic task per class with prepared specs does not measure discovery or
-establish a threshold. The [prior plan](NEXT-SESSION-routing-boundary.md) is executed.
-
-0174 COMPLETE: PR43 merged accepted1874439ece249b5083d039d3b9fdcd1620ea4c3f as
-b6ecac152c4ef64bc1b19d88d932ef9e891a1b56; Linux/Windows CI and owned cleanup passed.
-Applied0172 entry text to actual user AGENTS/CLAUDE and four active descriptions.
-Original deployment WIP is intentional; `.devlyn/0174-delivery/FINAL.md` is authoritative.
-Both native engines completed DIRECT and selected FULL for four inspection-only
-risk/explicit cases; no full reruns, threshold proof or globally isolated catalog claim.
-
-0173 COMPLETE: PR42 accepted49e328e30f19dceb61388a9fc892180dcf80e8c1 merged
-9cdc5a11432e71f1eb6a3a9a878c6153d0893449; push/PR Linux+Windows PASS, owner refs
-removed and scratch clean. `.devlyn/0173-delivery/FINAL.md` supersedes its pending status.
-
-[0173](iterations/0173-native-comparison.md): original bare163.124s, solo1157.855s,
-pair904.434s; all common69/69 and seven external gates PASS. Both full runs pass
-unmodified canonical archive acceptance; pair actually ran exact Opus5. No
-root product repair or native retry. More full-route procedure produced no observed
-product-quality lift on this prepared task. Broader superiority remains unproved.
-
-The original bare made no devlyn harness calls, but global devlyn skill descriptions
-still entered the reconstructed catalog. After the user's fairness question,
-a separately registered bare with all devlyn skill names disabled passed69/69 in
-178.291s; offline native rendering shows0 devlyn cards and21 unchanged other cards.
-This is supplemental evidence, not a replacement or captured provider input.
-All arms received the same prepared spec/gates; requirements discovery was not
-measured. Whole solo/pair output and cost stay UNKNOWN. Retain all raw results.
-
-Retained checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Do not resume the completed0173 branch or repeat its draws.
-
-0172 COMPLETE: PR41 accepted14deceee0af37c534db1fa63771c1c9e583be84a,
-merged2502236fcecb1aa7848f330062cd113ad69649dd. Direct eligibility and log/invocation
-distinction now lead entry summaries; full checks/pins/phases remain. Its14/14
-supplied-fact screen was contaminated and proves no causal gain. Receipt
-b7649da4e4298d8b51342be1 and `.devlyn/0172-delivery/FINAL.md` record clean delivery.
-
-0171 COMPLETE: PR40 merge4120c8d; parent-only staging and bounded census repair,
-seven regressions plus Linux/Windows CI PASS. Receiptfe34f6e9550684ad19adafb1 and
-`.devlyn/0171/FINAL.md`. 0170 COMPLETE delivery: PR39 merge5b4b00de; original
-scratch failure fixed, but its solo remained BLOCKED and pair interrupted before
-Opus. `.devlyn/0170-delivery/FINAL.md` preserves archive, source and cleanup.
-These historical verdicts are unchanged by the new0173 draws.
-
-0169 **DELIVERY COMPLETE, COMPARISON INCOMPLETE**: PR38 accepted f124754cfd5ac50bec02438a9a755507ea6b1f84 merged8a48375bde2efbbd9479cafb2ba39ebe101e99c6; CI/package audit and owned-ref/scratch cleanup complete. Bare159.367s; solo823.405s archived BLOCKED:gate-scratch-permission before parent quota failure; pair NOT_RUN. Both returned products pass69/69 and external gates; this does not regrade native failure. Immutable archive335 files SHA256 `39183317db123005130aea569bf062aa9e4ba5e945775c0955d67e8ac6904d3c`. `.devlyn/0169-delivery/FINAL.md` is authoritative; no frozen draw rerun.
-
-0168 **REVIEW DELIVERY COMPLETE, COMPARISON NOT DONE**: PR37 accepted0d018a6ac6b2688710aeb6abbc10b5191cce2230 merged35d5b0170ddad4a8bdc1e5ca6b990f5f64b58837. Actual Opus/Grok static PASS, CI/package audit/ref and scratch cleanup COMPLETE; `.devlyn/0168-delivery/FINAL.md`. Its final sentence that separated comparative execution from the requested closure was a scope error, superseded by this correction. Original0167 BLOCKED/429 and all historical archives remain unchanged.
-
-0167 **COMPLETE**: PR36 accepted b007ce61affece343cabc42104d7537493036100,
-merged c1228323413fd73dc2f84e47df8915d896f8d139; receipt
-f5479fb1e70af22e63b67700 COMPLETE, Linux/Windows CI/package identity passed,
-owned refs removed and scratch CLEAN. See `.devlyn/0167-delivery/FINAL.md`.
-[0167](iterations/0167-fresh-matched-comparison.md) retains the bare/solo passes,
-blocked Fable pair and incomplete cost/causal evidence. Do not retry frozen draws.
-0165/0166 delivery and 0154 routing remain preserved. No new measurement or unrelated
-harness improvement is started by this closure.
-
-0166 **COMPLETE**: PR35 accepted d207e72d0f03f434383970e79fa586b928fa0b6c,
-merged ca4cefe4d88c443783c18068833c1e237cc9a743. Receipt
-3512513c0efd116a18ef82b0 COMPLETE, Linux/Windows CI/source/package identity pass,
-owned refs removed, scratch CLEAN. See `.devlyn/0166-delivery/FINAL.md`.
-Immutable121-member archive SHA256
-`f1073ff06c549701625c9d93bfe02cd39aef9876f4141ce9309e8b76949261b0`.
-Source repairs literal Git-path enumeration and authoring; no broad native gain.
-The ROOT-DECISION scope-limit phrase “path-surface normalization” is not a
-confirmed defect: actual path_matches_surface uses exact/prefix/brace matching,
-without stripping/replacing file paths. Do not invent a normalization task.
-
-
-0165 **COMPLETE**: PR34, accepted8906683524b643f1fc4047b18dc6e462c3c48e21,
-mergeee9f185a6b4e564ae3b29cbd547ed814d5687792; receipt
-3d4eb2fe637a3eec6db882da COMPLETE, Linux/Windows CI and source/package audit pass,
-owned refs removed and scratch CLEAN. [0165](iterations/0165-gate-overhead.md)
-retains all four33-test runs:184.890/77.724/61.160/120.380s, each PASS.
-Local fixture-suite savings only. Archive120 files SHA256
-`27b9f082bd8a1bc7af5b91c99e6d14bb6d55ad1b876d3111d4fff87e8e84530d`.
-See `.devlyn/0165-delivery/FINAL.md`; do not repeat completed cells.
-
-Sequence: (1) historical small-task routing source/customer reconciliation was
-already applied in0154; preserve it, with current adherence still unproved.
-(2)0165 tests fixture-only Git dispatch overhead with all33 checks retained.
-(3)Explicit-constraint coverage/semantic recall remains open after the bounded
-0148–0157 repairs. (4)Fresh matched comparative quality/pair value remains open;
-full pinned baseline/calibration gates must pass before admission. No frozen
-0159 or A16 replay, customer-secret reads or npm release.
-
-0164 is **COMPLETE**, PR33 accepted b618ae4b8d2bc8e9ec964f58e59f16404b2f33dd
-merged aab3022e8d97881714a2da69fe0131d1e5e33a8b. Receipt
-a8443958e66b4d00ba0ef847 COMPLETE; final Opus/Grok reviews, Linux/Windows CI,
-source/package audit and owned-ref/scratch cleanup are done. Inspect
-`.devlyn/0164-delivery/FINAL.md`; do not repeat its old quota/review checkpoint.
-Its immutable137-member archive remains unchanged at SHA256
-`2d21cc223213bb3b71c5e3e2881aa648677141aaa9e89b4ee46507f499df36d3`.
-
-0163 is already COMPLETE (PR32 mergecbd6970, receipt aee33026a711686d04d93e0f);
-its older pre-delivery wording below is historical, not work to resume.
-
-[0163](iterations/0163-parent-gate-execution.md) retains its bounded actual
-parent halt result: one avoided repair invocation, no observed speed or quality
-gain. Its280-member archive remains unchanged at SHA256
-`1c77b3699298b6b3b583dc258aaf7bc9fb8b1a81599f64d57d57d3edb43455bb`.
-Do not restart frozen0159 or a timing-only measurement chain.
-
-0162 delivery COMPLETE: [PR31](https://github.com/fysoul17/devlyn-cli/pull/31),
-accepted2fdd813e5e73d3425d47d21729f8a9d0d33dfa16 merged
-87d4873f97b47032bb65608d2ec4c19c5a6cbd87; receiptbd8f368bce65a7433e68f9cf COMPLETE,
-Linux/Windows PR+push CI/source/package identity verified, owned refs removed,
-scratch CLEAN. [0162](iterations/0162-unrepairable-gate-dispatch.md) changed only
-the parent FAIL branch and tracked mirror. Supplied-fact old9/12→new12/12 is
-not actual dispatch proof;0163 now supplies bounded execution evidence above.
-Archive67 members SHA256
-`012f8eec71b457d127f8f92e59fc80167afe5580d66410654608c68b05e08501` unchanged.
-
-0161 delivery COMPLETE: [PR30](https://github.com/fysoul17/devlyn-cli/pull/30),
-acceptedbdb398a merged693cc684a8104613ea1f718a32c6f8438283fdb1;
-receipt73d30959b3f411d8c463ec11 COMPLETE, Linux/Windows PR+push CI passed,
-source/package identity verified, owned refs removed. Isolated project gate
-preparation passes original source and separate new calibration; original gold
-still fails type/format and stays frozen. [0161](iterations/0161-project-gate-preparation.md)
-owns preparation requirements. Its115-member archive SHA256
-`d5e6ab3e315c22780d92daad0720cb1c40d687e9d9ad511b1c7c18635e5121f9` is unchanged.
-563747391 disposable bytes cleaned, hook source/Git retained. Rebuild and validate
-actual pinned environments/commands before any future task admission.
-
-0160 delivery COMPLETE: PR29 merged accepteddb9bc97 as
-c9a2d99d80bbe99894696ceaddeb71a70c44d735; receipt9d0eba4bcbf942d4b5ed084a COMPLETE,
-owned refs removed, scratch CLEAN. PR/push Linux+Windows passed, source/package
-identity verified. Native cached-code cessation baseline200 had24 assertion
-failures; candidate200 zero. [0160](iterations/0160-windows-bootstrap-cessation.md)
-retains evidence and limits; no general superiority claim.
-
-0159 delivery COMPLETE: PR28 merge8d8c59a2f85d316a7212a8dea693e2731c7f5f30;
-receipt02105b2da7d861e3226f4313 COMPLETE. Original research verdict below remains.
-
-## 0159 — actual pytest lifecycle bug
-
-Public pytest14998 at source3fd8675d6d798507c06cf9c60753be6d9d7b0e17 loses
-setup/teardown error evidence under tmp_path retention policy failed. Candidate14997
-was rejected before task draws because current source already passes its repro.
-Reserved14995 remains title-only, body/source unopened. No upstream contact or PR.
-
-| Arm | Native wall | Common behavior checks | Product source | Native route |
-| --- | ---: | --- | --- | --- |
-| bare | 173.878s | 12/12 visible +48/48 independent | PASS_WITH_ISSUES | ordinary terminal |
-| full solo | 851.293s | 12/12 visible +48/48 independent | PASS_WITH_ISSUES | BLOCKED |
-| full pair | NOT_RUN | NOT_RUN | NOT_RUN | infrastructure stop |
-
-Both preserve original files/scope and pass existing/new tests (82/80 pass,
-1 existing skip each). Blind actual Opus/Grok pass products and correctly classify
-valid/invalid lifecycle controls; root no established in-scope CRITICAL/HIGH.
-**INCOMPLETE_INFRASTRUCTURE; no full comparison or speed/pair claim.** Root's
-pytest[dev] environment omitted separately configured mypy/Ruff. BUILD_GATE
-failed actual missing-module commands; the no-install constraint blocked repair.
-Solo run rs-20260912T164010Z-06fb3d6d8697 retains its original non-CLEAN archive.
-
-Separate pinned-tool diagnostics pass original source and both untouched patches.
-They establish the environment omission, never repair/regrade the native result.
-There is no observed common-quality difference in the two obtained products.
-Pair/confirmation **NOT_SELECTED/NOT_RUN**. No same-task reroll or task shopping.
-The complete protocol, prior failed setup/oracles and disproved source concern
-remain in immutable `.devlyn/0159-evidence.tar.gz` (619 members), SHA256
-`2ddc59894f72e1f25ea548b660bb1eded78890ba4586b664333fd050016de6fc`.
-All three fixture receipts LOCAL_ONLY/scratch CLEAN; source/Git retained. Root
-scratch CLEAN (148068771 logical bytes removed), disposable caches removed.
-No harness production change, customer edit or npm release.
-
-## Next frontier and boundaries
-
-Before any new measurement, execute the full configured gate commands on baseline
-and calibration using actual pinned development/type/lint dependencies. Developer
-extras alone did not supply all project gates. Environment availability and
-scope/source acceptance must be distinguished before interpreting a native failure.
-Any further work needs a concrete source/overhead hypothesis, such as the observed
-preflight/blocked-repair dispatch cost; this result does not justify a new generic
-router, more phases or another search for a winning task. Broad Mission1 quality,
-efficiency/pair value and independent human real-project test15 remain open.
-Preserve A16,0124/0125/0128,0140,0147, failed0156, closed0158/0158b and0159.
-Never read customer secrets or sweep unknown historical directories.
-No frozen run restart/regrade. Actual requested identities, ambient skill errors,
-public-task exposure and incomplete cost/egress telemetry remain limits.
-
-## 0158 delivery COMPLETE
-
-PR27 merged acceptedfb466f0 into main35b62f06348ffbe0cbf9d92ba7bf275822672839.
-PR CI34702831306 and pushCI34702829186 passed Linux/native Windows; actual
-integration66e0a40c9886738e35e29871f52afdd1d812220b tree/parents and artifact
-identities matched. Receipt55e1668f55d8ad1ac52128ba COMPLETE; owned refs removed,
-scratch CLEAN. `.devlyn/0158-delivery/FINAL.md` records completion.
-Small synthetic task: bare76.859s / solo587.030s / pair778.903s, all19/19 PASS;
-no added quality benefit observed, confirmation NOT_SELECTED/NOT_RUN. Original
-0158 infrastructure failure remains separate from0158b; no pooling or reroll.
-Bounded sequence0153–0158 completed (validation/routing/duplicate-check guidance/
-expected-file and scope-authoring repairs, then comparison); no general superiority
-claim. The earlier delivered records below retain their as-of boundaries.
-
-## Earlier delivered work
-
-### 0157 scope-gate authoring note — delivery COMPLETE
-
-[0157](iterations/0157-authoring-scope-gate.md) connects check authoring to the
-existing BUILD_GATE `authorized_surface` gate, retaining stricter explicit file
-constraints and stating the phase/base-ref precondition. Only the common spec
-template note changes; the guard-validation sentence and Python/schema stay
-unchanged. Eighteen component cases and two auxiliary precondition/required-file
-controls match predictions. These verify the existing gate, not native reliability.
-Fable's actual 429 usage limit activates the authorized Opus 5 substitute;
-final Opus PASS_WITH_ISSUES / Grok PASS, root no in-scope CRITICAL/HIGH.
-Full lint PASS282.791s, scoped mirrors/whitespace and original guard-sentence
-preservation pass. One registered known-task native Codex draw PASS367.963s:
-all 18 outcomes match, including seven attributable annotation failures, with
-no duplicate whole-checkout scan, false block or retry. Original 0156 remains
-failed. Changed BUILD_GATE context and ambient skill warnings preclude causal,
-holdout or general semantic-improvement claims. No fixture checker is promoted.
-Source `.devlyn/0157-evidence.tar.gz`; inspect the receipt and separate
-`.devlyn/0157-delivery/` for current CI/delivery status before retrying anything.
-
-PR #26 merged accepted `5e01be6f33b7ea01c0af4367d7569f4b657ce1d1` into main
-`3c38564cb3bbc6102d645b8d5cf45613b1518029`. PR CI34696522639 and push
-CI34696520151 pass POSIX/native Windows; actual integration source and package
-bytes match accepted source. Receipt `1ef874fd940bcd78c554baf8` COMPLETE,
-owned task refs removed and scratch CLEAN. No npm release.
-
-### 0156 delivery COMPLETE
-
-[0156](iterations/0156-spec-authoring-preflight.md) fixes the actual ideate
-preflight rejecting template-style prose with valid sibling `spec.expected.json`.
-`--check <actual-spec>` now selects the sibling before legacy inline content,
-validates against the actual named Markdown and fails closed on a bad sibling.
-No command execution/staging, schema flag or generated-runtime change.
-All 28 before/after controls, four hypothesis controls, subtraction/scope checks
-and full lint PASS284.247s. Native Fable PASS_WITH_ISSUES / Grok PASS on source
-and final wording; root zero in-scope CRITICAL/HIGH. Standalone
-`--check-expected` still uses its existing `spec.md` convention.
-
-The separately registered extracted authoring screen is **FAILED_PROPOSAL**:
-one native Codex draw, 354.966s, all ten shapes valid but all ten blocked by its
-own scope guard on runner-owned `.devlyn/pipeline.state.json`. No seven-case
-semantic-detection credit. Draw 2 **NOT_RUN**, per first-failure stop. A root
-diagnostic deleting only that call from a copy passes 3 allowed / rejects 7
-violations; original outcome and bytes stay unchanged. Ambient skill-load
-warnings limit context-isolation claims. No full ideate/resolve run, general
-semantic improvement or model comparison is established. No fixture checker
-or template addition is promoted. Frozen 0140/0147 remain closed.
-
-PR #25 merged accepted `03f07da1c790e6201f5c21f549b2c31a459170c6` into main
-`7b346ca82a773497b82a03678040434eaff5757a` at 2026-09-12T12:57:10Z.
-PR CI34694715840 and push CI34694713428 pass Linux/native Windows. Actual
-integration `96bdda36272b92890f02bc20691553e636b0a694` tree/parents match final
-merge; downloaded package/driver bytes and both OS identities match.
-Receipt `4ffc705adfa9c741d9ab570e` COMPLETE, owned refs removed, scratch CLEAN.
-Source `.devlyn/0156-evidence.tar.gz` remains immutable; delivery evidence is
-separate at `.devlyn/0156-delivery/`. No npm release.
-Broader semantic coverage and the matched bare/solo/pair comparison remain open.
-
-### 0155 delivery COMPLETE
-
-[0155](iterations/0155-build-gate-overlap.md) addresses a current canonical/literal
-repeat-scheduling requirement in BUILD_GATE and its parent overview. Only proven
-exact execution-contract matches may share a current literal invocation. Missing
-or non-exit deferred results run the canonical gate normally; literal failures,
-per-error findings, capability stops and post-CLEANUP VERIFY remain intact.
-No runtime cache or phase omission. Full lint PASS308.575s; final actual rendered
-prompts, scope/mirror and three runner timeout controls pass. Final native Fable
-PASS_WITH_ISSUES and Grok PASS, zero in-scope CRITICAL/HIGH. Earlier NEEDS_WORK
-advice and first mirror failure remain preserved. Retained advisory limits are
-in the iteration. No worker-adherence or speed improvement is yet measured.
-PR #24 merged accepted `8988f7d716917cf1cacc6a1b7153ec3e3f6386e5` into main
-`6676f59920d62b0359d730a8ab44ff7739c2f953` at 2026-09-12T11:24:44Z.
-Receipt `c0d5a372158bf1964fd8d14d` COMPLETE, owned refs removed, scratch CLEAN.
-PR CI34690530002 and push CI34690527965 pass POSIX/native Windows. Actual
-integration `b03a9c4893316d8236d2007feb2e75fc874acd2d` tree/parents match final
-merge; changed package members and both OS identities match accepted source.
-Immutable source `.devlyn/0155-evidence.tar.gz`; `.devlyn/0155-delivery/` remains
-separate. No npm release or measured speed improvement.
-
-### 0154 delivery complete and customer patches applied
-
-[0154](iterations/0154-ordinary-entry-audit.md) records that the user clarified
-most routine work before 3.1.0 started resolve, naming
-`devlyn-os-v1`, `ai-rag-hub`, and `archon-interface-v1`. Their historical
-CLAUDE.md line 54 explicitly mandated resolve for small tasks. Do not require a
-new current-version reproduction to acknowledge that historical report.
-
-Current CLAUDE files have proportional entry; all three AGENTS files lack it,
-and archon still labels loop engineering the default entry. An actual isolated
-installer check confirms old AGENTS bytes remain preserved with a merge notice;
-a new project receives the current contract. This is intentional preservation,
-not a failed package update. No speed/model-causality claim follows.
-
-User approved all three route-only AGENTS patches; applied locally at
-2026-09-12T10:46:36Z. Exact previously reviewed proposal bytes and whitespace
-pass; unrelated worktree/index diffs, untracked names, HEAD and branches remain
-unchanged. No customer commit/push. Evidence:
-`.devlyn/0154-local-application-20260912/`. Existing engine-default/downgrade
-asymmetries stay outside scope; no application approval remains pending.
-
-CLI audit PR #23 merged accepted `afb992e4dbe97ceef7574a6a30404592976cc992` into
-main `9774517fb3b8688ea3d903100772d5419cdb4196` at 2026-09-12T10:27:06Z.
-Receipt `8793aed2ba033fe54961e3a7` COMPLETE, owned refs removed, scratch CLEAN.
-PR CI34688094964 and push CI34688092972 pass POSIX/native Windows; integration
-`14d75da86dc556fdb3d3cbaf56aa50fd58ce85cc` tree/parents match final merge and
-package bytes are unchanged. Source/delivery evidence remains immutable/separate.
-The broader overhead, semantic coverage and matched-comparison priorities remain.
-
-### 0153 delivery COMPLETE
-
-[0153](iterations/0153-benchmark-validation.md) / PR #22 merged accepted
-`a187e586cfbb4d25f6970124f02b47682257405a` into main
-`9e70a697b01b232ffc27163d2d4694ebd0bb40be` at 2026-09-12T10:00:39Z.
-Receipt `f9d7c95fac90f43c8b4e3830` is COMPLETE; owned refs removed, scratch CLEAN.
-An initial cleanup observation caught transient process 4618; it exited without
-intervention and the receipt-based retry completed. No unknown process was killed.
-
-All 36 before/after controls, checker self-test, guard-deletion regression,
-full lint (349.922s), mirror/scope checks pass. Fourteen invalid cases now stop
-before execution/results refresh; 22 outcomes stay unchanged. Existing 35
-nonempty benchmark carriers (144 full / 94 visible commands) retain validation.
-Native Fable 5.1 PASS_WITH_ISSUES and Grok 4.6 PASS: no in-scope CRITICAL/HIGH;
-existing generic fix-hint LOW remains. Source evidence is immutable at
-`.devlyn/0153-evidence.tar.gz`; delivery is `.devlyn/0153-delivery/`.
-
-PR CI34686948870 and push CI34686946777 pass POSIX/native Windows. Actual PR
-integration `14d696340ded60c6a5348f30fd11599e3a8f35d9` has the final merge's
-tree/parents; package/driver/checker bytes and both OS identities match.
-Prior dirty research/original checkouts remain preserved. No npm release.
-
-### 0149 delivery COMPLETE
-
-[PR #16](https://github.com/fysoul17/devlyn-cli/pull/16) merged at
-`f50ce5b9c269fc8aa8aea7ace7a5042e8aafbb72` on 2026-09-12 15:21 KST.
-Accepted source `a28334f002406495b9099f52fb501bd963e520d8` and its existing
-acceptance/evidence were unchanged. Receipt `04c8d7f4ab67f53f7e57352d` is
-**COMPLETE**; exact owned local/remote task refs are removed.
-
-[CI 34676753530 attempt 2](https://github.com/fysoul17/devlyn-cli/actions/runs/34676753530)
-passed POSIX and native Windows. Actual log/artifact source is
-`85e803e5f0999f918af971b3bc98c35fd3b72cc4`; its tree and parents matched the
-then-current PR merge ref `39701df496c4ab494092396df8603b3ed4c6cd45`.
-Driver SHA-256 `0fe43e1348c9dabd46d1f87e8f7844c0343406866856874401fee424b97f4f72`
-matches actual downloaded bytes; POSIX/Windows package identities agree.
-Source audit proves accepted 0149 PackageTests plus unchanged 0150 test classes.
-Prior stale-source failure `34676403494` and cancelled attempt 1 remain preserved,
-not regraded. Delivery evidence: `.devlyn/0149-resume-20260912-1515/`.
-
-### 0150 remains COMPLETE
-
-[0150](iterations/0150-windows-job-membership.md) / [PR #19](https://github.com/fysoul17/devlyn-cli/pull/19)
-merged accepted `512d588550da6240c7f6b01421a90c27b6a4e3e3` into main
-`4dfee99695702539f0ed3b1d2110c9a03a95c043`. Final push/PR checks
-`34676012206` / `34676025418` passed POSIX and native Windows. Independent native
-Fable/Grok source and diagnostic-delta reviews found zero CRITICAL/HIGH; full
-local lint passed. Production `platform-support.py` was unchanged. Exact fixture
-PID disappearance and actual OpenProcess error 87 are verified; the historical
-CI reference owner remains unknown. Existing optimized-Python timeout/failure
-cleanup LOW limits stay explicit. Receipt `fbe3985ee021a2112645ac15` COMPLETE;
-`.devlyn/0150-evidence.tar.gz` and receipt-bound bytes remain immutable.
-
-### 0151 delivery COMPLETE
-
-[0151](iterations/0151-generated-pure-design.md) / [PR #20](https://github.com/fysoul17/devlyn-cli/pull/20)
-merged accepted `aab93fae2ef337d6c8bf751a1cf7c84ad1f69945` into main
-`a301aa4dd57df4e0552cd51ed004fed3740a0430` at 2026-09-12 16:23 KST.
-Receipt `8f5f5ba32515beadb1f4ed47` is **COMPLETE**; owned local/remote refs
-are removed and scratch is clean. Source evidence remains immutable.
-
-All 21 final CLI controls, checker/bootstrap self-tests, UTF-8-disabled caller
-smoke, subtraction/scope controls and full lint (333.137s) pass. Native Fable
-**PASS_WITH_ISSUES** and Grok **PASS** full-source/final-delta reviews found no
-established CRITICAL/HIGH in scope. [PR CI 34680286855](https://github.com/fysoul17/devlyn-cli/actions/runs/34680286855)
-and push CI `34680284277` pass POSIX/native Windows. Actual PR integration
-source `dbc7a90063a87a01382d625a3655b1ea8f3ecb88` and downloaded driver hash
-`c8984d8501d0761a8ea0b71a19e1d0c9c81c09dae79b6f37f8d58c94bd6fc698` match;
-POSIX/Windows package identities agree. Evidence: `.devlyn/0151-evidence.tar.gz`
-and `.devlyn/0151-delivery/`. No npm release.
-
-### 0152 delivery COMPLETE
-
-[0152](iterations/0152-missing-generated-source.md) / [PR #21](https://github.com/fysoul17/devlyn-cli/pull/21)
-merged accepted `e244b153558f7014ebcba38c3fcee9d15b795e61` into main
-`76cb85b08e8d30275d8f20fef10837c4f68e4a30` at 2026-09-12T08:34:47Z. Receipt
-`8d5a56901c2a69c495425638` is **COMPLETE**; owned local/remote refs are removed
-and scratch is clean. Source acceptance/evidence remains immutable.
-
-All 38 before/after controls, checker/bootstrap self-tests, guard-deletion/scope
-checks and full lint (269.115s) pass. All 26 missing generated sources now fail
-with the declared path and one CRITICAL finding before command execution or
-results refresh; the other 12 outcomes remain unchanged. Native Fable 5.1
-**PASS_WITH_ISSUES**, Grok 4.6 **PASS**: zero in-scope CRITICAL/HIGH. Existing generic
-fix-hint LOW remains. The initial ignored-mirror lint failure is preserved.
-
-[PR CI 34683290987](https://github.com/fysoul17/devlyn-cli/actions/runs/34683290987)
-and push CI `34683288619` pass POSIX/native Windows. Actual PR integration
-`a00ccd7cb8e5835a7e9533985a8629851c410d8b` has the final merge's tree/parents;
-downloaded driver, package digest and packaged checker bytes match their declared
-identities and the accepted source. Windows/POSIX package identities agree.
-Evidence: `.devlyn/0152-evidence.tar.gz` and `.devlyn/0152-delivery/`.
-
-0152 establishes early checker rejection; no full-pipeline false PASS or broad
-semantic coverage/model-performance claim. Its benchmark-prestaged follow-up
-is closed by 0153 above. A16 and frozen comparisons stay untouched.
-
-Prior research checkout, retained with its existing HANDOFF changes:
-`/Users/aipalm/.local/share/nx01/iter0144/core-research`.
-Receipts and owned scratch live under `.git/devlyn-completion/<id>/`.
-Prior local-only parking checkpoint `6b3237998ed33943ee543fdcda06efc995872550`
-and branch `codex/research-park-20260912-1455` remain recoverable under receipt
-`b16b5000f139c4441795aa8a`; its scratch was cleaned. Preserve unrelated
-`.playwright-mcp/`, user changes, other sessions, A16 and frozen comparisons.
-The original checkout's intentional HANDOFF WIP is preserved in
-`.devlyn/0151/original-handoff.md` with its hash before any synchronization.
-
-0153 closes the separate benchmark-prestaged validation follow-up, including
-delivery. The four broader priorities are audited/continued in 0154 and later.
-A16, 0124/0125/0128 and frozen 0140/0147 comparisons remain parked/closed.
-No restart, regrade, superiority claim or npm release is implied.
-
-## Current owner direction — independent core, optional memory
-
-User clarification, 2026-09-11: **devlyn-cli is the independent core harness.**
-It must maximize model potential, quality, problem-solving capability, verified
-completion speed and whole-run efficiency/cost without requiring Pyx. Research,
-validate and ship core harness improvements for all CLI users first; adding
-memory is not a substitute for fixing the core's measured shortcomings.
-
-**pyx-memory is general-purpose memory, optionally amplifying Devlyn:** carry user/project intent,
-decisions and verified experience across engines and sessions to improve later
-choices and strategies. This per-installation experience loop is distinct from
-researching and distributing harness improvements. Storage/reinforcement alone
-does not prove learning, and strategy improvement does not imply weight training.
-
-**A core devlyn-os vision is accessible graph engineering and loop engineering**
-for harnesses using devlyn-cli and optional Pyx. Make relationships (e.g. agents,
-tasks and dependencies) and result-driven execution, verification and replanning
-easy to design, run, observe and improve, with user intent and necessary
-intervention guiding the organization. A canvas, graph database or fixed workflow
-is not decided. OS expansion comes later; CLI-first development does not make it
-an OS dependency or fixed default. Retain recommended-harness status and room
-for other harnesses/native execution.
-
-Evaluate core versus strong native bare first, then Pyx's incremental value over
-that core, including retrieval/learning costs. Accuracy/intent completeness →
-verified completion time → total cost; protect easy tasks and improve difficult
-ones. Optimal performance and cumulative amplification are goals to demonstrate,
-not established or per-task guarantees. This clarification supersedes the prior
-conversation's Pyx-first experiment recommendation and older fixed-fleet framing.
-Implementation, naming, team/learning policy and integration design remain open.
-The subsequent 2026-09-11 instruction authorizes sequential core improvements
-without invoking resolve. Root Codex implements and decides after independent
-Fable 5.1 (or Opus 5) and Grok 4.6 review. WIP, A16 and closed/frozen experiments
-retain their existing boundaries. The four core priorities below remain open.
-
-## 0148 rejects silently discarded inline constraints
-
-[0148](iterations/0148-inline-constraint-validation.md) reproduces a concrete
-generated/legacy-inline defect: unsupported sibling fields and misspelled command
-expectations could pass validation, disappear at staging/execution and produce
-false success. Both authoring `--check` and runtime staging now reject them;
-generated guidance names the actual commands-only inline carrier. Normal
-executable guards and sibling checks retain their behavior. Twenty-four before
-and twenty-four final CLI controls, source self-test and full lint pass.
-Independent Fable 5.1 **PASS_WITH_ISSUES** and Grok 4.6 **PASS** source reviews
-found no CRITICAL/HIGH. Root accepts the scoped repair; the task receipt owns
-delivery separately. No npm release.
-
-Compatibility is intentionally stricter: 30 historical Markdown contracts in
-the 144-file comparison now reject previously ignored keys. Historical records
-remain unchanged. This establishes a validation failure, not a general model
-authoring-omission rate or the cause of 0140/0147 misses. Next, inspect whether
-an explicit natural-language constraint becomes a suitable executable check on
-a fresh ordinary task, distinguishing absent checks from malformed carriers.
-0149's bounded authoring inspection is recorded in its merged iteration above.
-The oracle-validation gap and generated pure-design guidance remain follow-ups;
-do not reopen frozen comparisons.
-
-## 0147 semantic review screen — no promotion
-
-[0147](iterations/0147-constraint-review.md) registered eight fresh Fable/Grok
-reviews of the frozen 0140 source under minimal/current semantic-review
-instructions. All native calls completed, but only four Grok answers met the
-strict research JSON format; four fenced Fable answers are excluded. Formal
-result: **INCOMPLETE**. Grok's four usable answers all missed the forbidden new
-Any annotation. Qualitative inspection of Fable's readable answers also found
-no detection. No allowed patch was falsely blocked. This is an exposed,
-single-task component screen, not full VERIFY or general model/pair evidence.
-
-No prompt/model change is promoted; disjoint confirmation is **NOT_SELECTED /
-NOT_RUN** under the registered stop rule. 0148 separately reproduces and repairs
-an inline-validation defect; it does not explain this screen. The existing
-template already asks for suitable checks; another generic reviewer paragraph
-or universal Any scanner is not justified. Four broader priorities remain open.
-
-## Recent verified source repairs
-
-[0146](iterations/0146-named-spec-carriers.md) fixes the documented `X.md` plus
-`spec.expected.json` path across bootstrap, process evidence and completion.
-Before the fix, named-spec obligations could be missed and the canonical contract
-omitted from custody. Valid/invalid source checks could inspect unrelated
-`spec.md`. Six before/after controls reproduce and close those failures; full
-lint (including 25 completion tests) and independent Fable/Grok source reviews
-complete: **PASS_WITH_ISSUES**, no CRITICAL/HIGH. LOW diagnostic/test-depth advice
-remains; one proposed dirty-contract bypass was disproved by the existing guard.
-
-[0145](iterations/0145-verify-coverage.md) fixes pure-design/stale-inline execution
-and aligns Requirements/Constraints coverage with findings-only judges.
-[0144](iterations/0144-core-overhead.md) leaves priority 1 unproven and adds
-bounded duplicate-check/output guidance for priority 2. These three source
-repairs are verified; broad semantic recall, performance and causal pair value
-are not. The 0147 screen provides no promotion evidence; 0148 closes only the
-separately reproduced inline-validation mismatch.
-Keep the four broader priorities below open; do not reopen frozen comparisons.
-
-## Completed task completion — shipped in 3.1.0
-
-[Task completion PR #4](https://github.com/fysoul17/devlyn-cli/pull/4) is
-merged at `81e9ead`; [release PR #5](https://github.com/fysoul17/devlyn-cli/pull/5)
-is merged at `6a5073f`. Signed [v3.1.0](https://github.com/fysoul17/devlyn-cli/releases/tag/v3.1.0)
-was published as npm `latest` 3.1.0, with registry `gitHead` matching the tag.
-All 515 public package members match verified local bytes/modes; fresh npm
-installation and CLI help pass. Existing task branches and acceptance/release
-worktrees were removed after verified custody. This final HANDOFF travels in a
-separately owned documentation task; its receipt handles merge and cleanup.
-
-Product verification is **PASS_WITH_ISSUES**, with zero CRITICAL/HIGH findings.
-The sole LOW advisory concerns manual recovery when interrupted native worktree
-removal leaves a prunable registration; retry retains the resource safely.
-Finish gate is clean and the normal run is archived. The original delivery and
-release goal is complete; the four research priorities below remain future work.
-
-Accepted source: `491c38deaf5735dd14dc47fecdfc0a8a1c6806c6`, normal run
-`rs-20260910T022458Z-3f00122a0779`. The resumed run completed BUILD_GATE,
-CLEANUP, final mechanical checks and fresh Codex/Fable 5.1 review.
-The first review found HIGH `VERIFY-PRIMARY-001`: Git `insteadOf` could
-redirect publication to another repository. The repair validates literal,
-effective fetch and effective push repository identities before allocation and
-again on resume/cleanup. Four regressions preserve rejection and legitimate
-same-repository aliases. An earlier owner check also repaired the actual
-`gh repo view` positional argument and unsupported JSON-field query.
-
-Current behavior: prospective task ownership, exact accepted source, PR reuse,
-protected merge and recoverable owned-resource cleanup.
-`git config --local devlyn.completionMode pr` stops at PR; unset/default
-`auto` continues through eligible merge and cleanup. Existing branches/trees
-remain owner-managed; they cannot be retroactively enrolled.
-Existing project instructions are preserved by installation: reconcile them
-with the bundled AGENTS/CLAUDE templates to adopt completion guidance.
-
-Durable evidence and recovery root:
-`/Users/aipalm/.local/share/nx01/iter0143/20260910T022444Z-acceptance-r2/`.
-`final-custody/manifest.json` binds 398 entries and the source bundle; the accepted
-archive is `final-custody/files/.devlyn/runs/rs-20260910T022458Z-3f00122a0779/`.
-`feature-cleanup-result.json`, `release-workflow-result.json` and
-`public-release-3.1.0/PUBLIC-CHECK.json` record actual delivery and publication.
-Release receipt/custody lives under the retained checkout's
-`.git/devlyn-completion/6d3ed1352a9b2baea546ffc4/`; final documentation uses
-`.git/devlyn-completion/825ab2163b1d8a0823c2239f/`. Both were allocated before work.
-Git recovery refs have no automatic expiry. See [0143](iterations/0143-task-completion.md).
-
-Two September 9 runs remain historically BLOCKED. Codex availability recovered
-on September 10, so the proposed engine exception was unnecessary and pins did
-not change. This session's failed owner dispatch was stopped without source
-changes; its corrupted capture was not accepted, and a fresh attested worker
-performed the repair. Inactive/crashed-session intervals are not active model
-execution time.
-
-## Legacy worktree cleanup and recovery
-
-**40 registrations → 1; 29 existing roots removed, 10 absent registrations pruned,
-33 local and 7 remote branches deleted.** Screenshot roots came from benchmark
-drivers and isolated research/validation work, not production resolve allocation.
-The outer owner's missing delivery/cleanup boundary caused their retention;
-source CLEANUP runs before VERIFY and existing archive stayed inside the checkout.
-
-Exact filesystem/Git custody, 39 recovery heads and deletion evidence are under
-`~/.local/share/nx01/worktree-cleanup/0143-20260909T154056Z/` and
-`.devlyn/0143-worktree-shipping/cleanup-result.{md,json}`. Remote deletions used
-atomic expected-SHA leases. Missing roots have Git recovery only; absent files
-could not be archived retrospectively. Main/current checkout, A16, unrelated
-unregistered roots and live processes were preserved. No old candidate was adopted.
-
-## Four next improvement priorities
-
-1. Reproduce a real small ordinary request unnecessarily entering full resolve.
-   [0141](iterations/0141-proportional-execution.md) changed the entry contract,
-   but its four Fable cells were already direct: no observed route/stable-speed
-   gain, and 12/12 supplied-fact classifications do not prove risk discovery.
-2. Reduce measured full-route context/dispatch/report overhead while retaining
-   checks and independent review. 0141 took about 21 minutes and emitted an
-   unnecessary 1.26 MB BUILD hash dump. 0143’s literal lint alone took 273.846s
-   and its helper tests 80.906s. Measure model work, checks, repetition and repairs
-   separately; exclude inactive conversation time from active execution.
-3. Improve explicit-constraint coverage and semantic reviewer recall. [0140](iterations/0140-delegated-real-task.md)
-   introduced forbidden `Any` in solo despite native PASS and a blind Fable miss.
-   Ruff catches that example but not nested Any; authoring guidance is not complete
-   semantic coverage.
-4. Establish comparative quality and causal pair value on registered matched
-   tasks with untouched confirmation. 0140 paired 706.187s vs bare Fable 142.589s
-   remains negative; copycat NOT_RUN, independent-human test 15 and world-best
-   claims remain open. [0070 aggregate/off-resolve intent closure](iterations/0070-loop-architecture-STUB.md)
-   remains a designed frontier, not a shipped guarantee.
-
-## Preserved boundaries and history
-
-Accuracy/intent completeness → verified resolution time → OUTPUT/cost. Root
-makes decisions after actual advice; obsolete model recipes, unanimity and cost
-bans are superseded by [0120](iterations/0120-model-adaptation-direction.md).
-Use current installed skills/pins for execution. A finished archive is not proof
-of successful verification or permission to publish. Unknown telemetry stays unknown.
-
-**A16 remains user-parked/NOT_INSPECTED.** [0118 custody](iterations/0118-concurrent-admission.md#waiter-park-and-custody)
-owns `~/.local/share/nx01/iter0113/quick-a16-1`, `lift-quick-a16-1`, staged inputs,
-runner/parameters and partial evidence. No restart, regrade or retuning is authorized.
-Preserve closed negatives 0124/0125/0128 and frozen comparisons; no latency,
-reliability, accuracy superiority or Mission 1 closure follows from this cleanup.
-
-Original HANDOFF WIP and exact [0139 preparation](iterations/0139-mission1-validation.md)
-are committed in `5e85f99`; pre-edit hashes/snapshots remain in
-`.devlyn/0143-worktree-shipping/handoff-source-preservation/MANIFEST.json`.
-Historical verbatim Blocks 7–11 are recoverable from that Git version; their
-adopted goals remain in NORTH-STAR. 0139's old auth blockers are historical.
-
-<a id="direction-reassessment--2026-09-05"></a>
-0115/0116, 0125 and 0128 stay unadopted, with recovered source/history under the
-cleanup directory above. 0115/0116 are readable from `refs/devlyn/archive/0143/wt-27`;
-follow `cleanup-result.md` for restoration only if needed.
-
-Original user directive retained verbatim; later model/authority instructions
-supersede its historical model name:
-
-> 한가지만 더. 지금 하고있는 것들이 북극성의 목표를 향해서 no xxxx, worldclass xxx 5대 원칙들을 바탕으로 계속 개선을 해나가고 있는게 맞지? 그냥 오로지 점수를 위해서 하는게 아니고 말이야? 확실하게 해주고 항상 codex cli gpt 5.5 와 함께 compenion 으로서 pair 로 논의하고 최선의 결과에 도달할 수 있도록 끝까지 연구하고 개선해줘. 산으로만 가지마. 이제는 됐다 싶을때까지 계속 돌아. 하면서 계속 docs는 업데이트 해주고, 50% 이상 context가 차면 compact 하고 handoff 를 통해서 지금 내가 얘기한것 토씨하나 틀리지 않고 그대로 각인하고 계속 진화시켜나가.
+Updated 2026-09-14 after the user's routing and context corrections.
+**Continue improving the devlyn-cli core harness. Mission 1 remains ACTIVE.**
+0175 and its delivery are COMPLETE; they are evidence for the ongoing program.
+The H fixture repair is a bounded diagnosis/calibration step, not the main goal.
+Read [the next-session plan](NEXT-SESSION-routing-boundary.md). Keep current
+routing, close known defects and verify improvements, then confirm on fresh
+repeated comparisons before changing general routing policy. This session only
+updates context; no new implementation or comparison has run.
+
+## Active core improvement program
+
+| Workstream | Completed evidence | Remaining work |
+| --- | --- | --- |
+| Proportional routing | [0172](iterations/0172-proportional-entry-clarification.md) clarified entry; [0174](iterations/0174-applied-proportional-entry.md) applied it and checked native behavior. | Improve actual misrouting when reproduced; bounded cases do not prove general adherence. |
+| Full-run overhead | [0165](iterations/0165-gate-overhead.md) reduced fixture-gate cost; [0171](iterations/0171-direct-execution-repair.md) fixed staging/observation. | Locate and remove measured duplicate dispatch/context/report work while retaining checks and independent review. |
+| Intent/constraint coverage and repair closure | 0148–0157 fixed concrete validation/authoring failures; [0175](iterations/0175-routing-boundary.md) exposes remaining H coverage and repair gaps. | Trace spec → generated checks → review → repair; reproduce the core cause, then fix and verify it on fresh cases. |
+| Comparative quality and pair value | [0173](iterations/0173-native-comparison.md) and 0175 completed comparisons; H-pair achieved a better result. | Confirm proposed general selection changes on new tasks and repeated draws, including total repair cost. |
+
+These remain active, worked serially through diagnosis, minimal source change,
+independent verification and delivery. Fixture polish or another benchmark alone
+does not complete the program. Start with 0175's constraint/repair evidence;
+after that scoped step closes, continue the next evidenced core improvement.
+
+## Current evidence and interpretation
+
+- [0175 report](iterations/0175-routing-boundary.md): nine native bare/solo/pair
+  draws and six final blind source reviews are complete. L/C all pass; bare is
+  fastest at 92.962s / 111.211s.
+- H-pair repaired the precision defect left in H-bare and H-solo. Pair produced
+  the better H result in this screen; solo exhausted verification. The separate
+  finite-integer-domain failure affects all H products and remains fixable.
+  It does not erase pair's observed improvement. Attribution to Opus alone and
+  repeatable superiority across tasks remain unestablished.
+- Delivery: PR44 merged as `dee980ba53d0776e46b4b43f715cb0371148547d`;
+  accepted push/PR and merge CI passed POSIX/Windows. Receipt
+  `dd1a3ab3693da9b2602a1889` is COMPLETE; owned refs removed, scratch CLEAN.
+  [Final record](../.devlyn/0175-delivery/FINAL.md) supersedes old pending wording.
+- This accepted next-step order supersedes the report/FINAL's confirmation-first
+  frontier. Frozen products, raw evidence and original verdicts remain unchanged.
+
+## Operating direction
+
+Keep current [AGENTS.md](../AGENTS.md) routing: clear, local, reversible, low-risk
+work with decisive checks goes direct; material ambiguity, persistence,
+concurrency, security/auth/payment, public contracts or inconclusive checks use
+full resolve, with available OTHER-engine VERIFY pair. Explicit workflows,
+executor pins, opt-outs and unavailable-engine behavior retain their contracts.
+No new difficulty classifier or routing threshold is adopted by this handoff.
+
+For core research changes, the standing owner instruction remains: root implements
+directly without invoking resolve; actual Fable 5.1 (authorized Opus 5 substitute
+when unavailable) and Grok 4.6 provide independent advice. Root adjudicates.
+This differs from measured full solo/pair arms, which must execute their canonical
+pipeline. The general product routing above remains intact.
+
+devlyn-cli is the independent core; Pyx is optional. Optimize intent correctness
+and completeness, then verified completion time including repairs, then total
+cost. More process alone is not quality. Root decides from evidence and actual
+independent advice; unanimity is not required. Unknown telemetry remains UNKNOWN.
+The longer-term devlyn-os direction is accessible graph and loop engineering;
+canvas, graph storage, fixed fleets and OS architecture remain undecided.
+[NORTH-STAR](NORTH-STAR.md), [PRINCIPLES](PRINCIPLES.md), [MISSIONS](MISSIONS.md)
+and [DECISIONS](DECISIONS.md) retain enduring goals; current user instructions win.
+
+## Workspace, preservation and background
+
+Work in `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+Original `/Users/aipalm/Documents/GitHub/devlyn-cli` contains intentional WIP;
+its `.devlyn/NEXT-SESSION-routing-boundary.md` is a pointer here.
+Preserve source/Git/recovery refs, `.devlyn/0175/`, delivery evidence and archive.
+All ten 0175 scratch directories are already CLEAN; do not sweep unknown roots,
+shared caches, unrelated `.playwright-mcp/`, customer data or other sessions.
+
+0173/0174/0175 and earlier delivered work are history, not tasks to replay.
+A16 stays user-parked/NOT_INSPECTED; preserve closed 0124/0125/0128 and frozen
+comparisons. No retrospective repair/regrade, npm release or Mission 1 closure.
+Mission 1 is not closed by this screen; fleet/OS expansion stays deferred.
+
+Completed histories and the executed screen plan remain in their iteration
+reports, `.devlyn/*-delivery/FINAL.md` and Git at
+`701c43dcf7ae84446a2ca432d64131762e0232b2:autoresearch/HANDOFF.md`.

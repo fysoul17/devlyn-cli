@@ -1,91 +1,94 @@
-# Next session: when does additional orchestration earn its cost?
+# Next session: continue core harness improvement
 
-Prepared during0174; **executed as [0175](iterations/0175-routing-boundary.md)**
-on2026-09-14. Nine task draws and six final blind source reviews are complete.
-Read0175 and `HANDOFF.md` for results and remaining uncertainty. This document
-preserves the prospective plan; do not rerun its completed screen or0173/0174/A16.
+Updated 2026-09-14. The user explicitly retains the overall devlyn-cli harness
+improvement program: routing, overhead, intent/constraint coverage, verification
+and repair, and comparative pair value. H is evidence within that program.
+**The next implementation and confirmation are NOT_RUN.** 0175's nine draws,
+six final reviews, PR44 delivery and owned cleanup are COMPLETE; do not repeat.
+Start in `/Users/aipalm/.local/share/nx01/core-continuation-20260912` and read
+[HANDOFF](HANDOFF.md) plus the relevant evidence below.
 
-User objective: identify which observable task properties predict a useful
-difference between bare, solo and pair, then use evidence to improve selection.
-There is no assumed ordering. The0173 prepared Decimal task tied69/69; bare was
-much shorter. That establishes neither universal equivalence nor a threshold.
+## 1. Diagnose the constraint and repair gap; close the H calibration defect
 
-## Scope and decision rule
+First trace the frozen H spec, generated tests, primary/pair findings and repair
+rounds under `.devlyn/0175/work/` and `.devlyn/0175/H-{bare,solo,pair}/assessment/`.
+Determine why the original 14 independent checks/nominal positive missed numeric
+boundaries, why solo's repair remained partial, and how pair reached its better
+result. Separate root-authored oracle omissions from generated-check/reviewer
+misses and actual harness behavior. These are observations, not yet one proven
+core cause. Use this diagnosis to select the smallest falsifiable core hypothesis.
 
-Compare three execution routes with the same primary engine/model/effort and
-the same original source and task inputs:
+Use a new owned task/checkout and a copy of the final H-pair product as the
+starting candidate. H-pair already fixes measured precision loss; preserve that
+gain while closing the remaining defect. It is an experimental fixture, not
+devlyn production queue code. A fixture repair alone proves no harness change.
 
-- Bare: ordinary direct implementation and its own required checks.
-- Solo: canonical devlyn pipeline with one engine and independent verification.
-- Pair: the same pipeline plus the registered OTHER-engine reviewer, actually run.
+- Source: `.devlyn/0175/H-pair/assessment/product/queue.py`; associated caller,
+  original/regression tests and `spec.expected.json` are in the same product root.
+- Contract: `.devlyn/0175/inputs/H/spec.md:6` accepts finite int/float timestamps
+  excluding bool, with no integer magnitude bound; duration must be positive.
+- Failure: `_validate_time` passes integers through `math.isfinite`, which
+  overflows for `10**400`; expiry storage also calls `float(expires)`. Inspect
+  validation, arithmetic, persistence and decode together before choosing a fix.
+- Evidence: `.devlyn/0175/integer-domain-registration.json`,
+  `.devlyn/0175/integer-domain/H-pair.result.json`, and `check-integer-domain.py`
+  under `.devlyn/0175/`. Precision evidence/probe: `large-expiry/` and
+  `check-large-expiry.py` under that same root.
 
-Keep full-route behavior and explicit pins intact. Explicit resolve/spec/queue
-requests retain their contract; an empirical policy change cannot silently
-downgrade them. Risk/ambiguity decisions depend on inspected behavior, not file
-count, a word such as "cache", or a single invented difficulty score.
+State the falsifiable prediction before editing: the frozen candidate rejects
+valid huge integers; the repair accepts them with exact persisted expiry,
+exclusive ownership and correct acknowledgement, while keeping the precision
+case `now=2**53, duration=1` and existing behavior intact.
+Do not narrow the contract to make the failure disappear or edit frozen inputs.
+Keep source changes within the existing authorized queue/regression-test surface;
+copy and prepare required test inputs before running the new task's actual gates.
 
-Judge intent correctness, regressions and substantive defects first. Among
-routes meeting the same quality floor, prefer lower total verified completion
-time, then observed token/cost burden. Additional phases or tests are not quality
-credit. Pair value must appear in the final result, not merely a second PASS.
+Close with a failing-before/passing-after regression, all original and specified
+checks, the existing 14 independent H methods, precision/domain probes, and
+independent verification of tenant/token/expiry fences, concurrency, rollback
+and scope. `check-integer-domain.py` reports JSON `pass`; exit zero alone is not
+acceptance. Verify representation boundaries of the chosen fix as well as the
+known example. Follow current route/pin and bounded repair rules; a review PASS
+does not override a failing requirement. Preserve original 0175 results and
+report this follow-up separately. Do not repair every frozen arm to re-rank them.
 
-## Task selection before any model draw
+## 2. Turn reproduced causes into verified core improvements
 
-Inspect candidate tasks without running solutions. Describe each using:
+Map any confirmed omission to the actual authoring, validation, review or repair
+contract and its callers. Follow the standing research execution instruction in
+[HANDOFF](HANDOFF.md); preserve current product routing and explicit pins.
+Reproduce a proposed core defect before changing source, make the smallest fix,
+then run relevant regression/acceptance checks and independent native reviews.
+Use fresh cases to test behavioral improvement; deliver accepted core changes
+with scoped commits, CI and owned cleanup. If no core cause is reproduced, record
+that limit and proceed to the next evidenced active workstream. Do not invent
+generic gates, model rules or new phases to justify the fixture result.
 
-| Dimension | Evidence to record |
-|---|---|
-| Requirement ambiguity | Decisions absent from the initial request; available clarifications |
-| Coupling | Callers, modules and invariants affected by the actual behavior change |
-| Hidden risk | Authorization, durable data, ordering, concurrency or public contracts |
-| Verification difficulty | Existing oracle strength; integration or adversarial checks needed |
-| Repair burden | Whether failures can be localized with available evidence |
+## 3. Confirm selection changes and continue the core loop
 
-Start with three fresh, justified tasks across local/clear, coupled and hidden-risk
-conditions, one draw per route: a nine-draw exploratory ceiling, strictly serial.
-This is screening, not sufficient evidence for a production threshold. Register
-task IDs, immutable source/spec/check hashes, cases unseen by implementers,
-scope/quality rules, native identities, roles, time bounds and stop rules first.
-Do not choose tasks because a prior route has already failed on them. Do not
-repeat already-direct README/label toys to manufacture routing savings.
+Keep current direct/full+pair policy while fixing and using the observed better
+candidate. Pair's better H outcome is already observed. A general selection rule
+needs fresh evidence; isolating Opus-only causation is not a prerequisite to the
+repair or practical use of that result.
 
-If all routes tie, report that the tested range shows no quality lift. If a
-plausible difference appears, register a separate untouched confirmation set
-in that difficulty class before expanding work. Use multiple fresh tasks and
-repeated draws sufficient to distinguish task effects from sampling variation;
-declare sample size and resource ceiling prospectively. Do not grow the study
-until a preferred route wins, or tune on the confirmation set.
+After the repair closes, pre-register a bounded confirmation with multiple new
+tasks and repeated bare/solo/pair draws before policy changes. Declare sample
+size, resource ceiling, stop rules and falsifiable prediction before any draw;
+use untouched cases, common source/requests/checks, matched primary settings,
+fresh sessions and balanced order. Distinguish prepared-spec execution from
+requirements discovery. Retain failures and internal repair costs; no favorable
+rerolls, tuning on confirmation or indefinite expansion until pair wins.
 
-## Fairness and evidence requirements
+Compare final substantive defects and contract completion first, then total
+verified completion time including repairs, then observed cost. Calibrate common
+independent checks and anonymous review; qualify actual skill/catalog exposure.
+Unsplit cost counters remain UNKNOWN. Use inspected representation, ownership
+and oracle risks to evaluate a boundary; no invented universal difficulty score.
+After each scoped result, update the four active workstreams and continue the
+next supported core improvement. Neither fixture repair nor this screen closes
+Mission 1; evidence-backed reductions and fixes remain the product deliverable.
 
-- Explicitly qualify model-visible project instructions and skill catalogs.
-  Bare excludes devlyn metadata and invocation; full routes load only the current
-  canonical devlyn surface. Preserve other inputs. CODEX_HOME/ignore-config/
-  skip_host_skill_discovery alone did not certify isolation in0173. Offline
-  prompt rendering is diagnostic; never call it a captured provider request.
-- If testing requirements discovery, give every route the same original request
-  and clarification access. Supplying a prepared spec measures execution given
-  that spec; record spec-construction cost separately or include it for all arms.
-- Use fresh source/session per draw and prohibit sibling/prior-result access.
-  Balance route order across tasks; record cache policy, preparation and warm-up.
-- Preserve all native failures, timeouts, internal repairs and raw streams.
-  No root product rescue, silent retries, model substitution or favorable rerolls.
-  Infrastructure failure is distinct from product failure; follow the registered
-  stop rule rather than assigning it an invented quality score.
-- Score each frozen product on identical independent checks and scope preservation.
-  Review anonymously; include known good/bad controls, adjudicate factual reviewer
-  disagreements against source or runnable probes, and retain rejected advice.
-- Record end-to-end native wall, checks, dispatch/review/repair time where observable,
-  and every parent/worker/judge's available input/cache/output counters. Include
-  failed attempts. Unsplit counters remain UNKNOWN; no inferred billing total.
-  External assessment/preparation cost stays visible alongside native task time.
-
-## Deliverable
-
-A per-task quality/time/coverage table with raw evidence links, observed failure
-mechanisms, uncertainty and a proposed selection rule tied to inspected properties.
-Confirm the rule on untouched cases before changing runtime selection. State where
-bare suffices, where solo adds demonstrated value, where pair adds value over solo,
-and where the evidence is insufficient. Preserve quality and existing safety/explicit
-workflow obligations. Do not add a classifier, new engine layer or generic benchmark
-harness unless an observed failure makes that addition necessary.
+Historical protocol: Git
+`701c43dcf7ae84446a2ca432d64131762e0232b2:autoresearch/NEXT-SESSION-routing-boundary.md`.
+Frozen inputs/results: [0175](iterations/0175-routing-boundary.md),
+`.devlyn/0175/REGISTRATION.json` and `.devlyn/0175-delivery/0175-evidence.tar.gz`.
