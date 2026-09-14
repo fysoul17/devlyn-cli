@@ -1,6 +1,25 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-14 KST — **0173 native comparison completed; report delivery pending**.
+Updated 2026-09-14 KST — **0174 active entry application and native checks PASS; delivery pending**.
+
+[0174](iterations/0174-applied-proportional-entry.md) applied the already-shipped0172
+entry changes to the user's actual AGENTS/CLAUDE and four active core descriptions.
+This closes the deployment gap; no new pipeline algorithm. Both native engines
+completed the direct whitespace fix with original regressions and8 independent
+cases, and chose FULL for all4 inspected risk/explicit-workflow cases. No full
+startup in those inspection-only diagnostics; no before/after speed claim.
+Original WIP preserved; legacy snapshot catalogs retained, not certified isolated.
+
+**Next session, only after0174 closes:** read
+[NEXT-SESSION-routing-boundary.md](NEXT-SESSION-routing-boundary.md). User wants the
+bare/solo/pair difficulty boundary prepared for a fresh session, not run now.
+It specifies observable dimensions, bounded screening and untouched confirmation.
+No predetermined ordering, frozen draw reruns or new classifier by assumption.
+0174 receipt `ee68972bc783c408e0794935`; `.devlyn/0174-delivery/FINAL.md` is authoritative.
+
+0173 COMPLETE: PR42 accepted49e328e30f19dceb61388a9fc892180dcf80e8c1 merged
+9cdc5a11432e71f1eb6a3a9a878c6153d0893449; push/PR Linux+Windows PASS, owner refs
+removed and scratch clean. `.devlyn/0173-delivery/FINAL.md` supersedes its pending status.
 
 [0173](iterations/0173-native-comparison.md): original bare163.124s, solo1157.855s,
 pair904.434s; all common69/69 and seven external gates PASS. Both full runs pass
@@ -16,12 +35,9 @@ This is supplemental evidence, not a replacement or captured provider input.
 All arms received the same prepared spec/gates; requirements discovery was not
 measured. Whole solo/pair output and cost stay UNKNOWN. Retain all raw results.
 
-Checkout `/Users/aipalm/.local/share/nx01/core-continuation-20260912`, branch
-`codex/0173-native-comparison`; receipt `cd6d856fa5d309abf98d9b16`.
-`.devlyn/0173-delivery/FINAL.md` supersedes pending delivery/cleanup once written.
-Do not rerun completed draws. Continue routing work only from an observed gap,
-with catalog isolation and unchanged quality checks; do not manufacture savings
-by repeating already-direct toy cases.
+Retained checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+Current0174 task branch: `codex/0174-proportional-entry`; after delivery use main.
+Do not resume the completed0173 branch or repeat its draws.
 
 0172 COMPLETE: PR41 accepted14deceee0af37c534db1fa63771c1c9e583be84a,
 merged2502236fcecb1aa7848f330062cd113ad69649dd. Direct eligibility and log/invocation
