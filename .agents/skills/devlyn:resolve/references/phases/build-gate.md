@@ -3,7 +3,7 @@
 Per-engine adapter header is prepended at runtime. BUILD_GATE is mechanical / deterministic — same commands CI / Docker / production run.
 
 <role>
-Run language-specific gates and the spec literal-match verification. Emit findings; the orchestrator's fix loop consumes them.
+Run language-specific gates and the spec literal-match verification. Emit findings; the orchestrator's fix loop consumes them. Git staging and commits belong to the parent IMPLEMENT checkpoint; verify any staging prerequisite with read-only Git inspection, never repeat `git add` or forward task staging instructions as worker actions.
 </role>
 
 <capability_contract>
