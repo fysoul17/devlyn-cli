@@ -1,17 +1,30 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-15 KST during 0176 continuation.
+Updated 2026-09-15 KST after the 0177 execution stop.
 **Continue the agreed intent, goal, North Star and vision to completion.
 The devlyn-cli core improvement program / Mission 1 remains ACTIVE.**
-0175 and its delivery are COMPLETE. The source-alignment step selected
-[0176](iterations/0176-adapter-verification-authority.md): delete conflicting
-adapter-wide validation instructions while retaining canonical phase ownership.
-Source correction and eight role-decision probes are complete; both native
-reviews returned PASS_WITH_ISSUES, root addressed evidence gaps, and final lint
-passed. Confirm delivery in `.devlyn/0176-delivery/FINAL.md` and the receipt
-before the next H coverage/repair trace.
-The source audit and receipt are in `.devlyn/0176/` and
-`.git/devlyn-completion/7e38f433d6e6395e6275c24c/receipt.json`.
+0175 and 0176 are fully delivered. The post-0176 frozen H trace identified
+source-domain narrowing in generated plans/tests; it remains read-only evidence.
+
+[0177](iterations/0177-contract-reconciliation.md) attempted an actual authoring/
+repair component comparison. Text author baseline/candidate both passed 36/36
+independent checks and all original/generated tests. Decimal author candidate
+hit the registered 240s timeout after planning; the remaining five cells never
+ran. **Comparison INCOMPLETE; no product prompt or routing change.**
+Root then reproduced an invalid fixture contract: ten finite Decimal inputs at
+MAX_EMAX require an exact Decimal output outside the runtime's representable
+range; the frozen nominal positive fails too. Do not blame the model or infer
+that this caused the timeout. Record: `.devlyn/0177/STOP.json` and
+`.devlyn/0177/DECIMAL-REPRESENTABILITY.json`.
+
+Final Fable/Grok record reviews are PASS_WITH_ISSUES. Check
+`.devlyn/0177-delivery/FINAL.md` for delivery and cleanup; receipt:
+`.git/devlyn-completion/faaba87e541533f5a8fdab6a/receipt.json`.
+Next: replace the invalid fixture in new registered work, calibrate output as
+well as input boundaries, and justify execution bounds before another real
+comparison. Do not resume0177 cells, erase the timeout, or promote from the text
+tie. The actual seeded-repair comparison and a supported core improvement remain
+unfinished. See [continuation](NEXT-SESSION-routing-boundary.md).
 
 ## Locked intent and continuation
 
@@ -89,10 +102,9 @@ not completed integration or authorization to launch every model at once.
 
 These remain active, worked serially through diagnosis, minimal source change,
 independent verification and delivery. Fixture polish or another benchmark alone
-does not complete the program. Source alignment is recorded in 0176. Close its
-verification/delivery first,
-then trace the remaining H authoring/check/review/repair omissions before
-selecting the next minimal core fix.
+does not complete the program. Source alignment0176 and the H trace are complete.
+0177 does not establish a core correction; its invalid fixture and runtime stop
+must inform the next registered execution rather than become model-quality claims.
 
 ## Current evidence and interpretation
 
