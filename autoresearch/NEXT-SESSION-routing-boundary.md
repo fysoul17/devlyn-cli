@@ -1,50 +1,44 @@
 # Continue the core harness improvement program
 
-Updated 2026-09-15 KST. Start in
-`/Users/aipalm/.local/share/nx01/core-continuation-20260912` and read
-[HANDOFF](HANDOFF.md). The agreed intent, goal, North Star and unified vision
-remain active; a failed experiment does not replace the goal or complete Mission1.
+**Owner resumed on 2026-09-15 KST.** Comparison and final Fable5.1/Grok4.6 review
+adjudication are complete; both support NO_PROMOTION. Current delivery/cleanup:
+`.devlyn/0178-delivery/FINAL.md`. Preserve all8 draws and the historical cancelled
+Grok review (exit143); `.devlyn/0178/PARK.json` records that earlier parking.
 
-## Current unit: 0177 stopped
+Updated 2026-09-15 KST. Work in
+`/Users/aipalm/.local/share/nx01/core-continuation-20260912`; read [HANDOFF](HANDOFF.md).
+Overall core improvement / Mission1 remains active. Root direct, no resolve for
+this continuation; independent Fable5.1/Grok4.6 advice and root adjudication remain.
 
-[0177](iterations/0177-contract-reconciliation.md) is an actual native code/test
-component screen, not a full pipeline comparison. Its frozen registration
-`.devlyn/0177/REGISTRATION.json` preceded all three dispatched calls.
+## Current unit:0178 comparison complete
 
-- Text author baseline/candidate: both36/36 independent checks,12/12 original and
-  generated tests; scope and original-test bytes preserved. No observed lift.
-- Decimal author candidate:240s timeout, exit124; PLAN exists but code remains a
-  stub. Raw0/20 is an incomplete-artifact diagnostic, not an eligible quality score.
-- Remaining five cells, including all seeded-repair cells: NOT_RUN by stop rule.
-- Root then reproduced a fixture defect: all ten `Decimal(1eMAX_EMAX)` inputs
-  are finite, but their exact sum cannot be returned in the tested Decimal
-  representation. The unchanged nominal positive raises InvalidOperation.
-- Experiment INCOMPLETE / no promotion. Product prompts, routes and model settings
-  are unchanged. Fable/Grok final record reviews are PASS_WITH_ISSUES.
-  Delivery/cleanup status: `.devlyn/0177-delivery/FINAL.md`.
+[0178](iterations/0178-valid-repair-comparison.md) ran8 native seeded-repair cells
+on2 new valid domains with2 repeats per arm. Baseline4/4 and candidate4/4 complete
+repairs; every interval88/88 and decoder730/730 check passed, together with original
+bytes/scope, full suites and generated-test mutation coverage. **NO_PROMOTION.**
+No product prompt, route or model default changed. This resolves the actual repair
+comparison left NOT_RUN by0177; it does not establish a core improvement.
 
-Read `.devlyn/0177/STOP.json` and `DECIMAL-REPRESENTABILITY.json` before deciding
-anything else. Receipt:
-`.git/devlyn-completion/faaba87e541533f5a8fdab6a/receipt.json`.
-Preserve frozen inputs, all raw outcomes and the original no-reroll boundary.
-Do not resume unlaunched0177 cells or turn a longer-budget rerun into confirmation.
+Inputs, products, logs and root audits: `.devlyn/0178/`; registration SHA
+`ad1a9b164669ee9e1d73a06266b594fd948a843f63e40e5cfacd7f93e45270c0`.
+Delivery/reviews/cleanup: `.devlyn/0178-delivery/FINAL.md`; receipt
+`.git/devlyn-completion/7a47bf100eeaba4e103b1a1c/receipt.json`.
+No rerolls, regrading or tuning these exposed cases into confirmation.
 
-## Next bounded work
+0177 stays INCOMPLETE with invalid Decimal output contract and240s timeout.
+Its delivered PR50, remaining NOT_RUN cells and all raw evidence remain frozen.
+0178 output bounds were validated before registration; it does not repair0177.
 
-The intended actual repair comparison remains unfinished. Before another core
-prompt change or comparison, replace the invalid fixture in new registered work.
-Calibrate the required output representation as well as valid/invalid inputs and
-retain original-test/provenance checks. Justify execution bounds prospectively;
-the240s stop does not establish a provider outage, model defect or prompt effect.
-Use the new protocol's paired repeated cases and stop rules to decide whether
-source-contract reconciliation helps real authoring/repair. Do not add generic
-rules to compensate for a root-authored invalid benchmark.
+## Next bounded decision
 
-If a supported core cause emerges, reproduce it against current source, make the
-smallest correction, verify independently and deliver it. If a hypothesis fails,
-keep the evidence and select the next supported core improvement. Accuracy and
-intent completeness come first, then verified completion time, then total cost.
-A fixture repair or another screen alone does not complete the core program.
+Source-contract reconciliation yielded no paired complete-success gain on these
+repeated repair tasks. Do not add the candidate to shipped instructions. Select
+an observed actual-work failure or cost bottleneck, reproduce it against current
+source and identify the responsible harness mechanism before editing. Compare
+the smallest justified change with current/native behavior; retain independent
+confirmation when selection evidence is positive. Broader model/harness fit,
+routing, overhead, constraint/repair completeness and comparative value remain
+active. A completed screen or report is not Mission1 completion.
 
 ## Preserve the agreed direction
 
