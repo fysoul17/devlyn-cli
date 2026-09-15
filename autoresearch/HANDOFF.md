@@ -1,30 +1,37 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-15 KST after the 0177 execution stop.
-**Continue the agreed intent, goal, North Star and vision to completion.
-The devlyn-cli core improvement program / Mission 1 remains ACTIVE.**
-0175 and 0176 are fully delivered. The post-0176 frozen H trace identified
-source-domain narrowing in generated plans/tests; it remains read-only evidence.
+Updated 2026-09-15 KST after owner-authorized resumption.0178 comparison and
+final Fable5.1/Grok4.6 review adjudication are complete. Current delivery/cleanup
+status is in `.devlyn/0178-delivery/FINAL.md`; `.devlyn/0178/PARK.json` is history.
+**The agreed intent, goal, North Star and vision remain active.
+Core harness improvement / Mission1 is not complete.**
 
-[0177](iterations/0177-contract-reconciliation.md) attempted an actual authoring/
-repair component comparison. Text author baseline/candidate both passed 36/36
-independent checks and all original/generated tests. Decimal author candidate
-hit the registered 240s timeout after planning; the remaining five cells never
-ran. **Comparison INCOMPLETE; no product prompt or routing change.**
-Root then reproduced an invalid fixture contract: ten finite Decimal inputs at
-MAX_EMAX require an exact Decimal output outside the runtime's representable
-range; the frozen nominal positive fails too. Do not blame the model or infer
-that this caused the timeout. Record: `.devlyn/0177/STOP.json` and
-`.devlyn/0177/DECIMAL-REPRESENTABILITY.json`.
+[0178](iterations/0178-valid-repair-comparison.md) completed the previously
+unexecuted actual seeded-repair comparison, directly without resolve. Two valid
+new domains,2 repeats each: baseline4/4 and candidate4/4 complete repairs;
+interval checks88/88 and decoder checks730/730 in every draw. Original tests,
+genuine invalid-input checks and allowed scope were preserved. Decision:
+**NO_PROMOTION; no observed quality lift and no product guidance change.**
 
-Final Fable/Grok record reviews are PASS_WITH_ISSUES. Check
-`.devlyn/0177-delivery/FINAL.md` for delivery and cleanup; receipt:
-`.git/devlyn-completion/faaba87e541533f5a8fdab6a/receipt.json`.
-Next: replace the invalid fixture in new registered work, calibrate output as
-well as input boundaries, and justify execution bounds before another real
-comparison. Do not resume0177 cells, erase the timeout, or promote from the text
-tie. The actual seeded-repair comparison and a supported core improvement remain
-unfinished. See [continuation](NEXT-SESSION-routing-boundary.md).
+Registration and raw evidence: `.devlyn/0178/`. Current delivery/review status:
+`.devlyn/0178-delivery/FINAL.md`; receipt
+`.git/devlyn-completion/7a47bf100eeaba4e103b1a1c/receipt.json`.
+The comparison is a development component screen, not authoring, full-pipeline,
+native-best or held-out confirmation. Whole-run output/cost remains unknown.
+Both final reviewers support NO_PROMOTION. The report now names reference-byte
+identity and the sealed prompt's explicit plan-file permission, omitted from the
+review packet. Root dispositions: `.devlyn/0178/ADJUDICATION.json`.
+
+0177 remains INCOMPLETE with its invalid Decimal fixture and timeout intact;
+its PR50 record delivery was complete.0175/0176 and frozen H source tracing
+remain complete. Original WIP and all parked work are preserved.
+
+Next: select a reproduced actual-work failure or cost bottleneck and verify its
+connection to current harness source before changing the core. Both arms already
+repair the0178 seeded conflicts; repeating these exposed tasks or promoting the
+candidate would not establish improvement. Preserve model-specific adaptation,
+native-best comparisons and the broader active workstreams below. See
+[continuation](NEXT-SESSION-routing-boundary.md).
 
 ## Locked intent and continuation
 
