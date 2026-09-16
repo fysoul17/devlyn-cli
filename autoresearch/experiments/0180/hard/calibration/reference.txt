@@ -1,0 +1,38 @@
+import json
+import sqlite3
+
+
+def connect(path):
+    connection = sqlite3.connect(path)
+    connection.execute('CREATE TABLE IF NOT EXISTS events '
+                       '(seq INTEGER PRIMARY KEY AUTOINCREMENT, '
+                       'event_id TEXT UNIQUE NOT NULL, payload TEXT NOT NULL)')
+    connection.commit()
+    return connection
+
+
+def ingest(connection, events):
+    inserted = 0
+    with connection:
+        for event in events:
+            if (not isinstance(event, dict) or set(event) != {'id', 'payload'}
+                    or not isinstance(event['id'], str) or not event['id']
+                    or not isinstance(event['payload'], dict)
+                    or not all(isinstance(k, str) and isinstance(v, str)
+                               for k, v in event['payload'].items())):
+                raise ValueError('invalid event')
+            old = connection.execute('SELECT payload FROM events WHERE event_id=?',
+                                     (event['id'],)).fetchone()
+            if old is not None:
+                if json.loads(old[0]) != event['payload']:
+                    raise ValueError('conflicting id')
+                continue
+            connection.execute('INSERT INTO events(event_id, payload) VALUES (?, ?)',
+                               (event['id'], json.dumps(event['payload'])))
+            inserted += 1
+    return inserted
+
+
+def list_events(connection):
+    return [{'id': row[0], 'payload': json.loads(row[1])}
+            for row in connection.execute('SELECT event_id, payload FROM events ORDER BY seq')]
