@@ -1,21 +1,14 @@
-# Continue the core harness improvement program
+# Resume core harness improvement
 
-Updated2026-09-16 KST. Read [HANDOFF](HANDOFF.md) and
-[0182](iterations/0182-three-instruction-comparison.md). Actual checkout:
-`/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+Actual checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+Read [HANDOFF](HANDOFF.md) and [0183 results](iterations/0183-actual-resolve-ownership.md).
+Owner: improve directly; resolve is allowed only as a comparison control.
 
-0182 source verified: native/current-direct/minimal each4/4 on12 frozen real-source
-repair draws. NO_LIFT; minimal total717.065s versus current676.465s, no promotion.
-Fable all COMPLETE; Grok two false HIGH Node argv claims rejected using8 actual
-runtime controls. Preserve raw errors/advice; no unanimity claim.
-Delivery/cleanup authority: `.devlyn/0182-delivery/FINAL.md`.
+0183 follow-up completed: all arms 2/2; direct 98.879s versus full 1396.563s,
+native 77.145s, one task/two repeats. Keep the original stopped screen separate.
+No installed minimal-contract replacement. OTHER-model review/repair remains
+an unrun fresh comparison with matched self-review and false-positive harm.
 
-Next is a separately registered review/repair versus matched self-review/repair
-comparison on fresh tasks, including false-positive harm and all review/repair
-cost. It was NOT_RUN here because no minimal product failed. No exposed-case
-reruns/tuning, no installed-contract replacement. Current control was direct
-under the shared no-resolve restriction, not the full installed workflow.
-
-Root direct without resolve. Advisors may challenge; root decides from evidence.
-Finish any pending delivery/owned scratch cleanup first. Preserve original WIP,
-A16,0180–0182 and recovery refs. Mission1 active; optional Pyx/OS remain deferred.
+Check `.devlyn/0183-delivery/FINAL.md` and finish any pending delivery/owned cleanup
+before new work. Never rerun exposed draws. Preserve original WIP, A16, frozen
+results and source/Git/recovery evidence. Do not restore stale experiment-wide bans.
