@@ -18,4 +18,4 @@ for case in ('description', 'static'):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
     shutil.copytree(dest/'seed', dest/'reference')
-    subprocess.run(['git', 'apply', '--unsafe-paths', str(BASE/case/'reference.patch')], cwd=dest/'reference', check=True)
+    subprocess.run(['git', 'apply', '--unidiff-zero', '--unsafe-paths', str(BASE/case/'reference.patch')], cwd=dest/'reference', check=True)

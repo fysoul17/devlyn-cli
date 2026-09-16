@@ -1,29 +1,16 @@
 --- a/scripts/static-ab.sh
 +++ b/scripts/static-ab.sh
-@@ -40,10 +40,10 @@
- WORDS_B=0
- LINES_A=0
- LINES_B=0
+@@ -43 +43 @@
 -MAX_GROWTH_PCT="${DEVLYN_STATIC_AB_MAX_GROWTH_PCT:-15}"
 +MAX_GROWTH_PCT="${DEVLYN_STATIC_AB_MAX_GROWTH_PCT-15}"
- 
+@@ -45,2 +45,2 @@
 -if ! awk "BEGIN { exit !($MAX_GROWTH_PCT >= 0) }" >/dev/null 2>&1; then
 -  echo "error: DEVLYN_STATIC_AB_MAX_GROWTH_PCT must be a non-negative number" >&2
 +if ! python3 -c 'import math,re,sys; x=sys.argv[1]; sys.exit(0 if re.fullmatch(r"[0-9]+(?:\.[0-9]+)?",x) and math.isfinite(float(x)) else 1)' "$MAX_GROWTH_PCT"; then
 +  echo "error: DEVLYN_STATIC_AB_MAX_GROWTH_PCT must be a finite non-negative decimal number" >&2
-   exit 2
- fi
- 
-@@ -89,9 +89,11 @@
- echo
- if [ "$delta_tokens" -le 0 ]; then
-   echo "✓ Bare-case guardrail: prompt budget did NOT grow (Δ≈${delta_tokens} tokens)."
+@@ -91,0 +92,2 @@
 +elif [ "$tokens_a" -eq 0 ]; then
 +  echo "⚠ Bare-case guardrail: prompt budget grew by ≈${delta_tokens} tokens (percentage undefined: zero baseline)."
- else
-   pct=$(awk "BEGIN { printf \"%.1f\", ($delta_tokens / $tokens_a) * 100 }")
+@@ -94 +96 @@
 -  over_limit=$(awk "BEGIN { exit !($pct > $MAX_GROWTH_PCT) }"; echo $?)
 +  over_limit=$(awk -v delta="$delta_tokens" -v baseline="$tokens_a" -v limit="$MAX_GROWTH_PCT" 'BEGIN { exit !(delta / baseline * 100 > limit) }'; echo $?)
-   if [ "$over_limit" -eq 0 ]; then
-     echo "⚠ Bare-case guardrail: prompt budget grew by ≈${delta_tokens} tokens (+${pct}%, limit +${MAX_GROWTH_PCT}%)."
-   else

@@ -1,9 +1,6 @@
 --- a/bin/devlyn.js
 +++ b/bin/devlyn.js
-@@ -264,16 +264,19 @@
-       return firstLine.slice(0, 70);
-     }
- 
+@@ -267,10 +267,13 @@
 -    // 2. Look for description in frontmatter
 -    const descMatch = content.match(/description:\s*["']?([^"'\n]+)/i);
 -    if (descMatch && !descMatch[1].includes('{')) {
@@ -27,6 +24,3 @@
 +        value = quoted ? quoted[1].replace(/\\(["\\])/g, '$1') : '';
 +      }
 +      if (value && !value.includes('{')) return value.trim().slice(0, 70);
-     }
- 
-     // 4. Get first H1 title as fallback (skip template placeholders)
