@@ -1,21 +1,21 @@
 # Continue the core harness improvement program
 
 Updated2026-09-16 KST. Read [HANDOFF](HANDOFF.md) and
-[0181](iterations/0181-disjoint-confirmation.md). Actual checkout:
+[0182](iterations/0182-three-instruction-comparison.md). Actual checkout:
 `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
 
-0181 source verification complete: fresh overlay/async-map A/B8 draws, full
-requirements A2/4/B3/4, no paired regression. Registered positive confirmation
-only; one incremental success, no speed/general superiority or product promotion.
-Candidate and customer rules unchanged. Final Fable/Grok agree; raw evidence
-`.devlyn/0181/`. Delivery/cleanup authority: `.devlyn/0181-delivery/FINAL.md`.
-Finish pending delivery/owned scratch cleanup before a new unit; do not rerun
-closed0180/0181 or tune on their exposed products.
+0182 source verified: native/current-direct/minimal each4/4 on12 frozen real-source
+repair draws. NO_LIFT; minimal total717.065s versus current676.465s, no promotion.
+Fable all COMPLETE; Grok two false HIGH Node argv claims rejected using8 actual
+runtime controls. Preserve raw errors/advice; no unanimity claim.
+Delivery/cleanup authority: `.devlyn/0182-delivery/FINAL.md`.
 
-Owner proceeds one unit at a time, root direct without resolve. Fable5.1 and
-Grok4.7 (4.6 when unavailable) may advise; root adjudicates from actual evidence.
-Remaining gates: broader separately registered comparison, current installed-
-contract control before replacement claims, and separate review/repair treatment.
-None is satisfied merely by static source review of this screen.
-Preserve original checkout WIP, recovery refs and A16. Mission1 remains active;
-optional Pyx and OS/fleet remain deferred. No npm release.
+Next is a separately registered review/repair versus matched self-review/repair
+comparison on fresh tasks, including false-positive harm and all review/repair
+cost. It was NOT_RUN here because no minimal product failed. No exposed-case
+reruns/tuning, no installed-contract replacement. Current control was direct
+under the shared no-resolve restriction, not the full installed workflow.
+
+Root direct without resolve. Advisors may challenge; root decides from evidence.
+Finish any pending delivery/owned scratch cleanup first. Preserve original WIP,
+A16,0180–0182 and recovery refs. Mission1 active; optional Pyx/OS remain deferred.
