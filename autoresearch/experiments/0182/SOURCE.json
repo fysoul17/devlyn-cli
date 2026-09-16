@@ -1,0 +1,14 @@
+{
+  "source_commit": "22c66116ac5e53e69e9a571bcb2877dbcf26213d",
+  "paths": {
+    "bin/devlyn.js": "93c9ef0b66afd5a870ed141a9ce99b195bdc6f10d49f5128016f3cb508394498",
+    "package.json": "7aced20900a779950ff19fce3ea180702a2a6b305eb01fcac17adc1761937b65",
+    "scripts/static-ab.sh": "36759ff1928fa23ca94247d6b9e90e20953ee056a711cdc0fb36168d325a124c",
+    "config/skills/devlyn:ideate/SKILL.md": "3f5f2242ce4871202e1d6e284bd9eb901f06097b2c7c778ecb2bcb37c1e05eaf"
+  },
+  "support_reference": {
+    "source": "config/skills/devlyn:resolve/references/task-completion.md",
+    "destination": "references/task-completion.md",
+    "sha256": "ee96093b60f640d65bb0169d7b834a6aa15c95ef28a2f85db125f88f1d8b8fd2"
+  }
+}

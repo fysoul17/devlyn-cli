@@ -1,0 +1,32 @@
+--- a/bin/devlyn.js
++++ b/bin/devlyn.js
+@@ -264,16 +264,19 @@
+       return firstLine.slice(0, 70);
+     }
+ 
+-    // 2. Look for description in frontmatter
+-    const descMatch = content.match(/description:\s*["']?([^"'\n]+)/i);
+-    if (descMatch && !descMatch[1].includes('{')) {
+-      return descMatch[1].trim().slice(0, 70);
+-    }
+-
+-    // 3. Look for purpose field in yaml blocks
+-    const purposeMatch = content.match(/purpose:\s*["']?([^"'\n{]+)/i);
+-    if (purposeMatch && !purposeMatch[1].includes('{')) {
+-      return purposeMatch[1].trim().slice(0, 70);
++    // Read bounded single-line scalars without treating embedded quotes as delimiters.
++    for (const field of ['description', 'purpose']) {
++      const match = content.match(new RegExp(`(?:^|\\n)[ \\t]*${field}:[ \\t]*([^\\r\\n]*)`, 'i'));
++      if (!match) continue;
++      let value = match[1].trim();
++      if (value.startsWith("'")) {
++        const quoted = value.match(/^'((?:''|[^'])*)'/);
++        value = quoted ? quoted[1].replace(/''/g, "'") : '';
++      } else if (value.startsWith('"')) {
++        const quoted = value.match(/^"((?:\\.|[^"\\])*)"/);
++        value = quoted ? quoted[1].replace(/\\(["\\])/g, '$1') : '';
++      }
++      if (value && !value.includes('{')) return value.trim().slice(0, 70);
+     }
+ 
+     // 4. Get first H1 title as fallback (skip template placeholders)
