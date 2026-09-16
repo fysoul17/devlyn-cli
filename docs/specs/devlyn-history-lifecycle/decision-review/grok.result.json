@@ -1,0 +1,31 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 632599,
+  "duration_api_ms": 615064,
+  "num_turns": 23,
+  "stop_reason": "end_turn",
+  "total_cost_usd": 0.476391,
+  "usage": {
+    "input_tokens": 181840,
+    "output_tokens": 29669,
+    "cache_read_input_tokens": 1718912,
+    "cache_creation_input_tokens": 0,
+    "server_tool_use": {
+      "web_search_requests": 0
+    }
+  },
+  "modelUsage": {
+    "grok-4.6-build": {
+      "inputTokens": 181840,
+      "outputTokens": 29669,
+      "cacheReadInputTokens": 1718912,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.476391
+    }
+  },
+  "session_id": "01a0a9de-a239-70a0-a182-56acbf640d70",
+  "uuid": "33295b64-e02a-4ae6-a435-c6c91aedf2ec"
+}

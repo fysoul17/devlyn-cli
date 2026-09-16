@@ -1,0 +1,125 @@
+**D1: AMEND. D2: AMEND. D3: AMEND.** The chosen direction is sound. The amendments must establish when evidence becomes disposable, who owns it, and how deletion remains safe across retries, crashes, and other tools.
+
+I reviewed the source and sampled the real repository through metadata and listings. I did not edit files or open PTY stdout/stderr. The 84 GiB inventory and live-holder counts remain your supplied measurements; I did not independently reproduce that snapshot.
+
+**Corrections and material qualifications to the brief**
+
+- Pruning is **also called during bootstrap**, after archiving a prior completed run—not only from `archive_run.py`’s main entry. [resolve-bootstrap.py:204](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/_shared/resolve-bootstrap.py:204)
+- Pruning does **not enforce an `rs-*` namespace**. Any directory with readable, qualifying pipeline state can become a candidate. Therefore “terminal/ad-hoc directories are never pruned” is conditional on their contents, not their names. “Completed” also includes `NEEDS_WORK` and `BLOCKED`. [archive_run.py:173](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/_shared/archive_run.py:173), [archive_run.py:485](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/_shared/archive_run.py:485)
+- The `open_`/`terminal_` restriction belongs to the **desktop managed-session reader and cleanup path**. Devlynd also creates task-associated `run_*` lifecycle runs. Calling those two prefixes the entirety of devlyn-os ownership is too broad. [sessions_ipc.rs:482](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/src/sessions_ipc.rs:482), [runstate.rs:73](/Users/aipalm/Documents/GitHub/devlyn-os-v1/crates/devlynd/src/runstate.rs:73)
+- `terminal_checkpoint.rs:117` reads stdout’s identity/size; it does not write the spool. The checkpoint has an 8 MiB limit. I searched the supervisor for retention, capacity, rotation, truncation, `set_len`, and maximum-size controls and found no spool-size cap; the PTY path writes through `PendingOutput::write_to`. [terminal_checkpoint.rs:18](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/src/terminal_checkpoint.rs:18), [terminal_checkpoint.rs:115](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/src/terminal_checkpoint.rs:115), [supervisor.rs:233](/Users/aipalm/Documents/GitHub/devlyn-os-v1/crates/devlynd/src/supervisor.rs:233)
+- The stated opt-in/prospective/detail-only policy and version `0.2.2` are correct. [storage_policy.rs:1](/Users/aipalm/Documents/GitHub/devlyn-os-v1/crates/devlynd/src/storage_policy.rs:1), [storage_policy.rs:77](/Users/aipalm/Documents/GitHub/devlyn-os-v1/crates/devlynd/src/storage_policy.rs:77), [tauri.conf.json:5](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/tauri.conf.json:5)
+
+**D1 — AMEND: delete task history after accepted task completion**
+
+**Strongest argument.** Accepted delivery plus completion of the outer loop is a meaningful disposal boundary. A repository-wide count of ten cannot express whether another task still needs its evidence. The current contract explicitly uses findings and archives across outer iterations, and keeps delivery pending separately from product verification. [CLAUDE.md:63](/Users/aipalm/Documents/GitHub/devlyn-cli/CLAUDE.md:63), [outer-loop.md:15](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/devlyn:resolve/references/outer-loop.md:15)
+
+**Strongest counter.** Suppose task A has an interrupted run and a successful retry, while task B uses the same spec path in another worktree. Deletion infers ownership from the spec or branch name, then removes B’s evidence. Separately, deleting A’s archive after delivery while leaving today’s completion protocol intact breaks subsequent receipt verification—or merely relocates the storage problem into permanent custody.
+
+These are concrete contract gaps: bootstrap creates run identity, source and base information without a task-receipt binding; I searched bootstrap, archive, state schema and completion code for task/run ownership collections and found no authoritative membership list covering all attempts. Completion copies the accepted archive into custody and verifies those bytes on subsequent calls. [resolve-bootstrap.py:443](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/_shared/resolve-bootstrap.py:443), [task-complete.py:295](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/_shared/task-complete.py:295), [task-complete.py:331](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/_shared/task-complete.py:331)
+
+Also, **`LOCAL_ONLY` is not currently proof of accepted local completion**: that branch returns before acceptance binding. [task-complete.py:619](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/_shared/task-complete.py:619)
+
+**Decisive criterion.** Can cleanup identify every attempt belonging to exactly one accepted task, and can the task’s completion/recovery protocol operate afterward without the deleted bytes?
+
+**Recommended spec rule.**
+
+- **Owner:** the outer task owner. Allocate a durable task identity before writing artifacts; register each attempt against that identity and its exact repository/worktree location.
+- **Trigger:** verified matching merge, or explicitly accepted and durably recorded local commit; outer retries finished; required queue transition committed; required cross-task evidence promoted; writers stopped. A final-report verdict, `LOCAL_ONLY`, or queue `[F]` alone is insufficient.
+- **Delete:** every registered disposable artifact of that task, including incomplete attempts, owned staging residues, and redundant raw copies in completion custody. Remove both existing keep-ten call paths.
+- **Retain:** source/spec commits, queue outcomes, a compact acceptance/delivery/cleanup receipt, and explicitly designated program deliverables. Do not preserve the full archive elsewhere under another name.
+- **Ordering:** complete acceptance and any custody-dependent worktree/ref cleanup before retiring raw evidence. Version the receipt so later retries recognize intentional retirement rather than requiring absent files.
+- **Pins/dependencies:** an unresolved hold prevents cleanup from being declared complete. Evidence needed by another task must acquire a durable program owner before its originating task’s history disappears.
+- **Failure:** report delivered source separately from `CLEANUP_PENDING`, with exact remaining paths and a retry action. Apply the shared deletion safeguards below.
+
+This necessarily amends the current “recovery refs/evidence have no automatic expiry” contract. Its existing preservation guarantee cannot coexist unchanged with D1’s raw-evidence deletion. [task-completion.md:125](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/devlyn:resolve/references/task-completion.md:125)
+
+**D2 — AMEND: prohibit unowned disposable artifacts**
+
+**Strongest argument.** Requiring ownership at creation prevents the ambiguous backlog rather than repeatedly guessing whether old folders matter. Existing task allocation already provides prospectively owned scratch and refuses retrospective adoption of arbitrary branches or worktrees. [task-completion.md:19](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/devlyn:resolve/references/task-completion.md:19)
+
+**Strongest counter.** An agent puts a multi-week program’s restart evidence into “task-owned scratch” to comply. Task completion returns a pending PR and empties scratch; the next task cannot resume the program. This is possible under today’s documented scratch lifecycle: it is for disposable build intermediates, excludes reports/restart evidence, and may be emptied on pending-PR returns. [task-completion.md:27](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/devlyn:resolve/references/task-completion.md:27)
+
+The amendment is therefore to **“every artifact has an owner and lifecycle,”** rather than literally placing every artifact into one disposable location.
+
+**Decisive criterion.** Does an artifact’s assigned owner outlive every legitimate consumer, while genuinely disposable artifacts always have an executable cleanup path?
+
+**Recommended spec rule.**
+
+- **Owner:** the producing task, or an explicitly identified program/project for durable deliverables.
+- **Creation rule:** prohibit new arbitrary top-level `.devlyn/<name>` work folders. Provide allocated paths to direct work, phase workers, judges and handoffs.
+- **Locations:** scratch for reproducible intermediates; task/run evidence for retries and acceptance; normal durable project/spec locations for accepted findings and cross-task deliverables. Direct tasks also need owned evidence without fabricating a pipeline run.
+- **Existing canonical storage:** preserve declared machine configuration and protocol paths. The current pipeline intentionally stages known artifacts at `.devlyn` root before archiving; replacing all of that machinery is unnecessary if ownership is explicit. [archive_run.py:29](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/_shared/archive_run.py:29), [CLAUDE.md:48](/Users/aipalm/Documents/GitHub/devlyn-cli/CLAUDE.md:48)
+- **Enforcement:** update producer paths and instructions together; make artifact registration/completion checks visibly reject newly created unowned paths. A prose prohibition alone must not be reported as enforced prevention.
+- **Cleanup:** scratch can follow its earlier disposable lifecycle; evidence follows D1. Existing arbitrary folders require a separately reviewed, named migration list.
+- **Failure:** identify the offending producer/path and retain uncertain content. Never “fix” an ownership violation by automatically adopting and deleting it.
+
+**D3 — AMEND: default-on historical whole-run expiry**
+
+**Strongest argument.** Default-off, prospective-only enrollment structurally excludes the accumulated history from automatic cleanup. Whole-run expiry can also retire auxiliary files alongside output. Both limitations are explicit in the current policy and suffix allowlist. [storage_policy.rs:5](/Users/aipalm/Documents/GitHub/devlyn-os-v1/crates/devlynd/src/storage_policy.rs:5), [work_monitor.rs:47](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/src/work_monitor.rs:47)
+
+**Strongest counter.** After upgrade, an old exited run loses its entire folder. That removes uploaded files whose paths remain referenced by transcripts and usage documents consumed by historical usage reporting. Meanwhile, a delayed writer or pin operation opens `guard.lock` after removal and recreates the directory, defeating the intended terminal state.
+
+The dependencies and recreation mechanism exist: terminal uploads are deliberately retained for transcript references; usage reporting reads run-local documents; opening a lock creates its parent directories and file. [terminal_ipc.rs:1863](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/src/terminal_ipc.rs:1863), [usage_ipc.rs:496](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/src/usage_ipc.rs:496), [util.rs:51](/Users/aipalm/Documents/GitHub/devlyn-os-v1/crates/devlynd/src/util.rs:51)
+
+**Decisive criterion.** Has the run become disposable to every relevant consumer, and can expiry win atomically against resume, writers and pins without destroying records intended to survive history expiry?
+
+**Recommended spec rule.**
+
+- **Owner:** the desktop/runtime owner of positively identified managed-session runs. Never widen this to arbitrary `runs/*`.
+- **Default:** automatic expiry enabled with a 30-day window, including validated historical runs. My recommendation is to preserve explicit `keep`, `Forever`, and deliberate opt-outs; distinguish those from an absent old default.
+- **Clock:** count from the latest recorded end of all sessions/turns in the run. Require all writers to be quiescent and no unresolved lifecycle state. Missing exit evidence is an explicit exception requiring reconciliation, not permission to substitute directory age.
+- **Existing protections:** retain protection for reusable orchestrators and unresolved `running`, `suspended`, or `merge_ready` runs unless the new spec explicitly replaces it. These are present beyond the lock check today. [work_monitor.rs:1257](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/src/work_monitor.rs:1257), [work_monitor.rs:413](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/src/work_monitor.rs:413)
+- **Delete:** the complete eligible run folder, including output, checkpoints, snapshots, events, control data and disposable uploads.
+- **Retain elsewhere:** my recommended default is compact settled usage and necessary task/queue outcomes. Promote specifically retained attachments/program evidence before deletion. Unsettled usage remains a visible blocker until resolved or explicitly discarded; today it already protects stdout. [work_monitor.rs:1316](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/src/work_monitor.rs:1316)
+- **User-visible behavior:** expired history cannot resume; references must display “expired/deleted” rather than corruption or invented empty history. Explain the expanded deletion scope before the first historical sweep.
+- **Scheduling:** cover the declared set of registered repositories/worktrees, not only whichever view happens to be active. The current automatic caller is gated by the active orchestration component. [OrchestrationHome.tsx:527](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src/components/OrchestrationHome.tsx:527)
+- **Failure:** persist and display per-run pending/refused/failed outcomes and actual progress; apply the shared safeguards below.
+
+**Cross-cutting ownership and deletion safety**
+
+The shared directory is a container, not shared deletion authority. CLI cleanup must own registered CLI task artifacts; desktop cleanup must own validated managed-session artifacts; devlynd lifecycle `run_*` directories need their separate lifecycle owner. A prefix is a discovery hint, not sufficient authorization. Current CLI pruning’s schema-based selection and desktop cleanup’s narrower selection must not overlap accidentally. [archive_run.py:485](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/_shared/archive_run.py:485), [work_monitor.rs:1165](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/src/work_monitor.rs:1165)
+
+For all three decisions, I would require:
+
+1. **Stable exclusion across deletion.** Hold the applicable task/run exclusion throughout revalidation and deletion. Whole-folder removal needs a stable lifecycle guard outside the removable directory, or an equivalent protocol preventing lock recreation. Writers, resumers and pin setters must participate. The existing in-directory guard remains suitable evidence of current cooperating writers, but removing it changes the protocol. [run_dir.rs:107](/Users/aipalm/Documents/GitHub/devlyn-os-v1/crates/devlynd/src/run_dir.rs:107)
+2. **Durable deletion intent.** Record exact ownership and directory identity outside the target before deleting. Mark the run unavailable for new writes, atomically retire its directory where supported, and resume partial physical deletion after crashes. Atomic rename is not atomic recursive deletion.
+3. **Path containment.** Reject redirected roots/ancestors and identity changes; never follow symlinks during traversal; refuse nested mounts or Git/worktree data. Revalidate using directory identities/descriptors rather than trusting a preview’s path string. Existing detail cleanup already uses descriptor-based authority that whole-tree deletion must preserve. [work_monitor.rs:1678](/Users/aipalm/Documents/GitHub/devlyn-os-v1/apps/desktop/src-tauri/src/work_monitor.rs:1678)
+4. **Worktree isolation.** Bind artifacts to exact checkout identities. A common Git directory is appropriate for surviving receipts, but must not merge unrelated worktree ownership. Never recursively delete a worktree as “history.” Existing allocation records both common Gitdir and worktree identity. [task-complete.py:178](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/_shared/task-complete.py:178)
+5. **Honest outcomes.** Report retained pins/live writers separately from failures, and logical bytes removed separately from observed free space. If intent persistence fails—including ENOSPC—do not proceed unrecorded. If deletion partially succeeds, do not claim that nothing happened.
+
+Acceptance checks should exercise wrong-task ownership, two worktrees sharing a spec, pending queue delivery, missing legacy metadata, pin/resume races, symlink replacement, and crashes at each deletion boundary.
+
+**The 29 unowned directories and 42 incomplete runs**
+
+Neither D1 nor D3 automatically settles these populations.
+
+- An incomplete run positively associated with a subsequently accepted task can follow D1.
+- An incomplete run whose task remains parked needs an explicit resume/abandon disposition. Exhausting retries or recording `[F]` is not automatically abandonment; the current outer-loop contract preserves failed outcomes for owner handling. [outer-loop.md:13](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/devlyn:resolve/references/outer-loop.md:13)
+- Truly unowned directories require classification and a named one-time disposal decision. Check supported legacy schemas before declaring them unowned; devlynd’s `run_*` is one counterexample to prefix-only classification.
+- Until resolved, show their paths, bytes and reason for retention. Silently excluding them forever would fail the cleanup goal.
+
+**One-time migration of the existing inventory**
+
+Create a fresh metadata/size inventory, classify by owner and retention eligibility, protect live writers/pins, and separate known eligible history from ambiguous folders. Revalidate each selected object when deleting; the original inventory is not a deletion authorization token.
+
+Include completion custody copies in that accounting: today custody copies archive bytes, so cleaning only `.devlyn` can leave retained duplicates. [task-complete.py:116](/Users/aipalm/Documents/GitHub/devlyn-cli/config/skills/_shared/task-complete.py:116)
+
+Do not promise recovery of all 84 GiB. Recent, active, pinned and unresolved data remain ineligible. The sampled large terminal run was created on September 14, so ordinary 30-day expiry cannot address it now. [sample meta.json:11](/Users/aipalm/Documents/GitHub/pyx-memory-v1/.devlyn/runs/terminal_e0d73284d24e4b26b9b8dd0ce8d05519/meta.json:11)
+
+**Missing decisions that change the design**
+
+1. **Abandonment:** must parked/failed tasks be explicitly abandoned, or can inactivity expire them? If automatic, what interval and what evidence must survive?
+2. **Long-term evidence:** what survives task completion—compact receipts only, selected raw program evidence, recovery refs? Can a CLI keep/program hold postpone deletion?
+3. **Whole-run semantics:** should usage totals, queue outcomes and referenced uploads survive terminal-history expiry? My recommendation is to preserve compact accounting/outcomes and explicitly selected uploads.
+4. **Policy migration:** how should saved OFF, `Forever`, and previously enrolled longer retention interact with the new default? Is historical deletion immediate after notice, or subject to a migration grace period?
+5. **Legacy exit uncertainty:** require manual disposition, or introduce an observed-quiescence clock for runs without reliable exit timestamps?
+6. **Automatic coverage:** all registered workspaces while the app runs, or also cleanup while it is closed? Which unregistered repositories belong to the managed set?
+
+**Out-of-scope drift**
+
+Leave out log compression/rotation, active-session eviction, global disk quotas, cloud archives, a general artifact database, repository history rewriting, and unrelated cache cleanup. Thirty-day history expiry is not a guarantee against future ENOSPC; adding that guarantee would require a separate storage-budget decision.
+
+```json
+{"seat":"gpt-6-astra","D1":"AMEND","D2":"AMEND","D3":"AMEND","wrong_facts":["Pruning is also called by devlyn-cli/config/skills/_shared/resolve-bootstrap.py:221, not only archive_run.py:942.","Pruning is not restricted to rs-*; archive_run.py:485 selects any qualifying pipeline-state directory, so terminal/ad-hoc immunity is conditional on contents.","sessions_ipc.rs:482 restricts desktop managed-session handling, not all devlyn-os ownership; crates/devlynd/src/runstate.rs:73 creates task-associated run_* runs.","terminal_checkpoint.rs:117 reads stdout metadata, not the spool writer; supervisor.rs:233 and :1373 implement PTY writes. The checkpoint has an 8 MiB limit; no supervisor spool-size cap was found."],"missing_decisions":["Explicit abandonment versus inactivity expiry for parked, failed and orphaned tasks.","Which evidence and recovery refs survive task completion, and whether CLI keep/program holds postpone deletion.","Whether usage totals, queue outcomes and referenced uploads survive whole-run expiry.","Migration precedence for saved OFF, Forever and longer enrolled retention, including historical notice/grace timing.","Disposition or retention clock for historical runs without reliable exit timestamps.","Managed repository/worktree coverage and whether cleanup must run while the desktop app is closed."]}
+```
