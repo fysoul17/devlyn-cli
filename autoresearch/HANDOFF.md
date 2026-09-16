@@ -5,37 +5,38 @@ forbids resolve in this continuation, including experimental solo/pair arms.
 Fable5.1 and Grok4.7 (4.6 when unavailable) are permitted advisors; advice is not
 a mandatory phase graph. Root implements and adjudicates directly.
 
-## Current unit:0180 direct A/B comparison — verified, delivery pending
+## Current unit:0181 disjoint confirmation — verified, delivery tracked separately
 
-[0180 report](iterations/0180-minimal-direct-comparison.md): eight serial native
-Astra/high draws completed without rerolls. Mechanical8/8; full requirement
-outcome **A2/4, B4/4**, no paired regression. Both A inbox products accept malformed
-NaN/Infinity hidden by duplicate members; both B reject correctly. Root predicted
-from source and reproduced the difference. Initial blind Fable/Grok missed this
-exact defect; supplied-counterexample follow-ups both validate it. Their alleged
-2000-depth recursion defect is rejected by actual frozen Python3.14.6 results.
+[0181 report](iterations/0181-disjoint-confirmation.md): eight serial frozen
+Astra/high draws on fresh overlay/async-map tasks. Full requirements **A2/4, B3/4**,
+no paired regression; both Fable5.1/Grok4.6 final source reviews agree. Both A hard
+products and B hard1 interrupt async cleanup when the caller cancels during failure
+cleanup. B hard2 adds its own regression and repairs it within the original draw.
+All participant tests pass despite three external requirement failures.
 
-This is **positive development evidence only**, on two synthetic tasks and one
-repeated error boundary. Candidate355 words unchanged; no product promotion,
-installed-contract replacement, general-superiority claim or Mission1 closure.
-A consumed497.868s, B577.598s; failed A inbox products do not establish faster
-verified completion. On successful small pairs A164.463s versus B215.055s.
-No resolve. Next research gate: unchanged candidate on disjoint repeated
-confirmation; independent review/repair treatment remains a separate later unit.
+**POSITIVE_CONFIRMATION_ONLY** meets the registered rule. Incremental gain is one
+draw; no reliable hard-task completion, speed advantage, representative superiority
+or product promotion is established. Candidate355 words and customer rules remain
+unchanged. Consumed A373.142s/B463.852s; matched complete small144.424s/154.654s.
 
-Initial admission found/fixed spec whitespace ambiguity and actual ancestor
-instruction reads before quality draws.26 calibration controls match predictions,
-but the reference shares the later JSON false negative: calibration is not full
-correctness proof. Exact executed fixture bytes remain `.devlyn/0180/frozen-inputs/`;
-published oracle only removes blank-line trailing spaces, AST unchanged.
-Raw protocol, reviews, counterexamples and source seals: `.devlyn/0180/`.
-Participant Git roots under `~/.local/share/nx01/0180-participants/` are retained
-source/recovery evidence. Branch `research/0180-ab-registration`, receipt
-`44223df278d60be31f8a0d7c`; delivery/cleanup status: `.devlyn/0180-delivery/FINAL.md`.
-Finish delivery/owned scratch cleanup before selecting the next work unit.
+Final calibration27/27 follows two repaired reference/checker cancellation misses.
+Initial Fable advice timed out; Grok's blanket cancellation-reinjection claim was
+rejected against actual runtime evidence. Final medium-effort Fable/Grok both ADMIT;
+all raw failures and dispositions remain `.devlyn/0181/`. Exact frozen inputs,
+products, source reviews and all native logs are preserved. Source qualification,
+full lint, packaging exclusion and final diff checks are complete.
 
-0173–0179, original workspace WIP, H tracing and A16 remain preserved.
-**Core harness improvement / Mission1 remains active and incomplete.**
+Receipt `fc6753e210af09115442f8a9`, branch `research/0181-disjoint-confirmation`.
+Delivery/cleanup authority: `.devlyn/0181-delivery/FINAL.md`; it supersedes pending
+source-commit wording. Finish any pending delivery/owned scratch cleanup before
+advancing. Participant Git roots `~/.local/share/nx01/0181-participants/` remain
+source/recovery evidence.0180 PR53 is already complete; do not replay it.
+
+Remaining gates: separately registered broader comparison and an installed-contract
+control before any replacement claim. Independent review/repair as a treatment
+remains a distinct later comparison; it was not tested by static outcome reviews.
+No further quality draws or tuning on exposed0180/0181 cases. Preserve prior frozen
+experiments, original workspace WIP and A16. **Mission1 remains active.** No resolve.
 
 ## Locked intent and continuation
 
