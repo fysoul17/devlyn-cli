@@ -16,6 +16,21 @@ scoped cleanup and failure-driven repair/recheck, avoiding unnecessary full phas
 Do not confuse the researcher's workflow with the runtime being evaluated.
 Do not discard full-route safeguards for work that needs them.
 
+## Active: 0184 review connected to repair
+
+Owner authorized the next comparison and confirmed harder development tasks should
+follow separately. [0184 protocol](experiments/0184/PROTOCOL.md): four fresh initial
+Astra/high products, each copied to same-model versus Fable5.1/high review followed
+by identical fresh Astra/high repair. Two bounded collector requests, two draws each;
+not an independent broad workload sample. All planned branches run, including initially
+correct products, to measure false-positive harm. No operator repair or exposed reroll.
+Evidence `.devlyn/0184/`; participants `~/.local/share/nx01/0184-participants/`.
+Task branch research/0184-review-repair-comparison, receipt500627caa6c42463728dd5e5.
+Inspect registration, native results and owned writers before any restart. Finish
+comparison, source decision/delivery and owned scratch/context cleanup. Next after
+this: a fresh harder-task direct/full comparison; easy-task results do not waive
+full safeguards for material state, concurrency or cross-module design work.
+
 ## Latest completed research: 0183
 
 [0183 report](iterations/0183-actual-resolve-ownership.md) records the actual
