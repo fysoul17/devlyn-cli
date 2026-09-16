@@ -5,7 +5,33 @@ forbids resolve in this continuation, including experimental solo/pair arms.
 Fable5.1 and Grok4.7 (4.6 when unavailable) are permitted advisors; advice is not
 a mandatory phase graph. Root implements and adjudicates directly.
 
-## Current unit:0181 disjoint confirmation — verified, delivery tracked separately
+## Current unit:0182 real-source three-instruction comparison — verified
+
+[0182 report](iterations/0182-three-instruction-comparison.md): twelve frozen
+serial Astra/high draws on real description-display and static-budget repairs.
+Full requirements **native4/4, current-direct4/4, minimal4/4**. NO_LIFT and no
+promotion. Native totals563.299s/676.465s/717.065s respectively; minimal is6%
+slower overall than current, with timing wins split2:2. Candidate/customer rules
+unchanged. Current control includes its linked completion reference under the
+shared no-resolve override; this is not a full installed-pipeline comparison.
+
+Fable marks all complete. Grok's two HIGH baseline Node-argv findings are refuted
+by8 actual runtime checks; root rejects them from evidence, not vote counting.
+All original source, raw failures, native events and judgments remain `.devlyn/0182/`.
+Exact delivery authority: `.devlyn/0182-delivery/FINAL.md`; finish pending delivery
+and owned scratch cleanup before a new unit. Receipt41930210c9bfa9a7d1fd4328 owns
+research/0182-three-instruction-comparison. No npm release. Source/recovery roots
+`~/.local/share/nx01/0182-participants/` remain separate from disposable scratch.
+
+Next: a separately registered fresh review/repair versus matched self-review/repair
+comparison, including false-positive harm and total cost. It was NOT_RUN here:
+no minimal product failed, so the registered stop rule offers no failure-reduction
+opportunity. Static reviewer agreement/disagreement is not repair-treatment evidence.
+Do not tune or rerun exposed0180–0182 cases, promote the candidate, or claim general
+current/native superiority. Mission1 remains active; no resolve; original WIP/A16
+and prior recovery/frozen records stay preserved.
+
+## Previous unit:0181 disjoint confirmation — complete
 
 [0181 report](iterations/0181-disjoint-confirmation.md): eight serial frozen
 Astra/high draws on fresh overlay/async-map tasks. Full requirements **A2/4, B3/4**,
