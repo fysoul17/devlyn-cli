@@ -1,11 +1,25 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-16 KST. Owner resumed sequential core improvement and explicitly
-forbids resolve in this continuation, including experimental solo/pair arms.
-Fable5.1 and Grok4.7 (4.6 when unavailable) are permitted advisors; advice is not
-a mandatory phase graph. Root implements and adjudicates directly.
+Updated 2026-09-16 KST. Latest explicit owner choice: research/improvements are
+root-direct; actual resolve is allowed only as an experimental comparison control.
+Easy work must retain verification, scoped cleanup and failure-driven repair.
+This supersedes the earlier experiment-wide no-resolve interpretation.
 
-## Current unit:0182 real-source three-instruction comparison — verified
+## Current unit:0183 easy work versus actual resolve — preparation
+
+[Protocol](experiments/0183/PROTOCOL.md): native / direct with verification and
+cleanup / actual full same-model resolve, on two new scoped developer-tool tasks.
+Full retains independent primary VERIFY; OTHER-model pair/probes are explicitly
+off to isolate phase-graph cost. Routing accuracy and OTHER-model review/repair
+are separate questions.0172 already permits direct work; forced full is the
+counterfactual, not today's automatic easy route.0182 did not measure this.
+Receipt2137acb862ccbc4bb2ae8500 owns research/0183-easy-task-resolve-comparison.
+Evidence `.devlyn/0183/`; participant roots `~/.local/share/nx01/0183-participants/`.
+Qualification-full-2 was stopped on a user message during VERIFY; all observed
+writers stopped. Preserve it as interrupted preparation, not a full-run result.
+Finish by consolidating stale/duplicate context and cleaning owned temporary data.
+
+## Previous unit:0182 direct instruction comparison — complete, limited scope
 
 [0182 report](iterations/0182-three-instruction-comparison.md): twelve frozen
 serial Astra/high draws on real description-display and static-budget repairs.
@@ -23,12 +37,12 @@ and owned scratch cleanup before a new unit. Receipt41930210c9bfa9a7d1fd4328 own
 research/0182-three-instruction-comparison. No npm release. Source/recovery roots
 `~/.local/share/nx01/0182-participants/` remain separate from disposable scratch.
 
-Next: a separately registered fresh review/repair versus matched self-review/repair
+Deferred: a separately registered fresh review/repair versus matched self-review/repair
 comparison, including false-positive harm and total cost. It was NOT_RUN here:
 no minimal product failed, so the registered stop rule offers no failure-reduction
 opportunity. Static reviewer agreement/disagreement is not repair-treatment evidence.
 Do not tune or rerun exposed0180–0182 cases, promote the candidate, or claim general
-current/native superiority. Mission1 remains active; no resolve; original WIP/A16
+current/native superiority. Mission1 remains active; original WIP/A16
 and prior recovery/frozen records stay preserved.
 
 ## Previous unit:0181 disjoint confirmation — complete
@@ -170,11 +184,9 @@ full resolve, with available OTHER-engine VERIFY pair. Explicit workflows,
 executor pins, opt-outs and unavailable-engine behavior retain their contracts.
 No new difficulty classifier or routing threshold is adopted by this handoff.
 
-Owner clarified 2026-09-16 KST: proceed sequentially and directly without
-resolve, including experimental solo/pair runs in this continuation. Fable5.1
-and Grok4.7 (4.6 if unavailable) may provide independent advice when useful;
-root adjudicates. This working preference does not change shipped customer
-routing. The operating contract above describes that unchanged product policy.
+Owner clarified 2026-09-16 KST: improve directly; actual resolve is permitted for
+the comparison control. Fable5.1 and Grok4.7 (4.6 if unavailable) may advise;
+root adjudicates. This research preference does not change shipped customer routing.
 
 devlyn-cli is the independent core; Pyx is optional. Optimize intent correctness
 and completeness, then verified completion time including repairs, then total
