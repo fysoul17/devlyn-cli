@@ -16,39 +16,34 @@ scoped cleanup and failure-driven repair/recheck, avoiding unnecessary full phas
 Do not confuse the researcher's workflow with the runtime being evaluated.
 Do not discard full-route safeguards for work that needs them.
 
-## Active unit:0183 — actual resolve comparison
+## Latest completed research: 0183
 
-[Protocol](experiments/0183/PROTOCOL.md) fixes native / direct with verification
-and cleanup / actual same-model full resolve. Two fresh source-backed developer-tool
-tasks, two draws per condition/task, sequential. Forced full is a counterfactual:
-0172 already allows easy work to execute directly. Full keeps all core phases and
-independent primary VERIFY; OTHER-model pair and conditional probes are explicitly
-off to isolate phase-graph cost. No claim about default paired/free-form cost.
+[0183 report](iterations/0183-actual-resolve-ownership.md) records the actual
+full-workflow comparison. Original root-task screen stopped after 3 draws on an
+extra-parent bootstrap failure; nine scheduled draws were NOT_RUN. The full
+participant had delegated the whole workflow into a workspace-write child that
+could not create the Git bootstrap lock. All original 79 inputs and raw failures
+remain frozen. No reroll or pooling with the follow-up.
 
-Preparation passed: actual full qualification completed PLAN, IMPLEMENT,
-BUILD_GATE, CLEANUP, independent VERIFY, final report and archive. Canonical
-archive/receipt/evidence validators passed separately. An earlier qualification
-was interrupted by user steering during VERIFY; preserve it as incomplete
-preparation. Never count it as a completed comparison or silently rerun a quality draw.
+The scoped fix assigns PHASE 0/state/Git/finalization to the current CLI, which
+spawns canonical phase workers. Phase bodies, worker permissions, independent
+verification and repair loops are unchanged. Skills lint, byte checks and a separate
+corrective full run passed; canonical archive/receipt validators independently passed.
 
-Registration `.devlyn/0183/REGISTRATION.json`: 2026-09-16T12:00:31.312791+00:00,
-79 bound files; SHA256
-`c8bf8eba764ce1149729e36b87c9706fd605b21cd9035f530bedd1f164b036eb`.
-Quality execution STOPPED after three returned draws: root-1-A/B pass the external
-checks; root-1-C delegated the whole run to an extra workspace-write parent,
-which could not create the Git bootstrap lock. Nine later draws were NOT_RUN.
-All original inputs and exposed outputs are sealed; no reroll. A scoped ownership
-clarification passed a separate corrective full run and archive/evidence validation.
-The unexposed filter task is next in the separately registered follow-up screen. Keep product success,
-pipeline fidelity, research overhead and delivery status distinct. Report absent
-billing or incomplete native usage as UNKNOWN; event-arrival gaps are not durations.
+Separately registered follow-up: one previously unexposed internal filter task,
+two Astra/high draws per arm. Native / minimal-direct / actual full each 2/2 complete;
+total native time 77.145 / 98.879 / 1396.563s. Direct is 92.92% faster than full here,
+but 28.17% slower than native. All six pass external CLI/parity/scope/debris checks;
+both full runs pass complete archive/role/mechanical validation. Full uses --spec,
+--no-pair and --no-risk-probes; independent same-model primary remains. No claim
+about default paired/free-form cost, general quality equivalence or candidate promotion.
+Whole full-run tokens/dollars are UNKNOWN because primary judge usage is absent.
 
-Branch `research/0183-easy-task-resolve-comparison`; task receipt
-`.git/devlyn-completion/2137acb862ccbc4bb2ae8500/receipt.json`.
-Evidence `.devlyn/0183/`; participants `~/.local/share/nx01/0183-participants/`.
-Disposable native homes use receipt-owned scratch. Finish source acceptance,
-delivery, writer checks and owned scratch cleanup. Owner also requested cleanup
-of stale/duplicate related context; retain essential results and restart evidence.
+Evidence: `.devlyn/0183/`, `.devlyn/0183-fix-checks/`, `.devlyn/0183-followup/`.
+Delivery/CI/cleanup authority: `.devlyn/0183-delivery/FINAL.md`; receipt
+`.git/devlyn-completion/2137acb862ccbc4bb2ae8500/receipt.json`. Check that final record
+before any new allocation; finish any pending delivery or owned scratch cleanup.
+Participant source/Git roots are retained evidence, not disposable caches.
 
 ## Evidence boundaries and next frontier
 
@@ -60,7 +55,7 @@ Delivery/cleanup is complete at `.devlyn/0182-delivery/FINAL.md`; do not replay 
 [0179](iterations/0179-minimal-direct-harness.md) introduced the research-only direct
 candidate. It is not an installed contract replacement or proven universal policy.
 
-After the current comparison, use evidence to select the next bounded change.
+Retain the existing easy-task direct entry; no stronger minimal-policy claim follows.
 OTHER-model review linked to repair needs a separate fresh comparison with matched
 self-review/repair, including false-positive harm and all costs. Source-review
 agreement alone does not measure repair benefit. No general quality equivalence,

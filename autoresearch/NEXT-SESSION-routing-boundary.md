@@ -1,16 +1,14 @@
 # Resume core harness improvement
 
 Actual checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Read [HANDOFF](HANDOFF.md) for current state and
-[0183 protocol](experiments/0183/PROTOCOL.md) for the frozen comparison.
+Read [HANDOFF](HANDOFF.md) and [0183 results](iterations/0183-actual-resolve-ownership.md).
+Owner: improve directly; resolve is allowed only as a comparison control.
 
-Owner clarification: improve directly; execute resolve only as a comparison
-control. Preserve verification, cleanup and repair/recheck for easy work.
-0183 stopped after three draws on an extra-parent bootstrap failure; nine draws
-were NOT_RUN. The ownership correction passed full-runtime validation; a fresh
-follow-up uses the unexposed filter task. Inspect
-`.devlyn/0183/` and owned processes before any launch.
-Never rerun an exposed quality draw or count an interrupted qualification as success.
+0183 follow-up completed: all arms 2/2; direct 98.879s versus full 1396.563s,
+native 77.145s, one task/two repeats. Keep the original stopped screen separate.
+No installed minimal-contract replacement. OTHER-model review/repair remains
+an unrun fresh comparison with matched self-review and false-positive harm.
 
-Finish required delivery, owned scratch cleanup and stale-context consolidation.
-Original workspace WIP, A16, frozen experiments and essential evidence stay preserved.
+Check `.devlyn/0183-delivery/FINAL.md` and finish any pending delivery/owned cleanup
+before new work. Never rerun exposed draws. Preserve original WIP, A16, frozen
+results and source/Git/recovery evidence. Do not restore stale experiment-wide bans.
