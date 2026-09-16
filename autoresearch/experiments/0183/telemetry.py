@@ -29,8 +29,9 @@ def collect(draw):
     # A canonical non-JSON judge capture may have no structured usage. Its absence
     # must not turn the observed subset into a whole-run counter claim.
     expected_minimum=6 if arm=='C' else 1
+    structured_judge=any('-judge' in Path(t['path']).name and t['turns'] for t in threads.values())
     return dict(draw=draw,threads=list(threads.values()),expected_minimum_threads=expected_minimum,
-                whole_run_counters_complete=len(threads)>=expected_minimum and all(t['turns'] for t in threads.values()),
+                whole_run_counters_complete=len(threads)>=expected_minimum and all(t['turns'] for t in threads.values()) and (arm!='C' or structured_judge),
                 counters={key:sum(c.get(key,0) for t in threads.values() for c in t['turns']) for key in keys},
                 dollars=None,scope='Observed native parent and child thread completion counters; duplicate captures deduplicated by thread id.')
 

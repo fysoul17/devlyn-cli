@@ -1,24 +1,16 @@
-# Continue the core harness improvement program
+# Resume core harness improvement
 
-Updated2026-09-16 KST. Read [HANDOFF](HANDOFF.md) and
-[0183 protocol](experiments/0183/PROTOCOL.md). Actual checkout:
-`/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+Actual checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+Read [HANDOFF](HANDOFF.md) for current state and
+[0183 protocol](experiments/0183/PROTOCOL.md) for the frozen comparison.
 
-Latest explicit owner choice: improvements are root-direct; only experimental
-comparison controls may execute resolve. Preserve verification, scoped cleanup
-and failure-driven repair on easy work. Do not conflate the researcher's route
-with the evaluated runtime. This supersedes the experiment-wide no-resolve ban.
+Owner clarification: improve directly; execute resolve only as a comparison
+control. Preserve verification, cleanup and repair/recheck for easy work.
+0183 stopped after three draws on an extra-parent bootstrap failure; nine draws
+were NOT_RUN. The ownership correction passed full-runtime validation; a fresh
+follow-up uses the unexposed filter task. Inspect
+`.devlyn/0183/` and owned processes before any launch.
+Never rerun an exposed quality draw or count an interrupted qualification as success.
 
-0183 is preparing native / direct+verification+cleanup / actual same-model full
-resolve on two fresh source-backed tasks. Full retains independent primary VERIFY;
-OTHER-model pair/probes are off for this isolation. Inspect `.devlyn/0183/` before
-launching. Qualification-full-2 was interrupted by user steering during VERIFY;
-all observed writers stopped, no completed comparison claim. Branch
-research/0183-easy-task-resolve-comparison; receipt2137acb862ccbc4bb2ae8500.
-
-0182 is complete, each direct condition4/4; timings do not measure resolve
-simplification. Preserve `.devlyn/0182-delivery/FINAL.md` and accepted evidence.
-OTHER-model review/repair with a matched self-review control remains deferred.
-Finish by consolidating stale/duplicate context and cleaning owned temporary data.
-Preserve original WIP, A16, frozen0180–0182 and recovery refs. Mission1 active;
-optional Pyx/OS remain deferred.
+Finish required delivery, owned scratch cleanup and stale-context consolidation.
+Original workspace WIP, A16, frozen experiments and essential evidence stay preserved.
