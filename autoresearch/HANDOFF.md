@@ -1,37 +1,37 @@
 # HANDOFF — current continuation
 
-Updated 2026-09-15 KST after owner-authorized resumption.0178 comparison and
-final Fable5.1/Grok4.6 review adjudication are complete. Current delivery/cleanup
-status is in `.devlyn/0178-delivery/FINAL.md`; `.devlyn/0178/PARK.json` is history.
-**The agreed intent, goal, North Star and vision remain active.
-Core harness improvement / Mission1 is not complete.**
+Updated 2026-09-16 KST. Owner resumed sequential core improvement and explicitly
+forbids resolve in this continuation, including experimental solo/pair arms.
+Fable5.1 and Grok4.7 (4.6 when unavailable) are permitted advisors; advice is not
+a mandatory phase graph. Root implements and adjudicates directly.
 
-[0178](iterations/0178-valid-repair-comparison.md) completed the previously
-unexecuted actual seeded-repair comparison, directly without resolve. Two valid
-new domains,2 repeats each: baseline4/4 and candidate4/4 complete repairs;
-interval checks88/88 and decoder checks730/730 in every draw. Original tests,
-genuine invalid-input checks and allowed scope were preserved. Decision:
-**NO_PROMOTION; no observed quality lift and no product guidance change.**
+## Current unit:0179 minimal direct-harness preparation
 
-Registration and raw evidence: `.devlyn/0178/`. Current delivery/review status:
-`.devlyn/0178-delivery/FINAL.md`; receipt
-`.git/devlyn-completion/7a47bf100eeaba4e103b1a1c/receipt.json`.
-The comparison is a development component screen, not authoring, full-pipeline,
-native-best or held-out confirmation. Whole-run output/cost remains unknown.
-Both final reviewers support NO_PROMOTION. The report now names reference-byte
-identity and the sealed prompt's explicit plan-file permission, omitted from the
-review packet. Root dispositions: `.devlyn/0178/ADJUDICATION.json`.
+[0179](iterations/0179-minimal-direct-harness.md) provides a research-only
+[355-word instruction candidate](experiments/0179/AGENTS.candidate.md), source
+mapping and A/B protocol. Product instructions, routing and pins are unchanged.
+The initial Fable5.1/Grok4.6 reviews identified scoring, transport and delivery
+ambiguities; root dispositions and final review are under `.devlyn/0179/`.
+Current delivery/cleanup status: `.devlyn/0179-delivery/FINAL.md`.
 
-0177 remains INCOMPLETE with its invalid Decimal fixture and timeout intact;
-its PR50 record delivery was complete.0175/0176 and frozen H source tracing
-remain complete. Original WIP and all parked work are preserved.
+Independent-root diagnostics exposed personal global AGENTS/Pyx instructions;
+`project_doc_max_bytes=0` and `--ignore-user-config` did not remove them.
+A fresh process-local Codex configuration directory, native project AGENTS and
+identical disabled external skill cards yield0 personal instructions in both
+renders, A0/B1 project blocks and identical remaining role/type/text blocks.
+Both real read-only Astra/high heading probes exit0. These are transport probes,
+not coding-quality measurements or proof of complete provider-request isolation.
 
-Next: select a reproduced actual-work failure or cost bottleneck and verify its
-connection to current harness source before changing the core. Both arms already
-repair the0178 seeded conflicts; repeating these exposed tasks or promoting the
-candidate would not establish improvement. Preserve model-specific adaptation,
-native-best comparisons and the broader active workstreams below. See
-[continuation](NEXT-SESSION-routing-boundary.md).
+Next: fresh small/hard task selection, calibrated independent oracles/valid
+alternatives, actual workspace-write qualification and sealed full prompts,
+scoring, budget and balanced repeated order. Then run A native versus B minimal
+instructions, directly without resolve. No quality draws have run for0179.
+Independent review/repair is a later comparison; no candidate is promoted yet.
+
+0178 is COMPLETE and delivered via PR51 / `ab191da`: baseline4/4, candidate4/4,
+NO_PROMOTION.0177 remains incomplete with its invalid fixture/timeout preserved.
+0173–0178, original workspace WIP, H tracing and A16 are not tasks to replay.
+**Core harness improvement / Mission1 remains active and incomplete.**
 
 ## Locked intent and continuation
 
@@ -139,13 +139,11 @@ full resolve, with available OTHER-engine VERIFY pair. Explicit workflows,
 executor pins, opt-outs and unavailable-engine behavior retain their contracts.
 No new difficulty classifier or routing threshold is adopted by this handoff.
 
-Owner clarified 2026-09-15 KST: root implements, verifies and delivers directly
-by default; reserve resolve for especially very complex coding, testing the
-pipeline itself, or an explicit resolve request. Ordinary task categories alone
-do not mandate it. Actual Fable 5.1 (authorized Opus 5 substitute when unavailable)
-and Grok 4.6 provide independent core-research advice; root adjudicates. Measured
-full solo/pair arms still execute their canonical pipeline. This collaboration
-preference does not itself change the shipped customer routing policy.
+Owner clarified 2026-09-16 KST: proceed sequentially and directly without
+resolve, including experimental solo/pair runs in this continuation. Fable5.1
+and Grok4.7 (4.6 if unavailable) may provide independent advice when useful;
+root adjudicates. This working preference does not change shipped customer
+routing. The operating contract above describes that unchanged product policy.
 
 devlyn-cli is the independent core; Pyx is optional. Optimize intent correctness
 and completeness, then verified completion time including repairs, then total
