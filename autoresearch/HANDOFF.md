@@ -1,67 +1,69 @@
 # Core harness improvement — current handoff
 
-Updated2026-09-16 KST. Actual checkout:
+Updated2026-09-17 KST. Actual checkout:
 `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
 
 ## Owner intent and boundary
 
-Complete, correct engineering outcomes first; verified completion time including
-review/repairs second; total cost third. Root implements improvements directly.
-Actual resolve is allowed only as an experimental control. Preserve verification,
-scoped cleanup and necessary repair/recheck; do not remove full safeguards from
-work that needs them. The owner explicitly confirmed harder development tasks
-should follow this review/repair comparison. Pyx is optional; OS/fleet remains deferred.
+Completion first, verified time including repairs second, observed usage/cost third.
+Root improves directly; actual resolve only as experimental control. Preserve
+verification, scoped cleanup and necessary repair/recheck. **Park unfinished work
+at <=15% remaining account usage.** Check live limits before new model calls and
+periodically during long runs; seal interrupted outputs, stop owned writers and
+retain exact restart state. No exposed rerolls. Pyx optional; OS/fleet/A16 deferred.
+Original GitHub checkout contains user WIP; never revert or sweep it.
 
-## Latest completed research: 0184
+## Latest research: 0185 harder installation transaction
 
-[0184 report](iterations/0184-review-repair-comparison.md): four fresh initial
-Astra/high products on two requests in one real collector; each copied into fresh
-Astra/high versus Fable5.1/high review followed by identical Astra/high repair.
-All20 scheduled calls completed. Frozen checker said12/12 PASS, but missed the
-explicit input-preservation invariant when --out names a patch/instances input.
-Post-seal actual CLI replay confirms initial2/4 complete, same-model4/4 (two fixes),
-OTHER2/4 (zero blocking fixes), no new regression. Fable improved two LOW diagnostic
-issues but missed input loss. Mean additional review+repair87.988/143.731s.
+[0185 report](iterations/0185-harder-installation-comparison.md), evidence
+`.devlyn/0185/`. Six fresh draws on one real installer request, two per native /
+unchanged0179 direct / actual same-model full route. All Astra/high. Full preserves
+canonical phases, independent primary, repair and archive; --no-pair/--no-risk-probes
+intentionally exclude OTHER effects, not a change to production high-risk defaults.
 
-Keep mechanical and root-adjudicated outcomes separate: the frozen checker and
-calibration reference shared the collision miss. All raw grades/products remain
-unchanged. Review packet bytes match, but native cwd reveals coded identifiers;
-blinding and cross-engine configurations are imperfect. Two requests/shareable source
-and two repeats do not establish a general model ranking. Whole billing UNKNOWN;
-native usage and Fable list-price estimates, including auxiliary Haiku, are retained.
+Frozen mechanical6/6 PASS; both full archives validate. Root outcome **A0/2, B0/2,
+C1/2**. All A/B and pre-repair C sources fail lock-release restoration and terminal
+symlink destination exclusion. Each C fresh judge found both HIGH classes, each
+repair closed them. C1 still releases its rollback lock before removing a newly
+created destination; a reentrant contender enters during that public cleanup.
+The miss existed before repair. C2 passes that interaction. No new repair regression.
+Mean native return258.635/271.695/1494.467s includes failed tasks; only C2 completed,
+at1609.477s. Whole C tokens/billing UNKNOWN; judge usage missing.
 
-Decision: no replacement of same-model review or mandatory peer addition from this
-sample. Fresh same-model review+repair helped. Combined reviewers/full resolve were
-not tested here; installed risk routing and full primary/pair safeguards stay intact.
-Small file count does not make the atomic persistence contract low risk.
+Keep frozen `ASSESSMENT.json` distinct from `RESULT.json.rows[].root_complete`. The checker
+and calibration reference missed release semantics. An initial ancestor-alias replay
+was insufficient and remains preserved; terminal-symlink replay reproduces the
+finding. Reference absence-race injection did not trigger (whole-directory publisher),
+so it is not a demonstrated reference failure. Prediction documents, all36 replay
+invocations, pre-repair Git sources and raw/model failures remain evidence. One
+root-authored task/two repeats/post-seal oracle extension do not establish general
+quality equivalence, model ranking or a default route replacement.
 
-Evidence `.devlyn/0184/`; delivery/CI/cleanup authority
-`.devlyn/0184-delivery/FINAL.md`, receipt500627caa6c42463728dd5e5. Check its final
-status and finish pending delivery/owned cleanup before any new allocation.
-Participants `~/.local/share/nx01/0184-participants/` are retained source/Git evidence.
+Delivery/CI/owned cleanup authority: `.devlyn/0185-delivery/FINAL.md`,
+receipt1dfef6c599ae0b1b68b57f13. Check and finish pending delivery/cleanup before new
+allocation. Participants `~/.local/share/nx01/0185-participants/` retain source/Git;
+only prospectively owned disposable scratch is eligible for cleanup.
 
-## Next: harder development tasks
+## Next bounded improvement
 
-Use new tasks with interacting requirements across modules, state changes/failure
-recovery or concurrency. Compare native/direct/full under fixed model and declared
-conditions, completion first, then review/repair time and cost. Use actual resolve
-only in controls; root research remains direct. Freeze before dispatch, calibrate
-checks, preserve failures and forbid exposed rerolls or outcome-based selection.
-Do not infer stronger-model superiority or waive safeguards from the small-task data.
+Target verification of the entire lock/rollback lifecycle: shared-path restoration
+and removal of newly created destinations must finish before unlock; private
+postcommit backup disposal is separate. Test a focused direct + fresh-review/repair
+candidate against actual full core on a **disjoint harder task**. The observations
+support review linked to repair, not the necessity of every phase or safety of
+removing full safeguards. Keep current routing; freeze new conditions before dispatch.
+Do not edit/regrade/rerun the exposed0185 products to manufacture a better result.
 
 ## Preserve and consult
 
-- [0183](iterations/0183-actual-resolve-ownership.md) fixed extra-parent ownership;
-  separate filter follow-up each2/2, direct98.879s/full1396.563s/native77.145s.
-  Original stopped root screen stays separate. Delivery/CI/cleanup COMPLETE at
-  `.devlyn/0183-delivery/FINAL.md`. No minimal-contract promotion.
-- 0180–0182 frozen;0182 compared only direct instructions, not actual resolve.
-  0172 entry clarification and0179 research candidate remain as scoped evidence.
-- Original `/Users/aipalm/Documents/GitHub/devlyn-cli` contains user/other-session
-  WIP; its ignored continuation pointer leads here. Never revert it. Preserve
-  A16 (parked/NOT_INSPECTED), frozen sources/raw results, Git and recovery refs.
+- [0184](iterations/0184-review-repair-comparison.md), PR58/CI/cleanup COMPLETE:
+  initial2/4, same-model review/repair4/4, OTHER2/4; frozen checker missed input loss.
+  No peer replacement/promotion; fresh same-model review helped in a small sample.
+- [0183](iterations/0183-actual-resolve-ownership.md), PR57/CI/cleanup COMPLETE:
+  extra-parent ownership correction; separate small filter each2/2, mean native38.573 /
+  direct49.439 / full698.282s. Original stopped screen separate; no minimal promotion.
+- 0180–0182 frozen;0182 was direct instructions, not actual resolve. Keep0172/0179,
+  frozen source/raw results, Git, accepted custody and recovery refs.
 - Direction: [NORTH-STAR](NORTH-STAR.md), [PRINCIPLES](PRINCIPLES.md),
-  [MISSIONS](MISSIONS.md), [DECISIONS](DECISIONS.md), and
-  [0120](iterations/0120-model-adaptation-direction.md). Mission1 remains active;
-  fixed phase graphs/team sizes are not the objective. Fable/Grok advice is evidence,
-  not a vote that overrides reproduced facts. History belongs in iteration reports.
+  [MISSIONS](MISSIONS.md), [DECISIONS](DECISIONS.md), [0120](iterations/0120-model-adaptation-direction.md).
+  Mission1 remains active. History belongs in iteration reports.
