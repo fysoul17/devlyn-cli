@@ -1,0 +1,21 @@
+def parse_selection(text):
+    if not isinstance(text, str):
+        raise TypeError('text must be a string')
+    if not text.strip(' \t\n'):
+        return []
+    numbers = {}
+    for token in text.split(','):
+        parts = token.split('-')
+        if len(parts) not in (1, 2):
+            raise ValueError('invalid selection')
+        values = []
+        for part in parts:
+            digits = part.strip(' \t\n')
+            if not digits or any(ch not in '0123456789' for ch in digits):
+                raise ValueError('invalid number')
+            values.append(int(digits))
+        low, high = values[0], values[-1]
+        if low == 0 or high < low:
+            raise ValueError('invalid range')
+        numbers.update((value, None) for value in range(low, high + 1))
+    return list(numbers)

@@ -1,0 +1,21 @@
+import re
+
+
+def parse_selection(text):
+    if not isinstance(text, str):
+        raise TypeError('text must be a string')
+    if not text.strip(' \t\n'):
+        return []
+    result = []
+    for token in text.split(','):
+        match = re.fullmatch(r'[ \t\n]*([0-9]+)[ \t\n]*(?:-[ \t\n]*([0-9]+)[ \t\n]*)?', token)
+        if not match:
+            raise ValueError('invalid selection')
+        start = int(match[1])
+        end = int(match[2]) if match[2] is not None else start
+        if start < 1 or end < start:
+            raise ValueError('invalid range')
+        for number in range(start, end + 1):
+            if number not in result:
+                result.append(number)
+    return result

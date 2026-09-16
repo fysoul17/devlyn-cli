@@ -1,0 +1,27 @@
+import json
+import sqlite3
+import sys
+from store import connect, ingest
+
+
+def main():
+    connection = None
+    try:
+        with open(sys.argv[2], encoding='utf-8') as stream:
+            events = json.load(stream)
+        if not isinstance(events, list):
+            raise ValueError('input must be a JSON array')
+        connection = connect(sys.argv[1])
+        inserted = ingest(connection, events)
+    except (ValueError, OSError, sqlite3.Error) as error:
+        print('error: ' + ' '.join(str(error).splitlines()), file=sys.stderr)
+        return 2
+    finally:
+        if connection is not None:
+            connection.close()
+    print(json.dumps({'inserted': inserted}))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

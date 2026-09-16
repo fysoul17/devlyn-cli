@@ -5,32 +5,36 @@ forbids resolve in this continuation, including experimental solo/pair arms.
 Fable5.1 and Grok4.7 (4.6 when unavailable) are permitted advisors; advice is not
 a mandatory phase graph. Root implements and adjudicates directly.
 
-## Current unit:0179 minimal direct-harness preparation
+## Current unit:0180 direct A/B comparison — verified, delivery pending
 
-[0179](iterations/0179-minimal-direct-harness.md) provides a research-only
-[355-word instruction candidate](experiments/0179/AGENTS.candidate.md), source
-mapping and A/B protocol. Product instructions, routing and pins are unchanged.
-The initial Fable5.1/Grok4.6 reviews identified scoring, transport and delivery
-ambiguities; root dispositions and final review are under `.devlyn/0179/`.
-Current delivery/cleanup status: `.devlyn/0179-delivery/FINAL.md`.
+[0180 report](iterations/0180-minimal-direct-comparison.md): eight serial native
+Astra/high draws completed without rerolls. Mechanical8/8; full requirement
+outcome **A2/4, B4/4**, no paired regression. Both A inbox products accept malformed
+NaN/Infinity hidden by duplicate members; both B reject correctly. Root predicted
+from source and reproduced the difference. Initial blind Fable/Grok missed this
+exact defect; supplied-counterexample follow-ups both validate it. Their alleged
+2000-depth recursion defect is rejected by actual frozen Python3.14.6 results.
 
-Independent-root diagnostics exposed personal global AGENTS/Pyx instructions;
-`project_doc_max_bytes=0` and `--ignore-user-config` did not remove them.
-A fresh process-local Codex configuration directory, native project AGENTS and
-identical disabled external skill cards yield0 personal instructions in both
-renders, A0/B1 project blocks and identical remaining role/type/text blocks.
-Both real read-only Astra/high heading probes exit0. These are transport probes,
-not coding-quality measurements or proof of complete provider-request isolation.
+This is **positive development evidence only**, on two synthetic tasks and one
+repeated error boundary. Candidate355 words unchanged; no product promotion,
+installed-contract replacement, general-superiority claim or Mission1 closure.
+A consumed497.868s, B577.598s; failed A inbox products do not establish faster
+verified completion. On successful small pairs A164.463s versus B215.055s.
+No resolve. Next research gate: unchanged candidate on disjoint repeated
+confirmation; independent review/repair treatment remains a separate later unit.
 
-Next: fresh small/hard task selection, calibrated independent oracles/valid
-alternatives, actual workspace-write qualification and sealed full prompts,
-scoring, budget and balanced repeated order. Then run A native versus B minimal
-instructions, directly without resolve. No quality draws have run for0179.
-Independent review/repair is a later comparison; no candidate is promoted yet.
+Initial admission found/fixed spec whitespace ambiguity and actual ancestor
+instruction reads before quality draws.26 calibration controls match predictions,
+but the reference shares the later JSON false negative: calibration is not full
+correctness proof. Exact executed fixture bytes remain `.devlyn/0180/frozen-inputs/`;
+published oracle only removes blank-line trailing spaces, AST unchanged.
+Raw protocol, reviews, counterexamples and source seals: `.devlyn/0180/`.
+Participant Git roots under `~/.local/share/nx01/0180-participants/` are retained
+source/recovery evidence. Branch `research/0180-ab-registration`, receipt
+`44223df278d60be31f8a0d7c`; delivery/cleanup status: `.devlyn/0180-delivery/FINAL.md`.
+Finish delivery/owned scratch cleanup before selecting the next work unit.
 
-0178 is COMPLETE and delivered via PR51 / `ab191da`: baseline4/4, candidate4/4,
-NO_PROMOTION.0177 remains incomplete with its invalid fixture/timeout preserved.
-0173–0178, original workspace WIP, H tracing and A16 are not tasks to replay.
+0173–0179, original workspace WIP, H tracing and A16 remain preserved.
 **Core harness improvement / Mission1 remains active and incomplete.**
 
 ## Locked intent and continuation
