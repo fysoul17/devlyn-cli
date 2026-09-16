@@ -1,0 +1,41 @@
+import asyncio
+
+
+async def map_limited(worker, items, limit):
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        raise TypeError('limit must be an integer')
+    if limit < 1:
+        raise ValueError('limit must be positive')
+    iterator = iter(items)
+    pending = {}
+    result = []
+    exhausted = False
+    try:
+        while not exhausted or pending:
+            while not exhausted and len(pending) < limit:
+                try:
+                    item = next(iterator)
+                except StopIteration:
+                    exhausted = True
+                    break
+                task = asyncio.create_task(worker(item))
+                pending[task] = len(result)
+                result.append(None)
+            if not pending:
+                break
+            done, _ = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                result[pending[task]] = task.result()
+            for task in done:
+                del pending[task]
+    finally:
+        for task in pending:
+            if not task.done():
+                task.cancel()
+        cleanup = asyncio.gather(*pending, return_exceptions=True)
+        try:
+            await asyncio.shield(cleanup)
+        except asyncio.CancelledError:
+            await cleanup
+            raise
+    return result

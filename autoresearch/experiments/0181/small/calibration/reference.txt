@@ -1,0 +1,29 @@
+def merge_layers(*layers):
+    def validate(value):
+        if not isinstance(value, dict):
+            raise TypeError('layer must be a dictionary')
+        for key, child in value.items():
+            if not isinstance(key, str):
+                raise TypeError('key must be a string')
+            if isinstance(child, dict):
+                validate(child)
+            elif child is not None and not isinstance(child, str):
+                raise TypeError('invalid value')
+
+    def apply(target, source):
+        for key, value in source.items():
+            if value is None:
+                target.pop(key, None)
+            elif isinstance(value, dict):
+                if not isinstance(target.get(key), dict):
+                    target[key] = {}
+                apply(target[key], value)
+            else:
+                target[key] = value
+
+    for layer in layers:
+        validate(layer)
+    result = {}
+    for layer in layers:
+        apply(result, layer)
+    return result
