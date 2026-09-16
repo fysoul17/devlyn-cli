@@ -1,0 +1,25 @@
+def merge_layers(*layers):
+    result = {}
+    for layer in layers:
+        pending = [(result, layer)]
+        while pending:
+            target, source = pending.pop()
+            if not isinstance(source, dict):
+                raise TypeError('dictionary required')
+            for key, value in source.items():
+                if not isinstance(key, str):
+                    raise TypeError('string key required')
+                if value is None:
+                    if key in target:
+                        del target[key]
+                elif isinstance(value, str):
+                    target[key] = value
+                elif isinstance(value, dict):
+                    previous = target.get(key)
+                    if not isinstance(previous, dict):
+                        previous = {}
+                        target[key] = previous
+                    pending.append((previous, value))
+                else:
+                    raise TypeError('invalid leaf')
+    return result

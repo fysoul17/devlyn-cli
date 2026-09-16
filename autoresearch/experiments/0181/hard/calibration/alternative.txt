@@ -1,0 +1,41 @@
+import asyncio
+
+
+async def map_limited(worker, items, limit):
+    if not isinstance(limit, int) or isinstance(limit, bool):
+        raise TypeError('bad limit type')
+    if limit <= 0:
+        raise ValueError('bad limit value')
+    iterator = iter(items)
+    result = []
+    stopped = False
+
+    async def consume():
+        nonlocal stopped
+        try:
+            while not stopped:
+                try:
+                    item = next(iterator)
+                except StopIteration:
+                    return
+                index = len(result)
+                result.append(None)
+                result[index] = await worker(item)
+        except BaseException:
+            stopped = True
+            raise
+
+    tasks = [asyncio.create_task(consume()) for _ in range(limit)]
+    try:
+        await asyncio.shield(asyncio.gather(*tasks))
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        cleanup = asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            await asyncio.shield(cleanup)
+        except asyncio.CancelledError:
+            await cleanup
+            raise
+    return result
