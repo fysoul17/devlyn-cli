@@ -1,69 +1,35 @@
-# Core harness improvement — current handoff
+# Core harness improvement — parked0186
 
 Updated2026-09-17 KST. Actual checkout:
 `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
+Branch `research/0186-focused-lifecycle`; owner receiptde61a898ff4784dd683ba8ef.
+Start with `.devlyn/0186/FINAL.md` and
+[0186 result](iterations/0186-focused-lifecycle-review.md).
 
-## Owner intent and boundary
+Root improves directly; actual resolve only as comparison control. Preserve
+verification, cleanup, necessary repair/recheck, original user WIP and evidence.
+Park unfinished work at <=15% live account usage. That threshold was reached at
+2026-09-17T00:29:37Z: B2 repair was stopped/reaped, not completed. No more native calls.
 
-Completion first, verified time including repairs second, observed usage/cost third.
-Root improves directly; actual resolve only as experimental control. Preserve
-verification, scoped cleanup and necessary repair/recheck. **Park unfinished work
-at <=15% remaining account usage.** Check live limits before new model calls and
-periodically during long runs; seal interrupted outputs, stop owned writers and
-retain exact restart state. No exposed rerolls. Pyx optional; OS/fleet/A16 deferred.
-Original GitHub checkout contains user WIP; never revert or sweep it.
+0186 registered B1/C1/C2/B2 on a fresh instruction-file migration request. Three
+workflows returned (B1 338.936s, C1 955.199s, C2 856.523s), but all violate source
+preservation when destination symlink points at bundled source. Frozen11checks all
+pass; two full archives validate. B2 fresh focused review independently found this
+MEDIUM omission. Partial repair rejects overlap and passes external replays, but
+quota interrupted repair before fresh re-review; censor it, never call it complete.
+Request's referent-update/source-preservation overlap needs explicit clarification
+in future input. Reference/checker gaps, original grades and predictions retained.
 
-## Latest research: 0185 harder installation transaction
+No candidate/runtime/routing promotion; quality-preserving speedup unproven. Mission1
+active. After usage permits, resume via a separately registered continuation that
+preserves the exposed B2 partial and grades. Finish validation or use disjoint work
+with explicit alias policy; do not silently reroll a censored draw. The complete
+lock/rollback lifecycle remains the review focus; consider source/destination alias
+interaction without growing unconditional instructions from one case.
 
-[0185 report](iterations/0185-harder-installation-comparison.md), evidence
-`.devlyn/0185/`. Six fresh draws on one real installer request, two per native /
-unchanged0179 direct / actual same-model full route. All Astra/high. Full preserves
-canonical phases, independent primary, repair and archive; --no-pair/--no-risk-probes
-intentionally exclude OTHER effects, not a change to production high-risk defaults.
-
-Frozen mechanical6/6 PASS; both full archives validate. Root outcome **A0/2, B0/2,
-C1/2**. All A/B and pre-repair C sources fail lock-release restoration and terminal
-symlink destination exclusion. Each C fresh judge found both HIGH classes, each
-repair closed them. C1 still releases its rollback lock before removing a newly
-created destination; a reentrant contender enters during that public cleanup.
-The miss existed before repair. C2 passes that interaction. No new repair regression.
-Mean native return258.635/271.695/1494.467s includes failed tasks; only C2 completed,
-at1609.477s. Whole C tokens/billing UNKNOWN; judge usage missing.
-
-Keep frozen `ASSESSMENT.json` distinct from `RESULT.json.rows[].root_complete`. The checker
-and calibration reference missed release semantics. An initial ancestor-alias replay
-was insufficient and remains preserved; terminal-symlink replay reproduces the
-finding. Reference absence-race injection did not trigger (whole-directory publisher),
-so it is not a demonstrated reference failure. Prediction documents, all36 replay
-invocations, pre-repair Git sources and raw/model failures remain evidence. One
-root-authored task/two repeats/post-seal oracle extension do not establish general
-quality equivalence, model ranking or a default route replacement.
-
-Delivery/CI/owned cleanup authority: `.devlyn/0185-delivery/FINAL.md`,
-receipt1dfef6c599ae0b1b68b57f13. Check and finish pending delivery/cleanup before new
-allocation. Participants `~/.local/share/nx01/0185-participants/` retain source/Git;
-only prospectively owned disposable scratch is eligible for cleanup.
-
-## Next bounded improvement
-
-Target verification of the entire lock/rollback lifecycle: shared-path restoration
-and removal of newly created destinations must finish before unlock; private
-postcommit backup disposal is separate. Test a focused direct + fresh-review/repair
-candidate against actual full core on a **disjoint harder task**. The observations
-support review linked to repair, not the necessity of every phase or safety of
-removing full safeguards. Keep current routing; freeze new conditions before dispatch.
-Do not edit/regrade/rerun the exposed0185 products to manufacture a better result.
-
-## Preserve and consult
-
-- [0184](iterations/0184-review-repair-comparison.md), PR58/CI/cleanup COMPLETE:
-  initial2/4, same-model review/repair4/4, OTHER2/4; frozen checker missed input loss.
-  No peer replacement/promotion; fresh same-model review helped in a small sample.
-- [0183](iterations/0183-actual-resolve-ownership.md), PR57/CI/cleanup COMPLETE:
-  extra-parent ownership correction; separate small filter each2/2, mean native38.573 /
-  direct49.439 / full698.282s. Original stopped screen separate; no minimal promotion.
-- 0180–0182 frozen;0182 was direct instructions, not actual resolve. Keep0172/0179,
-  frozen source/raw results, Git, accepted custody and recovery refs.
-- Direction: [NORTH-STAR](NORTH-STAR.md), [PRINCIPLES](PRINCIPLES.md),
-  [MISSIONS](MISSIONS.md), [DECISIONS](DECISIONS.md), [0120](iterations/0120-model-adaptation-direction.md).
-  Mission1 remains active. History belongs in iteration reports.
+Clean only prospectively owned disposable scratch; preserve source/Git, custody,
+recovery refs and raw evidence. Original GitHub checkout WIP untouched. OS/fleet/A16
+remain deferred. Prior history: [0185](iterations/0185-harder-installation-comparison.md)
+PR59 COMPLETE (root native0/2,direct0/2,full1/2); [0184](iterations/0184-review-repair-comparison.md)
+PR58 COMPLETE; [0183](iterations/0183-actual-resolve-ownership.md) PR57 COMPLETE.
+Read NORTH-STAR/PRINCIPLES/MISSIONS for active Mission1 boundaries.

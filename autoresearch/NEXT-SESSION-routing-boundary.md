@@ -1,14 +1,15 @@
-# Resume core harness improvement
+# Resume0186 from parked evidence
 
-Actual checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Read [HANDOFF](HANDOFF.md) and [0185 result](iterations/0185-harder-installation-comparison.md).
-Harder task root completion: native0/2, direct0/2, actual full1/2. Full review repaired
-two HIGH classes twice but missed one rollback/lock interaction. Frozen mechanical
-checks passed all; keep those grades distinct from post-seal root adjudication.
+Checkout `~/.local/share/nx01/core-continuation-20260912`, branch
+`research/0186-focused-lifecycle`. Read [HANDOFF](HANDOFF.md),
+[0186 report](iterations/0186-focused-lifecycle-review.md), `.devlyn/0186/FINAL.md`.
 
-First inspect `.devlyn/0185-delivery/FINAL.md` and finish pending delivery/owned
-cleanup using receipt1dfef6c599ae0b1b68b57f13 before another allocation. Next frontier
-is a focused complete-lifecycle review/repair candidate versus full on disjoint hard
-work. Improvements stay root-direct; resolve only as control. Park unfinished work
-at <=15% remaining live usage. Preserve exposed runs, original WIP, source/Git,
-A16, accepted custody and recovery refs; clean only owned disposable/context residue.
+15% usage reserve stopped B2 repair; all writers reaped. B1/C1/C2 returned but miss
+bundled-source alias preservation. B2 review found it; partial repair closes replay,
+not a completed workflow. Frozen mechanical grades remain PASS; no promotion.
+
+Check live quota first. Preserve registered inputs and every exposed source/result;
+new calls require separately registered continuation, not a reroll. Clarify overlapping
+symlink referent/source-preservation policy before fresh work. Root direct, actual
+resolve only as control. Preserve verification/cleanup/repair and original user WIP.
+Cleanup/receipt details are in FINAL; no unowned cache/source/Git sweeps.
