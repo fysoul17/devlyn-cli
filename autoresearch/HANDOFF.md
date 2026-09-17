@@ -1,35 +1,35 @@
-# Core harness improvement — parked0186
+# Core harness improvement —0186 follow-up complete
 
-Updated2026-09-17 KST. Actual checkout:
+Updated2026-09-17 KST. Checkout:
 `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Branch `research/0186-focused-lifecycle`; owner receiptde61a898ff4784dd683ba8ef.
-Start with `.devlyn/0186/FINAL.md` and
-[0186 result](iterations/0186-focused-lifecycle-review.md).
+Read [0186 result](iterations/0186-focused-lifecycle-review.md) and
+`.devlyn/0186/FINAL.md` for delivery/cleanup status (receiptde61a898ff4784dd683ba8ef).
 
+Latest user correction overrides the15% automatic parking condition. Continue work
+through completion; do not stop merely because remaining usage is15% or below.
 Root improves directly; actual resolve only as comparison control. Preserve
-verification, cleanup, necessary repair/recheck, original user WIP and evidence.
-Park unfinished work at <=15% live account usage. That threshold was reached at
-2026-09-17T00:29:37Z: B2 repair was stopped/reaped, not completed. No more native calls.
+verification, scoped cleanup and repair/recheck. Never revert original checkout WIP.
 
-0186 registered B1/C1/C2/B2 on a fresh instruction-file migration request. Three
-workflows returned (B1 338.936s, C1 955.199s, C2 856.523s), but all violate source
-preservation when destination symlink points at bundled source. Frozen11checks all
-pass; two full archives validate. B2 fresh focused review independently found this
-MEDIUM omission. Partial repair rejects overlap and passes external replays, but
-quota interrupted repair before fresh re-review; censor it, never call it complete.
-Request's referent-update/source-preservation overlap needs explicit clarification
-in future input. Reference/checker gaps, original grades and predictions retained.
+0186 original: B1/C1/C2 returned but all overwrite bundled source through an aliased
+destination. All11 frozen checks and both full archives pass; keep those grades
+separate from requirement completion. B2 review found the omission; its repair was
+wrongly interrupted by the obsolete usage rule. That original row stays censored.
 
-No candidate/runtime/routing promotion; quality-preserving speedup unproven. Mission1
-active. After usage permits, resume via a separately registered continuation that
-preserves the exposed B2 partial and grades. Finish validation or use disjoint work
-with explicit alias policy; do not silently reroll a censored draw. The complete
-lock/rollback lifecycle remains the review focus; consider source/destination alias
-interaction without growing unconditional instructions from one case.
+Authorized separate continuation now complete: fresh review caught another HIGH,
+case-insensitive filename aliases bypassing source protection. Native repair uses
+file device/inode identity; fresh final review has0 findings. Frozen11checks pass;
+regressions19pass/1explicit case-sensitive-volume skip; source/case-alias preservation
+and double-fault recovery replays pass. Follow-up304.541s; original censor timing
+separate. `.devlyn/0186-continuation/` holds registration, raw review/repair/checks and
+sealed final product. Original partial, all75 inputs and original grades retained.
 
-Clean only prospectively owned disposable scratch; preserve source/Git, custody,
-recovery refs and raw evidence. Original GitHub checkout WIP untouched. OS/fleet/A16
-remain deferred. Prior history: [0185](iterations/0185-harder-installation-comparison.md)
-PR59 COMPLETE (root native0/2,direct0/2,full1/2); [0184](iterations/0184-review-repair-comparison.md)
-PR58 COMPLETE; [0183](iterations/0183-actual-resolve-ownership.md) PR57 COMPLETE.
-Read NORTH-STAR/PRINCIPLES/MISSIONS for active Mission1 boundaries.
+No installed runtime/routing promotion; no unbiased two-per-arm speedup conclusion.
+Next frontier: fresh disjoint confirmation of compact review/repair versus full,
+with explicit source/destination alias policy. Current completion proves the retained
+repair, not broad superiority. Mission1 active; OS/fleet/A16 deferred.
+
+Historical registered0186/run.py contains the old quota guard and is immutable;
+do not use it as the active continuation. `continue.py` records the authorized rule.
+Preserve source/Git, accepted custody/recovery refs and raw failures; clean only owned
+scratch. Prior0185 PR59,0184 PR58 and0183 PR57 were delivered/cleaned. Older detail is
+in their iteration reports; NORTH-STAR/PRINCIPLES/MISSIONS define active boundaries.

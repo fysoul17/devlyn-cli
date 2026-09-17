@@ -1,4 +1,4 @@
-# 0186 — focused lifecycle review: partial comparison, parked
+# 0186 — focused lifecycle review: interrupted comparison and completed follow-up
 
 2026-09-17 KST. Mission1 remains active. No runtime/routing promotion.
 
@@ -18,7 +18,8 @@ censored, not complete or a model failure. Preserve current product routing.
 At 2026-09-17T00:29:37Z account remaining reached15%; the registered controller stopped
 and reaped its owned repair writer. User had requested continued work and finishing;
 existing evidence was checked and parked cleanly without additional model dispatch.
-The two-per-arm comparison is unfinished. No exposed draw is rerolled on resumption.
+The original two-per-arm comparison retains one censored draw. The separately
+registered follow-up below completes its repair validation without rerolling it.
 
 ## Frozen experiment
 
@@ -101,12 +102,49 @@ Reasoning is a subset, not an additional token charge.292 parent command records
 screened,0 publication/network/prior-research string matches; this is limited screening,
 not proof of complete isolation. Native homes removed; all controllers quiescent.
 
-Parking/cleanup authority: `.devlyn/0186/FINAL.md`. Receiptde61a898ff4784dd683ba8ef
-retains the owned research/0186-focused-lifecycle branch and source evidence. Keep
-partial B2 and existing grades immutable; do not call it a successful repair workflow.
-After quota/user authorization permits new work, first clarify source-alias policy
-and use a separate registered continuation to finish validation of the retained
-repair or test a fresh task. No product promotion from this incomplete small sample.
+Delivery/cleanup authority: `.devlyn/0186/FINAL.md`. Receiptde61a898ff4784dd683ba8ef
+owns research/0186-focused-lifecycle and retained source evidence. Keep the original
+partial B2 and grades immutable; the follow-up is a separate completion result.
+No product promotion or unbiased two-per-arm speedup claim from this small sample.
+
+
+## Authorized continuation — completed
+
+The user corrected the stop again: “아니 멈추지말고 계속 하라니까”. This overrides
+percentage-based parking for current work. The earlier “계속/마무리” should already
+have been honored; no further15% stop applies. Frozen historical runners remain
+unchanged, while `continue.py` uses the qualified transport without that stop rule.
+
+`.devlyn/0186-continuation/REGISTRATION.json` binds a copied partial B2, unchanged
+focused review prompt and explicit source-preservation precedence. No original
+product or raw grade was overwritten. This is post-discovery follow-up validation,
+not a substitute uncensored draw or a new fair comparison against unchanged C.
+
+Fresh review-0 found a further HIGH: on a case-insensitive filesystem, destination
+`project/AGENTS.md` may be the actual `project/agents.md`, while bundled source points
+to that lower-case path. Lexical comparison misses their identity. The pre-follow-up
+partial returned true and overwrote source in an actual-volume replay. Native repair
+changed source protection to matching device/inode identity; original lookup errors
+still propagate. A following fresh review returned no findings and used no tools.
+See `CASE-ALIAS-PREDICTION.md`, before/after raw replay and review0/1 records.
+
+Elapsed follow-up304.541s: first review144.549s, repair117.165s, final review40.062s,
+plus orchestration. Observed output9078tokens; dollars UNKNOWN. Original B2 censor
+492.382s stays separate; do not rank their sum as an unbiased completed draw.
+Final code SHA256: 18dd185a553f17e4db884c3c657ca0a6af91ff76a081b76c1c4f9874685e31d0.
+
+Final frozen11/11 checks pass; regression suite20 cases:19 pass,1 explicitly skipped
+because it requires a case-sensitive volume. Both case-insensitive cases ran.
+Original source-alias, double-fault recovery and new case-alias replays pass; the
+case-alias replay confirms the actual filesystem supports the condition. Every
+non-product follow-up input, original75 inputs and old product seals remains intact.
+The accepted change is the research result and continuation tooling, not installation
+of the experimental source into shipped `bin/devlyn.js`.
+
+Decision: review linked to repair demonstrably closed source-preservation defects
+in this retained product; root verification now completes the follow-up. Neither
+focused prompt superiority nor full-phase replacement is established. Continue only
+with a fresh disjoint confirmation if pursuing promotion; keep current routing.
 
 ## Principles check
 
