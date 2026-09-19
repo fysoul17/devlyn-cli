@@ -227,6 +227,21 @@ ids.
 
 ### Migration from earlier versions
 
+Reinstall with the new version to refresh instructions and skills for the selected
+CLIs. Claude uses `CLAUDE.md`; Codex, Grok, omp and Pi share `AGENTS.md`.
+Devlyn updates its checksum-marked instruction block and preserves project-specific
+rules outside it. Keep custom rules outside the block; they take precedence over
+its defaults. Exact pre-update backups are saved in `.devlyn/instructions/`.
+
+Unmodified templates from versions 3.0.0–3.1.2 migrate automatically, including
+custom text before or after the template. Edited or unrecognized older Devlyn
+templates with recognizable Devlyn contract text, changed managed blocks and
+ambiguous markers stop installation without replacing the original.
+The error names an `.incoming` file with current defaults:
+merge it, move custom rules outside its managed block, and rerun installation.
+Plain custom instruction files retain their contents and gain a managed block.
+Use 3.1.3 or newer consistently: older installers still overwrite `CLAUDE.md`.
+
 <!-- legacy-surface-map:begin — retired command names below are documented as OLD, not current; lint Check 10c skips this block -->
 Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4 cutover (2026-05-04) and the 2026-05-14 follow-up consolidated them down to the three current commands. Upgrades automatically purge the legacy skill directories from `~/.claude/skills/`.
 

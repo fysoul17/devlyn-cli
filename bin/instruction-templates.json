@@ -1,0 +1,52 @@
+{
+  "AGENTS.md": [
+    {
+      "versions": [
+        "3.0.0"
+      ],
+      "length": 11091,
+      "sha256": "099e68f3e203fa735bb1ebcd780a0e18bde462ea7de5f74fb3d17cee5e64b63a"
+    },
+    {
+      "versions": [
+        "3.0.1"
+      ],
+      "length": 12166,
+      "sha256": "33fbd5b01c8e65f4c663f95423a45b16dcf5bb28f1fd0c6791079abd20c267ae"
+    },
+    {
+      "versions": [
+        "3.1.0",
+        "3.1.1",
+        "3.1.2"
+      ],
+      "length": 12581,
+      "sha256": "acd3672efaa33e75455f8530a7425e950c01c822c6f5d85d7dbc9d7ff1958028"
+    }
+  ],
+  "CLAUDE.md": [
+    {
+      "versions": [
+        "3.0.0"
+      ],
+      "length": 24434,
+      "sha256": "29ddcc5ef4d5b44b2ba6aae22bd3c0c033ceaa47b240bd647aaefbe00f2a6e4e"
+    },
+    {
+      "versions": [
+        "3.0.1"
+      ],
+      "length": 25417,
+      "sha256": "50301bf98507c83da1576be7f443885236e7d421ff2e40fd077ed9652ea3a2e0"
+    },
+    {
+      "versions": [
+        "3.1.0",
+        "3.1.1",
+        "3.1.2"
+      ],
+      "length": 26152,
+      "sha256": "d11a863907dabdf827063df7133a8a46a14e018f608884f08c601bf36e0f3f0c"
+    }
+  ]
+}

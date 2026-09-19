@@ -356,7 +356,7 @@ PY
 
   incomplete="$tmp_install_marker/incomplete"
   mkdir -p "$incomplete/package" "$incomplete/home/.codex/skills" "$incomplete/claude/.claude/skills" "$incomplete/codex"
-  cp -R bin config package.json "$incomplete/package/"
+  cp -R bin config package.json AGENTS.md CLAUDE.md "$incomplete/package/"
   rm -rf "$incomplete/package/config/skills/devlyn:queue"
   printf '{"version":"stale"}\n' > "$incomplete/home/.codex/skills/.devlyn-install.json"
   printf '{"version":"stale"}\n' > "$incomplete/claude/.claude/skills/.devlyn-install.json"

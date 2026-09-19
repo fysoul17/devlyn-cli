@@ -9,6 +9,7 @@ const { execSync } = require('child_process');
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
+const { updateInstructions } = require('./instructions');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
@@ -700,20 +701,6 @@ function installSkillsForCLI(cliKey) {
   return copied;
 }
 
-// Strip the legacy "# Devlyn Agent Instructions" block (the retired evaluator
-// agent) that earlier installs appended to instruction files, so upgrades scrub
-// it instead of carrying it forever. Anchors on the LAST marker so user content
-// above a stray copy of the block is preserved.
-const DEVLYN_AGENTS_MARKER = '# Devlyn Agent Instructions';
-function stripManagedBlock(content) {
-  const markerIdx = content.lastIndexOf(DEVLYN_AGENTS_MARKER);
-  if (markerIdx > 0) {
-    const sepIdx = content.lastIndexOf('\n---', markerIdx);
-    return content.slice(0, sepIdx > 0 ? sepIdx : markerIdx).trimEnd();
-  }
-  return content.trimEnd();
-}
-
 // One-line description of exactly what selecting a CLI target installs, so the
 // unified selector stays honest.
 function targetDesc(cli) {
@@ -723,35 +710,10 @@ function targetDesc(cli) {
   return `${cli.instructionsFile} instructions only`;
 }
 
-// Install the packaged base instruction file for a CLI (project AGENTS.md for
-// codex/omp/pi). Creates it from the packaged base when missing; on existing
-// files, scrubs the legacy appended block and otherwise leaves user content
-// untouched. Returns true when the destination was written.
+// Shared instruction ownership and preservation rules apply to every CLI.
 function installInstructionsForCLI(cliKey) {
   const cli = CLI_TARGETS[cliKey];
-  if (!cli || !cli.baseInstructionsFile) return false;
-
-  const destFile = path.join(process.cwd(), cli.instructionsFile);
-  const baseInstructionsSrc = path.join(__dirname, '..', cli.baseInstructionsFile);
-  let content = null;
-  if (fs.existsSync(destFile)) {
-    const current = fs.readFileSync(destFile, 'utf8');
-    if (current.includes(DEVLYN_AGENTS_MARKER)) {
-      content = stripManagedBlock(current) + '\n';
-    } else {
-      log(`  → Preserved existing ${cli.instructionsFile}. Compare with the bundled template at ${baseInstructionsSrc} and merge relevant instructions.`, 'dim');
-    }
-  } else {
-    if (fs.existsSync(baseInstructionsSrc)) {
-      content = fs.readFileSync(baseInstructionsSrc, 'utf8');
-    }
-  }
-  if (content === null) return false;
-
-  log(`\n🤖 Installing instructions for ${cli.name}...`, 'cyan');
-  fs.writeFileSync(destFile, content);
-  log(`  → ${cli.instructionsFile}`, 'dim');
-  return true;
+  return cli?.baseInstructionsFile ? updateInstructions(cli.baseInstructionsFile) : false;
 }
 
 // Install both instructions and skills for a single CLI. Used by the
@@ -803,8 +765,9 @@ function installAgentsForAllDetected() {
 // Install the Claude Code core config: project .claude/ (skills, templates,
 // settings, CLAUDE.md, .gitignore) plus global ~/.claude/settings.json tweaks.
 // Extracted so the unified target selector installs it only when "Claude Code"
-// is chosen. Behavior is unchanged from the previous unconditional core install.
+// is chosen. Check instruction conflicts before changing settings or skills.
 function installClaudeCore() {
+  updateInstructions('CLAUDE.md');
   const targetDir = getTargetDir();
   const skillsDir = path.join(targetDir, 'skills');
   log('\n📁 Installing Claude Code config to .claude/', 'green');
@@ -829,15 +792,6 @@ function installClaudeCore() {
   const removed = cleanupDeprecated(targetDir);
   if (removed > 0) {
     log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
-  }
-
-  // Copy Claude project instructions to project root. Other CLI instruction
-  // files are installed only when explicitly selected below or via `agents`.
-  const claudeMdSrc = path.join(__dirname, '..', 'CLAUDE.md');
-  const claudeMdDest = path.join(process.cwd(), 'CLAUDE.md');
-  if (fs.existsSync(claudeMdSrc)) {
-    fs.copyFileSync(claudeMdSrc, claudeMdDest);
-    log('  → CLAUDE.md', 'dim');
   }
 
   // Keep installer-managed pipeline state and install metadata out of git.
