@@ -77,7 +77,7 @@ def main():
                 acceptance = {'run_id': state['run_id'], 'source_sha': state['phases']['cleanup']['post_sha']}
                 helper['pipeline_acceptance'](work, acceptance, list(seals[row['draw']]), S)
                 result['pipeline_acceptance'] = 'PASS'
-                result['phases'] = {k: {'verdict': v.get('verdict'), 'round': v.get('round')}
+                result['phases'] = {k: {'verdict': (v or {}).get('verdict'), 'round': (v or {}).get('round')}
                                     for k, v in state['phases'].items()}
             except (AssertionError, KeyError, ValueError, OSError, helper['CompletionError']) as error:
                 result['pipeline_acceptance'] = 'FAIL'
