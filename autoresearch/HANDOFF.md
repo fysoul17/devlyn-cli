@@ -1,35 +1,51 @@
-# Core harness improvement —0186 follow-up complete
+# Core harness improvement — 0187 results complete
 
-Updated2026-09-17 KST. Checkout:
+Updated 2026-09-19 KST. Checkout:
 `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Read [0186 result](iterations/0186-focused-lifecycle-review.md) and
-`.devlyn/0186/FINAL.md` for delivery/cleanup status (receiptde61a898ff4784dd683ba8ef).
+Read [0187 result](iterations/0187-intent-and-simplification.md) and
+`.devlyn/0187/FINAL.md` for delivery/cleanup status. Prospective receipt:
+`.git/devlyn-completion/2e0e0a6ae08ba22e8451fd57/receipt.json`.
 
-Latest user correction overrides the15% automatic parking condition. Continue work
-through completion; do not stop merely because remaining usage is15% or below.
-Root improves directly; actual resolve only as comparison control. Preserve
-verification, scoped cleanup and repair/recheck. Never revert original checkout WIP.
+User instruction: root continues directly, without resolve; actual resolve is only
+the requested comparison control. Do not reinstate the obsolete15% quota parking
+rule. Preserve original-checkout WIP, frozen history and A16; Mission1 remains active.
 
-0186 original: B1/C1/C2 returned but all overwrite bundled source through an aliased
-destination. All11 frozen checks and both full archives pass; keep those grades
-separate from requirement completion. B2 review found the omission; its repair was
-wrongly interrupted by the obsolete usage rule. That original row stays censored.
+0187 workflow screen: two fresh tasks × A basic/B minimal/C canonical × two draws,
+all requesting Astra/high. All12 frozen artifact checks pass; only3/4 full archives
+are successful. **B replacement is NO-GO**: root-1-B writes/deletes an out-of-scope
+`/tmp` log, violating the explicit checkout boundary. No disjoint confirmation was
+triggered. Failure/repair-inclusive B time is17.24%/14.31% of C by tier, not a
+quality-preserving speedup. Whole dollar cost UNKNOWN; C judge usage is incomplete.
 
-Authorized separate continuation now complete: fresh review caught another HIGH,
-case-insensitive filename aliases bypassing source protection. Native repair uses
-file device/inode identity; fresh final review has0 findings. Frozen11checks pass;
-regressions19pass/1explicit case-sensitive-volume skip; source/case-alias preservation
-and double-fault recovery replays pass. Follow-up304.541s; original censor timing
-separate. `.devlyn/0186-continuation/` holds registration, raw review/repair/checks and
-sealed final product. Original partial, all75 inputs and original grades retained.
+Exploratory checks expose oracle gaps: all duration products handle5,000-zero values
+that the reference rejects. All six stream products reject4,301-digit JSON integers;
+the request omitted a separate numeric resource policy, so retain the literal-domain
+interpretation qualifier. Calibrated200,000-byte malformed nesting fails reference,
+A1 and initial C2; C2's repair closes it but final review still returns NEEDS_WORK.
+The initial2,000-depth probe was insufficient on this runtime; preserve both versions,
+the amendment and raw grades. Do not use reviewer agreement or frozen PASS as completion.
 
-No installed runtime/routing promotion; no unbiased two-per-arm speedup conclusion.
-Next frontier: fresh disjoint confirmation of compact review/repair versus full,
-with explicit source/destination alias policy. Current completion proves the retained
-repair, not broad superiority. Mission1 active; OS/fleet/A16 deferred.
+Matched Opus diagnostic: exact4.8/5, same stack, one task/four turns/two sessions each.
+All16 registered snapshot checks pass; all reject constructed false Grok advice and
+obey explicit handoff-only stops. Command audit finds outside-checkout experiments
+in both5 sessions versus none observed in4.8; one4.8 session leaves four caches
+(root removed only those audited files after grading). All four first products have
+the same context-derived unknown-engine compatibility difference. Local observations,
+not broad model ranking or a reconstruction of the lost screenshot.
 
-Historical registered0186/run.py contains the old quota guard and is immutable;
-do not use it as the active continuation. `continue.py` records the authorized rule.
-Preserve source/Git, accepted custody/recovery refs and raw failures; clean only owned
-scratch. Prior0185 PR59,0184 PR58 and0183 PR57 were delivered/cleaned. Older detail is
-in their iteration reports; NORTH-STAR/PRINCIPLES/MISSIONS define active boundaries.
+Conditional fresh-self/Fable review, fixed Opus5 repair: detection1/2 vs2/2, actual
+compatibility restoration1/2 each, clean-control harm0/1 each. x1 Fable finding was
+rejected by the repairer, which instead added a test for changed behavior. No default
+OTHER promotion. Actual Fable design/interpretation advice is retained; an additional
+final-report review hit the native session limit, with no verdict or substitution.
+
+Durable change: model-checkup reporting now separates protocol completion, zero
+registered check failures, requirement fulfillment, command scope and repair closure.
+No runtime/routing/pin change. Before future adoption studies, define input/resource
+limits and scope oracles explicitly; do not rerun these exposed cases as fresh data.
+The next intervention needs demonstrated defect closure, not another average-score win.
+
+Evidence authorities: `.devlyn/0187/ROOT-RESULT.json`,
+`.devlyn/0187-intent/ROOT-RESULT.json`, `.devlyn/0187-other/ASSESSMENT.json`.
+Retain participant source/Git and raw evidence; clean only prospectively owned scratch.
+0186 follow-up remains completed and unchanged; PR61 CI savings remain in place.
