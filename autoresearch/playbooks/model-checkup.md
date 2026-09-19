@@ -240,9 +240,20 @@ Fill this table by hand from the exact paths. Nothing is left to invention.
 | judge certification | same file → `judge_certification.<judge>` `{recall_rate, false_positive_rate, parse_errors, certified}` (`seat-matrix.py:314-326`) |
 | drift totals | `cells[]` where `metric == "non_violation_rate"`, `value = (reps−violations)/reps`, `n = reps` (`seat-matrix.py:224-234`) |
 | violations/reps + flip band | run `python3 benchmark/probes/scripts/violation-rate-matrix.py --run-prefix <prefix>-violation --out <path>` → `totals.<model>.{violations,reps}` and `matrix.<model>.<probe>.flip_band` (`violation-rate-matrix.py:58-64,74-75`). recert does NOT run this aggregator — it only writes the per-rep verdicts (`recert-seats.sh:128-133`) |
-| corpus verdict | `<attempt-dir>/cohort-verdict.json` → `terminal`, `delta`, `ci`, `R`, `completion_rate`, `failed_tasks_by_class`, `ledger_sha256`, `per_task_d` (`score-cohort.py:239-250`) |
-| cohort health | cohort ledger rows: attested N/N and `catastrophic` / `incomplete` / `infra_invalid` counts. Requested-vs-attested is enforced at `score-cohort.py:83,122`; cohort-level validity at `:133-161` |
+| corpus subcheck verdict | `<attempt-dir>/cohort-verdict.json` → `terminal`, `delta`, `ci`, `R`, `failed_tasks_by_class`, `ledger_sha256`, `per_task_d` (`score-cohort.py:239-250`) |
+| protocol completion and cohort health | `completion_rate` counts only rows without `catastrophic` or `incomplete`; it does **not** mean all requirements passed (`score-cohort.py:195-214`). Report those counts, `infra_invalid`, and attested N/N separately. |
+| zero registered manifestation failures | From the same unchanged ledger: count rows with neither `catastrophic` nor `incomplete` and `manifestations_failed == 0`, over all valid draws. This describes the registered checks, not untested requirements. |
 | apparatus binding | `<attempt-dir>/launch-receipt.json` → `apparatus_sha256`, `engines`, `attempt`, `run_id`, `candidate_tree_sha256` |
+
+Keep relative subcheck ranking separate from absolute request fulfillment
+([0187 metric audit](../iterations/0187-intent-and-simplification.md)). Preserve
+historical grades. For new studies, report checked requirement fulfillment first,
+then failure/repair-inclusive time and complete usage; separate easy/hard tasks.
+Reviewer detection and actual repair closure are different outcomes.
+Before new task calls, distinguish explicit, context-derived and ambiguous
+requirements and declare accepted input/resource limits. Include executed-command
+scope and task cleanup in assessment; final file snapshots alone missed both
+in0187. Keep post-discovery probes and interpretations separate from frozen grades.
 
 **Then the TOTAL re-pin decision table.** Inputs: (i) the recert set's
 suite-produced cells — **current** — and the run's **clean** bit;
