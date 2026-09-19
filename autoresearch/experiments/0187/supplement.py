@@ -8,6 +8,30 @@ import sys
 from assess import E, R, W, files, put
 
 
+def commands(draw, work):
+    records = {}
+    captures = [E / 'runs' / draw / 'stdout'] + [p for p in (work / '.devlyn').rglob('*')
+        if p.is_file() and p.suffix in ('.jsonl', '.stdout')]
+    for path in captures:
+        thread = None
+        for number, line in enumerate(path.read_text(errors='replace').splitlines(), 1):
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # Text captures are retained raw; this extracts JSON events only.
+            if not isinstance(event, dict):
+                continue
+            if event.get('type') == 'thread.started':
+                thread = event.get('thread_id')
+            item = event.get('item') or {}
+            if isinstance(item, dict) and item.get('type') == 'command_execution':
+                key = (thread or str(path), item['id'])
+                if key not in records or event.get('type') == 'item.completed':
+                    records[key] = {'path': str(path), 'line': number, 'thread': thread,
+                                    **{k: item.get(k) for k in ('id', 'command', 'exit_code', 'status')}}
+    return list(records.values())
+
+
 def main():
     reg = json.loads((E / 'REGISTRATION.json').read_text())
     seals = json.loads((E / 'SEALED-OUTPUTS.json').read_text())
@@ -15,7 +39,8 @@ def main():
     for row in reg['order']:
         work = W / row['draw']
         assert files(work) == seals[row['draw']], row['draw']
-        result = {'draw': row['draw'], 'canonical_copy_mismatches': []}
+        result = {'draw': row['draw'], 'canonical_copy_mismatches': [],
+                  'observed_json_commands': commands(row['draw'], work)}
         if row['arm'] == 'C':
             for name in reg['sha256']:
                 original = Path(name)
@@ -50,7 +75,8 @@ print(json.dumps(rows))
     for name, digest in reg['sha256'].items():
         assert hashlib.sha256(Path(name).read_bytes()).hexdigest() == digest, name
     put(E / 'SUPPLEMENT.json', rows)
-    print(json.dumps(rows))
+    print(json.dumps([{k: v for k, v in row.items() if k not in ('observed_json_commands', 'boundary_replay')}
+                      for row in rows]))
 
 
 if __name__ == '__main__':
