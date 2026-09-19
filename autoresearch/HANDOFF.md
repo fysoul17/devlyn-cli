@@ -1,10 +1,18 @@
-# Core harness improvement — 0188 entry correction
+# Core harness improvement — 0189 instruction upgrades
 
 Updated2026-09-19 KST. Retained checkout:
 `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Current [0188 report](iterations/0188-resolve-entry.md), `.devlyn/0188/FINAL.md`
-and receipt `.git/devlyn-completion/11bc93d46bc9c5a5cac46ea2/receipt.json`
-record source acceptance/delivery. Mission1 remains active.
+Current [0189 report](iterations/0189-instruction-upgrades.md),
+`.devlyn/0189-release/FINAL.md` and receipt
+`.git/devlyn-completion/a7b7fc53294cde5666f9e759/receipt.json` record safe installer
+migration and3.1.3 source/release status. Mission1 remains active.
+
+0189 replaces stale AGENTS preservation and whole CLAUDE overwrite with checksummed
+managed defaults and exact backups. Published3.0.0–3.1.2 pristine templates migrate;
+recognizable edited templates fail visibly for manual merge. All selected CLI
+routes, including Grok, share this behavior. Reinstall required; older installers
+remain unsafe for custom CLAUDE text. Final publication/CI/artifact evidence lives
+in FINAL.md; do not infer npm availability from this handoff's version mention.
 
 User explicitly prioritizes resolve necessity/minimization before continuing the
 approved instruction-priority and actual repair-closure intervention. Root works

@@ -208,6 +208,155 @@ m._compile(source + '\\n' + process.argv[3], filename);
             self.assertEqual((root / 'user-skill/keep').read_bytes(), b'user')
             self.assertFalse((root / old).exists())
 
+    def test_instruction_custom_rules_survive_all_targets_and_reinstall(self):
+        custom = b'\xef\xbb\xbf# Team rules\r\nKeep our Korean labels and formatting.\r\n'
+        for name in ('AGENTS.md', 'CLAUDE.md'):
+            (self.project / name).write_bytes(custom)
+        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']);")
+        installed = {}
+        for name in ('AGENTS.md', 'CLAUDE.md'):
+            data = (self.project / name).read_bytes()
+            self.assertTrue(data.startswith(custom))
+            self.assertEqual(data.count(b'devlyn:instructions:begin'), 1)
+            self.assertIn(b'Default to direct execution when inspection makes', data)
+            self.assertIn(custom, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
+            installed[name] = data
+        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']);")
+        for name, data in installed.items():
+            self.assertEqual((self.project / name).read_bytes(), data)
+
+    def test_instruction_future_template_upgrade_preserves_outside_bytes(self):
+        copy = self.case / 'next-version'; shutil.copytree(self.package, copy)
+        prefix = b'\xef\xbb\xbf'
+        suffix = b'\r\n# Local additions\r\nDo not remove these.\r\n'
+        self.invoke("installInstructionsForCLI('grok');")
+        dest = self.project / 'AGENTS.md'
+        before = prefix + dest.read_bytes().replace(b'\n', b'\r\n') + suffix
+        dest.write_bytes(before)
+        source = copy / 'AGENTS.md'
+        source.write_bytes(source.read_bytes() + b'\nA new managed default for this regression.\n')
+        self.invoke("installInstructionsForCLI('grok');", package=copy)
+        after = dest.read_bytes()
+        self.assertTrue(after.startswith(prefix)); self.assertTrue(after.endswith(suffix))
+        self.assertIn(b'A new managed default for this regression.', after)
+        self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob('AGENTS.md*.backup')])
+        self.invoke("installInstructionsForCLI('grok');", package=copy)
+        self.assertEqual(dest.read_bytes(), after)
+
+    def test_instruction_legacy_hash_migration_preserves_prefix_suffix(self):
+        copy = self.case / 'legacy-package'; shutil.copytree(self.package, copy)
+        manifest_path = copy / 'bin/instruction-templates.json'
+        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+        old = '# Codex Project Instructions\n\ndevlyn-cli installs old defaults.\n한글 😀\n'
+        manifest['AGENTS.md'].append({'length': len(old.encode('utf-16-le')) // 2,
+                                      'sha256': hashlib.sha256(old.encode()).hexdigest()})
+        manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
+        for eol in ('\n', '\r\n'):
+            with self.subTest(eol=eol):
+                prefix, suffix = '\ufeff# My project\n\n', '\n# Keep\ncustom rule\n'
+                before = (prefix + old + suffix).replace('\n', eol).encode()
+                dest = self.project / 'AGENTS.md'; dest.write_bytes(before)
+                self.invoke("installInstructionsForCLI('grok');", package=copy)
+                after = dest.read_bytes()
+                self.assertTrue(after.startswith(prefix.replace('\n', eol).encode()))
+                self.assertTrue(after.endswith(suffix.replace('\n', eol).encode()))
+                self.assertNotIn(b'installs old defaults', after)
+                self.assertIn(b'Default to direct execution when inspection makes', after)
+                self.invoke("installInstructionsForCLI('grok');", package=copy)
+                self.assertEqual(dest.read_bytes(), after)
+
+    def test_instruction_conflicts_preserve_original_and_fail_visibly(self):
+        self.invoke("installInstructionsForCLI('codex');")
+        dest = self.project / 'AGENTS.md'; good = dest.read_bytes()
+        cases = [good.replace(b'Default to direct execution', b'My intentional policy'),
+                 good.replace(b'devlyn:instructions:end', b'broken:end'), good + good,
+                 b'# Devlyn Agent Instructions\nOld block\n# User addition\nKeep me\n',
+                 b'# Codex Project Instructions\n\ndevlyn-cli installs edited defaults.\n',
+                 b'\xffinvalid utf8']
+        for before in cases:
+            with self.subTest(before=before[:70]):
+                dest.write_bytes(before)
+                result = self.invoke("installAgentsForCLI('grok');", code=None)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(dest.read_bytes(), before)
+                self.assertFalse((self.home / '.grok/skills').exists())
+        self.assertTrue(list((self.project / '.devlyn/instructions').glob('AGENTS.md*.incoming')))
+        claude = self.project / 'CLAUDE.md'; claude.write_bytes(good.replace(b'defaults.', b'edited defaults.'))
+        before = claude.read_bytes()
+        result = self.invoke('installClaudeCore();', code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(claude.read_bytes(), before)
+        self.assertFalse((self.project / '.claude').exists())
+
+    def test_instruction_write_failure_keeps_original_and_exact_backup(self):
+        run(['git', 'init', '-q', self.project])
+        before = b'# Custom project rules\r\nKeep exact bytes.\r\n'
+        dest = self.project / 'AGENTS.md'; dest.write_bytes(before)
+        result = self.invoke("fs.renameSync = () => { throw new Error('injected rename failure'); }; installInstructionsForCLI('grok');", code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b'injected rename failure', result.stderr)
+        self.assertEqual(dest.read_bytes(), before)
+        self.assertFalse(list(self.project.glob('AGENTS.md.*.tmp')))
+        backup, = (self.project / '.devlyn/instructions').glob('AGENTS.md*.backup')
+        self.assertEqual(backup.read_bytes(), before)
+        run(['git', 'check-ignore', str(backup)], cwd=self.project)
+        backup.write_bytes(b'different recovery data')
+        result = self.invoke("installInstructionsForCLI('grok');", code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b'Instruction recovery file differs', result.stderr)
+        self.assertEqual(dest.read_bytes(), before)
+        self.assertEqual(backup.read_bytes(), b'different recovery data')
+
+    def test_instruction_source_templates_are_not_wrapped(self):
+        copy = self.case / 'source-package'; shutil.copytree(self.package, copy)
+        originals = {name: (copy / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
+        alias = self.case / 'source-alias'
+        run(['node', '-e', "require('fs').symlinkSync(process.argv[1], process.argv[2], 'junction')", copy, alias])
+        run(['node', '--preserve-symlinks', '--require', self.preload, self.invoker, alias / 'bin/devlyn.js',
+             "installInstructionsForCLI('grok');"], cwd=copy, env=self.env)
+        run(['node', '--require', self.preload, self.invoker, copy / 'bin/devlyn.js',
+             "installClaudeCore(); installSelectedCLITargets(['grok']);"], cwd=copy, env=self.env)
+        for name, data in originals.items():
+            self.assertEqual((copy / name).read_bytes(), data)
+        self.invoke("installClaudeCore(); installAgentsForCLI('grok');", package=copy)
+        self.invoke("installClaudeCore(); installAgentsForCLI('grok');", package=copy)
+        (copy / 'AGENTS.md').write_bytes((self.project / 'AGENTS.md').read_bytes())
+        before = (self.project / 'AGENTS.md').read_bytes()
+        result = self.invoke("installAgentsForCLI('grok');", package=copy, code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b'Packaged instruction template contains managed markers', result.stderr)
+        self.assertEqual((self.project / 'AGENTS.md').read_bytes(), before)
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX group permission bits are not supported on Windows')
+    def test_instruction_preserves_permissions_despite_umask(self):
+        dest = self.project / 'AGENTS.md'; dest.write_bytes(b'# Shared project rules\n')
+        dest.chmod(0o664)
+        self.invoke("process.umask(0o022); installInstructionsForCLI('grok');")
+        self.assertEqual(dest.stat().st_mode & 0o777, 0o664)
+
+    def test_instruction_edited_unmarked_templates_fail_before_install(self):
+        for name, command in [('AGENTS.md', "installAgentsForCLI('grok');"), ('CLAUDE.md', 'installClaudeCore();')]:
+            with self.subTest(name=name):
+                dest = self.project / name
+                before = (self.package / name).read_bytes().replace(b'devlyn-cli installs ', b'Team changed this sentence: ', 1)
+                dest.write_bytes(before)
+                result = self.invoke(command, code=None)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(b'unrecognized or edited legacy template', result.stderr)
+                self.assertEqual(dest.read_bytes(), before)
+                self.assertTrue(list((self.project / '.devlyn/instructions').glob(name + '*.incoming')))
+                self.assertFalse((self.home / '.grok/skills').exists())
+                self.assertFalse((self.project / '.claude').exists())
+
+    @unittest.skipIf(os.name == 'nt', 'symlink creation requires native Windows privileges')
+    def test_instruction_symlink_is_preserved(self):
+        shared = self.case / 'shared.md'; shared.write_bytes(b'shared custom rules')
+        dest = self.project / 'AGENTS.md'; dest.symlink_to(shared)
+        result = self.invoke("installAgentsForCLI('grok');", code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(dest.is_symlink())
+        self.assertEqual(shared.read_bytes(), b'shared custom rules')
+
     def test_incomplete_source_has_no_marker(self):
         copy = self.case / 'broken'; shutil.copytree(self.package, copy)
         skill = next((copy / 'config/skills').glob('devlyn*resolve'))
