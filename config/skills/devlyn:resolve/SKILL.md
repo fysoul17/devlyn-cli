@@ -1,6 +1,6 @@
 ---
 name: devlyn:resolve
-description: Skip for clear, local, reversible, low-risk edits with decisive checks; execute those directly. Use this full pipeline for explicit resolve requests, formal specs, queue drains, material ambiguity, subsystem/design work, security/auth/payment/persistence/concurrency/public-API-contract changes, or no decisive check. Quoted logs or skill paths alone are not invocation requests. Explicit small resolve retains all phases and independent verification. Verify dual-judge is default-when-available.
+description: Default to direct work after inspecting scope and verification, including bounded multi-file changes. Use full resolve for explicit resolve/spec-mode requests, queue drains, or concrete interacting requirements or verification too complex for the current context. Domain labels, file count, spec documents and quoted skill paths alone do not trigger it. Investigate or clarify missing intent/access first. Explicit small resolve retains all phases and independent verification. Verify dual-judge is default-when-available.
 ---
 
 The current CLI owns PHASE 0, state transitions, Git checkpoints and final report/archive. Spawn the canonical phase workers from this process; never delegate the whole run to another parent orchestrator. VERIFY uses a fresh, findings-only worker.
