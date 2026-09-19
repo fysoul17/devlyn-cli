@@ -62,7 +62,7 @@ Skip ideate entirely if you have a spec or just want to describe the work — `/
 
 ### Choose direct execution or `/devlyn:resolve`
 
-Before writes, inspect requested files and relevant callers/tests. Clear, local, reversible, low-risk conversational edits with a decisive acceptance check run directly, honoring scope, constraints and executor pins; finish required checks and diff review, then accept the scoped commit for owner completion below. Material ambiguity, subsystem/design work, security/auth/payment/persistence/concurrency/public-API-contract changes or no decisive check use full `/devlyn:resolve`. Explicit resolve (including small tasks), formal specs and queue drains keep the full workflow below. Pass a spec, a free-form goal, or a diff to verify.
+Inspect the requested behavior, affected callers and tests first. Default to direct work when its scope and verification are tractable, including bounded multi-file changes; honor constraints and executor pins, run risk-proportionate checks and independent review for consequential changes, then review the diff and deliver. Automatically use full `/devlyn:resolve` only for concrete interacting requirements or verification too complex to manage reliably in the current context, such as coupled durable state, concurrent ownership and failure recovery. Domain labels, file count and a spec document alone do not trigger it. Investigate or clarify missing intent/access first. Explicit resolve (including small tasks), explicit spec-mode workflows and queue drains keep the full workflow below.
 
 ```
 /devlyn:resolve "fix the login bug"                                # free-form

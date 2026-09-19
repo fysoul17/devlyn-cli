@@ -1,0 +1,82 @@
+[
+  {
+    "id": "bounded-modules",
+    "facts": "Add a sort option across four in-memory planner modules. Inspection has enumerated all callers, no durable or concurrent state, and a decisive ordering/parity test covers the request.",
+    "expected": "DIRECT"
+  },
+  {
+    "id": "many-files",
+    "facts": "Rename an internal exported constant across 30 files. All callers and imports are enumerated; compiler and regression checks cover the mechanical change. No external API or state semantics change.",
+    "expected": "DIRECT"
+  },
+  {
+    "id": "auth-bounded",
+    "facts": "Correct one tenant predicate in an authorization helper. The required tenant rule and callers are explicit; a red regression covers cross-tenant denial and same-tenant access. Scope and verification are tractable. Independent security review is available.",
+    "expected": "DIRECT"
+  },
+  {
+    "id": "persistence-bounded",
+    "facts": "Correct a JSON preference file newline. Byte-roundtrip and crash-before-replace tests cover the existing atomic writer. No schema, ownership or recovery semantics change; inspected scope and checks are bounded.",
+    "expected": "DIRECT"
+  },
+  {
+    "id": "api-bounded",
+    "facts": "Add an optional response display label with specified legacy omission behavior. Caller and wire-contract tests cover old and new cases; implementation/verification is tractable.",
+    "expected": "DIRECT"
+  },
+  {
+    "id": "spec-document",
+    "facts": "Implement the bounded label change described in spec.md. The user supplied that document as requirements, did not invoke resolve or a spec-mode workflow. All requirements/callers/checks are tractable.",
+    "expected": "DIRECT"
+  },
+  {
+    "id": "quoted-resolve",
+    "facts": "Fix a typo in help text. The bug report quotes a past /devlyn:resolve log. Current request is only the typo; one exact-output regression suffices.",
+    "expected": "DIRECT"
+  },
+  {
+    "id": "explicit-small",
+    "facts": "User explicitly says /devlyn:resolve fix this one typo. Requirements are otherwise identical to quoted-resolve.",
+    "expected": "FULL"
+  },
+  {
+    "id": "explicit-spec",
+    "facts": "User explicitly requests /devlyn:resolve --spec docs/specs/label/spec.md for a bounded label change.",
+    "expected": "FULL"
+  },
+  {
+    "id": "queue",
+    "facts": "User invokes /devlyn:queue drain on two fully specified small local tasks.",
+    "expected": "FULL"
+  },
+  {
+    "id": "ownership-recovery",
+    "facts": "Implement persisted multi-tenant leases with fencing, expiry and rollback across three services. Inspection found coupled database and worker failure boundaries, incomplete cross-service recovery verification and more interacting invariants than can be reliably managed in one execution context.",
+    "expected": "FULL"
+  },
+  {
+    "id": "mid-edit-coupling",
+    "facts": "A previously bounded change now exposes ordering-dependent rollback and replay across two durable stores. Requirements are clear, but reliable verification of their interacting failure semantics needs staged planning and independent contexts. Existing edits are uncommitted.",
+    "expected": "FULL"
+  },
+  {
+    "id": "unclear-intent",
+    "facts": "User asks make billing better. Inspection cannot identify the requested behavior, affected flows or intended output; no explicit workflow request.",
+    "expected": "INVESTIGATE"
+  },
+  {
+    "id": "missing-access",
+    "facts": "A clear bounded task requires a private service test credential that is unavailable. Source inspection reveals no complex interactions; changing workflow cannot obtain this access.",
+    "expected": "INVESTIGATE"
+  },
+  {
+    "id": "missing-test",
+    "facts": "A bounded pure formatter has no existing test. Source and output contract are clear and a small task-specific test can decisively verify it.",
+    "expected": "DIRECT"
+  },
+  {
+    "id": "executor-pin",
+    "facts": "The current CLI is Codex. Executor is explicitly pinned to an available Claude engine. The requested in-memory four-module change has bounded requirements and decisive checks; no explicit workflow request.",
+    "expected": "DIRECT"
+  }
+]
