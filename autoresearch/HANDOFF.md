@@ -1,49 +1,45 @@
-# Core harness improvement — after0191 natural repair comparison
+# Core harness improvement — after0192 archive recovery comparison
 
 Updated2026-09-20 KST. Retained checkout:
 `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Read [0191 report](iterations/0191-recovery-boundary-comparison.md) and
-`.devlyn/0191/FINAL.md` for accepted source, CI, delivery and cleanup status.
-Receipt: `.git/devlyn-completion/82aaccd5949d437f761aa13f/receipt.json`.
+Read [0192 report](iterations/0192-archive-recovery-comparison.md) and
+`.devlyn/0192/FINAL.md` for accepted source, CI, delivery and cleanup status.
+Receipt: `.git/devlyn-completion/568b50d6e8964d26156f3300/receipt.json`.
 Mission1 remains active. Finish any recorded pending delivery before new allocation.
 
-0191 completed six fresh Astra/high draws, serial native/minimal/actual canonical
-solo resolve/resolve/minimal/native, on one naturally defective installer module
-extraction. All6 completed within scope and passed42/42 external checks each.
-Root reviewed217 structured tool records plus11 judge commands; actual canonical
-acceptance passed both C runs. Totals: native254.618s, minimal258.311s,
-resolve1861.426s. Minimal met its registered time screen;
-completion saturated at2/2 for every arm, without proving quality equivalence.
-No demonstrated incremental value or prompt/default/routing adoption. Whole-run
-C usage and dollar cost remain unknown. Explicit no-pair/no-risk-probes means this
-is not default paired cost; one maintainer-selected extraction is not gate15's
-independent field evidence or a reliability estimate.
+0192 completed six fresh Astra/high draws, serial native/minimal/actual canonical
+solo resolve/resolve/minimal/native, on a disjoint existing archive-transfer defect.
+All6 completed within scope and passed34/34 external checks each. Root reviewed242
+structured records plus10 primary commands; both actual C archives passed canonical
+acceptance. Totals: native315.290s, minimal309.622s, resolve1859.008s. Minimal met
+its time screen; completion saturated at2/2 for every arm. No demonstrated
+incremental quality value, equivalence claim or prompt/default/routing adoption.
+Whole C usage/dollars remain unknown. Explicit no-pair/no-risk-probes is not
+default paired cost. One mechanism-supplied maintainer task is not independent
+field evidence, gate15 closure or a reliability estimate.
 
-The production fix rejects pre-existing symlinks/non-directories at both recovery
-directory components before writing backup/incoming data. Validation stays lazy;
-unused recovery paths remain untouched. Static-entry guarantee only, not hostile
-concurrent swaps or a general filesystem sandbox. Fable reviewed the protocol,
-Opus reviewed production source; accepted test coverage feedback was applied.
-Packed PackageTests16/16 and required lint passed; see FINAL for hosted CI.
-No npm release by0191. Published3.1.3 remains the0189 artifact pending a separate
-release decision; do not tell users the new source fix is already in that release.
+Production removes a partial target after synchronous shutil.move OSError before
+existing completed-move rollback. Preflight/API/transport remain intact. Recovery
+IO must succeed; no crash, concurrency or asynchronous guarantee. Fable reviewed
+protocol; Opus reviewed source/test prototype, finding a Windows
+path-key test defect fixed before production application. Final Opus packet review
+passed; the extra Fable attempt hit its usage limit. Packed PackageTests17/17
+and existing archive selftests passed; baseline6 and missing-ok deletion2 failing
+subcases establish regression sensitivity. See FINAL for lint and hosted CI.
+No npm release by0192; published3.1.3 remains the0189 artifact.
 
-Next unfinished work: disjoint natural tasks with interacting compatibility and
-failure-recovery requirements, or an independently supplied field task for gate15.
-Freeze caller-backed scope, resource boundaries and actual-control fidelity before
-calls. Rank full request completion before failure/repair-inclusive time/cost.
-Keep exposed0187/0190/0191 tasks out of unbiased confirmation. Neither0190's
-reminder nor0179's minimal contract has earned operational adoption.
+Next: independently supplied field task for gate15, or disjoint natural tasks with
+discriminating compatibility/failure-recovery interactions. Freeze caller-backed
+scope, boundaries and actual-control fidelity; rank full request completion before
+failure/repair-inclusive time/cost. Keep exposed0187/0190/0191/0192 tasks out of
+unbiased confirmation.0187's NO-GO and0190/0191 non-adoption remain valid.
 
 Root works directly; actual resolve is permitted only as an experimental control.
 The obsolete15% parking condition stays removed. Preserve frozen history/A16,
-original user WIP, source/Git and raw records.0191 verified original WIP6 files and
-1176 prior evidence files unchanged; frozen68 inputs and all6 product seals match.
-No global config or installed skill changes. Ownership cleanup preserves participant
-source/Git/evidence; completion receipts own only the disposable scratch/ref actions.
-
-Do not repeat completed work:0190 had16/16 functional but12/16 scope-inclusive
-completions, so the reminder stayed unadopted (PR65).0189 shipped managed instruction
-updates and npm3.1.3 (PR64).0188 narrowed automatic full entry to inspected interacting
-complexity.0187's minimal-replacement NO-GO and repair/scope failures remain valid;
-0191's saturated local task does not supersede them.
+original WIP6 entries, retained source/Git and raw records.0192 checked81708 prior
+file hashes before intentional current-handoff replacements; all68 frozen inputs
+matched after collection and all6 product seals matched assessment. No global
+configuration/installed-skill changes. Source mirrors are repository-local.
+Owned scratch cleanup uses prospective receipts; participant source/Git/evidence
+remain. Do not repeat completed0186–0192 work;0191 fixed recovery-directory links,
+0190 left the reminder unadopted,0189 shipped3.1.3,0188 narrowed full entry.
