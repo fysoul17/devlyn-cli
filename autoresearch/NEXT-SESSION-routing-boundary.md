@@ -1,7 +1,9 @@
-# 0195 continuation / delivery
+# 0196 utility audit / continuation
 
-Read [HANDOFF.md](HANDOFF.md), then `.devlyn/0195/FINAL.md` in
+Read [HANDOFF.md](HANDOFF.md), then `.devlyn/0196/FINAL.md` in
 `~/.local/share/nx01/core-continuation-20260912`. Root direct, no resolve.
-0195 freezes a4/4 completion tie and a bounded terminal-type repair. No policy
-adoption or independent field closure. Preserve WIP/history; do not repeat0193–0195.
-Final source checks, CI, delivery and cleanup remain separate in FINAL.
+0196 audits historical full execution; it launches no new resolve or efficacy
+experiment. Review→repair has observed contributions; full-phase necessity stays
+unmeasured. Next admission question is fresh versus continued self-review with
+matched extra budget. No product-policy adoption or field closure. Preserve WIP,
+frozen history and A16. Delivery and cleanup remain separate in FINAL.
