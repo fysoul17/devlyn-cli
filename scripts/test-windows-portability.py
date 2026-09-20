@@ -478,6 +478,30 @@ m._compile(source + '\\n' + process.argv[3], filename);
                 self.assertEqual(path.read_bytes(), b'{"executor":"codex"}')
         self.assertEqual(sorted(p.name for p in folder.iterdir()), ['engines.json'])
 
+    def test_role_configuration_missing_error_checks_ancestors(self):
+        module = runpy.run_path(str(self.package / 'config/skills/_shared/role-config.py'))
+        for nested in (False, True):
+            with self.subTest(nested=nested):
+                parent = self.project / ('file-' + str(nested)); parent.write_bytes(b'keep')
+                path = parent / ('missing/engines.json' if nested else 'engines.json')
+                def missing(original):
+                    def access(candidate, *args, **kwargs):
+                        if candidate == path or (nested and candidate == path.parent):
+                            raise FileNotFoundError(2, 'Windows missing-path classification', str(candidate))
+                        return original(candidate, *args, **kwargs)
+                    return access
+                with patch.object(Path, 'lstat', missing(Path.lstat)), patch.object(Path, 'stat', missing(Path.stat)):
+                    with self.assertRaisesRegex(ValueError, 'BLOCKED:invalid-engine-config') as caught:
+                        module['read_config'](path, optional=True)
+                    self.assertIn(str(path), str(caught.exception))
+                self.assertEqual(parent.read_bytes(), b'keep')
+        absent = self.project / 'absent/nested/engines.json'
+        self.assertEqual(module['read_config'](absent, optional=True),
+                         ({}, {'path': str(absent.absolute()), 'sha256': None}))
+        with patch.object(Path, 'stat', side_effect=PermissionError('ancestor access denied')):
+            with self.assertRaisesRegex(ValueError, 'BLOCKED:invalid-engine-config'):
+                module['read_config'](absent, optional=True)
+
     @unittest.skipIf(os.name == 'nt', 'symlink creation requires native Windows privileges')
     def test_role_configuration_links_preserve_entries_and_bindings(self):
         module = runpy.run_path(str(self.package / 'config/skills/_shared/role-config.py'))

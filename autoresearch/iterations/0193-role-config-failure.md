@@ -66,27 +66,45 @@ it reviewed the earlier packet, not the final open-seam refinement.
 
 ## Production repair and verification
 
-Replace the lossy absence predicate with `lstat` inside the shared reader's error
-boundary. Catch only `FileNotFoundError` from that entry inspection for optional
-defaults; failed reads reach the existing path-bearing BLOCKED error. All callers,
-API, policy, required-file behavior, valid-link binding/edit semantics and custom
-fields remain unchanged. Canonical source and repository mirrors are synchronized.
+Initial source2b76214 replaced the lossy predicate with lstat and caught only
+FileNotFoundError for defaults. It passed19 packed PackageTests, original
+self-test, external35/35 and required lint325.487s. Original and guard-deletion
+controls failed. **Native Windows CI35492157236 rejected it**:3 failures and2
+errors in the parent-file case, despite Linux passing. Actual downloaded package,
+driver, accepted source and tested merge54ec692 have verified matching identities.
+The failure was the previously uncertain Windows errno mapping: ENOENT also
+represented a non-directory ancestor. Initial acceptance/custody remains immutable.
 
-Two package-driver regressions exercise bad entries/errors and valid-link
-preservation. The actual npm installation passes19 PackageTests and the existing
-role self-test; the external oracle also passes35/35 against packed bytes.
-Original-source controls fail19 subcases with5 errors; replacing lstat with stat
-fails5 subcases with1 error, so the guard cannot simply be removed or weakened.
-Full required lint passes in325.487s. Symlink cases intentionally skip on Windows;
-other cases run there. Native CI, final acceptance and delivery are recorded in
-the FINAL pointer.
+The separate correction retains lstat and verifies the first existing ancestor is
+a directory before allowing defaults. Missing intermediates are traversed using
+stat; other errors block, as does exhaustion without an existing ancestor. No
+caller writes, API, flags or engine policy change. Genuine optional absence and
+valid-link binding/edit semantics remain intact. This closes the same reader
+invariant on Windows, rather than bypassing or weakening its new regression.
 
-Actual Opus5 and Grok4.6 source reviews report zero CRITICAL/HIGH/MEDIUM. Fable5.1
-was unavailable due quota; Grok4.7 rejected its model ID. Both failures remain.
-Grok reported4.6-build and advertised tools/MCP/skills despite flags, but emitted
-zero tool calls: treat it as static supplied-packet advice, not proof of isolation.
-Concurrent swaps, dangling directory ancestors, crash durability and general
-filesystem confinement remain outside the repair. No npm release.
+A portable classification regression fails3 cases on the initial accepted source;
+corrected source passes it plus all prior tests. The actual npm installation now
+passes20 PackageTests and the original self-test. Deleting directory classification
+fails the new negative control. Canonical source and both repository mirrors agree.
+Fresh required lint passes268.593s; packed external35/35 passes. Fresh Opus5
+(no C/H; MEDIUM suggestions adjudicated) and Grok4.6 (no C/H/M) reviews complete.
+Native Windows/POSIX CI and delivery live in FINAL. Native
+Windows symlink tests remain explicitly skipped; ordinary errors/ancestors run.
+
+Independent initial Opus5/Grok4.6 advice missed this portability defect; real CI
+superseded the local source-acceptance claim. Fresh correction reviews/adjudication
+are retained in `.devlyn/0193/windows-repair/`. Fable quota and Grok4.7 unknown-model
+failures remain. Grok advertised tool/MCP/skill context despite flags; zero tool
+calls were observed, so its output is static packet advice, not isolation proof.
+Opus's caller-test suggestion is covered by the unchanged decisive native caller
+regression; pre-existing mkdir/clear behavior and concurrent/dangling-directory
+ancestor changes remain outside scope. Ancestor read errors intentionally block.
+
+**The preregistered macOS comparison is unchanged**, not retrospectively regraded
+as a Windows experiment. Its local35-check completion does not establish portable
+completion. No rerolls, post-exposure oracle changes or npm release occurred.
+The failed PR68/source receipt and fresh correction receipt remain recoverable;
+final matching CI, merges and owned cleanup are separate from initial failures.
 
 ## Principles check
 

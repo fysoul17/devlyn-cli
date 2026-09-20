@@ -3,17 +3,20 @@
 2026-09-20. Root continued directly; **zero resolve invocations**.
 Retained checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
 Read `.devlyn/0193/FINAL.md` for current acceptance, native CI, delivery and cleanup.
-Receipt: `.git/devlyn-completion/c790c43ce8f80f4b411cac89/receipt.json`.
+Correction receipt: `.git/devlyn-completion/e197de008d186a5d0075cca6/receipt.json`.
+Original receipt/PR68: `c790c43ce8f80f4b411cac89`, preserved unchanged.
 [0193 report](iterations/0193-role-config-failure.md) owns the comparison and limits.
 
 0193 closes the real optional-engine-config defect: invalid entries/reads block
 with the path before defaults or edits, preserving unresolved links. Genuine
 optional absence, valid-link reads/bindings/edits, selection and API stay intact.
-Canonical source/repository mirrors and two package regressions are updated.
-Actual Opus5 and Grok4.6 source advice found no CRITICAL/HIGH/MEDIUM. Fable quota
-and Grok4.7 unavailable-model failures remain visible. No npm release.
+Initial source2b76214 failed native Windows CI35492157236: ENOENT also represented
+a file ancestor. Corrected source verifies an existing directory ancestor before
+defaulting; three package regressions now cover classification and preservation.
+Source/CI/review evidence and initial failures stay in FINAL/windows-repair.
+Fable quota and Grok4.7 unavailable-model failures remain visible. No npm release.
 
-Fresh ABBA complete: all4 pass35/35, public7/7, self-tests and root scope/tool/claim
+Frozen macOS ABBA complete: all4 pass35/35, public7/7, self-tests and root scope/tool/claim
 review. Native2/2, minimal2/2: **NON_DISCRIMINATING**, prediction falsified, no
 operational adoption. Totals299.557s/293.189s are descriptive; limited sample and
 concurrent advice prevent speed-superiority claims. No resolve comparison.
