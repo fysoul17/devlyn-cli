@@ -765,8 +765,30 @@ function installAgentsForAllDetected() {
 // Install the Claude Code core config: project .claude/ (skills, templates,
 // settings, CLAUDE.md, .gitignore) plus global ~/.claude/settings.json tweaks.
 // Extracted so the unified target selector installs it only when "Claude Code"
-// is chosen. Check instruction conflicts before changing settings or skills.
+// is chosen. Check global settings and instruction conflicts before writes.
 function installClaudeCore() {
+  const globalClaudeDir = path.join(os.homedir(), '.claude');
+  const globalSettingsPath = path.join(globalClaudeDir, 'settings.json');
+  function readGlobalSettings() {
+    let settings = {};
+    try {
+      if (fs.lstatSync(globalSettingsPath, { throwIfNoEntry: false })) {
+        settings = JSON.parse(fs.readFileSync(globalSettingsPath, 'utf8'));
+      }
+    } catch (error) {
+      const reason = error instanceof SyntaxError ? 'invalid JSON' : error.message;
+      throw new Error(`Cannot merge ${globalSettingsPath}: ${reason}. Original preserved; correct the file or its access and rerun installation.`);
+    }
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+      throw new Error(`Cannot merge ${globalSettingsPath}: root must be a JSON object. Original preserved; correct it and rerun installation.`);
+    }
+    if (!Object.prototype.hasOwnProperty.call(settings, 'env')) settings.env = {};
+    if (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env)) {
+      throw new Error(`Cannot merge ${globalSettingsPath}: env must be a JSON object. Original preserved; correct it and rerun installation.`);
+    }
+    return settings;
+  }
+  readGlobalSettings();
   updateInstructions('CLAUDE.md');
   const targetDir = getTargetDir();
   const skillsDir = path.join(targetDir, 'skills');
@@ -904,17 +926,8 @@ function installClaudeCore() {
   }
 
   // Configure global Claude Code settings (~/.claude/settings.json)
-  const globalClaudeDir = path.join(os.homedir(), '.claude');
-  const globalSettingsPath = path.join(globalClaudeDir, 'settings.json');
-  let globalSettings = {};
-  if (fs.existsSync(globalSettingsPath)) {
-    try {
-      globalSettings = JSON.parse(fs.readFileSync(globalSettingsPath, 'utf8'));
-    } catch {
-      globalSettings = {};
-    }
-  }
-  if (!globalSettings.env) globalSettings.env = {};
+  // Project settings may refer to this same file; merge the latest bytes.
+  const globalSettings = readGlobalSettings();
   let globalSettingsChanged = false;
   if (!globalSettings.env.CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING) {
     globalSettings.env.CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING = '1';
