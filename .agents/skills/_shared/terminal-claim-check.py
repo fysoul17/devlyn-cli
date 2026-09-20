@@ -197,7 +197,7 @@ def classify_state_bytes(
         verdict = verify.get("verdict")
         if verdict is None:
             return incomplete("verify", "verify completed without verdict", run_id), state
-        if verdict not in VALID_VERIFY_VERDICTS:
+        if not isinstance(verdict, str) or verdict not in VALID_VERIFY_VERDICTS:
             return malformed("verify has invalid verdict", run_id), state
     else:
         verdict = None

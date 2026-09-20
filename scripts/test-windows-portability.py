@@ -138,6 +138,28 @@ m._compile(source + '\\n' + process.argv[3], filename);
     def roots(self):
         return [self.project / '.claude/skills', self.home / '.codex/skills', self.home / '.agents/skills', self.home / '.grok/skills']
 
+    def test_terminal_claim_invalid_verdicts(self):
+        checker = self.package / 'config/skills/_shared/terminal-claim-check.py'
+        state_path = self.project / '.devlyn/pipeline.state.json'
+        state_path.parent.mkdir()
+        for verdict in ([], {}, ['PASS'], {'verdict': 'PASS'}, False, True, 0, 1.5, '', 'UNKNOWN', None):
+            with self.subTest(verdict=verdict):
+                state = {'run_id': 'invalid-verdict', 'phases': {
+                    'verify': {'started_at': 'start', 'completed_at': 'end', 'verdict': verdict}}}
+                original = (json.dumps(state) + '\n').encode('utf-8')
+                state_path.write_bytes(original)
+                result = run([sys.executable, checker, self.project], env=self.env, code=79)
+                receipt = json.loads(result.stdout)
+                self.assertEqual(receipt, {
+                    'status': 'INCOMPLETE:verify' if verdict is None else 'MALFORMED',
+                    'phase': 'verify' if verdict is None else None,
+                    'reason': 'verify completed without verdict' if verdict is None else 'verify has invalid verdict',
+                    'run_id': 'invalid-verdict',
+                })
+                self.assertEqual(result.stderr, b'')
+                self.assertEqual(state_path.read_bytes(), original)
+        run([sys.executable, checker, '--self-test'], env=self.env)
+
     def test_global_claude_settings_invalid_input_preserves_installation(self):
         dest = self.home / '.claude/settings.json'; dest.parent.mkdir()
         local = self.project / '.claude/skills/user-skill/keep'
