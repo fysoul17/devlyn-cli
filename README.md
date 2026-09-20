@@ -232,6 +232,8 @@ CLIs. Claude uses `CLAUDE.md`; Codex, Grok, omp and Pi share `AGENTS.md`.
 Devlyn updates its checksum-marked instruction block and preserves project-specific
 rules outside it. Keep custom rules outside the block; they take precedence over
 its defaults. Exact pre-update backups are saved in `.devlyn/instructions/`.
+When recovery is needed, pre-existing symlinks or non-directory entries at `.devlyn/` or
+`.devlyn/instructions/` stop installation without replacing the instruction file.
 
 Unmodified templates from versions 3.0.0–3.1.2 migrate automatically, including
 custom text before or after the template. Edited or unrecognized older Devlyn

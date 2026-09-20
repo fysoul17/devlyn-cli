@@ -357,6 +357,57 @@ m._compile(source + '\\n' + process.argv[3], filename);
         self.assertTrue(dest.is_symlink())
         self.assertEqual(shared.read_bytes(), b'shared custom rules')
 
+    @unittest.skipIf(os.name == 'nt', 'symlink creation requires native Windows privileges')
+    def test_instruction_recovery_directory_symlinks_are_preserved(self):
+        for component in ('.devlyn', '.devlyn/instructions'):
+            for kind in ('outside', 'inside', 'dangling'):
+                for conflict in (False, True):
+                    for name, command in [('AGENTS.md', "installAgentsForCLI('grok');"), ('CLAUDE.md', 'installClaudeCore();')]:
+                        with self.subTest(component=component, kind=kind, conflict=conflict, name=name):
+                            with tempfile.TemporaryDirectory(dir=self.case) as temp:
+                                base = Path(temp); project = base / 'project'; project.mkdir()
+                                target = (project if kind == 'inside' else base) / 'target'
+                                if kind != 'dangling':
+                                    target.mkdir(); (target / 'keep').write_bytes(b'untouched target')
+                                entry = project / component; entry.parent.mkdir(exist_ok=True)
+                                entry.symlink_to(target, target_is_directory=True)
+                                before = b'<!-- devlyn:instructions:begin broken -->\n' if conflict else b'# Custom rules\r\n'
+                                dest = project / name; dest.write_bytes(before)
+                                result = self.invoke(f'process.chdir({json.dumps(str(project))}); {command}', code=None)
+                                self.assertNotEqual(result.returncode, 0)
+                                self.assertIn(str(entry).encode('utf-8'), result.stderr)
+                                self.assertIn(b'Move it aside', result.stderr)
+                                self.assertEqual(dest.read_bytes(), before)
+                                self.assertTrue(entry.is_symlink())
+                                self.assertEqual(entry.readlink(), target)
+                                if kind == 'dangling':
+                                    self.assertFalse(target.exists())
+                                else:
+                                    self.assertEqual(list(target.iterdir()), [target / 'keep'])
+                                    self.assertEqual((target / 'keep').read_bytes(), b'untouched target')
+                                self.assertFalse((project / '.claude').exists())
+                                self.assertFalse((self.home / '.grok').exists())
+
+    def test_instruction_recovery_non_directory_and_unused_path(self):
+        for component in ('.devlyn', '.devlyn/instructions'):
+            with self.subTest(component=component):
+                with tempfile.TemporaryDirectory(dir=self.case) as temp:
+                    project = Path(temp)
+                    entry = project / component; entry.parent.mkdir(exist_ok=True)
+                    entry.write_bytes(b'keep obstruction')
+                    dest = project / 'AGENTS.md'; dest.write_bytes(b'# Custom rules\n')
+                    body = f'process.chdir({json.dumps(str(project))}); installInstructionsForCLI("grok");'
+                    result = self.invoke(body, code=None)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(str(entry).encode('utf-8'), result.stderr)
+                    self.assertEqual(dest.read_bytes(), b'# Custom rules\n')
+                    self.assertEqual(entry.read_bytes(), b'keep obstruction')
+                    dest.unlink()  # Fresh install and exact repeat do not use recovery.
+                    self.invoke(body); installed = dest.read_bytes()
+                    self.invoke(body)
+                    self.assertEqual(dest.read_bytes(), installed)
+                    self.assertEqual(entry.read_bytes(), b'keep obstruction')
+
     def test_incomplete_source_has_no_marker(self):
         copy = self.case / 'broken'; shutil.copytree(self.package, copy)
         skill = next((copy / 'config/skills').glob('devlyn*resolve'))

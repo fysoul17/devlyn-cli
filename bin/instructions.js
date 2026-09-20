@@ -35,7 +35,13 @@ function legacyRanges(text, templates) {
 }
 
 function retainFile(file, bytes) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
+  for (const directory of [path.dirname(path.dirname(file)), path.dirname(file)]) {
+    const stat = fs.lstatSync(directory, { throwIfNoEntry: false });
+    if (stat && !stat.isDirectory()) {
+      throw new Error(`Instruction recovery needs a real directory: ${directory}. Move it aside and rerun installation.`);
+    }
+    if (!stat) fs.mkdirSync(directory);
+  }
   const ignore = path.join(path.dirname(file), '.gitignore');
   if (!fs.existsSync(ignore)) fs.writeFileSync(ignore, '*\n', { flag: 'wx', mode: 0o600 });
   if (fs.existsSync(file)) {
