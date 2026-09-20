@@ -464,7 +464,11 @@ def move_artifacts(devlyn: pathlib.Path, dest: pathlib.Path) -> int:
     try:
         for source, target in moves:
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(source), str(target))
+            try:
+                shutil.move(str(source), str(target))
+            except OSError:
+                target.unlink(missing_ok=True)
+                raise
             completed.append((source, target))
     except BaseException:
         for source, target in reversed(completed):

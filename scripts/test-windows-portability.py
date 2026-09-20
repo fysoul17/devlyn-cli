@@ -440,6 +440,67 @@ m._compile(source + '\\n' + process.argv[3], filename);
         self.assertTrue((target / 'devlyn:resolve/SKILL.md').exists())
 
 
+    def test_archive_partial_transfer_recovers_and_retries(self):
+        import errno
+        module = runpy.run_path(str(self.package / 'config/skills/_shared/archive_run.py'))
+        real_move, real_copy, real_stat, real_unlink = shutil.move, shutil.copyfile, shutil.copystat, os.unlink
+
+        def snapshot(root):
+            return {p.relative_to(root).as_posix(): (p.read_bytes(), p.stat().st_mode & 0o777)
+                    for p in root.rglob('*') if p.is_file()}
+
+        for boundary in ('before-copy', 'copy', 'metadata', 'unlink', 'success'):
+            for selected in (('a.log.md',) if boundary == 'success' else ('a.log.md', 'probes/P1.py')):
+                with self.subTest(boundary=boundary, selected=selected):
+                    with tempfile.TemporaryDirectory(dir=self.case) as temporary:
+                        devlyn = Path(temporary).resolve() / '.devlyn'; devlyn.mkdir()
+                        files = {'a.log.md': b'alpha\r\n', 'probes/P1.py': b'print(1)\n',
+                                 'pipeline.state.json': b'{"run_id":"recovery","phases":{},"process_evidence":null}'}
+                        for name, raw in files.items():
+                            source = devlyn / name; source.parent.mkdir(parents=True, exist_ok=True)
+                            source.write_bytes(raw); source.chmod(0o600)
+                        dest = devlyn / 'runs/recovery'; dest.mkdir(parents=True)
+                        (dest / 'unrelated.txt').write_bytes(b'preserve')
+                        before = snapshot(devlyn); fired = []
+                        failure = OSError(errno.ENOSPC, 'injected archive transfer failure')
+
+                        def copy(src, dst):
+                            if Path(src) == devlyn / selected and not fired:
+                                if boundary == 'before-copy':
+                                    fired.append(boundary); raise failure
+                                if boundary == 'copy':
+                                    Path(dst).write_bytes(b'partial'); fired.append(boundary); raise failure
+                                if boundary == 'metadata':
+                                    real_copy(src, dst); fired.append(boundary); raise failure
+                            real_copy(src, dst); real_stat(src, dst)
+
+                        def unlink(src, *args, **kwargs):
+                            if boundary == 'unlink' and Path(src) == devlyn / selected and not fired:
+                                fired.append(boundary); raise failure
+                            return real_unlink(src, *args, **kwargs)
+
+                        def move(src, dst):
+                            # Inject EXDEV and use the documented copy_function seam on
+                            # Windows too, where copy2 may otherwise use CopyFile2.
+                            with patch.object(os, 'rename', side_effect=OSError(errno.EXDEV, 'cross-device')):
+                                return real_move(src, dst, copy_function=copy)
+
+                        with patch.object(shutil, 'move', side_effect=move), patch.object(os, 'unlink', side_effect=unlink):
+                            if boundary == 'success':
+                                self.assertEqual(module['move_artifacts'](devlyn, dest), len(files))
+                            else:
+                                with self.assertRaises(OSError) as caught:
+                                    module['move_artifacts'](devlyn, dest)
+                                self.assertIs(caught.exception, failure)
+                        if boundary != 'success':
+                            self.assertEqual(fired, [boundary])
+                            self.assertEqual(snapshot(devlyn), before)
+                            self.assertEqual(module['move_artifacts'](devlyn, dest), len(files))
+                        expected = {('runs/recovery/' + n if n in files else n): value for n, value in before.items()}
+                        self.assertEqual(snapshot(devlyn), expected)
+                        self.assertFalse((devlyn / 'probes').exists())
+
+
 class ProcessTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='devlyn-native-')
