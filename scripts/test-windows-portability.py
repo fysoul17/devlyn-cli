@@ -138,6 +138,85 @@ m._compile(source + '\\n' + process.argv[3], filename);
     def roots(self):
         return [self.project / '.claude/skills', self.home / '.codex/skills', self.home / '.agents/skills', self.home / '.grok/skills']
 
+    def test_global_claude_settings_invalid_input_preserves_installation(self):
+        dest = self.home / '.claude/settings.json'; dest.parent.mkdir()
+        local = self.project / '.claude/skills/user-skill/keep'
+        local.parent.mkdir(parents=True); local.write_bytes(b'user skill')
+        instructions = self.project / 'CLAUDE.md'; instructions.write_bytes(b'# User rules\r\n')
+        cases = [b'{"keep": true, broken JSON', b'SECRET-not-json', b'null', b'[]', b'42', b'"text"']
+        cases += [json.dumps({'keep': True, 'env': value}).encode()
+                  for value in (None, [], False, 0, 'text')]
+        for before in cases:
+            with self.subTest(before=before):
+                dest.write_bytes(before)
+                result = run(['node', '--require', self.preload, self.package / 'bin/devlyn.js', '-y'],
+                             cwd=self.project, env=self.env, code=None)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(str(dest).encode(), result.stderr)
+                self.assertIn(b'Cannot merge', result.stderr)
+                self.assertNotIn(b'SECRET', result.stderr)
+                self.assertEqual(dest.read_bytes(), before)
+                self.assertEqual(instructions.read_bytes(), b'# User rules\r\n')
+                self.assertEqual(local.read_bytes(), b'user skill')
+                self.assertFalse((self.project / '.claude/skills/.devlyn-install.json').exists())
+                self.assertFalse((self.project / '.devlyn').exists())
+
+    def test_global_claude_settings_read_errors_preserve_installation(self):
+        dest = self.home / '.claude/settings.json'; dest.parent.mkdir()
+        before = b'{"keep": "original"}\r\n'; dest.write_bytes(before)
+        for code in ('EACCES', 'EIO'):
+            with self.subTest(code=code):
+                result = self.invoke(f"""
+const read = fs.readFileSync;
+fs.readFileSync = function(file, ...options) {{
+  if (String(file) === {json.dumps(str(dest))}) {{
+    throw Object.assign(new Error('injected {code}'), {{ code: '{code}' }});
+  }}
+  return read.call(this, file, ...options);
+}};
+installClaudeCore();
+""", code=None)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(str(dest).encode(), result.stderr)
+                self.assertIn(code.encode(), result.stderr)
+                self.assertEqual(dest.read_bytes(), before)
+                self.assertFalse((self.project / 'CLAUDE.md').exists())
+                self.assertFalse((self.project / '.claude').exists())
+
+    def test_global_claude_settings_valid_merge_and_reinstall(self):
+        dest = self.home / '.claude/settings.json'; dest.parent.mkdir()
+        for value in ({'custom': {'keep': [1, 2]}},
+                      {'custom': True, 'env': {'TEAM_VAR': 'keep',
+                       'CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING': '0', 'ENABLE_PROMPT_CACHING_1H': 'false'}}):
+            with self.subTest(value=value):
+                dest.write_text(json.dumps(value), encoding='utf-8')
+                self.invoke('installClaudeCore();')
+                expected = {**value, 'env': {'CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING': '1',
+                            'ENABLE_PROMPT_CACHING_1H': 'true', **value.get('env', {})}}
+                self.assertEqual(json.loads(dest.read_bytes()), expected)
+                first = dest.read_bytes()
+                self.invoke('installClaudeCore();')
+                self.assertEqual(dest.read_bytes(), first)
+
+    def test_global_claude_settings_shared_with_project(self):
+        self.env['DEVLYN_TEST_HOME'] = str(self.project)
+        dest = self.project / '.claude/settings.json'; dest.parent.mkdir()
+        dest.write_text('{"custom": 1}', encoding='utf-8')
+        self.invoke('installClaudeCore();')
+        settings = json.loads(dest.read_bytes())
+        self.assertEqual(settings['custom'], 1)
+        for key, value in {'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
+                           'BASH_MAX_TIMEOUT_MS': '3600000',
+                           'CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING': '1',
+                           'ENABLE_PROMPT_CACHING_1H': 'true'}.items():
+            self.assertEqual(settings['env'].get(key), value)
+        self.assertIn('Write(.devlyn/**)', settings['permissions']['allow'])
+        self.assertTrue(any('resolve-stop-hook.py' in hook['command']
+                            for entry in settings['hooks']['Stop'] for hook in entry['hooks']))
+        first = dest.read_bytes()
+        self.invoke('installClaudeCore();')
+        self.assertEqual(dest.read_bytes(), first)
+
     def test_agents_invalid_target_preserves_files(self):
         def snapshot(root):
             return {str(p.relative_to(root)): (p.stat().st_mode, p.read_bytes() if p.is_file() else None)
