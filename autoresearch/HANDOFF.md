@@ -1,27 +1,26 @@
-# Core harness improvement — 0195 comparison complete; delivery in FINAL
+# Core harness improvement — 0196 resolve utility audit
 
-2026-09-20. Root direct; **zero resolve invocations**. No npm release.
+2026-09-21 KST. Owner: “resolve 쓰지말고 우리는. 이 resolve 의 효용성에
+대해서 고민해볼 필요가 있으니까, 계속해.” **No resolve, including controls.**
+Root direct; Fable/Grok independently review root-supplied evidence. No npm release.
 Retained checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Read `.devlyn/0195/FINAL.md` for source checks, native CI, PR/merge and cleanup.
-Receipt: `.git/devlyn-completion/38e2e28ebf13803f20549c54/receipt.json`.
-[0195 report](iterations/0195-terminal-verdict-types.md) owns scope and limits.
+Read [0196](iterations/0196-resolve-utility.md) and `.devlyn/0196/FINAL.md` for
+evidence, final review, delivery and cleanup. Receiptfd51df1bec87eef12a26ebaf.
 
-0195 corrects a reproduced terminal-classifier crash for array/object VERIFY
-verdicts: one type guard returns MALFORMED/79 while null and precedence stay intact.
-Original native regression fails4 subcases; repaired package25/25 passes. Exact
-source/test packets received Fable5.1/Grok4.6 approval with no C/H/M. Final required
-lint, native CI and delivery are separate evidence in FINAL.
+Historical full-run audit: review→repair contributed in0185; complete phase
+necessity remains unmeasured. All-complete sample totals were much slower under full,
+but neither bare sufficiency nor universal phase removal follows. Fourteen final
+CLEANUP commit trees match; this does not mean their inspection had zero value.
+Customer routing and0179/0190 non-adoption remain unchanged;0187 NO-GO stands.
 
-Frozen ABBA: native2/2, unchanged minimal2/2; all4 external38/38 and full scope,
-regression, tool/claim audit PASS. NON_DISCRIMINATING; incremental hypothesis
-falsified, no policy adoption. Native237.096s/minimal300.029s are descriptive only.
-All25 inputs and participant seals unchanged; failures preserved, no rerolls.
+Next question: direct work plus fresh same-model review/repair versus equally
+budgeted continued self-review/repair. Admission design is in0196; natural task,
+oracle, continuation transport and untouched confirmation are not yet registered.
+Do not launch another fully specified one-line comparison or claim this audit is
+a new efficacy experiment. Current no-resolve work cannot close field gate15 or
+validate a full-workflow replacement. Mission1 and gate15 remain OPEN.
 
-Mission1 and independent field gate15 remain OPEN. User has no independent field
-request; this was another maintainer-selected one-line task. Do not claim added
-harness value or continue similarly saturated comparisons. Next needs an unexposed
-natural task with an observed intervention or independently supplied field work.
-Fable's deep-nesting/dot-dot run-id notes are unverified follow-up candidates,
-not current scope or known fixes.0193/0194 are COMPLETE; their results stay frozen.
-Preserve original checkout WIP, prior records/A16 and participant source/Git.
-Only receipt-owned scratch may be cleaned; status/retry evidence is in FINAL.
+0193/0194/0195 are COMPLETE; PR71 and0195 evidence remain in `.devlyn/0195/FINAL.md`.
+Preserve all frozen records, original checkout WIP, A16 and participant source/Git.
+Fable's old nesting/dot-dot candidates remain unverified, outside this utility audit.
+Only prospectively receipt-owned scratch may be cleaned.
