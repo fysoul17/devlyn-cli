@@ -1,49 +1,45 @@
-# Core harness improvement — 0189 instruction upgrades
+# Core harness improvement — after0190 repair-priority screen
 
-Updated2026-09-19 KST. Retained checkout:
+Updated2026-09-20 KST. Retained checkout:
 `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Current [0189 report](iterations/0189-instruction-upgrades.md),
-`.devlyn/0189-release/FINAL.md` and receipt
-`.git/devlyn-completion/a7b7fc53294cde5666f9e759/receipt.json` record safe installer
-migration and3.1.3 source/release status. Mission1 remains active.
+Read [0190 report](iterations/0190-priority-and-repair.md) and
+`.devlyn/0190/FINAL.md` for source acceptance/delivery; receipt
+`.git/devlyn-completion/7224a0d160aec4b54c8b8711/receipt.json`.
+Mission1 remains active. Finish any recorded pending delivery before new allocation.
 
-0189 replaces stale AGENTS preservation and whole CLAUDE overwrite with checksummed
-managed defaults and exact backups. Published3.0.0–3.1.2 pristine templates migrate;
-recognizable edited templates fail visibly for manual merge. All selected CLI
-routes, including Grok, share this behavior. Reinstall required; older installers
-remain unsafe for custom CLAUDE text. Final publication/CI/artifact evidence lives
-in FINAL.md; do not infer npm availability from this handoff's version mention.
+0190 completed16 fresh native Opus5/high repair draws: two synthetic tasks,
+two repeats, generic-advice included/omitted × extra witness/recheck reminder.
+All conditions4/4 on frozen artifact/functional closure and false-review checks.
+Functional reminder effect is INCONCLUSIVE/saturated. Scope-inclusive completion
+is12/16 (G1R0=2/4,G0R0=3/4,G0R1=3/4,G1R1=4/4); unnecessary edits violate
+"fix only demonstrated defects". R1's7/8 vs R0's5/8 is a small local observation,
+not a reliability proof or promotion. Every condition already gave user priority;
+this tests an
+incremental reminder, not presence/absence of instruction hierarchy. Fable reviewed
+the checker before dispatch; corrected oracle defects and original versions remain.
 
-User explicitly prioritizes resolve necessity/minimization before continuing the
-approved instruction-priority and actual repair-closure intervention. Root works
-directly; actual resolve is allowed as an experimental control. Do not revive the
-obsolete15% quota parking rule. Preserve frozen history/A16 and unrelated user WIP.
+Do not call the16 artifact passes16 unqualified completions. Command/source/claim
+audits retain an unsuccessful commit-producing stash attempt, unnecessary
+out-of-domain edits, a scan-count false claim and incorrect probe-size descriptions.
+No observed outside-checkout file operation; all participant scratch empty.
+Native draws totaled1286.197s/$5.227380 reported estimate; research overhead excluded.
+This was not a native/minimal/full outcome comparison or a natural defect-rate study.
 
-0188 removes domain-only and size-only automatic full entry. Default direct when
-behavior, boundaries and checks are tractable; full for concrete interactions or
-verification too complex for the current context. Explicit resolve/spec-mode and
-queue workflows, pins, checks, independent review for consequential direct work and
-delivery remain. Full phase bodies are unchanged. Six active local entry surfaces
-receive exact backed-up deltas; this does not migrate other customer projects or
-publish npm. Native supplied-fact Astra screen:16/16 candidate route decisions,
-three bounded domain cases switch FULL→DIRECT. Not a task-quality/performance study.
+Next: fresh natural implementation tasks comparing native / minimal / actual full,
+with caller-backed compatibility, resource domains and execution-scope requirements
+fixed before dispatch. Rank full request completion before failure/repair-inclusive
+time and available cost.0190's G1R1 is eligible for fresh confirmation only;
+the reminder has not earned adoption. Keep0187
+and0190 exposed tasks out of unbiased confirmation. Adopt only after repeated fresh
+evidence. Do not infer Opus reliability or full-pipeline necessity from this screen.
 
-[0187 results](iterations/0187-intent-and-simplification.md) remain unchanged:
-12 workflow products pass frozen checks;3/4 full archives accepted. Minimal B
-replacement NO-GO from an explicit scope violation; no disjoint confirmation or
-minimal-contract promotion. Whole-workflow dollar cost UNKNOWN. Post-discovery
-numeric limits and calibrated deep nesting are qualified separately from frozen grades.
-Matched Opus diagnostic found checkout-boundary violations5=2/2 vs4.8=0/2 observed,
-but4.8 had one cleanup miss; one task/n2 is not a general ranking. Fresh self/Fable
-review detected compatibility differences1/2 vs2/2; actual repair closure1/2 each.
-A repairer rejected a reproduced finding and codified changed behavior in a test.
+Root works directly; actual resolve is permitted only as an experimental control.
+The obsolete15% parking condition stays removed. Preserve frozen history/A16,
+original user WIP, source/Git and raw records.0190 verified original WIP6 files and
+756 prior evidence files unchanged; no global config or installed skill changes.
 
-Next intervention: isolate competing generic guidance from user requirements,
-validate actual repair closure and wrong-review resistance, then compare native /
-improved minimal / actual full on fresh easy/hard tasks. Define resource domains
-and execution-scope checks before dispatch; rank request completion before total
-failure/repair time and available cost. Adopt only after repeated fresh evidence.
-Do not recycle exposed0187 fixtures as unbiased confirmation or call routing success
-product-quality proof. Fable's completed0187 advice/reviews stand; its extra final
-report review hit a session limit and supplied no verdict. Raw0187 evidence is in
-`.devlyn/0187{,-intent,-other}`; sources, failures and recovery data remain retained.
+Completed work not to repeat:0189 safe managed instruction updates and3.1.3 release
+are recorded in `.devlyn/0189-release/FINAL.md` (PR64, public npm artifact verified).
+0188 narrowed automatic full entry to inspected interacting complexity.0187's
+minimal-replacement NO-GO, scope failures and1/2 actual repair closure per reviewer
+arm remain unchanged;0190's explicit seeded tasks do not supersede those results.
