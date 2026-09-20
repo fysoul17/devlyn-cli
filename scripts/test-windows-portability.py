@@ -440,6 +440,79 @@ m._compile(source + '\\n' + process.argv[3], filename);
         self.assertTrue((target / 'devlyn:resolve/SKILL.md').exists())
 
 
+    def test_role_configuration_filesystem_errors(self):
+        import errno
+        import io
+        module = runpy.run_path(str(self.package / 'config/skills/_shared/role-config.py'))
+        folder = self.project / '.devlyn'; folder.mkdir()
+        path = folder / 'engines.json'
+        actions = (lambda: module['read_config'](path, optional=True),
+                   lambda: module['read_config'](path),
+                   lambda: module['resolve'](self.project, 'codex', for_status=True, available=lambda _: True),
+                   lambda: module['resolve'](self.project, 'codex', no_pair=True, available=lambda _: True),
+                   lambda: module['edit'](self.project, 'worker', '{"engine":"codex"}'),
+                   lambda: module['edit'](self.project, 'clear', None))
+        def blocked():
+            for index, action in enumerate(actions):
+                with self.subTest(action=index):
+                    with self.assertRaisesRegex(ValueError, 'BLOCKED:invalid-engine-config') as caught:
+                        action()
+                    self.assertIn(str(path), str(caught.exception))
+        path.mkdir(); (path / 'keep').write_bytes(b'keep')
+        blocked(); self.assertEqual((path / 'keep').read_bytes(), b'keep')
+        (path / 'keep').unlink(); path.rmdir(); folder.rmdir(); folder.write_bytes(b'keep')
+        blocked(); self.assertEqual(folder.read_bytes(), b'keep')
+        folder.unlink(); folder.mkdir(); path.write_bytes(b'{"executor":"codex"}')
+        for number in (errno.EACCES, errno.EIO):
+            with self.subTest(errno=number):
+                def inject(original):
+                    def access(candidate, *args, **kwargs):
+                        if isinstance(candidate, (str, bytes, os.PathLike)) and os.fsdecode(candidate) == str(path):
+                            raise OSError(number, 'injected configuration read failure', str(path))
+                        return original(candidate, *args, **kwargs)
+                    return access
+                with contextlib.ExitStack() as patches:
+                    for owner, attribute in ((os, 'stat'), (os, 'lstat'), (io, 'open')):
+                        patches.enter_context(patch.object(owner, attribute, inject(getattr(owner, attribute))))
+                    blocked()
+                self.assertEqual(path.read_bytes(), b'{"executor":"codex"}')
+        self.assertEqual(sorted(p.name for p in folder.iterdir()), ['engines.json'])
+
+    @unittest.skipIf(os.name == 'nt', 'symlink creation requires native Windows privileges')
+    def test_role_configuration_links_preserve_entries_and_bindings(self):
+        module = runpy.run_path(str(self.package / 'config/skills/_shared/role-config.py'))
+        folder = self.project / '.devlyn'; folder.mkdir()
+        path = folder / 'engines.json'
+        sentinel = self.project / 'keep'; sentinel.write_bytes(b'untouched')
+        for target in ('absent.json', 'engines.json'):
+            path.symlink_to(target)
+            for index, action in enumerate((
+                lambda: module['read_config'](path, optional=True),
+                lambda: module['read_config'](path),
+                lambda: module['resolve'](self.project, 'codex', for_status=True, available=lambda _: True),
+                lambda: module['resolve'](self.project, 'codex', flag_engine='claude', no_pair=True, available=lambda _: True),
+                lambda: module['edit'](self.project, 'worker', '{"engine":"codex"}'),
+                lambda: module['edit'](self.project, 'clear', None),
+            )):
+                with self.subTest(target=target, action=index):
+                    with self.assertRaisesRegex(ValueError, 'BLOCKED:invalid-engine-config') as caught:
+                        action()
+                    self.assertIn(str(path), str(caught.exception))
+                    self.assertTrue(path.is_symlink()); self.assertEqual(str(path.readlink()), target)
+                    self.assertEqual(sentinel.read_bytes(), b'untouched')
+                    self.assertEqual(sorted(p.name for p in folder.iterdir()), ['engines.json'])
+            path.unlink()
+        shared = self.project / 'shared.json'; raw = b'{"executor":"claude","custom":7}\n'
+        shared.write_bytes(raw); shared.chmod(0o640); path.symlink_to(shared)
+        config, binding = module['read_config'](path, optional=True)
+        self.assertEqual(config, {'executor': 'claude', 'custom': 7})
+        self.assertEqual(binding, {'path': str(shared.resolve()), 'sha256': hashlib.sha256(raw).hexdigest()})
+        module['edit'](self.project, 'worker', '{"engine":"codex"}')
+        self.assertFalse(path.is_symlink()); self.assertEqual(shared.read_bytes(), raw)
+        self.assertEqual(path.stat().st_mode & 0o777, 0o640)
+        self.assertEqual(json.loads(path.read_bytes()), {'executor': 'claude', 'custom': 7, 'roles': {'worker': {'engine': 'codex'}}})
+        self.assertEqual(sorted(p.name for p in folder.iterdir()), ['engines.json'])
+
     def test_archive_partial_transfer_recovers_and_retries(self):
         import errno
         module = runpy.run_path(str(self.package / 'config/skills/_shared/archive_run.py'))

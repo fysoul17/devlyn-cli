@@ -95,9 +95,12 @@ def validate(config, *, run=False, shared=SHARED):
 
 def read_config(path, *, run=False, optional=False, shared=SHARED):
     path = Path(path)
-    if optional and not path.exists():
-        return {}, {"path": str(path.absolute()), "sha256": None}
     try:
+        if optional:
+            try:
+                path.lstat()
+            except FileNotFoundError:
+                return {}, {"path": str(path.absolute()), "sha256": None}
         raw = path.read_bytes()
         value = validate(loads(raw), run=run, shared=shared)
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:

@@ -1,5 +1,6 @@
-# 0193 active continuation
+# 0193 continuation / delivery
 
-Read [HANDOFF.md](HANDOFF.md) in `~/.local/share/nx01/core-continuation-20260912`.
-Root direct; no resolve. Reuse0193 branch/receipt, inspect current evidence before
-any dispatch. Preserve frozen inputs, sealed participants, prior history and WIP.
+Read [HANDOFF.md](HANDOFF.md), then `.devlyn/0193/FINAL.md` in
+`~/.local/share/nx01/core-continuation-20260912`.0193 comparison is complete;
+source/delivery/cleanup have separate evidence. Root direct, no resolve.
+Do not repeat runs or completed work. Preserve original WIP and frozen history.
