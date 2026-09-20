@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -95,9 +96,20 @@ def validate(config, *, run=False, shared=SHARED):
 
 def read_config(path, *, run=False, optional=False, shared=SHARED):
     path = Path(path)
-    if optional and not path.exists():
-        return {}, {"path": str(path.absolute()), "sha256": None}
     try:
+        if optional:
+            try:
+                path.lstat()
+            except FileNotFoundError:
+                for parent in path.parents:
+                    try:
+                        mode = parent.stat().st_mode
+                    except FileNotFoundError:
+                        continue
+                    if not stat.S_ISDIR(mode):
+                        fail(f"cannot read role configuration {path}: {parent} is not a directory")
+                    return {}, {"path": str(path.absolute()), "sha256": None}
+                raise
         raw = path.read_bytes()
         value = validate(loads(raw), run=run, shared=shared)
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
