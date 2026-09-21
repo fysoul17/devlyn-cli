@@ -27,7 +27,7 @@ If devlyn-cli saved you time, [give it a star](https://github.com/fysoul17/devly
 npx devlyn-cli
 ```
 
-That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, **Pi**, or **Grok Build CLI**, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills — plus the `devlyn:engines` and `devlyn:queue` utilities — in the directory each one loads from: Codex → `~/.codex/skills/`, Grok → `~/.grok/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn:resolve`, `$devlyn:ideate`, `$devlyn:design-ui`); in Claude Code and Grok Build CLI they're slash commands (`/devlyn:resolve`). Rerunning refreshes skills for selected agents, preserves existing AGENTS.md without legacy managed markers (legacy appended blocks are still cleaned up), and replaces CLAUDE.md when Claude Code is selected. Use the bundled AGENTS.md template path printed by the installer to compare and merge relevant shared runtime instructions into your preserved AGENTS.md, retaining your content and keeping engine-specific instructions distinct. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
+That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, **Pi**, or **Grok Build CLI**, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills — plus the `devlyn:engines` and `devlyn:queue` utilities — in the directory each one loads from: Codex → `~/.codex/skills/`, Grok → `~/.grok/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn:resolve`, `$devlyn:ideate`, `$devlyn:design-ui`); in Claude Code and Grok Build CLI they're slash commands (`/devlyn:resolve`). Rerunning refreshes skills and the managed instruction block for selected agents while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
 
 ---
 
@@ -235,12 +235,16 @@ its defaults. Exact pre-update backups are saved in `.devlyn/instructions/`.
 When recovery is needed, pre-existing symlinks or non-directory entries at `.devlyn/` or
 `.devlyn/instructions/` stop installation without replacing the instruction file.
 
-Unmodified templates from versions 3.0.0–3.1.2 migrate automatically, including
-custom text before or after the template. Edited or unrecognized older Devlyn
-templates with recognizable Devlyn contract text, changed managed blocks and
-ambiguous markers stop installation without replacing the original.
-The error names an `.incoming` file with current defaults:
-merge it, move custom rules outside its managed block, and rerun installation.
+Templates from versions 3.0.0–3.1.2 migrate automatically, including custom
+text before or after the template. Replaced or extended introductions under the
+original project heading also migrate when the entire body from `## North Star`
+onward matches a known template hash. Replacement project rules are preserved
+outside the managed block; only an exact original introduction is removed.
+Recognizable leftover Devlyn text, changed bodies and ambiguous templates stop
+with a concise recovery message and leave the original unchanged. The message
+links an exact `.backup`, new defaults in `.incoming`, and a `.merge.md` guide.
+Compare the two files, preserve all project rules outside one new managed block,
+and rerun the same install command. Earlier selected agents may already be updated.
 Plain custom instruction files retain their contents and gain a managed block.
 Use 3.1.3 or newer consistently: older installers still overwrite `CLAUDE.md`.
 
