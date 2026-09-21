@@ -36,7 +36,7 @@ def require(condition, message):
 def command(argv, *, cwd=None, ok=(0,)):
     result = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, encoding="utf-8")
     require(result.returncode in ok, f"{shlex.join(argv[:4])}: {result.stderr.strip() or result.stdout.strip()}")
-    return result.stdout.strip()
+    return result.stdout.removesuffix("\n")
 
 
 def git(work, *args):
@@ -190,7 +190,7 @@ def allocate(args):
     receipt["remote_url"] = remote_url(receipt)
     require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
     require(not ref_sha(receipt, "refs/heads/"+args.branch), "existing branch cannot be adopted")
-    require(git(work, "symbolic-ref", "--short", "HEAD") == args.base, "allocate from the retained base checkout")
+    require(git(work, "symbolic-ref", "HEAD") == "refs/heads/" + args.base, "allocate from the retained base checkout")
     require(not git(work, "status", "--porcelain", "--untracked-files=all"), "allocation requires clean tracked/untracked contents")
     receipt["baseline"] = git(work, "rev-parse", "HEAD")
     target = Path(args.worktree).absolute() if args.worktree else work
@@ -862,14 +862,47 @@ class CompletionTests(unittest.TestCase):
         r = self.run_cmd([sys.executable, str(Path(__file__).resolve()), *map(str, args)], success=success, cwd=cwd)
         return json.loads(r.stdout), r
 
-    def allocate(self, linked=False):
-        args = ["allocate", "--repo", self.work, "--task", "fixture", "--branch", "task/fixture", "--repository", "test/project", "--base", "main"]
+    def allocate(self, linked=False, base="main"):
+        args = ["allocate", "--repo", self.work, "--task", "fixture", "--branch", "task/fixture", "--repository", "test/project", "--base", base]
         if linked:
             args += ["--worktree", self.root / "linked"]
         result, _ = self.cli(*args)
         self.receipt = Path(result["receipt"])
         self.task = Path(result["worktree"])
         return result
+
+    def test_allocate_base_with_same_named_tag(self):
+        self.g("tag", "main")
+        result = self.allocate(linked=True)
+        self.assertEqual(result["status"], "ALLOCATED")
+        self.assertEqual(json.loads(self.receipt.read_text(encoding="utf-8"))["base"], "main")
+
+    def test_allocate_base_preserves_unicode_whitespace(self):
+        base = "main\u00a0"
+        self.g("switch", "-c", base)
+        result = self.allocate(base=base)
+        self.assertEqual(result["status"], "ALLOCATED")
+        self.assertEqual(json.loads(self.receipt.read_text(encoding="utf-8"))["base"], base)
+
+    def assert_base_identity_rejected(self, actual, base):
+        result, process = self.cli("allocate", "--repo", self.work, "--task", "fixture",
+            "--branch", "task/fixture", "--repository", "test/project", "--base", base, success=False)
+        self.assertNotEqual(process.returncode, 0)
+        self.assertIn("retained base checkout", result["reason"])
+        head = self.run_cmd(["git", "-C", str(self.work), "symbolic-ref", "HEAD"]).stdout
+        self.assertEqual(head, "refs/heads/" + actual + "\n")
+        self.assertFalse((self.work / ".git/devlyn-completion").exists())
+        self.assertNotEqual(self.run_cmd(["git", "-C", str(self.work), "show-ref", "--verify",
+            "refs/heads/task/fixture"], success=False).returncode, 0)
+
+    def test_allocate_rejects_trimmed_base_alias(self):
+        self.g("switch", "-c", "main\u00a0")
+        self.assert_base_identity_rejected("main\u00a0", "main")
+
+    def test_allocate_rejects_short_base_alias(self):
+        self.g("branch", "heads/main")
+        self.g("tag", "main")
+        self.assert_base_identity_rejected("main", "heads/main")
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_disposable_scratch_cleans_for_local_only_and_preserves_source(self):

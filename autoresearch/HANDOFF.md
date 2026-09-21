@@ -1,36 +1,30 @@
-# Core harness improvement — 0198 receipt admission and review comparison
+# Core harness improvement — 0199 exact allocation base identity
 
-2026-09-21 KST. Owner wants direct work while evaluating resolve utility.
-**No resolve, including controls.** Root direct; Fable independently reviewed.
-Grok returned no advice within600s; not a PASS. No npm release/product-policy adoption.
+2026-09-21 KST. Root direct; **no resolve, including controls**. No npm release.
 Retained checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Read [0198](iterations/0198-receipt-admission-comparison.md), then `.devlyn/0198/FINAL.md`
-for raw evidence, delivery and cleanup. Receiptbed944925305d19fa5e49678.
+Read [0199](iterations/0199-allocation-base-identity.md), then `.devlyn/0199/FINAL.md`
+for final verification, delivery and cleanup. Receipt `8dfa055579058029c9a71f78`.
 
-Real allocator receipts and actual local-only output now ground admission. Receipt
-`task` is a description string; state `task` is object/null. Local-only writes a
-boolean flag, not a status. Initial fixture/self-test mistakes were corrected and
-retained before freezing56 inputs and the new R1 task atd493f92.
+0198's branch witnesses led to an actual shipped allocator defect. A same-name
+tag and Unicode whitespace made short-ref comparison reject valid bases or admit
+other branches. Two production-line replacements preserve the output record and
+compare full `refs/heads/` identity; the tracked `.agents` mirror matches.
+Four final regressions fail on original production lines and pass after repair;
+restoring either removed transformation fails two. Same-tag in-place completion
+and resume preserve ignored data; actual Git NUL-delimited filenames retain their
+leading whitespace. Full lint/peer/delivery status belongs to0199 FINAL.
 
-Ten Astra/high calls finished once: two initials, continued/fresh static reviews,
-four fresh repair workers. Six products pass frozen46/46 rows plus scope, but the
-reference/oracle miss valid branch-identity cases. Both routes close two claims:
-initial1 Unicode-whitespace stripping and initial2 short-ref/tag ambiguity. Both
-initial2 repairs still strip Unicode whitespace.42 actual-allocator CLI replays
-substantiate this matrix. No observed fresh-context lift, overall completion ranking or
-production-readiness claim. Added native S/F time277.046/364.652s; incremental output
-5,831/8,746. These exclude preparation/assessment/peer review/delivery.
+0198 remains COMPLETE at PR75; frozen inputs/results are unchanged. Both continued
+and fresh review closed two findings; initial2 repairs retained Unicode trimming.
+There is still no observed fresh-context lift or overall completion ranking.
+0199 fixes current allocator base validation, not0198's unshipped R1 receipt-binding
+feature, and makes no data-loss/publication-harm or independent field claim.
+Both branch witnesses must enter any future R1 validation. Do not rerun exposed
+0197/0198/0199 as untouched confirmation or add a generic reminder based on them.
 
-0197 stays frozen, including its ambiguity and original outcomes.0198 is a new
-root-adapted task from the same feature family, not unrelated confirmation. Both
-support validated review/repair; neither proves fresh-context/full-phase necessity.
-Both branch witnesses must enter future R1 validation; current shipped-behaviour
-harm remains undemonstrated. No R1 feature/helper repair ships. No no-review repair
-arm exists, and one repair per review cannot establish equivalence. Do not rerun exposed tasks as
-confirmation or add a generic reminder based on them. Mission1, field gate15 and
-unrelated untouched confirmation remain OPEN;0187 NO-GO and existing routing stand.
-
-0193–0197 are COMPLETE; their FINAL records retain delivery authority. Preserve all
-frozen records, original checkout WIP, A16 and participant source/Git. Only
-prospectively receipt-owned disposable scratch may be cleaned. Current task delivery
-and cleanup are separate from the research result; consult0198 FINAL.
+Mission1, unrelated confirmation and field gate15 remain OPEN;0187 NO-GO and
+existing routing stand. Next work should address a supported core failure or
+untouched comparison, not continue polishing exposed fixtures. Preserve original
+checkout WIP, frozen records, participant source/Git and user-parked A16.
+Only prospectively owned disposable scratch may be cleaned. Delivery/cleanup
+remains separate from product verification; consult the actual FINAL record.
