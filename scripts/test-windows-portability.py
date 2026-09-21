@@ -160,6 +160,35 @@ m._compile(source + '\\n' + process.argv[3], filename);
                 self.assertEqual(state_path.read_bytes(), original)
         run([sys.executable, checker, '--self-test'], env=self.env)
 
+    def test_terminal_claim_run_id_path_components(self):
+        checker = self.package / 'config/skills/_shared/terminal-claim-check.py'
+        state_path = self.project / '.devlyn/pipeline.state.json'
+        runs = self.project / '.devlyn/runs'
+        runs.mkdir(parents=True)
+        for run_id in ('.', '..', 'valid..name', '.valid', 'valid.name'):
+            with self.subTest(run_id=run_id):
+                state = {'run_id': run_id, 'phases': {
+                    name: {'started_at': 'start', 'completed_at': 'end', 'verdict': 'PASS'}
+                    for name in ('verify', 'final_report')}}
+                original = (json.dumps(state) + '\n').encode('utf-8')
+                state_path.write_bytes(original)
+                invalid = run_id in ('.', '..')
+                result = run([sys.executable, checker, self.project], env=self.env, code=79)
+                receipt = json.loads(result.stdout)
+                self.assertEqual(receipt['status'], 'MALFORMED' if invalid else 'INCOMPLETE:archive')
+                self.assertEqual(result.stderr, b'')
+                self.assertEqual(state_path.read_bytes(), original)
+                if not invalid:
+                    archive = runs / run_id / 'pipeline.state.json'
+                    archive.parent.mkdir()
+                    archive.write_bytes(original)
+                    result = run([sys.executable, checker, self.project], env=self.env)
+                    self.assertEqual(result.stdout, b'')
+                    self.assertEqual(result.stderr, b'')
+                    self.assertEqual(archive.read_bytes(), original)
+                    archive.unlink()
+                    archive.parent.rmdir()
+
     def test_global_claude_settings_invalid_input_preserves_installation(self):
         dest = self.home / '.claude/settings.json'; dest.parent.mkdir()
         local = self.project / '.claude/skills/user-skill/keep'
