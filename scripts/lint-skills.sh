@@ -569,6 +569,13 @@ if ! grep -Fq 'SAFE_RUN_ID_RE' config/skills/_shared/archive_run.py \
   bad "archive_run.py must safely archive pair/risk-probe evidence and reject unsafe run ids"
 fi
 
+section "Check 6c1: Owner phase lifecycle and scope boundaries"
+if python3 scripts/test-owner-phases.py; then
+  ok "owner phase CLI and Git regression tests passed"
+else
+  bad "owner phase CLI and Git regression tests failed"
+fi
+
 section "Check 6c2: SURFACE_CLOSE v6 dispatch is complete and mirrored"
 surface_close_missing=0
 if python3 config/skills/_shared/state-phase-write.py --self-test >/dev/null 2>&1; then
@@ -632,7 +639,7 @@ for tree in config/skills .agents/skills; do
     || ! grep -Fq -- '--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --output-format json --strict-mcp-config --mcp-config '\''{"mcpServers":{}}'\''' "$skill" \
     || ! grep -Fq '.devlyn/surface-close.output.json' "$skill" \
     || ! grep -Fq '**Common post-fix checkpoint (BUILD_GATE and VERIFY):**' "$skill" \
-    || ! grep -Fq 'durability-enforce --round <n> --origin-phase <build_gate|verify>' "$skill" \
+    || ! grep -Fq 'durability-enforce --round <n> --origin-phase <build_gate|cleanup|verify>' "$skill" \
     || ! grep -Fq '`surface-rollback`' "$skill" \
     || grep -Fq 'Supplied digests' "$phase" \
     || grep -Fq 'Hash both artifacts first' "$phase" \

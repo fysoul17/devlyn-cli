@@ -1754,10 +1754,9 @@ def authorized_surface_findings(
     to catch. A persistent finding exhausts the existing BUILD_GATE
     fix-loop budget and halts for user/orchestrator review instead.
 
-    Not re-run at VERIFY MECHANICAL time (post-CLEANUP): CLEANUP's own
-    allowlist (tooling artifacts, dead code, doc-reference fixes) licenses
-    paths PLAN never declared, so re-checking there would false-positive on
-    CLEANUP's own sanctioned changes.
+    Not re-run at VERIFY MECHANICAL time: historical worker CLEANUP can
+    license paths outside PLAN. Owner CLEANUP instead enforces an unchanged
+    source checkpoint and the final untracked baseline before VERIFY.
     """
     surface, surface_error = load_authorized_surface(devlyn_dir)
     if surface_error is not None:

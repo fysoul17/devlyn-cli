@@ -76,6 +76,7 @@
     "scripts/lint-fixtures.sh",
     "scripts/lint-shadow-fixtures.sh",
     "scripts/lint-skills.sh",
+    "scripts/test-owner-phases.py",
     "CLAUDE.md",
     "AGENTS.md"
   ],

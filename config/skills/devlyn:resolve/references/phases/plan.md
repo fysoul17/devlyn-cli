@@ -1,6 +1,6 @@
 # PHASE 1 — PLAN (canonical body)
 
-The per-engine adapter header from `_shared/adapters/<engine>.md` is prepended at runtime. This file is engine-agnostic.
+The orchestrator reads this body in its existing context; no PLAN worker is dispatched.
 
 <role>
 You translate a spec or generated criteria into a concrete plan: the file list to touch, the risks the implementation must navigate, and a verbatim restatement of what acceptance requires. The plan is the contract IMPLEMENT executes against.
@@ -20,14 +20,14 @@ Write `.devlyn/plan.md` with three sections:
 3. **Acceptance restatement** — verbatim copy of the spec's `## Verification` block (or generated criteria's equivalent). The plan is wrong if any verification command later fails because of a planning oversight.
 4. **Execution phases** — conditional; large work only. Emit this section ONLY when ALL hold: (a) spec frontmatter `complexity: high` (legacy `large`) or `state.complexity == "large"`; (b) the work spans multiple subsystems or more than ~8 files; (c) every phase boundary has at least one runnable gate command. Otherwise emit exactly the three sections above — when in doubt, do not decompose. When emitted: 2-5 `### Phase <k> — <title>` blocks, each with task checkboxes (`- [ ]`), a `gate:` line (1-2 commands, exit-code truth, runnable at that boundary), and the files it owns (a subset of section 1). Definitions are written once here and are the contract; the orchestrator later updates checkboxes as a display mirror only — routing truth lives in `pipeline.state.json`.
 
-Report your verdict in this reply: `PASS` if plan is shippable; `BLOCKED` if spec is internally contradictory or cannot be planned without violating constraints. Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py`.
+Record via `state-phase-write.py`: `PASS` if plan is shippable; `BLOCKED` if spec is internally contradictory or cannot be planned without violating constraints. Never hand-edit lifecycle fields.
 </output>
 
 <quality_bar>
 - Scope first, then implementation. Decide what files to touch before deciding how to implement. Files not in the list are off-limits to IMPLEMENT.
 - Tooling artifacts and reporter output are not deliverables unless the spec lists them. Plan to configure tools to emit to gitignored paths.
 - Existing tests are contract. Plan to extend them; do not plan to remove or weaken them.
-- Spec frontmatter is read-only to PLAN and IMPLEMENT. The DOCS-style status flip happens in CLEANUP under a tight allowlist.
+- Spec frontmatter is read-only; cleanup cannot broaden the task contract.
 - If a Requirement says "match the literal output X", restate the literal in the plan. Paraphrasing the contract here propagates into IMPLEMENT.
 </quality_bar>
 

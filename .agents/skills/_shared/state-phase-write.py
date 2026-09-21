@@ -39,7 +39,7 @@ import sys
 import tempfile
 
 VALID_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK", "BLOCKED"}
-VALID_TRIGGERS = {"build_gate", "verify"}
+VALID_TRIGGERS = {"build_gate", "cleanup", "verify"}
 SPAWN_TRIGGERS = VALID_TRIGGERS | {"plan"}
 PHASE_NAMES = {"plan", "probe_derive", "implement", "surface_close", "build_gate", "cleanup", "verify", "final_report"}
 LEGAL_TRANSITIONS = {
@@ -48,7 +48,7 @@ LEGAL_TRANSITIONS = {
     "implement": {"implement", "surface_close", "build_gate", "cleanup", "verify", "final_report"},
     "surface_close": {"build_gate", "cleanup", "verify", "final_report"},
     "build_gate": {"implement", "cleanup", "verify", "final_report"},
-    "cleanup": {"verify", "final_report"},
+    "cleanup": {"implement", "verify", "final_report"},
     "verify": {"implement", "final_report"},
     "final_report": set(),
 }
@@ -1147,7 +1147,7 @@ def finding_targets_block(block: dict, findings: list[dict]) -> bool:
 
 
 def _read_triggering_findings(devlyn: pathlib.Path, origin_phase: str) -> tuple[list[dict], str]:
-    name = "build_gate.findings.jsonl" if origin_phase == "build_gate" else "verify-merged.findings.jsonl"
+    name = "verify-merged.findings.jsonl" if origin_phase == "verify" else f"{origin_phase}.findings.jsonl"
     path = devlyn / name
     try:
         raw = path.read_bytes()
@@ -1579,29 +1579,32 @@ def is_plan_dispatch_receipt(entry: dict) -> bool:
     return all(field in entry for field in PLAN_RECEIPT_FIELDS)
 
 
-def orchestrator_build(entry: dict | None) -> bool:
+OWNER_EXECUTION = {"plan": "orchestrator_context", "build_gate": "orchestrator_commands",
+                   "cleanup": "orchestrator_commands"}
+
+
+def orchestrator_phase(entry: dict | None, phase: str) -> bool:
     if not isinstance(entry, dict) or "execution_kind" not in entry:
         return False
-    if entry["execution_kind"] != "orchestrator_commands":
-        raise SystemExit("error: phases.build_gate.execution_kind is invalid")
+    if entry["execution_kind"] != OWNER_EXECUTION[phase]:
+        raise SystemExit(f"error: phases.{phase}.execution_kind is invalid")
     return True
 
 
-def validate_build_command_identity(devlyn, round_, engine=None, model=None,
-                                    prompt_sha256=None, engine_session_log=None,
-                                    entry=None) -> None:
+def validate_owner_identity(devlyn, phase, round_, engine=None, model=None,
+                            prompt_sha256=None, engine_session_log=None, entry=None) -> None:
     if any(value is not None for value in (engine, model, prompt_sha256, engine_session_log)):
-        raise SystemExit("error: orchestrator BUILD_GATE cannot claim worker identity or session")
+        raise SystemExit(f"error: orchestrator {phase} cannot claim worker identity or session")
     if entry is not None and (
         any(entry.get(field) is not None for field in ("engine", "model_requested", "model_effective"))
         or any(field in entry for field in ("model", "prompt_sha256", "invocation_receipt", "role_argv", "role_evidence"))
     ):
-        raise SystemExit("error: orchestrator BUILD_GATE contains worker identity")
+        raise SystemExit(f"error: orchestrator {phase} contains worker identity")
     if devlyn is not None:
-        for name in (f"build_gate.prompt.{round_}", f"build_gate.worker-session.{round_}.jsonl",
-                     f"build_gate.invocation.{round_}.json", f"build_gate.argv.{round_}.json"):
+        for name in (f"{phase}.prompt.{round_}", f"{phase}.worker-session.{round_}.jsonl",
+                     f"{phase}.invocation.{round_}.json", f"{phase}.argv.{round_}.json"):
             if os.path.lexists(devlyn / name):
-                raise SystemExit(f"error: orchestrator BUILD_GATE has current-round worker evidence: {name}")
+                raise SystemExit(f"error: orchestrator {phase} has current-round worker evidence: {name}")
 
 
 def append_phase_history(entry: dict, phase: str) -> None:
@@ -1614,11 +1617,11 @@ def append_phase_history(entry: dict, phase: str) -> None:
         fields = PLAN_RECEIPT_FIELDS + (
             ("invocation_receipt",) if "invocation_receipt" in entry else ()
         )
-    elif phase == "build_gate":
+    elif phase == "build_gate" or (phase in OWNER_EXECUTION and "execution_kind" in entry):
         fields = tuple(field for field in (
             "started_at", "verdict", "completed_at", "duration_ms", "round", "triggered_by",
             "execution_kind", "engine", "model", "model_requested", "model_effective", "prompt_sha256",
-            "invocation_receipt", "role_argv", "artifacts",
+            "invocation_receipt", "role_argv", "artifacts", "output_sha256", "pre_sha", "post_sha",
         ) if field in entry)
     elif phase in WORKER_SESSION_ARTIFACT_PHASES and "invocation_receipt" in entry:
         fields = (
@@ -1685,7 +1688,13 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
              prompt_sha256: str | None = None,
              untracked_before: list[str] | None = None,
              devlyn: pathlib.Path | None = None) -> None:
-    if phase in {"implement", "cleanup", "verify"} and "role_resolution" in state:
+    # Omitted worker metadata selects owner PLAN/CLEANUP. Explicit metadata keeps
+    # the historical worker API; an owner span never accepts those claims.
+    owner = phase == "build_gate" or (
+        phase in {"plan", "cleanup"}
+        and all(value is None for value in (engine, model, prompt_sha256))
+    )
+    if not owner and phase in {"implement", "cleanup", "verify"} and "role_resolution" in state:
         resolution = role_config_module()["snapshot"](state)
         selected = resolution["roles"]["primary_judge" if phase == "verify" else "worker"]
         if engine is not None and engine != selected["engine"]:
@@ -1700,11 +1709,17 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     phases_value = state.get("phases")
     entry = phases_value.get(phase) if isinstance(phases_value, dict) else None
     validate_plan_output(state, devlyn, phase)
-    if phase == "build_gate":
-        if orchestrator_build(entry):
-            validate_build_command_identity(devlyn, entry.get("round"), entry=entry)
-        validate_build_command_identity(devlyn, round_, engine, model, prompt_sha256)
+    if phase in OWNER_EXECUTION and orchestrator_phase(entry, phase):
+        validate_owner_identity(devlyn, phase, entry.get("round"), entry=entry)
+        if not owner:
+            raise SystemExit("error: owner phase cannot respawn as a worker")
+    if owner:
+        validate_owner_identity(devlyn, phase, round_, engine, model, prompt_sha256)
+        if phase == "cleanup" and pre_sha is None:
+            raise SystemExit("error: owner cleanup requires --pre-sha")
     if phase == "plan":
+        if owner and (state.get("phases", {}).get("implement") or {}).get("started_at"):
+            raise SystemExit("BLOCKED:plan-already-in-use: scope cannot change after implementation starts")
         history = entry.get("history", []) if isinstance(entry, dict) else []
         if not isinstance(history, list):
             raise SystemExit("error: phases.plan.history must be an array")
@@ -1717,11 +1732,11 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
             raise SystemExit(
                 f"BLOCKED:plan-round-nonmonotonic: expected={dispatch_count} supplied={round_}"
             )
-        if not isinstance(engine, str) or not engine:
+        if not owner and (not isinstance(engine, str) or not engine):
             raise SystemExit("error: phases.plan spawn requires --engine")
-        if not isinstance(model, str) or not model:
+        if not owner and (not isinstance(model, str) or not model):
             raise SystemExit("error: phases.plan spawn requires --model")
-        if prompt_sha256 is None or not SHA256_RE.fullmatch(prompt_sha256):
+        if not owner and (prompt_sha256 is None or not SHA256_RE.fullmatch(prompt_sha256)):
             raise SystemExit("error: phases.plan spawn requires --prompt-sha256")
         if dispatch_count > 0 and triggered_by is None:
             raise SystemExit("error: phases.plan re-spawn requires --triggered-by")
@@ -1759,7 +1774,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         )
         if (
             state.get("version") == "3.0"
-            and phase != "build_gate"
+            and not owner
             and requested_engine == "codex"
             and phase in WORKER_SESSION_ARTIFACT_PHASES
             and prompt_sha256 is None
@@ -1773,7 +1788,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         )
         if (
             state.get("version") == "3.0"
-            and phase != "build_gate"
+            and not owner
             and requested_engine == "codex"
             and phase in WORKER_SESSION_ARTIFACT_PHASES
             and not requested_model
@@ -1823,8 +1838,8 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         entry["pre_sha"] = pre_sha
     if prompt_sha256 is not None:
         entry["prompt_sha256"] = prompt_sha256
-    if phase == "build_gate":
-        entry["execution_kind"] = "orchestrator_commands"
+    if owner:
+        entry["execution_kind"] = OWNER_EXECUTION[phase]
         entry["engine"] = entry["model_requested"] = entry["model_effective"] = None
         entry.pop("prompt_sha256", None)
         entry.pop("role_evidence", None)
@@ -1875,12 +1890,29 @@ def do_complete(state: dict, phase: str, verdict: str | None,
         raise SystemExit(
             f"error: phases.{phase} already completed — respawn before completing again"
         )
-    command_build = phase == "build_gate" and orchestrator_build(entry)
-    if command_build:
-        validate_build_command_identity(
-            devlyn, entry.get("round"), engine, model,
+    owner = phase in OWNER_EXECUTION and orchestrator_phase(entry, phase)
+    if owner:
+        validate_owner_identity(
+            devlyn, phase, entry.get("round"), engine, model,
             engine_session_log=engine_session_log, entry=entry,
         )
+        if phase == "cleanup" and verdict in {"PASS", "PASS_WITH_ISSUES"}:
+            if work is None or not entry.get("pre_sha") or post_sha != entry["pre_sha"]:
+                raise SystemExit("BLOCKED:owner-cleanup-source-changed: preserve the IMPLEMENT checkpoint")
+            checked = subprocess.run(
+                ["git", "diff", "--quiet", entry["pre_sha"], "--"], cwd=work,
+                capture_output=True, check=False,
+            )
+            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=work,
+                                  capture_output=True, text=True, check=False)
+            if checked.returncode != 0 or head.returncode != 0 or head.stdout.strip() != post_sha:
+                raise SystemExit("BLOCKED:owner-cleanup-source-changed: return code cleanup to IMPLEMENT")
+            checker = runpy.run_path(pathlib.Path(__file__).with_name("spec-verify-check.py"))
+            baseline, baseline_error = checker["load_untracked_baseline"](devlyn)
+            current, current_error = checker["current_untracked_files"](work)
+            if baseline_error or current_error or current - baseline:
+                detail = baseline_error or current_error or repr(sorted(current - baseline))
+                raise SystemExit(f"BLOCKED:owner-cleanup-untracked: {detail}")
     if phase != "plan":
         validate_plan_output(state, devlyn, phase)
     if phase == "final_report":
@@ -1939,7 +1971,7 @@ def do_complete(state: dict, phase: str, verdict: str | None,
         entry.setdefault("model_requested", None)
     entry.pop("model", None)
 
-    artifact_phase = None if command_build else WORKER_SESSION_ARTIFACT_PHASES.get(phase)
+    artifact_phase = None if owner else WORKER_SESSION_ARTIFACT_PHASES.get(phase)
     retained_session = None
     if devlyn is not None and artifact_phase is not None:
         candidate = devlyn / f"{artifact_phase}.worker-session.{entry.get('round')}.jsonl"
@@ -2068,6 +2100,11 @@ def do_transition(
     """
     if next_phase not in LEGAL_TRANSITIONS.get(phase, set()):
         raise SystemExit(f"error: illegal phase transition: {phase} -> {next_phase}")
+    if phase == "cleanup" and orchestrator_phase(state.get("phases", {}).get(phase), phase):
+        if next_phase == "verify" and verdict not in {"PASS", "PASS_WITH_ISSUES"}:
+            raise SystemExit("BLOCKED:owner-cleanup-failed: repair before VERIFY")
+        if next_phase == "implement" and (verdict != "FAIL" or next_triggered_by != "cleanup"):
+            raise SystemExit("BLOCKED:owner-cleanup-failed: repair requires FAIL and cleanup trigger")
     candidate = copy.deepcopy(state)
     attestation_error = do_complete(
         candidate, phase, verdict, post_sha, findings_file, log_file,
@@ -2697,7 +2734,7 @@ def self_test() -> int:
         build_carrier_1 = write_build_gate_results()
         transitioned = build_gate_state_cli(
             "transition", "--verdict", "PASS", "--next-phase", "cleanup",
-            "--next-round", "0",
+            "--next-round", "0", "--next-pre-sha", "test-pre-sha",
         )
         assert transitioned.returncode == 0, transitioned.stderr
         build_bound_state = read_state(evidence_state_path)
@@ -3744,7 +3781,7 @@ def self_test() -> int:
         # exact diff window for later mechanical checks.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "cleanup", 0, None, "pre-sha", None, None)
+        do_spawn(state, "cleanup", 0, None, "pre-sha", "claude", None)
         write_state(state_path, state)
         state = read_state(state_path)
         do_complete(state, "cleanup", "PASS", "post-sha", None, None, None, None)
@@ -5514,15 +5551,16 @@ def main() -> int:
         spawn_phase = args.phase if args.event == "spawn" else args.next_phase
         spawn_round = args.round if args.event == "spawn" else args.next_round
         implement = (state.get("phases") or {}).get("implement")
+        origin = implement.get("triggered_by") if isinstance(implement, dict) else None
         fix_reentry = (
             spawn_phase in VALID_TRIGGERS and spawn_round >= 1
             and isinstance(implement, dict)
             and implement.get("round") == spawn_round
-            and implement.get("triggered_by") == spawn_phase
+            and (origin == spawn_phase or (origin == "cleanup" and spawn_phase == "build_gate"))
         )
         if fix_reentry:
             enforce_closure_durability_reentry(
-                pathlib.Path.cwd(), devlyn, state, spawn_phase, spawn_round,
+                pathlib.Path.cwd(), devlyn, state, origin, spawn_round,
                 require_existing=True,
             )
         if args.event == "spawn":
