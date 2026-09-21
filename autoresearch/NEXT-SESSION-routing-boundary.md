@@ -1,11 +1,12 @@
-# 0197 review-context comparison / continuation
+# 0198 receipt admission / continuation
 
-Read [HANDOFF.md](HANDOFF.md), [0197](iterations/0197-review-context-comparison.md),
-then `.devlyn/0197/FINAL.md` in `~/.local/share/nx01/core-continuation-20260912`.
-Root direct; no resolve, including controls. Ten actual calls finished, all six
-products passed frozen43 rows, but review-derived replays exposed oracle misses.
-Both continued and fresh review closed two path defects on one product each;
-fresh advantage remains unobserved. A root-authored task/receipt type ambiguity
-prevents an overall completion ranking or field closure. Fix admission against real
-producer receipts before an untouched next task; no outcome-tuned rerun of0197.
-Preserve WIP, frozen history, products/Git and A16. FINAL separates delivery/cleanup.
+Read [HANDOFF.md](HANDOFF.md), [0198](iterations/0198-receipt-admission-comparison.md),
+then `.devlyn/0198/FINAL.md` in `~/.local/share/nx01/core-continuation-20260912`.
+Root direct; no resolve, including controls. Ten actual calls finished; all six
+products pass frozen46 rows, but actual branch-identity witnesses reveal gaps.
+Both continued and fresh review close two findings; initial2 repairs retain Unicode
+trimming. No observed fresh advantage; equivalence and overall ranking unproven. Real receipt schemas
+are now exercised;0197 remains frozen. R1 is a new task in the same feature family,
+not unrelated field confirmation. Carry both witnesses into future R1 validation;
+shipped-behaviour harm is undemonstrated. No feature/default change ships here. Preserve WIP, source/Git and A16.
+FINAL separates delivery/cleanup. Mission1/gate15 and unrelated confirmation OPEN.
