@@ -5,14 +5,24 @@
         "3.0.0"
       ],
       "length": 11091,
-      "sha256": "099e68f3e203fa735bb1ebcd780a0e18bde462ea7de5f74fb3d17cee5e64b63a"
+      "sha256": "099e68f3e203fa735bb1ebcd780a0e18bde462ea7de5f74fb3d17cee5e64b63a",
+      "preamble": "# Codex Project Instructions\n\ndevlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required) into Claude Code, plus the contract below. Codex CLI reads this file when invoked inside a project that has it. The principles are non-negotiable on every change.\n\n",
+      "body": {
+        "length": 10816,
+        "sha256": "8b972c2c379e5ff8411bf1214f926a3b9904bdf857ac6b30a8c79ce0e32182e3"
+      }
     },
     {
       "versions": [
         "3.0.1"
       ],
       "length": 12166,
-      "sha256": "33fbd5b01c8e65f4c663f95423a45b16dcf5bb28f1fd0c6791079abd20c267ae"
+      "sha256": "33fbd5b01c8e65f4c663f95423a45b16dcf5bb28f1fd0c6791079abd20c267ae",
+      "preamble": "# Codex Project Instructions\n\ndevlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required) into Claude Code, plus the contract below. Codex CLI reads this file when invoked inside a project that has it. The principles are non-negotiable on every change.\n\n",
+      "body": {
+        "length": 11891,
+        "sha256": "52326a832df6d5ab13bddca5a1a01ad338a3db71d172c70d3eaed806668db4d8"
+      }
     },
     {
       "versions": [
@@ -21,7 +31,12 @@
         "3.1.2"
       ],
       "length": 12581,
-      "sha256": "acd3672efaa33e75455f8530a7425e950c01c822c6f5d85d7dbc9d7ff1958028"
+      "sha256": "acd3672efaa33e75455f8530a7425e950c01c822c6f5d85d7dbc9d7ff1958028",
+      "preamble": "# Codex Project Instructions\n\ndevlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required) into Claude Code, plus the contract below. Codex CLI reads this file when invoked inside a project that has it. The principles are non-negotiable on every change.\n\n",
+      "body": {
+        "length": 12306,
+        "sha256": "0de6061f9dff8e88964e542bb8a5e113996e480bef597774fb15eaa766472129"
+      }
     }
   ],
   "CLAUDE.md": [
@@ -30,14 +45,24 @@
         "3.0.0"
       ],
       "length": 24434,
-      "sha256": "29ddcc5ef4d5b44b2ba6aae22bd3c0c033ceaa47b240bd647aaefbe00f2a6e4e"
+      "sha256": "29ddcc5ef4d5b44b2ba6aae22bd3c0c033ceaa47b240bd647aaefbe00f2a6e4e",
+      "preamble": "# Project Instructions\n\ndevlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required) into Claude Code, plus the contract below. These principles are non-negotiable on every change \u2014 yours and any sub-agent's.\n\n",
+      "body": {
+        "length": 24204,
+        "sha256": "555d8b9a4c154ec5225105919836a4d9831c76c1b1c7ee4c19fecac8fbd1c948"
+      }
     },
     {
       "versions": [
         "3.0.1"
       ],
       "length": 25417,
-      "sha256": "50301bf98507c83da1576be7f443885236e7d421ff2e40fd077ed9652ea3a2e0"
+      "sha256": "50301bf98507c83da1576be7f443885236e7d421ff2e40fd077ed9652ea3a2e0",
+      "preamble": "# Project Instructions\n\ndevlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required) into Claude Code, plus the contract below. These principles are non-negotiable on every change \u2014 yours and any sub-agent's.\n\n",
+      "body": {
+        "length": 25187,
+        "sha256": "53a933e22369438a5d9dd7aa5f778909aeba5a38d5e2e68b8a36dab5c874d84d"
+      }
     },
     {
       "versions": [
@@ -46,7 +71,12 @@
         "3.1.2"
       ],
       "length": 26152,
-      "sha256": "d11a863907dabdf827063df7133a8a46a14e018f608884f08c601bf36e0f3f0c"
+      "sha256": "d11a863907dabdf827063df7133a8a46a14e018f608884f08c601bf36e0f3f0c",
+      "preamble": "# Project Instructions\n\ndevlyn-cli installs `/devlyn:ideate` (optional) and `/devlyn:resolve` (required) into Claude Code, plus the contract below. These principles are non-negotiable on every change \u2014 yours and any sub-agent's.\n\n",
+      "body": {
+        "length": 25922,
+        "sha256": "dd9f0f63f559a3b9a6e2bbf102045b01f6b73bce684dd27124ee6d6af3641b91"
+      }
     }
   ]
 }

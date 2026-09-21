@@ -9,7 +9,7 @@ const { execSync } = require('child_process');
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
-const { updateInstructions } = require('./instructions');
+const { updateInstructions, InstructionError } = require('./instructions');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
@@ -1217,6 +1217,8 @@ function showBenchmarkModeHelp(mode) {
 
 // Main
 const args = process.argv.slice(2);
+
+async function main() {
 const command = args[0];
 
 switch (command) {
@@ -1226,7 +1228,7 @@ switch (command) {
     break;
   case '-y':
   case '--yes':
-    init(true);
+    await init(true);
     break;
   case 'list':
   case 'ls':
@@ -1307,10 +1309,16 @@ switch (command) {
   }
   case 'init':
   case undefined:
-    init(false);
+    await init(false);
     break;
   default:
     log(`Unknown command: ${command}`, 'yellow');
     showHelp();
     process.exit(1);
 }
+}
+
+main().catch((error) => {
+  console.error(error instanceof InstructionError ? `\n${error.message}` : error);
+  process.exitCode = 1;
+});

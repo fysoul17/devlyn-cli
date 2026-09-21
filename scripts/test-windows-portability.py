@@ -395,6 +395,80 @@ installClaudeCore();
                 self.invoke("installInstructionsForCLI('grok');", package=copy)
                 self.assertEqual(dest.read_bytes(), after)
 
+    def test_instruction_legacy_preamble_edits_migrate_with_exact_body(self):
+        copy = self.case / 'legacy-package'; shutil.copytree(self.package, copy)
+        manifest_path = copy / 'bin/instruction-templates.json'
+        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+        header = '# Project Instructions\n\n'
+        preamble = header + 'devlyn-cli installs old defaults.\n\n'
+        body = '## North Star\n\nThis contract serves one goal: any capable engine, old defaults. 한글 😀\n'
+        def signature(text):
+            return {'length': len(text.encode('utf-16-le')) // 2,
+                    'sha256': hashlib.sha256(text.encode()).hexdigest()}
+        for intro in (preamble.replace('old defaults', 'another release'), preamble):
+            manifest['CLAUDE.md'].append({**signature(intro + body),
+                                          'preamble': intro, 'body': signature(body)})
+        manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
+        custom = '사용자 규칙: resolve 금지. 배포는 사용자가 진행.\n\n'
+        for eol in ('\n', '\r\n'):
+            for intro in (header + custom, preamble + custom):
+                with self.subTest(eol=eol, intro=intro):
+                    prefix, suffix = '\ufeff# Team\n\n', '\n# Local tail\nKeep me.\n'
+                    before = (prefix + intro + body + suffix).replace('\n', eol).encode()
+                    dest = self.project / 'CLAUDE.md'; dest.write_bytes(before)
+                    self.invoke('installClaudeCore();', package=copy)
+                    after = dest.read_bytes()
+                    kept_intro = custom if intro.startswith(preamble) else intro
+                    self.assertTrue(after.startswith((prefix + kept_intro).replace('\n', eol).encode()))
+                    self.assertTrue(after.endswith(suffix.replace('\n', eol).encode()))
+                    self.assertNotIn(b'old defaults', after)
+                    self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
+                    self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob('CLAUDE.md*.backup')])
+                    self.invoke('installClaudeCore();', package=copy)
+                    self.assertEqual(dest.read_bytes(), after)
+        for before in (header + custom + body.replace('old defaults', 'edited body'),
+                       preamble + body + header + custom + body,
+                       preamble.replace('old defaults.', 'old defaults. Use pnpm.') + body,
+                       preamble.rstrip('\n') + '\n' + body,
+                       header + custom + body + body):
+            dest.write_text(before, encoding='utf-8')
+            original = dest.read_bytes()
+            result = self.invoke('installClaudeCore();', package=copy, code=None)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(dest.read_bytes(), original)
+
+    def test_instruction_cli_conflict_guides_merge_and_retry_without_stack(self):
+        for name, args in [('CLAUDE.md', ['-y']), ('AGENTS.md', ['agents', 'grok'])]:
+            with self.subTest(name=name):
+                dest = self.project / name
+                original = (self.package / name).read_bytes().replace(b'This contract serves', b'Our custom contract serves', 1)
+                dest.write_bytes(original)
+                argv = ['node', '--require', self.preload, self.package / 'bin/devlyn.js', *args]
+                result = run(argv, cwd=self.project, env=self.env, code=1)
+                self.assertIn(b'needs merge', result.stderr)
+                self.assertIn(b'Original preserved', result.stderr)
+                self.assertNotIn(b'    at ', result.stderr)
+                self.assertNotIn(b'All done', result.stdout)
+                self.assertEqual(dest.read_bytes(), original)
+                recovery = self.project / '.devlyn/instructions'
+                backup, = recovery.glob(name + '*.backup')
+                incoming, = recovery.glob(name + '*.incoming')
+                guide, = recovery.glob(name + '*.merge.md')
+                self.assertEqual(backup.read_bytes(), original)
+                guide_text = guide.read_text(encoding='utf-8')
+                self.assertIn(str(backup), guide_text)
+                self.assertIn(str(incoming), guide_text)
+                self.assertIn('outside', guide_text)
+                self.assertIn('npx devlyn-cli', guide_text)
+                self.assertIn(str(guide).encode(), result.stderr)
+                files = {p.name: p.read_bytes() for p in recovery.iterdir()}
+                run(argv, cwd=self.project, env=self.env, code=1)
+                self.assertEqual({p.name: p.read_bytes() for p in recovery.iterdir()}, files)
+                custom = b'# Project rules\nKeep our custom contract.\n\n'
+                dest.write_bytes(custom + incoming.read_bytes())
+                run(argv, cwd=self.project, env=self.env)
+                self.assertTrue(dest.read_bytes().startswith(custom))
+
     def test_instruction_conflicts_preserve_original_and_fail_visibly(self):
         self.invoke("installInstructionsForCLI('codex');")
         dest = self.project / 'AGENTS.md'; good = dest.read_bytes()
@@ -468,7 +542,7 @@ installClaudeCore();
         for name, command in [('AGENTS.md', "installAgentsForCLI('grok');"), ('CLAUDE.md', 'installClaudeCore();')]:
             with self.subTest(name=name):
                 dest = self.project / name
-                before = (self.package / name).read_bytes().replace(b'devlyn-cli installs ', b'Team changed this sentence: ', 1)
+                before = (self.package / name).read_bytes().replace(b'This contract serves one goal:', b'Team changed this body sentence:', 1)
                 dest.write_bytes(before)
                 result = self.invoke(command, code=None)
                 self.assertNotEqual(result.returncode, 0)
