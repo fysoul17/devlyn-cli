@@ -32,11 +32,15 @@ The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the s
 
 **0118 exception — accepted 2026-09-07 KST:** the user's concurrent same-project tasks/sessions request permits bounded bootstrap admission protection. [Current0118 checkpoint](iterations/0118-concurrent-admission.md#current-continuation--2026-09-06) owns full R5 PASS_WITH_ISSUES, BUILD6/6 plus independent MECHANICAL6/6, actual final trio, two retained LOW advisories and pushed implementation `9d70cd8`. Original/failed acceptance histories are preserved. Mission1 floor/ceiling and frozen A16 remain open and separate; no fleet, lifetime lease, automatic placement or merge/shared-resource guarantee follows. Main73919fa adopts exact0118/0119 sources after integration checks;0115/0116 remain separate candidates.
 
-**Open work (2026-09-06)**:
-- [0120 model adaptation direction](iterations/0120-model-adaptation-direction.md): root decides after independent actual Fable/Grok advice. Single-task deterministic execution/reporting, model-specific deltas, role separation and fair replacement comparisons are authorized candidates; preserve quality and measure whole-run OUTPUT/time/value before adoption. This authorization does not reopen frozen A16 or imply a fleet/platform build.
-- 0114/A15 corrects 0113 outcome retention, per-run token anchors and launch isolation before fresh collection; quick12/full32 retain their historical frozen0113 screen/confirmation roles. New0120 confirmation excludes every task exposed during tuning; those old labels alone do not establish independence. See HANDOFF START-HERE.
-- Continue the existing 0070 intent-closure direction; the aggregate/off-resolve closure kernel is designed, not fully shipped. Post-panel changes follow both quality and efficiency, with the observed SURFACE_CLOSE false-halt candidate first (0114).
-- The full #15 external-developer trial remains open. [0140](iterations/0140-delegated-real-task.md) completes a delegated existing-project task without rescue, but its small comparison does not establish quality/time superiority or causal pair value; copycat remains NOT_RUN under the registered stop condition.
+**Current work (2026-09-21):** [0201 transformation plan](iterations/0201-harness-transformation-plan.md)
+owns the ordered smaller-candidate implementation, finite comparison, adoption or
+rejection, and product migration. Root decides after independent advice. First
+inspect/reuse0125's separate BUILD-worker removal against current source. This
+single-task simplification is Mission1 work, not gated on first proving the old
+full workflow superior. Do not start fleet/platform work or reopen frozen A16.
+Current no-resolve instructions include comparison controls. Historical evidence
+is retained; new candidate results cannot certify legacy parity or gate15.
+The external-developer trial and broader Mission1 superiority remain open.
 
 **Hard NO list during Mission 1 (subject to the bounded 0118 exception and explicit 0120 single-task authorization above)**:
 - ❌ No worktree-per-task substrate work. Stays single-worktree on `main`.
@@ -58,8 +62,8 @@ arm; moat = lift that survives copycat). The instrument track
 model/version change) is Mission 1 in-scope work — it is single-task
 measurement, not parallel infra. Ceiling levers (design-pair depth,
 knowledge compounding into PLAN/ideate) queue BEHIND the instrument.
-Roadmap to endgame: M1 floor+ceiling proven → M1.5 deterministic runner
-(evidence-gated: orchestration skip-rate data; single-task only) → M2
+Roadmap to endgame: M1 single-task candidate and adoption decision under0201,
+with floor/ceiling gates still required before M2 → M2
 parallel fleet (substrate design already recorded below) → M3 autonomous
 organisation (user endgame: 의도·목표·북극성만 주면 에이전트 군단이 협력해
 완수). Operating priority: the strongest available orchestrator drives the

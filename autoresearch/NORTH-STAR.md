@@ -2,7 +2,11 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current guidance reconciled: 2026-09-07 (0120; accuracy/completeness → verified-resolution speed → tokens/cost; prior frozen comparisons and 0114 claim boundaries retained).
+Current work: [0201 transformation plan](iterations/0201-harness-transformation-plan.md)
+(2026-09-21). Accuracy/completeness → verified-resolution speed → tokens/cost stays
+the priority. The independent CLI core comes first; optional Pyx and OS/fleet are
+later.0201 owns the prospective smaller-candidate/adoption sequence; historical
+gates, frozen results and current customer policy are not silently changed.
 Value axes refined: 2026-07-10 (user directive,
 HANDOFF Block 8: raw coding correctness is the engine floor, the moat is
 intent fidelity / decomposition / collaboration synergy / design rigor /
@@ -13,9 +17,11 @@ unprompted completeness. Prior: 2026-07-06 ceiling amendment; 2026-05-07
 
 ## The ultimate goal (why this skill exists)
 
-**devlyn-cli is not a benchmark exercise. It is the foundation for an autonomous AI Agent organisation — the kind that lets a single human plant an idea and walk away while 5-10+ tasks run in parallel to completion, then composes into a pyx-style self-operating system.**
+**devlyn-cli first improves real task outcomes as an independent core harness.
+It may later support an adaptive agent organisation and optional shared memory;
+that expansion is not a prerequisite for single-task value.**
 
-The user's working contract, in their own framing:
+The earlier long-horizon framing remains historical context, not today's work order:
 - "Plant an idea or goal as a prompt; agents take it end-to-end without me touching engineering."
 - "Run 5-10+ tasks in parallel — at minimum."
 - "Eventually compose into a single AI Agent organisation that operates autonomously, pyx-style."
