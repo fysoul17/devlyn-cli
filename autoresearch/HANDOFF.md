@@ -1,7 +1,8 @@
 # Continue 0201 toward the unified intent entry
 
-2026-09-22 KST. Root direct, **no resolve invocation**, actual Fable5.1/Grok4.6
-verification and review. User clarified: continue0201 sequentially; do not ask
+2026-09-22 KST. Root direct, **no resolve invocation**.
+0203 used actual Fable/Grok review; 0204 used actual Fable review.
+User clarified: continue0201 sequentially; do not ask
 again which already-defined milestone to resume. Intent consolidation remains
 the product direction, not merely a rename of the fixed phase list.
 
@@ -12,12 +13,21 @@ raw evidence, controls, review limits and complete checks: `.devlyn/0203/`.
 Completion receipt: `.git/devlyn-completion/8989b8de86519c7dbef36fdd/receipt.json`.
 The source patch does not complete0201 step1 or establish runtime efficacy.
 
-Next unit: an internal intent candidate and its actual invocation trace,
-including selected execution/code cleanup and review→repair→affected checks→fresh
-review. No separate PLAN/BUILD/CLEANUP model calls. Preserve original constraints,
-engine selections, failure evidence and final source/evidence agreement. The
-legacy state helper is not a complete scheduler; don't mistake fixture PASS or
-callable compatibility APIs for observed candidate routing.
+[0204](iterations/0204-intent-conformance.md) now supplies an internal owner prompt
+and an actual Codex owner → two Fable reviews trace, with no separate
+PLAN/BUILD/CLEANUP calls or resolve invocation. The owner repaired the known 0198
+Unicode-branch defect from owner inspection, rechecked and received fresh review.
+A reviewer-originated non-branch HEAD defect was reproduced but not repaired,
+so that repair edge stays OPEN and the fixture honestly ended INCOMPLETE.
+Final source/check/review hashes agree. Evidence: `.devlyn/0204/`; exposed
+participant: `/Users/aipalm/.local/share/nx01/0204-participant`.
+
+Next unit is 0201 step 2 admission: demonstrate repair of a reviewer-originated
+finding and add the planned 0185 rollback and 0187 scope regressions to the
+internal candidate checks. Preserve 0204's incomplete result;
+do not reroll until PASS or turn inherited research defects into an open-ended
+repair queue. The observed same-engine owner route does not establish autonomous
+review selection, all engine routes or product quality/cost superiority.
 
 Then register0201's A/B/C tasks and whole-call time/usage budgets before draws;
 the24/48 ceilings do not authorize an unregistered comparison. Existing cross-project

@@ -43,10 +43,11 @@ def review(work, round_id):
         ['git', 'diff', 'HEAD', '--', SOURCE, 'tests/test_regression.py'], cwd=work, text=True))
     # Checks are raw records; prior advice and owner interpretations are excluded.
     checks = work / '.devlyn' / ('checks-' + round_id)
-    if checks.exists():
-        for path in sorted(checks.iterdir()):
-            if path.is_file():
-                parts.append('\nCHECK ' + path.name + '\n' + path.read_text())
+    check_files = sorted(path for path in checks.iterdir() if path.is_file()) if checks.is_dir() else []
+    if not check_files:
+        parts.append('\nNO CHECKS SUPPLIED: executed verification is missing; report this limitation.')
+    for path in check_files:
+        parts.append('\nCHECK ' + path.name + '\n' + path.read_text())
     prompt = out / 'prompt.txt'
     prompt.write_text('\n'.join(parts))
     argv = [sys.executable, str(REPO / 'config/skills/_shared/run-bounded.py'),
