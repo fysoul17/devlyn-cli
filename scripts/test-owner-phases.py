@@ -126,6 +126,9 @@ class OwnerPhases(unittest.TestCase):
         self.cli("cleanup", *args, error="owner-cleanup-source-changed")
         self.git("add", "source.txt")
         self.cli("cleanup", *args, error="owner-cleanup-source-changed")
+        (self.work / "source.txt").write_text("original\n")
+        self.cli("cleanup", *args, error="owner-cleanup-source-changed")
+        (self.work / "source.txt").write_text("unverified change\n")
         self.git("commit", "-qm", "unverified")
         self.cli("cleanup", *args, error="owner-cleanup-source-changed")
         # All mutations are in this disposable test fixture.
@@ -143,8 +146,50 @@ class OwnerPhases(unittest.TestCase):
                  "--next-round", "1", error="closure-durability")
         self.git("commit", "--allow-empty", "-qm", "chore(pipeline): implement fix round 1")
         self.cli("implement", "durability-enforce", "--round", "1", "--origin-phase", "cleanup")
+        for phase in ("cleanup", "verify"):
+            self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", phase,
+                     "--next-round", "1", error="owner-cleanup-repair-route")
         self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "build_gate", "--next-round", "1")
         self.assert_owner("build_gate")
+        fixed_head = self.git("rev-parse", "HEAD")
+        (self.devlyn / "spec-verify.results.json").write_text(
+            json.dumps({"commands": [], "process_evidence": None}))
+        self.cli("build_gate", "transition", "--verdict", "PASS", "--next-phase", "cleanup",
+                 "--next-round", "1", "--next-pre-sha", fixed_head)
+        (self.devlyn / "cleanup.findings.jsonl").write_text("\n")
+        self.cli("cleanup", "transition", "--verdict", "PASS", "--post-sha", fixed_head,
+                 "--next-phase", "verify", "--next-round", "1", "--next-engine", "claude")
+
+    def test_cleanup_repair_bypass_still_requires_durability(self):
+        self.cli("cleanup", "spawn", "--round", "0", "--pre-sha", self.head)
+        (self.devlyn / "cleanup.findings.jsonl").write_text("")
+        self.cli("cleanup", "transition", "--verdict", "FAIL", "--post-sha", self.head,
+                 "--next-phase", "implement", "--next-round", "1", "--next-triggered-by", "cleanup",
+                 "--next-engine", "claude")
+        self.git("commit", "--allow-empty", "-qm", "chore(pipeline): implement fix round 1")
+        pending = self.state()
+        for bypasses, phase in (([], "build_gate"), (["cleanup"], "build_gate"),
+                                (["build-gate"], "cleanup"), (["build-gate", "cleanup"], "verify")):
+            with self.subTest(bypasses=bypasses):
+                (self.devlyn / "closure-durability.round-1.json").unlink(missing_ok=True)
+                self.save(dict(pending, bypasses=bypasses))
+                for wrong_round in ("0", "2"):
+                    self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", phase,
+                             "--next-round", wrong_round, error="owner-cleanup-repair-route")
+                args = ("transition", "--verdict", "PASS", "--next-phase", phase,
+                        "--next-round", "1", "--next-pre-sha", self.git("rev-parse", "HEAD"))
+                self.cli("implement", *args, error="closure-durability")
+                self.cli("implement", "durability-enforce", "--round", "1", "--origin-phase", "cleanup")
+                self.cli("implement", *args)
+
+    def test_historical_cleanup_cannot_take_owner_repair_edge(self):
+        self.cli("cleanup", "spawn", "--round", "0", "--engine", "claude", "--pre-sha", self.head)
+        for verdict in ("PASS", "FAIL"):
+            self.cli("cleanup", "transition", "--verdict", verdict,
+                     "--next-phase", "implement", "--next-round", "1", "--next-triggered-by", "cleanup",
+                     "--next-engine", "claude", error="owner-cleanup-failed")
+        self.cli("cleanup", "transition", "--verdict", "PASS", "--post-sha", self.head,
+                 "--next-phase", "verify", "--next-round", "0", "--next-engine", "claude")
 
     def test_dirty_cleanup_can_fail_honestly_but_cannot_verify(self):
         self.cli("cleanup", "spawn", "--round", "0", "--pre-sha", self.head)

@@ -1903,9 +1903,13 @@ def do_complete(state: dict, phase: str, verdict: str | None,
                 ["git", "diff", "--quiet", entry["pre_sha"], "--"], cwd=work,
                 capture_output=True, check=False,
             )
+            indexed = subprocess.run(
+                ["git", "diff", "--cached", "--quiet", entry["pre_sha"], "--"], cwd=work,
+                capture_output=True, check=False,
+            )
             head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=work,
                                   capture_output=True, text=True, check=False)
-            if checked.returncode != 0 or head.returncode != 0 or head.stdout.strip() != post_sha:
+            if checked.returncode != 0 or indexed.returncode != 0 or head.returncode != 0 or head.stdout.strip() != post_sha:
                 raise SystemExit("BLOCKED:owner-cleanup-source-changed: return code cleanup to IMPLEMENT")
             checker = runpy.run_path(pathlib.Path(__file__).with_name("spec-verify-check.py"))
             baseline, baseline_error = checker["load_untracked_baseline"](devlyn)
@@ -2100,11 +2104,21 @@ def do_transition(
     """
     if next_phase not in LEGAL_TRANSITIONS.get(phase, set()):
         raise SystemExit(f"error: illegal phase transition: {phase} -> {next_phase}")
-    if phase == "cleanup" and orchestrator_phase(state.get("phases", {}).get(phase), phase):
-        if next_phase == "verify" and verdict not in {"PASS", "PASS_WITH_ISSUES"}:
+    if phase == "implement" and state.get("phases", {}).get(phase, {}).get("triggered_by") == "cleanup":
+        bypasses = state.get("bypasses", [])
+        required = "build_gate" if "build-gate" not in bypasses else (
+            "cleanup" if "cleanup" not in bypasses else "verify"
+        )
+        if next_phase not in {required, "final_report"}:
+            raise SystemExit(f"BLOCKED:owner-cleanup-repair-route: next phase must be {required}")
+        if next_phase != "final_report" and next_round != state["phases"][phase]["round"]:
+            raise SystemExit("BLOCKED:owner-cleanup-repair-route: preserve the IMPLEMENT repair round")
+    if phase == "cleanup":
+        owner = orchestrator_phase(state.get("phases", {}).get(phase), phase)
+        if owner and next_phase == "verify" and verdict not in {"PASS", "PASS_WITH_ISSUES"}:
             raise SystemExit("BLOCKED:owner-cleanup-failed: repair before VERIFY")
-        if next_phase == "implement" and (verdict != "FAIL" or next_triggered_by != "cleanup"):
-            raise SystemExit("BLOCKED:owner-cleanup-failed: repair requires FAIL and cleanup trigger")
+        if next_phase == "implement" and (not owner or verdict != "FAIL" or next_triggered_by != "cleanup"):
+            raise SystemExit("BLOCKED:owner-cleanup-failed: repair requires owner FAIL and cleanup trigger")
     candidate = copy.deepcopy(state)
     attestation_error = do_complete(
         candidate, phase, verdict, post_sha, findings_file, log_file,
@@ -5556,7 +5570,8 @@ def main() -> int:
             spawn_phase in VALID_TRIGGERS and spawn_round >= 1
             and isinstance(implement, dict)
             and implement.get("round") == spawn_round
-            and (origin == spawn_phase or (origin == "cleanup" and spawn_phase == "build_gate"))
+            and (origin == spawn_phase or origin == "cleanup")
+            and (origin != "cleanup" or args.event == "spawn" or args.phase == "implement")
         )
         if fix_reentry:
             enforce_closure_durability_reentry(
