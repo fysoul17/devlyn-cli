@@ -22,7 +22,7 @@ if [ ! -f "$CODEX_MONITORED_PATH" ]; then
 fi
 ```
 
-**Read-only critique / adversarial review / debate** (`/devlyn:resolve` VERIFY pair-mode, plus any future ideate read-only critique). Security review stays native to Claude Code BUILD_GATE. Codex returns findings on stdout; the orchestrator writes files.
+**Read-only critique / adversarial review / debate** (`/devlyn:resolve` VERIFY pair-mode, plus any future ideate read-only critique). Codex returns findings on stdout; the orchestrator writes files.
 
 ```bash
 DEVLYN_CODEX_PROMPT_FILE="<prompt-file>" CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" \
@@ -43,24 +43,13 @@ DEVLYN_CODEX_PROMPT_FILE="<prompt-file>" bash "$CODEX_MONITORED_PATH" \
   -
 ```
 
-**CI-equivalent BUILD_GATE** keeps the same write sandbox and enables general
-outbound network access inside that sandbox, including the loopback servers and
-network-backed test gates that CI may exercise:
-
-```bash
-DEVLYN_CODEX_PROMPT_FILE="<prompt-file>" bash "$CODEX_MONITORED_PATH" \
-  -C <project-root> \
-  -s workspace-write \
-  -c sandbox_workspace_write.network_access=true \
-  -c model_reasoning_effort=xhigh \
-  -
-```
+PLAN uses owner reasoning; BUILD_GATE/CLEANUP run owner commands, without separate Codex invocations. Code/doc cleanup runs inside the selected IMPLEMENT invocation. An already-open historical BUILD span without `execution_kind` keeps its receipt-bound workspace-write/network-true worker route; do not reinterpret or rewrite that evidence.
 
 Notes:
 - `DEVLYN_CODEX_PROMPT_FILE` — use the same file as `DEVLYN_INVOCATION_PROMPT_FILE` for receipt-bound calls. Retain the generated transport carrier with the prompt/session/argv evidence; a path or claimed environment value alone does not prove delivery. Do not use shell command substitution for prompt bytes.
 - `-C` — project root so Codex's working directory matches.
 - `-s read-only` / `-s workspace-write` — sandbox policy. Use workspace-write for implementation/probe phases that write tracked files or `.devlyn` artifacts.
-- `-c sandbox_workspace_write.network_access=<true|false>` — required and receipt-bound for mutation phases: `true` only for BUILD_GATE and, per call, PROBE-DERIVE when the probe's visible Verification command requires a localhost service; `false` for PLAN, IMPLEMENT, CLEANUP, and PROBE-DERIVE by default. This allows CI-equivalent loopback/network tests without widening to `danger-full-access` and prevents user configuration from silently changing other phases.
+- `-c sandbox_workspace_write.network_access=<true|false>` — required and receipt-bound for mutation phases: `true` only for historical receipt-bound BUILD_GATE and, per call, PROBE-DERIVE when the probe's visible Verification command requires a localhost service; `false` for IMPLEMENT, historical worker PLAN/CLEANUP, and PROBE-DERIVE by default. This allows CI-equivalent loopback/network tests without widening to `danger-full-access` and prevents user configuration from silently changing other phases.
 - `-c model_reasoning_effort=xhigh` — config override for reasoning depth. Required for deep critique; skills may choose `high` or `medium` when thoroughness doesn't warrant xhigh.
 - **For every receipt-bound Codex call, add `--json -m <model_requested>` to the recipes above**, matching the model recorded at spawn; keep the skill’s existing model-selection rules. Other routes keep their omission rules unless an explicit role profile supplies a model: normal workers may inherit user config, while unconfigured isolated VERIFY uses its CLI default. Explicit profiles use role-config.py options and the separate judge-role-evidence.py contract; they do not relax mutation receipts. Omission proves neither model identity nor role fitness. Re-certify seats after model/version changes before re-pinning them.
 - `CODEX_MONITORED_ISOLATED=1` — required for bounded read-only critique/probe/judge calls. The wrapper adds `--ignore-user-config --ignore-rules --ephemeral --disable codex_hooks --disable hooks` so user config, AGENTS.md, hooks, and project rules cannot add hidden context, tool calls, or transcript side effects. Do not set it for workspace-write implementation phases.

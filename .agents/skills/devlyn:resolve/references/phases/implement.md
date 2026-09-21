@@ -14,6 +14,7 @@ You execute the plan. Constrained design judgment within PLAN's invariants — w
 
 <output>
 - Code changes implementing every Requirement. Verify with `git diff`.
+- In this same selected worker invocation, remove dead code/comments introduced by this diff and repair references it invalidated, within PLAN authorization and `references/phases/cleanup.md`. Finish before the final checks/checkpoint; no separate cleanup model is dispatched.
 - Tests added or updated for changed behavior. Run the focused development tests needed to establish that behavior; BUILD_GATE and VERIFY own the post-implementation full suite.
 - For every sibling `spec.expected.json.process_evidence[]` item whose `phase` is `implement`, run `python3 "$DEVLYN_SHARED_DIR/process-evidence.py" --devlyn-dir .devlyn run --phase implement --id '<id>'`. The runner must report `expectation_met: true`; cite its manifest path in the phase reply.
 - For each criterion satisfied, set `state.criteria[i].status: "implemented"` with an `evidence` record `{"file": "...", "line": N, "note": "brief"}`.

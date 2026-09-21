@@ -39,7 +39,7 @@ import sys
 import tempfile
 
 VALID_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK", "BLOCKED"}
-VALID_TRIGGERS = {"build_gate", "verify"}
+VALID_TRIGGERS = {"build_gate", "cleanup", "verify"}
 SPAWN_TRIGGERS = VALID_TRIGGERS | {"plan"}
 PHASE_NAMES = {"plan", "probe_derive", "implement", "surface_close", "build_gate", "cleanup", "verify", "final_report"}
 LEGAL_TRANSITIONS = {
@@ -48,7 +48,7 @@ LEGAL_TRANSITIONS = {
     "implement": {"implement", "surface_close", "build_gate", "cleanup", "verify", "final_report"},
     "surface_close": {"build_gate", "cleanup", "verify", "final_report"},
     "build_gate": {"implement", "cleanup", "verify", "final_report"},
-    "cleanup": {"verify", "final_report"},
+    "cleanup": {"implement", "verify", "final_report"},
     "verify": {"implement", "final_report"},
     "final_report": set(),
 }
@@ -1147,7 +1147,7 @@ def finding_targets_block(block: dict, findings: list[dict]) -> bool:
 
 
 def _read_triggering_findings(devlyn: pathlib.Path, origin_phase: str) -> tuple[list[dict], str]:
-    name = "build_gate.findings.jsonl" if origin_phase == "build_gate" else "verify-merged.findings.jsonl"
+    name = "verify-merged.findings.jsonl" if origin_phase == "verify" else f"{origin_phase}.findings.jsonl"
     path = devlyn / name
     try:
         raw = path.read_bytes()
@@ -1579,6 +1579,34 @@ def is_plan_dispatch_receipt(entry: dict) -> bool:
     return all(field in entry for field in PLAN_RECEIPT_FIELDS)
 
 
+OWNER_EXECUTION = {"plan": "orchestrator_context", "build_gate": "orchestrator_commands",
+                   "cleanup": "orchestrator_commands"}
+
+
+def orchestrator_phase(entry: dict | None, phase: str) -> bool:
+    if not isinstance(entry, dict) or "execution_kind" not in entry:
+        return False
+    if entry["execution_kind"] != OWNER_EXECUTION[phase]:
+        raise SystemExit(f"error: phases.{phase}.execution_kind is invalid")
+    return True
+
+
+def validate_owner_identity(devlyn, phase, round_, engine=None, model=None,
+                            prompt_sha256=None, engine_session_log=None, entry=None) -> None:
+    if any(value is not None for value in (engine, model, prompt_sha256, engine_session_log)):
+        raise SystemExit(f"error: orchestrator {phase} cannot claim worker identity or session")
+    if entry is not None and (
+        any(entry.get(field) is not None for field in ("engine", "model_requested", "model_effective"))
+        or any(field in entry for field in ("model", "prompt_sha256", "invocation_receipt", "role_argv", "role_evidence"))
+    ):
+        raise SystemExit(f"error: orchestrator {phase} contains worker identity")
+    if devlyn is not None:
+        for name in (f"{phase}.prompt.{round_}", f"{phase}.worker-session.{round_}.jsonl",
+                     f"{phase}.invocation.{round_}.json", f"{phase}.argv.{round_}.json"):
+            if os.path.lexists(devlyn / name):
+                raise SystemExit(f"error: orchestrator {phase} has current-round worker evidence: {name}")
+
+
 def append_phase_history(entry: dict, phase: str) -> None:
     if entry.get("started_at") is None:
         return
@@ -1589,6 +1617,12 @@ def append_phase_history(entry: dict, phase: str) -> None:
         fields = PLAN_RECEIPT_FIELDS + (
             ("invocation_receipt",) if "invocation_receipt" in entry else ()
         )
+    elif phase == "build_gate" or (phase in OWNER_EXECUTION and "execution_kind" in entry):
+        fields = tuple(field for field in (
+            "started_at", "verdict", "completed_at", "duration_ms", "round", "triggered_by",
+            "execution_kind", "engine", "model", "model_requested", "model_effective", "prompt_sha256",
+            "invocation_receipt", "role_argv", "artifacts", "output_sha256", "pre_sha", "post_sha",
+        ) if field in entry)
     elif phase in WORKER_SESSION_ARTIFACT_PHASES and "invocation_receipt" in entry:
         fields = (
             "started_at", "verdict", "completed_at", "duration_ms",
@@ -1654,7 +1688,13 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
              prompt_sha256: str | None = None,
              untracked_before: list[str] | None = None,
              devlyn: pathlib.Path | None = None) -> None:
-    if phase in {"implement", "cleanup", "verify"} and "role_resolution" in state:
+    # Omitted worker metadata selects owner PLAN/CLEANUP. Explicit metadata keeps
+    # the historical worker API; an owner span never accepts those claims.
+    owner = phase == "build_gate" or (
+        phase in {"plan", "cleanup"}
+        and all(value is None for value in (engine, model, prompt_sha256))
+    )
+    if not owner and phase in {"implement", "cleanup", "verify"} and "role_resolution" in state:
         resolution = role_config_module()["snapshot"](state)
         selected = resolution["roles"]["primary_judge" if phase == "verify" else "worker"]
         if engine is not None and engine != selected["engine"]:
@@ -1669,7 +1709,17 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     phases_value = state.get("phases")
     entry = phases_value.get(phase) if isinstance(phases_value, dict) else None
     validate_plan_output(state, devlyn, phase)
+    if phase in OWNER_EXECUTION and orchestrator_phase(entry, phase):
+        validate_owner_identity(devlyn, phase, entry.get("round"), entry=entry)
+        if not owner:
+            raise SystemExit("error: owner phase cannot respawn as a worker")
+    if owner:
+        validate_owner_identity(devlyn, phase, round_, engine, model, prompt_sha256)
+        if phase == "cleanup" and pre_sha is None:
+            raise SystemExit("error: owner cleanup requires --pre-sha")
     if phase == "plan":
+        if owner and (state.get("phases", {}).get("implement") or {}).get("started_at"):
+            raise SystemExit("BLOCKED:plan-already-in-use: scope cannot change after implementation starts")
         history = entry.get("history", []) if isinstance(entry, dict) else []
         if not isinstance(history, list):
             raise SystemExit("error: phases.plan.history must be an array")
@@ -1682,11 +1732,11 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
             raise SystemExit(
                 f"BLOCKED:plan-round-nonmonotonic: expected={dispatch_count} supplied={round_}"
             )
-        if not isinstance(engine, str) or not engine:
+        if not owner and (not isinstance(engine, str) or not engine):
             raise SystemExit("error: phases.plan spawn requires --engine")
-        if not isinstance(model, str) or not model:
+        if not owner and (not isinstance(model, str) or not model):
             raise SystemExit("error: phases.plan spawn requires --model")
-        if prompt_sha256 is None or not SHA256_RE.fullmatch(prompt_sha256):
+        if not owner and (prompt_sha256 is None or not SHA256_RE.fullmatch(prompt_sha256)):
             raise SystemExit("error: phases.plan spawn requires --prompt-sha256")
         if dispatch_count > 0 and triggered_by is None:
             raise SystemExit("error: phases.plan re-spawn requires --triggered-by")
@@ -1724,6 +1774,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         )
         if (
             state.get("version") == "3.0"
+            and not owner
             and requested_engine == "codex"
             and phase in WORKER_SESSION_ARTIFACT_PHASES
             and prompt_sha256 is None
@@ -1737,6 +1788,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         )
         if (
             state.get("version") == "3.0"
+            and not owner
             and requested_engine == "codex"
             and phase in WORKER_SESSION_ARTIFACT_PHASES
             and not requested_model
@@ -1786,6 +1838,11 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         entry["pre_sha"] = pre_sha
     if prompt_sha256 is not None:
         entry["prompt_sha256"] = prompt_sha256
+    if owner:
+        entry["execution_kind"] = OWNER_EXECUTION[phase]
+        entry["engine"] = entry["model_requested"] = entry["model_effective"] = None
+        entry.pop("prompt_sha256", None)
+        entry.pop("role_evidence", None)
     if phase == "surface_close":
         entry["input_patch_sha256"] = input_patch_sha256
         entry["untracked_before"] = untracked_before
@@ -1833,6 +1890,29 @@ def do_complete(state: dict, phase: str, verdict: str | None,
         raise SystemExit(
             f"error: phases.{phase} already completed — respawn before completing again"
         )
+    owner = phase in OWNER_EXECUTION and orchestrator_phase(entry, phase)
+    if owner:
+        validate_owner_identity(
+            devlyn, phase, entry.get("round"), engine, model,
+            engine_session_log=engine_session_log, entry=entry,
+        )
+        if phase == "cleanup" and verdict in {"PASS", "PASS_WITH_ISSUES"}:
+            if work is None or not entry.get("pre_sha") or post_sha != entry["pre_sha"]:
+                raise SystemExit("BLOCKED:owner-cleanup-source-changed: preserve the IMPLEMENT checkpoint")
+            checked = subprocess.run(
+                ["git", "diff", "--quiet", entry["pre_sha"], "--"], cwd=work,
+                capture_output=True, check=False,
+            )
+            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=work,
+                                  capture_output=True, text=True, check=False)
+            if checked.returncode != 0 or head.returncode != 0 or head.stdout.strip() != post_sha:
+                raise SystemExit("BLOCKED:owner-cleanup-source-changed: return code cleanup to IMPLEMENT")
+            checker = runpy.run_path(pathlib.Path(__file__).with_name("spec-verify-check.py"))
+            baseline, baseline_error = checker["load_untracked_baseline"](devlyn)
+            current, current_error = checker["current_untracked_files"](work)
+            if baseline_error or current_error or current - baseline:
+                detail = baseline_error or current_error or repr(sorted(current - baseline))
+                raise SystemExit(f"BLOCKED:owner-cleanup-untracked: {detail}")
     if phase != "plan":
         validate_plan_output(state, devlyn, phase)
     if phase == "final_report":
@@ -1891,7 +1971,7 @@ def do_complete(state: dict, phase: str, verdict: str | None,
         entry.setdefault("model_requested", None)
     entry.pop("model", None)
 
-    artifact_phase = WORKER_SESSION_ARTIFACT_PHASES.get(phase)
+    artifact_phase = None if owner else WORKER_SESSION_ARTIFACT_PHASES.get(phase)
     retained_session = None
     if devlyn is not None and artifact_phase is not None:
         candidate = devlyn / f"{artifact_phase}.worker-session.{entry.get('round')}.jsonl"
@@ -2020,6 +2100,11 @@ def do_transition(
     """
     if next_phase not in LEGAL_TRANSITIONS.get(phase, set()):
         raise SystemExit(f"error: illegal phase transition: {phase} -> {next_phase}")
+    if phase == "cleanup" and orchestrator_phase(state.get("phases", {}).get(phase), phase):
+        if next_phase == "verify" and verdict not in {"PASS", "PASS_WITH_ISSUES"}:
+            raise SystemExit("BLOCKED:owner-cleanup-failed: repair before VERIFY")
+        if next_phase == "implement" and (verdict != "FAIL" or next_triggered_by != "cleanup"):
+            raise SystemExit("BLOCKED:owner-cleanup-failed: repair requires FAIL and cleanup trigger")
     candidate = copy.deepcopy(state)
     attestation_error = do_complete(
         candidate, phase, verdict, post_sha, findings_file, log_file,
@@ -2649,7 +2734,7 @@ def self_test() -> int:
         build_carrier_1 = write_build_gate_results()
         transitioned = build_gate_state_cli(
             "transition", "--verdict", "PASS", "--next-phase", "cleanup",
-            "--next-round", "0",
+            "--next-round", "0", "--next-pre-sha", "test-pre-sha",
         )
         assert transitioned.returncode == 0, transitioned.stderr
         build_bound_state = read_state(evidence_state_path)
@@ -2746,6 +2831,148 @@ def self_test() -> int:
         assert blocked.returncode == 0, blocked.stderr
         print("PASS iter-0112 BUILD_GATE sealed outcome owns the verdict floor")
 
+        def test_orchestrator_build() -> None:
+            work = (devlyn / "orchestrator-build").resolve()
+            active = work / ".devlyn"
+            active.mkdir(parents=True)
+            state_file = active / "pipeline.state.json"
+            fixture = {"version": "3.0", "run_id": "rs-orchestrator-build",
+                       "engine": "codex", "phases": {"build_gate": None}}
+            (active / "spec-verify.results.json").write_text(
+                json.dumps({"commands": [], "process_evidence": None}), encoding="utf-8",
+            )
+            env = {key: value for key, value in os.environ.items()
+                   if not key.startswith("DEVLYN_INVOCATION_")}
+            env["PYTHONDONTWRITEBYTECODE"] = "1"
+
+            def cli(phase, *args):
+                return subprocess.run(
+                    [sys.executable, str(pathlib.Path(__file__).resolve()),
+                     "--devlyn-dir", ".devlyn", "--phase", phase, *args],
+                    cwd=work, env=env, capture_output=True, text=True, check=False,
+                )
+
+            def rejected(phase, *args):
+                before = state_file.read_bytes()
+                result = cli(phase, *args)
+                assert result.returncode != 0, result.stdout
+                assert "error:" in result.stderr or "BLOCKED:" in result.stderr, result.stderr
+                assert state_file.read_bytes() == before
+
+            def command_identity(entry):
+                assert entry["execution_kind"] == "orchestrator_commands"
+                assert all(entry[key] is None for key in ("engine", "model_requested", "model_effective"))
+                assert not {"prompt_sha256", "invocation_receipt", "role_argv", "role_evidence"} & entry.keys()
+
+            write_state(state_file, fixture)
+            for args in (("--engine", "claude"), ("--model", "worker-model"),
+                         ("--prompt-sha256", "0" * 64)):
+                rejected("build_gate", "spawn", "--round", "0", *args)
+            for name in ("build_gate.prompt.0", "build_gate.worker-session.0.jsonl",
+                         "build_gate.invocation.0.json", "build_gate.argv.0.json"):
+                path = active / name
+                path.write_text("forged", encoding="utf-8")
+                rejected("build_gate", "spawn", "--round", "0")
+                path.unlink()
+            result = cli("build_gate", "spawn", "--round", "0")
+            assert result.returncode == 0, result.stderr
+            opened = read_state(state_file)
+            command_identity(opened["phases"]["build_gate"])
+            for args in (("--engine", "codex"), ("--model", "worker-model"),
+                         ("--engine-session-log", str(active / "external.jsonl"))):
+                rejected("build_gate", "complete", "--verdict", "PASS", *args)
+            for field, value in (("engine", "codex"), ("model_effective", "worker-model"),
+                                 ("invocation_receipt", {}), ("prompt_sha256", None)):
+                bad = copy.deepcopy(opened)
+                bad["phases"]["build_gate"][field] = value
+                write_state(state_file, bad)
+                rejected("build_gate", "complete", "--verdict", "PASS")
+            for kind in (None, "worker", {}, False):
+                bad = copy.deepcopy(opened)
+                bad["phases"]["build_gate"]["execution_kind"] = kind
+                write_state(state_file, bad)
+                rejected("build_gate", "complete", "--verdict", "PASS")
+                bad["phases"]["build_gate"]["completed_at"] = now_iso()
+                write_state(state_file, bad)
+                rejected("build_gate", "spawn", "--round", "1")
+            write_state(state_file, opened)
+            proof = active / "build_gate.worker-session.0.jsonl"
+            proof.symlink_to(active / "missing")
+            rejected("build_gate", "complete", "--verdict", "PASS")
+            proof.unlink()
+            result = cli("build_gate", "complete", "--verdict", "PASS")
+            assert result.returncode == 0, result.stderr
+            completed = read_state(state_file)["phases"]["build_gate"]
+            command_identity(completed)
+            assert completed["verdict"] == "PASS" and completed["completed_at"]
+            result = cli("build_gate", "spawn", "--round", "1")
+            assert result.returncode == 0, result.stderr
+            reentered = read_state(state_file)["phases"]["build_gate"]
+            command_identity(reentered)
+            assert reentered["history"][0]["execution_kind"] == "orchestrator_commands"
+            assert reentered["history"][0]["round"] == 0
+            result = cli("build_gate", "transition", "--verdict", "PASS",
+                         "--next-phase", "cleanup", "--next-round", "0", "--next-engine", "claude")
+            assert result.returncode == 0, result.stderr
+
+            # Incoming atomic handoff must not inherit the top-level Codex identity.
+            incoming = copy.deepcopy(fixture)
+            incoming["phases"]["implement"] = {
+                "started_at": now_iso(), "completed_at": None, "round": 0, "engine": "claude",
+            }
+            write_state(state_file, incoming)
+            args = ("transition", "--verdict", "PASS", "--next-phase", "build_gate", "--next-round", "0")
+            rejected("implement", *args, "--next-engine", "codex")
+            result = cli("implement", *args)
+            assert result.returncode == 0, result.stderr
+            command_identity(read_state(state_file)["phases"]["build_gate"])
+
+            # Seed a historical span, then use the unchanged real receipt API.
+            prompt = active / "build_gate.prompt.0"
+            session = active / "build_gate.worker-session.0.jsonl"
+            receipt_path = active / "build_gate.invocation.0.json"
+            prompt.write_text("historical build\n", encoding="utf-8")
+            session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
+            model = "gpt-5.6-sol"
+            legacy = copy.deepcopy(fixture)
+            legacy["phases"]["build_gate"] = {
+                "started_at": now_iso(), "completed_at": None, "round": 0,
+                "engine": "codex", "model_requested": model,
+                "prompt_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
+            }
+            receipts = invocation_receipt_module()
+            receipts.start_receipt(
+                work, receipt_path, fixture["run_id"], "build_gate", 0, str(prompt), str(session),
+                ["--json", "-C", str(work), "-s", "workspace-write", "-m", model,
+                 "-c", "sandbox_workspace_write.network_access=true", "historical build"],
+            )
+            receipts.finish_receipt(work, receipt_path, 0)
+            write_state(state_file, legacy)
+            result = cli("build_gate", "complete", "--verdict", "PASS", "--engine-session-log", str(session))
+            assert result.returncode == 0, result.stderr
+            legacy_done = read_state(state_file)
+            old = legacy_done["phases"]["build_gate"]
+            assert "execution_kind" not in old and old["model_effective"] is None
+            assert old["invocation_receipt"]["sandbox_network_access"] is True
+            result = cli("build_gate", "spawn", "--round", "1")
+            assert result.returncode == 0, result.stderr
+            fresh = read_state(state_file)["phases"]["build_gate"]
+            command_identity(fresh)
+            history = fresh["history"][0]
+            assert "execution_kind" not in history and history["round"] == 0
+            for field in ("engine", "model_requested", "model_effective", "prompt_sha256", "invocation_receipt"):
+                assert history[field] == old[field]
+            write_state(state_file, legacy)
+            session.write_text("altered", encoding="utf-8")
+            rejected("build_gate", "transition", "--verdict", "PASS", "--engine-session-log", str(session),
+                     "--next-phase", "cleanup", "--next-round", "0", "--next-engine", "claude")
+            result = cli("build_gate", "complete", "--verdict", "PASS", "--engine-session-log", str(session))
+            assert result.returncode == 1 and "invocation-receipt-invalid" in result.stderr
+            assert read_state(state_file)["phases"]["build_gate"]["verdict"] == "BLOCKED"
+            print("PASS iter-0125 command BUILD CLI identity, transitions/history and historical receipt boundaries")
+
+        test_orchestrator_build()
+
         def test_interrupted_build_gate() -> None:
             # Iter-0119 R1-R5: interrupted observations bind only to BLOCKED,
             # without changing their bytes or bypassing archive/receipt guards.
@@ -2767,7 +2994,7 @@ def self_test() -> int:
                 "phases": {"build_gate": None, "final_report": None},
                 "process_evidence": None,
             }
-            do_spawn(fixture, "build_gate", 0, None, None, "claude", None)
+            do_spawn(fixture, "build_gate", 0, None, None, None, None)
             write_state(state_file, fixture)
             open_bytes = state_file.read_bytes()
             relative = runner.manifest_relative_path(fixture, "build_gate")
@@ -2980,6 +3207,8 @@ def self_test() -> int:
             receipt = active / "build_gate.invocation.0.json"
             model = "gpt-5.6-sol"
             candidate = copy.deepcopy(fixture)
+            # Seed the historical absent-kind route; a new spawn is commands-only.
+            candidate["phases"]["build_gate"].pop("execution_kind")
             candidate["phases"]["build_gate"].update({
                 "engine": "codex", "model_requested": model,
                 "prompt_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
@@ -3007,8 +3236,8 @@ def self_test() -> int:
             assert receipt.read_bytes() == receipt_bytes
             print("PASS iter-0119 nonzero receipt persists BLOCKED before exit1; transition stays atomic")
 
-            candidate = copy.deepcopy(bound)
-            do_spawn(candidate, "build_gate", 1, None, None, "claude", None)
+            candidate = read_state(state_file)
+            do_spawn(candidate, "build_gate", 1, None, None, None, None)
             write_state(state_file, candidate)
             next_relative = runner.manifest_relative_path(candidate, "build_gate")
             runner.capture_process(
@@ -3025,6 +3254,50 @@ def self_test() -> int:
             assert appended["phases"]["build_gate"]["verdict"] == "BLOCKED"
             assert {path: path.read_bytes() for path in observed} == observed
             assert set(observed).issubset(archive.dynamic_evidence_artifacts(active, appended))
+
+            # A post-spec denial refresh must preserve earlier failed checks.
+            refresh_state = copy.deepcopy(fixture)
+            refresh_state["phases"]["build_gate"] = None
+            do_spawn(refresh_state, "build_gate", 2, None, None, None, None, devlyn=active)
+            write_state(state_file, refresh_state)
+            refresh_relative = runner.manifest_relative_path(refresh_state, "build_gate")
+            refresh_manifest = work / refresh_relative
+            for obligation in obligations[:2]:
+                runner.capture_process(work, refresh_manifest, fixture["run_id"], "build_gate", 2, obligation)
+            prior_raw = {path: path.read_bytes() for path in refresh_manifest.parent.iterdir()
+                         if path != refresh_manifest}
+            sealed = runner.validate_manifest(
+                work, refresh_relative, fixture["run_id"], "build_gate", 2, require_expectations=False,
+            )
+            summary.write_text(json.dumps({
+                "commands": runner.bound_carrier_summary_commands(work, sealed),
+                "process_evidence": sealed, "findings_count": 1,
+            }), encoding="utf-8")
+            denied = runner.normalize_obligation({
+                "id": "browser-capability", "phase": "build_gate", "cmd": "browser-check",
+            })
+            runner.record_capability_denial(
+                work, refresh_manifest, fixture["run_id"], "build_gate", 2, denied,
+                "loopback", b"authoritative route denial fixture",
+            )
+            rejected("complete", "--verdict", "BLOCKED")
+            refreshed = runner.validate_manifest(
+                work, refresh_relative, fixture["run_id"], "build_gate", 2, require_expectations=False,
+            )
+            refreshed_commands = runner.bound_carrier_summary_commands(work, refreshed)
+            runner.validate_summary_commands(work, refreshed_commands, refreshed)
+            results = loads_strict_json(summary.read_text(encoding="utf-8"))
+            results.update(commands=refreshed_commands, process_evidence=refreshed)
+            summary.write_text(json.dumps(results), encoding="utf-8")
+            for verdict in ("PASS", "FAIL"):
+                rejected("complete", "--verdict", verdict)
+            completed = cli("complete", "--verdict", "BLOCKED")
+            assert completed.returncode == 0, completed.stderr
+            assert results["findings_count"] == 1 and len(refreshed_commands) == 3
+            assert refreshed_commands[1]["pass"] is False
+            assert {path: path.read_bytes() for path in prior_raw} == prior_raw
+            assert read_state(state_file)["process_evidence"] == [refreshed]
+            print("PASS iter-0125 post-spec denial refresh retains failed expectations/raw without replay")
 
         test_interrupted_build_gate()
 
@@ -3056,7 +3329,7 @@ def self_test() -> int:
                     "source": {"type": "generated", "criteria_path": ".devlyn/criteria.generated.md"},
                     "phases": {"build_gate": None}, "process_evidence": copy.deepcopy(history) or None,
                 }
-                do_spawn(fixture, "build_gate", round_, None, None, "claude", None)
+                do_spawn(fixture, "build_gate", round_, None, None, None, None)
                 write_state(state_file, fixture)
                 original_state = state_file.read_bytes()
                 results_file.unlink(missing_ok=True)
@@ -3340,7 +3613,7 @@ def self_test() -> int:
         # resets the live record.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "build_gate", 0, None, None, "claude", None)
+        do_spawn(state, "build_gate", 0, None, None, None, None)
         write_state(state_path, state)
         time.sleep(0.05)
         state = read_state(state_path)
@@ -3508,7 +3781,7 @@ def self_test() -> int:
         # exact diff window for later mechanical checks.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "cleanup", 0, None, "pre-sha", None, None)
+        do_spawn(state, "cleanup", 0, None, "pre-sha", "claude", None)
         write_state(state_path, state)
         state = read_state(state_path)
         do_complete(state, "cleanup", "PASS", "post-sha", None, None, None, None)
@@ -4261,7 +4534,11 @@ def self_test() -> int:
         )
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "build_gate", 0, None, None, "claude", "claude-" "opus-5")
+        # Historical Claude BUILD evidence keeps the original mismatch guard.
+        state["phases"]["build_gate"] = {
+            "started_at": now_iso(), "completed_at": None, "round": 0,
+            "engine": "claude", "model_requested": "claude-" "opus-5",
+        }
         mismatch = do_complete(
             state, "build_gate", "PASS", None, None, None, None, None, str(claude_log)
         )
@@ -5274,15 +5551,16 @@ def main() -> int:
         spawn_phase = args.phase if args.event == "spawn" else args.next_phase
         spawn_round = args.round if args.event == "spawn" else args.next_round
         implement = (state.get("phases") or {}).get("implement")
+        origin = implement.get("triggered_by") if isinstance(implement, dict) else None
         fix_reentry = (
             spawn_phase in VALID_TRIGGERS and spawn_round >= 1
             and isinstance(implement, dict)
             and implement.get("round") == spawn_round
-            and implement.get("triggered_by") == spawn_phase
+            and (origin == spawn_phase or (origin == "cleanup" and spawn_phase == "build_gate"))
         )
         if fix_reentry:
             enforce_closure_durability_reentry(
-                pathlib.Path.cwd(), devlyn, state, spawn_phase, spawn_round,
+                pathlib.Path.cwd(), devlyn, state, origin, spawn_round,
                 require_existing=True,
             )
         if args.event == "spawn":

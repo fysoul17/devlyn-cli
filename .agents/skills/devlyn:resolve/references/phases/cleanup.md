@@ -1,19 +1,14 @@
 # PHASE 4 — CLEANUP (canonical body)
 
-Per-engine adapter header is prepended at runtime. Task-scoped pass — only what this diff introduced or invalidated.
-
-<role>
-Remove tooling artifacts, dead code added by this diff, and doc references invalidated by this diff. The cleanup is bounded by an allowlist enforced post-spawn.
-</role>
+The selected IMPLEMENT worker performs code/doc cleanup in its existing invocation before its final checks. The owner then uses the CLEANUP span for generated-artifact removal and invariant checks only; no new model call.
 
 <input>
-- Cumulative diff since `state.base_ref.sha`.
-- Spec at `state.source.spec_path` or `state.source.criteria_path`.
-- `state.phases.cleanup.pre_sha` (the orchestrator captured this before spawn — your post-cleanup diff against this SHA must stay within the allowlist).
+- Cumulative diff, original spec and immutable PLAN authorized surface.
+- CLEANUP `pre_sha`: tracked source and HEAD must remain unchanged during owner checks.
 </input>
 
 <allowlist>
-You may modify or delete:
+Within IMPLEMENT and PLAN authorization, you may modify or delete:
 
 1. **Tooling artifacts** the spec did not list as deliverables: `test-results/`, `playwright-report/`, `.last-run.json`, coverage HTML output, build artifacts, runtime caches (`__pycache__/`, `*.pyc`, `.cache/`).
 2. **Dead code added by this diff** — symbols (functions, classes, types, exports) introduced by this diff that no other code added by this diff references AND that are not part of the spec's required surface. Pre-existing dead code is out of scope.
@@ -24,8 +19,7 @@ Files outside this allowlist must not change. Pre-existing tooling leaks (alread
 </allowlist>
 
 <output>
-- Code changes within the allowlist.
-- Report your verdict in this reply: `PASS` if changes within allowlist (or no changes needed); `FAIL` if you cannot complete within the allowlist (the orchestrator will revert). Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py`.
+The owner removes only run-owned untracked/ignored generated artifacts from item 1, preserving deliverables, evidence and recovery inputs. It records PASS when the source checkpoint is unchanged and no cleanup finding remains. A code/doc finding returns through the selected IMPLEMENT repair route and reruns BUILD before fresh VERIFY. Never modify source inside owner CLEANUP or reuse stale checks. Record lifecycle via `state-phase-write.py`.
 </output>
 
 <quality_bar>
