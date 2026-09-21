@@ -48,13 +48,13 @@ fi
 </runtime_paths>
 
 <engine_routing>
-Each phase routes to an engine and prepends the per-engine adapter header from `_shared/adapters/<engine>.md` (e.g. `claude.md`, `codex.md`) to the canonical phase body. Adapter is the per-model delta (Anthropic's prompt-engineering guide for Claude, OpenAI's prompt guidance for Codex). Canonical body is engine-agnostic.
+Each model-invoked phase routes to an engine and prepends the per-engine adapter header from `_shared/adapters/<engine>.md` (e.g. `claude.md`, `codex.md`) to the canonical phase body. Adapter is the per-model delta (Anthropic's prompt-engineering guide for Claude, OpenAI's prompt guidance for Codex). Canonical body is engine-agnostic.
 
-- Phase spawning is mandatory for every orchestrator. Same-context PLAN / IMPLEMENT / BUILD_GATE / CLEANUP / VERIFY is a contract violation. If the current CLI cannot spawn a fresh worker, write the current phase verdict as `"BLOCKED"` and report `BLOCKED:fresh-context-unavailable` with the failed spawn command; do not continue with ad-hoc same-context execution.
+- Phase spawning is mandatory for every orchestrator. Same-context PLAN / IMPLEMENT / CLEANUP / VERIFY is a contract violation. BUILD_GATE keeps its phase span but the orchestrator runs its commands directly, without a model invocation. If the current CLI cannot spawn a fresh worker, write the current phase verdict as `"BLOCKED"` and report `BLOCKED:fresh-context-unavailable` with the failed spawn command; do not continue with ad-hoc same-context execution.
 - Claude Code phases other than PLAN: spawn `Agent` (`mode: "bypassPermissions"`); prompt = adapter-header + canonical-body + task-context. PLAN uses the native foreground call shape in PHASE 1.
 - Codex CLI phases: shell out via `bash "$CODEX_MONITORED_PATH"` with the same compounded prompt. Each `codex exec` child is a new session/fresh context. Write the compounded prompt to a file and set `DEVLYN_CODEX_PROMPT_FILE` with sole prompt argument `-`; the wrapper snapshots exact stdin bytes, seals transport evidence and emits a heartbeat. Without file transport stdin remains DEVNULL. No MCP. The wrapper call is foreground-blocking — never a background shell (`run_in_background`, `&`, `nohup`), never end your message while it runs: headless print-mode wind-down kills backgrounded children (0-byte delivery); the heartbeat is the observability channel.
 - oh-my-pi phases: spawn the native `task` tool with a fresh `context` containing adapter-header + canonical-body + task-context. Capture the task result into `.devlyn/<phase>.stdout` and any tool error into `.devlyn/<phase>.stderr` before updating state. If the `task` tool is unavailable for an omp-routed phase, write the current phase verdict as `"BLOCKED"` and report `BLOCKED:fresh-context-unavailable`; do not fall back to same-context execution or a nested `omp -p` subprocess.
-- Default engine: Claude when the orchestrator has Claude Code’s native `Agent`; otherwise its own fresh worker. PLAN is orchestrator-fixed and never inherits `--engine`, an executor pin, or `state.engine`. BUILD_GATE and probes retain their existing routes. `_shared/engine-preflight.md#role-resolution` defines the single resolver and explicit `--role-config` / project role precedence. Absent profiles preserve legacy `--engine` / executor / default behavior; VERIFY primary may be independently selected. Configured role/priority pins and flags fail closed on unavailable engine or failed authentication, including failures discovered at dispatch. Unconfigured automatic VERIFY selects an available OTHER engine.
+- Default engine: Claude when the orchestrator has Claude Code’s native `Agent`; otherwise its own fresh worker. PLAN is orchestrator-fixed and never inherits `--engine`, an executor pin, or `state.engine`. BUILD_GATE runs orchestrator commands; probes retain their existing routes. `_shared/engine-preflight.md#role-resolution` defines the single resolver and explicit `--role-config` / project role precedence. Absent profiles preserve legacy `--engine` / executor / default behavior; VERIFY primary may be independently selected. Configured role/priority pins and flags fail closed on unavailable engine or failed authentication, including failures discovered at dispatch. Unconfigured automatic VERIFY selects an available OTHER engine.
 - The `--engine` flag does not disable default pairing: the second judge uses the OTHER engine by default when available.
 - Multi-LLM evolution: when a new model adapter ships in `_shared/adapters/`, that engine becomes selectable for the roles its adapter declares eligible without further skill changes (NORTH-STAR.md "Multi-LLM evolution direction").
 </engine_routing>
@@ -72,7 +72,7 @@ After `state.implement_passed_sha` is set: SURFACE_CLOSE and CLEANUP are limited
 </post_implement_invariant>
 
 <transition_protocol>
-For every direct complete→spawn handoff, call `state-phase-write.py ... --phase <current> transition` with the current phase's normal completion/attestation arguments plus caller-specified `--next-phase`, `--next-round`, `--next-triggered-by`, `--next-engine`, `--next-model`, and any next-phase metadata. The verb validates a legal edge and commits both lifecycle writes atomically; it returns JSON state facts only. It never selects a phase/engine, renders a prompt, or spawns an agent. Use standalone `spawn` only for the initial post-bootstrap dispatch; use standalone `complete` when no next phase opens (including a halt).
+For every direct complete→spawn handoff, call `state-phase-write.py ... --phase <current> transition` with the current phase's normal completion/attestation arguments plus caller-specified `--next-phase`, `--next-round`, `--next-triggered-by`, `--next-engine`, `--next-model`, and any next-phase metadata. For a new BUILD_GATE, omit next engine/model/prompt arguments; its writer records `execution_kind: "orchestrator_commands"` with null model/engine identity. The verb validates a legal edge and commits both lifecycle writes atomically; it returns JSON state facts only. It never selects a phase/engine, renders a prompt, or spawns an agent. Use standalone `spawn` only for the initial post-bootstrap dispatch; use standalone `complete` when no next phase opens (including a halt).
 </transition_protocol>
 
 ## PHASE 0: PARSE + CLASSIFY + ROUTE
@@ -230,7 +230,7 @@ Skip in verify-only mode. Constrained design judgment within PLAN's invariants. 
 
 Engine/model/effort: frozen `role_resolution.roles.worker`; obtain validated argv additions using `role-config.py --state .devlyn/pipeline.state.json --role worker --resolved-model <existing-exact-phase-model>`. Prompt body: `references/phases/implement.md`.
 
-For every Codex-routed IMPLEMENT, BUILD_GATE, or CLEANUP spawn, render the exact
+For every Codex-routed IMPLEMENT or CLEANUP spawn, render the exact
 prompt to `.devlyn/<phase>.prompt.<round>`, pass its SHA-256 to `state-phase-write.py
 spawn --prompt-sha256`, and invoke only through `codex-monitored.sh` with these
 seven variables set to the active state identity:
@@ -240,13 +240,14 @@ The session and receipt paths are `.devlyn/<phase>.worker-session.<round>.jsonl`
 and `.devlyn/<phase>.invocation.<round>.json`. These three paths are round-scoped
 so a retry cannot overwrite earlier prompt/session evidence. Every invocation
 must include `--json -m <model_requested>` and `-c sandbox_workspace_write.network_access=<true|false>`: exactly
-`true` for BUILD_GATE and exactly `false` for PLAN, IMPLEMENT, and CLEANUP, so
+`false` for PLAN, IMPLEMENT, and CLEANUP, so
 user configuration cannot silently change the phase capability. Redirect wrapper stdout directly
 to that session path. The wrapper rejects bypass/yolo flags and any sandbox other
 than `workspace-write`. The receipt seals the requested model, sandbox, phase-scoped
 network capability, prompt, terminal exit, and session digest; completion passes the
 same canonical session via `--engine-session-log`. A missing/mismatched receipt
 or same-round retry blocks. Respawn with a new round instead of replacing it.
+Already-open historical BUILD_GATE spans without `execution_kind` retain this receipt-bound worker route with network access exactly `true`; new BUILD spans use PHASE 3 with no worker invocation.
 
 State write: `phases.implement.{started_at, verdict, completed_at, duration_ms}`.
 
@@ -282,27 +283,16 @@ Freeze `.devlyn/surface-close.input.patch`; assemble Claude adapter + `reference
 
 Skip in verify-only mode OR when `build-gate` in `state.bypasses`. Deterministic — same commands CI / Docker / production run.
 
-Spawn the resolved BUILD_GATE engine through the fresh-worker route in
-`<engine_routing>` with prompt body `references/phases/build-gate.md`. A Codex
-route must inherit CI-equivalent capabilities from the parent invocation; it
-must not add isolation, narrow the sandbox, or widen permissions inside the
-worker. Invoke a Codex BUILD_GATE with
-`-s workspace-write -c sandbox_workspace_write.network_access=true`; the
-receipt rejects a missing, false, duplicate, or non-BUILD_GATE network override
-before the worker starts. This retains the write sandbox while allowing the
-loopback and network operations exercised by CI-equivalent gates. If an
-authoritative route/tool response denies a required filesystem,
-subprocess, loopback, PTY, or network operation, preserve that denial through
-the BUILD_GATE process-evidence manifest and complete the phase as
-`BLOCKED:build-env-underprovisioned`, not as a product finding or substitute
-command. The worker:
+The orchestrator reads `references/phases/build-gate.md` and runs the gates directly: no adapter header, rendered worker prompt or separate model. Open its span through the predecessor transition with no BUILD engine/model/prompt/session arguments. New spans record `execution_kind: "orchestrator_commands"`; historical already-open spans with that field absent retain their worker attestation contract.
+
+Follow the BUILD body's capability contract on the parent's actual command route and log that basis; no child receipt attests it. Authoritative denial yields report-level `BLOCKED:build-env-underprovisioned` (bare `BLOCKED` in state). Keep spec/probe capture and its conditional post-spec denial carrier refresh; ordinary gates retain findings and raw logs. The orchestrator:
 1. Detects language/framework via project files (`package.json`, `pyproject.toml`, etc.).
 2. Runs language-specific gates (tsc / lint / test), deferring exact literal overlaps under `references/phases/build-gate.md`'s current-contract/current-round rule; task-context prompts must preserve that rule.
 3. Always runs `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --include-risk-probes` (verification_commands literal-match plus `.devlyn/risk-probes.jsonl` when present). If `state.risk_profile.risk_probes_enabled == true`, the script requires `.devlyn/risk-probes.jsonl`; a missing file is a CRITICAL mechanical blocker, not a silent solo run. The script routes each command through `process-evidence.py`; preserve `.devlyn/spec-verify.results.json` and its validated BUILD_GATE carrier for the state-bound archive flow.
 4. If diff touches web-surface files: run the browser tier with the repo's available toolchain (for example Playwright or curl).
 5. Emits `.devlyn/build_gate.findings.jsonl` + `.devlyn/build_gate.log.md`.
 
-State write: `phases.build_gate.{started_at, verdict, completed_at, duration_ms, artifacts}`.
+State write: `phases.build_gate.{execution_kind, started_at, verdict, completed_at, duration_ms, artifacts}`; engine/model fields are null, with no worker prompt or receipt. Completion keeps PLAN integrity and process-evidence floors.
 
 Branch:
 - `PASS` → PHASE 4.
@@ -378,7 +368,7 @@ Open the `final_report` span through the predecessor's `state-phase-write.py --d
 
 3. **Terminal verdict** — derive from `state.phases.{plan, implement, surface_close, build_gate, cleanup, verify}.verdict` per the precedence rules in `references/state-schema.md#terminal-verdict`. Verify-only mode short-circuits to `state.phases.verify.verdict`.
 
-4. **Render report to `.devlyn/final-report.md` before completion** — first line exactly `<!-- devlyn:final-report run_id=<current state.run_id> -->`, once only, followed by a nonempty report body. Sections: header (run_id, engine, mode, verdict, wall-time), per-phase summary (including SURFACE_CLOSE run or skip), pair/risk-probe status, findings table (verify + finish-gate findings), follow-up notes (the explicit line `pipeline continued to BUILD_GATE — surface_close_rolled_back_adjudication_malformed` when `continued_after_block` is set, any large-mode `## Assumptions` block, any pair-judge TIMEOUT (headline: solo verdict after pair TIMEOUT), any `--no-pair` / `--no-risk-probes` opt-out, any engine setup guidance after BLOCKED, `/devlyn:ideate` guidance after `BLOCKED:solo-headroom-hypothesis-required` that asks for the visible behavior `solo_claude` is expected to miss, and `/devlyn:ideate` guidance after `BLOCKED:solo-ceiling-avoidance-required` that asks for the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`). User-facing text may follow archive; it cannot substitute for this file.
+4. **Render report to `.devlyn/final-report.md` before completion** — first line exactly `<!-- devlyn:final-report run_id=<current state.run_id> -->`, once only, followed by a nonempty report body. Sections: header (run_id, engine, mode, verdict, wall-time), per-phase summary (including SURFACE_CLOSE run or skip and new BUILD_GATE as orchestrator commands with no separate model), pair/risk-probe status, findings table (verify + finish-gate findings), follow-up notes (the explicit line `pipeline continued to BUILD_GATE — surface_close_rolled_back_adjudication_malformed` when `continued_after_block` is set, any large-mode `## Assumptions` block, any pair-judge TIMEOUT (headline: solo verdict after pair TIMEOUT), any `--no-pair` / `--no-risk-probes` opt-out, any engine setup guidance after BLOCKED, `/devlyn:ideate` guidance after `BLOCKED:solo-headroom-hypothesis-required` that asks for the visible behavior `solo_claude` is expected to miss, and `/devlyn:ideate` guidance after `BLOCKED:solo-ceiling-avoidance-required` that asks for the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`). User-facing text may follow archive; it cannot substitute for this file.
 
 5. Complete the span with `state-phase-write.py --devlyn-dir .devlyn --phase final_report complete --verdict <bare enum> --log-file .devlyn/final-report.md` — the enum class of the terminal verdict (`BLOCKED:<reason>` → `BLOCKED`; `NEEDS_WORK` / `PASS_WITH_ISSUES` / `PASS` unchanged) — BEFORE archive runs (archive prune skips runs whose `final_report.verdict` is null). The writer validates the canonical nonsymlink regular file, current run marker and nonempty body, then binds its exact bytes; validation failure leaves the phase open. Never hand-edit lifecycle fields in `pipeline.state.json` (`references/state-schema.md` § Write protocol).
 

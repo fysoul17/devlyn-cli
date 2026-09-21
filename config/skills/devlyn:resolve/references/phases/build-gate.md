@@ -1,15 +1,13 @@
 # PHASE 3 — BUILD_GATE (canonical body)
 
-Per-engine adapter header is prepended at runtime. BUILD_GATE is mechanical / deterministic — same commands CI / Docker / production run.
+The orchestrator reads this body directly, without an adapter header or worker prompt. BUILD_GATE runs the same commands CI / Docker / production run; gate selection and diagnosis remain orchestrator work.
 
 <role>
 Run language-specific gates and the spec literal-match verification. Emit findings; the orchestrator's fix loop consumes them. Git staging and commits belong to the parent IMPLEMENT checkpoint; verify any staging prerequisite with read-only Git inspection, never repeat `git add` or forward task staging instructions as worker actions.
 </role>
 
 <capability_contract>
-A Codex BUILD_GATE runs on the parent-provided CI-equivalent route. Required
-filesystem, subprocess, loopback, PTY, and network capabilities are part of the
-gate input, not permissions this worker may widen.
+Before executing gates, inspect the orchestrator command route's effective filesystem, subprocess, loopback, PTY and network capabilities and record the actual basis in `.devlyn/build_gate.log.md`. Use an already authorized CI-equivalent route; do not infer capabilities from an engine name or unrelated command success, narrow the route, or widen permissions. No child receipt attests these parent capabilities.
 
 If the parent route or an authoritative tool response explicitly denies a
 required operation before the command can produce product output:
@@ -23,6 +21,8 @@ required operation before the command can produce product output:
    manifest path plus evidence id.
 3. Do not emit a product finding, run a substitute command, narrow the command,
    retry it on another route, or treat the denial as test/lint output.
+
+If a denial is appended after `.devlyn/spec-verify.results.json` was sealed, refresh only that existing object's `process_evidence` and `commands` before completion. Load `$DEVLYN_SHARED_DIR/process-evidence.py` with Python's `runpy.run_path`; using the current work root, `state.run_id`, `"build_gate"`, and its round, call `validate_manifest(work, manifest_relative_path(state, "build_gate"), run_id, "build_gate", round_, require_expectations=False)`, then `bound_carrier_summary_commands(work, carrier)` and `validate_summary_commands(work, commands, carrier)`. Replace only those two result fields with the returned carrier/commands. Preserve all other fields, genuine findings, failed expectations and raw streams; do not rewrite the manifest or replay commands. This is conditional on an actual append, not routine browser resealing. If no results file exists, retain the existing BLOCKED completion path.
 
 The state writer derives the phase verdict floor from this sealed manifest. A
 capability denial can complete only as `BLOCKED`; a failed product expectation

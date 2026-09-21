@@ -13,7 +13,7 @@ Engine requirements have two classes:
 
 ## Role resolution
 
-The orchestrator is the CLI the user opened. PLAN remains orchestrator-fixed. Resolve the legacy executor as explicit `--engine` > `cwd/.devlyn/engines.json` `executor` > the invoking skill's supported default. BUILD_GATE and risk-probe derivation keep their existing routes.
+The orchestrator is the CLI the user opened. PLAN remains orchestrator-fixed. Resolve the legacy executor as explicit `--engine` > `cwd/.devlyn/engines.json` `executor` > the invoking skill's supported default. BUILD_GATE runs commands in the orchestrator without a separate model; risk-probe derivation keeps its existing route.
 
 The role profiles and `--role-config` below apply only to `/devlyn:resolve`; `/devlyn:ideate` keeps its existing `--engine` / legacy executor selection and never inherits worker/judge profiles. `role-config.py` is resolve’s deterministic resolver. Optional project `roles.worker`, `roles.primary_judge`, and `roles.pair_judge` each require `engine` and accept exact `model`/`effort`; `/devlyn:resolve --role-config <path>` supplies the same `{"roles": {...}}` object for one run. Each entry replaces the entire lower entry. Worker/primary precedence is run role > `--engine` engine-only > project role > legacy executor. Pair precedence is run role > project role > existing `pair_judge_priority`/binary complement. An absent primary profile follows the legacy executor, not the worker profile. No parent/global devlyn config lookup.
 

@@ -1346,7 +1346,10 @@ for file in \
   config/skills/devlyn:resolve/SKILL.md \
   .agents/skills/devlyn:resolve/SKILL.md
 do
-  if ! grep -Fq 'resolved BUILD_GATE engine through the fresh-worker route' "$file" \
+  if ! grep -Fq 'orchestrator commands with no separate model' "$file" \
+    || ! grep -Fq 'execution_kind: "orchestrator_commands"' "$file" \
+    || grep -Fq 'resolved BUILD_GATE engine through the fresh-worker route' "$file" \
+    || grep -Fq 'Codex-routed IMPLEMENT, BUILD_GATE, or CLEANUP spawn' "$file" \
     || ! grep -Fq 'BLOCKED:build-env-underprovisioned' "$file" \
     || ! grep -Fq '.devlyn/<primary-engine>-judge.stdout' "$file" \
     || ! grep -Fq '.devlyn/<other-engine>-judge.stdout' "$file" \
