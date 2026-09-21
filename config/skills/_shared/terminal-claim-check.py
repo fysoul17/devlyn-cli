@@ -149,7 +149,7 @@ def classify_state_bytes(
         return malformed("run state must be a JSON object"), None
 
     run_id = state.get("run_id")
-    if not isinstance(run_id, str) or not SAFE_RUN_ID_RE.fullmatch(run_id):
+    if not isinstance(run_id, str) or run_id in (".", "..") or not SAFE_RUN_ID_RE.fullmatch(run_id):
         return malformed("run state has invalid run_id"), state
     phases = state.get("phases")
     if not isinstance(phases, dict):
