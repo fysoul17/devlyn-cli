@@ -235,17 +235,16 @@ its defaults. Exact pre-update backups are saved in `.devlyn/instructions/`.
 When recovery is needed, pre-existing symlinks or non-directory entries at `.devlyn/` or
 `.devlyn/instructions/` stop installation without replacing the instruction file.
 
-Templates from versions 3.0.0–3.1.2 migrate automatically, including custom
-text before or after the template. Replaced or extended introductions under the
-original project heading also migrate when the entire body from `## North Star`
-onward matches a known template hash. Replacement project rules are preserved
-outside the managed block; only an exact original introduction is removed.
-Recognizable leftover Devlyn text, changed bodies and ambiguous templates stop
-with a concise recovery message and leave the original unchanged. The message
-links an exact `.backup`, new defaults in `.incoming`, and a `.merge.md` guide.
-Compare the two files, preserve all project rules outside one new managed block,
-and rerun the same install command. Earlier selected agents may already be updated.
-Plain custom instruction files retain their contents and gain a managed block.
+Older and mixed-version templates migrate automatically. Within recognizable
+Devlyn sections, exact historical paragraphs and list items are replaced;
+modified or unknown text and its headings are preserved outside the new block.
+Edits inside an existing managed block are preserved outside it too. Plain custom
+files and rules outside managed blocks retain their contents. Unknown old text
+is kept conservatively, even when it may contain obsolete defaults.
+Malformed or duplicate managed markers still stop with an exact `.backup`, new
+defaults in `.incoming`, and a `.merge.md` guide; the original remains unchanged.
+Release packaging refreshes the offline fingerprints from Git history using
+`node scripts/update-instruction-templates.js`; installation needs no Git or network.
 Use 3.1.3 or newer consistently: older installers still overwrite `CLAUDE.md`.
 
 <!-- legacy-surface-map:begin — retired command names below are documented as OLD, not current; lint Check 10c skips this block -->
