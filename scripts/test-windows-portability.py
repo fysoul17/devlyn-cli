@@ -433,15 +433,23 @@ installClaudeCore();
                        header + custom + body + body):
             dest.write_text(before, encoding='utf-8')
             original = dest.read_bytes()
-            result = self.invoke('installClaudeCore();', package=copy, code=None)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(dest.read_bytes(), original)
+            self.invoke('installClaudeCore();', package=copy)
+            after = dest.read_bytes()
+            self.assertIn(original, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob('CLAUDE.md*.backup')])
+            self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
+            if custom in before:
+                self.assertIn(custom.encode(), after)
+            if 'Use pnpm.' in before:
+                self.assertIn(b'Use pnpm.', after)
+            self.invoke('installClaudeCore();', package=copy)
+            self.assertEqual(dest.read_bytes(), after)
 
     def test_instruction_cli_conflict_guides_merge_and_retry_without_stack(self):
         for name, args in [('CLAUDE.md', ['-y']), ('AGENTS.md', ['agents', 'grok'])]:
             with self.subTest(name=name):
                 dest = self.project / name
-                original = (self.package / name).read_bytes().replace(b'This contract serves', b'Our custom contract serves', 1)
+                original = (b'<!-- devlyn:instructions:begin sha256=' + b'0' * 64 + b' -->\n'
+                            + (self.package / name).read_bytes() + b'<!-- broken:end -->\n')
                 dest.write_bytes(original)
                 argv = ['node', '--require', self.preload, self.package / 'bin/devlyn.js', *args]
                 result = run(argv, cwd=self.project, env=self.env, code=1)
@@ -472,10 +480,7 @@ installClaudeCore();
     def test_instruction_conflicts_preserve_original_and_fail_visibly(self):
         self.invoke("installInstructionsForCLI('codex');")
         dest = self.project / 'AGENTS.md'; good = dest.read_bytes()
-        cases = [good.replace(b'Default to direct execution', b'My intentional policy'),
-                 good.replace(b'devlyn:instructions:end', b'broken:end'), good + good,
-                 b'# Devlyn Agent Instructions\nOld block\n# User addition\nKeep me\n',
-                 b'# Codex Project Instructions\n\ndevlyn-cli installs edited defaults.\n',
+        cases = [good.replace(b'devlyn:instructions:end', b'broken:end'), good + good,
                  b'\xffinvalid utf8']
         for before in cases:
             with self.subTest(before=before[:70]):
@@ -485,7 +490,7 @@ installClaudeCore();
                 self.assertEqual(dest.read_bytes(), before)
                 self.assertFalse((self.home / '.grok/skills').exists())
         self.assertTrue(list((self.project / '.devlyn/instructions').glob('AGENTS.md*.incoming')))
-        claude = self.project / 'CLAUDE.md'; claude.write_bytes(good.replace(b'defaults.', b'edited defaults.'))
+        claude = self.project / 'CLAUDE.md'; claude.write_bytes(good.replace(b'devlyn:instructions:end', b'broken:end'))
         before = claude.read_bytes()
         result = self.invoke('installClaudeCore();', code=None)
         self.assertNotEqual(result.returncode, 0)
@@ -538,19 +543,101 @@ installClaudeCore();
         self.invoke("process.umask(0o022); installInstructionsForCLI('grok');")
         self.assertEqual(dest.stat().st_mode & 0o777, 0o664)
 
-    def test_instruction_edited_unmarked_templates_fail_before_install(self):
+    def test_instruction_edited_unmarked_templates_preserve_edits_and_install(self):
         for name, command in [('AGENTS.md', "installAgentsForCLI('grok');"), ('CLAUDE.md', 'installClaudeCore();')]:
             with self.subTest(name=name):
                 dest = self.project / name
                 before = (self.package / name).read_bytes().replace(b'This contract serves one goal:', b'Team changed this body sentence:', 1)
                 dest.write_bytes(before)
-                result = self.invoke(command, code=None)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertIn(b'unrecognized or edited legacy template', result.stderr)
-                self.assertEqual(dest.read_bytes(), before)
-                self.assertTrue(list((self.project / '.devlyn/instructions').glob(name + '*.incoming')))
-                self.assertFalse((self.home / '.grok/skills').exists())
-                self.assertFalse((self.project / '.claude').exists())
+                self.invoke(command)
+                after = dest.read_bytes()
+                custom, _ = after.split(b'<!-- devlyn:instructions:begin', 1)
+                self.assertIn(b'Team changed this body sentence:', custom)
+                self.assertIn(b'## North Star', custom)
+                self.assertNotIn(b'## Core principles', custom)
+                self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
+                self.invoke(command)
+                self.assertEqual(dest.read_bytes(), after)
+
+    def test_instruction_mixed_legacy_versions_update_without_stale_defaults(self):
+        # Historical e2e720573 template + two later stock entry-policy paragraphs:
+        # the real combination that failed whole-template signature matching.
+        for name, command in [('AGENTS.md', "installInstructionsForCLI('grok');"), ('CLAUDE.md', 'installClaudeCore();')]:
+            fixture = 'mixed-legacy-agents.md' if name == 'AGENTS.md' else 'legacy-claude.md'
+            original = (Path(__file__).resolve().parent / 'fixtures/instructions' / fixture).read_bytes()
+            for eol in (b'\n', b'\r\n'):
+                with self.subTest(name=name, eol=eol):
+                    dest = self.project / name
+                    before = b'\xef\xbb\xbf' + original.replace(b'\n', eol)
+                    dest.write_bytes(before)
+                    self.invoke(command)
+                    after = dest.read_bytes()
+                    custom, block = after.split(b'<!-- devlyn:instructions:begin', 1)
+                    self.assertEqual(custom.strip(), b'\xef\xbb\xbf')
+                    self.assertNotIn(b'engine downgraded:', block)
+                    self.assertNotIn(b'Default to direct execution only for clear, local', block)
+                    self.assertIn(b'Default to direct execution when inspection makes', block)
+                    self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
+                    self.invoke(command)
+                    self.assertEqual(dest.read_bytes(), after)
+
+    def test_instruction_custom_content_survives_legacy_and_edited_managed_blocks(self):
+        for name, command in [('AGENTS.md', "installInstructionsForCLI('grok');"), ('CLAUDE.md', 'installClaudeCore();')]:
+            for managed in (False, True):
+                with self.subTest(name=name, managed=managed):
+                    dest = self.project / name
+                    if dest.exists():
+                        dest.unlink()
+                    self.invoke(command)
+                    stock = dest.read_bytes() if managed else (self.package / name).read_bytes()
+                    edited = '2. **No overengineering** — Team rule: keep our API stable.\n'.encode()
+                    # A changed list item, nested custom section, code fence and comment
+                    # must all retain their original bytes and heading ancestry.
+                    text = stock.decode('utf-8')
+                    old_item = next(line for line in text.splitlines(True) if line.startswith('2. **No overengineering**'))
+                    addition = ('\n### 배포 규칙\n\n승인 없이 배포 금지. 😀\n\n'
+                                '```md\n# Codex Project Instructions\n\ndevlyn-cli installs examples.\n'
+                                '## Core principles\n\nSeven rules govern every change. Cite them by name when a decision touches one.\n```\n\n'
+                                '<!-- custom\n\n## Quick Start\n\nKeep this comment.\n-->\n\n').encode()
+                    before = text.replace(old_item, edited.decode()).encode().replace(b'## Quick Start\n', addition + b'## Quick Start\n', 1)
+                    prefix = b'# Team rules\nUse pnpm.\n\n'
+                    suffix = b'\n# Outside\n\n## Core principles\n\nSeven rules govern every change. Cite them by name when a decision touches one.\n'
+                    before = (prefix + before + suffix).replace(b'\n', b'\r\n')
+                    dest.write_bytes(before)
+                    self.invoke(command)
+                    after = dest.read_bytes()
+                    self.assertTrue(after.startswith(prefix.replace(b'\n', b'\r\n')))
+                    self.assertIn(suffix.replace(b'\n', b'\r\n'), after)
+                    custom, _ = after.split(b'<!-- devlyn:instructions:begin', 1)
+                    self.assertIn(edited.replace(b'\n', b'\r\n'), custom)
+                    self.assertIn(addition.replace(b'\n', b'\r\n'), custom)
+                    self.assertIn(b'## Core principles\r\n', custom)
+                    self.assertNotIn(b'1. **No workaround**', custom)
+                    self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
+                    self.invoke(command)
+                    self.assertEqual(dest.read_bytes(), after)
+
+    def test_instruction_quoted_and_unknown_legacy_text_is_preserved(self):
+        examples = [b'# Codex Project Instructions\n\n```md\ndevlyn-cli installs examples.\n\n## Core principles\n\nSeven rules govern every change. Cite them by name when a decision touches one.\n```\n',
+                    b'# Devlyn Agent Instructions\nOld block\n# User addition\nKeep me\n',
+                    b'# Codex Project Instructions\n\ndevlyn-cli installs edited defaults.\n',
+                    b'# Codex Project Instructions\n\n<!-- devlyn-cli installs examples.\n\n## Core principles\n\nSeven rules govern every change. Cite them by name when a decision touches one.\n-->\n']
+        stock = (self.package / 'AGENTS.md').read_bytes()
+        examples += [b'# Team rules\n\n```markdown\n' + stock + b'```\n',
+                     b'# Team rules\n\n<!--\n' + stock + b'-->\n',
+                     b'# Team rules\n\n<details>\n<summary>Example</summary>\n\n' + stock + b'\n</details>\n',
+                     b'# Team rules\n\n<details>\n<details>Nested</details>\n\n' + stock + b'\n</details>\n',
+                     b'# Team rules\n\n<details>\n<!-- </details> -->\n\n' + stock + b'\n</details>\n',
+                     b'# Team rules\n\n<!-- first --> <!-- second\n\n' + stock + b'-->\n']
+        dest = self.project / 'AGENTS.md'
+        for before in examples:
+            with self.subTest(before=before):
+                dest.write_bytes(before)
+                self.invoke("installInstructionsForCLI('grok');")
+                after = dest.read_bytes()
+                self.assertTrue(after.startswith(before))
+                self.invoke("installInstructionsForCLI('grok');")
+                self.assertEqual(dest.read_bytes(), after)
 
     @unittest.skipIf(os.name == 'nt', 'symlink creation requires native Windows privileges')
     def test_instruction_symlink_is_preserved(self):

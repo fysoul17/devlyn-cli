@@ -27,8 +27,11 @@ function matchedEnd(text, start, template) {
 
 // A digest is ownership evidence; a familiar heading alone is not.
 function legacyRanges(text, templates) {
+  const bom = text.startsWith('\uFEFF') ? 1 : 0;
   const starts = [...new Set([0, ...(text.startsWith('\uFEFF') ? [1] : []),
-    ...Array.from(text.matchAll(/^# (?:Codex )?Project Instructions\r?$/gm), (m) => m.index)])].sort((a, b) => a - b);
+    ...instructionParagraphs(text.slice(bom))
+      .filter((p) => p.level === 1 && /^# (?:Codex )?Project Instructions\r?\n/.test(p.text))
+      .map((p) => p.start + bom)])].sort((a, b) => a - b);
   const ranges = [];
   for (const start of starts) {
     for (const template of templates) {
@@ -36,10 +39,10 @@ function legacyRanges(text, templates) {
       let custom = '';
       if (end === null && template.body) {
         const prefix = text.slice(start, starts.find((offset) => offset > start));
-        const body = /^## North Star\r?$/m.exec(prefix);
+        const body = instructionParagraphs(prefix).find((p) => p.level === 2 && /^## North Star\r?\n/.test(p.text));
         const header = template.preamble.slice(0, template.preamble.indexOf('\n\n') + 2);
         if (body && normalize(prefix).startsWith(header)) {
-          const bodyStart = start + body.index;
+          const bodyStart = start + body.start;
           end = matchedEnd(text, bodyStart, template.body);
           // Remove only an exact original preamble; preserve an edited one in full.
           const preambleEnd = matchedEnd(text, start, { length: template.preamble.length, sha256: digest(template.preamble) });
@@ -55,6 +58,89 @@ function legacyRanges(text, templates) {
     }
   }
   return ranges;
+}
+
+// Keep complete paragraphs (including fenced examples and comments) intact.
+// Matching includes the heading path, so the same words in another section
+// are not evidence that Devlyn owns them.
+function instructionParagraphs(text) {
+  const paragraphs = [];
+  let pending = '', fence = null, comment = false, html = null, start = 0;
+  const flush = () => {
+    if (pending) paragraphs.push({ text: pending, start });
+    start += pending.length;
+    pending = '';
+  };
+  for (const line of text.match(/[^\n]*\n|[^\n]+$/g) || []) {
+    if (!fence && !comment && !html && (/^(?:#{1,6} |(?:[-*+]|\d+[.)]) )/.test(line)
+        || (/^#{1,6} [^\n]+\r?\n$/.test(pending) && !/^\r?\n$/.test(line)))) flush();
+    pending += line;
+    const marker = /^( {0,3})(`{3,}|~{3,})/.exec(line)?.[2];
+    if (!comment && marker) {
+      if (!fence) fence = marker;
+      else if (marker[0] === fence[0] && marker.length >= fence.length
+          && /^ {0,3}(?:`+|~+)\s*$/.test(line)) fence = null;
+    }
+    if (!fence) {
+      let markup = '', cursor = 0;
+      for (const marker of line.matchAll(/<!--|-->/g)) {
+        if (!comment) markup += line.slice(cursor, marker.index);
+        comment = marker[0] === '<!--';
+        cursor = marker.index + marker[0].length;
+      }
+      if (!comment) markup += line.slice(cursor);
+      const opening = /^ {0,3}<([a-z][\w:-]*)\b[^>]*>/i.exec(markup);
+      if (!html && opening && !/\/>$/.test(opening[0])
+          && !/^(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i.test(opening[1])) {
+        html = { tag: opening[1].toLowerCase(), depth: 0 };
+      }
+      if (html) {
+        for (const tag of markup.matchAll(/<(\/?)([a-z][\w:-]*)\b[^>]*>/gi)) {
+          if (tag[2].toLowerCase() === html.tag && !/\/>$/.test(tag[0])) html.depth += tag[1] ? -1 : 1;
+        }
+        if (html.depth <= 0) html = null;
+      }
+    }
+    if (!fence && !comment && !html && /^\r?\n$/.test(line)) flush();
+  }
+  flush();
+  const headings = [];
+  for (const [index, paragraph] of paragraphs.entries()) {
+    const value = normalize(paragraph.text).replace(/\n+$/, '');
+    const heading = /^(#{1,6}) ([^\n]+)$/.exec(value);
+    if (heading) {
+      paragraph.level = heading[1].length;
+      while (headings.length && headings.at(-1).level >= paragraph.level) headings.pop();
+    }
+    paragraph.parents = headings.map((h) => h.index);
+    paragraph.key = digest(JSON.stringify([headings.map((h) => h.title), value]));
+    if (heading) headings.push({ level: paragraph.level, title: value, index });
+  }
+  return paragraphs;
+}
+
+function customInstructions(text, name, template, managed = false) {
+  const known = new Set([
+    ...legacyTemplates.paragraphs[name],
+    ...instructionParagraphs(template).map((p) => p.key),
+  ]);
+  const bom = text.startsWith('\uFEFF') ? '\uFEFF' : '';
+  const paragraphs = instructionParagraphs(text.slice(bom.length));
+  const keep = new Set();
+  let legacy = managed;
+  for (const [index, paragraph] of paragraphs.entries()) {
+    if (!managed && paragraph.level === 1) {
+      const next = paragraphs.findIndex((p, i) => i > index && p.level === 1);
+      const section = paragraphs.slice(index, next < 0 ? undefined : next);
+      legacy = /^# (?:Codex )?Project Instructions\r?\n|^# Devlyn Agent Instructions\r?\n/.test(paragraph.text)
+        && section.some((p) => !/^\s*(?:`{3}|~{3}|<!--)/.test(p.text) && LEGACY.test(p.text));
+    }
+    if (!legacy || !known.has(paragraph.key)) {
+      keep.add(index);
+      for (const parent of paragraph.parents) keep.add(parent);
+    }
+  }
+  return bom + paragraphs.filter((_, index) => keep.has(index)).map((p) => p.text).join('');
 }
 
 function retainFile(file, bytes) {
@@ -134,10 +220,13 @@ function updateInstructions(name) {
     const start = starts[0];
     const end = ends[0];
     const bodyStart = start.index + start[0].length;
-    if (end.index < bodyStart || digest(normalize(current.slice(bodyStart, end.index))) !== start[1]) {
-      return conflict('managed defaults were edited');
-    }
-    content = current.slice(0, start.index + (start[0].startsWith('\uFEFF') ? 1 : 0)) + block + current.slice(end.index + end[0].length);
+    if (end.index < bodyStart) return conflict('reversed managed markers');
+    const previous = current.slice(bodyStart, end.index);
+    const custom = digest(normalize(previous)) === start[1] ? ''
+      : customInstructions(previous, name,
+        'Project-specific instructions outside this managed block take precedence over these defaults.\n\n' + template, true);
+    content = current.slice(0, start.index + (start[0].startsWith('\uFEFF') ? 1 : 0))
+      + custom + (custom ? eol : '') + block + current.slice(end.index + end[0].length);
   } else {
     const normalized = normalize(template);
     const bodyStart = normalized.indexOf('## North Star\n');
@@ -148,18 +237,13 @@ function updateInstructions(name) {
         ...(bodyStart > 0 ? { preamble, body: { length: body.length, sha256: digest(body) } } : {}) },
       ...(legacyTemplates[name] || []),
     ]);
-    if (ranges.length > 1) return conflict('multiple legacy templates');
-    if (ranges.length === 1) {
+    if (ranges.length === 1 && !LEGACY.test(current.slice(0, ranges[0].start)
+        + ranges[0].custom + current.slice(ranges[0].end))) {
       const { start, end, custom } = ranges[0];
-      if (LEGACY.test(current.slice(0, start) + custom + current.slice(end))) {
-        return conflict('edited legacy introduction or extra template text');
-      }
       content = current.slice(0, start) + custom + block + current.slice(end);
     } else {
-      if (LEGACY.test(current)) {
-        return conflict('unrecognized or edited legacy template');
-      }
-      content = current + (current ? eol + eol : '') + block;
+      const custom = customInstructions(current, name, template);
+      content = custom + (custom ? eol + eol : '') + block;
     }
   }
   const bytes = Buffer.from(content);
@@ -184,4 +268,4 @@ function updateInstructions(name) {
   return true;
 }
 
-module.exports = { updateInstructions, InstructionError };
+module.exports = { updateInstructions, InstructionError, instructionParagraphs };
