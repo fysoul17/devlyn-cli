@@ -1,9 +1,10 @@
-# Core harness improvement — 0202 owner-run candidate
+# Core harness improvement — 0202 adopted; 3.2.0 release
 
-2026-09-21 KST. User authorized continuing0201 after reboot and cleaning obsolete
-owned work. Root direct; **no resolve, including controls**. No npm release.
+2026-09-21 KST. User explicitly authorized main merge, branch/worktree cleanup
+and npm release after reviewing the source-only verification limits. Root direct;
+**no resolve, including controls**. PR80 merged as `ca33b00`; release target3.2.0.
 Retained checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Candidate branch: `candidate/0202-owner-run-harness`; not adopted into main.
+Candidate branch `candidate/0202-owner-run-harness` is merged and cleaned.
 Read [0202](iterations/0202-owner-run-candidate.md) for implemented behavior and
 [0201](iterations/0201-harness-transformation-plan.md) for the finite product plan.
 
@@ -22,6 +23,8 @@ Do not replace this milestone with open-ended small-defect research.
 0200/0199/0198 are closed;0187 NO-GO, exposed0197–0200 tasks, A16 and frozen
 results stay unchanged. Both0198 branch witnesses remain required for future R1
 validation. Mission1, untouched confirmation and field gate15 remain OPEN.
-Current released routing/pair policy stays until validated migration. Preserve
+Adoption is user-authorized; live-call conformance and comparative effectiveness
+remain unproven and must not be claimed from fixture/CI results. Preserve
 original checkout WIP and all source/Git/restart evidence. Installer PR73 is OPEN;
-its worktree remains, with only unused regenerable caches removed.
+the installer worktree hosts the current live session and must remain until it
+yields. Release status/evidence: `.devlyn/release-3.2.0/FINAL.md`.

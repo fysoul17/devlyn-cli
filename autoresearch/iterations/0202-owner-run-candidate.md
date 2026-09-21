@@ -2,7 +2,10 @@
 
 2026-09-21. User authorized continuing the transformation and cleaning obsolete
 work after reboot. Root direct; no resolve invocation or npm release. Based on
-main `3d8d937`; candidate stays on `candidate/0202-owner-run-harness`, not adopted.
+main `3d8d937`. Initially retained on `candidate/0202-owner-run-harness`.
+Later on2026-09-21 the user explicitly requested merge, cleanup and release:
+PR80 merged as `ca33b00` after POSIX/native Windows CI35591106438 passed.
+This changes delivery authorization, not the unproven live/comparative claims.
 
 ## Implemented
 
