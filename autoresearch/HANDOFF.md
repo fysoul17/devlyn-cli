@@ -20,7 +20,9 @@ legacy state helper is not a complete scheduler; don't mistake fixture PASS or
 callable compatibility APIs for observed candidate routing.
 
 Then register0201's A/B/C tasks and whole-call time/usage budgets before draws;
-the24/48 ceilings do not authorize an unregistered comparison. Public intent
+the24/48 ceilings do not authorize an unregistered comparison. Existing cross-project
+usage records may inform hypotheses under0201's accounting rules; they do not
+replace registered confirmation or add a prerequisite platform. Public intent
 installation and existing option migration follow the evidence-based product
 transition. [0201](iterations/0201-harness-transformation-plan.md) remains the
 implementation order and adoption/rejection contract. Do not replace it with
