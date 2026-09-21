@@ -1,30 +1,32 @@
-# Core harness improvement — 0202 adopted; 3.2.0 release
+# Continue 0201 toward the unified intent entry
 
-2026-09-21 KST. User explicitly authorized main merge, branch/worktree cleanup
-and npm release after reviewing the source-only verification limits. Root direct;
-**no resolve, including controls**. PR80 merged as `ca33b00`; release target3.2.0.
-Retained checkout: `/Users/aipalm/.local/share/nx01/core-continuation-20260912`.
-Candidate branch `candidate/0202-owner-run-harness` is merged and cleaned.
-Read [0202](iterations/0202-owner-run-candidate.md) for implemented behavior and
-[0201](iterations/0201-harness-transformation-plan.md) for the finite product plan.
+2026-09-22 KST. Root direct, **no resolve invocation**, actual Fable5.1/Grok4.6
+verification and review. User clarified: continue0201 sequentially; do not ask
+again which already-defined milestone to resume. Intent consolidation remains
+the product direction, not merely a rename of the fixed phase list.
 
-0125 BUILD removal has been ported (separate checkpoint2a2622e). Owner PLAN and
-command-only CLEANUP are implemented; code/doc cleanup stays inside selected
-IMPLEMENT. Independent VERIFY, scope, engine pins and failure evidence remain.
-Evidence/status: `.devlyn/0202/FINAL.md`; completion receipt
-`.git/devlyn-completion/0f83292ed2e8bf465628e33f/receipt.json`.
+Current source:3.2.0 already contains0202 owner PLAN/BUILD/CLEANUP consolidation.
+[0203](iterations/0203-owner-repair-verification.md) repairs the reproduced index
+and cleanup-repair boundaries. Both reviewers accept the final scoped patch;
+raw evidence, controls, review limits and complete checks: `.devlyn/0203/`.
+Completion receipt: `.git/devlyn-completion/8989b8de86519c7dbef36fdd/receipt.json`.
+The source patch does not complete0201 step1 or establish runtime efficacy.
 
-Next: actual candidate invocation conformance, including selected-worker cleanup
-and repair→BUILD→fresh VERIFY. Fixture tests are not a model trace. Then register
-0201's A/B/C tasks, whole-call/usage/time budgets and measurement before running
-comparisons; the24/48 ceilings are not an automatic spending authorization.
-Do not replace this milestone with open-ended small-defect research.
+Next unit: an internal intent candidate and its actual invocation trace,
+including selected execution/code cleanup and review→repair→affected checks→fresh
+review. No separate PLAN/BUILD/CLEANUP model calls. Preserve original constraints,
+engine selections, failure evidence and final source/evidence agreement. The
+legacy state helper is not a complete scheduler; don't mistake fixture PASS or
+callable compatibility APIs for observed candidate routing.
 
-0200/0199/0198 are closed;0187 NO-GO, exposed0197–0200 tasks, A16 and frozen
-results stay unchanged. Both0198 branch witnesses remain required for future R1
-validation. Mission1, untouched confirmation and field gate15 remain OPEN.
-Adoption is user-authorized; live-call conformance and comparative effectiveness
-remain unproven and must not be claimed from fixture/CI results. Preserve
-original checkout WIP and all source/Git/restart evidence. Installer PR73 is OPEN;
-the installer worktree hosts the current live session and must remain until it
-yields. Release status/evidence: `.devlyn/release-3.2.0/FINAL.md`.
+Then register0201's A/B/C tasks and whole-call time/usage budgets before draws;
+the24/48 ceilings do not authorize an unregistered comparison. Public intent
+installation and existing option migration follow the evidence-based product
+transition. [0201](iterations/0201-harness-transformation-plan.md) remains the
+implementation order and adoption/rejection contract. Do not replace it with
+open-ended small-defect research.
+
+0198–0200 and historical failures remain closed/frozen; A16 and original WIP
+remain untouched. Mission1, untouched confirmation and field gate15 are OPEN.
+Release3.2.0 custody:
+`/Users/aipalm/.local/share/devlyn/releases/devlyn-cli-3.2.0-20260921/FINAL.md`.
