@@ -22,14 +22,23 @@ so that repair edge stays OPEN and the fixture honestly ended INCOMPLETE.
 Final source/check/review hashes agree. Evidence: `.devlyn/0204/`; exposed
 participant: `/Users/aipalm/.local/share/nx01/0204-participant`.
 
-Next unit is 0201 step 2 admission: demonstrate repair of a reviewer-originated
-finding and add the planned 0185 rollback and 0187 scope regressions to the
-internal candidate checks. Preserve 0204's incomplete result;
-do not reroll until PASS or turn inherited research defects into an open-ended
-repair queue. The observed same-engine owner route does not establish autonomous
-review selection, all engine routes or product quality/cost superiority.
+[0205](iterations/0205-repair-and-scope-regressions.md) now demonstrates the named
+reviewer-originated repair,0185 rollback and0187 scope obligations on exposed copies.
+Three Astra/high owners and three Fable5.1 reviews, no phase workers or resolve.
+Root independently reran checks and inspected62 command events; protected inputs
+and original sources are unchanged. The binding review initially omitted nested
+logs; the helper is repaired, regression-tested and root supplemental Fable review
+accepts that repair with real evidence. Relocated heldout setup is also corrected.
 
-Then register0201's A/B/C tasks and whole-call time/usage budgets before draws;
+Residuals stay explicit: symbolic-HEAD fixture Windows limitation; rollback tests
+fail to inject release faults through symlinked TMPDIR; scope fixture retains an
+unhashable-engine compatibility gap and bridge77 UNAVAILABLE. Frozen fixtures are
+not universal PASS. Grok4.7 preflight succeeds, but both advice calls time out with
+no verdict or substitute (an earlier argv error launched no model). Evidence: `.devlyn/0205`; participants `../0205-participants`.
+Do not keep rerolling these exposed tasks or turn their residuals into an open-ended
+research repair queue. No autonomous-review-selection or efficacy claim.
+
+Next register0201's A/B/C tasks and whole-call time/usage budgets before draws;
 the24/48 ceilings do not authorize an unregistered comparison. Existing cross-project
 usage records may inform hypotheses under0201's accounting rules; they do not
 replace registered confirmation or add a prerequisite platform. Public intent
