@@ -52,3 +52,17 @@ Subtractive-first: reuse owner.md, native bounded transport and existing witness
 Only connect these exposed inputs; no scheduler, parallel workflow, public flag or
 new acceptance framework. Positive cells permit the next A/B/C registration,
 not adoption, reliability, autonomous review selection or full-engine coverage.
+
+## Named amendment after binding, before rollback/scope
+
+The first owner saved raw checks below checks-final subdirectories. The static
+review helper used a top-level glob, so Fable saw scope metadata without the
+actual test logs. Both reviewer and owner disclosed this; binding retains that
+incomplete review verdict. Root also found untracked allowed regression files
+were absent from git diff and the fixed review list. The helper now recursively
+includes raw checks and explicitly includes every existing allowed file.
+Original helper/runner/protocol bytes and registration stay in0205 evidence;
+registration-followup.json binds the amendment before remaining draws. The owner
+prompt, inputs, cell/review budgets and acceptance obligations are unchanged.
+Root supplemental review of binding includes actual raw results; it does not
+rewrite the original cell verdict or rerun the owner.

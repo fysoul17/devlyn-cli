@@ -121,7 +121,8 @@ PASS from a narrower witness. Historical Windows or integration limits remain ex
 
 
 def run(name):
-    reg=json.loads((E/'registration.json').read_text())
+    registration = 'registration.json' if name == 'binding' else 'registration-followup.json'
+    reg=json.loads((E/registration).read_text())
     assert name in reg['order']
     for p,h in reg['source_sha256'].items():
         assert hashlib.sha256((R/p).read_bytes()).hexdigest()==h,p
