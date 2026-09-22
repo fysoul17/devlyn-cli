@@ -431,7 +431,7 @@ installClaudeCore();
                        preamble.replace('old defaults.', 'old defaults. Use pnpm.') + body,
                        preamble.rstrip('\n') + '\n' + body,
                        header + custom + body + body):
-            dest.write_text(before, encoding='utf-8')
+            dest.write_bytes(before.encode('utf-8'))
             original = dest.read_bytes()
             self.invoke('installClaudeCore();', package=copy)
             after = dest.read_bytes()
@@ -562,18 +562,21 @@ installClaudeCore();
     def test_instruction_mixed_legacy_versions_update_without_stale_defaults(self):
         # Historical e2e720573 template + two later stock entry-policy paragraphs:
         # the real combination that failed whole-template signature matching.
-        for name, command in [('AGENTS.md', "installInstructionsForCLI('grok');"), ('CLAUDE.md', 'installClaudeCore();')]:
-            fixture = 'mixed-legacy-agents.md' if name == 'AGENTS.md' else 'legacy-claude.md'
+        for name, command, fixture in [
+                ('AGENTS.md', "installInstructionsForCLI('grok');", 'mixed-legacy-agents.md'),
+                ('AGENTS.md', "installInstructionsForCLI('grok');", 'legacy-july-agents.md'),
+                ('CLAUDE.md', 'installClaudeCore();', 'legacy-claude.md')]:
             original = (Path(__file__).resolve().parent / 'fixtures/instructions' / fixture).read_bytes()
             for eol in (b'\n', b'\r\n'):
-                with self.subTest(name=name, eol=eol):
+                with self.subTest(name=name, fixture=fixture, eol=eol):
                     dest = self.project / name
-                    before = b'\xef\xbb\xbf' + original.replace(b'\n', eol)
+                    user_rules = b'\xef\xbb\xbf# Local rules\n\nKeep our project workflow.\n\n'.replace(b'\n', eol)
+                    before = user_rules + original.replace(b'\n', eol)
                     dest.write_bytes(before)
                     self.invoke(command)
                     after = dest.read_bytes()
                     custom, block = after.split(b'<!-- devlyn:instructions:begin', 1)
-                    self.assertEqual(custom.strip(), b'\xef\xbb\xbf')
+                    self.assertEqual(custom.strip(), user_rules.strip())
                     self.assertNotIn(b'engine downgraded:', block)
                     self.assertNotIn(b'Default to direct execution only for clear, local', block)
                     self.assertIn(b'Default to direct execution when inspection makes', block)
