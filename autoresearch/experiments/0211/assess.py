@@ -29,7 +29,7 @@ def assess(cell, runtime_path):
     out.mkdir(exist_ok=False)
     call = out / '.devlyn/reviews/call-1'
     call.mkdir(parents=True)
-    packet = module('packet', HERE.parent / '0205/review.py')
+    packet = module('packet', HERE / 'packet.py')
     before, prompt = packet.packet(cell / 'work')
     prompt = prompt.replace('This is exposed regression material, not blind research.',
                             'This is blinded outcome assessment. No arm label is supplied.')
@@ -38,8 +38,6 @@ def assess(cell, runtime_path):
               'and limitations. No tools or repairs. Do not infer an arm from coding style.\n' + prompt)
     prompt += '\nROOT DETERMINISTIC CHECKS\n' + (cell / 'checks.json').read_text()
     prompt = prompt.replace(str(cell), '/sealed-cell')
-    prompt = '\n'.join(line for line in prompt.splitlines()
-                       if 'duration_ms:' not in line and '# duration_ms ' not in line)
     (call / 'prompt.txt').write_text(prompt)
     argv = [sys.executable, '-B', str(ROOT / 'config/skills/_shared/run-bounded.py'), '230',
             '--stdin-file', str(call / 'prompt.txt'), '--', 'claude', '-p',
