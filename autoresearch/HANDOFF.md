@@ -59,9 +59,14 @@ Fable source findings produced repaired false-PASS and empty-dispatch witnesses.
 Collection remains **BLOCKED_NATIVE_ACCOUNTING_AND_PARITY**: post-dispatch logs
 and synthetic container writers do not establish native slot admission, bounded
 provider reporting, Fable counters, protected telemetry or Linux capability parity.
-Next bind those native controls, then seal exact prompts/config/dependency/evaluator
-identities under [0206 protocol](experiments/0206/PROTOCOL.md). Do not treat control
-passes or24/48 maxima as launch/spending approval. Raw evidence: `.devlyn/0208/`.
+[0209](iterations/0209-native-admission.md) tests the installed native bindings:
+10 loopback controls reproduce cache/override metric differences and hook
+failure behavior. Wildcard denials work; malformed/failed hooks permit dispatch.
+Actual Fable5.1/Grok4.7 advice completed. Native settings alone do not satisfy0206;
+no comparison was launched. A protected cross-engine observer and fail-closed
+dispatch binding remain unproved, as does Linux parity. Do not silently weaken
+the registered ceilings or build an unrequested scheduler to force admission.
+Raw evidence: `.devlyn/0208/` and the separate0209 checkout `.devlyn/0209/`.
 The task/budget/decision rules are prospective; preserve amendments and never
 silently regrade an already launched cohort. No new resolve in any arm.
 
