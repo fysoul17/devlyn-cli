@@ -1,0 +1,36 @@
+model = "gpt-6-astra"
+model_provider = "observed-openai"
+model_reasoning_effort = "high"
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+project_doc_max_bytes = 0
+web_search = "disabled"
+[sandbox_workspace_write]
+network_access = true
+[features]
+rollout_budget = false
+apps = false
+plugins = false
+hooks = false
+skill_search = false
+skip_host_skill_discovery = true
+shell_snapshot = false
+[features.multi_agent_v2]
+enabled = true
+expose_spawn_agent_model_overrides = false
+[agents]
+default_subagent_model = "gpt-6-astra"
+default_subagent_reasoning_effort = "high"
+max_concurrent_threads_per_session = 4
+
+[model_providers.observed-openai]
+name = "OpenAI"
+requires_openai_auth = true
+request_max_retries = 0
+stream_max_retries = 0
+
+wire_api = "responses"
+supports_websockets = true
+supports_standalone_web_search = true
+http_headers = { version = "0.155.1" }
+env_http_headers = { "OpenAI-Organization" = "OPENAI_ORGANIZATION", "OpenAI-Project" = "OPENAI_PROJECT" }
