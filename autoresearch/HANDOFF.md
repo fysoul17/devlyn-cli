@@ -44,12 +44,18 @@ registration: four public requests in Commander/Click, routine1/medium1/hard2,
 native tools/subagent/review capability; C requires independent review→repair.
 The pinned source reproduces all four requested failures before any model draw.
 
-Next complete the **execution seal** in
-[0206 protocol](experiments/0206/PROTOCOL.md): calibrated full-requirement evaluators,
-positive/reference mutants, native capability parity, live whole-tree usage and
-termination controls, exact prompts/config/dependency identities. Registration is
-TASK_BUDGET_REGISTERED_EXECUTION_UNSEALED; no comparison has started. Do not treat
-baseline probes as full evaluators or24/48 maxima as launch/spending approval.
+[0207](iterations/0207-execution-admission.md) adds executable requirement checks,
+four oracle references and21 incomplete mutants, actual subprocess/FIFO controls
+and native Python3.10 coverage. It also falsifies admission of the existing
+transport: extra termination grace, escaped detached child, no token/call cap.
+Collection is **BLOCKED_EXISTING_TRANSPORT**; no comparison has started.
+Fable twice and Grok4.7 once timed out without verdict; independent review remains
+unavailable, never accepted. Final calibration is29/29; raw evidence `.devlyn/0207/`.
+Next bind live recursive usage and bounded whole-tree termination, verify native
+capability parity, then seal exact prompts/config/dependency/evaluator identities
+under [0206 protocol](experiments/0206/PROTOCOL.md). Intermediate rollout usage and
+App Server notifications exist but their live enforcement is unproven. Do not
+treat check calibration or24/48 maxima as launch/spending approval.
 The task/budget/decision rules are prospective; preserve amendments and never
 silently regrade an already launched cohort. No new resolve in any arm.
 
