@@ -431,7 +431,7 @@ installClaudeCore();
                        preamble.replace('old defaults.', 'old defaults. Use pnpm.') + body,
                        preamble.rstrip('\n') + '\n' + body,
                        header + custom + body + body):
-            dest.write_text(before, encoding='utf-8')
+            dest.write_bytes(before.encode('utf-8'))
             original = dest.read_bytes()
             self.invoke('installClaudeCore();', package=copy)
             after = dest.read_bytes()
