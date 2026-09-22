@@ -1,0 +1,304 @@
+{
+  "schema": 1,
+  "status": "TASK_BUDGET_REGISTERED_EXECUTION_UNSEALED",
+  "candidate": "autoresearch/experiments/0204/owner.md",
+  "candidate_sha256": "a213b73ceeca02627cf4e66469da0243f8c25bb1337e1917d9ac493385c771a6",
+  "tasks": [
+    {
+      "id": "D1",
+      "repository": "tj/commander.js",
+      "issue": 2614,
+      "stratum": "routine",
+      "domain": "localized CLI option parsing",
+      "allowed": [
+        "lib/option.js",
+        "tests/options.variadic.test.js",
+        "tests/option.test.js"
+      ],
+      "wall_seconds": 900,
+      "output_tokens": 20000,
+      "input_tokens": 400000,
+      "request": "Recognize required and optional Unicode letter/number option placeholders as variadic, preserving ASCII word placeholders and separator rejection. Fix the original two-value example and add regression tests; do not change command-argument grammar.",
+      "obligations": [
+        "Required <值...> and optional [值...] collect two values; option.variadic is true.",
+        "ASCII letters, digits and underscore remain supported; Greek letters and non-ASCII decimal digits work.",
+        "Comma/separator and empty placeholders remain non-variadic; ordinary single-value options stay single-value.",
+        "Option-looking tokens still terminate collection under existing rules; help displays the original placeholder unchanged."
+      ],
+      "public_checks": [
+        "node --test tests/options.variadic.test.js",
+        "node --test"
+      ],
+      "counterexamples": [
+        "ASCII-only matching",
+        "unrestricted suffix accepts comma separator",
+        "required-only repair omits optional placeholders"
+      ],
+      "base_sha": "ba6d13ddb4243e5913367734f8c159089ffe7834",
+      "tree_sha": "ea7f757f861aba3926265ffc2b0955dd73a9684b",
+      "issue_url": "https://github.com/tj/commander.js/issues/2614",
+      "issue_snapshot_sha256": "7d2f8109a7ed05119fbeef581b0e7c8cdaa6e14d5895400652e99db3067ae1a6",
+      "issue_updated_at": "2026-09-20T11:20:57Z",
+      "execution_scope": "Only named product paths and task-specific regression tests/docs; no evaluator/config/dependency edits. Named test paths may be created if absent. Existing unrelated tests cannot be weakened."
+    },
+    {
+      "id": "D2",
+      "repository": "pallets/click",
+      "issue": 2740,
+      "stratum": "medium",
+      "domain": "exception rendering and stream compatibility",
+      "allowed": [
+        "src/click/exceptions.py",
+        "tests/test_exceptions.py",
+        "tests/test_basic.py",
+        "CHANGES.md"
+      ],
+      "wall_seconds": 1200,
+      "output_tokens": 30000,
+      "input_tokens": 800000,
+      "request": "Display Python exception notes after the formatted error message when Click renders a ClickException, including UsageError/BadParameter subclasses. Retain existing no-note output, usage/help prefixes, file routing, color policy and exit codes. This caller chooses one note per line in insertion order with embedded newlines preserved and no extra Error prefix. Do not alter str(exception) or format_message().",
+      "obligations": [
+        "Base ClickException displays one, multiple and multiline notes once, in insertion order.",
+        "UsageError with and without Context, BadParameter and FileError also display their notes after the formatted error.",
+        "No-note output is byte-identical; usage/help prefix and exit 1/2 behavior remain unchanged.",
+        "Explicit file receives all output; default remains stderr; existing color handling applies to notes.",
+        "Rendering twice does not mutate notes/message; subclasses overriding format_message retain formatted error text.",
+        "Python3.10 no-note compatibility remains; note tests require3.11+ and cannot make absent native coverage a PASS."
+      ],
+      "public_checks": [
+        "python -m pytest tests/test_exceptions.py tests/test_basic.py",
+        "python -m pytest"
+      ],
+      "counterexamples": [
+        "base-only show repair misses UsageError override",
+        "notes sent to stdout instead of explicit file",
+        "format_message mutation duplicates notes"
+      ],
+      "base_sha": "3cbaa76b6014be7427d1ab06b4af40f01e7c278e",
+      "tree_sha": "b8c174fe04ce2f9bd96a686f49a5b4cc12225c0c",
+      "issue_url": "https://github.com/pallets/click/issues/2740",
+      "issue_snapshot_sha256": "00b3d8043699b101576a4dca79c27a32605d77ac679f38c7039ffbf0d38e938a",
+      "issue_updated_at": "2026-08-08T12:51:42Z",
+      "execution_scope": "Only named product paths and task-specific regression tests/docs; no evaluator/config/dependency edits. Named test paths may be created if absent. Existing unrelated tests cannot be weakened."
+    },
+    {
+      "id": "D3",
+      "repository": "tj/commander.js",
+      "issue": 2530,
+      "stratum": "hard",
+      "domain": "parser and executable subprocess argument boundaries",
+      "allowed": [
+        "lib/command.js",
+        "tests/command.executableSubcommand.test.js",
+        "tests/args.literal.test.js",
+        "tests/fixtures/**"
+      ],
+      "wall_seconds": 1800,
+      "output_tokens": 50000,
+      "input_tokens": 1200000,
+      "request": "Preserve the first end-of-options delimiter when dispatching an executable subcommand so option-like operands remain operands in the real child. Preserve token order and later literal delimiters. Keep in-process subcommand parsing, existing parent options, aliases, help, default executable dispatch and pass-through behavior compatible. Do not change public APIs or implement a global always-add-delimiter workaround.",
+      "obligations": [
+        "Real spawned child receives -- before --not-an-option and parses it as an operand.",
+        "Ordinary operands before/after the first delimiter retain order; subsequent -- tokens remain literal.",
+        "Without delimiter, child options still parse as options; parent options and option values containing -- are not confused with the delimiter.",
+        "Alias and default executable routes preserve the same boundary.",
+        "In-process commands, nested commands, enablePositionalOptions/passThroughOptions and help retain current behavior.",
+        "Child exit status, spawn failure and signal propagation preserve existing tests; all owned child processes terminate."
+      ],
+      "public_checks": [
+        "node --test tests/command.executableSubcommand.test.js tests/args.literal.test.js",
+        "node --test"
+      ],
+      "counterexamples": [
+        "drop delimiter",
+        "prepend delimiter before all child options",
+        "duplicate later delimiter",
+        "fix normal route but omit default executable"
+      ],
+      "base_sha": "ba6d13ddb4243e5913367734f8c159089ffe7834",
+      "tree_sha": "ea7f757f861aba3926265ffc2b0955dd73a9684b",
+      "issue_url": "https://github.com/tj/commander.js/issues/2530",
+      "issue_snapshot_sha256": "cac074740b01d2e8bc2a036d5dfa6ccab89f949229f800aae1b430c169f50ab1",
+      "issue_updated_at": "2026-08-05T06:58:08Z",
+      "execution_scope": "Only named product paths and task-specific regression tests/docs; no evaluator/config/dependency edits. Named test paths may be created if absent. Existing unrelated tests cannot be weakened."
+    },
+    {
+      "id": "D4",
+      "repository": "pallets/click",
+      "issue": 2645,
+      "stratum": "hard",
+      "domain": "lazy POSIX FIFO IO and resource ownership",
+      "allowed": [
+        "src/click/utils.py",
+        "src/click/types.py",
+        "tests/test_basic.py",
+        "tests/test_utils.py",
+        "tests/test_types.py",
+        "CHANGES.md"
+      ],
+      "wall_seconds": 1800,
+      "output_tokens": 50000,
+      "input_tokens": 1200000,
+      "request": "Make click.File(\"rb\", lazy=True) read a POSIX named pipe lazily without an eager open/close handshake that can lose the writer or its data. Construction must return before a writer connects, and a delayed first read must return all bytes from one writer. Preserve early errors for ordinary read files, stdin ownership, lazy writes and close-on-context behavior. Support direct FIFO and symlink-to-FIFO paths; no new public flag or broad file API rewrite. This development task targets macOS/POSIX, not Windows certification.",
+      "obligations": [
+        "FIFO conversion returns before any writer is started; no connection is consumed during construction.",
+        "A synchronized real single writer survives delayed first read and all payload bytes arrive exactly once, in binary and text modes.",
+        "Symlink-to-FIFO behaves like direct FIFO; do not classify solely by path spelling.",
+        "Missing ordinary files and directories still produce existing early errors; regular files and symlinks to regular files read normally.",
+        "Borrowed stdin remains open; unopened lazy write does not create a file; context cleanup closes opened owned files.",
+        "Timeout/error probes terminate owned writer/readers and remove only their fixture paths; no sleeps-as-proof race test."
+      ],
+      "public_checks": [
+        "python -m pytest tests/test_basic.py",
+        "python -m pytest"
+      ],
+      "counterexamples": [
+        "eager FIFO open/close",
+        "remove all early ordinary-file checks",
+        "lstat-only misses symlink FIFO",
+        "close borrowed stdin"
+      ],
+      "base_sha": "3cbaa76b6014be7427d1ab06b4af40f01e7c278e",
+      "tree_sha": "b8c174fe04ce2f9bd96a686f49a5b4cc12225c0c",
+      "issue_url": "https://github.com/pallets/click/issues/2645",
+      "issue_snapshot_sha256": "975c3ef5f7d5a6a708adaf6a83449ceea0cf762176c2bba90c6bebe3bfedda1c",
+      "issue_updated_at": "2026-08-08T12:47:39Z",
+      "execution_scope": "Only named product paths and task-specific regression tests/docs; no evaluator/config/dependency edits. Named test paths may be created if absent. Existing unrelated tests cannot be weakened."
+    }
+  ],
+  "cells": [
+    {
+      "task": "D1",
+      "repetition": 1,
+      "arm": "A"
+    },
+    {
+      "task": "D1",
+      "repetition": 1,
+      "arm": "B"
+    },
+    {
+      "task": "D1",
+      "repetition": 1,
+      "arm": "C"
+    },
+    {
+      "task": "D1",
+      "repetition": 2,
+      "arm": "C"
+    },
+    {
+      "task": "D1",
+      "repetition": 2,
+      "arm": "B"
+    },
+    {
+      "task": "D1",
+      "repetition": 2,
+      "arm": "A"
+    },
+    {
+      "task": "D2",
+      "repetition": 1,
+      "arm": "A"
+    },
+    {
+      "task": "D2",
+      "repetition": 1,
+      "arm": "B"
+    },
+    {
+      "task": "D2",
+      "repetition": 1,
+      "arm": "C"
+    },
+    {
+      "task": "D2",
+      "repetition": 2,
+      "arm": "C"
+    },
+    {
+      "task": "D2",
+      "repetition": 2,
+      "arm": "B"
+    },
+    {
+      "task": "D2",
+      "repetition": 2,
+      "arm": "A"
+    },
+    {
+      "task": "D3",
+      "repetition": 1,
+      "arm": "A"
+    },
+    {
+      "task": "D3",
+      "repetition": 1,
+      "arm": "B"
+    },
+    {
+      "task": "D3",
+      "repetition": 1,
+      "arm": "C"
+    },
+    {
+      "task": "D3",
+      "repetition": 2,
+      "arm": "C"
+    },
+    {
+      "task": "D3",
+      "repetition": 2,
+      "arm": "B"
+    },
+    {
+      "task": "D3",
+      "repetition": 2,
+      "arm": "A"
+    },
+    {
+      "task": "D4",
+      "repetition": 1,
+      "arm": "A"
+    },
+    {
+      "task": "D4",
+      "repetition": 1,
+      "arm": "B"
+    },
+    {
+      "task": "D4",
+      "repetition": 1,
+      "arm": "C"
+    },
+    {
+      "task": "D4",
+      "repetition": 2,
+      "arm": "C"
+    },
+    {
+      "task": "D4",
+      "repetition": 2,
+      "arm": "B"
+    },
+    {
+      "task": "D4",
+      "repetition": 2,
+      "arm": "A"
+    }
+  ],
+  "totals": {
+    "cells": 24,
+    "wall_seconds": 34200,
+    "output_tokens": 900000,
+    "input_tokens": 21600000,
+    "model_invocations": 120
+  },
+  "launch_blockers": [
+    "Executable requirement evaluators and positive/mutant calibration not yet sealed",
+    "Native descendant capability parity and whole-tree live budget/termination controls not yet sealed",
+    "Actual runtime identities, dependency environments, common/arm prompts and issue transport not yet sealed"
+  ],
+  "confirmation_authorized": false
+}

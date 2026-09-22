@@ -38,14 +38,24 @@ no verdict or substitute (an earlier argv error launched no model). Evidence: `.
 Do not keep rerolling these exposed tasks or turn their residuals into an open-ended
 research repair queue. No autonomous-review-selection or efficacy claim.
 
-Next register0201's A/B/C tasks and whole-call time/usage budgets before draws;
-the24/48 ceilings do not authorize an unregistered comparison. Existing cross-project
-usage records may inform hypotheses under0201's accounting rules; they do not
-replace registered confirmation or add a prerequisite platform. Public intent
-installation and existing option migration follow the evidence-based product
-transition. [0201](iterations/0201-harness-transformation-plan.md) remains the
-implementation order and adoption/rejection contract. Do not replace it with
-open-ended small-defect research.
+[0206](iterations/0206-abc-registration.md) fixes the development task and budget
+registration: four public requests in Commander/Click, routine1/medium1/hard2,
+24 serial A/B/C cells maximum. The unchanged0204 candidate is B; A has the same
+native tools/subagent/review capability; C requires independent review→repair.
+The pinned source reproduces all four requested failures before any model draw.
+
+Next complete the **execution seal** in
+[0206 protocol](experiments/0206/PROTOCOL.md): calibrated full-requirement evaluators,
+positive/reference mutants, native capability parity, live whole-tree usage and
+termination controls, exact prompts/config/dependency identities. Registration is
+TASK_BUDGET_REGISTERED_EXECUTION_UNSEALED; no comparison has started. Do not treat
+baseline probes as full evaluators or24/48 maxima as launch/spending approval.
+The task/budget/decision rules are prospective; preserve amendments and never
+silently regrade an already launched cohort. No new resolve in any arm.
+
+0201 remains the adoption/rejection and product-transition contract. Public intent
+installation/migration and untouched confirmation remain pending. Existing usage
+records can inform hypotheses under0201 without becoming a new platform prerequisite.
 
 0198–0200 and historical failures remain closed/frozen; A16 and original WIP
 remain untouched. Mission1, untouched confirmation and field gate15 are OPEN.
