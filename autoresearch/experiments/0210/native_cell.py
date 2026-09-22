@@ -68,7 +68,7 @@ def run(plan, out):
             '--network', plan['network'], '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
             '--security-opt', 'seccomp=unconfined', '--read-only', '--restart=no',
             '--pids-limit', '256', '--memory', '4g', '--cpus', '2',
-            '--tmpfs', '/tmp:rw,nosuid,size=536870912',
+            '--tmpfs', '/tmp:rw,nosuid,exec,size=536870912',
             '--mount', f'type=bind,src={work},dst=/work',
             '--mount', f'type=bind,src={home},dst=/home/participant',
             '--mount', f'type=bind,src={plan["control"]},dst=/control,readonly',
@@ -111,7 +111,8 @@ def run(plan, out):
                 host['RestartPolicy']['Name'] != 'no' or not host['ReadonlyRootfs'] or
                 host['CapDrop'] != ['ALL'] or set(host['SecurityOpt']) != {'no-new-privileges', 'seccomp=unconfined'} or
                 host['PidsLimit'] != 256 or host['Memory'] != 4294967296 or host['NanoCpus'] != 2000000000 or
-                host['NetworkMode'] != plan['network'] or mounts != expected_mounts):
+                host['NetworkMode'] != plan['network'] or mounts != expected_mounts or
+                host['Tmpfs'] != {'/tmp': 'rw,nosuid,exec,size=536870912'}):
             raise ValueError('unexpected container identity/isolation/mounts')
         with (out / 'stdout').open('xb') as stdout, (out / 'stderr').open('xb') as stderr:
             process = subprocess.Popen(['docker', 'start', '-a', cid], stdout=stdout, stderr=stderr)

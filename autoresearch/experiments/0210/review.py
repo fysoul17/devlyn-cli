@@ -1,4 +1,4 @@
-"""One static Fable call using the existing 0205 evidence packet and bounded runner."""
+"""One static Fable call using the compact 0211 evidence packet and bounded runner."""
 import importlib.util
 import json
 import os
@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 import time
 
-spec = importlib.util.spec_from_file_location('packet', '/control/autoresearch/experiments/0205/review.py')
+spec = importlib.util.spec_from_file_location('packet', '/control/autoresearch/experiments/0211/packet.py')
 packet = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(packet)
 work = Path('/work')
