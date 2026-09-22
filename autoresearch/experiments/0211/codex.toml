@@ -34,3 +34,6 @@ supports_websockets = true
 supports_standalone_web_search = true
 http_headers = { version = "0.155.1" }
 env_http_headers = { "OpenAI-Organization" = "OPENAI_ORGANIZATION", "OpenAI-Project" = "OPENAI_PROJECT" }
+
+[projects."/work"]
+trust_level = "trusted"
