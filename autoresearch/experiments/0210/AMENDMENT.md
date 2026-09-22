@@ -65,4 +65,3 @@ lineage/audit access and equal native-child/Fable capabilities. Use the wildcard
 matcher and startup witness if reusing0209 hooks; verify actual route invocation.
 Missing parity or local teardown evidence still blocks launch. No new scheduler,
 proxy or engine patch; approval changes the contract, not the seal verdict.
-
