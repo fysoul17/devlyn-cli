@@ -402,3 +402,5 @@ Four operationally valid Fable5.1/medium A/B B/A reports yield0/4 canonical lite
 0206 | REGISTERED / EXECUTION-UNSEALED | Four public Commander/Click development tasks and whole-call A/B/C budgets fixed before draws;24-cell ceiling, native quality floor, bounded review/repair, task existence reproduced, Fable registration findings closed. No participant launch; evaluator calibration/capability/accounting seal remains required. | iterations/0206-abc-registration.md
 
 - 2026-09-22:0207 calibrates0206 requirement checks with references/mutants and blocks existing transport admission on measured termination/usage counterexamples; no participant draw or resolve. See [0207](iterations/0207-execution-admission.md).
+
+- 2026-09-22:0208 verifies recursive synthetic accounting and private Linux namespace teardown, including reviewer-originated false-PASS controls. Native dispatch/accounting/parity stays blocked; no comparison or resolve. See [0208](iterations/0208-recursive-admission.md).

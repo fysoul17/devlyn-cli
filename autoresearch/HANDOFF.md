@@ -51,11 +51,17 @@ transport: extra termination grace, escaped detached child, no token/call cap.
 Collection is **BLOCKED_EXISTING_TRANSPORT**; no comparison has started.
 Fable twice and Grok4.7 once timed out without verdict; independent review remains
 unavailable, never accepted. Final calibration is29/29; raw evidence `.devlyn/0207/`.
-Next bind live recursive usage and bounded whole-tree termination, verify native
-capability parity, then seal exact prompts/config/dependency/evaluator identities
-under [0206 protocol](experiments/0206/PROTOCOL.md). Intermediate rollout usage and
-App Server notifications exist but their live enforcement is unproven. Do not
-treat check calibration or24/48 maxima as launch/spending approval.
+[0208](iterations/0208-recursive-admission.md) adds incremental recursive rollout
+observation and real detached-child teardown controls in private Linux containers.
+Accounting21 tests and four live non-model controls pass; three historical owner
+totals match native terminal usage. Actual Fable/Grok design reviews completed;
+Fable source findings produced repaired false-PASS and empty-dispatch witnesses.
+Collection remains **BLOCKED_NATIVE_ACCOUNTING_AND_PARITY**: post-dispatch logs
+and synthetic container writers do not establish native slot admission, bounded
+provider reporting, Fable counters, protected telemetry or Linux capability parity.
+Next bind those native controls, then seal exact prompts/config/dependency/evaluator
+identities under [0206 protocol](experiments/0206/PROTOCOL.md). Do not treat control
+passes or24/48 maxima as launch/spending approval. Raw evidence: `.devlyn/0208/`.
 The task/budget/decision rules are prospective; preserve amendments and never
 silently regrade an already launched cohort. No new resolve in any arm.
 
