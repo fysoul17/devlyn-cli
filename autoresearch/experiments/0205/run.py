@@ -37,6 +37,15 @@ def put(path, value):
         f.write('\n')
 
 
+def relocate_heldout(text):
+    for old, new in (("require('./support')", "require('../tests/support')"),
+                     ("path.join(__dirname,'support.js')", "path.join(__dirname,'../tests/support.js')")):
+        if text.count(old) != 1:
+            raise ValueError('heldout support reference changed: ' + old)
+        text = text.replace(old, new)
+    return text
+
+
 def prepare():
     W.mkdir(exist_ok=False)
     turns = json.loads((R / '.devlyn/0187-intent/REGISTRATION.json').read_text())['turns']
@@ -85,7 +94,7 @@ def prepare():
                 text=(R / '.devlyn/0185' / name).read_text().replace("require('../../autoresearch/experiments/0185/support')", "require('../tests/support')")
                 (evidence/name).write_text(text)
             shutil.copyfile(R/'autoresearch/experiments/0185/heldout.js', evidence/'heldout.js')
-            p=evidence/'heldout.js';p.write_text(p.read_text().replace("require('./support')", "require('../tests/support')"))
+            p=evidence/'heldout.js';p.write_text(relocate_heldout(p.read_text()))
         put(evidence / 'caller.json', c)
         put(out / 'input.json', dict(config=c, source_seal=before, participant_seal=seal(work)))
         prompt = (R / 'autoresearch/experiments/0204/owner.md').read_text() + f'''
@@ -121,7 +130,7 @@ PASS from a narrower witness. Historical Windows or integration limits remain ex
 
 
 def run(name):
-    registration = 'registration.json' if name == 'binding' else 'registration-followup.json'
+    registration = 'registration-followup.json' if name != 'binding' and (E/'registration-followup.json').exists() else 'registration.json'
     reg=json.loads((E/registration).read_text())
     assert name in reg['order']
     for p,h in reg['source_sha256'].items():

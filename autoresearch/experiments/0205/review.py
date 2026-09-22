@@ -26,11 +26,14 @@ def packet(work):
              'This is exposed regression material, not blind research. Other support files may be omitted.',
              'ORIGINAL REQUEST\n' + scope['request'], 'ALLOWED EDITS\n' + str(scope['allowed']),
              'ORIGINAL SOURCE CONTEXT\n' + scope.get('original_context', '')]
+    missing = sorted(set(names) - set(before))
+    if missing:
+        parts.append('MISSING REVIEW FILES: ' + ', '.join(missing) + '\nReport this evidence limitation.')
     for name in before:
         parts.append('FILE ' + name + '\n' + (work / name).read_text())
     parts.append('DIFF\n' + subprocess.check_output(['git', 'diff', 'HEAD'], cwd=work, text=True))
     checks = sorted(p for p in (work / '.devlyn/checks-final').rglob('*') if p.is_file())
-    parts.extend('CHECK ' + str(p.relative_to(work / '.devlyn/checks-final')) + '\n' + p.read_text() for p in checks if p.is_file())
+    parts.extend('CHECK ' + str(p.relative_to(work / '.devlyn/checks-final')) + '\n' + p.read_text() for p in checks)
     if not checks:
         parts.append('NO CHECKS SUPPLIED; report this limitation.')
     return before, '\n\n'.join(parts)

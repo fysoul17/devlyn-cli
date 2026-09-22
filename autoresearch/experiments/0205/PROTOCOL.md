@@ -66,3 +66,16 @@ registration-followup.json binds the amendment before remaining draws. The owner
 prompt, inputs, cell/review budgets and acceptance obligations are unchanged.
 Root supplemental review of binding includes actual raw results; it does not
 rewrite the original cell verdict or rerun the owner.
+
+After all three frozen calls, the preparation copier also corrects the heldout
+child-process support path, whose omission caused the retained rollback harness
+failure. Root validates old/corrected relocation separately against the same
+final product. Fresh preparation uses its own registration; the optional amended
+registration applies only where present. Historical invocation bytes are retained
+in frozen-binding-tools/ and frozen-followup-tools/, not silently rewritten.
+
+Final root review accepts the bounded report but finds missing listed files were
+silent and relocation-control provenance was incomplete. These source-tool fixes
+add a missing-file limitation and a checked relocation function used directly by
+the control. One additional root Fable source follow-up, <=240s, is admitted solely
+to verify these findings. No cell budget, frozen verdict or owner invocation changes.

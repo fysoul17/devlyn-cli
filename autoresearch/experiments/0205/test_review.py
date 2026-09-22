@@ -6,6 +6,7 @@ import tempfile
 import unittest
 
 from review import packet
+from run import relocate_heldout
 
 
 class PacketTests(unittest.TestCase):
@@ -38,8 +39,14 @@ class PacketTests(unittest.TestCase):
             subprocess.run(['git','add','.'],cwd=work,check=True)
             subprocess.run(['git','-c','user.name=Fixture','-c','user.email=f@local','commit','-qm','base'],cwd=work,check=True)
             (work/'.devlyn/checks-final/empty').mkdir(parents=True)
-            (work/'.devlyn/caller.json').write_text(json.dumps(dict(review_files=['original.txt'],allowed=[],request='preserve')))
-            self.assertIn('NO CHECKS SUPPLIED',packet(work)[1])
+            (work/'.devlyn/caller.json').write_text(json.dumps(dict(review_files=['original.txt','missing.py'],allowed=[],request='preserve')))
+            text=packet(work)[1]
+            self.assertIn('NO CHECKS SUPPLIED',text)
+            self.assertIn('MISSING REVIEW FILES: missing.py',text)
+
+    def test_changed_support_reference_fails_visibly(self):
+        with self.assertRaisesRegex(ValueError, 'support reference changed'):
+            relocate_heldout("const child = require('./support');")
 
 
 if __name__=='__main__':
