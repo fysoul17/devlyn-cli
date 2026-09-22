@@ -1,5 +1,8 @@
 # 0206 — prospective development tasks and budgets
 
+2026-09-22 amendment: [approved observational contract](../0210/AMENDMENT.md)
+supersedes its explicitly named enforcement and advancement clauses before any draw.
+
 2026-09-22 KST. Continues0201 step3 after0205/PR86. Root direct, no resolve.
 This registration fixes task selection, requirements, arm policy, ceilings and
 decision rules. **No participant may launch from this document alone.** The
