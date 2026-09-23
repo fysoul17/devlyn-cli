@@ -16,8 +16,8 @@ full-suite run passed (1,418 passed, 0 failed) on the first try.
 
 **Sufficiency prediction refuted.** The first Fable review (64.1s) accepted the
 fix but flagged two test lines as likely failing Prettier (81 columns; wide
-characters). The owner verified that with Prettier (g12–14), reformatted the test
-(g15) and, as required after a source change, launched a fresh review (g16–17).
+characters). The owner tried Prettier, but it is not installed in the container
+(exit 127); it measured widths by hand (g12–14), reformatted the test (g15) and, as required after a source change, launched a fresh review (g16–17).
 The input target was crossed during that second review. The same formatter repair
 happened in 0213 B. No check ran after the stop; no assessment was started.
 
