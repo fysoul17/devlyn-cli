@@ -49,15 +49,10 @@ accidental review hint; 0217 rep1 had a post-hoc seal).
 
 ## Before any dispatch
 
-1. User authorizes the fresh budget (≤24 cells; owner targets total 34,200s,
-   21.6M input, 900k output; plus ≤24 assessments) and the reuse of D1–D4.
-2. Stop rule. Default is the registered first-breach-stops-all rule
-   (0210: stops further spend when interrupted-call totals are uncertain). The
-   alternative records a fully accounted breach as that cell's BUDGET_EXCEEDED
-   and continues, so a D1 breach does not censor D2–D4. It would need a
-   prospective amendment and proof of safe quiescence/terminal accounting;
-   infrastructure, identity, lineage or usage failures still stop everything.
-   It is enabled only by explicit user authorization.
+1. User authorized (2026-09-23) the fresh budget (≤24 cells; owner targets total
+   34,200s, 21.6M input, 900k output; plus ≤24 assessments) and reuse of D1–D4.
+2. Stop rule stays the registered first-breach-stops-all. The user asked instead
+   that breaches be prevented up front, so all arms get the usage meter below.
 3. Model-free admission: all 24 prompt/argv/caller/hash bindings; format gates
    pass bases/references and reject format mutants, including new allowed files;
    semantic calibration still rejects mutants; review CLI, accounting, packet,
@@ -65,3 +60,32 @@ accidental review hint; 0217 rep1 had a post-hoc seal).
    and account readiness sealed before inference, with a launch command that
    fails closed. Refuse launch on any missing authorization, failed calibration
    or parity, stale evidence or missing seal.
+
+## Prevention: shared usage meter (addendum, Astra FREEZE after REVISE)
+
+Root cause: the owner cannot observe the registered cache-inclusive metric, so it
+cannot trade optional work against remaining budget (0216–0217 D1 B spread
+302,399–387,985). Codex's native `rollout_budget` is rejected as the authority:
+in 0.155.1 it counts output plus **non-cached** input only, ignores the external
+Fable reviews and stops with a fatal error (source in `.devlyn/0218/`).
+
+[usage.py](usage.py), mounted read-only at `/control/usage.py`, runs the
+controller's own accounting calculation (`0208/accounting.py`,
+`0210/native_accounting.py`, `0210/native_cell.reviews`) over the cell's own
+rollouts and reviews. It reports observed input/output, model invocations and
+pending reviews. The same calculation over the same data does not mean
+synchronized live totals. The meter is advisory, not an integrity control, and
+it does not count the call in flight: this is prevention by design, not a
+guarantee. For all arms, [prepare.py](prepare.py) replaces the common sentence
+“Do not inspect telemetry outside /work.” with sanctioned meter use plus one
+planning sentence: keep enough for required checks, review, repair and fresh
+review; cut optional exploration first.
+
+Model-free controls (`.devlyn/0218-run/meter-controls.txt`): on 4 completed
+archived cells, meter equals controller terminal totals, and on stopped 0214 B it
+equals the last snapshot. An interrupted review (0215 B) raises the same visible
+UNKNOWN error as the controller. 16/16 incremental rollout prefixes match the
+cumulative counters. A partial trailing line is ignored. A pending review is shown
+as pending. `--help` and unknown arguments change nothing. All 24 dry cells bind
+correctly (`dry-bindings.txt`); D1 B differs from 0217 by that one sentence only.
+One excluded smoke cell follows in [SMOKE](SMOKE.md).
