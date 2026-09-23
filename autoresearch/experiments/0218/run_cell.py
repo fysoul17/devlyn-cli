@@ -77,6 +77,13 @@ def run(index, runtime_path):
     owner = subprocess.run([sys.executable, '-B', str(HERE.parent / '0210/native_cell.py'),
                             str(cell / 'plan.json'), str(cell / 'run')], capture_output=True, text=True)
     result = json.loads((cell / 'run/result.json').read_text())
+    if result.get('model_dispatched') is False:
+        attempts = len(list(root.glob(cell.name + '.setup-failed-*'))) + 1
+        cell.rename(root / f'{cell.name}.setup-failed-{attempts}')
+        record.update(status='NOT_DISPATCHED', failure=result['failure'][-300:], setup_attempt=attempts)
+        verdict_path.write_text(json.dumps(record, indent=2))
+        print(json.dumps(record))
+        return 3
     last = result['terminal']['combined'] if result['terminal'] else (result['snapshots'] or [{}])[-1].get('combined')
     record.update(owner_seconds=result['seconds'], owner_pool=last, classes=result['classes'],
                   failure=result['failure'], terminal_known=result['terminal'] is not None)
