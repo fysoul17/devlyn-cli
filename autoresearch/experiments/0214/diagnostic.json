@@ -1,0 +1,30 @@
+{
+  "source_commit": "de10d0097ae183a07f7df5a4e999a9be5a676a72",
+  "raw_receipt": "46d385ecbd393a6723889baf",
+  "rollouts": [
+    {
+      "arm": "01-D1-1-A",
+      "rollout_relative_to_0213": "cells/01-D1-1-A/home/.codex/sessions/2026/09/22/rollout-2026-09-22T14-37-16-01a0c98c-b4fe-7ee3-b55e-59597c2b2c74.jsonl",
+      "sha256": "3a51195c681fa02acb39ba8b2d965f9aa3d162f5f58cdeca6a911dfb7684c52e"
+    },
+    {
+      "arm": "02-D1-1-B",
+      "rollout_relative_to_0213": "cells/02-D1-1-B/home/.codex/sessions/2026/09/22/rollout-2026-09-22T14-42-52-01a0c991-d501-75b1-9cd4-d24177720a49.jsonl",
+      "sha256": "1b1ee4573a0381cd720b79afb096dd76b07d835734ec4dc46fbb62d3b25ccb5b"
+    }
+  ],
+  "native_B_input": 390690,
+  "native_B_cached_subset": 328832,
+  "review_B_input": 32799,
+  "observed_B_input": 423489,
+  "input_target": 400000,
+  "observed_overshoot": 23489,
+  "empty_B_poll_generation_inputs": [
+    28044,
+    28316
+  ],
+  "empty_B_poll_input_sum": 56360,
+  "sensitivity_only_observed_minus_poll_inputs": 367129,
+  "terminal_B_usage": "UNKNOWN",
+  "new_participant_dispatches": 0
+}
