@@ -32,12 +32,12 @@ The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the s
 
 **0118 exception — accepted 2026-09-07 KST:** the user's concurrent same-project tasks/sessions request permits bounded bootstrap admission protection. [Current0118 checkpoint](iterations/0118-concurrent-admission.md#current-continuation--2026-09-06) owns full R5 PASS_WITH_ISSUES, BUILD6/6 plus independent MECHANICAL6/6, actual final trio, two retained LOW advisories and pushed implementation `9d70cd8`. Original/failed acceptance histories are preserved. Mission1 floor/ceiling and frozen A16 remain open and separate; no fleet, lifetime lease, automatic placement or merge/shared-resource guarantee follows. Main73919fa adopts exact0118/0119 sources after integration checks;0115/0116 remain separate candidates.
 
-**Current work (2026-09-21):** [0201 transformation plan](iterations/0201-harness-transformation-plan.md)
-owns the ordered smaller-candidate implementation, finite comparison, adoption or
-rejection, and product migration. Root decides after independent advice. First
-inspect/reuse0125's separate BUILD-worker removal against current source. This
-single-task simplification is Mission1 work, not gated on first proving the old
-full workflow superior. Do not start fleet/platform work or reopen frozen A16.
+**Current work (2026-09-24):** [0221 subtraction direction](iterations/0221-subtraction-direction.md)
+owns the session-ordered cleanup, the budget-free comparison (native / `/devlyn:intent`
+candidate / native+review / current full), adoption or rejection per model
+configuration, and product migration. Root decides after independent advice. This
+single-task simplification is Mission1 work. Do not start fleet/platform work or
+reopen frozen A16.
 Current no-resolve instructions include comparison controls. Historical evidence
 is retained; new candidate results cannot certify legacy parity or gate15.
 The external-developer trial and broader Mission1 superiority remain open.
