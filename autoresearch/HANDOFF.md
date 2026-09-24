@@ -20,18 +20,31 @@
 |---|---|---|---|
 | 0 | Register 0221, packets, this HANDOFF (branch `candidate/0221-subtraction-direction`) | — | merged (PR #109) |
 | 1 | Installed-product cleanup: standards frontmatter plus a move to optional-skills; reread sentence deletion; pair-plan-schema to benchmark; stop the global adaptive-thinking env injection; completion default `pr` (receipt reuse and owned auto-merge handled); fix the spec-verify-check research-gate false positive (branch `candidate/0221-s1-installed-cleanup`) | T1a, T1b (c1, c2, b3) | merged (PR #110) |
-| 2 | Benchmark out of the npm package (branch `candidate/0221-s2-benchmark-unpackage`) | T1b (a1–a5) | PR open |
-| 3 | Comparison apparatus v2 without budgets; arm F = published 3.2.1, verified in-container; evaluator fixes | E1 | **NEXT** |
-| 4 | Always-loaded instruction screen, 288 short runs; slim frozen as a candidate | E2 | pending |
+| 2 | Benchmark out of the npm package (branch `candidate/0221-s2-benchmark-unpackage`) | T1b (a1–a5) | merged (PR #111) |
+| 3 | Comparison apparatus v2 without budgets; arm F = published 3.2.1, verified in-container; evaluator fixes (branch `candidate/0221-s3-apparatus-v2`, [0222](experiments/0222/DESIGN.md)) | E1 | PR open |
+| 4 | Always-loaded instruction screen, 288 short runs; slim frozen as a candidate | E2 | **NEXT** |
 | 5 | Add the `/devlyn:intent` candidate (no default change); counterexample tests | I1, I2 PR-A | pending |
 | 6 | Structure screen: 0185 + D4 × {A, B′, C, F} × 2 configs, plus 4 Grok static checks | E1 apparatus | pending |
 | 7 | Freeze, then untouched confirmation (40, plus 8 light); adopt, hold or stop per config | — | pending |
 | 8 | Next major: intent becomes the default and resolve/ideate become guidance-only, OR the candidate is closed | I2 PR-B, T1b (b) | pending |
 | 9 | After one major: remove the stubs and any helpers left without references | I2 PR-C, I1 | pending |
 
-**Next:** Session 3, after the Session 2 PR (branch `candidate/0221-s2-benchmark-unpackage`) is merged.
+**Next:** Session 4, after the Session 3 PR (branch `candidate/0221-s3-apparatus-v2`) is merged.
 
-Session 2 record (base `03831e1`): T1b a1–a5. package.json `files[]` drops every `benchmark/` and `scripts/` entry (npm pack 518 → 131 entries, ≈2.16 MB unpacked). The `benchmark`/`bench` subcommand and its help are deleted from `bin/devlyn.js`; `npx devlyn-cli benchmark` now exits 1 with "Unknown command". Benchmark runners always replay as `bash <runner> --run-id …`, tests and operational docs call the scripts directly (from a git checkout), the root README benchmark section is gone, and lint Check 10e keeps only benchmark-internal pins plus an npm-pack guard (no `benchmark/`/`scripts/`/pycache). Dated reports and frozen corpora untouched. Net −0.8k lines. Checks: `bash scripts/lint-skills.sh` rc=0 (includes the benchmark test scripts); `test-benchmark-arg-parsing.sh`, `test-run-headroom-candidate.sh`, `test-run-full-pipeline-pair-candidate.sh` pass; `test-windows-portability.py` 61 OK; `node bin/devlyn.js --help` has no benchmark lines. Reviews: Grok SHIP; Astra REVISE (stale `benchmark <mode>` names in runners/docs/two skill references, orphan package exclusion, duplicated doc commands) → fixed, re-check closed.
+Session 3 record (base `b8c1073`): [0222](experiments/0222/DESIGN.md) replaces the 0210–0220 wrapper chain with one directory:
+- a pinned image (Codex 0.156.1, Claude 2.1.281, less, login PATH fixed), a tracked `/control` build with a sha256 manifest, route-driven prepare (arms A, C and F; B′ binds its package in Session 5), a hang-wall-only owner run, post-hoc usage (never 0), and an in-image evaluator
+- I0185 wired as exposed regression: heldout plus four promoted replays; NOT_TRIGGERED → ADJUDICATE
+- dual blinded assessors and a serial `screen.sh`; the stop rules are in DESIGN.md
+- F = published devlyn-cli@3.2.1 installed offline and bound through `.devlyn/engines.json`, with Claude judges model-only because 3.2.1's effort table would block `high`
+
+The Session 6 structure-screen shape is frozen: {I0185, D4} × {A, B′, C, F} × {claude, codex}.
+
+Checks:
+- 30 unit tests, including container cases
+- calibration: P2 115/115 over 5 repeats; P3 23/23 after fixes, with one disclosed P1 miss (the 0207 D3 reference is not Prettier-clean)
+- route smoke across all six routes, with clean teardown and routed identities; it stopped once on a real apparatus defect (identity: an un-normalized `[1m]` model suffix), which was fixed and re-run. In the same cell a missing Codex models cache produced a product BLOCKED, so the host cache is now seeded into every cell. The route smoke shows the routes work; it is not product-completion evidence (11 of 12 assessments were not complete because the smoke request carries an unverifiable process instruction) ([SMOKE.md](experiments/0222/SMOKE.md))
+
+Reviews: Astra design R0 REVISE, adopted; implementation R1–R4 REVISE from Astra and Grok, all fixed; R5 SMOKE-READY from both.
 
 Open (carried from Session 1): the `/devlyn:queue` branch-reconciliation rule is not exercised by a model-driven drain; ideate/resolve prose still mentions solo-headroom checks that spec-verify-check no longer enforces (T1b b1/b2/b4, Session 8); a null `autoMergeRequest` does not prove merge-queue removal.
 

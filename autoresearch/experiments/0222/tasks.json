@@ -1,0 +1,233 @@
+{
+ "schema": "0222-apparatus-v2",
+ "watchdog_seconds": {
+  "owner": 5400,
+  "review": 600,
+  "evaluator": 600,
+  "assessor": 600
+ },
+ "tasks": [
+  {
+   "id": "D3",
+   "repository": "tj/commander.js",
+   "issue": 2530,
+   "stratum": "hard",
+   "domain": "parser and executable subprocess argument boundaries",
+   "allowed": [
+    "lib/command.js",
+    "tests/command.executableSubcommand.test.js",
+    "tests/args.literal.test.js",
+    "tests/fixtures/**"
+   ],
+   "request": "Preserve the first end-of-options delimiter when dispatching an executable subcommand so option-like operands remain operands in the real child. Preserve token order and later literal delimiters. Keep in-process subcommand parsing, existing parent options, aliases, help, default executable dispatch and pass-through behavior compatible. Do not change public APIs or implement a global always-add-delimiter workaround.",
+   "obligations": [
+    "Real spawned child receives -- before --not-an-option and parses it as an operand.",
+    "Ordinary operands before/after the first delimiter retain order; subsequent -- tokens remain literal.",
+    "Without delimiter, child options still parse as options; parent options and option values containing -- are not confused with the delimiter.",
+    "Alias and default executable routes preserve the same boundary.",
+    "In-process commands, nested commands, enablePositionalOptions/passThroughOptions and help retain current behavior.",
+    "Child exit status, spawn failure and signal propagation preserve existing tests; all owned child processes terminate."
+   ],
+   "public_checks": [
+    "env -u NO_COLOR node --test tests/command.executableSubcommand.test.js tests/args.literal.test.js",
+    "env -u NO_COLOR node --test",
+    "node /control/prettier/bin/prettier.cjs --check --no-error-on-unmatched-pattern lib/command.js tests/command.executableSubcommand.test.js tests/args.literal.test.js 'tests/fixtures/**'"
+   ],
+   "counterexamples": [
+    "drop delimiter",
+    "prepend delimiter before all child options",
+    "duplicate later delimiter",
+    "fix normal route but omit default executable"
+   ],
+   "base_sha": "ba6d13ddb4243e5913367734f8c159089ffe7834",
+   "tree_sha": "ea7f757f861aba3926265ffc2b0955dd73a9684b",
+   "issue_url": "https://github.com/tj/commander.js/issues/2530",
+   "issue_snapshot_sha256": "cac074740b01d2e8bc2a036d5dfa6ccab89f949229f800aae1b430c169f50ab1",
+   "issue_updated_at": "2026-08-05T06:58:08Z",
+   "source": "commander"
+  },
+  {
+   "id": "D4",
+   "repository": "pallets/click",
+   "issue": 2645,
+   "stratum": "hard",
+   "domain": "lazy POSIX FIFO IO and resource ownership",
+   "allowed": [
+    "src/click/utils.py",
+    "src/click/types.py",
+    "tests/test_basic.py",
+    "tests/test_utils/**",
+    "tests/test_types/**",
+    "CHANGES.md"
+   ],
+   "request": "Make click.File(\"rb\", lazy=True) read a POSIX named pipe lazily without an eager open/close handshake that can lose the writer or its data. Construction must return before a writer connects, and a delayed first read must return all bytes from one writer. Preserve early errors for ordinary read files, stdin ownership, lazy writes and close-on-context behavior. Support direct FIFO and symlink-to-FIFO paths; no new public flag or broad file API rewrite. This development task targets macOS/POSIX, not Windows certification.",
+   "obligations": [
+    "FIFO conversion returns before any writer is started; no connection is consumed during construction.",
+    "A synchronized real single writer survives delayed first read and all payload bytes arrive exactly once, in binary and text modes.",
+    "Symlink-to-FIFO behaves like direct FIFO; do not classify solely by path spelling.",
+    "Missing ordinary files and directories still produce existing early errors; regular files and symlinks to regular files read normally.",
+    "Borrowed stdin remains open; unopened lazy write does not create a file; context cleanup closes opened owned files.",
+    "Timeout/error probes terminate owned writer/readers and remove only their fixture paths; no sleeps-as-proof race test."
+   ],
+   "public_checks": [
+    "python -m pytest tests/test_basic.py",
+    "python -m pytest",
+    "/control/ruff format --check --no-cache src/click tests"
+   ],
+   "counterexamples": [
+    "eager FIFO open/close",
+    "remove all early ordinary-file checks",
+    "lstat-only misses symlink FIFO",
+    "close borrowed stdin"
+   ],
+   "base_sha": "3cbaa76b6014be7427d1ab06b4af40f01e7c278e",
+   "tree_sha": "b8c174fe04ce2f9bd96a686f49a5b4cc12225c0c",
+   "issue_url": "https://github.com/pallets/click/issues/2645",
+   "issue_snapshot_sha256": "975c3ef5f7d5a6a708adaf6a83449ceea0cf762176c2bba90c6bebe3bfedda1c",
+   "issue_updated_at": "2026-08-08T12:47:39Z",
+   "source": "click"
+  },
+  {
+   "id": "I0185",
+   "repository": "fysoul17/devlyn-cli",
+   "stratum": "hard",
+   "domain": "recoverable exclusive multi-skill installation",
+   "source_sha256": {
+    ".gitignore": "5274d8586da01c3447e5a70532a332bb23d253b36a64796cdc05736663f3290b",
+    "bin/devlyn.js": "93c9ef0b66afd5a870ed141a9ce99b195bdc6f10d49f5128016f3cb508394498",
+    "package.json": "7aced20900a779950ff19fce3ea180702a2a6b305eb01fcac17adc1761937b65",
+    "spec.expected.json": "6b2e5b918251ec833268c493818bfefee88b9d3af6d9005fe0f1ff1377f41f31",
+    "spec.md": "baaa8bbbda3c16f812c35128e9170549f6c4c31b4ec37e3b9209a7614e0f90e7",
+    "tests/acceptance.js": "85270ab68871df8a69fbc67ca9e70cbc9011d71c6668288bf9e4d5a60786d00e",
+    "tests/support.js": "6218f2e977177cf60d226ddf0d888256b4d2b7e21af1c7489cdb0181ba5dc6ed"
+   },
+   "source_base": "0953c568dbbf71e73be311d6546b8d7e84d13f5c",
+   "allowed": [
+    "bin/**",
+    "tests/regression*.js"
+   ],
+   "request": "---\ncomplexity: high\n---\n# Recoverable, exclusive CLI skill installation\n\nUpgrade the real `bin/devlyn.js` function `installSkillsForCLI(cliKey)` so a failed\nmulti-skill installation leaves the prior installation usable. This function is\ncalled by the existing CLI installation flow. Keep its synchronous API, return\ncount, unknown-CLI no-op, existing naming/alias rules, final directory stamping,\ncomplete-bundle check and marker schema. No new user-facing flag or dependency.\n\nRequirements:\n\n1. Treat one invocation's selected skill directories, existing installation marker,\n   and deprecated paths removed by its existing cleanup as one recoverable update.\n   On success fully replace selected skills (remove stale files), perform the same\n   deprecated cleanup, then expose a complete new marker. Preserve unrelated files,\n   user-installed skills and every source file. Stamp Markdown with final installed\n   paths, never temporary paths. Existing physical aliases must not remain alongside\n   their canonical replacements. Preserve symlinks in unrelated user content without\n   following or rewriting their targets.\n2. Preflight, copying, stamping, validation or publication may throw. If one ordinary\n   filesystem operation fails and subsequent recovery operations can succeed, restore\n   all preexisting managed/deprecated paths and marker with exact bytes and file modes;\n   remove newly created managed paths. Propagate an actionable failure to the caller;\n   never report success on partial install. An initially absent skills directory must\n   again be absent after failure. Do not require rollback after successful commit if\n   only disposal of backup data fails: report that cleanup failure and keep recovery\n   data, instead of concealing it. Never swallow a failed rollback or remove its only\n   recovery copy. This is recoverability at function return, not an atomic snapshot\n   for unrelated readers while publication is in progress.\n3. Exclude simultaneous cooperating installations to the same destination with an\n   exclusive filesystem lock acquired before inspecting or mutating destination\n   contents. Another process or reentrant invocation must fail promptly with a clear\n   busy error and leave the owner's lock/data intact. Calls targeting different\n   directories must not block each other. Release only the current invocation's lock\n   on success or ordinary failure; a later invocation must work. An existing lock is\n   never assumed stale or stolen. Lock naming is internal; the supplied tests discover\n   contention by entering the function again, not by assuming a filename.\n4. Remove task-created staging/backup/lock debris after successful installation or\n   successful recovery. Preserve original content outside the owned paths. Do not\n   change installClaudeCore, instructions installation, other commands or global\n   settings. Process crashes, power loss/fsync durability, malicious noncooperating\n   writers, and changes to selected source trees during an install are out of scope.\n\nAllowed implementation files: `bin/devlyn.js`, and a focused helper under `bin/`\nonly if needed. Optional regression checks may be added as `tests/regression*.js`.\nPreserve supplied `tests/`, spec files, package.json and .gitignore byte-for-byte.\nUse Node's standard library. The test loader exposes the existing function in a\nVM and redirects source/destination to temporary fixtures; do not add exports solely\nfor tests or invoke a real user installation. All task tests must use disposable\nfixtures. The root research owner handles local-only experimental delivery.\n\n## Verification\n\nRun `node --test tests/acceptance.js`. Add and run focused interaction checks for\npartial publication followed by failure, successful retry, and same-target versus\ndifferent-target contention. Check prior marker/content/modes and unrelated symlinks\nafter recovery, not only thrown errors. Keep all temporary output out of the source.\n",
+   "obligations": [],
+   "public_checks": [
+    "node --test tests/acceptance.js"
+   ],
+   "oracle": [
+    "heldout",
+    "release",
+    "terminal-alias",
+    "absence-lock",
+    "alias"
+   ],
+   "source_dir": ".devlyn/0185/inputs/install"
+  },
+  {
+   "id": "SMOKE",
+   "repository": "fysoul17/devlyn-cli",
+   "stratum": "trivial",
+   "domain": "route smoke only; not a measurement task",
+   "source_dir": "autoresearch/experiments/0222/smoke/repo",
+   "source_sha256": {
+    "README.md": "883f020a6da223738cce0b3795cbc7876b014728d3572415f192ecea84b3d72b"
+   },
+   "allowed": [
+    "add_one.py",
+    "test_add_one.py"
+   ],
+   "request": "Create add_one.py with add_one(value) that returns value + 1 for integers, and test_add_one.py with unittest checks for a positive, a negative and a zero input. Delegate writing test_add_one.py to exactly one native subagent.",
+   "obligations": [],
+   "public_checks": [
+    "python -m unittest -q"
+   ],
+   "oracle_commands": [
+    "python3 -c \"from add_one import add_one; assert (add_one(1), add_one(-3), add_one(0)) == (2, -2, 1)\""
+   ]
+  }
+ ],
+ "routes": {
+  "claude": {
+   "owner": {
+    "engine": "claude",
+    "model": "claude-opus-5-5",
+    "effort": "high"
+   },
+   "reviewer": {
+    "engine": "codex",
+    "model": "gpt-6-astra",
+    "effort": "high"
+   },
+   "F_roles": {
+    "worker": {
+     "engine": "claude"
+    },
+    "primary_judge": {
+     "engine": "claude",
+     "model": "claude-opus-5-5"
+    },
+    "pair_judge": {
+     "engine": "codex",
+     "model": "gpt-6-astra",
+     "effort": "high"
+    }
+   }
+  },
+  "codex": {
+   "owner": {
+    "engine": "codex",
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "child_model": "gpt-6-sol",
+    "child_effort": "high"
+   },
+   "reviewer": {
+    "engine": "claude",
+    "model": "claude-opus-5-5",
+    "effort": "high"
+   },
+   "F_roles": {
+    "worker": {
+     "engine": "codex",
+     "model": "gpt-6-sol",
+     "effort": "high"
+    },
+    "primary_judge": {
+     "engine": "codex",
+     "model": "gpt-6-astra",
+     "effort": "high"
+    },
+    "pair_judge": {
+     "engine": "claude",
+     "model": "claude-opus-5-5"
+    }
+   }
+  }
+ },
+ "assessors": [
+  {
+   "engine": "claude",
+   "model": "claude-opus-5-5",
+   "effort": "high"
+  },
+  {
+   "engine": "codex",
+   "model": "gpt-6-astra",
+   "effort": "high"
+  }
+ ],
+ "structure_screen": {
+  "tasks": [
+   "I0185",
+   "D4"
+  ],
+  "arms": [
+   "A",
+   "B'",
+   "C",
+   "F"
+  ],
+  "configs": [
+   "claude",
+   "codex"
+  ],
+  "order": "interleaved; fixed before Session 6 dispatch; B' binds the Session 5 candidate package"
+ }
+}

@@ -404,3 +404,5 @@ Four operationally valid Fable5.1/medium A/B B/A reports yield0/4 canonical lite
 - 2026-09-22:0207 calibrates0206 requirement checks with references/mutants and blocks existing transport admission on measured termination/usage counterexamples; no participant draw or resolve. See [0207](iterations/0207-execution-admission.md).
 
 - 2026-09-22:0208 verifies recursive synthetic accounting and private Linux namespace teardown, including reviewer-originated false-PASS controls. Native dispatch/accounting/parity stays blocked; no comparison or resolve. See [0208](iterations/0208-recursive-admission.md).
+
+- 2026-09-25:0222 builds the budget-free comparison apparatus for 0221: a pinned image, tracked control, hang-wall-only cells, post-hoc usage, an in-image evaluator with I0185 as exposed regression, dual blinded assessors, and published devlyn-cli@3.2.1 as arm F. Model-free checks and the six-route smoke passed; no comparison is registered here. See [0222](experiments/0222/DESIGN.md).
