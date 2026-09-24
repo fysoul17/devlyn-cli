@@ -41,3 +41,24 @@ Nothing dispatched. Astra, Fable and Grok all returned FREEZE after one revision
    format gates, calibration, meter, accounting and teardown. Dry-cell hashes
    are stale by design.
 3. Run a fail-closed launch through `run_cell.py`.
+
+## Launch admission (2026-09-24)
+
+The user authorized a fresh 24-cell screen. They acknowledged that 0218 already
+used the single-redesign allowance, and they authorized running under whichever
+account is logged in. The screen is pinned to that account (`02b266ea50d2`)
+because 0218's account is no longer logged in. Evidence is in
+`.devlyn/0219-screen/`.
+- Control directory: all 126 files byte-identical to the 0218 seal.
+- Calibration: semantic check IDs match 0218 in both attempts. The host-side
+  Commander `node --test` sanity row hung for 120 s in 1/4 and then 2/4 runs.
+  A host repro hung 2 of 8 runs in `executableSubcommand.signals`, while host
+  load stood at 39–91 from unrelated work.
+- Astra, Fable and Grok judged this a host-environment control failure off the
+  dispatch path: LAUNCH, on condition of in-image substitute evidence. That
+  evidence passed. D1 and D3 baseline and reference, in the pinned image with
+  the `check_cell` argv: 1,372 passed, 0 failed, 7.6–13.5 s.
+- Format controls: 4 pristine cells pass and 4 mutants are rejected, matching 0218.
+- Known limitation: the evaluator's host-side D3.6 lifecycle check runs the
+  same signals test. Under heavy host load it can mark a correct D3 answer
+  incomplete. This is reported, not changed.
