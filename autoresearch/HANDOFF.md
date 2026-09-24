@@ -40,9 +40,9 @@ Session 3 record (base `b8c1073`): [0222](experiments/0222/DESIGN.md) replaces t
 The Session 6 structure-screen shape is frozen: {I0185, D4} × {A, B′, C, F} × {claude, codex}.
 
 Checks:
-- 29 unit tests, including container cases
+- 30 unit tests, including container cases
 - calibration: P2 115/115 over 5 repeats; P3 23/23 after fixes, with one disclosed P1 miss (the 0207 D3 reference is not Prettier-clean)
-- route smoke across all six routes, with clean teardown and routed identities; it stopped once on a real apparatus defect (`[1m]` suffix, missing Codex models cache), which was fixed and re-run ([SMOKE.md](experiments/0222/SMOKE.md))
+- route smoke across all six routes, with clean teardown and routed identities; it stopped once on a real apparatus defect (identity: an un-normalized `[1m]` model suffix), which was fixed and re-run. In the same cell a missing Codex models cache produced a product BLOCKED, so the host cache is now seeded into every cell. The route smoke shows the routes work; it is not product-completion evidence (11 of 12 assessments were not complete because the smoke request carries an unverifiable process instruction) ([SMOKE.md](experiments/0222/SMOKE.md))
 
 Reviews: Astra design R0 REVISE, adopted; implementation R1–R4 REVISE from Astra and Grok, all fixed; R5 SMOKE-READY from both.
 

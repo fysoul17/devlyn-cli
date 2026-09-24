@@ -127,6 +127,18 @@ class Pure(unittest.TestCase):
         self.assertEqual(totals['gpt-6-astra']['input'], 1_200_701)
         self.assertEqual(totals['gpt-6-sol']['input'], 500)
 
+    def test_nested_claude_results_are_counted_once(self):
+        devlyn = self.root / '.devlyn'
+        run = devlyn / 'runs/r'
+        run.mkdir(parents=True)
+        judge = dict(session_id='j', modelUsage={'claude-opus-5-5': dict(inputTokens=1, outputTokens=261)})
+        close = dict(session_id='s', modelUsage={'claude-opus-5-5[1m]': dict(inputTokens=1, outputTokens=362)})
+        (run / 'claude-judge.r0.output.json').write_text(json.dumps(judge))
+        (run / 'surface-close.output.json').write_text(json.dumps(close))
+        (devlyn / 'claude-judge.r0.output.json').write_text(json.dumps(judge))  # pre-archive copy of the same run
+        (devlyn / 'broken.output.json').write_text('{"modelUs')
+        self.assertEqual(usage.claude_nested(devlyn)['claude-opus-5-5']['output'], 623)
+
     def test_truncated_rollout_is_partial_not_zero(self):
         sessions = self.root / 'sessions'
         rollout(sessions / 'owner.jsonl', 'owner', 'exec', 'gpt-6-astra', 100)

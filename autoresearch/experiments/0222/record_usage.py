@@ -1,7 +1,8 @@
 """Post-hoc usage for one finished cell: record_usage.py <cell>. Recording only; never gates or stops.
 
 Missing or unparseable usage is PARTIAL/UNKNOWN, never zero. Codex rollouts are validated per exec root with the
-0208/0210 accounting (limits infinite); Claude usage comes from result.modelUsage and, separately, transcripts.
+0208/0210 accounting (limits infinite). Claude: the owner's result.modelUsage (includes native subagents) plus each
+separate CLI run's archived result (claude_nested); transcripts are a cross-check only.
 """
 import importlib.util
 import json
@@ -98,6 +99,25 @@ def claude_result(stdout):
     return totals if final else None
 
 
+def claude_nested(devlyn):
+    """Separate `claude -p --output-format json` runs (3.2.1 judges, SURFACE_CLOSE) archive their own results.
+    They are separate processes, so they are not in the owner's modelUsage; deduplicated by session."""
+    totals, seen = {}, set()
+    for path in sorted(devlyn.rglob('*.output.json')):
+        try:
+            result = json.loads(path.read_text(errors='replace'))
+        except ValueError:
+            continue
+        if not isinstance(result, dict) or not result.get('modelUsage') or result.get('session_id') in seen:
+            continue
+        seen.add(result.get('session_id'))
+        for model, usage in result['modelUsage'].items():
+            add(totals, model.split('[')[0], dict(
+                input=usage.get('inputTokens', 0), cache_read=usage.get('cacheReadInputTokens', 0),
+                cache_write=usage.get('cacheCreationInputTokens', 0), output=usage.get('outputTokens', 0)))
+    return totals
+
+
 def claude_transcripts(projects):
     """Assistant usage in persisted transcripts, deduplicated by message id (owner, subagents, nested judges)."""
     totals, seen = {}, set()
@@ -131,6 +151,7 @@ def record(cell):
     native, failures = codex(home / '.codex/sessions')
     result = claude_result(cell / 'run/stdout')
     transcripts = claude_transcripts(home / '.claude/projects')
+    nested = claude_nested(work / '.devlyn')
     calls = reviews(work)
     plan = json.loads((cell / 'plan.json').read_text())
     owner_known = bool(result) if plan['engine'] == 'claude' else bool(native) and not failures
@@ -140,7 +161,7 @@ def record(cell):
                                        ('F isolated codex judges', plan['arm'] == 'F')) if missing]
     completeness = 'COMPLETE' if not gaps else 'PARTIAL' if owner_known or native or transcripts else 'UNKNOWN'
     usage = dict(completeness=completeness, gaps=gaps, codex=native, codex_failures=failures, claude_result=result,
-                 claude_transcripts=transcripts, reviews=calls)
+                 claude_nested=nested, claude_transcripts=transcripts, reviews=calls)
     (cell / 'usage.json').write_text(json.dumps(usage, indent=2))
     return usage
 
