@@ -76,7 +76,8 @@ Every run is isolated: a fresh HOME with no user-global CLAUDE.md, skills or plu
 sealed `benchmark/ceiling/scripts/claude-isolation.py` (exact-model attestation). Codex gets a fresh CODEX_HOME,
 a render check of the seeded AGENTS.md, and rollout model attestation. `INSTRUCTION_SRC` defaults to the repo
 CLAUDE.md or AGENTS.md; `none` seeds no instruction file. Infra failures write `infra.attempt-N.json` and exit 3
-instead of a verdict (at most two attempts per cell). `PIN_CLAUDE`/`PIN_CODEX` select snapshot binaries.
+instead of a verdict (at most two attempts per cell); `verdict.json` is written only once scored. A 1800 s model
+timeout is a scored row. `PIN_CLAUDE`/`PIN_CODEX` select snapshot binaries; timing.json records their sha256.
 
 Score = violation count from the fixture's own `hidden/verify.sh` `checks`
 object (0 = clean). Not a rubric, no LLM in the loop.

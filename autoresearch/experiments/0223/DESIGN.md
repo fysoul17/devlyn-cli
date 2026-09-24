@@ -10,11 +10,11 @@ Can the installed CLAUDE.md/AGENTS.md managed block shrink from about 27 KB / 13
 
 - Each arm is the exact managed block the product's own `bin/instructions.js` writes; the product is not edited. `SHA256SUMS` pins all four files.
 - **current** = the base CLAUDE.md / AGENTS.md.
-- **slim** is deletion-only: every line is a line, or the leading part of a line, of the same engine's current file. It keeps:
+- **slim** is deletion-only: every line is a line, or a contiguous part of a line, of the same engine's current file. It keeps:
   - the H1;
   - the seven principles and three discipline rules (user directive 2026-05-04), with principle 1 cut before the engine-route sentences;
   - the Quick Start pointer that each skill's `SKILL.md` is authoritative;
-  - the engines pointer and the executor-pin sentences (DECISIONS 0069.1);
+  - the executor-pin sentences (DECISIONS 0069.1), plus the `/devlyn:engines` pointer in CLAUDE only;
   - the Goal-locked heading plus the E1 sentence, the only measured sentence (0062, 0099);
   - Commit Conventions (Claude only).
 - slim drops, per the packet's section table: North Star, the engine table, conversational entry (owned by the intent packet and not exercised by these instruments), Subtractive-first, the rest of Goal-locked, Error Handling, Evidence over claim, Codex invocation, Working Mode, Skill Boundary, Communication Style (an unmeasured preference, flagged for the user in Session 8) and Design System.
@@ -33,7 +33,7 @@ Engines:
 
 Pinned snapshots: Claude 2.1.282 (`~/.local/share/nx01/pins/claude-2.1.282-0223/claude`, sha256 fcfd8371…) and Codex 0.156.1 (`…/codex-0.156.1-0223/bin/codex`, sha256 0196e89f…).
 
-- **Infra, never a verdict:** a non-zero exit, `is_error`, a rate or usage limit, or a failed render or identity check writes `infra.attempt-N.json` and exits 3. The matrix stops on it, and a cell allows at most two attempts, with both records kept.
+- **Infra, never a verdict:** a non-zero exit (including every launcher failure other than the 1800 s model bound), `is_error`, a Codex turn failure, a failed render or identity check, or an oracle that writes no boolean `passed` writes `infra.attempt-N.json` and exits 3. The matrix stops on it, and a cell allows at most two attempts, with both records kept.
 - **Timeouts:** a 1800 s timeout is **not** infra. The diff at the kill is scored and `timed_out` is recorded; this resolves the packet's contradiction.
 
 ## Cells (288 runs; [run-violation-matrix.sh](../../../benchmark/probes/scripts/run-violation-matrix.sh), rep-major, variant order rotated each rep)
@@ -54,7 +54,7 @@ For each model, slim (X) is compared with current (C):
 - **Panel tripwire:** Σv_X ≤ Σv_C + Σ max-band.
 - **EQ3 task:** it regresses if f_X − f_C ≥ 2 failed manifestations.
 
-A (model, leg) is UNSCORABLE unless every cell has all its reps scored, one CLI version per engine, and matching arm hashes. The outcome token is `SLIM_REJECTED:<models>` if any model regresses, else `INCOMPLETE` if anything is UNSCORABLE, else `SLIM_ADOPTABLE`. `none` is reported per model and never enters the token. Elapsed time, commits and timeouts are report-only. A null result is not proof of no effect.
+A (model, leg) is UNSCORABLE unless every cell has all its reps scored, every receipt names its probe, engine and model and attests only that model at runtime (none only on a timeout), ran the registered CLI pin by sha256, and matches the arm hash. The outcome token is `SLIM_REJECTED:<models>` if any model regresses, else `INCOMPLETE` if anything is UNSCORABLE, else `SLIM_ADOPTABLE`. `none` is reported per model and never enters the token. Elapsed time, commits and timeouts are report-only. A null result is not proof of no effect.
 
 ## Predictions (written before any quality run)
 

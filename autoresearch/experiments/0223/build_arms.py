@@ -2,7 +2,7 @@
 
 Each arm is the exact installed managed block, rendered by the product's own bin/instructions.js
 updateInstructions() from a variant body; the product itself is not edited. `current` is the base-SHA
-CLAUDE.md/AGENTS.md. `slim` is deletion-only: every piece is a line, or the leading part of a line, of the
+CLAUDE.md/AGENTS.md. `slim` is deletion-only: every piece is a line, or a contiguous part of a line, of the
 same engine's current file (packet E2 item 2, section table). `none` is the absence of a file.
 """
 import hashlib

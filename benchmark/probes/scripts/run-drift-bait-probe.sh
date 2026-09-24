@@ -72,16 +72,18 @@ SCAFFOLD_SHA=$(git -C "$WORK" rev-parse HEAD)
 if [ "$SHAPE" = eq3 ]; then python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["goal"], end="")' "$PROBE_DIR/task.json" > "$ROOT/prompt"
 else cp "$TASK_FILE" "$ROOT/prompt"; fi
 
+if [ "$ENGINE" = claude ]; then CLI_BIN="${PIN_CLAUDE:-$(command -v claude)}"; else CLI_BIN="${PIN_CODEX:-$(command -v codex)}"; fi
+CLI_SHA=$(shasum -a 256 "$CLI_BIN" | cut -d' ' -f1)
 T_START=$(date +%s); RC=0
 if [ "$ENGINE" = claude ]; then
-  CEILING_TEST_CLAUDE_BIN="${PIN_CLAUDE:-$(command -v claude)}" CEILING_TEST_CODEX_BIN="${PIN_CODEX:-$(command -v codex)}" \
+  CEILING_TEST_CLAUDE_BIN="$CLI_BIN" CEILING_TEST_CODEX_BIN="${PIN_CODEX:-$(command -v codex)}" \
     python3 "$REPO_ROOT/benchmark/ceiling/scripts/claude-isolation.py" launch --mode arm --model "$MODEL" \
       --home "$HOME_DIR" --codex-home "$CODEX_DIR" --workdir "$WORK" --prompt-file "$ROOT/prompt" \
       --debug-file "$RESULT_DIR/claude-debug.log" --metadata-out "$RESULT_DIR/claude-isolation.json" \
       --user-memory-file "$HOME/.claude/CLAUDE.md" --timeout-seconds "$TIMEOUT" \
       > "$RESULT_DIR/transcript.json" 2> "$RESULT_DIR/stderr.log" || RC=$?
 else
-  CODEX_BIN="${PIN_CODEX:-$(command -v codex)}"
+  CODEX_BIN="$CLI_BIN"
   install -m 600 "$HOME/.codex/auth.json" "$CODEX_DIR/auth.json"
   install -m 600 "$HOME/.codex/models_cache.json" "$CODEX_DIR/models_cache.json"
   grep -q "\"$MODEL\"" "$CODEX_DIR/models_cache.json" || { echo "$MODEL is not in the Codex models cache" >&2; exit 1; }
@@ -113,15 +115,15 @@ PY
 fi
 T_END=$(date +%s)
 TIMED_OUT=false
-if [ "$ENGINE" = claude ] && [ "$RC" -eq 78 ] && grep -q 'timed out after' "$RESULT_DIR/stderr.log"; then TIMED_OUT=true
+# Only the model run's own bound is a timeout; the launcher's pre-launch probes time out after other bounds.
+if [ "$ENGINE" = claude ] && [ "$RC" -eq 78 ] && grep -Eq "^CLAUDE_ISOLATION_ERROR: .* timed out after $TIMEOUT seconds$" "$RESULT_DIR/stderr.log"; then TIMED_OUT=true
 elif [ "$ENGINE" = codex ] && [ "$RC" -eq 124 ]; then TIMED_OUT=true
 elif [ "$RC" -ne 0 ]; then infra "$ENGINE exit $RC"; fi
 
 # Runtime identity and usage; any error, limit or unattested model is infra, never a verdict.
 python3 - "$ENGINE" "$MODEL" "$RESULT_DIR" "$CODEX_DIR" "$TIMED_OUT" > "$ROOT/attest.json" <<'PY' || infra "$(cat "$ROOT/attest.err" 2>/dev/null || echo attestation failed)"
-import json, pathlib, re, sys
+import json, pathlib, sys
 engine, model, result, codex_home, timed_out = sys.argv[1], sys.argv[2], pathlib.Path(sys.argv[3]), pathlib.Path(sys.argv[4]), sys.argv[5] == 'true'
-limit = re.compile(r'\b(429|529)\b|rate.?limit|usage limit|session limit|overloaded', re.I)
 def fail(reason):
     (pathlib.Path(sys.argv[4]).parent / 'attest.err').write_text(reason)
     sys.exit(1)
@@ -129,7 +131,7 @@ if engine == 'claude':
     if timed_out:
         print(json.dumps(dict(runtime_model=None, usage='UNKNOWN'))); sys.exit()
     wrapper = json.loads((result / 'transcript.json').read_text())
-    if wrapper.get('is_error') or limit.search(str(wrapper.get('result', ''))):
+    if wrapper.get('is_error'):
         fail('claude result is_error: ' + str(wrapper.get('subtype')))
     print(json.dumps(dict(runtime_model=sorted(wrapper.get('modelUsage') or {}), usage=wrapper.get('modelUsage'))))
 else:
@@ -155,20 +157,20 @@ PY
 
 (cd "$WORK" && git add -A && git diff "$SCAFFOLD_SHA") > "$RESULT_DIR/diff.patch" 2>/dev/null || true
 git -C "$WORK" diff "$SCAFFOLD_SHA" --name-only > "$RESULT_DIR/changed-files.txt" 2>/dev/null || true
-if [ "$ENGINE" = claude ]; then VERSION=$("${PIN_CLAUDE:-claude}" --version 2>/dev/null | head -1); else VERSION=$("${PIN_CODEX:-codex}" --version 2>/dev/null | head -1); fi
+VERSION=$("$CLI_BIN" --version 2>/dev/null | head -1)
 python3 - "$RESULT_DIR/timing.json" "$ROOT/attest.json" <<PY
 import json, sys
 attest = json.load(open(sys.argv[2]))
-json.dump(dict(probe="$PROBE_ID", engine="$ENGINE", model="$MODEL", task_lang="${TASK_LANG:-en}", cli_version="$VERSION",
+json.dump(dict(probe="$PROBE_ID", engine="$ENGINE", model="$MODEL", task_lang="${TASK_LANG:-en}", cli_version="$VERSION", cli_sha256="$CLI_SHA",
                instruction_sha256="$INSTR_SHA", elapsed_seconds=$((T_END - T_START)), timed_out="$TIMED_OUT" == 'true',
                commits_after_baseline=int("$(git -C "$WORK" rev-list --count "$SCAFFOLD_SHA"..HEAD)"), **attest),
           open(sys.argv[1], 'w'), indent=2)
 PY
 
 if [ "$SHAPE" = drift ]; then
-  bash "$PROBE_DIR/hidden/verify.sh" "$RESULT_DIR" > "$RESULT_DIR/verdict.json" 2> "$RESULT_DIR/verify-sh.stderr.log" || true
+  bash "$PROBE_DIR/hidden/verify.sh" "$RESULT_DIR" > "$ROOT/verdict.json" 2> "$RESULT_DIR/verify-sh.stderr.log" || true
 else  # EQ3: an oracle crash counts every manifestation as failed
-  python3 - "$PROBE_DIR" "$WORK" "$RESULT_DIR/verdict.json" <<'PY'
+  python3 - "$PROBE_DIR" "$WORK" "$ROOT/verdict.json" <<'PY'
 import json, pathlib, subprocess, sys
 task, work, out = pathlib.Path(sys.argv[1]), sys.argv[2], pathlib.Path(sys.argv[3])
 total = len(json.loads((task / 'hidden/manifests.json').read_text())['manifestations'])
@@ -182,6 +184,9 @@ out.write_text(json.dumps(dict(passed=failed == 0, manifestations_failed=failed,
                                oracle_crashed=rows is None, manifestations=rows), indent=2))
 PY
 fi
-[ -s "$RESULT_DIR/verdict.json" ] || infra "oracle wrote no verdict"
+# verdict.json appears only once scored, so resume never skips an unscored cell.
+python3 -c 'import json,sys; assert isinstance(json.load(open(sys.argv[1])).get("passed"), bool)' "$ROOT/verdict.json" 2>/dev/null \
+  || infra "oracle wrote no boolean passed"
+mv "$ROOT/verdict.json" "$RESULT_DIR/verdict.json"
 cat "$RESULT_DIR/verdict.json"
 echo "[run-drift-bait-probe] done: $RESULT_DIR"
