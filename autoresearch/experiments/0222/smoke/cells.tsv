@@ -1,0 +1,7 @@
+# name task arm config — route smoke; SMOKE is never a measurement task
+smoke-A-claude SMOKE A claude
+smoke-A-codex SMOKE A codex
+smoke-C-claude SMOKE C claude
+smoke-C-codex SMOKE C codex
+smoke-F-claude SMOKE F claude
+smoke-F-codex SMOKE F codex
