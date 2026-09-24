@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 
 HERE = Path(__file__).resolve().parent
+PREPARE = HERE / 'prepare.py'
 ACCOUNT = ('9f2f3a391923', 'ea65f3b4f086')
 MIN_TOKEN_SECONDS = 3600
 
@@ -65,7 +66,7 @@ def run(index, runtime_path):
         verdict_path.write_text(json.dumps(dict(index=index, status='NOT_DISPATCHED', reason=blocked), indent=2))
         print(blocked)
         return 3
-    cell = Path(subprocess.check_output([sys.executable, '-B', str(HERE / 'prepare.py'), str(index),
+    cell = Path(subprocess.check_output([sys.executable, '-B', str(PREPARE), str(index),
                                          str(runtime_path)], text=True).strip())
     (cell / 'seal.json').write_text(json.dumps(dict(
         sealed_at=datetime.datetime.now(datetime.timezone.utc).isoformat(), account=identity,
