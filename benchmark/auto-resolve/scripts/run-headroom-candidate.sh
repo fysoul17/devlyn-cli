@@ -104,11 +104,7 @@ fi
 
 print_command() {
   local cmd
-  if [ "${DEVLYN_BENCHMARK_CLI_SUBCOMMAND:-}" = "headroom" ]; then
-    cmd=(npx devlyn-cli benchmark headroom --run-id "$RUN_ID")
-  else
-    cmd=(bash "$0" --run-id "$RUN_ID")
-  fi
+  cmd=(bash "$0" --run-id "$RUN_ID")
   cmd+=(--bare-max "$BARE_MAX")
   cmd+=(--solo-max "$SOLO_MAX")
   cmd+=(--min-bare-headroom "$MIN_BARE_HEADROOM")

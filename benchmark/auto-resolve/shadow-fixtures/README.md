@@ -58,8 +58,8 @@ Shadow fixtures can be targeted by the score-focused candidate runners with an
 explicit `S*` id before promotion to golden fixtures:
 
 ```bash
-npx devlyn-cli benchmark headroom --dry-run --min-fixtures 1 S1-cli-lang-flag
-npx devlyn-cli benchmark pair --dry-run --min-fixtures 1 S1-cli-lang-flag
+bash benchmark/auto-resolve/scripts/run-headroom-candidate.sh --dry-run --min-fixtures 1 S1-cli-lang-flag
+bash benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh --dry-run --min-fixtures 1 S1-cli-lang-flag
 ```
 
 Use the dry-run form for cheap argument, packaging, and fixture-shape checks

@@ -5,13 +5,13 @@ One-command resolve benchmark that gates every harness change with a ship/rollba
 ## Quick start
 
 ```bash
-npx devlyn-cli benchmark                 # n=1 smoke, all fixtures × 3 arms, judge, report, ship-gate
-npx devlyn-cli benchmark F2              # specific fixture only
-npx devlyn-cli benchmark headroom F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
-npx devlyn-cli benchmark pair --min-fixtures 3 --max-pair-solo-wall-ratio 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
-npx devlyn-cli benchmark --dry-run       # validate suite wiring without model invocation
-npx devlyn-cli benchmark --bless         # if ship-gate PASSes, promote this run as the shipped baseline
-npx devlyn-cli benchmark --judge-only --run-id <ID>   # re-judge an existing run's artifacts
+bash benchmark/auto-resolve/scripts/run-suite.sh                 # n=1 smoke, all fixtures × 3 arms, judge, report, ship-gate
+bash benchmark/auto-resolve/scripts/run-suite.sh F2              # specific fixture only
+bash benchmark/auto-resolve/scripts/run-headroom-candidate.sh F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
+bash benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh --min-fixtures 3 --max-pair-solo-wall-ratio 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
+bash benchmark/auto-resolve/scripts/run-suite.sh --dry-run       # validate suite wiring without model invocation
+bash benchmark/auto-resolve/scripts/run-suite.sh --bless         # if ship-gate PASSes, promote this run as the shipped baseline
+bash benchmark/auto-resolve/scripts/run-suite.sh --judge-only --run-id <ID>   # re-judge an existing run's artifacts
 ```
 
 Exit code 0 = PASS, 1 = FAIL.
@@ -43,7 +43,7 @@ benchmark/auto-resolve/
 │   └── F1,F3-F9/             # add per Stage 2-3
 │
 ├── scripts/
-│   ├── run-suite.sh          # single entry — called by `npx devlyn-cli benchmark`
+│   ├── run-suite.sh          # single suite entry
 │   ├── run-fixture.sh        # one fixture × one arm, self-contained
 │   ├── judge.sh              # Codex blind judge for one fixture
 │   ├── compile-report.py     # aggregates into report.md + summary.json
@@ -143,7 +143,6 @@ bash benchmark/auto-resolve/scripts/run-headroom-candidate.sh \
   F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
 ```
 
-The same runner is available through `npx devlyn-cli benchmark headroom ...`.
 This runs only the arms needed for calibration (`bare` and `solo_claude`),
 blind-judges them, and applies `headroom-gate.py`. A candidate set is not
 usable for pair measurement unless at least two fixtures pass and each fixture
@@ -151,9 +150,7 @@ has evidence-complete `bare <= 60` and `solo_claude <= 80` scores with the
 default minimum 5-point `bare`/`solo_claude` headroom margin.
 The runner prints the headroom gate markdown report to stdout, including the
 startup `Gate:` line and the fixture score table with bare score, bare
-headroom, solo_claude score, solo_claude headroom, status, and reason columns. When launched
-through `npx devlyn-cli benchmark headroom`, the replay `Command:` uses the
-same package CLI path.
+headroom, solo_claude score, solo_claude headroom, status, and reason columns.
 For passing sets, the report also prints average and minimum `bare`/`solo_claude`
 headroom plus the fixture pass count, so ceiling-near, threshold-fragile, or
 under-count candidate sets are visible before spending pair arms.
@@ -172,14 +169,12 @@ and are not rerun by the pair-candidate runners.
 Before spending new provider calls, inspect the active candidate frontier:
 
 ```bash
-python3 benchmark/auto-resolve/scripts/pair-candidate-frontier.py \
-  --out-md /tmp/devlyn-pair-frontier.md
-npx devlyn-cli benchmark recent
-npx devlyn-cli benchmark recent --out-md /tmp/devlyn-recent-benchmark.md
-npx devlyn-cli benchmark frontier --out-md /tmp/devlyn-pair-frontier.md
+python3 benchmark/auto-resolve/scripts/recent-benchmark-summary.py
+python3 benchmark/auto-resolve/scripts/recent-benchmark-summary.py --out-md /tmp/devlyn-recent-benchmark.md
+python3 benchmark/auto-resolve/scripts/pair-candidate-frontier.py --out-md /tmp/devlyn-pair-frontier.md
 ```
 
-`benchmark recent` is the reader-facing version of the current evidence set: it
+`recent-benchmark-summary.py` is the reader-facing version of the current evidence set: it
 prints a compact, wrap-safe status block, pair-lift aggregates, and one card per
 passing pair-evidence fixture. Use it for PR comments and release notes when a
 wide frontier table would wrap poorly.
@@ -200,17 +195,17 @@ score that is not backed by a matching local headroom artifact:
 
 ```bash
 python3 benchmark/auto-resolve/scripts/audit-headroom-rejections.py
-npx devlyn-cli benchmark audit-headroom --out-json /tmp/devlyn-headroom-audit.json
+python3 benchmark/auto-resolve/scripts/audit-headroom-rejections.py --out-json /tmp/devlyn-headroom-audit.json
 ```
 
 For release or handoff checks where open candidates are not acceptable, add
 `--fail-on-unmeasured` to the frontier command so any active
 `candidate_unmeasured` fixture becomes a nonzero exit.
-The package CLI exposes that release/handoff guard as one command:
+Run that release/handoff guard with:
 
 ```bash
-npx devlyn-cli benchmark audit --out-dir /tmp/devlyn-benchmark-audit
-npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict
+python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --out-dir /tmp/devlyn-benchmark-audit
+python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict
 ```
 
 It writes `audit.json` with the frontier summary and an artifact map (`artifacts`), plus
@@ -286,7 +281,6 @@ bash benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
   F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
 ```
 
-The same runner is available through `npx devlyn-cli benchmark pair ...`.
 The runner executes `bare` + `solo_claude`, applies `headroom-gate.py`, and
 only then spends the selected pair arm. Pair arms are limited to current
 proof (`l2_risk_probes`) or diagnostic replay (`l2_gated`); `l2_forced` is
@@ -298,9 +292,7 @@ evidence fails, the report is printed before the runner exits non-zero. If
 headroom fails, the runner explicitly says the pair arm was not executed; if
 the final pair gate fails, it explicitly says pair evidence was rejected. When
 both gates pass, it explicitly says the selected pair arm is being executed and
-then that pair evidence was accepted. When launched through
-`npx devlyn-cli benchmark pair`, the replay `Command:` uses
-the same package CLI path. Add `--dry-run` to
+then that pair evidence was accepted. Add `--dry-run` to
 validate args, fixture ids, minimum fixture count, and the replay command
 without running arms or judges. Known rejected or ceiling-saturated fixtures
 are refused by default here too; use `--allow-rejected-fixtures` only for
@@ -350,7 +342,7 @@ F16/F23/F25 gate: `20260510-f16-f23-f25-combined-proof` passed with margins
 `20260509-f16-f25-combined-cartprobe-v2`.
 Additional focused F21 evidence: `20260511-f21-current-riskprobes-v1` passed
 with `bare` 33, `solo_claude` 66, `l2_risk_probes` 99, margin +33, pair mode true, and
-pair/solo wall ratio 1.47x, and is counted by `benchmark audit` as the fourth passing pair-evidence row. Do not count ceiling/control fixtures as pair
+pair/solo wall ratio 1.47x, and is counted by `audit-pair-evidence.py` as the fourth passing pair-evidence row. Do not count ceiling/control fixtures as pair
 evidence: F22 and F26 are
 currently rejected because existing headroom runs put `solo_claude` at 98. F27
 subscription proration is also rejected in its first headroom smoke:
@@ -677,10 +669,10 @@ on the selected fixture count; the historical 9-fixture core suite was roughly
 
 ```bash
 # Smoke run before ship decisions
-npx devlyn-cli benchmark
+bash benchmark/auto-resolve/scripts/run-suite.sh
 
 # Ship-decision run
-npx devlyn-cli benchmark --label v3.7 --bless
+bash benchmark/auto-resolve/scripts/run-suite.sh --label v3.7 --bless
 ```
 
 ## Dry-run

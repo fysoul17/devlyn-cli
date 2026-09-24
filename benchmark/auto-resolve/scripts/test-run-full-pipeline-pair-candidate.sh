@@ -38,8 +38,6 @@ grep -Fq -- '--allow-rejected-fixtures' "$TMP_DIR/help.out"
 grep -Fq -- '--dry-run' "$TMP_DIR/help.out"
 grep -Fq 'run_gate_with_report' "$RUNNER"
 grep -Fq 'Command: ' "$RUNNER"
-grep -Fq 'DEVLYN_BENCHMARK_CLI_SUBCOMMAND' "$RUNNER"
-grep -Fq 'cmd=(npx devlyn-cli benchmark pair --run-id "$RUN_ID")' "$RUNNER"
 grep -Fq 'cmd=(bash "$0" --run-id "$RUN_ID")' "$RUNNER"
 grep -Fq 'cmd+=(--min-bare-headroom "$MIN_BARE_HEADROOM")' "$RUNNER"
 grep -Fq 'cmd+=(--min-solo-headroom "$MIN_SOLO_HEADROOM")' "$RUNNER"
@@ -224,13 +222,6 @@ expect_fail_contains reuse-source-missing \
   bash "$RUNNER" --run-id "$TEST_RUN-source-missing" \
     --reuse-calibrated-from "src-$TEST_RUN-missing" \
     F21-cli-scheduler-priority
-
-expect_fail_contains cli-replay-command \
-  "Command: npx devlyn-cli benchmark pair --run-id $TEST_RUN-cli-replay" \
-  env DEVLYN_BENCHMARK_CLI_SUBCOMMAND=pair \
-    bash "$RUNNER" --run-id "$TEST_RUN-cli-replay" \
-      --reuse-calibrated-from "src-$TEST_RUN-missing" \
-      F21-cli-scheduler-priority
 
 expect_fail_contains dry-run-min-fixtures \
   '[full-pipeline-pair] DRY RUN failed' \
@@ -438,7 +429,7 @@ STUB_HEADROOM_EXIT=0 STUB_PAIR_EXIT=0 \
   > "$TMP_DIR/stub-success.out" 2>&1
 grep -Fq '[full-pipeline-pair] headroom gate passed — executing l2_risk_probes.' "$TMP_DIR/stub-success.out"
 grep -Fq '[full-pipeline-pair] pair gate passed — pair evidence accepted.' "$TMP_DIR/stub-success.out"
-grep -Fq '[full-pipeline-pair] release audit: npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' "$TMP_DIR/stub-success.out"
+grep -Fq '[full-pipeline-pair] release audit: python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' "$TMP_DIR/stub-success.out"
 grep -Fq '| F21-cli-scheduler-priority | 50 | 75 | 25 |' "$TMP_DIR/stub-success.out"
 grep -Fq '| F21-cli-scheduler-priority | 50 | 75 | 96 | 21 |' "$TMP_DIR/stub-success.out"
 grep -Fq '[stub-run-fixture] --fixture F21-cli-scheduler-priority --arm l2_risk_probes' "$TMP_DIR/stub-success.out"

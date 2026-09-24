@@ -2,7 +2,7 @@
 # run-suite.sh — the single-command benchmark entry.
 #
 # Orchestrates: fixture setup + arm invocations + blind judge + report + ship
-# gate. Called by `npx devlyn-cli benchmark` as well as directly.
+# gate.
 #
 # Usage:
 #   run-suite.sh                            # all fixtures, n=1 smoke
@@ -79,7 +79,7 @@ case "$SUITE" in
 esac
 
 if [ "$SUITE" = "shadow" ] && [ "$DRY_RUN" -eq 0 ]; then
-  echo "shadow suite run-suite is dry-run only. Use benchmark headroom/pair with explicit S* candidates for real provider measurement." >&2
+  echo "shadow suite run-suite is dry-run only. Use run-headroom-candidate.sh / run-full-pipeline-pair-candidate.sh with explicit S* candidates for real provider measurement." >&2
   exit 1
 fi
 
@@ -235,7 +235,7 @@ if [ $DRY_RUN -eq 1 ]; then
   echo ""
   echo "[suite] DRY RUN complete — results in $RES_DIR"
   if [ "$SUITE" = "shadow" ]; then
-    echo "Use benchmark headroom/pair with explicit S* candidates for real provider measurement."
+    echo "Use run-headroom-candidate.sh / run-full-pipeline-pair-candidate.sh with explicit S* candidates for real provider measurement."
   else
     echo "Run without --dry-run to invoke models."
   fi

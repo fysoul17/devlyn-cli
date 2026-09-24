@@ -57,8 +57,8 @@ The following require REAL `/devlyn:resolve` pipeline executions on real tasks. 
 Generated from local gate artifacts with:
 
 ```bash
-npx devlyn-cli benchmark recent
-npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict
+python3 benchmark/auto-resolve/scripts/recent-benchmark-summary.py
+python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict
 ```
 
 Status:
@@ -152,7 +152,7 @@ Additional focused run: `20260511-f21-current-riskprobes-v1` re-measured F21
 with the current risk-probe path and passed the same full-pipeline gate with
 `--min-fixtures 1`. Scores: `bare` 33, `solo_claude` 66, `l2_risk_probes` 99, pair margin
 +33, pair mode true, pair/solo wall ratio 1.47x. This is supporting fixture
-evidence for the same pair mechanism and is counted by `benchmark audit` as the
+evidence for the same pair mechanism and is counted by `audit-pair-evidence.py` as the
 fourth passing pair-evidence row alongside the F16/F23/F25 proof run.
 
 Rejected candidate: `20260508-f26-headroom` measured F26 payout ledger rules at
@@ -260,7 +260,7 @@ unless reworked.
    1.73x.
 7. F21 also clears a focused full-pipeline gate after current-risk-probe
    remeasurement: 33 / 66 / 99 with pair margin +33 and wall ratio 1.47x, and
-   is counted by `benchmark audit` as the fourth passing pair-evidence row.
+   is counted by `audit-pair-evidence.py` as the fourth passing pair-evidence row.
 8. F26 is rejected as pair-lift evidence because `solo_claude` reaches ceiling: bare 25 /
    solo_claude 98 in `20260508-f26-headroom`.
 9. F22 is rejected as pair-lift evidence because both `bare` and `solo_claude` reach ceiling
