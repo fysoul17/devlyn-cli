@@ -113,11 +113,11 @@ def identity(cell, plan):
         except ValueError:  # an in-place writer can be cut by the hang wall
             gaps.append(f'unreadable {path.relative_to(cell)}')
             continue
-        requested = set(walk(state, 'model_requested')) | set(walk(state, 'model_effective'))
+        requested = {m.split('[')[0] for m in set(walk(state, 'model_requested')) | set(walk(state, 'model_effective'))}
         violations += [f'pipeline {m} unrouted' for m in requested - allowed['claude'] - allowed['codex']]
         violations += [f'pipeline requested {d["model_requested"]} but ran {d["model_effective"]}'
                        for d in dicts(state) if d.get('model_requested') and d.get('model_effective')
-                       and d['model_requested'] != d['model_effective']]
+                       and d['model_requested'].split('[')[0] != d['model_effective'].split('[')[0]]
         frozen = ((state.get('role_resolution') or {}).get('roles') or {})
         violations += [f'role {role} frozen as {frozen[role].get("engine")}/{frozen[role].get("model_requested")}'
                        for role, want in roles.items() if role in frozen

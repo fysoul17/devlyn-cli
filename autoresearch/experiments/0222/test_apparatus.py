@@ -219,6 +219,16 @@ class Pure(unittest.TestCase):
             got = cell.identity(work, dict(engine='codex', model='gpt-6-astra', config='codex', arm='F'))
             self.assertEqual(got['status'], status, got['violations'])
 
+    def test_one_m_context_suffix_is_the_same_model(self):
+        state = dict(phases=dict(verify=dict(model_requested='claude-opus-5-5', model_effective='claude-opus-5-5[1m]')))
+        work = Path(tempfile.mkdtemp(dir=self.root))
+        (work / 'run').mkdir()
+        (work / 'run/stdout').write_text(json.dumps(dict(type='system', subtype='init', model='claude-opus-5-5[1m]')) + '\n')
+        (work / 'work/.devlyn').mkdir(parents=True)
+        (work / 'work/.devlyn/pipeline.state.json').write_text(json.dumps(state))
+        got = cell.identity(work, dict(engine='claude', model='claude-opus-5-5', config='claude', arm='F'))
+        self.assertEqual(got['status'], 'MATCH', got['violations'])
+
     def test_claude_surface_close_transcript_does_not_stop_f_claude(self):
         work = Path(tempfile.mkdtemp(dir=self.root))
         (work / 'run').mkdir()

@@ -77,6 +77,8 @@ def prepare(runtime, name, task_id, arm, config):
     source(task, runtime, work)
     (home / '.codex').mkdir(parents=True)
     (home / '.claude').mkdir()
+    if runtime.get('models_cache'):  # a user's Codex home has this; 3.2.1 role-config reads it for pinned models
+        shutil.copyfile(runtime['models_cache'], home / '.codex/models_cache.json')
     if config == 'codex':
         (home / '.codex/config.toml').write_text(codex_toml(route['owner']))
     if arm == 'F':
