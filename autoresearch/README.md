@@ -66,10 +66,10 @@ These metrics define "did this hypothesis work?". Stable across iterations.
 ## Current work
 
 Read [`HANDOFF.md`](HANDOFF.md), then
-[0201's ordered transformation plan](iterations/0201-harness-transformation-plan.md).
-It owns the current candidate, finite evaluation and adoption/rejection decision.
+[0221's registered plan](iterations/0221-subtraction-direction.md).
+It owns the current candidate, session order, evaluation and adoption/rejection decision.
 The earlier metrics and anti-overfitting discussion in this README describe the
-historical nine-fixture loop; they do not override0201's untouched confirmation
+historical nine-fixture loop; they do not override 0221's confirmation rules
 or NORTH-STAR's current quality/time/cost priority. Do not recreate a second queue here.
 
 ---

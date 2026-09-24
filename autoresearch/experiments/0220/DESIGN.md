@@ -1,5 +1,7 @@
 # 0220 — completion reserve after the 0219 D1 B breach (design)
 
+**Status (2026-09-24): not launched; superseded by [0221](../../iterations/0221-subtraction-direction.md), which removes budget limits from tests.**
+
 2026-09-24. The user asked to design a fix with Astra: root direct, no resolve.
 Opus and Astra (gpt-6-astra/high, read-only) each wrote an independent R0. Astra
 returned REVISE in round 1 on the wording only, and its wording is adopted
