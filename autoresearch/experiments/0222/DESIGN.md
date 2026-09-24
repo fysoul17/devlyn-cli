@@ -34,7 +34,7 @@ Routes, watchdogs and tasks are data in [tasks.json](tasks.json).
 ## Execution policy
 
 - **Watchdogs only:** owner 5400 s, review 600 s, evaluator 600 s per container, assessor 600 s. There are no token, call or cost limits and no review caps. A timeout is a row.
-- **Usage:** post-hoc per engine and model ([record_usage.py](record_usage.py)). Missing, torn or unparseable usage is PARTIAL/UNKNOWN with named gaps, never 0, and never stops a cell. Codex rollouts are validated per exec root by the 0208/0210 accounting with infinite limits. Claude records both result.modelUsage and transcripts until the smoke decides which is authoritative. F cells are PARTIAL by construction, because 3.2.1 runs isolated Codex judges with `--ephemeral`.
+- **Usage:** post-hoc per engine and model ([record_usage.py](record_usage.py)). Missing, torn or unparseable usage is PARTIAL/UNKNOWN with named gaps, never 0, and never stops a cell. Codex rollouts are validated per exec root by the 0208/0210 accounting with infinite limits. For a Claude owner, `result.modelUsage` is authoritative and includes native subagents (smoke: 2,282 output vs 2,058 in transcripts). Transcripts count only where no result exists, such as nested Claude judges. F cells are PARTIAL by construction, because 3.2.1 runs isolated Codex judges with `--ephemeral`.
 - **Stop the screen only for:** a container that survives teardown; a changed control manifest, sealed input or issue snapshot; model identity MISMATCH or UNVERIFIED; or an evaluator that did not run (Docker/exec startup failure, uncleaned oracle fixtures).
   - Identity is bound per role. A Codex owner session must use exactly its route model, and its native descendants the child model. A Claude owner's `system/init` model must match. Every other Codex session, Claude model (result or transcripts; Claude's internal Haiku helper excepted), F pipeline `model_requested`/`model_effective` and reviewer call must be on a routed model. A reroute is a mismatch. UNVERIFIED means models ran but the owner session could not be bound.
   - Every other outcome is recorded and the screen continues: an owner crash, a hang, a reviewer failure, or a product that crashes or hangs an oracle (a FAIL row).
@@ -52,6 +52,7 @@ Routes, watchdogs and tasks are data in [tasks.json](tasks.json).
 
 - `python3 -B -m unittest discover -s autoresearch/experiments/0222 -p 'test_*.py'`: 16 pass with `APPARATUS_IMAGE`/`APPARATUS_CONTROL` set. This covers routes, prompts and hash bindings, the base-diff packet with untracked files, usage above the old caps across exec roots, a truncated rollout recorded as PARTIAL, replay of the archived 0219 native usage (203,245 / 3,406), per-role identity, verdict mapping, and reviewer argument handling. Container cases: a hang-wall kill of a TERM-ignoring setsid child, a nonzero exit recorded, a teardown failure reported, a reviewer exit 124 recorded with a second call still allowed, and the D4 path-collision control.
 - Calibration through the same `check.evaluate` used for cells: see [CALIBRATION.md](CALIBRATION.md).
+- Route smoke (the first model calls): see [SMOKE.md](SMOKE.md). All six routes ran with clean teardown and routed identities after two apparatus fixes.
 
 ## Limitations
 
