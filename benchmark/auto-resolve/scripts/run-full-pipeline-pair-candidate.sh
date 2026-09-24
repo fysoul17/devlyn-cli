@@ -140,11 +140,7 @@ fi
 
 print_command() {
   local cmd
-  if [ "${DEVLYN_BENCHMARK_CLI_SUBCOMMAND:-}" = "pair" ]; then
-    cmd=(npx devlyn-cli benchmark pair --run-id "$RUN_ID")
-  else
-    cmd=(bash "$0" --run-id "$RUN_ID")
-  fi
+  cmd=(bash "$0" --run-id "$RUN_ID")
   cmd+=(--bare-max "$BARE_MAX")
   cmd+=(--solo-max "$SOLO_MAX")
   cmd+=(--min-bare-headroom "$MIN_BARE_HEADROOM")
@@ -455,4 +451,4 @@ if ! run_gate_with_report \
   exit 1
 fi
 echo "[full-pipeline-pair] pair gate passed — pair evidence accepted."
-echo "[full-pipeline-pair] release audit: npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict"
+echo "[full-pipeline-pair] release audit: python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict"

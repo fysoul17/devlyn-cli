@@ -23,7 +23,7 @@ production telemetry — just enough signal for ship decisions.
 
 ## Principles
 
-1. **One command.** `npx devlyn-cli benchmark` runs everything and prints a
+1. **One command.** `bash benchmark/auto-resolve/scripts/run-suite.sh` runs everything and prints a
    verdict. No manual fixture setup.
 2. **Novice-proof.** The suite exercises the same paths a first-time user
    hits — including an end-to-end `ideate → resolve` fixture.
@@ -143,9 +143,9 @@ usable artifact set.
 ### User experience
 
 ```bash
-npx devlyn-cli benchmark            # n=1 smoke, all fixtures
-npx devlyn-cli benchmark F2 F5      # specific fixtures only
-npx devlyn-cli benchmark --judge-only --run-id <id>   # re-judge without re-running
+bash benchmark/auto-resolve/scripts/run-suite.sh            # n=1 smoke, all fixtures
+bash benchmark/auto-resolve/scripts/run-suite.sh F2 F5      # specific fixtures only
+bash benchmark/auto-resolve/scripts/run-suite.sh --judge-only --run-id <id>   # re-judge without re-running
 ```
 
 Output on completion:
@@ -277,10 +277,9 @@ adding anything.
 
 ## Open Questions (to be answered before first full ship-gate run)
 
-1. Where does `benchmark` subcommand live? Inside `bin/devlyn.js` or as
-   standalone `benchmark/auto-resolve/scripts/run-suite.sh` invoked via `npm
-   run`? **Proposal**: both — `bin/devlyn.js benchmark` is the advertised
-   entry, which shells out to the script.
+1. Where does `benchmark` subcommand live? **Resolved (0221 Session 2)**:
+   the standalone `benchmark/auto-resolve/scripts/run-suite.sh`; the package
+   CLI no longer ships a `benchmark` subcommand.
 2. Parallel run safety — can we run the selected fixture set × 3 arms concurrently without
    rate-limit / lockfile conflicts? **Proposal**: default sequential with
    `--parallel N` flag. Default `N=1` for safety; the user can opt in.

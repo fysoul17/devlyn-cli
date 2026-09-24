@@ -474,6 +474,7 @@ if ! grep -Fq 'def pair_trigger_skip_contract_violation' config/skills/_shared/v
   || ! grep -Fq 'True only for `--pair-verify`' config/skills/devlyn:resolve/references/state-schema.md \
   || ! grep -Fq 'pair_verify: true` only when `--pair-verify` was passed' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'persist `pair_trigger` before spawn with `pair.default` plus every applicable outcome-independent reason' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq -- '`--pair-verify` and `--no-pair` are mutually exclusive' README.md \
   || ! grep -Fq '`--pair-verify` and `--no-pair` are mutually exclusive' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'mutually exclusive with `risk_profile.pair_default_enabled == false`' config/skills/devlyn:resolve/references/state-schema.md \
   || ! grep -Fq 'if both are present, stop with `BLOCKED:invalid-flags`' config/skills/devlyn:resolve/references/phases/verify.md \
@@ -2004,9 +2005,6 @@ fi
 if [ ! -f benchmark/auto-resolve/fixtures/retired/F27-cli-subscription-proration/RETIRED.md ]; then
   offenders="${offenders}"$'\n'"retired F27 must keep RETIRED.md with the measured rejection reason"
 fi
-if ! grep -Fq '"benchmark/auto-resolve/fixtures/retired/F*/**"' package.json; then
-  offenders="${offenders}"$'\n'"package.json must include retired fixtures so replay artifacts ship in npm packages"
-fi
 if ! grep -Fq '20260511-f27-headroom-smoke-061401' benchmark/auto-resolve/fixtures/retired/F27-cli-subscription-proration/NOTES.md \
   || ! grep -Fq '20260511-f27-headroom-smoke-061401' benchmark/auto-resolve/fixtures/retired/F27-cli-subscription-proration/RETIRED.md; then
   offenders="${offenders}"$'\n'"F27 notes must cite the measured headroom smoke run"
@@ -2335,10 +2333,7 @@ if ! grep -Fq 'startup `Gate:` line' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'startup `Headroom:` / `Pair:` lines' benchmark/auto-resolve/README.md; then
   offenders="${offenders}"$'\n'"benchmark docs must describe real-run startup gate lines and headroom score columns"
 fi
-if ! grep -Fq 'DEVLYN_BENCHMARK_CLI_SUBCOMMAND: benchmarkMode' bin/devlyn.js \
-  || ! grep -Fq 'npx devlyn-cli benchmark headroom --run-id "$RUN_ID"' benchmark/auto-resolve/scripts/run-headroom-candidate.sh \
-  || ! grep -Fq 'npx devlyn-cli benchmark pair --run-id "$RUN_ID"' benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
-  || ! grep -Fq 'canonical trigger, margin >= +' benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
+if ! grep -Fq 'canonical trigger, margin >= +' benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
   || ! grep -Fq 'canonical trigger, margin >= +5' benchmark/auto-resolve/scripts/test-run-full-pipeline-pair-candidate.sh \
   || ! grep -Fq 'headroom gate failed — pair arm not executed' benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
   || ! grep -Fq 'pair gate failed — pair evidence rejected' benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
@@ -2349,29 +2344,10 @@ if ! grep -Fq 'DEVLYN_BENCHMARK_CLI_SUBCOMMAND: benchmarkMode' bin/devlyn.js \
   || ! grep -Fq 'then that pair evidence was accepted' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'If headroom fails, it reports that the pair arm was not executed' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'pair gate fails, it reports that pair evidence was rejected' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'then that pair evidence was' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'accepted. When launched through' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'the replay `Command:` uses the' benchmark/auto-resolve/README.md \
-  || ! grep -Fq 'same package CLI path' benchmark/auto-resolve/README.md \
-  || ! grep -Fq 'the replay command uses' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'uses that same' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'package CLI path' benchmark/auto-resolve/run-real-benchmark.md; then
-  offenders="${offenders}"$'\n'"benchmark CLI headroom/pair runs must replay as npx devlyn-cli commands and docs must state that"
+  || ! grep -Fq 'then that pair evidence was' benchmark/auto-resolve/run-real-benchmark.md; then
+  offenders="${offenders}"$'\n'"benchmark headroom/pair runners and docs must report gate outcomes"
 fi
-if ! grep -Fq 'npx devlyn-cli benchmark headroom --min-fixtures 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules' README.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark frontier --out-md /tmp/devlyn-pair-frontier.md' README.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark pair --min-fixtures 3 --max-pair-solo-wall-ratio 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules' README.md \
-  || ! grep -Fq 'average pair margin' README.md \
-  || ! grep -Fq 'default 5-point `bare`/`solo_claude` headroom margins' README.md \
-  || ! grep -Fq 'Add `--dry-run` to either score runner' README.md \
-  || ! grep -Fq 'fixture count, and the replay command' README.md \
-  || ! grep -Fq 'Dry-runs' README.md \
-  || ! grep -Fq 'and lint prove wiring only; real score claims must cite the run id and fixture' README.md; then
-  offenders="${offenders}"$'\n'"README.md must expose score-focused benchmark headroom/pair CLI paths and distinguish wiring checks from real scores"
-fi
-if ! grep -Fq 'npx devlyn-cli benchmark pair --min-fixtures 3 --max-pair-solo-wall-ratio 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules' bin/devlyn.js \
-  || ! grep -Fq -- '--max-pair-solo-wall-ratio N  default: 3' bin/devlyn.js \
-  || ! grep -Fq 'MAX_PAIR_SOLO_WALL_RATIO=3' benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
+if ! grep -Fq 'MAX_PAIR_SOLO_WALL_RATIO=3' benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
   || ! grep -Fq 'parser.add_argument("--max-pair-solo-wall-ratio", type=positive_float, default=3.0)' benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
   || ! grep -Fq '"max_observed_pair_solo_wall_ratio": max(ratios) if ratios else None' benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
   || ! grep -Fq 'Allowed pair/solo wall ratio' benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
@@ -2383,14 +2359,9 @@ if ! grep -Fq 'npx devlyn-cli benchmark pair --min-fixtures 3 --max-pair-solo-wa
   || ! grep -Fq -- '--min-fixtures 3' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'average pair margin' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'average pair margin' benchmark/auto-resolve/README.md \
-  || ! grep -Fq -- '--dry-run          validate args/fixtures and print replay command only' bin/devlyn.js \
   || ! grep -Fq 'does not produce' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'scores. When showing' benchmark/auto-resolve/run-real-benchmark.md; then
   offenders="${offenders}"$'\n'"benchmark pair examples must explicitly gate the current F16/F23/F25 proof set with --min-fixtures 3"
-fi
-if ! grep -Fq 'use 3 for F16/F23/F25 proof reruns; audit requires 4 passing evidence rows' bin/devlyn.js \
-  || ! grep -Fq 'use 3 for F16/F23/F25 proof reruns; audit requires 4 passing evidence rows' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh; then
-  offenders="${offenders}"$'\n'"benchmark CLI help must distinguish proof reruns from the four-row release audit"
 fi
 if ! grep -Fq 'judge blind mapping missing' benchmark/auto-resolve/scripts/headroom-gate.py \
   || ! grep -Fq 'judge blind mapping missing' benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
@@ -2819,15 +2790,14 @@ fi
 	  || ! grep -Fq 'accept explicitly named `S*` ids for dry-run checks and candidate measurement' benchmark/auto-resolve/README.md \
 	  || ! grep -Fq 'Use `run-suite.sh --suite shadow` only with `--dry-run`' benchmark/auto-resolve/README.md \
 	  || ! grep -Fq 'rejected/smoke controls do not' benchmark/auto-resolve/README.md \
-	  || ! grep -Fq 'npx devlyn-cli benchmark headroom --dry-run --min-fixtures 1 S1-cli-lang-flag' benchmark/auto-resolve/shadow-fixtures/README.md \
+	  || ! grep -Fq 'bash benchmark/auto-resolve/scripts/run-headroom-candidate.sh --dry-run --min-fixtures 1 S1-cli-lang-flag' benchmark/auto-resolve/shadow-fixtures/README.md \
 	  || ! grep -Fq 'Use non-dry-run headroom/pair only for' benchmark/auto-resolve/shadow-fixtures/README.md \
 	  || ! grep -Fq 'explicitly named `S*` candidates with a solo-headroom hypothesis' benchmark/auto-resolve/shadow-fixtures/README.md \
 	  || ! grep -Fq 'promote a validated `S*` task to an active `F*`' benchmark/auto-resolve/shadow-fixtures/README.md \
   || ! grep -Fq 'shadow suite run-suite is dry-run only' benchmark/auto-resolve/scripts/run-suite.sh \
   || ! grep -Fq 'run-suite.sh --suite shadow --dry-run' benchmark/auto-resolve/scripts/run-suite.sh \
   || ! grep -Fq 'shadow suite refuses provider/judge runs' benchmark/auto-resolve/scripts/run-suite.sh \
-  || ! grep -Fq 'npx devlyn-cli benchmark suite --suite shadow --dry-run' bin/devlyn.js \
-  || ! grep -Fq 'Use benchmark headroom/pair with explicit S* candidates for real provider measurement.' benchmark/auto-resolve/scripts/run-suite.sh \
+  || ! grep -Fq 'Use run-headroom-candidate.sh / run-full-pipeline-pair-candidate.sh with explicit S* candidates for real provider measurement.' benchmark/auto-resolve/scripts/run-suite.sh \
   || ! grep -Fq 'shadow-suite-provider-run' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
   || ! grep -Fq 'shadow-suite-judge-only-provider-run' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
   || ! grep -Fq 'arg-parse-shadow-cli-suite-dry-run' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
@@ -2920,54 +2890,22 @@ if [ ! -f benchmark/auto-resolve/scripts/solo-headroom-hypothesis.py ] \
   offenders="${offenders}"$'\n'"solo-headroom hypothesis provider-spend guards must share one actionable checker and test weak-vs-actionable cases"
 fi
 if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark frontier --out-md /tmp/devlyn-pair-frontier.md' benchmark/auto-resolve/README.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark frontier --out-md /tmp/devlyn-pair-frontier.md' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit --out-dir /tmp/devlyn-benchmark-audit' README.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit --out-dir /tmp/devlyn-benchmark-audit' benchmark/auto-resolve/README.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit --out-dir /tmp/devlyn-benchmark-audit' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' README.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' benchmark/auto-resolve/README.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' bin/devlyn.js \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq 'npx devlyn-cli benchmark frontier            Show pair candidate frontier scores/triggers without providers' bin/devlyn.js \
-  || ! grep -Fq 'npx devlyn-cli benchmark frontier            Show pair candidate frontier scores/triggers without providers' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit               Audit pair evidence readiness' bin/devlyn.js \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit               Audit pair evidence readiness' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq 'Show active rejected/evidence/unmeasured pair candidates, scores, and triggers without providers' bin/devlyn.js \
-  || ! grep -Fq 'Show active rejected/evidence/unmeasured pair candidates, scores, and triggers without providers' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq 'Prints pair evidence score rows with trigger reasons; --out-md includes a Triggers column' bin/devlyn.js \
-  || ! grep -Fq 'Prints pair evidence score rows with trigger reasons; --out-md includes a Triggers column' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq 'Prints frontier score rows plus headroom and pair quality handoff rows' bin/devlyn.js \
-  || ! grep -Fq 'Prints frontier score rows plus headroom and pair quality handoff rows' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq 'Prints frontier score rows plus headroom_rejections=PASS/FAIL, pair_evidence_quality=PASS/FAIL, pair_trigger_reasons=PASS/FAIL, pair_evidence_hypotheses=PASS/FAIL, pair_evidence_hypothesis_triggers=PASS/WARN/FAIL, historical-alias, and hypothesis-trigger gap handoff rows' bin/devlyn.js \
-  || ! grep -Fq 'Prints frontier score rows plus headroom_rejections=PASS/FAIL, pair_evidence_quality=PASS/FAIL, pair_trigger_reasons=PASS/FAIL, pair_evidence_hypotheses=PASS/FAIL, pair_evidence_hypothesis_triggers=PASS/WARN/FAIL, historical-alias, and hypothesis-trigger gap handoff rows' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq "audit: 'audit-pair-evidence.py'" bin/devlyn.js \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit [options]' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq -- '--min-pair-evidence N  default: 4' bin/devlyn.js \
-  || ! grep -Fq -- '--min-pair-evidence N  default: 4' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq -- '--min-pair-margin N  default: 5' bin/devlyn.js \
-  || ! grep -Fq -- '--min-pair-margin N  default: 5' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq -- '--max-pair-solo-wall-ratio N  default: 3' bin/devlyn.js \
-  || ! grep -Fq -- '--max-pair-solo-wall-ratio N  default: 3' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq -- '--require-hypothesis-trigger' bin/devlyn.js \
+  || ! grep -Fq 'python3 benchmark/auto-resolve/scripts/pair-candidate-frontier.py --out-md /tmp/devlyn-pair-frontier.md' benchmark/auto-resolve/README.md \
+  || ! grep -Fq 'python3 benchmark/auto-resolve/scripts/pair-candidate-frontier.py --out-md /tmp/devlyn-pair-frontier.md' benchmark/auto-resolve/run-real-benchmark.md \
+  || ! grep -Fq 'python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --out-dir /tmp/devlyn-benchmark-audit' benchmark/auto-resolve/README.md \
+  || ! grep -Fq 'python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --out-dir /tmp/devlyn-benchmark-audit' benchmark/auto-resolve/run-real-benchmark.md \
+  || ! grep -Fq 'python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' benchmark/auto-resolve/README.md \
+  || ! grep -Fq 'python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq -- '--require-hypothesis-trigger' benchmark/auto-resolve/scripts/audit-pair-evidence.py \
   || ! grep -Fq -- '--require-hypothesis-trigger' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit-headroom --out-json /tmp/devlyn-headroom-audit.json' README.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit-headroom --out-json /tmp/devlyn-headroom-audit.json' benchmark/auto-resolve/README.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit-headroom --out-json /tmp/devlyn-headroom-audit.json' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit-headroom      Audit failed headroom results' bin/devlyn.js \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit-headroom      Audit failed headroom results' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq "'audit-headroom': 'audit-headroom-rejections.py'" bin/devlyn.js \
-  || ! grep -Fq 'npx devlyn-cli benchmark audit-headroom [options]' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq 'benchmarkMode === '\''frontier'\''' bin/devlyn.js \
+  || ! grep -Fq 'python3 benchmark/auto-resolve/scripts/audit-headroom-rejections.py --out-json /tmp/devlyn-headroom-audit.json' benchmark/auto-resolve/README.md \
+  || ! grep -Fq 'python3 benchmark/auto-resolve/scripts/audit-headroom-rejections.py --out-json /tmp/devlyn-headroom-audit.json' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'test-pair-candidate-frontier.sh' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'audit-pair-evidence.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'PASS audit-pair-evidence' benchmark/auto-resolve/scripts/test-audit-pair-evidence.sh \
   || ! grep -Fq 'FAIL audit-pair-evidence' benchmark/auto-resolve/scripts/audit-pair-evidence.py \
   || ! grep -Fq 'FAIL audit-pair-evidence' benchmark/auto-resolve/scripts/test-audit-pair-evidence.sh \
   || ! grep -Fq 'audit.json' benchmark/auto-resolve/scripts/test-audit-pair-evidence.sh \
-  || ! grep -Fq 'audit.json' README.md \
   || ! grep -Fq 'audit.json' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'audit.json' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq '"frontier_summary": frontier_summary' benchmark/auto-resolve/scripts/audit-pair-evidence.py \
@@ -3024,8 +2962,8 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'pair_trigger missing spec.solo_headroom_hypothesis' benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
   || ! grep -Fq -- '--require-hypothesis-trigger' benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
   || ! grep -Fq -- '--require-hypothesis-trigger' benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
-  || ! grep -Fq 'release audit: npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
-  || ! grep -Fq 'release audit: npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' benchmark/auto-resolve/scripts/test-run-full-pipeline-pair-candidate.sh \
+  || ! grep -Fq 'release audit: python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
+  || ! grep -Fq 'release audit: python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' benchmark/auto-resolve/scripts/test-run-full-pipeline-pair-candidate.sh \
   || ! grep -Fq 'missing-hypothesis-trigger' benchmark/auto-resolve/scripts/test-full-pipeline-pair-gate.sh \
   || ! grep -Fq 'grep -Fq -- '\''--require-hypothesis-trigger'\''' benchmark/auto-resolve/scripts/test-run-full-pipeline-pair-candidate.sh \
   || ! grep -Fq 'def fmt_trigger_reasons' benchmark/auto-resolve/scripts/full-pipeline-pair-gate.py \
@@ -3214,42 +3152,21 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'FAIL pair-candidate-frontier' benchmark/auto-resolve/scripts/pair-candidate-frontier.py \
   || ! grep -Fq 'PASS pair-candidate-frontier' benchmark/auto-resolve/scripts/test-pair-candidate-frontier.sh \
   || ! grep -Fq 'FAIL pair-candidate-frontier' benchmark/auto-resolve/scripts/test-pair-candidate-frontier.sh \
-  || ! grep -Fq 'requires at least four fixtures with passing pair evidence' README.md \
-  || ! grep -Fq 'revalidates frontier `verdict: PASS`, zero unmeasured candidates' README.md \
   || ! grep -Fq 'requires at least four active fixtures with passing pair evidence' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'revalidates frontier `verdict: PASS`' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'requires at least four active fixtures with passing pair evidence' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'revalidates frontier `verdict: PASS`, zero unmeasured candidates' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'counted by `benchmark audit` as the fourth passing pair-evidence row' benchmark/auto-resolve/README.md \
-  || ! grep -Fq 'counted by `benchmark audit` as the fourth passing pair-evidence row' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'counted by `benchmark audit` as the fourth passing pair-evidence row' benchmark/auto-resolve/BENCHMARK-RESULTS.md \
-  || ! grep -Fq 'the default 5-point pair margin' README.md \
-  || ! grep -Fq -- '`--pair-verify` and `--no-pair` are mutually exclusive' README.md \
+  || ! grep -Fq 'counted by `audit-pair-evidence.py` as the fourth passing pair-evidence row' benchmark/auto-resolve/README.md \
+  || ! grep -Fq 'counted by `audit-pair-evidence.py` as the fourth passing pair-evidence row' benchmark/auto-resolve/run-real-benchmark.md \
+  || ! grep -Fq 'counted by `audit-pair-evidence.py` as the fourth passing pair-evidence row' benchmark/auto-resolve/BENCHMARK-RESULTS.md \
   || ! grep -Fq 'default 5-point pair margin' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'the default 5-point pair margin' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq '3x pair/solo wall ratio' README.md \
   || ! grep -Fq '3x pair/solo wall ratio' benchmark/auto-resolve/README.md \
   || ! grep -Fq '3x pair/solo wall ratio' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'audit.json` with the frontier summary' README.md \
   || ! grep -Fq 'audit.json` with the frontier summary' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'audit.json` with the frontier summary' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'artifact map' README.md \
   || ! grep -Fq 'artifact map' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'artifact map' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq '`checks.frontier_stdout` records summary, aggregate, final-verdict, expected, printed score-row, trigger-visible row, and hypothesis-trigger-visible row counts' README.md \
-  || ! grep -Fq '`headroom_rejections=...`, `pair_evidence_quality=...`,' README.md \
-  || ! grep -Fq '`pair_trigger_reasons=...`, `pair_evidence_hypotheses=...`, and' README.md \
-  || ! grep -Fq '`pair_evidence_hypothesis_triggers=...` handoff rows' README.md \
-  || ! grep -Fq '`pair_trigger_historical_aliases=...` when archived evidence includes legacy' README.md \
-  || ! grep -Fq '`pair_evidence_hypothesis_trigger_gaps=...` when documented' README.md \
-  || ! grep -Fq 'canonical trigger reason coverage' README.md \
-  || ! grep -Fq '`checks.pair_evidence_quality` records the same quality thresholds from the compact rows' README.md \
-  || ! grep -Fq '`checks.pair_trigger_reasons` records canonical/historical-alias/exposed/total trigger-reason row counts, fixture-level historical alias details, summary count, and row-match status' README.md \
-  || ! grep -Fq '`checks.pair_evidence_hypotheses` records documented/total pair-evidence hypothesis row counts' README.md \
-  || ! grep -Fq '`checks.pair_evidence_hypothesis_triggers` records whether documented hypotheses also appear as `spec.solo_headroom_hypothesis` trigger reasons plus fixture-level gap details' README.md \
-  || ! grep -Fq 'regenerated pair evidence' README.md \
-  || ! grep -Fq 'Historical trigger aliases are only reported for archived artifact review' README.md \
-  || ! grep -Fq 'current pair-evidence gates fail historical-only or unknown trigger reasons' README.md \
   || ! grep -Fq '`checks.frontier_stdout`' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'aggregate, final-verdict, expected, printed score-row, trigger-visible row, and hypothesis-trigger-visible row counts' benchmark/auto-resolve/README.md \
   || ! grep -Fq '`headroom_rejections=...`,' benchmark/auto-resolve/README.md \
@@ -3279,10 +3196,6 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'regenerated pair evidence' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'Historical trigger aliases are only reported for archived artifact review' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'current pair-evidence gates fail historical-only or unknown trigger reasons' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'compact trigger-backed verdict-bearing `pair_evidence_rows`' README.md \
-  || ! grep -Fq 'pair_trigger_eligible: true' README.md \
-  || ! grep -Fq 'non-empty `pair_trigger_reasons`, `pair_trigger_has_canonical_reason: true`, and `pair_trigger_has_hypothesis_reason`; the audit fails rows missing trigger reasons' README.md \
-  || ! grep -Fq 'pair_trigger_has_canonical_reason: true' README.md \
   || ! grep -Fq '`pair_evidence_rows`' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'compact trigger-backed verdict-bearing score rows' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'pair_trigger_eligible: true' benchmark/auto-resolve/README.md \
@@ -3292,14 +3205,12 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'pair_trigger_eligible: true' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'non-empty `pair_trigger_reasons`, `pair_trigger_has_canonical_reason: true`, and `pair_trigger_has_hypothesis_reason`; the audit fails rows missing trigger reasons' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'pair_trigger_has_canonical_reason: true' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'revalidates `pair_mode: true`' README.md \
   || ! grep -Fq 'satisfy `pair_mode: true`' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'revalidates `pair_mode: true`' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'JSON rows expose `pair_trigger_reasons` and' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'Markdown output includes a `Triggers`' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'trigger reasons, canonical-trigger coverage, classification counts' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'Its Markdown table includes a `Triggers` column' benchmark/auto-resolve/README.md \
-  || ! grep -Fq 'compact evidence row count must match the' README.md \
   || ! grep -Fq 'compact evidence row count must match the' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'evidence row count must match the frontier evidence count' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq '"verdict": "PASS" if unmeasured_candidate_total == 0 else "FAIL"' benchmark/auto-resolve/scripts/pair-candidate-frontier.py \
@@ -3341,9 +3252,6 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'bad-pair-evidence-rows' benchmark/auto-resolve/scripts/test-pair-candidate-frontier.sh \
   || ! grep -Fq 'pair evidence artifact rows malformed' benchmark/auto-resolve/scripts/pair-candidate-frontier.py \
   || ! grep -Fq 'assert len(rows["F16-cli-quote-tax-rules"]["passing_pair_evidence"]) == 1' benchmark/auto-resolve/scripts/test-pair-candidate-frontier.sh \
-  || ! grep -Fq 'plus row-level verdicts' README.md \
-  || ! grep -Fq 'including pair arm, trigger reasons, average/minimum pair margin' README.md \
-  || ! grep -Fq 'Markdown frontier artifacts include a `Triggers` column' README.md \
   || ! grep -Fq 'pair arm, margin, wall ratio, run id, verdict, and trigger reasons' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'with pair arm, verdict, and trigger reasons from the frontier step' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'pair-candidate-frontier.py --fail-on-unmeasured' benchmark/auto-resolve/run-real-benchmark.md \
@@ -3357,7 +3265,6 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'expected_solo_claude=98' benchmark/auto-resolve/scripts/test-audit-headroom-rejections.sh \
   || ! grep -Fq 'active registry entries whose reason cites a run id or' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'active rejected-registry reason is backed' benchmark/auto-resolve/run-real-benchmark.md \
-  || ! grep -Fq 'invalid headroom rejections' bin/devlyn.js \
   || ! grep -Fq 'MALFORMED_JSON' benchmark/auto-resolve/scripts/audit-headroom-rejections.py \
   || ! grep -Fq 'MALFORMED_ROWS' benchmark/auto-resolve/scripts/audit-headroom-rejections.py \
   || ! grep -Fq 'F33-cli-new-candidate' benchmark/auto-resolve/scripts/test-audit-headroom-rejections.sh \
@@ -3371,7 +3278,6 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'pure JSON stdout must not include final text verdict' benchmark/auto-resolve/scripts/test-pair-candidate-frontier.sh \
   || ! grep -Fq 'benchmark frontier pure JSON stdout must not include final text verdict' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
   || ! grep -Fq -- '--fail-on-unmeasured' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq -- '--fail-on-unmeasured' bin/devlyn.js \
   || ! grep -Fq -- '--fail-on-unmeasured' benchmark/auto-resolve/README.md \
   || ! grep -Fq -- '--fail-on-unmeasured' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'bare={bare} solo_claude={solo} pair={pair} arm={arm} margin={margin}' benchmark/auto-resolve/scripts/pair-candidate-frontier.py \
@@ -3406,7 +3312,6 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'headroom-missing-unsupported' benchmark/auto-resolve/scripts/test-audit-pair-evidence.sh \
   || ! grep -Fq 'unsupported_registry_rejection_count' benchmark/auto-resolve/scripts/test-audit-pair-evidence.sh \
   || ! grep -Fq 'unsupported_registry_rejection_count' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq '`checks.headroom_rejections` records child verdict plus unrecorded/unsupported counts' README.md \
   || ! grep -Fq '`checks.headroom_rejections` records the child verdict plus unrecorded and' benchmark/auto-resolve/README.md \
   || ! grep -Fq '`checks.headroom_rejections` records child verdict plus unrecorded/unsupported counts' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'def check_frontier_stdout' benchmark/auto-resolve/scripts/audit-pair-evidence.py \
@@ -3460,11 +3365,6 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'artifact map' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'child stdout/stderr logs' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq '| Fixture | Status | Verdict | Evidence | Pair arm | Triggers | Hypothesis trigger | Bare | Solo_claude | Pair | Margin | Wall ratio | Rejected reason |' benchmark/auto-resolve/scripts/test-pair-candidate-frontier.sh \
-  || ! grep -Fq 'benchmark frontier` also prints a stdout score summary for existing complete pair' README.md \
-  || ! grep -Fq 'plus row-level verdicts' README.md \
-  || ! grep -Fq 'including pair arm, trigger reasons, average/minimum pair margin' README.md \
-  || ! grep -Fq 'Markdown frontier artifacts include a `Triggers` column' README.md \
-  || ! grep -Fq 'Full-pipeline pair gate artifacts record `require_hypothesis_trigger` in JSON' README.md \
   || ! grep -Fq 'Full-pipeline pair gate artifacts record `require_hypothesis_trigger` in JSON' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'Full-pipeline pair gate artifacts record `require_hypothesis_trigger` in JSON' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'includes a Markdown `Hypothesis trigger` column' benchmark/auto-resolve/README.md \
@@ -3475,14 +3375,7 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'overall verdict plus row-level verdict, pair-arm, and trigger-reason columns' benchmark/auto-resolve/run-real-benchmark.md \
   || ! grep -Fq 'complete pair evidence rows' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'complete pair evidence rows' benchmark/auto-resolve/run-real-benchmark.md; then
-  offenders="${offenders}"$'\n'"benchmark docs and CLI must expose the pair-candidate frontier report before new provider spend"
-fi
-if ! grep -Fq '"benchmark/auto-resolve/scripts/**"' package.json \
-  || ! grep -Fq 'benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/full-pipeline-pair-gate.json' package.json \
-  || ! grep -Fq 'benchmark/auto-resolve/results/20260512-f2-medium-headroom/headroom-gate.json' package.json \
-  || ! grep -Fq 'benchmark/auto-resolve/results/20260512-f31-seat-rebalance-headroom/headroom-gate.json' package.json \
-  || ! grep -Fq 'benchmark/auto-resolve/results/20260512-f32-subscription-renewal-headroom/headroom-gate.json' package.json; then
-  offenders="${offenders}"$'\n'"package.json must include benchmark scripts, runner regression tests, current pair evidence, and rejected-headroom evidence in npm packages"
+  offenders="${offenders}"$'\n'"benchmark docs must expose the pair-candidate frontier report before new provider spend"
 fi
 if ! grep -Fq '"max_observed_pair_solo_wall_ratio": 2.2506234413965087' benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/full-pipeline-pair-gate.json \
   || ! grep -Fq '"max_observed_pair_solo_wall_ratio": 1.4728476821192054' benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/full-pipeline-pair-gate.json \
@@ -3494,216 +3387,26 @@ if ! grep -Fq '"max_observed_pair_solo_wall_ratio": 2.2506234413965087' benchmar
   || ! grep -Fq 'Maximum observed pair/solo wall ratio: 2.25x' benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/full-pipeline-pair-gate.md \
   || ! grep -Fq 'Allowed pair/solo wall ratio: 3.00x' benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/full-pipeline-pair-gate.md \
   || ! grep -Fq 'Maximum observed pair/solo wall ratio: 1.47x' benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/full-pipeline-pair-gate.md; then
-  offenders="${offenders}"$'\n'"packaged pair evidence artifacts must use the current observed-vs-allowed wall-ratio schema and canonical trigger rule wording"
-fi
-if make_temp_dir package_results /tmp/devlyn-lint-package-results.XXXXXX \
-  && make_temp_dir package_audit /tmp/devlyn-lint-package-audit.XXXXXX \
-  && make_temp_file package_audit_stdout /tmp/devlyn-lint-package-audit.out.XXXXXX; then
-  cp -R benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof "$package_results/"
-  cp -R benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1 "$package_results/"
-  for rejected_run in \
-    20260507-f10-f11-tier1-full-pipeline \
-    20260508-f22-exact-error-headroom \
-    20260508-f26-headroom \
-    20260511-f3-http-error-headroom \
-    20260511-f12-webhook-headroom \
-    20260511-f15-concurrency-headroom \
-    20260512-f2-medium-headroom \
-    20260512-f4-web-headroom \
-    20260512-f5-fixloop-headroom \
-    20260512-f6-checksum-headroom \
-    20260512-f7-scope-headroom \
-    20260512-f9-e2e-headroom \
-    20260512-f31-seat-rebalance-headroom \
-    20260512-f32-subscription-renewal-headroom; do
-    cp -R "benchmark/auto-resolve/results/$rejected_run" "$package_results/"
-  done
-  if ! python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py \
-      --results-root "$package_results" \
-      --out-dir "$package_audit" >"$package_audit_stdout" 2>&1; then
-    offenders="${offenders}"$'\n'"packaged pair evidence subset must pass benchmark audit without relying on unshipped local results"
-  elif ! grep -Fq 'headroom_rejections=PASS verdict=PASS unrecorded=0 unsupported=0' "$package_audit_stdout" \
-    || ! grep -Fq 'pair_evidence_quality=PASS min_pair_margin_actual=+21 min_pair_margin_required=+5 max_wall_actual=2.25x max_wall_allowed=3.00x' "$package_audit_stdout" \
-    || ! grep -Fq 'pair_trigger_reasons=PASS canonical=4 historical_alias=0 exposed=4 total=4 summary=4 rows_match=true' "$package_audit_stdout" \
-    || ! grep -Fq 'pair_evidence_hypothesis_triggers=PASS matched=4 documented=4 total=4' "$package_audit_stdout" \
-    || grep -Fq 'pair_trigger_historical_aliases=' "$package_audit_stdout" \
-    || grep -Fq 'pair_evidence_hypothesis_trigger_gaps=' "$package_audit_stdout"; then
-    offenders="${offenders}"$'\n'"packaged pair evidence subset audit stdout must expose headroom, pair-quality, and trigger-reason handoff rows"
-  elif ! python3 - "$package_audit/audit.json" <<'PY'
-import json
-import sys
-
-report = json.load(open(sys.argv[1], encoding="utf8"))
-rows = report.get("pair_evidence_rows")
-frontier_summary = report.get("frontier_summary", {})
-frontier_report = report.get("checks", {}).get("frontier_report", {})
-frontier_stdout = report.get("checks", {}).get("frontier_stdout", {})
-min_pair_evidence = report.get("checks", {}).get("min_pair_evidence", {})
-pair_evidence_quality = report.get("checks", {}).get("pair_evidence_quality", {})
-pair_trigger_reasons = report.get("checks", {}).get("pair_trigger_reasons", {})
-headroom_rejections = report.get("checks", {}).get("headroom_rejections", {})
-artifacts = report.get("artifacts", {})
-assert report.get("verdict") == "PASS"
-assert frontier_summary.get("verdict") == "PASS"
-assert frontier_summary.get("pair_evidence_count") == 4
-assert frontier_summary.get("unmeasured_count") == 0
-assert frontier_report.get("status") == "PASS"
-assert frontier_report.get("verdict") == "PASS"
-assert frontier_report.get("unmeasured_count") == 0
-assert frontier_stdout.get("status") == "PASS"
-assert frontier_stdout.get("report", "").endswith("frontier.stdout")
-assert frontier_stdout.get("summary_rows") == 1
-assert frontier_stdout.get("aggregate_rows") == 1
-assert frontier_stdout.get("final_verdict_rows") == 1
-assert frontier_stdout.get("expected_rows") == len(rows) == 4
-assert frontier_stdout.get("stdout_rows") == len(rows) == 4
-assert frontier_stdout.get("trigger_rows") == len(rows) == 4
-assert frontier_stdout.get("hypothesis_trigger_rows") == len(rows) == 4
-assert frontier_stdout.get("rows_match_count") is True
-assert frontier_stdout.get("trigger_rows_match_count") is True
-assert frontier_stdout.get("hypothesis_trigger_rows_match_count") is True
-assert headroom_rejections.get("status") == "PASS"
-assert headroom_rejections.get("report_check_exit_code") == 0
-assert headroom_rejections.get("verdict") == "PASS"
-assert headroom_rejections.get("unrecorded_failure_count") == 0
-assert headroom_rejections.get("unsupported_registry_rejection_count") == 0
-assert min_pair_evidence.get("rows_match_count") is True
-assert min_pair_evidence.get("actual_rows") == len(rows) == 4
-assert pair_evidence_quality.get("status") == "PASS"
-assert pair_evidence_quality.get("min_pair_margin_actual") == frontier_summary.get("pair_margin_min")
-assert pair_evidence_quality.get("max_pair_solo_wall_ratio_actual") == frontier_summary.get("pair_solo_wall_ratio_max")
-assert pair_trigger_reasons.get("status") == "PASS"
-assert pair_trigger_reasons.get("summary_pair_evidence_count") == 4
-assert pair_trigger_reasons.get("canonical_rows") == 4
-assert pair_trigger_reasons.get("historical_alias_rows") == 0
-assert pair_trigger_reasons.get("historical_alias_details") == []
-assert pair_trigger_reasons.get("exposed_rows") == 4
-assert pair_trigger_reasons.get("total_rows") == 4
-assert pair_trigger_reasons.get("rows_match_count") is True
-pair_hypothesis_triggers = report.get("checks", {}).get("pair_evidence_hypothesis_triggers", {})
-assert pair_hypothesis_triggers.get("status") == "PASS"
-assert pair_hypothesis_triggers.get("matched_rows") == 4
-assert pair_hypothesis_triggers.get("documented_rows") == 4
-assert pair_hypothesis_triggers.get("gap_details") == []
-assert artifacts.get("frontier_json") == "frontier.json"
-assert artifacts.get("frontier_stdout") == "frontier.stdout"
-assert artifacts.get("headroom_audit_json") == "headroom-audit.json"
-assert artifacts.get("headroom_rejections_stdout") == "headroom-rejections.stdout"
-for row in rows:
-    assert row.get("verdict") == "pair_evidence_passed"
-    assert row.get("pair_arm") == "l2_risk_probes"
-    assert row.get("pair_mode") is True
-    assert row.get("pair_trigger_eligible") is True
-    assert isinstance(row.get("pair_trigger_reasons"), list)
-    assert row.get("pair_trigger_reasons")
-    assert row.get("pair_trigger_has_canonical_reason") is True
-    assert row.get("pair_trigger_has_hypothesis_reason") is True
-PY
-  then
-    offenders="${offenders}"$'\n'"packaged pair evidence subset audit.json must expose frontier_report, frontier_stdout, artifact map, and 4 trigger-backed verdict-bearing pair rows with trigger reasons"
-  fi
-  rm -rf "$package_results" "$package_audit" "$package_audit_stdout"
-else
-  offenders="${offenders}"$'\n'"packaged pair evidence subset could not allocate temporary audit workspace"
+  offenders="${offenders}"$'\n'"committed pair evidence artifacts must use the current observed-vs-allowed wall-ratio schema and canonical trigger rule wording"
 fi
 if make_temp_file pack_json /tmp/devlyn-lint-pack.json.XXXXXX \
   && make_temp_dir pack_cache /tmp/devlyn-lint-pack-cache.XXXXXX; then
   if npm_config_cache="$pack_cache" npm pack --dry-run --json > "$pack_json" 2>/dev/null; then
     if ! node - "$pack_json" <<'NODE'
-const fs = require("fs");
-const path = require("path");
-const packPath = process.argv[2];
-const pack = JSON.parse(fs.readFileSync(packPath, "utf8"))[0];
-const files = new Set(pack.files.map((file) => file.path));
-function listFiles(dir) {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) return listFiles(full);
-    if (!entry.isFile()) return [];
-    return [full.split(path.sep).join("/")];
-  });
-}
-const shadowRequired = fs
-  .readdirSync("benchmark/auto-resolve/shadow-fixtures", { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && /^S/.test(entry.name))
-  .flatMap((entry) => listFiles(path.join("benchmark/auto-resolve/shadow-fixtures", entry.name)));
-const required = [
-  "benchmark/auto-resolve/BENCHMARK-RESULTS.md",
-  "benchmark/auto-resolve/run-real-benchmark.md",
-  "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/headroom-gate.md",
-  "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/headroom-gate.json",
-  "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/full-pipeline-pair-gate.md",
-  "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/full-pipeline-pair-gate.json",
-  "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F16-cli-quote-tax-rules/l2_risk_probes/result.json",
-  "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F23-cli-fulfillment-wave/l2_risk_probes/result.json",
-  "benchmark/auto-resolve/results/20260510-f16-f23-f25-combined-proof/F25-cli-cart-promotion-rules/l2_risk_probes/result.json",
-  "benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/headroom-gate.md",
-  "benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/headroom-gate.json",
-  "benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/full-pipeline-pair-gate.md",
-  "benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/full-pipeline-pair-gate.json",
-  "benchmark/auto-resolve/results/20260511-f21-current-riskprobes-v1/F21-cli-scheduler-priority/l2_risk_probes/result.json",
-  "benchmark/auto-resolve/results/20260512-f2-medium-headroom/headroom-gate.json",
-  "benchmark/auto-resolve/results/20260512-f31-seat-rebalance-headroom/headroom-gate.json",
-  "benchmark/auto-resolve/results/20260512-f32-subscription-renewal-headroom/headroom-gate.json",
-  "benchmark/auto-resolve/fixtures/F31-cli-seat-rebalance/NOTES.md",
-	  "benchmark/auto-resolve/fixtures/F31-cli-seat-rebalance/spec.md",
-	  "benchmark/auto-resolve/fixtures/F31-cli-seat-rebalance/expected.json",
-	  "benchmark/auto-resolve/fixtures/F31-cli-seat-rebalance/metadata.json",
-	  "benchmark/auto-resolve/fixtures/F31-cli-seat-rebalance/verifiers/priority-transfer-rollback.js",
-	  "benchmark/auto-resolve/fixtures/F31-cli-seat-rebalance/verifiers/duplicate-event-error.js",
-	  "benchmark/auto-resolve/fixtures/F32-cli-subscription-renewal/NOTES.md",
-	  "benchmark/auto-resolve/fixtures/F32-cli-subscription-renewal/spec.md",
-	  "benchmark/auto-resolve/fixtures/F32-cli-subscription-renewal/expected.json",
-	  "benchmark/auto-resolve/fixtures/F32-cli-subscription-renewal/metadata.json",
-	  "benchmark/auto-resolve/fixtures/F32-cli-subscription-renewal/verifiers/priority-credit-rollback.js",
-	  "benchmark/auto-resolve/fixtures/F32-cli-subscription-renewal/verifiers/duplicate-renewal-error.js",
-	  "benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh",
-  "benchmark/auto-resolve/scripts/pair-rejected-fixtures.sh",
-  "benchmark/auto-resolve/scripts/pair_evidence_contract.py",
-  "benchmark/auto-resolve/scripts/pair-candidate-frontier.py",
-  "benchmark/auto-resolve/scripts/test-pair-candidate-frontier.sh",
-  "benchmark/auto-resolve/scripts/audit-pair-evidence.py",
-  "benchmark/auto-resolve/scripts/solo-headroom-hypothesis.py",
-  "benchmark/auto-resolve/scripts/solo-ceiling-avoidance.py",
-  "benchmark/auto-resolve/scripts/test-audit-pair-evidence.sh",
-  "benchmark/auto-resolve/scripts/test-build-pair-eligible-manifest.sh",
-  "benchmark/auto-resolve/scripts/test-check-f9-artifacts.sh",
-  "benchmark/auto-resolve/scripts/test-lint-fixtures.sh",
-  "benchmark/auto-resolve/scripts/test-run-full-pipeline-pair-candidate.sh",
-	  "benchmark/auto-resolve/scripts/test-run-headroom-candidate.sh",
-  "benchmark/auto-resolve/scripts/test-run-swebench-solver-batch.sh",
-	  "benchmark/auto-resolve/scripts/test-ship-gate.sh",
-	  "benchmark/auto-resolve/scripts/test-iter-0033c-l1-summary.sh",
-  "benchmark/auto-resolve/scripts/test-iter-0033c-compare.sh",
-  "benchmark/auto-resolve/fixtures/retired/F27-cli-subscription-proration/RETIRED.md",
-  "benchmark/auto-resolve/fixtures/retired/F27-cli-subscription-proration/spec.md",
-  "benchmark/auto-resolve/fixtures/retired/F28-cli-return-authorization/RETIRED.md",
-  "benchmark/auto-resolve/fixtures/retired/F28-cli-return-authorization/spec.md",
-  "benchmark/auto-resolve/fixtures/retired/F30-cli-credit-hold-settlement/RETIRED.md",
-  "benchmark/auto-resolve/fixtures/retired/F30-cli-credit-hold-settlement/spec.md",
-  "benchmark/auto-resolve/fixtures/retired/F9-e2e-ideate-to-preflight/RETIRED.md",
-  "scripts/lint-fixtures.sh",
-  "scripts/lint-shadow-fixtures.sh",
-  ...shadowRequired,
-];
-const missing = required.filter((file) => !files.has(file));
-if (missing.length > 0) {
-  console.error(missing.join("\n"));
-  process.exit(1);
-}
+const pack = JSON.parse(require("fs").readFileSync(process.argv[2], "utf8"))[0];
 const forbidden = pack.files
   .map((file) => file.path)
-  .filter((file) => file.includes("__pycache__") || file.endsWith(".pyc"));
+  .filter((file) => /^(benchmark|scripts)\//.test(file) || file.includes("__pycache__") || file.endsWith(".pyc"));
 if (forbidden.length > 0) {
   console.error(forbidden.join("\n"));
-  process.exit(2);
+  process.exit(1);
 }
 NODE
     then
-      offenders="${offenders}"$'\n'"npm pack dry-run must include benchmark runner/gate regression tests, all shadow fixture files, retired fixture replay docs, and exclude pycache artifacts"
+      offenders="${offenders}"$'\n'"npm pack dry-run must ship no benchmark/ or scripts/ path and no pycache artifacts"
     fi
   else
-    offenders="${offenders}"$'\n'"npm pack dry-run failed while checking benchmark runner/gate regression tests"
+    offenders="${offenders}"$'\n'"npm pack dry-run failed while checking package contents"
   fi
 else
   offenders="${offenders}"$'\n'"npm pack dry-run could not allocate temporary package workspace"

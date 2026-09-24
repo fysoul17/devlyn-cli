@@ -3,8 +3,8 @@
 This document is for benchmark runs that spend real model calls and produce
 judge scores. Use it when a change claims `solo_claude < pair`.
 
-For wiring checks that must not invoke providers, use `npx devlyn-cli benchmark
---dry-run` or the shell tests listed in `README.md`.
+For wiring checks that must not invoke providers, use
+`bash benchmark/auto-resolve/scripts/run-suite.sh --dry-run` or the shell tests listed in `README.md`.
 
 ## Current Score Harness
 
@@ -38,9 +38,7 @@ The matching arms must also appear in `judge.json` `_blind_mapping`; a
 Before spending new provider calls, check the active frontier:
 
 ```bash
-python3 benchmark/auto-resolve/scripts/pair-candidate-frontier.py \
-  --out-md /tmp/devlyn-pair-frontier.md
-npx devlyn-cli benchmark frontier --out-md /tmp/devlyn-pair-frontier.md
+python3 benchmark/auto-resolve/scripts/pair-candidate-frontier.py --out-md /tmp/devlyn-pair-frontier.md
 ```
 
 Only `candidate_unmeasured` fixtures need fresh headroom. Fixtures marked
@@ -53,7 +51,7 @@ Gate-3 pair-eligible manifests carry both `rejected_excluded` and
 `rejected_excluded_reasons`, so excluded solo-ceiling controls keep their
 registry reason inside the manifest artifact.
 After a headroom failure, run
-`npx devlyn-cli benchmark audit-headroom --out-json /tmp/devlyn-headroom-audit.json`
+`python3 benchmark/auto-resolve/scripts/audit-headroom-rejections.py --out-json /tmp/devlyn-headroom-audit.json`
 which invokes `audit-headroom-rejections.py` to ensure no active failed fixture
 remains outside both the rejected registry and passing pair evidence, and that
 each active rejected-registry reason is backed by a matching local headroom
@@ -63,8 +61,8 @@ to fail when active pair candidates still need headroom measurement.
 Or run the composite provider-free guard:
 
 ```bash
-npx devlyn-cli benchmark audit --out-dir /tmp/devlyn-benchmark-audit
-npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict
+python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --out-dir /tmp/devlyn-benchmark-audit
+python3 benchmark/auto-resolve/scripts/audit-pair-evidence.py --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict
 ```
 
 It invokes `pair-candidate-frontier.py --fail-on-unmeasured` and
@@ -105,22 +103,10 @@ bash benchmark/auto-resolve/scripts/run-headroom-candidate.sh \
   F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
 ```
 
-Equivalent CLI entrypoint:
-
-```bash
-npx devlyn-cli benchmark headroom \
-  --bare-max 60 \
-  --solo-max 80 \
-  --min-fixtures 3 \
-  F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
-```
-
 The runner prints a startup `Gate:` line, the replay `Command:`, and the
 headroom markdown report with `bare`/`solo_claude` scores and remaining headroom against
 the configured thresholds, including average and minimum headroom for the
-candidate set plus fixture pass count. When launched through
-`npx devlyn-cli benchmark headroom`, the replay command uses that same package
-CLI path. Count a fixture only when `headroom-gate.py` reports
+candidate set plus fixture pass count. Count a fixture only when `headroom-gate.py` reports
 evidence-complete `bare <= 60` and `solo_claude <= 80` with the default minimum 5-point `bare`/`solo_claude` headroom margin. Add `--dry-run` only to validate args,
 fixture ids, minimum fixture count, and the replay command; it does not produce
 scores. When showing scores, include `bare` headroom and `solo_claude` headroom. A real
@@ -137,15 +123,6 @@ Run the selected pair arm only after headroom passes:
 
 ```bash
 bash benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
-  --min-fixtures 3 \
-  --max-pair-solo-wall-ratio 3 \
-  F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
-```
-
-Equivalent CLI entrypoint:
-
-```bash
-npx devlyn-cli benchmark pair \
   --min-fixtures 3 \
   --max-pair-solo-wall-ratio 3 \
   F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
@@ -168,8 +145,7 @@ and the final pair gate report with fixture pass count and average pair margin.
 If headroom fails, it reports that the pair arm was not executed. If the final
 pair gate fails, it reports that pair evidence was rejected. On success, it
 reports that the selected pair arm is executing and then that pair evidence was
-accepted. When launched through `npx devlyn-cli benchmark pair`, the replay
-command uses that same package CLI path. The pair runner and full-pipeline gate
+accepted. The pair runner and full-pipeline gate
 use the default 3x pair/solo wall ratio unless `--max-pair-solo-wall-ratio` is
 overridden for diagnostics. The full-pipeline gate report separates the allowed pair/solo wall ratio from the maximum observed pair/solo wall ratio, records `require_hypothesis_trigger` in JSON, and includes a Markdown `Hypothesis trigger` column. Add
 `--dry-run` only to validate args, fixture ids, minimum fixture count, and the
@@ -216,7 +192,7 @@ The current measured pair arm is `l2_risk_probes`.
   `+22.5`; average pair/solo wall ratio was `1.46x`.
 - `20260511-f21-current-riskprobes-v1` passed focused F21 evidence with
   `bare 33`, `solo_claude 66`, `l2_risk_probes 99`, margin `+33`, pair mode
-  true, and pair/solo wall ratio `1.47x`; it is counted by `benchmark audit` as the fourth passing pair-evidence row.
+  true, and pair/solo wall ratio `1.47x`; it is counted by `audit-pair-evidence.py` as the fourth passing pair-evidence row.
 
 F22 and F26 are not pair-lift evidence right now because existing headroom runs
 put `solo_claude` near the ceiling. F27 is also rejected in its first headroom smoke:
@@ -262,11 +238,11 @@ not receive a pair arm unless reworked.
 
 ## Smoke Suite
 
-The top-level benchmark command still exists for broad suite health:
+The suite runner covers broad suite health:
 
 ```bash
-npx devlyn-cli benchmark
-npx devlyn-cli benchmark --judge-only --run-id <ID>
+bash benchmark/auto-resolve/scripts/run-suite.sh
+bash benchmark/auto-resolve/scripts/run-suite.sh --judge-only --run-id <ID>
 ```
 
 This path runs `variant`, `solo_claude`, and `bare` across fixtures, judges

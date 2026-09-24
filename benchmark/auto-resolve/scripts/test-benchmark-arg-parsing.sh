@@ -306,7 +306,7 @@ bash "$ROOT/benchmark/auto-resolve/scripts/run-suite.sh" \
 grep -Fq 'Suite:         shadow' "$TMP/shadow-suite-dry-run.out"
 grep -Fq 'S1-cli-lang-flag' "$TMP/shadow-suite-dry-run.out"
 grep -Fq '[suite] DRY RUN complete' "$TMP/shadow-suite-dry-run.out"
-grep -Fq 'Use benchmark headroom/pair with explicit S* candidates for real provider measurement.' "$TMP/shadow-suite-dry-run.out"
+grep -Fq 'Use run-headroom-candidate.sh / run-full-pipeline-pair-candidate.sh with explicit S* candidates for real provider measurement.' "$TMP/shadow-suite-dry-run.out"
 if grep -Fq 'Run without --dry-run to invoke models.' "$TMP/shadow-suite-dry-run.out"; then
   echo "shadow suite dry-run must not invite a blocked non-dry-run suite invocation" >&2
   cat "$TMP/shadow-suite-dry-run.out" >&2
@@ -326,94 +326,15 @@ expect_fail_contains shadow-suite-judge-only-provider-run \
     --judge-only \
     --run-id arg-parse-shadow-suite-judge-only-block
 
-node "$ROOT/bin/devlyn.js" benchmark suite \
+bash "$ROOT/benchmark/auto-resolve/scripts/run-suite.sh" \
   --suite shadow \
   --dry-run \
   --run-id arg-parse-shadow-cli-suite-dry-run > "$TMP/shadow-cli-suite-dry-run.out" 2>&1
 grep -Fq 'Suite:         shadow' "$TMP/shadow-cli-suite-dry-run.out"
 grep -Fq 'S1-cli-lang-flag' "$TMP/shadow-cli-suite-dry-run.out"
-grep -Fq 'Use benchmark headroom/pair with explicit S* candidates for real provider measurement.' "$TMP/shadow-cli-suite-dry-run.out"
+grep -Fq 'Use run-headroom-candidate.sh / run-full-pipeline-pair-candidate.sh with explicit S* candidates for real provider measurement.' "$TMP/shadow-cli-suite-dry-run.out"
 
-node "$ROOT/bin/devlyn.js" --help > "$TMP/devlyn-help.out" 2>&1
-grep -Fq 'npx devlyn-cli benchmark    Run the resolve benchmark suite' "$TMP/devlyn-help.out"
-grep -Fq 'npx devlyn-cli benchmark recent              Show compact recent benchmark results' "$TMP/devlyn-help.out"
-grep -Fq 'npx devlyn-cli benchmark frontier            Show pair candidate frontier scores/triggers without providers' "$TMP/devlyn-help.out"
-grep -Fq 'npx devlyn-cli benchmark audit               Audit pair evidence readiness' "$TMP/devlyn-help.out"
-grep -Fq 'npx devlyn-cli benchmark audit-headroom      Audit failed headroom results' "$TMP/devlyn-help.out"
-grep -Fq 'npx devlyn-cli benchmark headroom <fixtures...>  Score bare vs solo_claude headroom' "$TMP/devlyn-help.out"
-grep -Fq 'npx devlyn-cli benchmark pair <fixtures...>      Score solo_claude vs pair path' "$TMP/devlyn-help.out"
-if grep -Fq -- '--n 3' "$TMP/devlyn-help.out"; then
-  echo "help must not advertise unsupported --n 3 benchmark runs" >&2
-  cat "$TMP/devlyn-help.out" >&2
-  exit 1
-fi
-node "$ROOT/bin/devlyn.js" benchmark --help > "$TMP/devlyn-benchmark-help.out" 2>&1
-grep -Fq 'npx devlyn-cli benchmark [suite] [options] [fixtures...]' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'npx devlyn-cli benchmark recent [options]' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'npx devlyn-cli benchmark frontier [options]' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'npx devlyn-cli benchmark audit [options]' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'npx devlyn-cli benchmark audit-headroom [options]' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'npx devlyn-cli benchmark suite --suite shadow --dry-run' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'use headroom/pair with explicit S* ids for real measurement' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'Show compact, wrap-safe recent benchmark results' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'npx devlyn-cli benchmark headroom [options] <fixtures...>' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'npx devlyn-cli benchmark pair [options] <fixtures...>' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'Show active rejected/evidence/unmeasured pair candidates, scores, and triggers without providers' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'Fail on unmeasured pair candidates and invalid headroom rejections' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'Prints frontier score rows plus headroom and pair quality handoff rows' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'Fail on active failed or unsupported headroom rejections' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'Score bare vs solo_claude before spending the pair arm' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'Score solo_claude vs the selected pair path and print gate tables' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'npx devlyn-cli benchmark recent --out-md /tmp/devlyn-recent-benchmark.md' "$TMP/devlyn-benchmark-help.out"
-grep -Fq 'npx devlyn-cli benchmark pair --min-fixtures 3 --max-pair-solo-wall-ratio 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules' "$TMP/devlyn-benchmark-help.out"
-
-node "$ROOT/bin/devlyn.js" benchmark recent --help > "$TMP/devlyn-benchmark-recent-help.out" 2>&1
-grep -Fq 'npx devlyn-cli benchmark recent [options]' "$TMP/devlyn-benchmark-recent-help.out"
-grep -Fq -- '--out-json PATH' "$TMP/devlyn-benchmark-recent-help.out"
-grep -Fq -- '--out-md PATH' "$TMP/devlyn-benchmark-recent-help.out"
-grep -Fq -- '--fixtures-root PATH' "$TMP/devlyn-benchmark-recent-help.out"
-grep -Fq -- '--registry PATH' "$TMP/devlyn-benchmark-recent-help.out"
-grep -Fq -- '--results-root PATH' "$TMP/devlyn-benchmark-recent-help.out"
-grep -Fq -- '--max-width N  default: 92' "$TMP/devlyn-benchmark-recent-help.out"
-grep -Fq 'Prints compact, wrap-safe benchmark status and pair-evidence cards without wide tables' "$TMP/devlyn-benchmark-recent-help.out"
-grep -Fq 'npx devlyn-cli benchmark recent --out-md /tmp/devlyn-recent-benchmark.md' "$TMP/devlyn-benchmark-recent-help.out"
-
-node "$ROOT/bin/devlyn.js" benchmark audit --help > "$TMP/devlyn-benchmark-audit-help.out" 2>&1
-grep -Fq 'npx devlyn-cli benchmark audit [options]' "$TMP/devlyn-benchmark-audit-help.out"
-grep -Fq -- '--out-dir PATH' "$TMP/devlyn-benchmark-audit-help.out"
-grep -Fq -- '--fixtures-root PATH' "$TMP/devlyn-benchmark-audit-help.out"
-grep -Fq -- '--registry PATH' "$TMP/devlyn-benchmark-audit-help.out"
-grep -Fq -- '--results-root PATH' "$TMP/devlyn-benchmark-audit-help.out"
-grep -Fq -- '--min-pair-evidence N  default: 4' "$TMP/devlyn-benchmark-audit-help.out"
-grep -Fq -- '--min-pair-margin N  default: 5' "$TMP/devlyn-benchmark-audit-help.out"
-grep -Fq -- '--max-pair-solo-wall-ratio N  default: 3' "$TMP/devlyn-benchmark-audit-help.out"
-grep -Fq -- '--require-hypothesis-trigger' "$TMP/devlyn-benchmark-audit-help.out"
-grep -Fq 'Prints frontier score rows plus headroom_rejections=PASS/FAIL, pair_evidence_quality=PASS/FAIL, pair_trigger_reasons=PASS/FAIL, pair_evidence_hypotheses=PASS/FAIL, pair_evidence_hypothesis_triggers=PASS/WARN/FAIL, historical-alias, and hypothesis-trigger gap handoff rows' "$TMP/devlyn-benchmark-audit-help.out"
-grep -Fq 'npx devlyn-cli benchmark audit --out-dir /tmp/devlyn-benchmark-audit' "$TMP/devlyn-benchmark-audit-help.out"
-grep -Fq 'npx devlyn-cli benchmark audit --require-hypothesis-trigger --out-dir /tmp/devlyn-benchmark-audit-strict' "$TMP/devlyn-benchmark-audit-help.out"
-
-node "$ROOT/bin/devlyn.js" benchmark frontier --help > "$TMP/devlyn-benchmark-frontier-help.out" 2>&1
-grep -Fq 'npx devlyn-cli benchmark frontier [options]' "$TMP/devlyn-benchmark-frontier-help.out"
-grep -Fq -- '--out-json PATH' "$TMP/devlyn-benchmark-frontier-help.out"
-grep -Fq -- '--out-md PATH' "$TMP/devlyn-benchmark-frontier-help.out"
-grep -Fq -- '--fixtures-root PATH' "$TMP/devlyn-benchmark-frontier-help.out"
-grep -Fq -- '--registry PATH' "$TMP/devlyn-benchmark-frontier-help.out"
-grep -Fq -- '--results-root PATH' "$TMP/devlyn-benchmark-frontier-help.out"
-grep -Fq -- '--fail-on-unmeasured' "$TMP/devlyn-benchmark-frontier-help.out"
-grep -Fq -- '--min-pair-margin N  default: 5' "$TMP/devlyn-benchmark-frontier-help.out"
-grep -Fq -- '--max-pair-solo-wall-ratio N  default: 3' "$TMP/devlyn-benchmark-frontier-help.out"
-grep -Fq 'Prints pair evidence score rows with trigger reasons; --out-md includes a Triggers column' "$TMP/devlyn-benchmark-frontier-help.out"
-grep -Fq 'npx devlyn-cli benchmark frontier --out-md /tmp/devlyn-pair-frontier.md' "$TMP/devlyn-benchmark-frontier-help.out"
-
-node "$ROOT/bin/devlyn.js" benchmark audit-headroom --help > "$TMP/devlyn-benchmark-audit-headroom-help.out" 2>&1
-grep -Fq 'npx devlyn-cli benchmark audit-headroom [options]' "$TMP/devlyn-benchmark-audit-headroom-help.out"
-grep -Fq -- '--out-json PATH' "$TMP/devlyn-benchmark-audit-headroom-help.out"
-grep -Fq -- '--fixtures-root PATH' "$TMP/devlyn-benchmark-audit-headroom-help.out"
-grep -Fq -- '--registry PATH' "$TMP/devlyn-benchmark-audit-headroom-help.out"
-grep -Fq -- '--results-root PATH' "$TMP/devlyn-benchmark-audit-headroom-help.out"
-grep -Fq 'npx devlyn-cli benchmark audit-headroom --out-json /tmp/devlyn-headroom-audit.json' "$TMP/devlyn-benchmark-audit-headroom-help.out"
-
-node "$ROOT/bin/devlyn.js" benchmark audit-headroom --out-json "$TMP/headroom-audit.json" > "$TMP/devlyn-benchmark-audit-headroom.out" 2>&1
+python3 "$ROOT/benchmark/auto-resolve/scripts/audit-headroom-rejections.py" --out-json "$TMP/headroom-audit.json" > "$TMP/devlyn-benchmark-audit-headroom.out" 2>&1
 grep -Fq 'PASS audit-headroom-rejections' "$TMP/devlyn-benchmark-audit-headroom.out"
 python3 - "$TMP/headroom-audit.json" <<'PY'
 import json
@@ -425,7 +346,7 @@ assert report["unrecorded_failures"] == []
 assert report["unsupported_registry_rejections"] == []
 PY
 
-node "$ROOT/bin/devlyn.js" benchmark recent \
+python3 "$ROOT/benchmark/auto-resolve/scripts/recent-benchmark-summary.py" \
   --out-json "$TMP/recent.json" \
   --out-md "$TMP/recent.md" \
   --max-width 92 > "$TMP/devlyn-benchmark-recent.out" 2>&1
@@ -457,7 +378,7 @@ assert report["pair_margin_avg"] == 27.25
 assert report["pair_solo_wall_ratio_max"] == 2.25
 PY
 
-node "$ROOT/bin/devlyn.js" benchmark audit --out-dir "$TMP/audit" > "$TMP/devlyn-benchmark-audit.out" 2>&1
+python3 "$ROOT/benchmark/auto-resolve/scripts/audit-pair-evidence.py" --out-dir "$TMP/audit" > "$TMP/devlyn-benchmark-audit.out" 2>&1
 grep -Fq '[audit] frontier' "$TMP/devlyn-benchmark-audit.out"
 grep -Fq 'fixtures=21 rejected=17 candidates=4 pair_evidence=4 unmeasured=0 verdict=PASS' "$TMP/devlyn-benchmark-audit.out"
 grep -Fq 'F16-cli-quote-tax-rules: bare=50 solo_claude=75 pair=96 arm=l2_risk_probes margin=+21' "$TMP/devlyn-benchmark-audit.out"
@@ -571,7 +492,7 @@ print(actual)
 PY
 )
 required_pair_evidence=$((actual_pair_evidence + 1))
-if node "$ROOT/bin/devlyn.js" benchmark audit \
+if python3 "$ROOT/benchmark/auto-resolve/scripts/audit-pair-evidence.py" \
   --min-pair-evidence "$required_pair_evidence" \
   --out-dir "$TMP/audit-fail" \
   > "$TMP/devlyn-benchmark-audit-fail.out" 2>&1; then
@@ -613,7 +534,7 @@ assert audit["checks"]["pair_evidence_hypothesis_triggers"]["status"] == "PASS"
 assert audit["checks"]["pair_evidence_hypothesis_triggers"]["matched_rows"] == actual
 PY
 
-node "$ROOT/bin/devlyn.js" benchmark audit \
+python3 "$ROOT/benchmark/auto-resolve/scripts/audit-pair-evidence.py" \
   --require-hypothesis-trigger \
   --out-dir "$TMP/audit-strict-trigger" \
   > "$TMP/devlyn-benchmark-audit-strict-trigger.out" 2>&1
@@ -639,7 +560,7 @@ assert audit["checks"]["pair_evidence_hypothesis_triggers"]["total_rows"] == 4
 assert audit["checks"]["pair_evidence_hypothesis_triggers"]["gap_details"] == []
 PY
 
-node "$ROOT/bin/devlyn.js" benchmark frontier --out-json "$TMP/frontier.json" > "$TMP/devlyn-benchmark-frontier.out" 2>&1
+python3 "$ROOT/benchmark/auto-resolve/scripts/pair-candidate-frontier.py" --out-json "$TMP/frontier.json" > "$TMP/devlyn-benchmark-frontier.out" 2>&1
 grep -Fq 'fixtures=' "$TMP/devlyn-benchmark-frontier.out"
 grep -Fq 'rejected=' "$TMP/devlyn-benchmark-frontier.out"
 grep -Fq 'candidates=' "$TMP/devlyn-benchmark-frontier.out"
@@ -675,7 +596,7 @@ rejected_pair_fixture_reason() {
   esac
 }
 SH
-if node "$ROOT/bin/devlyn.js" benchmark frontier \
+if python3 "$ROOT/benchmark/auto-resolve/scripts/pair-candidate-frontier.py" \
   --fixtures-root "$frontier_fail_fixtures" \
   --registry "$frontier_fail_registry" \
   --results-root "$frontier_fail_results" \
@@ -702,7 +623,7 @@ assert report["rows"][0]["status"] == "candidate_unmeasured"
 PY
 
 set +e
-node "$ROOT/bin/devlyn.js" benchmark frontier \
+python3 "$ROOT/benchmark/auto-resolve/scripts/pair-candidate-frontier.py" \
   --fixtures-root "$frontier_fail_fixtures" \
   --registry "$frontier_fail_registry" \
   --results-root "$frontier_fail_results" \
@@ -733,67 +654,23 @@ assert report["unmeasured_count"] == 1
 assert report["rows"][0]["status"] == "candidate_unmeasured"
 PY
 
-node "$ROOT/bin/devlyn.js" benchmark suite --dry-run --run-id arg-parse-command-test F0 \
+bash "$ROOT/benchmark/auto-resolve/scripts/run-suite.sh" --dry-run --run-id arg-parse-command-test F0 \
   > "$TMP/devlyn-benchmark-suite.out" 2>&1
 grep -Fq '═══ Benchmark Suite Run ═══' "$TMP/devlyn-benchmark-suite.out"
 grep -Fq -- '--run-id arg-parse-command-test' "$TMP/devlyn-benchmark-suite.out"
 
-node "$ROOT/bin/devlyn.js" benchmark headroom --help > "$TMP/devlyn-benchmark-headroom-help.out" 2>&1
-grep -Fq 'npx devlyn-cli benchmark headroom [options] <fixtures...>' "$TMP/devlyn-benchmark-headroom-help.out"
-grep -Fq 'use 3 for F16/F23/F25 proof reruns; audit requires 4 passing evidence rows' "$TMP/devlyn-benchmark-headroom-help.out"
-grep -Fq 'npx devlyn-cli benchmark headroom --min-fixtures 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules' "$TMP/devlyn-benchmark-headroom-help.out"
-grep -Fq -- '--min-bare-headroom N' "$TMP/devlyn-benchmark-headroom-help.out"
-grep -Fq -- '--min-solo-headroom N' "$TMP/devlyn-benchmark-headroom-help.out"
-grep -Fq -- '--allow-rejected-fixtures' "$TMP/devlyn-benchmark-headroom-help.out"
-grep -Fq -- '--dry-run' "$TMP/devlyn-benchmark-headroom-help.out"
-if grep -Fq 'run-headroom-candidate.sh' "$TMP/devlyn-benchmark-headroom-help.out"; then
-  echo "headroom CLI help must not expose internal runner name" >&2
-  cat "$TMP/devlyn-benchmark-headroom-help.out" >&2
-  exit 1
-fi
-node "$ROOT/bin/devlyn.js" benchmark pair --help > "$TMP/devlyn-benchmark-pair-help.out" 2>&1
-grep -Fq 'npx devlyn-cli benchmark pair [options] <fixtures...>' "$TMP/devlyn-benchmark-pair-help.out"
-grep -Fq 'use 3 for F16/F23/F25 proof reruns; audit requires 4 passing evidence rows' "$TMP/devlyn-benchmark-pair-help.out"
-grep -Fq 'default: l2_risk_probes; l2_gated is diagnostic' "$TMP/devlyn-benchmark-pair-help.out"
-grep -Fq -- '--min-bare-headroom N' "$TMP/devlyn-benchmark-pair-help.out"
-grep -Fq -- '--min-solo-headroom N' "$TMP/devlyn-benchmark-pair-help.out"
-grep -Fq -- '--max-pair-solo-wall-ratio N  default: 3' "$TMP/devlyn-benchmark-pair-help.out"
-grep -Fq -- '--allow-rejected-fixtures' "$TMP/devlyn-benchmark-pair-help.out"
-grep -Fq 'npx devlyn-cli benchmark pair --min-fixtures 3 --max-pair-solo-wall-ratio 3 F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules' "$TMP/devlyn-benchmark-pair-help.out"
-grep -Fq -- '--dry-run' "$TMP/devlyn-benchmark-pair-help.out"
-if grep -Fq 'run-full-pipeline-pair-candidate.sh' "$TMP/devlyn-benchmark-pair-help.out"; then
-  echo "pair CLI help must not expose internal runner name" >&2
-  cat "$TMP/devlyn-benchmark-pair-help.out" >&2
-  exit 1
-fi
-grep -Fq 'DEVLYN_BENCHMARK_CLI_SUBCOMMAND: benchmarkMode' "$ROOT/bin/devlyn.js"
-
-expect_fail_contains devlyn-headroom-cli-replay \
-  'Command: npx devlyn-cli benchmark headroom --run-id arg-parse-headroom-cli-replay' \
-  node "$ROOT/bin/devlyn.js" benchmark headroom \
-    --run-id arg-parse-headroom-cli-replay \
-    --min-fixtures 2 \
-    F999-not-a-fixture
-
-expect_fail_contains devlyn-pair-cli-replay \
-  'Command: npx devlyn-cli benchmark pair --run-id arg-parse-pair-cli-replay' \
-  node "$ROOT/bin/devlyn.js" benchmark pair \
-    --run-id arg-parse-pair-cli-replay \
-    --reuse-calibrated-from arg-parse-missing-calibration \
-    F21-cli-scheduler-priority
-
-node "$ROOT/bin/devlyn.js" benchmark headroom \
+bash "$ROOT/benchmark/auto-resolve/scripts/run-headroom-candidate.sh" \
   --run-id arg-parse-headroom-dry-run \
   --dry-run \
   --min-fixtures 1 \
   F21-cli-scheduler-priority > "$TMP/devlyn-headroom-dry-run.out" 2>&1
-grep -Fq 'Command: npx devlyn-cli benchmark headroom --run-id arg-parse-headroom-dry-run' "$TMP/devlyn-headroom-dry-run.out"
+grep -Fq 'run-headroom-candidate.sh --run-id arg-parse-headroom-dry-run' "$TMP/devlyn-headroom-dry-run.out"
 grep -Fq -- '--min-bare-headroom 5' "$TMP/devlyn-headroom-dry-run.out"
 grep -Fq -- '--min-solo-headroom 5' "$TMP/devlyn-headroom-dry-run.out"
 grep -Fq -- '--dry-run' "$TMP/devlyn-headroom-dry-run.out"
 grep -Fq '[headroom] DRY RUN complete' "$TMP/devlyn-headroom-dry-run.out"
 
-node "$ROOT/bin/devlyn.js" benchmark headroom \
+bash "$ROOT/benchmark/auto-resolve/scripts/run-headroom-candidate.sh" \
   --run-id arg-parse-shadow-headroom-dry-run \
   --dry-run \
   --min-fixtures 1 \
@@ -803,24 +680,24 @@ grep -Fq '[headroom] DRY RUN complete' "$TMP/devlyn-shadow-headroom-dry-run.out"
 
 expect_fail_contains smoke-only-s1-cli-headroom \
   "fixture is smoke-only and cannot run providers: S1-cli-lang-flag" \
-  node "$ROOT/bin/devlyn.js" benchmark headroom \
+  bash "$ROOT/benchmark/auto-resolve/scripts/run-headroom-candidate.sh" \
     --run-id arg-parse-shadow-headroom-block \
     --min-fixtures 1 \
     S1-cli-lang-flag
 
-node "$ROOT/bin/devlyn.js" benchmark pair \
+bash "$ROOT/benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh" \
   --run-id arg-parse-pair-dry-run \
   --dry-run \
   --min-fixtures 1 \
   F21-cli-scheduler-priority > "$TMP/devlyn-pair-dry-run.out" 2>&1
-grep -Fq 'Command: npx devlyn-cli benchmark pair --run-id arg-parse-pair-dry-run' "$TMP/devlyn-pair-dry-run.out"
+grep -Fq 'run-full-pipeline-pair-candidate.sh --run-id arg-parse-pair-dry-run' "$TMP/devlyn-pair-dry-run.out"
 grep -Fq -- '--min-bare-headroom 5' "$TMP/devlyn-pair-dry-run.out"
 grep -Fq -- '--min-solo-headroom 5' "$TMP/devlyn-pair-dry-run.out"
 grep -Fq -- '--max-pair-solo-wall-ratio 3' "$TMP/devlyn-pair-dry-run.out"
 grep -Fq -- '--dry-run' "$TMP/devlyn-pair-dry-run.out"
 grep -Fq '[full-pipeline-pair] DRY RUN complete' "$TMP/devlyn-pair-dry-run.out"
 
-node "$ROOT/bin/devlyn.js" benchmark pair \
+bash "$ROOT/benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh" \
   --run-id arg-parse-shadow-pair-dry-run \
   --dry-run \
   --min-fixtures 1 \
@@ -830,7 +707,7 @@ grep -Fq '[full-pipeline-pair] DRY RUN complete' "$TMP/devlyn-shadow-pair-dry-ru
 
 expect_fail_contains smoke-only-s1-cli-pair \
   "fixture is smoke-only and cannot run providers: S1-cli-lang-flag" \
-  node "$ROOT/bin/devlyn.js" benchmark pair \
+  bash "$ROOT/benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh" \
     --run-id arg-parse-shadow-pair-block \
     --min-fixtures 1 \
     S1-cli-lang-flag

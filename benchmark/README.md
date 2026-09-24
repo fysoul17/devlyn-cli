@@ -23,19 +23,19 @@ This repo runs **four independent measurement lanes**. Pick the one that matches
 
 ## Lane A · auto-resolve (existing)
 
-Lane A is the production pair / risk-probe / headroom evaluation harness. Entry point is the `npx devlyn-cli benchmark` subcommand surface (`bin/devlyn.js`). SWE-bench rows are run via direct scripts (CLI subcommand not yet wired).
+Lane A is the production pair / risk-probe / headroom evaluation harness. Entry points are the scripts in `benchmark/auto-resolve/scripts/`, run from a devlyn-cli git checkout. SWE-bench rows are run via their own direct scripts.
 
 **Three common one-liners**:
 
 ```bash
 # (a) Pair-mode regression after touching pair logic — 3 known pair-discriminating fixtures
-npx devlyn-cli benchmark pair \
+bash benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
   --run-id pair-regress-$(date -u +%Y%m%dT%H%M%SZ) \
   --min-fixtures 3 --max-pair-solo-wall-ratio 3 \
   F16-cli-quote-tax-rules F23-cli-fulfillment-wave F25-cli-cart-promotion-rules
 
 # (b) Quick check on a single pair fixture
-npx devlyn-cli benchmark pair \
+bash benchmark/auto-resolve/scripts/run-full-pipeline-pair-candidate.sh \
   --run-id pair-f16-quick-$(date -u +%Y%m%dT%H%M%SZ) \
   --min-fixtures 1 --max-pair-solo-wall-ratio 3 \
   F16-cli-quote-tax-rules
@@ -51,7 +51,7 @@ python3 benchmark/auto-resolve/scripts/frozen-verify-gate.py \
 
 **Output location**: `benchmark/auto-resolve/results/<run-id>/`. **Pass criteria**: `verdict == PASS` in the gate JSON + non-zero exit code blocks merge.
 
-Full subcommand list and fixture catalog: see [`auto-resolve/README.md`](auto-resolve/README.md). Current operational status (which fixtures are pair-discriminating proof, which are recall-only, which are no-lift): [`../autoresearch/HANDOFF.md`](../autoresearch/HANDOFF.md).
+Full runner list and fixture catalog: see [`auto-resolve/README.md`](auto-resolve/README.md). Current operational status (which fixtures are pair-discriminating proof, which are recall-only, which are no-lift): [`../autoresearch/HANDOFF.md`](../autoresearch/HANDOFF.md).
 
 ## Lane B · instruction-sensitivity (new)
 

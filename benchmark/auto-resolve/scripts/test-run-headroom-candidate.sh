@@ -40,8 +40,6 @@ grep -Fq -- '--allow-rejected-fixtures' "$TMP_DIR/help.out"
 grep -Fq -- '--dry-run' "$TMP_DIR/help.out"
 grep -Fq 'print_command' "$RUNNER"
 grep -Fq 'Command: ' "$RUNNER"
-grep -Fq 'DEVLYN_BENCHMARK_CLI_SUBCOMMAND' "$RUNNER"
-grep -Fq 'cmd=(npx devlyn-cli benchmark headroom --run-id "$RUN_ID")' "$RUNNER"
 grep -Fq 'cmd=(bash "$0" --run-id "$RUN_ID")' "$RUNNER"
 grep -Fq 'cmd+=(--bare-max "$BARE_MAX")' "$RUNNER"
 grep -Fq 'cmd+=(--solo-max "$SOLO_MAX")' "$RUNNER"
@@ -203,11 +201,6 @@ expect_fail_contains retired-fixture \
 expect_fail_contains smoke-only-s1-provider-run \
   'fixture is smoke-only and cannot run providers: S1-cli-lang-flag' \
   bash "$RUNNER" --run-id "$TEST_RUN-smoke-only" --min-fixtures 1 S1-cli-lang-flag
-
-expect_fail_contains cli-replay-command \
-  "Command: npx devlyn-cli benchmark headroom --run-id $TEST_RUN" \
-  env DEVLYN_BENCHMARK_CLI_SUBCOMMAND=headroom \
-    bash "$RUNNER" --run-id "$TEST_RUN" --min-fixtures 2 F999-not-a-fixture
 
 expect_fail_contains dry-run-min-fixtures \
   '[headroom] DRY RUN failed' \

@@ -10,7 +10,7 @@ Writes:
     results/<run-id>/summary.json  (machine)
     results/<run-id>/report.md     (human)
 
-The report is the output of `npx devlyn-cli benchmark`. Ship-gate.py consumes summary.json.
+The report is the output of `run-suite.sh`. Ship-gate.py consumes summary.json.
 """
 from __future__ import annotations
 import argparse, json, pathlib, sys, subprocess, datetime
