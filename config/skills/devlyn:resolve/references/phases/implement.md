@@ -31,7 +31,7 @@ You execute the plan. Constrained design judgment within PLAN's invariants — w
 </quality_bar>
 
 <runtime_principles>
-Read `_shared/runtime-principles.md`. Codex-routed phases receive the inlined excerpt:
+Codex-routed phases receive the inlined excerpt:
 
 - Subtractive-first: every accretion-shaped change is visible in the commit message or a flagged finding. Net-deletion is the default; pure-addition needs a citation.
 - Goal-locked: implement only the listed Requirements. Adjacent code that "looks fixable" is drift unless the spec or plan listed it.

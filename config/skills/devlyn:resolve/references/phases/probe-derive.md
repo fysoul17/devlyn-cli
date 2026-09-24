@@ -271,6 +271,6 @@ Rules:
 </quality_bar>
 
 <runtime_principles>
-Read `_shared/runtime-principles.md`. The discipline here is: visible contract
+The discipline here is: visible contract
 in, executable obligation out. Hidden oracle leakage is a blocker.
 </runtime_principles>

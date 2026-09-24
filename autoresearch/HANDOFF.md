@@ -18,9 +18,9 @@
 
 | # | Scope (details: 0221 §5) | Packets | Status |
 |---|---|---|---|
-| 0 | Register 0221, packets, this HANDOFF (branch `candidate/0221-subtraction-direction`) | — | PR open → user merges |
-| 1 | Installed-product cleanup: standards frontmatter plus a move to optional-skills; reread sentence deletion; pair-plan-schema to benchmark; stop the global adaptive-thinking env injection; completion default `pr` (receipt reuse and owned auto-merge handled); fix the spec-verify-check research-gate false positive | T1a, T1b (c1, c2, b3) | **NEXT** |
-| 2 | Benchmark out of the npm package | T1b (a1–a5) | pending |
+| 0 | Register 0221, packets, this HANDOFF (branch `candidate/0221-subtraction-direction`) | — | merged (PR #109) |
+| 1 | Installed-product cleanup: standards frontmatter plus a move to optional-skills; reread sentence deletion; pair-plan-schema to benchmark; stop the global adaptive-thinking env injection; completion default `pr` (receipt reuse and owned auto-merge handled); fix the spec-verify-check research-gate false positive (branch `candidate/0221-s1-installed-cleanup`) | T1a, T1b (c1, c2, b3) | PR open |
+| 2 | Benchmark out of the npm package | T1b (a1–a5) | **NEXT** |
 | 3 | Comparison apparatus v2 without budgets; arm F = published 3.2.1, verified in-container; evaluator fixes | E1 | pending |
 | 4 | Always-loaded instruction screen, 288 short runs; slim frozen as a candidate | E2 | pending |
 | 5 | Add the `/devlyn:intent` candidate (no default change); counterexample tests | I1, I2 PR-A | pending |
@@ -29,7 +29,9 @@
 | 8 | Next major: intent becomes the default and resolve/ideate become guidance-only, OR the candidate is closed | I2 PR-B, T1b (b) | pending |
 | 9 | After one major: remove the stubs and any helpers left without references | I2 PR-C, I1 | pending |
 
-**Next:** Session 1.
+**Next:** Session 2, after the Session 1 PR (branch `candidate/0221-s1-installed-cleanup`) is merged.
+
+Session 1 record (base `0f9f581`): T1a (a)–(d) and T1b c1, c2, b3 applied, plus the lint pins b3 needed and the `.agents` mirror. Net −1.9k lines. Checks: `bash scripts/lint-skills.sh` rc=0; `task-complete.py --self-test` 38/38 (new: absent policy → PR with no merge request; `--mode pr` cancels an owned auto-merge request and leaves a foreign PR untouched; mutation-checked); `spec-verify-check.py`, `verify-merge-findings.py`, `resolve-bootstrap.py` self-tests, `test-owner-phases.py`, fixture lints and `test-windows-portability.py` (61 OK, Node 20 locally) pass; npm pack and temp-HOME installer smokes (default excludes standards, upgrade removes old copies, opt-in installs them, global env keeps an existing adaptive-thinking value and never adds it). Added after Astra and Grok review: `/devlyn:queue` reads terminal `[x]`/`[F]` transitions held on retained owned branches (receipt `branch`, `git show`), and drains allocate every item with `--worktree` so the anchor stays on base, because under the PR default base no longer advances (already true for `[F]` items). Reviews: Astra SHIP; Grok REVISE (queue wording), fixed and re-checked. Open: that queue rule is not exercised by a model-driven drain; ideate/resolve prose still mentions solo-headroom checks that spec-verify-check no longer enforces (T1b b1/b2/b4, Session 8 per 0221 §5); `null autoMergeRequest` does not prove merge-queue removal.
 
 ## Standing rules
 

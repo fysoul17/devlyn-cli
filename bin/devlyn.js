@@ -13,8 +13,7 @@ const { updateInstructions, InstructionError } = require('./instructions');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
-// skill here installs it everywhere. Standards skills (code-*, root-cause-*,
-// ui-*) stay Claude-core-only, matching the pre-existing Codex bundle.
+// skill here installs it everywhere.
 const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];
 const DEVLYN_SKILL_DIR_STAMP = '__DEVLYN_SKILL_DIR__';
 const DEVLYN_INSTALL_MARKER = '.devlyn-install.json';
@@ -169,6 +168,11 @@ const DEPRECATED_DIRS = [
   // upgrade so users only have them if they opt in via the interactive
   // installer (matches the pencil-pull / pencil-push pattern).
   'skills/devlyn:reap',
+  // 0221 Session 1: standards skills moved to optional-skills/ (opt-in).
+  'skills/code-health-standards',
+  'skills/code-review-standards',
+  'skills/root-cause-analysis',
+  'skills/ui-implementation-standards',
   // Deleted entirely on 2026-05-14 (devlyn:team-design-ui merged into
   // devlyn:design-ui; devlyn:design-system removed outright). Entries kept
   // so users who previously opted in get their stale copies purged on upgrade.
@@ -237,6 +241,10 @@ const OPTIONAL_ADDONS = [
   { name: 'devlyn:pencil-pull', desc: 'Pull Pencil designs into code with exact visual fidelity', type: 'local' },
   { name: 'devlyn:pencil-push', desc: 'Push codebase UI to Pencil canvas for design sync', type: 'local' },
   { name: 'devlyn:reap', desc: 'Safely reap orphaned MCP / codex / Superset child processes left behind by long Claude sessions', type: 'local' },
+  { name: 'code-health-standards', desc: 'Maintainability standards — dead code, dependencies, complexity, naming, hygiene', type: 'local' },
+  { name: 'code-review-standards', desc: 'Severity framework and approval criteria for reviewing a change', type: 'local' },
+  { name: 'root-cause-analysis', desc: 'Evidence-first why-chain debugging to the actionable root cause', type: 'local' },
+  { name: 'ui-implementation-standards', desc: 'UI quality bar — design tokens, WCAG 2.1 AA, state coverage, responsive layout', type: 'local' },
   // External skill packs (installed via npx skills add)
   { name: 'vercel-labs/agent-skills', desc: 'React, Next.js, React Native best practices', type: 'external' },
   { name: 'supabase/agent-skills', desc: 'Supabase integration patterns', type: 'external' },
@@ -928,19 +936,11 @@ function installClaudeCore() {
   // Configure global Claude Code settings (~/.claude/settings.json)
   // Project settings may refer to this same file; merge the latest bytes.
   const globalSettings = readGlobalSettings();
-  let globalSettingsChanged = false;
-  if (!globalSettings.env.CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING) {
-    globalSettings.env.CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING = '1';
-    globalSettingsChanged = true;
-  }
   if (!globalSettings.env.ENABLE_PROMPT_CACHING_1H) {
     globalSettings.env.ENABLE_PROMPT_CACHING_1H = 'true';
-    globalSettingsChanged = true;
-  }
-  if (globalSettingsChanged) {
     if (!fs.existsSync(globalClaudeDir)) fs.mkdirSync(globalClaudeDir, { recursive: true });
     fs.writeFileSync(globalSettingsPath, JSON.stringify(globalSettings, null, 2) + '\n');
-    log('  → ~/.claude/settings.json (disabled adaptive thinking, enabled 1h prompt caching)', 'dim');
+    log('  → ~/.claude/settings.json (enabled 1h prompt caching)', 'dim');
   }
 
   log('\n✅ Claude Code config installed!', 'green');

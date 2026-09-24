@@ -29,5 +29,5 @@ The owner removes only run-owned untracked/ignored generated artifacts from item
 </quality_bar>
 
 <runtime_principles>
-Read `_shared/runtime-principles.md`. Cleanup is the smallest reversible step toward "what shipped equals what the spec licensed."
+Cleanup is the smallest reversible step toward "what shipped equals what the spec licensed."
 </runtime_principles>

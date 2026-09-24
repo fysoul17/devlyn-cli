@@ -93,15 +93,16 @@ python3 "$DEVLYN_SHARED_DIR/task-complete.py" complete \
 ```
 
 Project policy is `git config --local devlyn.completionMode auto|pr`; absent means
-`auto`. Invalid local values fail before external effects, even with an override.
+`pr`. Invalid local values fail before external effects, even with an override.
 Use `complete --mode auto|pr` for one task, or `--local-only`/`--no-push` to honor
 the user's delivery restriction. These per-task choices persist in the receipt.
 
 `pr` pushes the exact accepted task ref and creates/reuses its exact repository,
-head and base PR, then reports `PR` with its URL and retains the checkout. `auto`
-also requests `gh pr merge --auto --merge --match-head-commit <accepted SHA>`.
-Repository checks/reviews and merge policy remain authoritative: no admin bypass,
-strategy fallback or repository setting changes. A repository that disallows
+head and base PR, cancels an earlier auto-merge request on that owned PR, then
+reports `PR` with its URL and retains the checkout. Opt-in `auto` also requests
+`gh pr merge --auto --merge --match-head-commit <accepted SHA>`. Repository
+checks/reviews and merge policy remain authoritative: no admin bypass, strategy
+fallback or repository setting changes. A repository that disallows
 merge commits fails visibly; disabled auto merge may also reject a pending
 request. Command success alone never proves merge.
 

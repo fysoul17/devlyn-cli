@@ -34,7 +34,8 @@ accuracy or token/speed improvement.
    of a scoped commit; never fabricate a pipeline result or require full resolve
    simply to ship. Explicit user local-only/no-push instructions take precedence.
 2. Support project-local `git config --local devlyn.completionMode auto|pr`;
-   absent means auto, invalid values fail visibly before external effects.
+   absent means pr (amended 2026-09-25 by 0221 Session 1; was auto), invalid
+   values fail visibly before external effects.
    Same two per-task overrides suffice. Auto means commit scoped task changes,
    push task branch, create/reuse a PR, request normal merge when requirements
    permit, then clean owned resources after actual merge. PR mode stops with

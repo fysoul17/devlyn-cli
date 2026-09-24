@@ -16,7 +16,7 @@ Output:
 Exit code:
   0 on pass, 1 on fail.
 
-Schema source: config/skills/_shared/pair-plan-schema.md (iter-0022 ship).
+Schema source: benchmark/auto-resolve/pair-plan-schema.md (iter-0022 ship).
 """
 import argparse
 import copy

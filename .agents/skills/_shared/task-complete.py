@@ -172,7 +172,7 @@ def policy(receipt, override):
     require(config.returncode == 1 or config.stdout in {"auto\n", "pr\n"}, "invalid local devlyn.completionMode; use auto|pr")
     value = config.stdout.strip() if config.returncode == 0 else None
     require(override is None or override in {"auto", "pr"}, "invalid task mode; use auto|pr")
-    return override or value or "auto"
+    return override or value or "pr"
 
 
 def allocate(args):
@@ -666,6 +666,11 @@ def complete(args):
         receipt.update(pr_number=pr["number"], pr_url=pr["url"])
         atomic_json(path, receipt)
         if mode == "pr":
+            if pr["state"] == "OPEN" and pr.get("autoMergeRequest"):
+                gh(receipt, "pr", "merge", str(pr["number"]), "--disable-auto")
+                pr = json.loads(gh(receipt, "pr", "view", str(pr["number"]), "--json", PR_FIELDS))
+                validate_pr(receipt, pr)
+                require(not pr.get("autoMergeRequest"), "auto-merge request remains on owned PR; retain and inspect")
             return result("PR")
         if pr["state"] != "MERGED":
             inspect_workspace(receipt)
@@ -756,6 +761,10 @@ elif a[:2] == ['pr', 'create']:
     if d.pop('interrupt_create',False): save(); sys.exit(1)
 elif a[:2] == ['pr', 'view']:
     print(json.dumps(d['pr']))
+elif a[:2] == ['pr', 'merge'] and '--disable-auto' in a:
+    d['disables'] = d.get('disables',0)+1
+    d['pr']['autoMergeRequest'] = None
+    save()
 elif a[:2] == ['pr', 'merge']:
     assert '--admin' not in a and '--delete-branch' not in a
     assert '--auto' in a and '--merge' in a and '--match-head-commit' in a
@@ -988,7 +997,7 @@ class CompletionTests(unittest.TestCase):
         scratch = Path(self.allocate()["scratch"])
         self.accept()
         (scratch / ".git").mkdir()
-        result, _ = self.cli("complete", "--receipt", self.receipt, "--acceptance", self.acceptance, "--writers-stopped")
+        result, _ = self.cli("complete", "--receipt", self.receipt, "--acceptance", self.acceptance, "--writers-stopped", "--mode", "auto")
         self.assertEqual(result["status"], "CLEANUP_PENDING")
         self.assertEqual(result["delivery_status"], "COMPLETE")
         self.assertEqual(result["scratch_cleanup"]["status"], "RETAINED")
@@ -1108,10 +1117,26 @@ class CompletionTests(unittest.TestCase):
         self.g("config", "url." + alias + ".insteadOf", intended)
         self.allocate(); self.accept()
         self.assertEqual(json.loads(self.receipt.read_text(encoding="utf-8"))["remote_url"], {"literal": intended, "fetch": alias, "push": alias})
-        result, _ = self.complete("--mode", "pr")
+        result, _ = self.complete()
         self.assertEqual(result["status"], "PR")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
-        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8"))["pushs"], 1)
+        d = json.loads(self.data.read_text(encoding="utf-8"))
+        self.assertEqual((d["pushs"], d.get("merges", 0), d["pr"]["autoMergeRequest"]), (1, 0, None))
+
+    def test_pr_mode_disables_only_owned_auto_merge(self):
+        self.allocate(); self.accept()
+        self.configure(pending=True)
+        result, _ = self.complete("--mode", "auto")
+        self.assertEqual(result["status"], "PENDING")
+        result, _ = self.complete("--mode", "pr")
+        self.assertEqual(result["status"], "PR")
+        d = json.loads(self.data.read_text(encoding="utf-8"))
+        self.assertEqual((d["disables"], d["pr"]["autoMergeRequest"]), (1, None))
+        self.configure(pr=dict(d["pr"], isCrossRepository=True, autoMergeRequest={"enabledAt": "now"}))
+        _, r = self.complete("--mode", "pr", success=False)
+        self.assertIn("PR head repository differs", json.loads(r.stdout)["reason"])
+        d = json.loads(self.data.read_text(encoding="utf-8"))
+        self.assertEqual((d["disables"], d["pr"]["autoMergeRequest"]), (1, {"enabledAt": "now"}))
 
     def test_remote_rewrite_after_allocation_is_rejected(self):
         self.allocate(); self.accept()
@@ -1162,7 +1187,7 @@ class CompletionTests(unittest.TestCase):
         self.allocate(); self.accept()
         (self.task / "ignored").mkdir()
         (self.task / "ignored" / "user.txt").write_text("retain me", encoding="utf-8")
-        result, _ = self.complete("--writers-stopped")
+        result, _ = self.complete("--writers-stopped", "--mode", "auto")
         self.assertEqual(result["status"], "COMPLETE")
         self.assertEqual(self.g("branch", "--show-current"), "main")
         self.assertEqual((self.task / "ignored/user.txt").read_text(encoding="utf-8"), "retain me")
@@ -1176,7 +1201,7 @@ class CompletionTests(unittest.TestCase):
         # Direct evidence unrelated to the pipeline is unknown ignored content.
         (self.task / ".devlyn/checks.txt").unlink()
         self.configure(interrupt_remove=True)
-        result, r = self.complete("--writers-stopped", success=False)
+        result, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertFalse(self.task.exists())
         saved = json.loads(self.receipt.read_text(encoding="utf-8"))
@@ -1226,7 +1251,7 @@ class CompletionTests(unittest.TestCase):
         self.allocate(); self.accept()
         for effect in ("push", "create", "merge"):
             self.configure(**{"interrupt_"+effect: True})
-            _, r = self.complete("--writers-stopped", success=False)
+            _, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
             self.assertNotEqual(r.returncode, 0)
         result, _ = self.complete("--writers-stopped")
         self.assertEqual(result["status"], "COMPLETE")
@@ -1241,7 +1266,7 @@ class CompletionTests(unittest.TestCase):
                 path.parent.mkdir(exist_ok=True); path.write_text("do not delete", encoding="utf-8")
             if case == "locked": self.g("worktree", "lock", str(self.task))
             with self.subTest(case=case):
-                _, r = self.complete(*([] if case == "no-yield" else ["--writers-stopped"]), cwd=self.task if case == "cwd" else None, success=False)
+                _, r = self.complete("--mode", "auto", *([] if case == "no-yield" else ["--writers-stopped"]), cwd=self.task if case == "cwd" else None, success=False)
                 self.assertNotEqual(r.returncode, 0)
                 self.assertTrue(self.task.exists())
                 self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
@@ -1261,7 +1286,7 @@ class CompletionTests(unittest.TestCase):
 
     def test_concurrent_completions(self):
         self.allocate(); self.accept(); self.configure(pending=True)
-        args = [sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(self.receipt), "--acceptance", str(self.acceptance)]
+        args = [sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(self.receipt), "--acceptance", str(self.acceptance), "--mode", "auto"]
         procs = [subprocess.Popen(args, cwd=self.root, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8") for _ in range(2)]
         for proc in procs:
             out, err = proc.communicate(timeout=30)
@@ -1290,7 +1315,7 @@ class CompletionTests(unittest.TestCase):
         self.allocate(linked=True); self.accept()
         child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], cwd=self.task)
         try:
-            _, r = self.complete("--writers-stopped", success=False)
+            _, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
             self.assertNotEqual(r.returncode, 0)
             self.assertTrue(self.task.exists())
             self.assertIn("active process", json.loads(r.stdout)["reason"])
@@ -1307,7 +1332,7 @@ class CompletionTests(unittest.TestCase):
         self.allocate(); self.accept()
         race = self.g("rev-parse", "main")
         self.configure(remote_delete_race=True, race_sha=race)
-        _, r = self.complete("--writers-stopped", success=False)
+        _, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], race)
         self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
@@ -1315,7 +1340,7 @@ class CompletionTests(unittest.TestCase):
     def test_policy_and_local_only_persist(self):
         self.allocate(); self.accept()
         self.configure(merge_allowed=False)
-        _, r = self.complete(success=False)
+        _, r = self.complete("--mode", "auto", success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
         self.complete("--mode", "pr")
@@ -1371,7 +1396,7 @@ class CompletionTests(unittest.TestCase):
         user_file.parent.mkdir()
         user_file.write_text("retained user data", encoding="utf-8")
         self.configure(interrupt_delete=True)
-        _, r = self.complete("--writers-stopped", success=False)
+        _, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertEqual(self.g("branch", "--show-current"), "main")
         other = self.root / "advance"

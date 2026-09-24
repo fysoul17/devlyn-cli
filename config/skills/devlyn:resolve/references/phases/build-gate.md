@@ -71,5 +71,5 @@ Append all findings; do not stop on the first failure.
 </quality_bar>
 
 <runtime_principles>
-Read `_shared/runtime-principles.md`. The gate is mechanical — its discipline is "do not skip a check, do not paraphrase a verification command, do not narrow severity to mute noise." Findings drive the fix loop; muting findings without a justified spec exception is a workaround.
+The gate is mechanical — its discipline is "do not skip a check, do not paraphrase a verification command, do not narrow severity to mute noise." Findings drive the fix loop; muting findings without a justified spec exception is a workaround.
 </runtime_principles>
