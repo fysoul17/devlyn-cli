@@ -25,9 +25,9 @@ Its prompt was 1,104,757 bytes, mostly raw pytest logs the owner saved under
 `checks-final` (for example, `baseline-pager/stdout.txt` 466 KB and `public-full`
 157 KB). The compact packet ([0211/packet.py](../0211/packet.py)) filters only
 repetitive Node TAP output, so this Click-side transport gap was never exercised
-on D1. Owner native input was 619,735 over 19 generations. The observation that
-brought the total from 574,693 to 1,007,058 arrived in one step when the review
-finished, so the meter could not have shown it in time.
+on D1. Owner native input was 619,735 over 19 generations. The previous observation
+was 574,693; the next one, when the review finished, was 1,007,058. The review's
+cost is known only after it returns, so the meter cannot warn before it.
 
 Setup events, no model dispatched: cell 1's first `docker create` timed out
 (host overload); cell 2's first try ran after the Mac slept 03:04–08:11 and was
