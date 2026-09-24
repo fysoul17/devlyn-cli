@@ -1,13 +1,10 @@
+---
+name: code-review-standards
+description: Severity framework (CRITICAL security, HIGH code quality, MEDIUM best practice, LOW cleanup) and approval criteria for judging a code change. Use when reviewing, auditing or validating a diff, pull request or just-finished implementation, or when deciding whether a change is ready to approve.
+---
 # Code Review Standards
 
 Severity framework and quality bar for reviewing code changes. Apply this framework whenever reviewing, auditing, or validating code.
-
-## Trigger
-
-- Post-implementation review
-- Code review requests
-- PR review or diff analysis
-- Any use of `/devlyn:review` or `/devlyn:team-review`
 
 ## Severity Framework
 
@@ -57,8 +54,3 @@ Severity framework and quality bar for reviewing code changes. Apply this framew
 - MEDIUM issues are fixed or have concrete justification for deferral
 - Lint passes
 - Test suite passes
-
-## Routing
-
-- **Quick review** (few files, straightforward changes): Use `/devlyn:review`
-- **Thorough review** (many files, security-sensitive, user-facing): Use `/devlyn:team-review` for multi-perspective coverage

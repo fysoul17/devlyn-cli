@@ -23,15 +23,17 @@ DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
 Before processing the first item, read and obey
 `../devlyn:resolve/references/outer-loop.md`. Its scoped-commit order is binding.
 
+Queue state is base's `docs/specs/queue.md` plus retained owned task branches: PR-delivered and failed items keep their terminal transition on the task branch until merged. For each `$(git rev-parse --git-common-dir)/devlyn-completion/*/receipt.json` whose `branch` still exists, read `git show <branch>:docs/specs/queue.md`; an item unmarked on base but `[x]`/`[F]` there counts as that mark. Only two branches with different terminal marks for one item stop for inspection. Status and drain selection both use this view.
+
 ## No args — status
 
-Read `docs/specs/queue.md` (absent → report "queue empty — nothing staged" and how to add). Print pending `[ ]`, done `[x]`, and blocked `[F]` counts, the next item up, and one usage line per subcommand.
+Read the queue state above (absent `docs/specs/queue.md` → report "queue empty — nothing staged" and how to add). Print pending `[ ]`, done `[x]`, and blocked `[F]` counts, the next item up, and one usage line per subcommand.
 
 ## Subcommands
 
 - `add <intent text>` — append `- [ ] <intent>` to `docs/specs/queue.md` (create the file with its header if missing). If the intent came out of a conversation that already produced a spec, link it: `- [ ] (spec: docs/specs/<id>/spec.md) <intent>`.
 - `drain` — serial drain per the project-instructions contract. For each pending item, in order:
-  1. Allocate the owner's absent task branch per `../devlyn:resolve/references/task-completion.md` (linked worktree optional), then spec it if unspecced (the queue entry is the user's go-ahead). Unattended assumptions may only take scope-narrowing, reversible, non-user-visible defaults; material ambiguity (user-visible behavior, data/state semantics, new files/scripts/flags, implementation surface) → mark `[F] needs-review: <question>`, commit that queue transition, and continue.
+  1. Allocate the owner's absent task branch with `--worktree <absent path>` per `../devlyn:resolve/references/task-completion.md`, so the anchor checkout stays on base for the next item, and work in that worktree; then spec it if unspecced (the queue entry is the user's go-ahead). Unattended assumptions may only take scope-narrowing, reversible, non-user-visible defaults; material ambiguity (user-visible behavior, data/state semantics, new files/scripts/flags, implementation surface) → mark `[F] needs-review: <question>`, commit that queue transition, and continue.
   2. Commit the current queue-item delta and linked spec bundle as the scoped owner baseline, then run `/devlyn:resolve --spec <path>` hands-free.
      After every resolve invocation, run `python3 "$DEVLYN_SHARED_DIR/terminal-claim-check.py" .`; exit 79 marks `[F] FAILED-INCOMPLETE` from the predicate, never from the session self-report.
   3. Outer loop on the terminal verdict: PASS → mark `[x]`. Findings-backed verdicts (NEEDS_WORK, verify/build-gate exhaustion) → amend the spec, commit that scoped amendment, then re-run — at most 3 outer iterations. Infrastructure / invalid-input / engine-availability / implement-empty BLOCKED verdicts are not spec-amendable → mark `[F] <verdict>` immediately.

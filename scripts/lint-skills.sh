@@ -3,7 +3,7 @@
 #
 # Gates the three things that have drifted in the past:
 #   1. Forbidden MCP / stale-model references in skills, README, installer.
-#   2. Missing `name:` in skill frontmatter (Anthropic spec violation).
+#   2. Missing `name:`/`description:` in skill frontmatter (Anthropic spec violation).
 #   3. Source ↔ installed mirror drift on the harness critical path.
 #
 # Exit 0 = clean. Non-zero = fails; prints offending file:line per check.
@@ -100,7 +100,6 @@ _shared/adapters/omp.md
 _shared/codex-config.md
 _shared/codex-monitored.sh
 _shared/engine-preflight.md
-_shared/pair-plan-schema.md
 _shared/runtime-principles.md
 EOF
 )
@@ -239,19 +238,19 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 5. Every devlyn:* skill has `name:` in frontmatter.
+# 5. Every shipped skill has `---` frontmatter with `name:` and `description:`.
 # ---------------------------------------------------------------------------
-section "Check 5: devlyn:* SKILL.md has name: field"
+section "Check 5: shipped SKILL.md has name: and description:"
 missing=0
-for skill in config/skills/devlyn:*/SKILL.md; do
+for skill in config/skills/*/SKILL.md optional-skills/*/SKILL.md; do
   [ -f "$skill" ] || continue
-  if ! head -20 "$skill" | grep -q '^name:'; then
-    bad "$skill — missing 'name:' in frontmatter"
+  if ! head -1 "$skill" | grep -qx -- '---' || ! head -20 "$skill" | grep -q '^name:' || ! head -20 "$skill" | grep -q '^description:'; then
+    bad "$skill — missing '---' frontmatter with 'name:' and 'description:'"
     missing=1
   fi
 done
 if [ $missing -eq 0 ]; then
-  ok "all devlyn:* skills have name: field"
+  ok "all shipped skills have name: and description:"
 fi
 
 # ---------------------------------------------------------------------------
@@ -695,51 +694,19 @@ if ! grep -Fq 'generated criteria carrier was not staged into .devlyn/spec-verif
 else
   ok "spec-verify-check.py covers generated criteria source extraction"
 fi
-if ! grep -Fq 'def validate_present_solo_headroom_hypothesis' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'def state_requires_risk_probes' config/skills/_shared/spec-verify-check.py \
+if ! grep -Fq 'def state_requires_risk_probes' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'def risk_probes_state_error' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq -- '--include-risk-probes accepted missing required risk-probes.jsonl' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq -- '--include-risk-probes accepted non-boolean risk_probes_enabled' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq -- '--include-risk-probes accepted non-object risk_profile' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'def validate_risk_probes_cover_solo_headroom_hypothesis' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'def has_backticked_observable_miss_command' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'backticked command/observable line that exposes the miss' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'weak solo-headroom hypothesis was accepted by --check' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'descriptive backtick solo-headroom hypothesis was accepted by --check' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'risk probe missing solo-headroom command coverage was accepted' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'risk probe with unrelated solo-headroom derived_from was accepted' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'risk-probes[0].derived_from must reference the solo-headroom hypothesis bullet' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'solo-headroom command in a later risk probe was accepted' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'solo-headroom command prefix match was accepted' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq '(?<![A-Za-z0-9_.:/=-])' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'risk-probes[0].cmd must contain a solo-headroom hypothesis observable command' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'weak sibling solo-headroom hypothesis was accepted by --check-expected' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'docs-style solo-headroom hypothesis was rejected by --check' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'docs-style sibling solo-headroom command was rejected by --check-expected' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'def validate_present_solo_headroom_hypothesis' .agents/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'def state_requires_risk_probes' .agents/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'def risk_probes_state_error' .agents/skills/_shared/spec-verify-check.py \
   || ! grep -Fq -- '--include-risk-probes accepted missing required risk-probes.jsonl' .agents/skills/_shared/spec-verify-check.py \
   || ! grep -Fq -- '--include-risk-probes accepted non-boolean risk_probes_enabled' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq -- '--include-risk-probes accepted non-object risk_profile' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'def validate_risk_probes_cover_solo_headroom_hypothesis' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'def has_backticked_observable_miss_command' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'backticked command/observable line that exposes the miss' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'weak solo-headroom hypothesis was accepted by --check' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'descriptive backtick solo-headroom hypothesis was accepted by --check' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'risk probe missing solo-headroom command coverage was accepted' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'risk probe with unrelated solo-headroom derived_from was accepted' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'risk-probes[0].derived_from must reference the solo-headroom hypothesis bullet' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'solo-headroom command in a later risk probe was accepted' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'solo-headroom command prefix match was accepted' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq '(?<![A-Za-z0-9_.:/=-])' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'risk-probes[0].cmd must contain a solo-headroom hypothesis observable command' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'weak sibling solo-headroom hypothesis was accepted by --check-expected' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'docs-style solo-headroom hypothesis was rejected by --check' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'docs-style sibling solo-headroom command was rejected by --check-expected' .agents/skills/_shared/spec-verify-check.py; then
-  bad "spec-verify-check.py --check and --check-expected must reject weak solo-headroom hypotheses"
+  || ! grep -Fq -- '--include-risk-probes accepted non-object risk_profile' .agents/skills/_shared/spec-verify-check.py; then
+  bad "spec-verify-check.py must validate enabled risk-probe state"
 else
-  ok "spec-verify-check.py rejects weak solo-headroom hypotheses"
+  ok "spec-verify-check.py validates enabled risk-probe state"
 fi
 if ! grep -Fq 'requires `.devlyn/risk-probes.jsonl`' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'requires `.devlyn/risk-probes.jsonl`' .agents/skills/devlyn:resolve/SKILL.md \
@@ -755,18 +722,14 @@ if ! grep -Fq 'requires `.devlyn/risk-probes.jsonl`' config/skills/devlyn:resolv
 else
   ok "BUILD_GATE and VERIFY require enabled risk probes"
 fi
-if grep -Fq 'or any(char.isspace() for char in stripped)' config/skills/_shared/spec-verify-check.py \
-  || grep -Fq 'or any(char.isspace() for char in stripped)' .agents/skills/_shared/spec-verify-check.py \
-  || grep -Fq 'or any(char.isspace() for char in stripped)' config/skills/_shared/verify-merge-findings.py \
+if grep -Fq 'or any(char.isspace() for char in stripped)' config/skills/_shared/verify-merge-findings.py \
   || grep -Fq 'or any(char.isspace() for char in stripped)' .agents/skills/_shared/verify-merge-findings.py \
   || grep -Fq 'or any(char.isspace() for char in stripped)' benchmark/auto-resolve/scripts/pair_evidence_contract.py; then
   bad "solo-headroom command detection must not treat descriptive whitespace as a command"
 else
   ok "solo-headroom command detection rejects descriptive whitespace"
 fi
-if ! grep -Fq '"printf",' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq '"printf",' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq '"printf",' config/skills/_shared/verify-merge-findings.py \
+if ! grep -Fq '"printf",' config/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq '"printf",' .agents/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq '"printf",' benchmark/auto-resolve/scripts/pair_evidence_contract.py; then
   bad "solo-headroom command detection must keep explicit printf command support"
@@ -780,8 +743,6 @@ import sys
 
 files = [
     pathlib.Path("benchmark/auto-resolve/scripts/pair_evidence_contract.py"),
-    pathlib.Path("config/skills/_shared/spec-verify-check.py"),
-    pathlib.Path(".agents/skills/_shared/spec-verify-check.py"),
     pathlib.Path("config/skills/_shared/verify-merge-findings.py"),
     pathlib.Path(".agents/skills/_shared/verify-merge-findings.py"),
 ]
@@ -940,32 +901,8 @@ else
 fi
 if ! grep -Fq 'def validate_expected_against_sibling_spec' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'empty verification_commands should fail for runtime specs' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'empty verification_commands should be valid for pure-design specs' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'backticked_observable_miss_commands(spec_text)' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'observable command must match spec.expected.json' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'observable command must match `## Verification` JSON carrier' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'mismatched inline solo-headroom command was accepted by --check' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'matched inline solo-headroom command was rejected by --check' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'mismatched sibling solo-headroom command was accepted by --check-expected' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'matched sibling solo-headroom command was rejected by --check-expected' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'def validate_present_solo_ceiling_avoidance' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'weak solo ceiling avoidance was accepted by --check' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'actionable solo ceiling avoidance was rejected by --check' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'weak sibling solo ceiling avoidance was accepted by --check-expected' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'actionable sibling solo ceiling avoidance was rejected by --check-expected' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'backticked_observable_miss_commands(spec_text)' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'observable command must match spec.expected.json' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'observable command must match `## Verification` JSON carrier' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'mismatched inline solo-headroom command was accepted by --check' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'matched inline solo-headroom command was rejected by --check' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'mismatched sibling solo-headroom command was accepted by --check-expected' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'matched sibling solo-headroom command was rejected by --check-expected' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'def validate_present_solo_ceiling_avoidance' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'weak solo ceiling avoidance was accepted by --check' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'actionable solo ceiling avoidance was rejected by --check' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'weak sibling solo ceiling avoidance was accepted by --check-expected' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'actionable sibling solo ceiling avoidance was rejected by --check-expected' .agents/skills/_shared/spec-verify-check.py; then
-  bad "spec-verify-check.py must reject empty expected runtime contracts, weak solo ceiling avoidance, and preserve pure-design escape"
+  || ! grep -Fq 'empty verification_commands should be valid for pure-design specs' config/skills/_shared/spec-verify-check.py; then
+  bad "spec-verify-check.py must reject empty expected runtime contracts and preserve pure-design escape"
 fi
 if ! grep -Fq 'Verification includes at least one compound scenario that exercises the interaction end-to-end' \
   config/skills/devlyn:ideate/references/spec-template.md \

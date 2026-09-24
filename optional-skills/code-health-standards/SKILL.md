@@ -1,14 +1,10 @@
+---
+name: code-health-standards
+description: Maintainability standards for code you write or change — prevent dead code and orphaned references, justify every new dependency, keep functions, files, nesting and parameter counts within complexity thresholds, follow the established naming conventions, and keep debug logging, commented-out code, swallowed errors and hardcoded secrets out of production code. Use when writing, refactoring or deleting code, adding a dependency, or creating new files or modules.
+---
 # Code Health Standards
 
 Standards for keeping codebases lean and maintainable. Apply these thresholds during development — catching debt early is cheaper than cleaning it later.
-
-## Trigger
-
-- Writing new code or modifying existing code
-- Adding dependencies
-- Creating new files or modules
-- Refactoring or restructuring code
-- Any use of `/devlyn:clean`, `/devlyn:resolve`, or `/devlyn:review`
 
 ## Dead Code Prevention
 
@@ -67,8 +63,3 @@ Code committed to production should not contain:
 - Empty catch blocks or swallowed errors
 - Hardcoded secrets, API keys, or environment-specific URLs
 - Type `any` (TypeScript) without a justifying comment
-
-## Routing
-
-- **Active cleanup**: Use `/devlyn:clean` to scan and remove accumulated debt
-- **Focused cleanup**: Use `/devlyn:clean [category]` for targeted sweeps (dead code, deps, tests, complexity, hygiene)

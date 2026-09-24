@@ -17,7 +17,7 @@ Hard rules (iter-0022 D2 acceptance gates):
   * Output JSON is sorted by required_invariants[].id, sort_keys=True for
     every dict, indent=2 for human review, trailing newline for POSIX.
 
-See `config/skills/_shared/pair-plan-schema.md` for the full registry
+See `benchmark/auto-resolve/pair-plan-schema.md` for the full registry
 shape and the slug rules implemented here.
 """
 import argparse

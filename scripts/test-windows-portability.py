@@ -242,8 +242,7 @@ installClaudeCore();
             with self.subTest(value=value):
                 dest.write_text(json.dumps(value), encoding='utf-8')
                 self.invoke('installClaudeCore();')
-                expected = {**value, 'env': {'CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING': '1',
-                            'ENABLE_PROMPT_CACHING_1H': 'true', **value.get('env', {})}}
+                expected = {**value, 'env': {'ENABLE_PROMPT_CACHING_1H': 'true', **value.get('env', {})}}
                 self.assertEqual(json.loads(dest.read_bytes()), expected)
                 first = dest.read_bytes()
                 self.invoke('installClaudeCore();')
@@ -258,7 +257,6 @@ installClaudeCore();
         self.assertEqual(settings['custom'], 1)
         for key, value in {'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
                            'BASH_MAX_TIMEOUT_MS': '3600000',
-                           'CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING': '1',
                            'ENABLE_PROMPT_CACHING_1H': 'true'}.items():
             self.assertEqual(settings['env'].get(key), value)
         self.assertIn('Write(.devlyn/**)', settings['permissions']['allow'])

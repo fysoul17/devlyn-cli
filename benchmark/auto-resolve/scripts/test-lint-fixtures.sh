@@ -272,7 +272,7 @@ DEVLYN_REJECTED_FIXTURE_REGISTRY="$TMP/empty-rejected.sh" \
 status=$?
 set -e
 [ "$status" -ne 0 ]
-grep -Fq 'solo-headroom hypothesis must include' "$TMP/shadow-weak-hypothesis.out"
+grep -Fq 'must document a solo-headroom hypothesis' "$TMP/shadow-weak-hypothesis.out"
 
 cat >> "$shadow_fixture/spec.md" <<'EOF'
 

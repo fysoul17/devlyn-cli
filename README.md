@@ -97,10 +97,10 @@ golden fixture, risk-probe, or pair-evidence candidate must also include
 difference from rejected or solo-saturated controls such as `S2`-`S6`; without
 that, `/devlyn:resolve` stops with `BLOCKED:solo-ceiling-avoidance-required`.
 
-Accepted tasks default to owner completion: scoped commit → push → PR → normal
-protected merge → recoverable cleanup of prospectively owned resources. Set
-`git config --local devlyn.completionMode pr` to stop at a PR, or `auto` to restore
-the default; `task-complete.py complete --mode auto|pr` overrides one task.
+Accepted tasks default to scoped commit → push → PR; the task branch is retained
+for review. Set `git config --local devlyn.completionMode auto` to also request a
+normal protected merge and recoverable cleanup after it merges;
+`task-complete.py complete --mode auto|pr` overrides one task.
 Local-only/no-push instructions take precedence. Linked worktrees are optional;
 existing branches cannot be adopted. Full runs require successful archive before
 delivery; direct tasks use their actual checks and root acceptance. Verify-only
@@ -260,19 +260,6 @@ Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4
 
 ---
 
-## Auto-Activated Skills
-
-These activate automatically — no commands needed. They shape how Claude thinks during relevant tasks.
-
-| Skill | Activates During |
-|---|---|
-| `root-cause-analysis` | Debugging — enforces 5 Whys, evidence standards |
-| `code-review-standards` | Reviews — severity framework, approval criteria |
-| `ui-implementation-standards` | UI work — design fidelity, accessibility, responsiveness |
-| `code-health-standards` | Maintenance — dead code prevention, complexity thresholds |
-
----
-
 ## Optional Add-ons
 
 Selected during install. Run `npx devlyn-cli` again to add more.
@@ -292,6 +279,10 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 | `devlyn:pencil-pull` | Pull Pencil designs into code |
 | `devlyn:pencil-push` | Push codebase UI to Pencil canvas |
 | `devlyn:reap` | Safely reap orphaned MCP / codex / Superset child processes |
+| `code-health-standards` | Maintainability standards — dead code, dependencies, complexity, naming |
+| `code-review-standards` | Severity framework and approval criteria for reviews |
+| `root-cause-analysis` | Evidence-first why-chain debugging |
+| `ui-implementation-standards` | UI quality bar — design tokens, accessibility, state coverage, responsive layout |
 
 </details>
 

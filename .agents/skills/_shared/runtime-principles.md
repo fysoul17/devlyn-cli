@@ -94,7 +94,7 @@ A finding without one of these forms is excluded. Vague findings produce vague f
 ## Consumption
 
 **Consumers**:
-- `devlyn:resolve/SKILL.md` `<harness_principles>` points here as the contract source. Phase prompt bodies inline or reference the operational excerpt needed for each phase.
+- `devlyn:resolve/SKILL.md` `<harness_principles>` points here as the contract source. Phase prompt bodies inline the operational excerpt needed for each phase.
 - `devlyn:ideate/SKILL.md` consumes this file for spec-shaping and conversation discipline through its own `<harness_principles>` block.
 
 **Codex routing**: Codex-routed phases must inline the contract excerpt directly into the prompt body. Bounded read-only Codex critique, probe, or judge calls must also follow `_shared/codex-config.md` isolation rules.

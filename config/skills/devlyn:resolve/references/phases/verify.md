@@ -311,5 +311,5 @@ VERIFY to `BLOCKED`; do not synthesize merge artifacts in prose.
 </quality_bar>
 
 <runtime_principles>
-Read `_shared/runtime-principles.md`. VERIFY's discipline is "the spec is the contract, the diff is the evidence, the verdict is the comparison."
+VERIFY's discipline is "the spec is the contract, the diff is the evidence, the verdict is the comparison."
 </runtime_principles>

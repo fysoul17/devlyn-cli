@@ -1,14 +1,10 @@
+---
+name: ui-implementation-standards
+description: Quality bar for building or changing user interfaces — design-system token fidelity, WCAG 2.1 AA accessibility, loading/empty/error/success/disabled state coverage, purposeful animation, and mobile-first responsive layout. Use when implementing or modifying UI components, pages or styles, or when turning a design or design system into code.
+---
 # UI Implementation Standards
 
 Quality framework for building and improving UI from design systems. Apply these standards whenever implementing or modifying visual components.
-
-## Trigger
-
-- Building UI components or pages
-- Implementing designs from a design system
-- Improving or refactoring existing UI
-- Any use of `/devlyn:design-ui`
-- Frontend development tasks involving visual design
 
 ## Design System Fidelity
 
@@ -66,9 +62,3 @@ Every interactive component or data-dependent view needs all states:
 - No inline styles — use the token/theme system
 - Server components where possible (Next.js), client components only for interactivity
 - Keep component files focused — one component per file
-
-## Routing
-
-- **Build new UI or improve existing**: Use `/devlyn:implement-ui` for a full team approach
-- **Add features to existing UI**: Use `/devlyn:resolve` with the feature description
-- **Review UI code quality**: Use `/devlyn:team-review` for multi-perspective code review

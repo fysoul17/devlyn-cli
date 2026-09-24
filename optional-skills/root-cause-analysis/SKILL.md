@@ -1,14 +1,10 @@
+---
+name: root-cause-analysis
+description: Evidence-first debugging method — trace a symptom through successive why-steps to the actionable root cause, cite file:line for every claim, and fix the cause instead of masking the symptom. Use when diagnosing a bug, error, failing test, stack trace or unexpected behavior, or when asked why something happens.
+---
 # Root Cause Analysis
 
 Standard methodology for investigating bugs, issues, and unexpected behavior. Apply this framework whenever diagnosing a problem.
-
-## Trigger
-
-- User reports a bug or unexpected behavior
-- Error logs or stack traces need diagnosis
-- "Why does X happen?" or "What's causing X?" questions
-- Debugging sessions
-- Any use of `/devlyn:resolve`
 
 ## 5 Whys Protocol
 
@@ -59,7 +55,3 @@ Every fix MUST address the root cause. Stop immediately if you catch yourself:
 If the task is unreasonable or infeasible, or if any of the tests are incorrect, inform the user rather than working around them. The solution should be robust, maintainable, and extendable.
 
 If the real fix requires significant refactoring, present the scope to the user — never ship a workaround "for now".
-
-## Routing
-
-- Use `/devlyn:resolve` — handles both simple and multi-module investigations; VERIFY pair-judge fires conditionally on high-risk / complex specs.
