@@ -125,7 +125,7 @@ bash benchmark/seats/recert-seats.sh \
 `--reps` defaults to 4 (`recert-seats.sh:34`). The suites are `violation,
 compliance, judge_quality, seat_matrix` (`recert-seats.sh:7-9`); the violation
 matrix runs INSIDE the recert as the 6-probe drift-bait panel × models × reps
-(`recert-seats.sh:128-133` → `benchmark/probes/scripts/run-violation-matrix.sh:30-39`),
+(`recert-seats.sh:128-133` → `benchmark/probes/scripts/run-violation-matrix.sh:33-42`),
 compliance is one cell per engine (`:135-154`), judge quality is 2 reps
 (`:156-161`), and `seat_matrix` runs last with the attested engine versions
 (`:188-192`). An empty `claude --version` fails closed before any matrix is
@@ -133,7 +133,9 @@ written (`:163-168`).
 
 Naming: run prefix is `ck<NNNN>-<slug>`; the suite derives the probe result
 dirs as `<prefix>-violation-<model>-r<N>`
-(`recert-seats.sh:57-59,128-133` → `run-violation-matrix.sh:41-48`).
+(`recert-seats.sh:57-59,128-133` → `run-violation-matrix.sh:49-70`). Since 0223, drift_resistance is
+measured isolated (fresh HOME, repo CLAUDE.md seeded, no user memory or skills), so earlier seat-matrix
+drift cells and the wall anchor below are on a different basis.
 
 Outputs: `benchmark/seats/results/<prefix>/recert-status.json` with
 `{run_prefix, date, engines[], skip[], failures[]}` (`recert-seats.sh:66-82`)
@@ -280,7 +282,7 @@ Two predicates, mechanical — no other predicate words are used below:
 
   | engine class | suites that run | seats produced |
   |---|---|---|
-  | Claude-family (exact ID, or `sonnet`/`opus`) | violation + compliance + judge quality | `drift_resistance`, `orchestrator`, `verify_primary_judge` |
+  | Claude-family (exact ID, or `sonnet`) | violation + compliance + judge quality | `drift_resistance`, `orchestrator`, `verify_primary_judge` |
   | `codex` | compliance + judge quality only | `orchestrator`, `verify_primary_judge` |
 
   The routing is mechanical: only Claude tokens enter `CLAUDE_MODELS`, while

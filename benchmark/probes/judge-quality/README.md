@@ -82,9 +82,7 @@ not a defect).
 - `sonnet` via `claude -p "<same prompt>" --model sonnet`, run from an empty
   scratch directory with `--strict-mcp-config --mcp-config
   '{"mcpServers":{}}'` and `--dangerously-skip-permissions` (isolated scratch
-  dir, no tool calls expected since the prompt is fully self-contained) —
-  same invocation shape `run-drift-bait-probe.sh` already uses for headless
-  claude calls.
+  dir, no tool calls expected since the prompt is fully self-contained).
 - 2 reps per judge per case (24 calls per judge total).
 
 Codex uses the existing `CODEX_MODEL` then `OPENAI_MODEL` request as an actual

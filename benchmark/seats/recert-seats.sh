@@ -106,7 +106,7 @@ COMPLIANCE_ENGINES=()
 JUDGES=()
 for engine in "${ENGINE_LIST[@]}"; do
   [ -n "$engine" ] || continue
-  if [[ "$engine" == "sonnet" || "$engine" == "opus" || "$engine" =~ ^claude-[A-Za-z0-9.-]+$ ]]; then
+  if [[ "$engine" == "sonnet" || "$engine" =~ ^claude-[A-Za-z0-9.-]+$ ]]; then
     CLAUDE_MODELS+=("$engine")
     COMPLIANCE_ENGINES+=("$engine")
     JUDGES+=("$engine")
