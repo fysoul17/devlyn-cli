@@ -102,11 +102,12 @@ def claude_result(stdout):
 def claude_nested(devlyn):
     """Separate `claude -p --output-format json` runs (3.2.1 judges, SURFACE_CLOSE) archive their own results.
     They are separate processes, so they are not in the owner's modelUsage; deduplicated by session."""
-    totals, seen = {}, set()
+    totals, seen, unreadable = {}, set(), []
     for path in sorted(devlyn.rglob('*.output.json')):
         try:
             result = json.loads(path.read_text(errors='replace'))
         except ValueError:
+            unreadable.append(path.name)
             continue
         if not isinstance(result, dict) or not result.get('modelUsage') or result.get('session_id') in seen:
             continue
@@ -115,7 +116,7 @@ def claude_nested(devlyn):
             add(totals, model.split('[')[0], dict(
                 input=usage.get('inputTokens', 0), cache_read=usage.get('cacheReadInputTokens', 0),
                 cache_write=usage.get('cacheCreationInputTokens', 0), output=usage.get('outputTokens', 0)))
-    return totals
+    return totals, unreadable
 
 
 def claude_transcripts(projects):
@@ -151,13 +152,14 @@ def record(cell):
     native, failures = codex(home / '.codex/sessions')
     result = claude_result(cell / 'run/stdout')
     transcripts = claude_transcripts(home / '.claude/projects')
-    nested = claude_nested(work / '.devlyn')
+    nested, unreadable = claude_nested(work / '.devlyn')
     calls = reviews(work)
     plan = json.loads((cell / 'plan.json').read_text())
     owner_known = bool(result) if plan['engine'] == 'claude' else bool(native) and not failures
     # 3.2.1 runs isolated Codex judges with --ephemeral: they persist no rollout, so F usage cannot be complete.
     gaps = [name for name, missing in (('owner', not owner_known), ('codex rollout', bool(failures)),
                                        ('review', any(c['usage'] == 'UNKNOWN' for c in calls)),
+                                       ('unreadable nested Claude result ' + ', '.join(unreadable), bool(unreadable)),
                                        ('F isolated codex judges', plan['arm'] == 'F')) if missing]
     completeness = 'COMPLETE' if not gaps else 'PARTIAL' if owner_known or native or transcripts else 'UNKNOWN'
     usage = dict(completeness=completeness, gaps=gaps, codex=native, codex_failures=failures, claude_result=result,

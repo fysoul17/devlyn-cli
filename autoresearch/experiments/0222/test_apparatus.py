@@ -136,8 +136,10 @@ class Pure(unittest.TestCase):
         (run / 'claude-judge.r0.output.json').write_text(json.dumps(judge))
         (run / 'surface-close.output.json').write_text(json.dumps(close))
         (devlyn / 'claude-judge.r0.output.json').write_text(json.dumps(judge))  # pre-archive copy of the same run
+        totals, unreadable = usage.claude_nested(devlyn)
+        self.assertEqual((totals['claude-opus-5-5']['output'], unreadable), (623, []))
         (devlyn / 'broken.output.json').write_text('{"modelUs')
-        self.assertEqual(usage.claude_nested(devlyn)['claude-opus-5-5']['output'], 623)
+        self.assertEqual(usage.claude_nested(devlyn)[1], ['broken.output.json'])  # named, never silently dropped
 
     def test_truncated_rollout_is_partial_not_zero(self):
         sessions = self.root / 'sessions'
