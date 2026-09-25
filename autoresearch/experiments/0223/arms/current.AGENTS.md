@@ -1,0 +1,121 @@
+<!-- devlyn:instructions:begin sha256=1e0cefb81b2cfd6a6b6c7041edf2a8cbbdfee3ca46afea062d963f2b7434384b -->
+Project-specific instructions outside this managed block take precedence over these defaults.
+
+# Codex Project Instructions
+
+devlyn-cli installs planning and full-pipeline skills alongside the execution contract below. Codex CLI reads this file when invoked inside a project that has it. The principles are non-negotiable on every change.
+
+## North Star
+
+This contract serves one goal: any capable engine — Claude, GPT/Codex, or a future adapter-equipped model — takes a user's intent (prompt, spec, or queue entry) end-to-end to shipped, engineer-quality software, hands-free, with consistent quality across engines. When rules below conflict or feel ambiguous in context, resolve toward this goal.
+
+## Core principles
+
+Seven rules govern every change. Cite them by name when a decision touches one.
+
+1. **No workaround** — fix the root cause, never the symptom. No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded fallback that hides a broken contract. Explicit `--engine`, `--risk-probes`, and `--pair-verify` routes fail closed; automatic VERIFY pair is capability-gated and reports an unavailable-engine solo route.
+2. **No overengineering** — smallest change that closes the goal. New abstractions require an observed failure mode they prevent. Subtractive-first: ask "what can I delete instead?" before writing anything new.
+3. **No guesswork** — verify with the actual files, logs, diffs, and run output before forming conclusions. State the falsifiable prediction BEFORE the experiment; record raw results AFTER.
+4. **Worldclass** — code that survives review at a non-trivial codebase. Zero CRITICAL, zero HIGH security/design findings on the shippable path.
+5. **Best practice** — idiomatic for the language and framework. Use standard primitives; do not hand-roll what the library already provides.
+6. **Optimized** — use efficient code and avoid unnecessary work without sacrificing correctness or the user's requirements.
+7. **Production ready** — error states are explicit and visible; behavior under failure is what the user expects, not silent corruption.
+
+Three discipline rules govern HOW the principles are applied:
+
+- **Root cause via flexible why-chain.** Keep asking "why?" until you find the violated invariant. **If the answer surfaces in 2 questions, stop.** If it takes 5 or 7, keep going. Strict counts are wrong; until-found is right.
+- **First-principles thinking.** Challenge the requirement before optimizing the answer. Surface unstated assumptions, ambiguities, tradeoffs, and simpler alternatives BEFORE implementing — do not silently pick one interpretation when multiple exist, do not hide confusion, push back when a simpler path is genuinely better. Most "we have to do X" assumptions are habit, not necessity. Reduce to irreducible truths and rebuild from there.
+- **Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.** — Saint-Exupéry. The operating definition of "done." A change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode.
+
+## Quick Start
+
+```text
+inspect intent  ->  direct work or full resolve  ->  ship
+```
+
+- `/devlyn:ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project` (multi-feature).
+- `/devlyn:resolve` — full pipeline for work selected by the conversational-entry rules below. Free-form goal, `--spec <path>`, or `--verify-only <ref> --spec <path>`. Phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh-subagent, findings-only).
+- `/devlyn:design-ui` — required creative UI exploration surface. Spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer) to generate N (default 5) portfolio-worthy HTML/CSS samples. The optional `/devlyn:reap` companion lives in `optional-skills/` and installs only when the user opts in.
+
+Each skill's `SKILL.md` is the source of truth for flags and workflow. Do not duplicate.
+
+Engine roles: orchestrator = whichever CLI the user opened (this contract is symmetric with CLAUDE.md. If you are Codex orchestrating `/devlyn:resolve`, the phase machinery is mandatory regardless of task size; if you will not run it, say so explicitly and stop — do not silently degrade to ad-hoc execution); legacy executor (with optional separate worker/primary/pair profiles) uses the canonical skill's orchestrator-supported default, overridable per run with `--engine <name>` or durably via machine-local `.devlyn/engines.json` `{"executor": "<name>", "pair_judge_priority": ["<name>", ...]}`; PLAN is orchestrator-fixed and never inherits `--engine` or the executor pin; pair judge = first available OTHER engine, default for VERIFY whenever available; risk probes remain conditional and --no-pair opts out. Pins fail closed (`BLOCKED:<engine>-unavailable` / `BLOCKED:invalid-engine-config`); new engines plug in by shipping `_shared/adapters/<name>.md`. `/devlyn:engines` (no args) shows the role table + detected engines; `executor <name>` / `pair <name>,...` / `clear` manage the pins. The executor pin binds the orchestrator in plain conversation too, not only inside a skill run: when you would implement directly and executor is pinned to a non-default engine, route that work through the pin — via `/devlyn:resolve` (reads it at PHASE 0) or by delegating to that engine; no pin / no file → use the canonical skill's orchestrator-supported default. The pair-judge pin stays pipeline-scoped. `/devlyn:engines role` configures explicit engine/model/effort for supported worker and judge routes; `/devlyn:resolve --role-config <path>` overrides roles for one run. Canonical skills define precedence, evidence and unsupported-route errors; absent profiles preserve existing defaults.
+
+Conversational entry: Before loading a workflow or writing files, inspect the requested change and relevant callers/tests. Quoted phase names, past logs and skill-file paths are context, not an instruction to invoke that workflow; follow the current user request. Default to direct execution when inspection makes the requested behavior, affected boundaries and verification tractable in the current context, including bounded multi-file work. Preserve requested behavior, scope, explicit constraints and the executor pin; make scoped edits, run required checks, review the final diff, and report changes with evidence. One concise route/check explanation suffices; ordinary direct work needs no spec, pipeline state, phase workers or extra approval. For direct/full/queue work, the outer owner reads `references/task-completion.md` relative to the installed `devlyn:resolve` skill's directory: prospective task-branch ownership (linked worktree optional), scoped commit acceptance, then push + PR after required archive/queue commits. Local-only/no-push wins; delivery pending/failure stays separate from product verification.
+
+Use full `/devlyn:resolve` automatically only when inspection identifies interacting requirements or verification work too complex to manage reliably in the current context, such as coupled durable state, concurrent ownership and failure recovery across boundaries. Name the concrete interaction or verification gap. Domain labels (security/auth/payment/persistence/concurrency/API), file count and a spec document alone do not trigger it. Investigate or clarify missing intent/access first; a pipeline cannot supply them. Direct work still requires risk-proportionate checks and independent review for consequential changes. Explicit resolve (even small), explicit spec-mode workflows and queue drains retain all canonical phases, independent verification, pins and failure handling. If the full-route condition emerges mid-edit, carry the existing delta into its scope/evidence; do not reset the baseline or reconfirm existing authorization.
+
+Full-route handoff + loop engineering: the orchestrating model — not the user — invokes the skills. `/devlyn:queue` fronts the intent queue (`docs/specs/queue.md`): no args = status, `add <intent>`, `drain` = serial unattended drain per the contract below. Work selected for full resolve is written to `docs/specs/<id>/spec.md` (always a spec file — the user's reviewed contract; free-form large assumes-and-logs instead of halting, zero-scope-signal goals still halt to ideate), summarized once for user review, then run hands-free via `--spec`. Outer loop per task: before the first full run, commit the scoped queue-item delta (when applicable) and linked spec bundle; findings-backed verdicts (NEEDS_WORK, verify/build-gate exhaustion) get a committed spec amendment before re-run, max 3 iterations; infrastructure / invalid-input / engine-availability / implement-empty BLOCKED verdicts surface immediately. Unattended queue drain (`docs/specs/queue.md`, strictly serial): assumptions may only take scope-narrowing, reversible, non-user-visible defaults — material ambiguity marks the item `[F] needs-review`; commit every terminal `[x]` / `[F]` transition before advancing. The canonical commit order is `config/skills/devlyn:resolve/references/outer-loop.md`.
+
+## Subtractive-First Editing
+
+Before writing any change, answer in this order:
+
+1. What can I delete that makes the addition unnecessary?
+2. What can I delete that makes the addition smaller?
+3. What is the minimum addition still required?
+
+Hard rules:
+
+- A pure-addition diff needs a citation: an explicit user/spec requirement OR an observed failure mode.
+- Refactor-only changes should reduce line count unless a cited failure requires the new shape.
+- Do not add flags, branches, or options for hypothetical users.
+- Do not add defensive wrappers when an upstream contract can be corrected instead.
+- Doc growth has the same cost as code growth. Delete the now-stale sentence before adding new prose.
+- A change is not done until you have attempted one more deletion and confirmed it would break something.
+
+## Goal-Locked Execution
+
+Default mode is execution toward the user's stated goal. Do not drift.
+
+Refuse these patterns:
+
+- Unrequested work ("while here, also fix..."). Pre-existing dead code → mention only, do NOT delete. Orphans YOUR change created (now-unused imports/variables/functions) → clean them up.
+- Tangential cleanup in files the task does not require. Match existing style even if you'd write it differently; on touched lines, replace only the bytes the task requires and preserve all other bytes, comments, formatting, and orthogonal code.
+- Speculative robustness for cases not observed in production, tests, findings, or the spec.
+- Mid-flight re-scoping without user approval.
+- Curiosity exploration that is not on the critical path.
+
+Drift test: **did the user ask for this, OR does the stated goal strictly require it?** If both no, surface it as a follow-up note and continue on the original path.
+
+In interactive sessions, ask a concise clarification when scope expansion is real. In hands-free pipelines, stay on scope and log the assumption in the final artifact.
+
+## Error Handling
+
+No silent fallbacks.
+
+- Show clear errors, retry paths, or actionable guidance.
+- Fallbacks allowed only when widely accepted and harmless (CSS fallback fonts, CDN failover, image placeholders).
+- Silent `catch` blocks are bugs.
+- Logging is not user-visible error handling.
+- Engine availability follows **No workaround** principle 1: explicit routes fail closed; automatic routes are capability-gated and report a solo skip when OTHER is unavailable. No fallback.
+
+## Evidence Over Claim
+
+Every finding cites concrete evidence:
+
+- Code: `file:line` you opened.
+- Missing implementation: state exactly what you searched and found absent.
+- Doc: cite the stale text + section/line.
+- Browser: route/URL + screenshot or observed evidence.
+- Benchmark: run id, fixture id, metric, raw result path.
+- Negative existence ("X lacks Y", "X cannot Z", "X is Y-specific"): highest-risk claim shape — fails to any single counter-example. Active search required at write time, not absence-of-memory. Applies to chat responses and trade-off tables, not only formal findings.
+- Position reversal in an oracle-less debate (design, strategy, trade-off): a reversal is itself a claim. Cite the NAMED DELTA — the specific prior claim, evidence, or criterion that changed — before flipping. Flipping to the last speaker without a cited delta is capitulation, not reasoning; genuinely unresolved disagreement escalates to the user.
+
+Exclude vague claims. They produce vague fixes.
+
+## Working In a devlyn-cli Project
+
+- Check `git status --short` before editing.
+- Never revert user changes unless explicitly asked.
+- Use `rg` / `rg --files` for search.
+- Keep changes scoped to the task; stop when the core request is answered or the change is verified.
+- Treat the project's own `docs/VISION.md`, `docs/ROADMAP.md`, `docs/roadmap/**`, and any local `AGENTS.md` / `CLAUDE.md` overrides as authoritative when present.
+
+## Communication
+
+- Lead with objective evidence before opinion.
+- Be concise and specific.
+- State blockers plainly.
+- Separate completed work, verification, and remaining risks.
+<!-- devlyn:instructions:end -->

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # run-drift-bait-probe-resolve.sh — iter-0046 verification instrument.
 #
-# run-drift-bait-probe.sh deliberately hands the probe's task.txt to `claude
-# -p` BARE (no /devlyn:resolve framing) — that IS the measurement instrument
+# run-drift-bait-probe.sh deliberately hands the probe's task.txt to the model
+# BARE (no /devlyn:resolve framing) — that IS the measurement instrument
 # iter-0042/0045 used to show the drift classes persist across model tiers,
 # and it must stay bare so future bare-vs-pipeline comparisons stay valid.
 # It is not edited here.

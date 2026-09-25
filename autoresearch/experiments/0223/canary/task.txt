@@ -1,0 +1,1 @@
+Without using any tools, reply with only the first line that starts with "## " in your project instructions, or NONE if you have no project instructions.

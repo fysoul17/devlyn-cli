@@ -11,7 +11,7 @@
 3. **Allocate a task branch** (from `main`, in this checkout):
    `python3 config/skills/_shared/task-complete.py allocate --repo . --task '<id>' --branch 'candidate/<id>' --repository fysoul17/devlyn-cli --remote origin --base main`
 4. **Do the work and the checks.** Run the packet's acceptance checks. For a consequential change, get one read-only Astra review: `gpt-6-astra`, isolated, via `config/skills/_shared/codex-monitored.sh`. Add further review rounds only when an unresolved counterexample remains; root decides.
-5. **Deliver as a PR only.** Commit, write `.devlyn/acceptance.json` (kind `direct`), then run `python3 config/skills/_shared/task-complete.py complete --receipt <receipt> --acceptance .devlyn/acceptance.json --mode pr`. **Never merge**; the user merges.
+5. **Deliver as a PR.** Commit, write `.devlyn/acceptance.json` (kind `direct`), then run `python3 config/skills/_shared/task-complete.py complete --receipt <receipt> --acceptance .devlyn/acceptance.json --mode pr`. Root merges each session PR once the Astra/Grok reviews and any CI pass (user decision 2026-09-24: "세션마다 제가 merge", chosen over "user merges directly").
 6. **Hand off.** In the same PR, update the table below and the "Next" line in this file with your branch name. Record the base SHA, scope, actual check results, open items and the next command. The PR URL is findable by that branch name.
 
 ## Sessions
@@ -21,15 +21,22 @@
 | 0 | Register 0221, packets, this HANDOFF (branch `candidate/0221-subtraction-direction`) | — | merged (PR #109) |
 | 1 | Installed-product cleanup: standards frontmatter plus a move to optional-skills; reread sentence deletion; pair-plan-schema to benchmark; stop the global adaptive-thinking env injection; completion default `pr` (receipt reuse and owned auto-merge handled); fix the spec-verify-check research-gate false positive (branch `candidate/0221-s1-installed-cleanup`) | T1a, T1b (c1, c2, b3) | merged (PR #110) |
 | 2 | Benchmark out of the npm package (branch `candidate/0221-s2-benchmark-unpackage`) | T1b (a1–a5) | merged (PR #111) |
-| 3 | Comparison apparatus v2 without budgets; arm F = published 3.2.1, verified in-container; evaluator fixes (branch `candidate/0221-s3-apparatus-v2`, [0222](experiments/0222/DESIGN.md)) | E1 | PR open |
-| 4 | Always-loaded instruction screen, 288 short runs; slim frozen as a candidate | E2 | **NEXT** |
-| 5 | Add the `/devlyn:intent` candidate (no default change); counterexample tests | I1, I2 PR-A | pending |
+| 3 | Comparison apparatus v2 without budgets; arm F = published 3.2.1, verified in-container; evaluator fixes (branch `candidate/0221-s3-apparatus-v2`, [0222](experiments/0222/DESIGN.md)) | E1 | merged (PR #112) |
+| 4 | Always-loaded instruction screen, 288 short runs (branch `candidate/0221-s4-instruction-layer`, [0223](experiments/0223/RESULT.md)) | E2 | PR open — `SLIM_REJECTED` |
+| 5 | Add the `/devlyn:intent` candidate (no default change); counterexample tests | I1, I2 PR-A | **NEXT** |
 | 6 | Structure screen: 0185 + D4 × {A, B′, C, F} × 2 configs, plus 4 Grok static checks | E1 apparatus | pending |
 | 7 | Freeze, then untouched confirmation (40, plus 8 light); adopt, hold or stop per config | — | pending |
 | 8 | Next major: intent becomes the default and resolve/ideate become guidance-only, OR the candidate is closed | I2 PR-B, T1b (b) | pending |
 | 9 | After one major: remove the stubs and any helpers left without references | I2 PR-C, I1 | pending |
 
-**Next:** Session 4, after the Session 3 PR (branch `candidate/0221-s3-apparatus-v2`) is merged.
+**Next:** Session 5, after the Session 4 PR (branch `candidate/0221-s4-instruction-layer`) is merged.
+
+Session 4 record (base `9684dc6`): [0223](experiments/0223/DESIGN.md) makes the drift probe isolated for both engines. Claude runs through the sealed claude-isolation.py, and Codex gets a fresh CODEX_HOME, `env -i` and a render check. Both use pinned CLI snapshots (`~/.local/share/nx01/pins/{claude-2.1.282,codex-0.156.1}-0223`); their sha256 is recorded per run and required by the adjudicator. Timeouts are scored, infra gets at most two attempts, and verdicts are written atomically. The matrix driver gains `--instructions`/`--probes`.
+- Result: 288/288 scored, 0 infra, frozen token `SLIM_REJECTED:claude-sonnet-5,gpt-6-astra`. Both regressions are B5; every failure leaves the self-orphaned helper and import. The leading hypothesis is the dropped "orphans YOUR change created → clean them up" sentence, which is untested until an add-back run. EQ3 shows no regression; slim cuts median input tokens by 14–51%.
+- Consequence: Session 8 has no measured instruction candidate, so the current text stays. A slim+orphan add-back candidate needs its own registration (open user decision; see RESULT.md "Follow-up").
+- Checks: adjudicator self-test, fake-engine plumbing, lint and test-seat-matrix pass; the smoke passed (18 runs: 12 B4 plus 6 canary).
+- Reviews: R1 REVISE from Astra and Grok (5 defects, all fixed); R2 SMOKE-READY from both.
+- Open: the Session 3 scratch (`clean-scratch --receipt .git/devlyn-completion/31acb01f544054541f034b19/receipt.json --writers-stopped`) is still BLOCKED because the Docker Desktop VM holds file handles; its credential snapshots are already deleted. `.devlyn/0222/` keeps the Session 3 evidence.
 
 Session 3 record (base `b8c1073`): [0222](experiments/0222/DESIGN.md) replaces the 0210–0220 wrapper chain with one directory:
 - a pinned image (Codex 0.156.1, Claude 2.1.281, less, login PATH fixed), a tracked `/control` build with a sha256 manifest, route-driven prepare (arms A, C and F; B′ binds its package in Session 5), a hang-wall-only owner run, post-hoc usage (never 0), and an in-image evaluator
