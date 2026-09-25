@@ -102,14 +102,15 @@ def changed(work, old, new):
 
 
 def blobs(work, tree_id, paths):
-    """{path: blob id} in a tree; a deleted path maps to None."""
+    """{path: "mode object"} in a tree; a deleted path maps to None."""
     found = {path: None for path in paths}
     if paths:
         out = git(work, "ls-tree", "-r", "-z", tree_id, "--", *paths, env={**os.environ, "GIT_LITERAL_PATHSPECS": "1"}, raw=True)
         for entry in out.split(b"\0"):
             if entry:
                 meta, _, path = entry.decode().partition("\t")
-                found[path] = meta.split()[2]
+                mode, _, obj = meta.split()
+                found[path] = f"{mode} {obj}"
     return found
 
 
@@ -783,8 +784,8 @@ def evaluate(run, state):
         current = [r for r in state["reviews"] if r["role"] == role and r["source"] == key and r["source_after"] == key]
         status = current[-1]["status"] if current else None
         content = key.split(":")[1]
-        if any(r["role"] == role and r["status"] == "NEEDS_WORK" and r["source"].split(":")[1] == content
-               for r in state["reviews"]):
+        if any(r["role"] == role and r["status"] == "NEEDS_WORK" and r["source"] == r["source_after"]
+               and r["source"].split(":")[1] == content for r in state["reviews"]):
             status = "NEEDS_WORK"  # a retry or an empty commit on the same content never erases a binding finding
         if status is None:
             needed.append(f"{role} review missing on the current source")
@@ -870,6 +871,9 @@ import json, os, sys
 if sys.argv[1:] == ["--version"]:
     print("2.1.281 (Claude Code)"); sys.exit(0)
 sys.stdin.read()
+if os.environ.get("FAKE_CLAUDE_EDIT"):
+    path, _, text = os.environ["FAKE_CLAUDE_EDIT"].partition(":")
+    open(path, "w").write(text)
 model = os.environ.get("FAKE_CLAUDE_MODEL", "claude-test-a")
 print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "stop_reason": "end_turn",
                   "session_id": "s1", "result": os.environ.get("FAKE_CLAUDE_REVIEW", "PASS"),
@@ -1057,6 +1061,11 @@ def self_test():
         g(work, "commit", "--message", "owner")
         evidence(work)
         expect("owner content replacing the executor's edit is refused", reasons(work, "executor-not-used: the selected worker did not produce app.txt"))
+        work, _ = delegated("delegate-mode", {"worker": {"engine": "codex", "model": "gpt-6-sol"}}, {"FAKE_CODEX_MODEL": "gpt-6-sol"})
+        (work / "app.txt").chmod(0o755)
+        g(work, "commit", "--message", "mode")
+        evidence(work)
+        expect("an owner mode change after delegation is refused", reasons(work, "executor-not-used"))
         work = repo("verify-only-worker", roles={"worker": {"engine": "codex", "model": "gpt-6-sol"}}, files={"spec.md": "# s\n"})
         g(work, "start", "--owner", "claude", "--", "--verify-only", "HEAD", "--spec", "spec.md")
         g(work, "review", "--role", "primary_judge")
@@ -1178,6 +1187,13 @@ def self_test():
         evidence(work)
         expect("a retry or an empty commit never erases a binding finding",
                reasons(work, "primary_judge review has binding findings") and reasons(work, "pair_judge review has binding findings"))
+        work = repo("unstable")
+        happy(work)
+        g(work, "review", "--role", "primary_judge", env={"FAKE_CLAUDE_REVIEW": "NEEDS_WORK", "FAKE_CLAUDE_EDIT": "app.txt:moved\n"})
+        (work / "app.txt").write_text("fixed\n")
+        g(work, "review", "--role", "primary_judge")
+        expect("a finding from a review whose source changed mid-run does not bind the restored source",
+               status(work)["verdict"] == "PASS")
         work = repo("pair-timeout")
         happy(work, pair_env={"FAKE_CODEX_EXIT": "124"})
         expect("a pair TIMEOUT leaves a disclosed primary-only PASS",

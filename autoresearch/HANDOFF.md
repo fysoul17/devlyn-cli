@@ -49,7 +49,7 @@ Session 5 record (base `f3b2b81`): `/devlyn:intent` is added as an explicit-only
   - Claude effort is bound by the dispatched argv;
   - the Codex header workdir/sandbox and ignored-option diagnostics are checked;
   - commit refuses foreign staged files.
-  R2 REVISE (3, all fixed): owned paths must carry the executor-produced blob, binding findings stick by content tree (empty commits cannot erase them), and the Codex sandbox is compared by mode (native `workspace-write [workdir, …]`). R3: see the PR.
+  R2 REVISE (3, all fixed): owned paths must carry the executor-produced blob, binding findings stick by content tree (empty commits cannot erase them), and the Codex sandbox is compared by mode (native `workspace-write [workdir, …]`). R3 REVISE (2, fixed): executor provenance binds git mode + object, and only findings from source-stable reviews stick. R4: see the PR.
 - Open: the gate's Windows termination rests on the job-object kill (no marker scan) and its self-test is POSIX-only in CI. The Grok reviewer engine is refused by the gate (`unsupported-review-engine`), because the gate authenticates only Claude and Codex. There is no live model smoke; Session 6 is the first model run of B′.
 
 Session 4 record (base `9684dc6`): [0223](experiments/0223/DESIGN.md) makes the drift probe isolated for both engines. Claude runs through the sealed claude-isolation.py, and Codex gets a fresh CODEX_HOME, `env -i` and a render check. Both use pinned CLI snapshots (`~/.local/share/nx01/pins/{claude-2.1.282,codex-0.156.1}-0223`); their sha256 is recorded per run and required by the adjudicator. Timeouts are scored, infra gets at most two attempts, and verdicts are written atomically. The matrix driver gains `--instructions`/`--probes`.
