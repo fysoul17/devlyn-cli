@@ -101,6 +101,18 @@ def changed(work, old, new):
     return sorted(p.decode() for p in out.split(b"\0") if p)
 
 
+def blobs(work, tree_id, paths):
+    """{path: blob id} in a tree; a deleted path maps to None."""
+    found = {path: None for path in paths}
+    if paths:
+        out = git(work, "ls-tree", "-r", "-z", tree_id, "--", *paths, env={**os.environ, "GIT_LITERAL_PATHSPECS": "1"}, raw=True)
+        for entry in out.split(b"\0"):
+            if entry:
+                meta, _, path = entry.decode().partition("\t")
+                found[path] = meta.split()[2]
+    return found
+
+
 def glob_regex(pattern):
     parts, i = [], 0
     while i < len(pattern):
@@ -514,7 +526,7 @@ def authenticate(run, role, argv, stderr, sandbox, claude_model=None):
         model, effort = header["model"], header["reasoning effort"]
         efforts = [c.split("=", 1)[1].strip('"') for c in (argv[i + 1] for i, a in enumerate(argv[:-1]) if a == "-c")
                    if c.startswith("model_reasoning_effort=")]
-        if Path(header["workdir"]).resolve() != run.work or header["sandbox"] != sandbox:
+        if Path(header["workdir"]).resolve() != run.work or header["sandbox"].split()[0] != sandbox:
             return model, effort, f"observed workdir/sandbox {header['workdir']}/{header['sandbox']} differs from the run"
         if efforts and effort != efforts[-1]:
             return model, effort, f"native effort {effort} differs from dispatched {efforts[-1]}"
@@ -546,8 +558,9 @@ def cmd_delegate(args):
     preexisting = set(state["preexisting_untracked"])
     record.update(prompt_sha256=sha(prompt.read_bytes()), model_requested=worker.get("model_requested"),
                   effort_requested=worker.get("effort_requested"), model_observed=model, effort_observed=effort,
-                  identity_error=error, paths=[p for p in changed(run.work, before, tree(run.work)) if p not in preexisting],
-                  at=now())
+                  identity_error=error, at=now())
+    after = tree(run.work)
+    record["paths"] = blobs(run.work, after, [p for p in changed(run.work, before, after) if p not in preexisting])
     run.update(lambda s: s["delegations"].append(record))
     print(json.dumps({k: record[k] for k in ("exit", "terminated", "model_observed", "identity_error", "paths")}
                      | {"stdout": record["stdout"]["path"]}))
@@ -733,11 +746,15 @@ def evaluate(run, state):
             if item.get("termination_evidence") == "marker+pipes" and "termination is best-effort on this OS (no subreaper)" not in notes:
                 notes.append("termination is best-effort on this OS (no subreaper)")
     if state["delegate_required"] and state["mode"] != "verify-only":
-        delegated = set().union(*[d["paths"] for d in state["delegations"] if d["exit"] == 0 and not d["identity_error"]])
-        missing = [p for p in owned if p not in delegated]
-        if not delegated or missing:
-            blocked.append("executor-not-used: the selected worker did not make "
-                           + (", ".join(missing[:5]) if delegated else "any change"))
+        produced = {}
+        for d in state["delegations"]:
+            if d["exit"] == 0 and not d["identity_error"]:
+                produced.update(d["paths"])
+        final = blobs(work, key.split(":")[1], owned)
+        missing = [p for p in owned if p not in produced or produced[p] != final[p]]
+        if not produced or missing:
+            blocked.append("executor-not-used: the selected worker did not produce "
+                           + (", ".join(missing[:5]) if produced else "any change"))
     latest = latest_checks(state, key)
     retired = {r["cmd"] for r in state["retired"]}
     required = {r["cmd"] for r in state["required_checks"]}
@@ -765,8 +782,10 @@ def evaluate(run, state):
             continue
         current = [r for r in state["reviews"] if r["role"] == role and r["source"] == key and r["source_after"] == key]
         status = current[-1]["status"] if current else None
-        if any(r["status"] == "NEEDS_WORK" for r in current):
-            status = "NEEDS_WORK"  # a retry on the same source never erases a binding finding
+        content = key.split(":")[1]
+        if any(r["role"] == role and r["status"] == "NEEDS_WORK" and r["source"].split(":")[1] == content
+               for r in state["reviews"]):
+            status = "NEEDS_WORK"  # a retry or an empty commit on the same content never erases a binding finding
         if status is None:
             needed.append(f"{role} review missing on the current source")
         elif status == "NEEDS_WORK":
@@ -863,6 +882,7 @@ if sys.argv[1:] == ["--version"]:
 sys.stdin.read()
 args = sys.argv[1:]
 sandbox = args[args.index("-s") + 1] if "-s" in args else "read-only"
+sandbox += " [workdir, /tmp, $TMPDIR]" if sandbox == "workspace-write" else ""
 effort = [a.split("=", 1)[1] for a in args if a.startswith("model_reasoning_effort=")]
 sys.stderr.write(os.environ.get("FAKE_CODEX_WARN", "") + "OpenAI Codex v0.156.1\n--------\nworkdir: %s\nmodel: %s\n"
                  "provider: openai\nsandbox: %s\nreasoning effort: %s\nsession id: s2\n--------\nuser\nprompt\n"
@@ -1032,6 +1052,11 @@ def self_test():
         g(work, "commit", "--message", "owner")
         evidence(work, cmd="true")
         expect("a no-op delegation does not cover the owner's own edit", reasons(work, "executor-not-used"))
+        work, _ = delegated("delegate-overwrite", {"worker": {"engine": "codex", "model": "gpt-6-sol"}}, {"FAKE_CODEX_MODEL": "gpt-6-sol"})
+        (work / "app.txt").write_text("fixed by the owner instead\n")
+        g(work, "commit", "--message", "owner")
+        evidence(work)
+        expect("owner content replacing the executor's edit is refused", reasons(work, "executor-not-used: the selected worker did not produce app.txt"))
         work = repo("verify-only-worker", roles={"worker": {"engine": "codex", "model": "gpt-6-sol"}}, files={"spec.md": "# s\n"})
         g(work, "start", "--owner", "claude", "--", "--verify-only", "HEAD", "--spec", "spec.md")
         g(work, "review", "--role", "primary_judge")
@@ -1105,7 +1130,7 @@ def self_test():
         expect("expected required_files is enforced", reasons(work, "required-file-missing"))
         expect("required checks cannot be retired", "required-check" in g(work, "retire", "--cmd", "sleep 30", "--reason", "x").stderr)
         work = repo("dup", files={"spec.md": "# s\n", "spec.expected.json": json.dumps({"verification_commands": [
-            {"cmd": "cat app.txt", "stdout_contains": ["fixed"]}, {"cmd": "cat app.txt", "stdout_contains": ["absent"]}]})})
+            {"cmd": "cat app.txt", "stdout_contains": ["absent"]}, {"cmd": "cat app.txt", "stdout_contains": ["fixed"]}]})})
         happy(work, "--spec", "spec.md")
         g(work, "check", "--cmd", "cat app.txt")
         expect("duplicate required commands keep every expectation", reasons(work, "required check failed: cat app.txt"))
@@ -1115,6 +1140,11 @@ def self_test():
         failed = json.loads((work / ".devlyn/intent/run.json").read_text())["checks"][-1]["stdout"]["path"]
         (work / failed).write_text("PASS\n")
         expect("changed evidence bytes block", reasons(work, "evidence-changed"))
+        work = repo("deleted-review")
+        happy(work)
+        review = json.loads((work / ".devlyn/intent/run.json").read_text())["reviews"][-1]["findings"]["path"]
+        (work / review).unlink()
+        expect("deleted review evidence blocks", reasons(work, "evidence-changed"))
         work = repo("retire-all")
         g(work, "start", "--owner", "claude", "--", "fix")
         g(work, "scope", "app.txt")
@@ -1144,7 +1174,9 @@ def self_test():
         g(work, "review", "--role", "primary_judge")
         g(work, "review", "--role", "pair_judge", env={"FAKE_CODEX_REVIEW": "NEEDS_WORK"})
         g(work, "review", "--role", "pair_judge", env={"FAKE_CODEX_EXIT": "124"})
-        expect("a retry on the same source never erases a binding finding",
+        subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "empty"], cwd=work, check=True)
+        evidence(work)
+        expect("a retry or an empty commit never erases a binding finding",
                reasons(work, "primary_judge review has binding findings") and reasons(work, "pair_judge review has binding findings"))
         work = repo("pair-timeout")
         happy(work, pair_env={"FAKE_CODEX_EXIT": "124"})
