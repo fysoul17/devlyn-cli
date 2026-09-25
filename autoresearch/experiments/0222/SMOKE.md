@@ -48,3 +48,18 @@ B′ = `npm pack` of the Session 5 merge `79532e97` (tarball sha256 `433cb672…
 3. smoke-Bp-codex: `delegate_required: true`, at least one delegation observed as gpt-6-sol, a `primary_judge` observed as gpt-6-astra and a `pair_judge` observed as claude-opus-5-5 (counted in `claude_nested`), and gate verdict PASS.
 4. Wall: each cell under 30 minutes.
 5. As in the Session 3 smoke, the assessors are expected to call the SMOKE product not complete because of its unverifiable process instruction. This smoke checks routes, not completion.
+
+### Results (2026-09-26, image 84a01941, control v2 `f51c73f2…`, apparatus `d6b2b208`)
+
+| Cell | Owner | Seconds | Teardown | Identity | Usage | Checks | Gate | Assessors (claude / codex) | Status |
+|---|---|---:|---|---|---|---|---|---|---|
+| smoke-Bp-claude | EXITED_0 | 62 | CLEAN | MATCH | PARTIAL | pass | PASS | not / not | PRODUCT_INCOMPLETE |
+| smoke-Bp-codex | EXITED_0 | 165 | CLEAN | MATCH | PARTIAL | pass | PASS | not (1 severe) / not | PRODUCT_INCOMPLETE |
+
+1. **Held.** No stop, and the oracle and public check pass. The only usage gap is `B' isolated codex reviews`.
+2. **Held.** Bp-claude: `delegate_required: false`; primary claude-opus-5-5 (PASS_WITH_ISSUES, 9 s); pair gpt-6-astra/high (PASS, 8 s); gate PASS. `claude_nested` counts the review's 621 output tokens.
+3. **Held.** Bp-codex: one delegation observed as gpt-6-sol/high (exit 0), primary gpt-6-astra, pair claude-opus-5-5 (493 nested output tokens), gate PASS. The executor spawned the requested native subagent inside its own delegation.
+4. **Held.** 62 s and 165 s.
+5. **Held.** All four assessments are not complete, for the smoke's unverifiable process instruction. The one severe finding is that same point.
+
+The gate disclosed that it reaped lingering processes after reviews and delegations. This is its Linux subreaper path working as designed.
