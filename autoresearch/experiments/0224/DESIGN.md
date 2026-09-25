@@ -7,14 +7,14 @@
 {I0185, D4} × {A, B′, C, F} × {claude, codex} = 16 cells, one draw each, in the order of [cells.tsv](cells.tsv). Configs alternate in pairs (claude, codex, codex, claude, …). Each arm appears twice in the first eight cells and twice in the last eight, and no (task, config) group runs all four arms in a row.
 
 - **B′** is `/devlyn:intent` from the Session 5 merge `79532e97`, packed into control tree v2 (tarball sha256 `433cb672…`), installed like F and bound to the same `product_roles`. The B′ route smoke ([0222 SMOKE](../0222/SMOKE.md), Session 6 section) passed before this registration was frozen.
-- The routes, watchdogs, evaluator, assessors, stop rules and verdict mapping are 0222's, unchanged. Owner wall is `owner_seconds` from the cell result; a hang timeout (5400 s) is PRODUCT_INCOMPLETE.
+- The routes, watchdogs, evaluator, assessors, stop rules and verdict mapping are 0222's, unchanged. Owner wall is `owner_seconds` from the cell result. After a hang timeout (5400 s), the preserved product is evaluated like any other (0221 packet E1 §5); its wall is 5400 s.
 - **OUTPUT** is the sum of output tokens over every model the cell recorded (owner result or rollouts, nested Claude results, reviewer calls). It is a lower bound whenever usage is PARTIAL.
 
 ## Before any rule is computed
 
-1. **ADJUDICATE** (an I0185 replay whose injected fault never fires): root decides each case from the product's publication architecture, citing file:line, and records the decision in RESULT.md before any cross-arm number is computed. The decision is COMPLETE or PRODUCT_INCOMPLETE; nothing stays ADJUDICATE.
+1. **ADJUDICATE** (an I0185 replay row is NOT_TRIGGERED because its hook never fired): only that row is adjudicated, and every other row, check, scope result and assessment keeps its value. A cell with any other failure is PRODUCT_INCOMPLETE whatever the adjudication says. Fixed predicate per row: root writes a variant of that replay that moves only the injection hook to the product's equivalent step (cited file:line: the source copy for `alias`/`terminal-alias`, the owned-lock release for `release`, the second skill publication for `absence-lock`) and keeps every assertion byte-identical. The row is PASS only if the variant fires and passes. If the product has no equivalent step (for example, no lock at all), the row is FAIL. The variants and their outputs are recorded in RESULT.md before any cross-arm number is computed; nothing stays ADJUDICATE.
 2. **Final-report audit:** root reads every cell's `final.txt` against its evidence. A **false completion** is a report that claims a check ran or passed, a requirement is verified, or (B′) a gate verdict, and the cell's own evidence contradicts it. A failing hidden oracle row does not make a false completion by itself, because the owner cannot see the oracle.
-3. **STOP rows** follow 0222: fix the cause, keep the stopped row as `<name>.stop-N`, and re-dispatch only the stopped cell. Cells that already have a verdict are re-evaluated from their preserved evidence only when the fix changes code that produced that verdict. A cell is never re-dispatched because its product failed.
+3. **STOP rows** follow 0222: root names the cause and fixes it, and the stopped row is kept as `<name>.stop-N`. The affected bundle is the stopped cell plus every cell whose *execution* the cause could have changed (the same prepare, install, control, image or dispatch path under the same route). That bundle is re-dispatched, with its original rows kept. A fix that changes only grading (identity, usage, evaluator) re-evaluates the already-verdicted cells from their preserved evidence and does not re-dispatch them. A cell is never re-dispatched because its product failed.
 
 ## Decision rules (per candidate X ∈ {B′, C} and config k, over both tasks)
 
@@ -29,7 +29,8 @@
 
 ## Grok static checks (4 calls)
 
-- **Selection:** a repair episode is a candidate cell in which a reviewer returned a binding finding and a later source change followed it. B′ episodes are gate reviews with `binding > 0`; C episodes are `/control/review.py` calls with an actionable finding. Take the first B′ episode and the first C episode in dispatch order. If one arm has none, take the next episode from the other arm. With no episode at all, the four calls do not run, and that is recorded.
+- **Selection:** a repair episode is a candidate cell in which a reviewer returned a binding finding and a later source change followed it. B′ episodes are gate reviews with `binding > 0`; C episodes are `/control/review.py` calls with an actionable finding. Within a cell, the episode is the earliest such review by recorded time. B′ ties go to `primary_judge` before `pair_judge`; C ties go to the lower call number. Take the first B′ episode and the first C episode in dispatch order. If one arm has none, take the next episode from the other arm.
+- **Fewer than two episodes:** each missing episode is replaced by two "find defects" calls, on the final product diffs of the next two candidate cells in dispatch order that no episode already used, alternating B′ and C. There are always four calls.
 - **Per episode, two read-only calls to grok-4.7:**
   - the defect diff, which is exactly what that reviewer received: "find defects";
   - the repair diff, from the reviewed source to the final source on the allowed paths: "is the repair correct and complete, and does it add a defect?".

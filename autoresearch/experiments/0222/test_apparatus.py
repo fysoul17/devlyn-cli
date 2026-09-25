@@ -283,6 +283,20 @@ class Pure(unittest.TestCase):
         timed_out = dict(good, reviews=[dict(role='pair_judge', engine='claude', model_observed=None)])
         got = cell.identity(self.b_cell(timed_out), plan)
         self.assertEqual((got['status'], len(got['gaps'])), ('MATCH', 1))
+        # A failed call is left unauthenticated by the gate; its saved native evidence still binds the model.
+        failed = dict(good, reviews=[dict(role='primary_judge', engine='codex', model_observed=None,
+                                          stderr=dict(path='.devlyn/intent/reviews/x.stderr')),
+                                     dict(role='pair_judge', engine='claude', model_observed=None,
+                                          stdout=dict(path='.devlyn/intent/reviews/y.stdout'))])
+        for header, result, status in (('gpt-6-astra', 'claude-opus-5-5', 'MATCH'), ('gpt-6-sol', 'claude-opus-5-5', 'MISMATCH'),
+                                       ('gpt-6-astra', 'claude-sonnet-5', 'MISMATCH')):
+            work = self.b_cell(failed)
+            (work / 'work/.devlyn/intent/reviews').mkdir()
+            (work / 'work/.devlyn/intent/reviews/x.stderr').write_text(
+                f'OpenAI Codex\nmodel: {header}\nuser\nmodel: gpt-6-astra\n')  # prompt text never counts
+            (work / 'work/.devlyn/intent/reviews/y.stdout').write_text(json.dumps(dict(modelUsage={result: {}})))
+            got = cell.identity(work, plan)
+            self.assertEqual((got['status'], got['gaps']), (status, []), got['violations'])
         self.assertEqual(len(cell.identity(self.b_cell('{"roles": {'), plan)['gaps']), 1)
 
     def test_b_prime_claude_reviews_are_counted_and_codex_reviews_are_a_gap(self):
@@ -298,6 +312,8 @@ class Pure(unittest.TestCase):
         totals, unreadable = usage.claude_nested(devlyn)
         self.assertEqual((totals['claude-opus-5-5']['output'], unreadable), (80, []))  # both runs, codex text skipped
         self.assertTrue(any(engine == 'codex' for engine, _ in usage.intent_reviews(devlyn)[0]))
+        (devlyn / 'intent/reviews/b.stdout').write_text(json.dumps(dict(session_id='e', is_error=True)))
+        self.assertEqual(usage.claude_nested(devlyn)[1], ['b.stdout'])  # an error result without usage is named
         (devlyn / 'intent/reviews/b.stdout').unlink()
         self.assertEqual(usage.claude_nested(devlyn)[1], ['b.stdout'])  # a killed review is named, not zero
 

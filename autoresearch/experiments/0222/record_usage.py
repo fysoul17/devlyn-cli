@@ -125,7 +125,10 @@ def claude_nested(devlyn):
         except (OSError, ValueError):  # e.g. a review killed before it wrote its result
             unreadable.append(path.name)
             continue
-        if not isinstance(result, dict) or not result.get('modelUsage') or result.get('session_id') in seen:
+        if not isinstance(result, dict) or not result.get('modelUsage'):  # e.g. an error result: usage unknown
+            unreadable.append(path.name)
+            continue
+        if result.get('session_id') in seen:
             continue
         seen.add(result.get('session_id'))
         for model, usage in result['modelUsage'].items():

@@ -46,6 +46,23 @@ def frozen_mismatch(frozen, roles):
             and (frozen[role].get('engine'), frozen[role].get('model_requested')) != (want['engine'], want.get('model'))]
 
 
+def recorded(item, run, engine):
+    """Models an intent gate call ran on: its authenticated model, plus the native evidence it saved, which the
+    gate leaves unauthenticated after a failed or timed-out call (Codex header; Claude result modelUsage)."""
+    seen = {item['model_observed']} if item.get('model_observed') else set()
+    stream = item.get('stderr' if engine == 'codex' else 'stdout') or {}
+    path = run / Path(stream.get('path', '.devlyn/intent')).relative_to('.devlyn/intent')
+    text = path.read_text(errors='replace') if path.is_file() else ''
+    if engine == 'codex':
+        seen |= set(re.findall(r'^model: (\S+)$', text.partition('\nuser\n')[0], re.M))
+    else:
+        try:
+            seen |= {m for m in json.loads(text).get('modelUsage') or {} if not INTERNAL.match(m)}
+        except (ValueError, AttributeError):
+            pass
+    return {m.split('[')[0] for m in seen}
+
+
 def routed(plan):
     """Models each engine may run in this cell, from its route roles."""
     route = TASKS['routes'][plan['config']]
@@ -135,13 +152,14 @@ def identity(cell, plan):
             gaps.append(f'unreadable {path.relative_to(cell)}')
             continue
         violations += frozen_mismatch((state.get('roles') or {}).get('roles') or {}, roles)
-        calls = [dict(item, role='worker') for item in state.get('delegations') or ()] + list(state.get('reviews') or ())
+        calls = ([dict(item, role='worker', engine=roles['worker']['engine']) for item in state.get('delegations') or ()]
+                 + list(state.get('reviews') or ()))
         for item in calls:
-            want, seen = roles[item['role']], item.get('model_observed')
-            if not seen:  # the gate authenticated no model (a timeout or crash): a gap, never a match
-                gaps.append(f'{item["role"]} call without an observed model in {path.relative_to(cell)}')
-            elif seen.split('[')[0] not in ({want['model']} if want.get('model') else allowed[want['engine']]):
-                violations.append(f'intent {item["role"]} ran {seen}, not {want.get("model")}')
+            want, seen = roles[item['role']], recorded(item, path.parent, item['engine'])
+            if not seen:  # no model evidence at all (killed before the header or result): a gap, never a match
+                gaps.append(f'{item["role"]} call without model evidence in {path.relative_to(cell)}')
+            violations += [f'intent {item["role"]} ran {m}, not {want.get("model")}' for m in sorted(seen)
+                           if m not in ({want['model']} if want.get('model') else allowed[want['engine']])]
     # 3.2.1 leaves a Codex worker's model_effective null; bind each wrapper-captured Codex worker session to its
     # rollout. Claude transcripts share the file pattern (surface-close) and are covered by the checks above.
     worker = roles.get('worker', {})
