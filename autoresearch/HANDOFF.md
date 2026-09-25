@@ -32,9 +32,9 @@
 **Next:** Session 5, after the Session 4 PR (branch `candidate/0221-s4-instruction-layer`) is merged.
 
 Session 4 record (base `9684dc6`): [0223](experiments/0223/DESIGN.md) makes the drift probe isolated for both engines. Claude runs through the sealed claude-isolation.py, and Codex gets a fresh CODEX_HOME, `env -i` and a render check. Both use pinned CLI snapshots (`~/.local/share/nx01/pins/{claude-2.1.282,codex-0.156.1}-0223`); their sha256 is recorded per run and required by the adjudicator. Timeouts are scored, infra gets at most two attempts, and verdicts are written atomically. The matrix driver gains `--instructions`/`--probes`.
-- Result: 288/288 scored, 0 infra, frozen token `SLIM_REJECTED:claude-sonnet-5,gpt-6-astra`. Both regressions are B5; every failure keeps the self-orphaned import, which traces to the dropped "orphans YOUR change created → clean them up" sentence. EQ3 shows no regression; slim cuts median input tokens by 14–51%.
-- Consequence: Session 8 has no measured instruction candidate, so the current text stays. A slim+orphan candidate needs its own registration (open user decision; see RESULT.md "Follow-up").
-- Checks: adjudicator self-test, fake-engine plumbing, lint and test-seat-matrix pass; a smoke of 18 runs plus a canary passed.
+- Result: 288/288 scored, 0 infra, frozen token `SLIM_REJECTED:claude-sonnet-5,gpt-6-astra`. Both regressions are B5; every failure leaves the self-orphaned helper and import. The leading hypothesis is the dropped "orphans YOUR change created → clean them up" sentence, which is untested until an add-back run. EQ3 shows no regression; slim cuts median input tokens by 14–51%.
+- Consequence: Session 8 has no measured instruction candidate, so the current text stays. A slim+orphan add-back candidate needs its own registration (open user decision; see RESULT.md "Follow-up").
+- Checks: adjudicator self-test, fake-engine plumbing, lint and test-seat-matrix pass; the smoke passed (18 runs: 12 B4 plus 6 canary).
 - Reviews: R1 REVISE from Astra and Grok (5 defects, all fixed); R2 SMOKE-READY from both.
 - Open: the Session 3 scratch (`clean-scratch --receipt .git/devlyn-completion/31acb01f544054541f034b19/receipt.json --writers-stopped`) is still BLOCKED because the Docker Desktop VM holds file handles; its credential snapshots are already deleted. `.devlyn/0222/` keeps the Session 3 evidence.
 
