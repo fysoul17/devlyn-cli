@@ -72,6 +72,9 @@ _shared/state-phase-write.py
 _shared/terminal-claim-check.py
 _shared/resolve-stop-hook.py
 _shared/resolve-bootstrap.py
+_shared/intent-gate.py
+devlyn:intent/SKILL.md
+devlyn:intent/references/review.md
 devlyn:ideate/SKILL.md
 devlyn:ideate/references/spec-template.md
 devlyn:ideate/references/elicitation.md
@@ -267,7 +270,7 @@ if [ ! -e "optional-skills/devlyn:design-ui" ]; then
 else
   bad "devlyn:design-ui must not be installed as an optional addon"
 fi
-if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];" bin/devlyn.js \
+if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn:intent', 'devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];" bin/devlyn.js \
    && grep -Fq "skillsToInstall: DEVLYN_CORE_SKILLS" bin/devlyn.js; then
   ok "Codex install includes devlyn:design-ui (via shared DEVLYN_CORE_SKILLS bundle)"
 else
@@ -404,7 +407,7 @@ check_skill_mirror_parity \
 
 # ---------------------------------------------------------------------------
 # 6b. VERIFY merge verdict binding self-test.
-for helper in role-config judge-role-evidence task-complete; do
+for helper in role-config judge-role-evidence task-complete intent-gate; do
   if python3 "config/skills/_shared/$helper.py" --self-test; then
     ok "$helper.py self-test passed"
   else

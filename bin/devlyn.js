@@ -14,7 +14,7 @@ const { updateInstructions, InstructionError } = require('./instructions');
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
 // skill here installs it everywhere.
-const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];
+const DEVLYN_CORE_SKILLS = ['devlyn:intent', 'devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];
 const DEVLYN_SKILL_DIR_STAMP = '__DEVLYN_SKILL_DIR__';
 const DEVLYN_INSTALL_MARKER = '.devlyn-install.json';
 
@@ -668,7 +668,7 @@ function detectOtherCLIs() {
   return detected;
 }
 
-// Install devlyn:resolve + devlyn:ideate + devlyn:design-ui + _shared skills into a CLI's
+// Install DEVLYN_CORE_SKILLS into a CLI's
 // global skills directory (e.g. ~/.codex/skills/). Returns count of skills
 // copied. Skipped silently for CLIs without a skillsDir (e.g. cursor, copilot
 // at the time of writing — they don't have an analogous skill-loader).
@@ -730,7 +730,7 @@ function installAgentsForCLI(cliKey) {
   const instr = installInstructionsForCLI(cliKey);
   const skillsCopied = installSkillsForCLI(cliKey);
   if (skillsCopied > 0) {
-    log(`  → ${skillsCopied} skill${skillsCopied > 1 ? 's' : ''} installed (devlyn:resolve / devlyn:ideate / devlyn:design-ui / _shared)`, 'dim');
+    log(`  → ${skillsCopied} skill${skillsCopied > 1 ? 's' : ''} installed (${DEVLYN_CORE_SKILLS.join(' / ')})`, 'dim');
   }
   return instr || skillsCopied > 0;
 }
