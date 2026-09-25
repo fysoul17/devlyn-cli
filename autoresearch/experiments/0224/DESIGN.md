@@ -66,4 +66,6 @@ The first pass (all 16 cells, `screen-out/`) hit two shared infrastructure fault
 - Re-assessed from preserved evidence, because only the Claude assessor failed and execution was sound: 6 and 10.
 - Kept: 1–5, whose execution and grading show neither fault.
 
+**Review.** Astra A1: bundle, fixes and account handling confirmed. Its two operator-script defects are fixed (the re-assessment records its account and time, and a STOP exits 2).
+
 **Account.** The registered account (`9f2f3a39…`) stays limited until 2026-09-29 05:00 KST. The host is now on a second Max account (`230ea92e…`, 7-day utilization 2%), and the redone cells run and are assessed on it. Models, effort, routes and identity checks are unchanged. The account is a venue property, and each cell's seal records it.
