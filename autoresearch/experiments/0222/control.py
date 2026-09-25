@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 import urllib.request
 import zipfile
 
@@ -20,6 +21,9 @@ PINNED = {  # name: (url, sha256)
     'devlyn-cli.tgz': ('https://registry.npmjs.org/devlyn-cli/-/devlyn-cli-3.2.1.tgz',
                        '17e57582213e52ca1fbf7b5de181c3112b44703aca4f181e0120e7884a773c5b'),
 }
+# B': `npm pack` of the Session 5 merge (PR #114), pinned like a download; packing is byte-reproducible.
+CANDIDATE = ('79532e9738b67abfd40e51dc7d613f507c0c78d1',
+             '433cb672fa63f3e9450bf4686427fd451d752849d640a79312c5ae6251e2b245')
 TRACKED = ['autoresearch/experiments/0206/tasks.json', 'autoresearch/experiments/0207/calibrate.py',
            'autoresearch/experiments/0207/commander.mjs', 'autoresearch/experiments/0207/click_checks.py',
            'autoresearch/experiments/0211/packet.py', 'autoresearch/experiments/0185/support.js',
@@ -44,6 +48,21 @@ def fetch(cache, name):
     return path
 
 
+def pack(cache):
+    commit, sha = CANDIDATE
+    path = cache / 'devlyn-intent.tgz'
+    if not path.exists():
+        with tempfile.TemporaryDirectory() as temp:
+            archive = subprocess.run(['git', 'archive', commit], cwd=REPO, check=True, capture_output=True).stdout
+            subprocess.run(['tar', '-x', '-C', temp], input=archive, check=True)  # the repo has absolute symlinks
+            name = subprocess.run(['npm', 'pack', '--silent', '--ignore-scripts', '--pack-destination', str(cache)],
+                                  cwd=temp, check=True, capture_output=True, text=True).stdout.split()[-1]
+            (cache / name).rename(path)
+    if digest(path) != sha:
+        raise ValueError('devlyn-intent.tgz: sha256 mismatch')
+    return path
+
+
 def build(sources, cache, out):
     out.mkdir(parents=False, exist_ok=False)
     for name in TRACKED:
@@ -61,6 +80,8 @@ def build(sources, cache, out):
     (out / 'ruff').chmod(0o755)
     with tarfile.open(fetch(cache, 'devlyn-cli.tgz')) as archive:
         archive.extractall(out / 'devlyn-cli', filter='data')
+    with tarfile.open(pack(cache)) as archive:
+        archive.extractall(out / 'devlyn-intent', filter='data')
     # Click's tests read installed metadata; /work/src still shadows the code.
     subprocess.run([sys.executable, '-m', 'pip', 'install', '--quiet', '--no-deps', '--no-compile',
                     '--target', str(out / 'python'), str(sources / 'click')], check=True)

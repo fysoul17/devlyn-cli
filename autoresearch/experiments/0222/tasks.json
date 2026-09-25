@@ -155,7 +155,7 @@
     "model": "gpt-6-astra",
     "effort": "high"
    },
-   "F_roles": {
+   "product_roles": {
     "worker": {
      "engine": "claude"
     },
@@ -183,7 +183,7 @@
     "model": "claude-opus-5-5",
     "effort": "high"
    },
-   "F_roles": {
+   "product_roles": {
     "worker": {
      "engine": "codex",
      "model": "gpt-6-sol",

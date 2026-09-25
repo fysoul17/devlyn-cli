@@ -253,6 +253,54 @@ class Pure(unittest.TestCase):
         got = cell.identity(work, dict(engine='claude', model='claude-opus-5-5', config='claude', arm='F'))
         self.assertEqual(got['status'], 'MATCH', got['violations'])
 
+    def b_cell(self, *states):
+        """A B' Codex cell whose intent gate recorded these runs; the first is current, the rest archived."""
+        work = Path(tempfile.mkdtemp(dir=self.root))
+        (work / 'run').mkdir()
+        (work / 'run/stdout').write_text(json.dumps(dict(type='thread.started', thread_id='owner')) + '\n')
+        rollout(work / 'home/.codex/sessions/rollout-owner.jsonl', 'owner', 'exec', 'gpt-6-astra', 1)
+        for index, state in enumerate(states):
+            folder = work / 'work/.devlyn/intent' / ('runs/in-%d' % index if index else '')
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / 'run.json').write_text(state if isinstance(state, str) else json.dumps(state))
+        return work
+
+    def test_b_prime_calls_are_bound_to_their_roles(self):
+        routes = json.loads((HERE / 'tasks.json').read_text())['routes']['codex']['product_roles']
+        roles = dict(roles={r: dict(engine=e['engine'], model_requested=e.get('model')) for r, e in routes.items()})
+        good = dict(roles=roles, delegations=[dict(model_observed='gpt-6-sol')],
+                    reviews=[dict(role='primary_judge', engine='codex', model_observed='gpt-6-astra'),
+                             dict(role='pair_judge', engine='claude', model_observed='claude-opus-5-5[1m]')])
+        plan = dict(engine='codex', model='gpt-6-astra', config='codex', arm="B'")
+        got = cell.identity(self.b_cell(good, good), plan)
+        self.assertEqual((got['status'], got['gaps']), ('MATCH', []), got['violations'])
+        swapped = dict(good, reviews=[dict(role='primary_judge', engine='codex', model_observed='gpt-6-sol')])
+        self.assertEqual(cell.identity(self.b_cell(good, swapped), plan)['status'], 'MISMATCH')  # archived run too
+        executor = dict(good, delegations=[dict(model_observed='gpt-6-astra')])
+        self.assertEqual(cell.identity(self.b_cell(executor), plan)['status'], 'MISMATCH')
+        frozen = dict(good, roles=dict(roles=dict(roles['roles'], worker=dict(engine='codex', model_requested='gpt-6-astra'))))
+        self.assertEqual(cell.identity(self.b_cell(frozen), plan)['status'], 'MISMATCH')
+        timed_out = dict(good, reviews=[dict(role='pair_judge', engine='claude', model_observed=None)])
+        got = cell.identity(self.b_cell(timed_out), plan)
+        self.assertEqual((got['status'], len(got['gaps'])), ('MATCH', 1))
+        self.assertEqual(len(cell.identity(self.b_cell('{"roles": {'), plan)['gaps']), 1)
+
+    def test_b_prime_claude_reviews_are_counted_and_codex_reviews_are_a_gap(self):
+        devlyn = self.root / '.devlyn'
+        result = dict(session_id='r', modelUsage={'claude-opus-5-5[1m]': dict(inputTokens=1, outputTokens=40)})
+        for folder, name in ((devlyn / 'intent', 'b'), (devlyn / 'intent/runs/in-1', 'a')):
+            (folder / 'reviews').mkdir(parents=True)
+            (folder / 'reviews' / (name + '.stdout')).write_text(json.dumps(dict(result, session_id=name)))
+            (folder / 'reviews' / (name + '-c.stdout')).write_text('plain codex text, not JSON')
+            (folder / 'run.json').write_text(json.dumps(dict(reviews=[
+                dict(engine='claude', stdout=dict(path=f'.devlyn/intent/reviews/{name}.stdout')),
+                dict(engine='codex', stdout=dict(path=f'.devlyn/intent/reviews/{name}-c.stdout'))])))
+        totals, unreadable = usage.claude_nested(devlyn)
+        self.assertEqual((totals['claude-opus-5-5']['output'], unreadable), (80, []))  # both runs, codex text skipped
+        self.assertTrue(any(engine == 'codex' for engine, _ in usage.intent_reviews(devlyn)[0]))
+        (devlyn / 'intent/reviews/b.stdout').unlink()
+        self.assertEqual(usage.claude_nested(devlyn)[1], ['b.stdout'])  # a killed review is named, not zero
+
     def test_torn_pipeline_state_is_a_gap_not_a_crash(self):
         result = self.f_cell('{"role_resolution": {"ro')
         self.assertEqual((result['status'], len(result['gaps'])), ('MATCH', 1))
@@ -411,7 +459,7 @@ class Container(unittest.TestCase):
         for config in ('claude', 'codex'):
             work = self.root / config
             (work / '.devlyn').mkdir(parents=True)
-            (work / '.devlyn/engines.json').write_text(json.dumps(dict(roles=routes[config]['F_roles'])))
+            (work / '.devlyn/engines.json').write_text(json.dumps(dict(roles=routes[config]['product_roles'])))
             done = subprocess.run(['docker', 'run', '--rm', '--network', 'none', '--mount',
                                    f'type=bind,src={self.root},dst=/w', '--mount', f'type=bind,src={CONTROL},dst=/control,readonly',
                                    '--env', 'HOME=/w/home', IMAGE, 'python3',
@@ -419,9 +467,34 @@ class Container(unittest.TestCase):
                                    '--workdir', f'/w/{config}', '--default-engine', config], capture_output=True, text=True)
             self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
             roles = json.loads(done.stdout)['roles']
-            for role, entry in routes[config]['F_roles'].items():
+            for role, entry in routes[config]['product_roles'].items():
                 self.assertEqual(roles[role]['engine'], entry['engine'])
                 self.assertEqual(roles[role]['model_requested'], entry.get('model'))
+
+    @unittest.skipUnless(CONTROL, 'APPARATUS_CONTROL not set')
+    def test_b_prime_installs_intent_and_its_gate_freezes_the_product_roles(self):
+        routes = json.loads((HERE / 'tasks.json').read_text())['routes']
+        runtime = dict(sources=str(SOURCES), control=CONTROL, image=IMAGE, output=str(self.root), auth='/a',
+                       models_cache=str(Path.home() / '.codex/models_cache.json'))
+        gates = {'claude': '/work/.claude/skills/_shared/intent-gate.py',
+                 'codex': '/home/participant/.codex/skills/_shared/intent-gate.py'}
+        for config, gate in gates.items():
+            out = prepare.prepare(runtime, 'b-' + config, 'SMOKE', "B'", config)
+            prompt = (out / 'prompt.txt').read_text()
+            self.assertTrue(prompt.endswith('/devlyn:intent --goal-file .devlyn/goal.txt'), prompt)
+            self.assertIn('devlyn:intent/SKILL.md' if config == 'codex' else '/devlyn:intent', prompt)
+            self.assertEqual(git(out / 'work', 'status', '--porcelain', '--untracked-files=all'), '')
+            done = subprocess.run(['docker', 'run', '--rm', '--network', 'none', '--mount',
+                                   f'type=bind,src={out / "work"},dst=/work', '--mount',
+                                   f'type=bind,src={out / "home"},dst=/home/participant', '--env', 'HOME=/home/participant',
+                                   IMAGE, 'python3', gate, 'start', '--owner', config, '--',
+                                   '--goal-file', '.devlyn/goal.txt'], capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            state = json.loads((out / 'work/.devlyn/intent/run.json').read_text())
+            self.assertEqual(state['delegate_required'], config == 'codex')
+            for role, entry in routes[config]['product_roles'].items():
+                frozen = state['roles']['roles'][role]
+                self.assertEqual((frozen['engine'], frozen['model_requested']), (entry['engine'], entry.get('model')))
 
     @unittest.skipUnless(SOURCES.exists() and CONTROL, 'registered sources or APPARATUS_CONTROL absent')
     def test_d4_file_beside_package_breaks_collection_but_package_file_does_not(self):

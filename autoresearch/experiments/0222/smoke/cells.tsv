@@ -5,3 +5,5 @@ smoke-C-claude SMOKE C claude
 smoke-C-codex SMOKE C codex
 smoke-F-claude SMOKE F claude
 smoke-F-codex SMOKE F codex
+smoke-Bp-claude SMOKE B' claude
+smoke-Bp-codex SMOKE B' codex

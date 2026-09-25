@@ -36,3 +36,15 @@ Against the predictions:
 6. **Held.** A/C cells took 34–60 s; F cells took 340–560 s.
 
 No container survived, no credential copy remained, and no credential bytes are in the evidence tree. The only token-like strings are inside a Codex plugin cache's source files.
+
+## Session 6: B′ route smoke
+
+B′ = `npm pack` of the Session 5 merge `79532e97` (tarball sha256 `433cb672…`), installed like F and bound through the same `product_roles`. The two `smoke-Bp-*` cells are the first model runs of `/devlyn:intent`. Control tree v2 = Session 3's plus `devlyn-intent/` (134 files) and the renamed `tasks.json` key, with no other manifest change.
+
+### Predictions (written before dispatch, 2026-09-26)
+
+1. Both cells: teardown CLEAN, no stop, identity MATCH, SMOKE oracle and public check pass. Usage PARTIAL, with the gap `B' isolated codex reviews` (each config has one Codex judge, and the gate runs it `--ephemeral`); never 0.
+2. smoke-Bp-claude: the gate's run.json has `delegate_required: false`, at least one `primary_judge` review observed as claude-opus-5-5 and one `pair_judge` review observed as gpt-6-astra, and gate verdict PASS. `claude_nested` includes the Claude review's usage.
+3. smoke-Bp-codex: `delegate_required: true`, at least one delegation observed as gpt-6-sol, a `primary_judge` observed as gpt-6-astra and a `pair_judge` observed as claude-opus-5-5 (counted in `claude_nested`), and gate verdict PASS.
+4. Wall: each cell under 30 minutes.
+5. As in the Session 3 smoke, the assessors are expected to call the SMOKE product not complete because of its unverifiable process instruction. This smoke checks routes, not completion.

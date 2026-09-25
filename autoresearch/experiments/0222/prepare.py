@@ -17,7 +17,7 @@ REVIEW = ('Before finishing, obtain an independent review with `python3 /control
           'tools. Reproduce and repair actionable findings, rerun affected checks, and obtain a fresh review after '
           'any source change.')
 INSTALL = {'claude': ['-y'], 'codex': ['agents', 'codex']}
-SKILL = '/home/participant/.codex/skills/devlyn:resolve/SKILL.md'
+PRODUCT = {'F': ('devlyn-cli', 'resolve'), "B'": ('devlyn-intent', 'intent')}  # arm: (/control package, skill)
 
 
 def git(work, *args):
@@ -44,16 +44,16 @@ def source(task, runtime, work):
         exclude.write('.devlyn/\n')
 
 
-def install(runtime, work, home, config):
-    """Arm F: the published 3.2.1 installer, offline, in the cell image; its output becomes the baseline."""
+def install(runtime, work, home, config, package):
+    """Product arms: the package's own installer, offline, in the cell image; its output becomes the baseline."""
     subprocess.run(['docker', 'run', '--rm', '--network', 'none', '--cap-drop', 'ALL',
                     '--security-opt', 'no-new-privileges', '--env', 'HOME=/home/participant', '-w', '/work',
                     '--mount', f'type=bind,src={work},dst=/work', '--mount', f'type=bind,src={home},dst=/home/participant',
                     '--mount', f'type=bind,src={runtime["control"]},dst=/control,readonly', runtime['image'],
-                    'node', '/control/devlyn-cli/package/bin/devlyn.js', *INSTALL[config]],
+                    'node', f'/control/{package}/package/bin/devlyn.js', *INSTALL[config]],
                    check=True, capture_output=True, timeout=300)
     git(work, 'add', '-A')
-    git(work, 'commit', '-qm', 'install devlyn-cli 3.2.1')
+    git(work, 'commit', '-qm', 'install /control/' + package)
 
 
 def codex_toml(owner):
@@ -69,8 +69,8 @@ def codex_toml(owner):
 def prepare(runtime, name, task_id, arm, config):
     task = next(t for t in TASKS['tasks'] if t['id'] == task_id)
     route = TASKS['routes'][config]
-    if arm not in ('A', 'C', 'F'):
-        raise ValueError("arm must be A, C or F; B' binds its candidate package in Session 5")
+    if arm not in ('A', 'C', *PRODUCT):
+        raise ValueError("arm must be A, B', C or F")
     out = Path(runtime['output']) / name
     out.mkdir(parents=True, exist_ok=False)
     work, home = out / 'work', out / 'home'
@@ -81,10 +81,10 @@ def prepare(runtime, name, task_id, arm, config):
         shutil.copyfile(runtime['models_cache'], home / '.codex/models_cache.json')
     if config == 'codex':
         (home / '.codex/config.toml').write_text(codex_toml(route['owner']))
-    if arm == 'F':
-        install(runtime, work, home, config)
+    if arm in PRODUCT:
+        install(runtime, work, home, config, PRODUCT[arm][0])
         (work / '.devlyn').mkdir()
-        (work / '.devlyn/engines.json').write_text(json.dumps(dict(roles=route['F_roles']), indent=2) + '\n')
+        (work / '.devlyn/engines.json').write_text(json.dumps(dict(roles=route['product_roles']), indent=2) + '\n')
     # task-complete accepts only a GitHub remote; the cell has no push credentials.
     git(work, 'remote', 'add', 'origin', f'https://github.com/{task["repository"]}.git')
     if git(work, 'status', '--porcelain', '--untracked-files=all'):
@@ -100,13 +100,14 @@ def prepare(runtime, name, task_id, arm, config):
     (work / '.devlyn').mkdir(exist_ok=True)
     (work / '.devlyn/caller.json').write_text(json.dumps(caller, indent=2))
     common = (HERE / 'common.txt').read_text()
-    if arm == 'F':
+    if arm in PRODUCT:
         goal = (request + '\n\nALLOWED PATHS\n' + '\n'.join(task['allowed']) + '\n\nPUBLIC CHECKS\n'
                 + '\n'.join(task['public_checks']) + '\n\nCONSTRAINTS\n' + common.replace('There is no later repair turn. ', '')
                 + 'Local-only: do not push or open a pull request.\n')
         (work / '.devlyn/goal.txt').write_text(goal)
-        prompt = ('/devlyn:resolve --goal-file .devlyn/goal.txt' if config == 'claude' else
-                  f'Read {SKILL} and execute /devlyn:resolve --goal-file .devlyn/goal.txt')
+        command = f'/devlyn:{PRODUCT[arm][1]} --goal-file .devlyn/goal.txt'
+        prompt = (command if config == 'claude' else
+                  f'Read /home/participant/.codex/skills/devlyn:{PRODUCT[arm][1]}/SKILL.md and execute {command}')
     else:
         prompt = common + '\nCALLER CONTRACT\n' + json.dumps(caller, indent=2) + ('\n\n' + REVIEW if arm == 'C' else '')
     (out / 'prompt.txt').write_text(prompt)
