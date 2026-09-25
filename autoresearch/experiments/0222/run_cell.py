@@ -1,7 +1,7 @@
 """Run one cell end to end: run_cell.py <runtime.json> <name> <task> <arm> <config>.
 
 Exit 0 = verdict recorded (any product outcome), 3 = not dispatched, 2 = stop the screen: container survivor,
-control/source seal mismatch, model identity collapse, or an evaluator that produced no verdict.
+control/source seal mismatch, model identity collapse, or an evaluator or assessor that produced no verdict.
 """
 import datetime
 import hashlib
@@ -66,6 +66,11 @@ def snapshot_auth(runtime):
     return dict(account=identity, token_seconds_left=int(remaining)), None
 
 
+def unassessed(assessments):
+    """Assessors that returned no verdict (crash, timeout, account limit): the common evaluator failed (0221 §4)."""
+    return [a['route']['model'] for a in assessments if a['exit_code'] != 0 or a['complete'] is None]
+
+
 def verdict(checks, assessments):
     assessed = all(a['complete'] for a in assessments) and not any(a['severe'] for a in assessments)
     if checks['product_check_pass'] and assessed:
@@ -116,8 +121,10 @@ def run(runtime_path, name, task, arm, config):
                   scope_violations=checks['scope_violations'], assessments=assessments,
                   assessor_disagreement=len({a['complete'] for a in assessments}) > 1,
                   status=verdict(checks, assessments))
+    if unassessed(assessments):
+        record.update(status='STOP', reason='assessor produced no verdict: ' + ', '.join(unassessed(assessments)))
     verdict_path.write_text(json.dumps(record, indent=2))
-    return 0
+    return 2 if record['status'] == 'STOP' else 0
 
 
 if __name__ == '__main__':

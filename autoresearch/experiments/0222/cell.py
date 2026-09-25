@@ -207,7 +207,10 @@ def run(cell, runtime):
     argv = ['create', '--name', name, '--label', 'devlyn.task=0222', '--network', 'bridge', '--cap-drop', 'ALL',
             '--security-opt', 'no-new-privileges', '--security-opt', 'seccomp=unconfined', '--read-only',
             '--restart=no', '--pids-limit', '256', '--memory', '4g', '--cpus', '2',
-            '--tmpfs', '/tmp:rw,nosuid,exec,size=536870912', '-w', '/work']
+            '--tmpfs', '/tmp:rw,nosuid,exec,size=536870912',
+            # Codex keeps per-process helper links under CODEX_HOME/tmp/arg0; on the host bind mount a second codex
+            # process's janitor cannot see the live lock and deletes them (0224: F worker exec/writes failed).
+            '--tmpfs', '/home/participant/.codex/tmp:rw,nosuid,exec,uid=501,gid=501', '-w', '/work']
     for src, dst, readonly in mounts:
         argv += ['--mount', f'type=bind,src={src},dst={dst}' + (',readonly' if readonly else '')]
     for key, value in plan['env'].items():

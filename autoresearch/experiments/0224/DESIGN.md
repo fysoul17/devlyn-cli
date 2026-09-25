@@ -49,3 +49,21 @@
 ## Execution
 
 `bash autoresearch/experiments/0222/screen.sh <runtime.json> autoresearch/experiments/0224/cells.tsv`, run serially under `caffeinate`. Runtime: control tree v2 (manifest sha256 `f51c73f2…`), image `84a01941`, and the same account fingerprints as the 0222 smoke. A `not-dispatched` exit (auth/account preflight) is not a verdict: fix the login, then resume. Usage is recorded after the fact; there is no budget. Raw evidence stays in the Session 6 completion scratch; RESULT.md holds the table, the adjudications, the audits and the token.
+
+## Amendment 1 (2026-09-26, after dispatch, before any rule was computed)
+
+The first pass (all 16 cells, `screen-out/`) hit two shared infrastructure faults. Neither made the apparatus stop, and both invalidate part of the pass. Under "Before any rule is computed" §3 and 0221 §4, the causes are fixed, the original rows are kept as `<name>.stop-1`, and only the affected cells are redone.
+
+1. **Claude account weekly limit.** From cell 6's assessment on, every Claude call on the registered account returned `429 You've hit your weekly limit · resets Sep 28, 8pm (UTC)`. The owners of cells 8, 9, 12, 13 and 16 ended in under 1 s with no work. Cell 14's B′ Claude pair judge and cell 15's C Claude reviewer failed, and the Claude assessor failed (exit 1, no verdict) in cells 6–16. Cells 1–5 contain no such response; the only textual matches are in a cached Codex plugin catalog.
+2. **Codex helper directory deleted on the bind-mounted home.** In both F-codex cells (7, 11), resolve's worker lost exec and write access partway through (`Failed to create unified exec process: No such file or directory`, `Failed to write file`). Each time, the owner had just started another `codex` process (cell 11: `codex --version` at 18:07:28, worker failing from 18:07:43). Model-free reproduction in the cell image: on the host bind mount, a second `codex` deletes a *live* process's `CODEX_HOME/tmp/arg0` helper directory; on a container-local tmpfs it does not. No other cell has the exec-failure signature; cell 2's single `Failed to write file` is the sandbox refusing a probe under `.devlyn/intent/`.
+
+**Fixes** (apparatus; tests 35 pass, and the new container case fails without the fix):
+- `cell.py` mounts a tmpfs at `/home/participant/.codex/tmp`.
+- `run_cell.py` stops the screen when an assessor returns no verdict (0221 §4 "common evaluator collapse").
+
+**Affected bundle.**
+- Re-dispatched, because execution was invalid: 7, 8, 9, 11, 12, 13, 14, 15, 16, in their registered relative order ([rerun-1.tsv](rerun-1.tsv)).
+- Re-assessed from preserved evidence, because only the Claude assessor failed and execution was sound: 6 and 10.
+- Kept: 1–5, whose execution and grading show neither fault.
+
+**Account.** The registered account (`9f2f3a39…`) stays limited until 2026-09-29 05:00 KST. The host is now on a second Max account (`230ea92e…`, 7-day utilization 2%), and the redone cells run and are assessed on it. Models, effort, routes and identity checks are unchanged. The account is a venue property, and each cell's seal records it.

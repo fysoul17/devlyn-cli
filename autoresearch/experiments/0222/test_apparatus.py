@@ -362,6 +362,13 @@ class Pure(unittest.TestCase):
         self.assertEqual(run_cell.verdict(dict(product_check_pass=False, adjudication_needed=True), [ok, ok]),
                          'ADJUDICATE')
 
+    def test_assessor_without_verdict_stops(self):
+        ok = dict(route=dict(model='a'), exit_code=0, complete=False, severe=0)
+        self.assertEqual(run_cell.unassessed([ok, dict(ok, route=dict(model='b'), complete=True)]), [])
+        limited = dict(ok, route=dict(model='c'), exit_code=1, complete=None)  # e.g. the 0224 weekly-limit 429
+        self.assertEqual(run_cell.unassessed([ok, limited]), ['c'])
+        self.assertEqual(run_cell.unassessed([dict(ok, complete=None)]), ['a'])  # unparseable answer
+
     def test_evaluator_crash_stops_but_product_crash_is_a_row(self):
         with self.assertRaises(check.NoVerdict):
             check.last_json(dict(exit_code=125, timeout=False, stdout='', stderr='docker: error'))
@@ -441,6 +448,21 @@ class Container(unittest.TestCase):
         with mock.patch.object(cell, 'docker', failing):
             record = self.run_cell(['true'], 30)
         self.assertEqual(record['teardown'], 'FAILED')
+
+    def test_second_codex_keeps_a_live_codex_helper_dir(self):
+        """0224: on the bind-mounted home a new codex process deleted a running one's arg0 helpers."""
+        script = ('(sleep 20 | codex exec --skip-git-repo-check - >/dev/null 2>&1) & sleep 5; '
+                  'live=$(ls /home/participant/.codex/tmp/arg0); [ -n "$live" ] || exit 8; '
+                  'codex --version >/dev/null 2>&1; sleep 1; [ -d /home/participant/.codex/tmp/arg0/$live ] || exit 9')
+        out = self.root / 'cell'
+        out.mkdir()
+        plan = dict(name='t', work=str(self.root / 'work'), home=str(self.root / 'home'),
+                    control=str(self.root / 'control'), image=IMAGE, argv=['bash', '-c', script], wall_seconds=60,
+                    env=dict(HOME='/home/participant', CODEX_HOME='/home/participant/.codex'),
+                    engine='codex', model='gpt-6-astra', config='codex', arm='A')
+        (out / 'plan.json').write_text(json.dumps(plan))
+        record = cell.run(out, dict(auth=str(self.root / 'auth'), scratch=str(self.root)))
+        self.assertEqual((record['owner_status'], record['teardown']), ('EXITED_0', 'CLEAN'))
 
     @unittest.skipUnless(CONTROL, 'APPARATUS_CONTROL not set')
     def test_reviewer_failure_is_recorded_and_more_calls_allowed(self):
