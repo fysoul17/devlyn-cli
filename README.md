@@ -248,7 +248,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 ## Requirements
 
-- **Node.js 18+** and npm
+- **Node.js 18.17+ or 20.5+** and npm
 - **Python 3.11+** available as `python3`, and Git for the resolve harness
 - **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** installed and configured
 

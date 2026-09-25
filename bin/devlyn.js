@@ -502,97 +502,24 @@ function cleanManagedSkillDirs(sourceSkillsDir, targetSkillsDir) {
   return cleaned;
 }
 
-function multiSelect(items, preselectedIndices = []) {
-  return new Promise((resolve) => {
-    const selected = new Set(preselectedIndices.filter((i) => i >= 0 && i < items.length));
-    let cursor = 0;
-    let firstRender = true;
-
-    const render = () => {
-      // Move cursor up to redraw (skip on first render)
-      const totalLines = items.length * 2 + 2; // 2 lines per item + header + blank
-      if (!firstRender) {
-        process.stdout.write(`\x1b[${totalLines}A\x1b[0J`); // Move up and clear to end of screen
-      }
-      firstRender = false;
-
-      console.log(`${COLORS.dim}(↑↓ navigate, space select, enter confirm)${COLORS.reset}\n`);
-
-      items.forEach((item, i) => {
-        const checkbox = selected.has(i) ? `${COLORS.green}◉${COLORS.reset}` : `${COLORS.dim}○${COLORS.reset}`;
-        const pointer = i === cursor ? `${COLORS.cyan}❯${COLORS.reset}` : ' ';
-        const name = i === cursor ? `${COLORS.cyan}${item.name}${COLORS.reset}` : item.name;
-        const tagLabel = item.type === 'mcp' ? 'mcp' : item.type === 'local' ? 'skill' : item.type === 'cli' ? 'cli' : 'pack';
-        const tagColor = item.type === 'mcp' ? COLORS.green : item.type === 'local' ? COLORS.magenta : item.type === 'cli' ? COLORS.blue : COLORS.cyan;
-        const tag = `${tagColor}${tagLabel}${COLORS.reset}`;
-        console.log(`${pointer} ${checkbox} ${name} ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}`);
-        console.log(`    ${COLORS.dim}${item.desc}${COLORS.reset}`);
-      });
-    };
-
-    render();
-
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.setEncoding('utf8');
-
-    const onKeypress = (key) => {
-      // Ctrl+C
-      if (key === '\u0003') {
-        process.stdin.setRawMode(false);
-        process.stdin.removeListener('data', onKeypress);
-        process.exit();
-      }
-
-      // Enter
-      if (key === '\r' || key === '\n') {
-        process.stdin.setRawMode(false);
-        process.stdin.removeListener('data', onKeypress);
-        process.stdin.pause();
-        console.log('');
-        resolve([...selected].map((i) => items[i]));
-        return;
-      }
-
-      // Space - toggle selection
-      if (key === ' ') {
-        if (selected.has(cursor)) {
-          selected.delete(cursor);
-        } else {
-          selected.add(cursor);
-        }
-        render();
-        return;
-      }
-
-      // Arrow up or k
-      if (key === '\x1b[A' || key === 'k') {
-        cursor = cursor > 0 ? cursor - 1 : items.length - 1;
-        render();
-        return;
-      }
-
-      // Arrow down or j
-      if (key === '\x1b[B' || key === 'j') {
-        cursor = cursor < items.length - 1 ? cursor + 1 : 0;
-        render();
-        return;
-      }
-
-      // 'a' - select all
-      if (key === 'a') {
-        if (selected.size === items.length) {
-          selected.clear();
-        } else {
-          items.forEach((_, i) => selected.add(i));
-        }
-        render();
-        return;
-      }
-    };
-
-    process.stdin.on('data', onKeypress);
-  });
+async function multiSelect(items, preselectedIndices = []) {
+  const checkbox = require('@inquirer/checkbox').default;
+  try {
+    return await checkbox({
+      message: 'Select options',
+      theme: { keybindings: ['vim'] },
+      choices: items.map((item, index) => ({
+        name: `${item.name} [${item.type === 'local' ? 'skill' : item.type === 'cli' || item.type === 'mcp' ? item.type : 'pack'}]`,
+        description: item.desc,
+        value: item,
+        checked: preselectedIndices.includes(index),
+      })),
+    });
+  } catch (error) {
+    if (error.name !== 'ExitPromptError') throw error;
+    console.log('Installation cancelled.');
+    process.exit(0);
+  }
 }
 
 function installLocalSkill(skillName) {
