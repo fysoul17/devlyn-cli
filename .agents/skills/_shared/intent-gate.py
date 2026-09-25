@@ -341,6 +341,10 @@ def cmd_commit(args):
             block("scope", ", ".join(outside))
         if not paths:
             return None
+        staged = git(run.work, "diff", "--cached", "--name-only", "-z", "--no-renames", raw=True)
+        foreign = sorted({p.decode() for p in staged.split(b"\0") if p} - set(paths))
+        if foreign:
+            block("staged-outside-run", ", ".join(foreign))
         git(run.work, "add", "-A", "--pathspec-from-file=-", "--pathspec-file-nul",
             env={**os.environ, "GIT_LITERAL_PATHSPECS": "1"}, stdin="".join(p + "\0" for p in paths).encode())
         git(run.work, "commit", "-q", "-m", args.message)
@@ -368,10 +372,55 @@ def survivors(marker):
     return []
 
 
+def subreaper():
+    """Linux: orphaned descendants reparent to this process, so none can escape unseen (setsid, cleared env,
+    redirected streams). Elsewhere the marker scan and the pipes are best-effort; Windows jobs kill the tree."""
+    if not sys.platform.startswith("linux"):
+        return False
+    import ctypes
+    return ctypes.CDLL(None, use_errno=True).prctl(36, 1, 0, 0, 0) == 0  # PR_SET_CHILD_SUBREAPER
+
+
+def orphans():
+    found = []
+    for entry in Path("/proc").iterdir():
+        if entry.name.isdigit():
+            try:
+                if int((entry / "stat").read_text().rpartition(")")[2].split()[1]) == os.getpid():
+                    found.append(int(entry.name))
+            except (OSError, ValueError, IndexError):
+                continue
+    return found
+
+
+def reap(marker, reaping):
+    """Kill every surviving descendant; return how many were found."""
+    killed = 0
+    for _ in range(10):
+        pids = set(survivors(marker)) | (set(orphans()) if reaping else set())
+        if not pids:
+            break
+        killed += len(pids)
+        for pid in pids:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+        if reaping:
+            for pid in pids:
+                try:
+                    os.waitpid(pid, 0)
+                except ChildProcessError:
+                    pass
+        time.sleep(0.1)
+    return killed
+
+
 def run_bounded(work, argv, seconds, out_base, stdin_file=None, env=None):
-    """Run through run-bounded.py (tree kill, 124 on timeout). Termination is affirmative only when no process
-    carrying this invocation's marker survives and no descendant still holds the output pipes."""
+    """Run through run-bounded.py (tree kill, 124 on timeout). Termination is affirmative when no descendant
+    survives the reap and none still holds the output pipes."""
     marker = out_base.name
+    reaping = subreaper()
     command = [sys.executable, str(SHARED / "run-bounded.py"), str(seconds)]
     if stdin_file:
         command += ["--stdin-file", str(stdin_file), "--record-transport"]
@@ -389,18 +438,14 @@ def run_bounded(work, argv, seconds, out_base, stdin_file=None, env=None):
         reader.start()
     code = proc.wait()
     elapsed = time.monotonic() - started
-    leaked = survivors(marker)
-    for pid in leaked:
-        try:
-            os.kill(pid, signal.SIGKILL)
-        except OSError:
-            pass
+    leaked = reap(marker, reaping)
     deadline = time.monotonic() + STREAM_GRACE
     for reader in readers:
         reader.join(max(0, deadline - time.monotonic()))
-    terminated = not survivors(marker) and not any(reader.is_alive() for reader in readers)
+    terminated = not survivors(marker) and not (reaping and orphans()) and not any(r.is_alive() for r in readers)
     record = {"exit": code, "timed_out": code == 124 and elapsed >= seconds, "terminated": terminated,
-              "leaked_killed": len(leaked), "duration_ms": int(elapsed * 1000)}
+              "termination_evidence": "subreaper" if reaping else "job" if os.name == "nt" else "marker+pipes",
+              "leaked_killed": leaked, "duration_ms": int(elapsed * 1000)}
     for name in ("stdout", "stderr"):
         raw = streams.get(name, b"")
         path = out_base.with_name(out_base.name + "." + name)
@@ -448,20 +493,39 @@ def cmd_retire(args):
     print(json.dumps({"retired": args.cmd}))
 
 
-def codex_identity(stderr):
-    header = runpy.run_path(str(SHARED / "judge-role-evidence.py"))["codex_header"]
-    try:
-        fields = header(stderr.decode(errors="replace"))
-    except (ValueError, SystemExit) as exc:
-        return None, None, f"codex header: {exc}"
-    return fields["model"], fields["reasoning effort"], None
+IGNORED_OPTION = re.compile(r"(?im)^.*(?:model|effort).*\b(?:ignor\w*|clamp\w*|unsupported|not supported)\b")
 
 
-def identity_match(role, model, effort):
-    """None when nothing was requested; False on any requested field the native evidence contradicts or lacks."""
-    checks = [(role.get("model_requested"), model and model.split("[")[0]), (role.get("effort_requested"), effort)]
-    checks = [(want, got) for want, got in checks if want]
-    return None if not checks else all(want == got for want, got in checks)
+def option(argv, flag):
+    values = [argv[i + 1] for i, item in enumerate(argv[:-1]) if item == flag]
+    return values[-1] if values else None
+
+
+def authenticate(run, role, argv, stderr, sandbox, claude_model=None):
+    """Return (model, effort, error) from native evidence. Codex: its header must show this worktree, the
+    dispatched sandbox and effort; Claude: the result's model, with effort bound by the dispatched argv."""
+    text = stderr.decode(errors="replace")
+    if role["engine"] == "codex":
+        diagnostics = text.partition("\nuser\n")[0]
+        try:
+            header = runpy.run_path(str(SHARED / "judge-role-evidence.py"))["codex_header"](text)
+        except (ValueError, SystemExit) as exc:
+            return None, None, f"codex header: {exc}"
+        model, effort = header["model"], header["reasoning effort"]
+        efforts = [c.split("=", 1)[1].strip('"') for c in (argv[i + 1] for i, a in enumerate(argv[:-1]) if a == "-c")
+                   if c.startswith("model_reasoning_effort=")]
+        if Path(header["workdir"]).resolve() != run.work or header["sandbox"] != sandbox:
+            return model, effort, f"observed workdir/sandbox {header['workdir']}/{header['sandbox']} differs from the run"
+        if efforts and effort != efforts[-1]:
+            return model, effort, f"native effort {effort} differs from dispatched {efforts[-1]}"
+    else:
+        diagnostics, model, effort = text, claude_model, option(argv, "--effort")
+    if IGNORED_OPTION.search(diagnostics):
+        return model, effort, "a native diagnostic rejected or ignored an explicit option"
+    for want, got in ((role.get("model_requested"), model and model.split("[")[0]), (role.get("effort_requested"), effort)):
+        if want and want != got:
+            return model, effort, f"model mismatch: requested {role.get('model_requested')}/{role.get('effort_requested')}, observed {model}/{effort}"
+    return model, effort, None
 
 
 def cmd_delegate(args):
@@ -476,13 +540,16 @@ def cmd_delegate(args):
     env = {**os.environ, "DEVLYN_CODEX_PROMPT_FILE": str(prompt), "CODEX_MONITORED_ALLOW_PIPED": "1"}
     argv = ["bash", str(SHARED / "codex-monitored.sh"), "-C", str(run.work), "-s", "workspace-write",
             "-c", "sandbox_workspace_write.network_access=false", *worker["argv"], "-"]
+    before = tree(run.work)
     record, _, stderr = run_bounded(run.work, argv, args.timeout, run.dir / "delegations" / stamp(), env=env)
-    model, effort, error = codex_identity(stderr)
+    model, effort, error = authenticate(run, worker, argv, stderr, "workspace-write")
+    preexisting = set(state["preexisting_untracked"])
     record.update(prompt_sha256=sha(prompt.read_bytes()), model_requested=worker.get("model_requested"),
                   effort_requested=worker.get("effort_requested"), model_observed=model, effort_observed=effort,
-                  identity_error=error, model_match=identity_match(worker, model, effort), at=now())
+                  identity_error=error, paths=[p for p in changed(run.work, before, tree(run.work)) if p not in preexisting],
+                  at=now())
     run.update(lambda s: s["delegations"].append(record))
-    print(json.dumps({k: record[k] for k in ("exit", "terminated", "model_observed", "model_match", "identity_error")}
+    print(json.dumps({k: record[k] for k in ("exit", "terminated", "model_observed", "identity_error", "paths")}
                      | {"stdout": record["stdout"]["path"]}))
 
 
@@ -532,44 +599,38 @@ def binding(finding):
     return severity in ("CRITICAL", "HIGH") or (severity == "MEDIUM" and finding.get("verdict_binding") is True)
 
 
-def judge(run, engine, record, stdout, stderr):
-    """Return (status, findings, model, effort, error). Only an exit-0, parsed, verdict-terminated reply can pass."""
+def judge(run, engine, record, stdout):
+    """Return (status, findings, claude model, error). Only an exit-0, parsed, verdict-terminated reply can pass."""
     if record["timed_out"]:
-        return "TIMEOUT", [], None, None, "reviewer timed out"
+        return "TIMEOUT", [], None, "reviewer timed out"
     if record["exit"] != 0:
-        return "BLOCKED", [], None, None, f"reviewer exited {record['exit']}"
+        return "BLOCKED", [], None, f"reviewer exited {record['exit']}"
+    model, text = None, stdout.decode(errors="replace")
     if engine == "claude":
-        evidence = runpy.run_path(str(SHARED / "judge-role-evidence.py"))
         try:
-            text, model, _ = evidence["claude_result"](stdout, 0)
+            raw, model, _ = runpy.run_path(str(SHARED / "judge-role-evidence.py"))["claude_result"](stdout, 0)
         except (ValueError, SystemExit) as exc:
-            return "BLOCKED", [], None, None, f"claude result: {exc}"
-        text, effort = text.decode(), None
-    else:
-        model, effort, error = codex_identity(stderr)
-        if error:
-            return "BLOCKED", [], None, None, error
-        text = stdout.decode(errors="replace")
-    parser = runpy.run_path(str(SHARED / "judge-output-parser.py"))
+            return "BLOCKED", [], None, f"claude result: {exc}"
+        text = raw.decode()
     try:
-        findings, summary = parser["collect_text"](text, run.work / record["stdout"]["path"])
+        findings, summary = runpy.run_path(str(SHARED / "judge-output-parser.py"))["collect_text"](
+            text, run.work / record["stdout"]["path"])
     except SystemExit as exc:
-        return "BLOCKED", [], model, effort, f"unparseable review: {exc}"
+        return "BLOCKED", [], model, f"unparseable review: {exc}"
     if summary is None:
-        return "BLOCKED", findings, model, effort, "review has no terminal verdict line"
-    verdict = summary["verdict"]
-    if any(binding(f) for f in findings) or verdict in ("NEEDS_WORK", "FAIL"):
-        return "NEEDS_WORK", findings, model, effort, None
-    if verdict == "BLOCKED":
-        return "BLOCKED", findings, model, effort, "reviewer reported BLOCKED"
-    return ("PASS_WITH_ISSUES" if findings else "PASS"), findings, model, effort, None
+        return "BLOCKED", findings, model, "review has no terminal verdict line"
+    if any(binding(f) for f in findings) or summary["verdict"] in ("NEEDS_WORK", "FAIL"):
+        return "NEEDS_WORK", findings, model, None
+    if summary["verdict"] == "BLOCKED":
+        return "BLOCKED", findings, model, "reviewer reported BLOCKED"
+    return ("PASS_WITH_ISSUES" if findings else "PASS"), findings, model, None
 
 
 def cmd_review(args):
     run = Run(Path.cwd())
     state = run.load(open_only=True)
     role = state["roles"]["roles"][args.role]
-    if not role.get("engine"):
+    if not role.get("engine") or role.get("skipped_reason"):
         block("pair-unavailable", role.get("skipped_reason") or "no OTHER engine")
     if state["mode"] != "verify-only" and state["scope"] is None:
         block("scope-unbound", "bind scope before review")
@@ -594,15 +655,17 @@ def cmd_review(args):
                 *role["argv"], *effort, "-"]
         record, stdout, stderr = run_bounded(run.work, argv, 600, base, env=env)
         record["timed_out"] = record["timed_out"] or record["exit"] == 124
-    status, findings, model, effort_seen, error = judge(run, role["engine"], record, stdout, stderr)
-    match = identity_match(role, model, effort_seen) if status != "TIMEOUT" else None
-    if match is False:
-        status, error = "BLOCKED", f"model mismatch: requested {role.get('model_requested')}/{role.get('effort_requested')}, observed {model}/{effort_seen}"
+    status, findings, model, error = judge(run, role["engine"], record, stdout)
+    effort_seen, identity_error = None, None
+    if record["exit"] == 0 and not record["timed_out"]:
+        model, effort_seen, identity_error = authenticate(run, role, argv, stderr, "read-only", model)
+        if identity_error:
+            status, error = "BLOCKED", identity_error
     findings_path = base.with_name(name + ".findings.jsonl")
     atomic_write(findings_path, "".join(json.dumps(f, sort_keys=True) + "\n" for f in findings).encode())
     record.update(role=args.role, engine=role["engine"], source=key, source_after=source(run.work), status=status,
                   error=error, model_requested=role.get("model_requested"), effort_requested=role.get("effort_requested"),
-                  model_observed=model, effort_observed=effort_seen, model_match=match,
+                  model_observed=model, effort_observed=effort_seen, identity_error=identity_error,
                   prompt_sha256=sha(prompt.read_bytes()), binding=sum(binding(f) for f in findings),
                   findings={"path": str(findings_path.relative_to(run.work)), "sha256": sha(findings_path.read_bytes())},
                   at=now())
@@ -657,25 +720,34 @@ def evaluate(run, state):
             needed.append("uncommitted changes (run `intent-gate.py commit`): " + ", ".join(uncommitted[:5]))
     for kind in ("checks", "delegations", "reviews"):
         for item in state[kind]:
+            for stream in [item["stdout"], item["stderr"]] + ([item["findings"]] if "findings" in item else []):
+                path = work / stream["path"]
+                if not path.is_file() or sha(path.read_bytes()) != stream["sha256"]:
+                    blocked.append(f"evidence-changed: {stream['path']}")
             if not item["terminated"]:
                 blocked.append(f"termination-failed: {kind} {item.get('cmd') or item['stdout']['path']}")
             if item.get("leaked_killed"):
                 notes.append(f"{kind} left {item['leaked_killed']} process(es) running; killed: {item.get('cmd') or item['stdout']['path']}")
-            if item.get("model_match") is False:
-                blocked.append(f"model-mismatch: {kind} requested {item['model_requested']}/{item.get('effort_requested')} "
-                               f"observed {item['model_observed']}/{item.get('effort_observed')}")
-    if state["delegate_required"] and not any(d["exit"] == 0 and d["model_match"] is not False and not d["identity_error"]
-                                              for d in state["delegations"]):
-        blocked.append("executor-not-used: the selected worker never completed an authenticated delegated edit")
+            if item.get("identity_error") and (kind == "delegations" or item["exit"] == 0):
+                blocked.append(f"identity: {kind}: {item['identity_error']}")
+            if item.get("termination_evidence") == "marker+pipes" and "termination is best-effort on this OS (no subreaper)" not in notes:
+                notes.append("termination is best-effort on this OS (no subreaper)")
+    if state["delegate_required"] and state["mode"] != "verify-only":
+        delegated = set().union(*[d["paths"] for d in state["delegations"] if d["exit"] == 0 and not d["identity_error"]])
+        missing = [p for p in owned if p not in delegated]
+        if not delegated or missing:
+            blocked.append("executor-not-used: the selected worker did not make "
+                           + (", ".join(missing[:5]) if delegated else "any change"))
     latest = latest_checks(state, key)
     retired = {r["cmd"] for r in state["retired"]}
-    required = {r["cmd"]: r for r in state["required_checks"]}
+    required = {r["cmd"] for r in state["required_checks"]}
     pure_design = bool(state["expected"] and state["expected"].get("pure_design") is True)
-    if state["mode"] != "verify-only" and not latest and not pure_design:
+    if state["mode"] != "verify-only" and not set(latest) - retired and not pure_design:
         needed.append("no check ran on the current source")
-    for cmd in sorted({c["cmd"] for c in state["checks"]} - set(latest) - retired - set(required)):
+    for cmd in sorted({c["cmd"] for c in state["checks"]} - set(latest) - retired - required):
         needed.append(f"stale check (rerun on the current source or retire it): {cmd}")
-    for cmd, expectation in required.items():
+    for expectation in state["required_checks"]:
+        cmd = expectation["cmd"]
         check = latest.get(cmd)
         if check is None:
             needed.append(f"required check missing on the current source: {cmd}")
@@ -688,11 +760,13 @@ def evaluate(run, state):
         needed.append(f"expected contract: {finding['rule_id']}: {finding['message']}")
     roles = state["roles"]["roles"]
     for role in ("primary_judge", "pair_judge"):
-        if not roles[role].get("engine"):
+        if not roles[role].get("engine") or roles[role].get("skipped_reason"):
             notes.append(f"{role} skipped: {roles[role].get('skipped_reason')}")
             continue
         current = [r for r in state["reviews"] if r["role"] == role and r["source"] == key and r["source_after"] == key]
         status = current[-1]["status"] if current else None
+        if any(r["status"] == "NEEDS_WORK" for r in current):
+            status = "NEEDS_WORK"  # a retry on the same source never erases a binding finding
         if status is None:
             needed.append(f"{role} review missing on the current source")
         elif status == "NEEDS_WORK":
@@ -787,9 +861,13 @@ import os, pathlib, sys
 if sys.argv[1:] == ["--version"]:
     print("codex-cli 0.156.1"); sys.exit(0)
 sys.stdin.read()
-sys.stderr.write("OpenAI Codex v0.156.1\n--------\nworkdir: /w\nmodel: %s\nprovider: openai\nsandbox: read-only\n"
-                 "reasoning effort: %s\nsession id: s2\n--------\nuser\nprompt\n"
-                 % (os.environ.get("FAKE_CODEX_MODEL", "gpt-6-astra"), os.environ.get("FAKE_CODEX_EFFORT", "high")))
+args = sys.argv[1:]
+sandbox = args[args.index("-s") + 1] if "-s" in args else "read-only"
+effort = [a.split("=", 1)[1] for a in args if a.startswith("model_reasoning_effort=")]
+sys.stderr.write(os.environ.get("FAKE_CODEX_WARN", "") + "OpenAI Codex v0.156.1\n--------\nworkdir: %s\nmodel: %s\n"
+                 "provider: openai\nsandbox: %s\nreasoning effort: %s\nsession id: s2\n--------\nuser\nprompt\n"
+                 % (os.environ.get("FAKE_CODEX_WORKDIR", os.getcwd()), os.environ.get("FAKE_CODEX_MODEL", "gpt-6-astra"),
+                    sandbox, os.environ.get("FAKE_CODEX_EFFORT", effort[-1] if effort else "medium")))
 edit = os.environ.get("FAKE_CODEX_EDIT")
 if edit:
     path, _, text = edit.partition(":")
@@ -800,6 +878,8 @@ sys.exit(int(os.environ.get("FAKE_CODEX_EXIT", "0")))
 LEAK_REDIRECTED = ("python3 -c \"import os,time\nif os.fork()==0:\n os.setsid(); n=os.open(os.devnull,os.O_RDWR)"
                    "\n os.dup2(n,1); os.dup2(n,2); time.sleep(30)\"")
 LEAK_UNMARKED = ("python3 -c \"import os\nif os.fork()==0:\n os.setsid(); os.execve('/bin/sleep',['sleep','30'],{})\"")
+LEAK_HIDDEN = ("python3 -c \"import os\nif os.fork()==0:\n os.setsid(); n=os.open(os.devnull,os.O_RDWR); os.dup2(n,1); os.dup2(n,2)"
+               "\n os.execve('/bin/sleep',['sleep','30'],{})\"")
 
 
 def self_test():
@@ -893,7 +973,7 @@ def self_test():
         g(work, "retire", "--cmd", "exit 1", "--reason", "bad probe")
         g(work, "retire", "--cmd", "test -f .devlyn/flag", "--reason", "bad probe")
         expect("retired probes stop blocking and stay visible",
-               status(work)["verdict"] == "PASS" and len(status(work)["notes"]) == 2)
+               status(work)["verdict"] == "PASS" and sum("retired check" in n for n in status(work)["notes"]) == 2)
         out = g(work, "finish", "--task", "t")
         expect("finish exit code follows the verdict", out.returncode == 0)
         work = repo("exit-finish")
@@ -919,7 +999,7 @@ def self_test():
         # Model identity: reviewers and the selected executor.
         work = repo("model", roles={"primary_judge": {"engine": "claude", "model": "claude-test-a"}})
         happy(work, env={"FAKE_CLAUDE_MODEL": "claude-test-b"})
-        expect("a reviewer on the wrong model blocks", status(work)["verdict"] == "BLOCKED" and reasons(work, "model-mismatch"))
+        expect("a reviewer on the wrong model blocks", status(work)["verdict"] == "BLOCKED" and reasons(work, "model mismatch"))
         work = repo("model-ok", roles={"primary_judge": {"engine": "claude", "model": "claude-test-a"}})
         happy(work)
         expect("a reviewer on the requested model (1m suffix) passes", status(work)["verdict"] == "PASS")
@@ -935,10 +1015,10 @@ def self_test():
             return work, json.loads(out.stdout or "{}")
 
         work, out = delegated("delegate", {"worker": {"engine": "codex", "model": "gpt-6-sol"}}, {"FAKE_CODEX_MODEL": "gpt-6-astra"})
-        expect("an executor on the wrong model blocks", out.get("model_match") is False and reasons(work, "model-mismatch"))
+        expect("an executor on the wrong model blocks", bool(out.get("identity_error")) and reasons(work, "identity: delegations"))
         work, out = delegated("delegate-effort", {"worker": {"engine": "codex", "model": "gpt-6-sol", "effort": "high"}},
                               {"FAKE_CODEX_MODEL": "gpt-6-sol", "FAKE_CODEX_EFFORT": "low"})
-        expect("an executor on the wrong effort blocks", out.get("model_match") is False and status(work)["verdict"] == "BLOCKED")
+        expect("an executor on the wrong effort blocks", bool(out.get("identity_error")) and status(work)["verdict"] == "BLOCKED")
         out = g(repo("effort-only", roles={"worker": {"engine": "codex", "effort": "high"}}), "start", "--owner", "claude", "--", "x")
         expect("an effort without a resolvable model fails closed at start", "unsupported-role-option" in out.stderr)
         work, out = delegated("delegate-ok", {"worker": {"engine": "codex", "model": "gpt-6-sol"}}, {"FAKE_CODEX_MODEL": "gpt-6-sol"})
@@ -946,6 +1026,28 @@ def self_test():
         work = repo("delegate-skip", roles={"worker": {"engine": "codex", "model": "gpt-6-sol"}})
         happy(work)
         expect("skipping the selected executor blocks", reasons(work, "executor-not-used"))
+        work, _ = delegated("delegate-noop", {"worker": {"engine": "codex", "model": "gpt-6-sol"}},
+                            {"FAKE_CODEX_MODEL": "gpt-6-sol", "FAKE_CODEX_EDIT": ""})
+        (work / "app.txt").write_text("owner wrote this\n")
+        g(work, "commit", "--message", "owner")
+        evidence(work, cmd="true")
+        expect("a no-op delegation does not cover the owner's own edit", reasons(work, "executor-not-used"))
+        work = repo("verify-only-worker", roles={"worker": {"engine": "codex", "model": "gpt-6-sol"}}, files={"spec.md": "# s\n"})
+        g(work, "start", "--owner", "claude", "--", "--verify-only", "HEAD", "--spec", "spec.md")
+        g(work, "review", "--role", "primary_judge")
+        g(work, "review", "--role", "pair_judge")
+        expect("verify-only never requires the executor", status(work)["verdict"] == "PASS")
+        work = repo("workdir")
+        happy(work, pair_env={"FAKE_CODEX_WORKDIR": "/elsewhere"})
+        expect("a codex header for another worktree blocks", reasons(work, "observed workdir/sandbox"))
+        work = repo("ignored")
+        happy(work, pair_env={"FAKE_CODEX_WARN": "warning: model override ignored\n"})
+        expect("a native ignored-option diagnostic blocks", reasons(work, "ignored an explicit option"))
+        fake_run = Run(root)
+        role = {"engine": "claude", "model_requested": None, "effort_requested": "high"}
+        expect("a Claude effort is bound by the dispatched argv",
+               authenticate(fake_run, role, ["claude", "--effort", "high"], b"", "read-only", "m")[2] is None
+               and authenticate(fake_run, role, ["claude", "--effort", "low"], b"", "read-only", "m")[2] is not None)
 
         # Non-owned: a pre-existing untracked file is never changed or committed by the run.
         work = repo("nonowned")
@@ -962,20 +1064,34 @@ def self_test():
         g(work, "finish", "--task", "t")
         tracked = subprocess.run(["git", "ls-files", "notes.txt"], cwd=work, capture_output=True, text=True).stdout
         expect("the run commits only its own paths", tracked == "" and status(work)["verdict"] == "PASS")
+        work = repo("prestaged")
+        (work / "notes.txt").write_text("user draft\n")
+        g(work, "start", "--owner", "claude", "--", "fix")
+        g(work, "scope", "app.txt")
+        subprocess.run(["git", "add", "notes.txt"], cwd=work, check=True)
+        (work / "app.txt").write_text("fixed\n")
+        expect("commit refuses a foreign staged file", "staged-outside-run" in g(work, "commit", "--message", "x").stderr)
 
         # Termination: escaped descendants, env-cleared pipe holders, timeout vs a natural 124.
         if os.name != "nt":
+            linux = sys.platform.startswith("linux")
             work = repo("leak")
             happy(work)
             out = json.loads(g(work, "check", "--cmd", LEAK_REDIRECTED).stdout)
             expect("a detached, stream-redirected descendant is found and killed",
-                   out["leaked_killed"] == 1 and out["terminated"] and any("killed" in n for n in status(work)["notes"]))
+                   out["leaked_killed"] >= 1 and out["terminated"] and any("killed" in n for n in status(work)["notes"]))
             work = repo("term")
             happy(work)
             started = time.monotonic()
-            g(work, "check", "--cmd", LEAK_UNMARKED)
-            expect("a descendant still holding the pipes is a termination failure",
-                   reasons(work, "termination-failed") and time.monotonic() - started < 25)
+            out = json.loads(g(work, "check", "--cmd", LEAK_UNMARKED).stdout)
+            expect("an env-cleared descendant holding the pipes is killed (Linux) or a termination failure",
+                   (out["leaked_killed"] >= 1 and out["terminated"]) if linux else reasons(work, "termination-failed"))
+            expect("pipe detection does not hang", time.monotonic() - started < 25)
+            work = repo("hidden")
+            happy(work)
+            out = json.loads(g(work, "check", "--cmd", LEAK_HIDDEN).stdout)
+            expect("a hidden descendant is reaped on Linux; elsewhere the limit is disclosed",
+                   out["leaked_killed"] >= 1 if linux else any("best-effort" in n for n in status(work)["notes"]))
         work = repo("spec124", files={"spec.md": "# s\n", "spec.expected.json": json.dumps({"verification_commands": [
             {"cmd": "exit 124", "exit_code": 124}, {"cmd": "sleep 30", "exit_code": 124, "timeout_sec": 1},
             {"cmd": "cat app.txt", "stdout_contains": ["fixed"]}], "required_files": ["app.txt", "missing.txt"]})})
@@ -988,6 +1104,27 @@ def self_test():
         expect("a stdout_contains miss fails", reasons(work, "required check failed: cat app.txt"))
         expect("expected required_files is enforced", reasons(work, "required-file-missing"))
         expect("required checks cannot be retired", "required-check" in g(work, "retire", "--cmd", "sleep 30", "--reason", "x").stderr)
+        work = repo("dup", files={"spec.md": "# s\n", "spec.expected.json": json.dumps({"verification_commands": [
+            {"cmd": "cat app.txt", "stdout_contains": ["fixed"]}, {"cmd": "cat app.txt", "stdout_contains": ["absent"]}]})})
+        happy(work, "--spec", "spec.md")
+        g(work, "check", "--cmd", "cat app.txt")
+        expect("duplicate required commands keep every expectation", reasons(work, "required check failed: cat app.txt"))
+        work = repo("tamper")
+        happy(work)
+        g(work, "check", "--cmd", "exit 1")
+        failed = json.loads((work / ".devlyn/intent/run.json").read_text())["checks"][-1]["stdout"]["path"]
+        (work / failed).write_text("PASS\n")
+        expect("changed evidence bytes block", reasons(work, "evidence-changed"))
+        work = repo("retire-all")
+        g(work, "start", "--owner", "claude", "--", "fix")
+        g(work, "scope", "app.txt")
+        (work / "app.txt").write_text("fixed\n")
+        g(work, "commit", "--message", "fix")
+        g(work, "check", "--cmd", "exit 1")
+        g(work, "retire", "--cmd", "exit 1", "--reason", "x")
+        g(work, "review", "--role", "primary_judge")
+        g(work, "review", "--role", "pair_judge")
+        expect("retiring the only check leaves no check", reasons(work, "no check ran on the current source"))
 
         # Review outcomes.
         work = repo("parse")
@@ -1002,6 +1139,13 @@ def self_test():
         work = repo("medium")
         happy(work, pair_env={"FAKE_CODEX_REVIEW": '{"severity":"MEDIUM","verdict_binding":true,"message":"m"}\nNEEDS_WORK'})
         expect("a binding MEDIUM finding is NEEDS_WORK", status(work)["verdict"] == "NEEDS_WORK")
+        work = repo("sticky")
+        happy(work, env={"FAKE_CLAUDE_REVIEW": '{"severity":"HIGH","message":"m"}\nNEEDS_WORK'})
+        g(work, "review", "--role", "primary_judge")
+        g(work, "review", "--role", "pair_judge", env={"FAKE_CODEX_REVIEW": "NEEDS_WORK"})
+        g(work, "review", "--role", "pair_judge", env={"FAKE_CODEX_EXIT": "124"})
+        expect("a retry on the same source never erases a binding finding",
+               reasons(work, "primary_judge review has binding findings") and reasons(work, "pair_judge review has binding findings"))
         work = repo("pair-timeout")
         happy(work, pair_env={"FAKE_CODEX_EXIT": "124"})
         expect("a pair TIMEOUT leaves a disclosed primary-only PASS",
@@ -1019,7 +1163,8 @@ def self_test():
         expect("a required pair review cannot be skipped", reasons(work, "pair_judge review missing"))
         work = repo("nopair")
         happy(work, "--no-pair", "fix")
-        expect("--no-pair passes on the primary review alone", status(work)["verdict"] == "PASS")
+        expect("--no-pair skips an available pair and passes on the primary review",
+               status(work)["verdict"] == "PASS" and "user_no_pair" in g(work, "review", "--role", "pair_judge").stderr)
 
         # Admission and contract.
         work = repo("contract", files={"goal.md": "fix app\n"})
