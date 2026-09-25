@@ -1,6 +1,6 @@
 # 0223 — always-loaded instruction layer: current vs slim (none as reference)
 
-2026-09-25. **Status: REGISTERED** (frozen before the first quality run). Session 4 of [0221](../../iterations/0221-subtraction-direction.md) §5. Packet: [E2](../0221/packets/E2-instruction-layer-instrument.md); its 0221 overrides and verifier corrections apply.
+2026-09-25. **Status: CLOSED — `SLIM_REJECTED:claude-sonnet-5,gpt-6-astra`** ([RESULT.md](RESULT.md)). Registered and frozen before the first quality run. Session 4 of [0221](../../iterations/0221-subtraction-direction.md) §5. Packet: [E2](../0221/packets/E2-instruction-layer-instrument.md); its 0221 overrides and verifier corrections apply.
 
 ## Question
 
