@@ -39,6 +39,7 @@ import sys
 import tempfile
 
 VALID_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK", "BLOCKED"}
+FINAL_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED"}
 VALID_TRIGGERS = {"build_gate", "cleanup", "verify"}
 SPAWN_TRIGGERS = VALID_TRIGGERS | {"plan"}
 PHASE_NAMES = {"plan", "probe_derive", "implement", "surface_close", "build_gate", "cleanup", "verify", "final_report"}
@@ -1682,8 +1683,109 @@ def freeze_roles(state: dict, work: pathlib.Path, default_engine: str) -> dict:
     return resolved
 
 
+REPAIR_PHASES = ("implement", "build_gate", "cleanup", "verify")
+
+
+def valid_phase_gate_progress(progress: object) -> bool:
+    if not isinstance(progress, dict):
+        return False
+    total, current, statuses = progress.get("total"), progress.get("current"), progress.get("statuses")
+    return (type(total) is int and total > 1 and type(current) is int and 1 <= current <= total
+            and isinstance(statuses, list) and len(statuses) == total
+            and all(status in ("PASS", "FAIL", None) for status in statuses)
+            and all(status == "PASS" for status in statuses[:current - 1]))
+
+
+def repair_predecessor(state: dict) -> tuple[str, dict] | None:
+    """Select the most recent started repair boundary by invocation identity."""
+    phases = state.get("phases", {})
+    selected = None
+    for order, name in enumerate(REPAIR_PHASES):
+        entry = phases.get(name) if isinstance(phases, dict) else None
+        if not isinstance(entry, dict) or entry.get("started_at") is None:
+            continue
+        round_ = entry.get("round")
+        if type(round_) is not int or round_ < 0:
+            raise SystemExit("BLOCKED:repair-edge-invalid")
+        if selected is None or (round_, order) > selected[0]:
+            selected = ((round_, order), name, entry)
+    return None if selected is None else (selected[1], selected[2])
+
+
+def repair_admission(state: dict, phase: str, round_: int,
+                     triggered_by: str | None, source_phase: str | None = None) -> None:
+    if phase not in REPAIR_PHASES:
+        return
+    predecessor = repair_predecessor(state)
+    if phase == "implement":
+        if predecessor is None:
+            if triggered_by not in {None, "plan"}:
+                raise SystemExit("BLOCKED:repair-trigger-mismatch: expected=null supplied=" + triggered_by)
+            expected_round, origin = 0, None
+        else:
+            prior_name, prior = predecessor
+            if prior.get("completed_at") is None or (source_phase is not None and prior_name != source_phase):
+                raise SystemExit("BLOCKED:repair-edge-invalid")
+            verdict = prior.get("verdict")
+            origin = None
+            if prior_name in {"build_gate", "cleanup", "verify"}:
+                valid = (verdict == "NEEDS_WORK" and isinstance(prior.get("merged"), dict)
+                         and prior["merged"].get("verdict") == "NEEDS_WORK") if prior_name == "verify" else verdict == "FAIL"
+                if prior_name == "cleanup":
+                    valid = valid and orchestrator_phase(prior, "cleanup")
+                if not valid:
+                    raise SystemExit("BLOCKED:repair-edge-invalid")
+                origin = prior_name
+            elif prior_name == "implement":
+                progress = prior.get("exec")
+                if not valid_phase_gate_progress(progress):
+                    raise SystemExit("BLOCKED:repair-edge-invalid")
+                current, statuses = progress["current"], progress["statuses"]
+                status = statuses[current - 1]
+                if verdict == "FAIL" and status == "FAIL":
+                    origin = "phase_gate"
+                elif verdict not in {"PASS", "PASS_WITH_ISSUES"} or current < 2 or status is not None:
+                    raise SystemExit("BLOCKED:repair-edge-invalid")
+            else:
+                raise SystemExit("BLOCKED:repair-edge-invalid")
+            expected_round = prior["round"] + 1
+            expected_trigger = origin if origin in VALID_TRIGGERS else None
+            if triggered_by != expected_trigger:
+                supplied = triggered_by if triggered_by is not None else "null"
+                expected = expected_trigger if expected_trigger is not None else "null"
+                raise SystemExit(f"BLOCKED:repair-trigger-mismatch: expected={expected} supplied={supplied}")
+        if round_ != expected_round:
+            raise SystemExit(f"BLOCKED:implement-round-nonmonotonic: expected={expected_round} supplied={round_}")
+        if origin is not None:
+            rounds = state.get("rounds")
+            if (not isinstance(rounds, dict) or type(rounds.get("global")) is not int
+                or rounds["global"] < 0 or type(rounds.get("max_rounds")) is not int
+                or rounds["max_rounds"] < 1):
+                raise SystemExit("BLOCKED:rounds-malformed")
+            if rounds["global"] >= rounds["max_rounds"]:
+                raise SystemExit(
+                    f"BLOCKED:repair-budget-exhausted: global={rounds['global']} "
+                    f"max_rounds={rounds['max_rounds']} origin={origin}"
+                )
+            rounds["global"] += 1
+    elif phase in {"build_gate", "cleanup", "verify"}:
+        implement = (state.get("phases") or {}).get("implement")
+        expected_round = implement.get("round", 0) if isinstance(implement, dict) and implement.get("started_at") else 0
+        if round_ != expected_round:
+            raise SystemExit(f"BLOCKED:phase-round-mismatch: phase={phase} expected={expected_round} supplied={round_}")
+
+
+def validate_verdict(phase: str, verdict: str | None) -> None:
+    allowed = (verdict in FINAL_VERDICTS or (
+        isinstance(verdict, str) and verdict.startswith("BLOCKED:") and len(verdict) > 8
+    )) if phase == "final_report" else verdict in VALID_VERDICTS
+    if verdict is not None and not allowed:
+        raise SystemExit(f"error: invalid verdict for phases.{phase}: {verdict}")
+
+
 def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
              pre_sha: str | None, engine: str | None, model: str | None, *,
+             source_phase: str | None = None,
              input_patch_sha256: str | None = None,
              prompt_sha256: str | None = None,
              untracked_before: list[str] | None = None,
@@ -1804,6 +1906,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         raise SystemExit(
             f"error: phases.{phase} has an open span — complete it before respawn"
         )
+    repair_admission(state, phase, round_, triggered_by, source_phase)
     append_phase_history(entry, phase)
     if phase in WORKER_SESSION_ARTIFACT_PHASES:
         entry.pop("invocation_receipt", None)
@@ -1812,7 +1915,10 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     entry["completed_at"] = None
     entry["duration_ms"] = None
     entry["round"] = round_
-    entry["triggered_by"] = triggered_by
+    entry["triggered_by"] = (
+        "cleanup" if phase == "implement" and triggered_by is None
+        and entry.get("triggered_by") == "cleanup" else triggered_by
+    )
     entry["verdict"] = None
     entry["artifacts"] = {"findings_file": None, "log_file": None}
     entry["sub_verdicts"] = None
@@ -1881,6 +1987,7 @@ def do_complete(state: dict, phase: str, verdict: str | None,
     entry = phases.get(phase)
     if not isinstance(entry, dict) or not entry.get("started_at"):
         raise SystemExit(f"error: phases.{phase} was never spawned (no started_at) — cannot complete")
+    validate_verdict(phase, verdict)
     if phase == "verify" and verdict is not None:
         raise SystemExit(
             "error: phases.verify.verdict is owned by verify-merge-findings.py "
@@ -1954,6 +2061,13 @@ def do_complete(state: dict, phase: str, verdict: str | None,
         entry["verdict"] = verdict
     else:
         raise SystemExit(f"error: --verdict is required to complete phases.{phase}")
+    if phase == "implement" and verdict == "FAIL" and isinstance(entry.get("exec"), dict):
+        progress = entry["exec"]
+        total, current, statuses = progress.get("total"), progress.get("current"), progress.get("statuses")
+        if (type(total) is not int or total <= 1 or type(current) is not int
+            or not 1 <= current <= total or not isinstance(statuses, list) or len(statuses) != total):
+            raise SystemExit("BLOCKED:repair-edge-invalid")
+        statuses[current - 1] = "FAIL"
     if phase == "plan":
         if state.get("version") == "3.0":
             bind_plan_output(state, devlyn)
@@ -2104,7 +2218,9 @@ def do_transition(
     """
     if next_phase not in LEGAL_TRANSITIONS.get(phase, set()):
         raise SystemExit(f"error: illegal phase transition: {phase} -> {next_phase}")
-    if phase == "implement" and state.get("phases", {}).get(phase, {}).get("triggered_by") == "cleanup":
+    validate_verdict(phase, verdict)
+    if (phase == "implement" and next_phase != "implement"
+        and state.get("phases", {}).get(phase, {}).get("triggered_by") == "cleanup"):
         bypasses = state.get("bypasses", [])
         required = "build_gate" if "build-gate" not in bypasses else (
             "cleanup" if "cleanup" not in bypasses else "verify"
@@ -2131,6 +2247,7 @@ def do_transition(
     do_spawn(
         candidate, next_phase, next_round, next_triggered_by,
         next_pre_sha, next_engine, next_model,
+        source_phase=phase,
         input_patch_sha256=next_input_patch_sha256,
         prompt_sha256=next_prompt_sha256,
         untracked_before=next_untracked_before,
@@ -2209,6 +2326,14 @@ def final_report_self_test() -> None:
             assert result.returncode == 1 and "BLOCKED:final-report-invalid" in result.stderr, (case, result)
             assert state_path.read_bytes() == before, case
         report.write_bytes(valid)
+        for invalid in ("FAIL", "BLOCKED:", "unknown"):
+            result = subprocess.run(command + ["complete", "--verdict", invalid,
+                                             "--log-file", ".devlyn/final-report.md"],
+                                    cwd=work, capture_output=True, text=True, encoding="utf-8")
+            assert result.returncode == 1 and result.stderr.strip() == (
+                f"error: invalid verdict for phases.final_report: {invalid}"
+            ), result.stderr
+            assert state_path.read_bytes() == before
         result = subprocess.run(command + ["complete", "--verdict", "PASS_WITH_ISSUES", "--log-file", ".devlyn/final-report.md"],
                                 cwd=work, capture_output=True, text=True, encoding="utf-8")
         assert result.returncode == 0, result.stderr
@@ -2254,12 +2379,142 @@ def final_report_self_test() -> None:
         assert (target / "pipeline.state.json").read_bytes() == completed_bytes
         assert not state_path.exists() and not report.exists()
         assert outside.read_bytes() == valid
-    print("PASS iter-0126 final report: 11 invalid CLI completions preserve state; exact binding/archive; 6 archive refusals preserve artifacts")
+    print("PASS iter-0126 final report: 14 invalid CLI completions preserve state; exact binding/archive; 6 archive refusals preserve artifacts")
+
+
+def repair_admission_self_test() -> None:
+    stamp = "2026-01-01T00:00:00.000Z"
+    origins = {
+        "build_gate": ({"started_at": stamp, "completed_at": stamp, "round": 0, "verdict": "FAIL"}, "build_gate"),
+        "cleanup": ({"started_at": stamp, "completed_at": stamp, "round": 0, "verdict": "FAIL",
+                     "execution_kind": "orchestrator_commands"}, "cleanup"),
+        "verify": ({"started_at": stamp, "completed_at": stamp, "round": 0,
+                    "verdict": "NEEDS_WORK", "merged": {"verdict": "NEEDS_WORK"}}, "verify"),
+        "phase_gate": ({"started_at": stamp, "completed_at": stamp, "round": 0, "verdict": "FAIL",
+                        "exec": {"total": 2, "current": 1, "statuses": ["FAIL", None]}}, None),
+    }
+    for origin, (entry, trigger) in origins.items():
+        source = "implement" if origin == "phase_gate" else origin
+        initial = {"phases": {source: entry}, "rounds": {"global": 0, "max_rounds": 1}}
+        for wrong in ((None, "plan", "verify") if trigger else ("plan", "verify")):
+            if wrong == trigger:
+                continue
+            candidate = copy.deepcopy(initial)
+            try:
+                do_spawn(candidate, "implement", 1, wrong, None, None, None)
+            except SystemExit as exc:
+                assert "repair-trigger-mismatch" in str(exc), (origin, wrong, exc)
+            else:
+                raise AssertionError((origin, wrong))
+        for malformed in ({"global": True, "max_rounds": 1}, {"global": -1, "max_rounds": 1},
+                          {"global": 0, "max_rounds": True}, {"global": 0, "max_rounds": 0}, None):
+            candidate = copy.deepcopy(initial)
+            candidate["rounds"] = malformed
+            try:
+                do_spawn(candidate, "implement", 1, trigger, None, None, None)
+            except SystemExit as exc:
+                assert str(exc) == "BLOCKED:rounds-malformed"
+            else:
+                raise AssertionError((origin, malformed))
+        candidate = copy.deepcopy(initial)
+        try:
+            do_spawn(candidate, "implement", 2, trigger, None, None, None)
+        except SystemExit as exc:
+            assert "implement-round-nonmonotonic" in str(exc)
+        else:
+            raise AssertionError((origin, "skipped round"))
+        candidate = copy.deepcopy(initial)
+        do_spawn(candidate, "implement", 1, trigger, None, None, None)
+        assert candidate["rounds"]["global"] == 1, origin
+        try:
+            do_spawn(candidate, "implement", 1, trigger, None, None, None)
+        except SystemExit:
+            pass
+        else:
+            raise AssertionError((origin, "duplicate admission"))
+        exhausted = copy.deepcopy(initial)
+        exhausted["rounds"]["global"] = 1
+        try:
+            do_spawn(exhausted, "implement", 1, trigger, None, None, None)
+        except SystemExit as exc:
+            assert str(exc) == f"BLOCKED:repair-budget-exhausted: global=1 max_rounds=1 origin={origin}"
+        else:
+            raise AssertionError((origin, "shared exhaustion"))
+    phased = {"rounds": {"global": 0, "max_rounds": 1}, "phases": {}}
+    do_spawn(phased, "implement", 0, None, None, None, None)
+    phased["phases"]["implement"].update({"completed_at": stamp, "verdict": "PASS",
+        "exec": {"total": 2, "current": 2, "statuses": ["PASS", None]}})
+    do_spawn(phased, "implement", 1, None, None, None, None)
+    assert phased["rounds"]["global"] == 0
+    do_complete(phased, "implement", "FAIL", None, None, None, None, None)
+    assert phased["phases"]["implement"]["exec"]["statuses"] == ["PASS", "FAIL"]
+    do_spawn(phased, "implement", 2, None, None, None, None)
+    assert phased["rounds"]["global"] == 1
+    do_complete(phased, "implement", "PASS", None, None, None, None, None)
+    do_spawn(phased, "verify", 2, None, None, None, None)
+    with tempfile.TemporaryDirectory() as tmp:
+        transition_state = {"rounds": {"global": 0, "max_rounds": 1}, "phases": {}}
+        do_spawn(transition_state, "implement", 0, None, None, None, None)
+        transition_state["phases"]["implement"]["exec"] = {
+            "total": 2, "current": 1, "statuses": [None, None],
+        }
+        transitioned = do_transition(
+            transition_state, "implement", "implement", "FAIL", None, None, None,
+            None, None, None, pathlib.Path(tmp), 1, None, None, None, None,
+        )
+        assert transition_state["rounds"]["global"] == 0
+        assert transitioned["rounds"]["global"] == 1
+        assert transitioned["phases"]["implement"]["exec"]["statuses"][0] == "FAIL"
+    print("PASS repair admission: four origins, trigger/counter/round refusal, phased invocation and last repair")
+
+
+def cleanup_origin_phase_gate_reentry_self_test() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        stamp = "2026-01-01T00:00:00.000Z"
+        state = {"version": "3.0", "rounds": {"global": 1, "max_rounds": 4}, "phases": {
+            "cleanup": {"started_at": stamp, "completed_at": stamp, "round": 0,
+                        "verdict": "FAIL", "execution_kind": "orchestrator_commands"},
+            "implement": {"started_at": stamp, "completed_at": None, "round": 1,
+                          "triggered_by": "cleanup", "verdict": None,
+                          "exec": {"total": 2, "current": 1, "statuses": [None, None]}},
+        }}
+        try:
+            do_transition(
+                state, "implement", "verify", "PASS", None, None, None,
+                None, None, None, pathlib.Path(tmp), 1, None, None, None, None,
+            )
+        except SystemExit as exc:
+            assert str(exc) == "BLOCKED:owner-cleanup-repair-route: next phase must be build_gate", exc
+        else:
+            raise AssertionError("cleanup repair bypassed BUILD_GATE")
+        transitioned = do_transition(
+            state, "implement", "implement", "FAIL", None, None, None,
+            None, None, None, pathlib.Path(tmp), 2, None, None, None, None,
+        )
+        assert transitioned["rounds"]["global"] == 2
+        assert transitioned["phases"]["implement"]["exec"]["statuses"] == ["FAIL", None]
+        assert transitioned["phases"]["implement"]["triggered_by"] == "cleanup"
+        try:
+            do_transition(
+                transitioned, "implement", "verify", "PASS", None, None, None,
+                None, None, None, pathlib.Path(tmp), 2, None, None, None, None,
+            )
+        except SystemExit as exc:
+            assert str(exc) == "BLOCKED:owner-cleanup-repair-route: next phase must be build_gate", exc
+        else:
+            raise AssertionError("phase-gate retry bypassed BUILD_GATE")
+        spawned = copy.deepcopy(state)
+        do_complete(spawned, "implement", "FAIL", None, None, None, None, None)
+        do_spawn(spawned, "implement", 2, None, None, None, None)
+        assert spawned["rounds"]["global"] == 2
+        assert spawned["phases"]["implement"]["triggered_by"] == "cleanup"
 
 
 def self_test() -> int:
     import time
 
+    repair_admission_self_test()
+    cleanup_origin_phase_gate_reentry_self_test()
     final_report_self_test()
     with tempfile.TemporaryDirectory() as tmp:
         work = pathlib.Path(tmp); devlyn = work / ".devlyn"; devlyn.mkdir()
@@ -2535,7 +2790,7 @@ def self_test() -> int:
         assert archived_legacy == old_receipt
         print("PASS iter-0089 PLAN ledger: P-0089-1/2/6")
 
-        write_state(state_path, {"phases": {}})
+        write_state(state_path, {"phases": {}, "rounds": {"global": 0, "max_rounds": 4}})
 
         # Round 0: spawn -> complete.
         state = read_state(state_path)
@@ -2555,9 +2810,14 @@ def self_test() -> int:
         expected_ms = round((parse_iso(entry["completed_at"]) - parse_iso(entry["started_at"])).total_seconds() * 1000)
         assert entry["duration_ms"] == expected_ms, (entry["duration_ms"], expected_ms)
 
-        # Round 1: fix-loop respawn — this is the literal iter-0042 regression.
+        # Round 1: VERIFY finding admits a fix-loop respawn.
         time.sleep(0.05)
         state = read_state(state_path)
+        do_spawn(state, "verify", 0, None, None, None, None)
+        state["phases"]["verify"].update({
+            "completed_at": now_iso(), "verdict": "NEEDS_WORK",
+            "merged": {"verdict": "NEEDS_WORK"},
+        })
         do_spawn(state, "implement", 1, "verify", None, None, None)
         write_state(state_path, state)
         respawned = read_state(state_path)["phases"]["implement"]
@@ -2596,6 +2856,10 @@ def self_test() -> int:
         evidence_spec_dir = evidence_work / "docs" / "evidence"
         evidence_devlyn.mkdir(parents=True)
         evidence_spec_dir.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q"], cwd=evidence_work, check=True)
+        subprocess.run(["git", "config", "user.name", "Evidence test"], cwd=evidence_work, check=True)
+        subprocess.run(["git", "config", "user.email", "evidence@example.invalid"], cwd=evidence_work, check=True)
+        (evidence_work / ".gitignore").write_text(".devlyn/\n", encoding="utf-8")
         (evidence_spec_dir / "spec.md").write_text("# Evidence fixture\n", encoding="utf-8")
         (evidence_spec_dir / "spec.expected.json").write_text(json.dumps({
             "verification_commands": [{"cmd": "printf build-gate"}],
@@ -2607,9 +2871,12 @@ def self_test() -> int:
                 "stdout_contains": ["red-before-fix"],
             }],
         }) + "\n", encoding="utf-8")
+        subprocess.run(["git", "add", "."], cwd=evidence_work, check=True)
+        subprocess.run(["git", "commit", "-qm", "fixture"], cwd=evidence_work, check=True)
         evidence_state = {
             "run_id": "rs-state-evidence",
             "source": {"type": "spec", "spec_path": "docs/evidence/spec.md"},
+            "rounds": {"global": 0, "max_rounds": 4},
             "phases": {"implement": None, "build_gate": None},
         }
         do_spawn(evidence_state, "implement", 0, None, None, "codex", None)
@@ -2736,10 +3003,27 @@ def self_test() -> int:
             return build_carrier
 
         build_carrier_0 = write_build_gate_results()
-        completed = build_gate_state_cli("complete", "--verdict", "PASS")
+        completed = build_gate_state_cli("complete", "--verdict", "FAIL")
         assert completed.returncode == 0, completed.stderr
         completed_state = read_state(evidence_state_path)
         assert completed_state["process_evidence"] == [carrier, build_carrier_0]
+
+        repaired = evidence_state_cli("spawn", "--round", "1", "--triggered-by", "build_gate")
+        assert repaired.returncode == 0, repaired.stderr
+        captured = subprocess.run(
+            [sys.executable, runner_script, "--devlyn-dir", ".devlyn", "run",
+             "--phase", "implement", "--id", "red-first"],
+            cwd=evidence_work, capture_output=True, text=True, encoding="utf-8",
+        )
+        assert captured.returncode == 0, captured.stderr
+        completed = evidence_state_cli("complete", "--verdict", "PASS")
+        assert completed.returncode == 0, completed.stderr
+        implement_carrier_1 = read_state(evidence_state_path)["process_evidence"][-1]
+        subprocess.run(["git", "commit", "--allow-empty", "-qm", "chore(pipeline): implement fix round 1"],
+                       cwd=evidence_work, check=True)
+        (evidence_devlyn / "build_gate.findings.jsonl").write_text("", encoding="utf-8")
+        durable = evidence_state_cli("durability-enforce", "--round", "1", "--origin-phase", "build_gate")
+        assert durable.returncode == 0, durable.stderr
 
         spawned = build_gate_state_cli(
             "spawn", "--round", "1", "--triggered-by", "build_gate",
@@ -2748,12 +3032,12 @@ def self_test() -> int:
         build_carrier_1 = write_build_gate_results()
         transitioned = build_gate_state_cli(
             "transition", "--verdict", "PASS", "--next-phase", "cleanup",
-            "--next-round", "0", "--next-pre-sha", "test-pre-sha",
+            "--next-round", "1", "--next-pre-sha", "test-pre-sha",
         )
         assert transitioned.returncode == 0, transitioned.stderr
         build_bound_state = read_state(evidence_state_path)
         assert build_bound_state["process_evidence"] == [
-            carrier, build_carrier_0, build_carrier_1,
+            carrier, build_carrier_0, implement_carrier_1, build_carrier_1,
         ]
         assert build_bound_state["phases"]["cleanup"]["started_at"] is not None
         print("PASS iter-0111 BUILD_GATE evidence: completion/transition state binding")
@@ -2762,6 +3046,7 @@ def self_test() -> int:
         # bytes only, so a failed entry or capability denial could still be completed
         # with caller-supplied PASS.
         build_bound_state["phases"]["build_gate"] = None
+        build_bound_state["phases"]["implement"]["round"] = 2
         do_spawn(build_bound_state, "build_gate", 2, "build_gate", None, None, None)
         write_state(evidence_state_path, build_bound_state)
         mismatch = runner.normalize_obligation({
@@ -2807,6 +3092,7 @@ def self_test() -> int:
         assert failed.returncode == 0, failed.stderr
 
         failed_state = read_state(evidence_state_path)
+        failed_state["phases"]["implement"]["round"] = 3
         do_spawn(failed_state, "build_gate", 3, "build_gate", None, None, None)
         write_state(evidence_state_path, failed_state)
         denied = runner.normalize_obligation({
@@ -2919,7 +3205,7 @@ def self_test() -> int:
             completed = read_state(state_file)["phases"]["build_gate"]
             command_identity(completed)
             assert completed["verdict"] == "PASS" and completed["completed_at"]
-            result = cli("build_gate", "spawn", "--round", "1")
+            result = cli("build_gate", "spawn", "--round", "0")
             assert result.returncode == 0, result.stderr
             reentered = read_state(state_file)["phases"]["build_gate"]
             command_identity(reentered)
@@ -2968,6 +3254,11 @@ def self_test() -> int:
             old = legacy_done["phases"]["build_gate"]
             assert "execution_kind" not in old and old["model_effective"] is None
             assert old["invocation_receipt"]["sandbox_network_access"] is True
+            legacy_done["phases"]["implement"] = {
+                "started_at": now_iso(), "completed_at": now_iso(), "round": 1,
+                "verdict": "PASS",
+            }
+            write_state(state_file, legacy_done)
             result = cli("build_gate", "spawn", "--round", "1")
             assert result.returncode == 0, result.stderr
             fresh = read_state(state_file)["phases"]["build_gate"]
@@ -3251,6 +3542,10 @@ def self_test() -> int:
             print("PASS iter-0119 nonzero receipt persists BLOCKED before exit1; transition stays atomic")
 
             candidate = read_state(state_file)
+            candidate["phases"]["implement"] = {
+                "started_at": now_iso(), "completed_at": now_iso(), "round": 1,
+                "verdict": "PASS",
+            }
             do_spawn(candidate, "build_gate", 1, None, None, None, None)
             write_state(state_file, candidate)
             next_relative = runner.manifest_relative_path(candidate, "build_gate")
@@ -3272,6 +3567,10 @@ def self_test() -> int:
             # A post-spec denial refresh must preserve earlier failed checks.
             refresh_state = copy.deepcopy(fixture)
             refresh_state["phases"]["build_gate"] = None
+            refresh_state["phases"]["implement"] = {
+                "started_at": now_iso(), "completed_at": now_iso(), "round": 2,
+                "verdict": "PASS",
+            }
             do_spawn(refresh_state, "build_gate", 2, None, None, None, None, devlyn=active)
             write_state(state_file, refresh_state)
             refresh_relative = runner.manifest_relative_path(refresh_state, "build_gate")
@@ -3321,7 +3620,7 @@ def self_test() -> int:
             active.mkdir(parents=True)
             state_file = active / "pipeline.state.json"
             results_file = active / "spec-verify.results.json"
-            checker = pathlib.Path(__file__).with_name("spec-verify-check.py")
+            checker = pathlib.Path(__file__).resolve().with_name("spec-verify-check.py")
             env = {key: value for key, value in os.environ.items() if key not in {
                 "BENCH_WORKDIR", "SPEC_VERIFY_PHASE", "SPEC_VERIFY_FINDINGS_FILE",
                 "SPEC_VERIFY_FINDING_PREFIX",
@@ -3341,7 +3640,10 @@ def self_test() -> int:
                 fixture = {
                     "version": "3.0", "run_id": "rs-preflight-build-gate",
                     "source": {"type": "generated", "criteria_path": ".devlyn/criteria.generated.md"},
-                    "phases": {"build_gate": None}, "process_evidence": copy.deepcopy(history) or None,
+                    "phases": {"build_gate": None, "implement": {
+                        "started_at": now_iso(), "completed_at": now_iso(),
+                        "round": round_, "verdict": "PASS",
+                    }}, "process_evidence": copy.deepcopy(history) or None,
                 }
                 do_spawn(fixture, "build_gate", round_, None, None, None, None)
                 write_state(state_file, fixture)
@@ -3623,7 +3925,7 @@ def self_test() -> int:
         assert state_path.read_bytes() == open_next_before
         print("PASS self-test transition open-span guard: rejected without mutation")
 
-        # A completed FAIL round must be retained before a fix-loop respawn
+        # A completed FAIL span must be retained before a same-invocation respawn
         # resets the live record.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
@@ -3635,7 +3937,7 @@ def self_test() -> int:
         write_state(state_path, state)
         failed_round = read_state(state_path)["phases"]["build_gate"]
         state = read_state(state_path)
-        do_spawn(state, "build_gate", 1, "build_gate", None, None, None)
+        do_spawn(state, "build_gate", 0, None, None, None, None)
         write_state(state_path, state)
         respawned_fail = read_state(state_path)["phases"]["build_gate"]
         assert respawned_fail["verdict"] is None
@@ -3671,7 +3973,7 @@ def self_test() -> int:
             assert "owned by verify-merge-findings.py" in str(e)
         else:
             raise AssertionError("complete() must reject an explicit --verdict for VERIFY")
-        do_spawn(state, "verify", 1, "verify", None, None, None)
+        do_spawn(state, "verify", 0, None, None, None, None)
         assert state["phases"]["verify"]["judge_durations_ms"] is None
 
         # Non-VERIFY phases require --verdict explicitly; complete() must not
@@ -3740,21 +4042,21 @@ def self_test() -> int:
         assert (devlyn / "codex-primary-judge.prompt.md").exists(), "judge prompts must survive VERIFY spawn"
         assert (devlyn / "spec-verify.json").exists(), "non-VERIFY-round files must survive"
 
-        # Fix-loop respawn of phase-gated IMPLEMENT must preserve `exec`
+        # Normal phase-gated IMPLEMENT advancement must preserve `exec`
         # (routing truth for large runs, state-schema.md line 55) — spawn
         # merges into the existing entry rather than replacing it wholesale.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
         do_spawn(state, "implement", 0, None, None, "claude", None)
         state["phases"]["implement"]["exec"] = {
-            "total": 3, "current": 3, "statuses": ["PASS", "PASS", "PASS"], "commits": ["a", "b", "c"],
+            "total": 3, "current": 3, "statuses": ["PASS", "PASS", None], "commits": ["a", "b", "c"],
         }
         write_state(state_path, state)
         state = read_state(state_path)
         do_complete(state, "implement", "PASS", None, None, None, None, None)
         write_state(state_path, state)
         state = read_state(state_path)
-        do_spawn(state, "implement", 1, "verify", None, None, None)
+        do_spawn(state, "implement", 1, None, None, None, None)
         write_state(state_path, state)
         respawned_exec = read_state(state_path)["phases"]["implement"]
         assert respawned_exec["exec"]["current"] == 3, "spawn must not clobber unowned fields like exec"
@@ -3765,6 +4067,7 @@ def self_test() -> int:
         # Existing history is append-only; a respawn must not clobber prior
         # entries that were already preserved from older rounds.
         write_state(state_path, {
+            "rounds": {"global": 0, "max_rounds": 4},
             "phases": {
                 "implement": {
                     "started_at": "2026-01-01T00:00:02.000Z",
@@ -3773,6 +4076,7 @@ def self_test() -> int:
                     "round": 2,
                     "triggered_by": "verify",
                     "verdict": "FAIL",
+                    "exec": {"total": 2, "current": 2, "statuses": ["PASS", "FAIL"]},
                     "engine": "codex",
                     "history": [{
                         "started_at": "2026-01-01T00:00:00.000Z",
@@ -3784,7 +4088,7 @@ def self_test() -> int:
             }
         })
         state = read_state(state_path)
-        do_spawn(state, "implement", 3, "verify", None, None, None)
+        do_spawn(state, "implement", 3, None, None, None, None)
         write_state(state_path, state)
         history_preserved = read_state(state_path)["phases"]["implement"]["history"]
         assert len(history_preserved) == 2
@@ -4670,9 +4974,13 @@ def self_test() -> int:
         )
         assert reroute_error and "model reroute" in reroute_error
         assert rerouted_state["phases"]["implement"]["verdict"] == "BLOCKED"
-        do_spawn(rerouted_state, "implement", 1, None, None, "codex", receipt_model,
-                 prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn)
-        assert rerouted_state["phases"]["implement"]["history"][-1]["verdict"] == "BLOCKED"
+        try:
+            do_spawn(rerouted_state, "implement", 1, None, None, "codex", receipt_model,
+                     prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn)
+        except SystemExit as exc:
+            assert str(exc) == "BLOCKED:repair-edge-invalid"
+        else:
+            raise AssertionError("BLOCKED IMPLEMENT was admitted as a product repair")
 
         plan_prompt = receipt_devlyn / "plan.prompt.0"
         plan_prompt.write_text("plan exactly\n", encoding="utf-8")
@@ -5158,7 +5466,10 @@ def self_test() -> int:
             {"a.txt": "old\n"}, "build_gate",
             [{"id": "BG", "file": "a.txt", "line": 8}],
         )
-        build_state["phases"]["implement"] = {"round": 1, "triggered_by": "build_gate"}
+        build_state["phases"]["implement"] = {
+            "started_at": now_iso(), "completed_at": now_iso(), "round": 1,
+            "triggered_by": "build_gate", "verdict": "PASS",
+        }
         write_state(build_devlyn / "pipeline.state.json", build_state)
         subprocess.run(
             [sys.executable, str(pathlib.Path(__file__).resolve()), "--devlyn-dir", ".devlyn",
@@ -5415,7 +5726,7 @@ def self_test() -> int:
     return 0
 
 
-def main() -> int:
+def _main_unlocked() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--devlyn-dir", default=".devlyn")
     ap.add_argument("--phase", choices=sorted(PHASE_NAMES))
@@ -5435,7 +5746,7 @@ def main() -> int:
     spawn_p.add_argument("--model", default=None)
 
     complete_p = sub.add_parser("complete")
-    complete_p.add_argument("--verdict", choices=sorted(VALID_VERDICTS), default=None)
+    complete_p.add_argument("--verdict", default=None)
     complete_p.add_argument("--post-sha", default=None)
     complete_p.add_argument("--findings-file", default=None)
     complete_p.add_argument("--log-file", default=None)
@@ -5444,7 +5755,7 @@ def main() -> int:
     complete_p.add_argument("--engine-session-log", default=None)
 
     transition_p = sub.add_parser("transition")
-    transition_p.add_argument("--verdict", choices=sorted(VALID_VERDICTS), default=None)
+    transition_p.add_argument("--verdict", default=None)
     transition_p.add_argument("--post-sha", default=None)
     transition_p.add_argument("--findings-file", default=None)
     transition_p.add_argument("--log-file", default=None)
@@ -5656,6 +5967,21 @@ def main() -> int:
         return 1
     sys.stdout.write(f"ok: phases.{args.phase}.{args.event}\n")
     return 0
+
+
+def main() -> int:
+    if "--self-test" in sys.argv[1:]:
+        return _main_unlocked()
+    selector = argparse.ArgumentParser(add_help=False)
+    selector.add_argument("--devlyn-dir", default=".devlyn")
+    known, _ = selector.parse_known_args()
+    devlyn = pathlib.Path(known.devlyn_dir).resolve()
+    if not devlyn.is_dir():
+        sys.stderr.write(f"error: {devlyn} is not a directory\n")
+        return 1
+    lock = runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["file_lock"]
+    with lock(devlyn / "pipeline.state.lock", blocking=True):
+        return _main_unlocked()
 
 
 if __name__ == "__main__":

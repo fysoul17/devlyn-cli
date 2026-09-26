@@ -110,6 +110,9 @@ BOOTSTRAP_TEMP_PATTERNS = tuple(
 PER_RUN_PATTERNS += BOOTSTRAP_TEMP_PATTERNS
 
 SAFE_RUN_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+valid_final_verdict = runpy.run_path(
+    pathlib.Path(__file__).with_name("terminal-claim-check.py")
+)["valid_final_verdict"]
 
 
 class ArchiveError(Exception):
@@ -173,9 +176,7 @@ def read_run_id(devlyn: pathlib.Path) -> str:
 def is_completed(state: object) -> bool:
     phases = state.get("phases") if isinstance(state, dict) else None
     final = phases.get("final_report") if isinstance(phases, dict) else None
-    if not isinstance(final, dict) or final.get("verdict") not in (
-        "PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED",
-    ):
+    if not isinstance(final, dict) or not valid_final_verdict(final.get("verdict")):
         return False
     timestamp = final.get("completed_at")
     if not isinstance(timestamp, str) or not re.fullmatch(
@@ -566,6 +567,16 @@ def completion_self_test() -> None:
     print("PASS archive completion: 8 terminal forms; malformed/unfinished/residue retained beyond keep-10")
 
 
+def full_terminal_verdict_completion_self_test() -> None:
+    timestamp = "2026-09-06T00:00:00Z"
+    assert is_completed({"phases": {"final_report": {
+        "verdict": "BLOCKED:repair-budget-exhausted", "completed_at": timestamp,
+    }}})
+    assert not is_completed({"phases": {"final_report": {
+        "verdict": "BLOCKED:", "completed_at": timestamp,
+    }}})
+
+
 def self_test() -> int:
     assert dynamic_judge_role_artifacts(pathlib.Path(".devlyn"), {"phases": {"verify": None}}) == []
     assert dynamic_judge_role_artifacts(pathlib.Path(".devlyn"), {"phases": {}}) == []
@@ -921,6 +932,7 @@ def self_test() -> int:
         else:
             raise AssertionError("NaN archive run_id was accepted")
     completion_self_test()
+    full_terminal_verdict_completion_self_test()
     return 0
 
 

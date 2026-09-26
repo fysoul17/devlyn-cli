@@ -1471,6 +1471,91 @@ def write_state(devlyn: pathlib.Path, summary: dict[str, Any]) -> None:
 def self_test() -> int:
     import subprocess
 
+    with tempfile.TemporaryDirectory() as tmp:
+        work = pathlib.Path(tmp).resolve()
+        devlyn = work / ".devlyn"
+        devlyn.mkdir()
+        role = JUDGE_ROLE_EVIDENCE["ROLE"]
+        (devlyn / "engines.json").write_bytes(role["encoded"]({
+            "roles": {"primary_judge": {"engine": "claude", "model": "fixture-claude-model", "effort": "high"}},
+        }))
+        resolution = role["resolve"](work, "claude", no_pair=True, available=lambda engine: True)
+        state = {"run_id": "merge-relative-role", "engine": "claude", "role_resolution": resolution,
+                 "rounds": {"global": 0, "max_rounds": 1},
+                 "phases": {"verify": {"engine": "claude", "round": 0, "verdict": None,
+                                       "started_at": "2026-01-01T00:00:00Z", "completed_at": "2026-01-01T00:01:00Z"}}}
+        state_path = devlyn / "pipeline.state.json"
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        stem = "claude-judge.r0"
+        prompt_path = devlyn / (stem + ".prompt")
+        prompt = b"review"
+        prompt_path.write_bytes(prompt)
+        command = ["claude", "-p", "--model", "fixture-claude-model", "--effort", "high",
+                   "--permission-mode", "dontAsk", "--tools", "Read,Grep,Glob",
+                   "--allowedTools", "Read,Grep,Glob", "--setting-sources", "project",
+                   "--output-format", "json", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
+        argv = ["python3", "run-bounded.py", "600", "--stdin-file", str(prompt_path),
+                "--record-transport", "--", *command]
+        argv_path = devlyn / (stem + ".argv.json")
+        argv_path.write_bytes(role["encoded"](argv))
+        (devlyn / (stem + ".stderr")).write_bytes(b"")
+        (devlyn / (stem + ".output.json")).write_bytes(role["encoded"]({
+            "type": "result", "subtype": "success", "is_error": False, "stop_reason": "end_turn",
+            "session_id": "fixture-claude", "result": "PASS", "modelUsage": {"fixture-claude-model": {}},
+        }))
+        transport = {"schema_version": 1, "transport": "stdin-file",
+                     "prompt": {"path": str(prompt_path), "sha256": role["digest"](prompt), "bytes": len(prompt)},
+                     "command": command, "argv": command, "timeout_sec": 600, "isolated": False,
+                     "status": "completed", "exit_code": 0}
+        (devlyn / (stem + ".prompt.transport.json")).write_text(json.dumps(transport), encoding="utf-8")
+        evidence, derived = JUDGE_ROLE_EVIDENCE["describe"](devlyn, state, "primary_judge", 0)
+        (devlyn / (stem + ".role-evidence.json")).write_bytes(role["encoded"](evidence))
+        (devlyn / (stem + ".stdout")).write_bytes(derived)
+        (devlyn / "claude-judge.stdout").write_bytes(derived)
+        (devlyn / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
+        (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
+        script = str(pathlib.Path(__file__).resolve())
+        def merge_at(directory):
+            return subprocess.run([sys.executable, script, "--devlyn-dir", directory, "--write-state"],
+                                  cwd=work, capture_output=True, text=True)
+        relative = merge_at(".devlyn")
+        assert relative.returncode == 0, relative.stderr
+        relative_state = json.loads(state_path.read_text())
+        assert relative_state["phases"]["verify"]["verdict"] == "PASS", relative.stdout
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        absolute = merge_at(str(devlyn))
+        assert absolute.returncode == 0, absolute.stderr
+        absolute_state = json.loads(state_path.read_text())
+        assert absolute_state["phases"]["verify"]["role_evidence"] == relative_state["phases"]["verify"]["role_evidence"]
+        argv[4] = str(work / "wrong.prompt")
+        argv_path.write_bytes(role["encoded"](argv))
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        wrong = merge_at(".devlyn")
+        assert wrong.returncode == 0, wrong.stderr
+        blocked_state = json.loads(state_path.read_text())
+        assert blocked_state["phases"]["verify"]["verdict"] == "BLOCKED"
+        writer = runpy.run_path(str(pathlib.Path(__file__).with_name("state-phase-write.py")))
+        try:
+            writer["do_spawn"](blocked_state, "implement", 1, "verify", None, None, None)
+        except SystemExit as exc:
+            assert str(exc) == "BLOCKED:repair-edge-invalid"
+        else:
+            raise AssertionError("BLOCKED VERIFY entered product repair")
+        assert blocked_state["rounds"]["global"] == 0
+        argv[4] = str(prompt_path)
+        argv_path.write_bytes(role["encoded"](argv))
+        finding = {"id": "fixture-high", "rule_id": "fixture.binding", "severity": "HIGH",
+                   "confidence": "high", "file": "source.txt", "line": 1,
+                   "message": "required behavior is missing", "criterion_ref": "fixture"}
+        (devlyn / "verify.findings.jsonl").write_text(json.dumps(finding) + "\n", encoding="utf-8")
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        needs_work = merge_at(".devlyn")
+        assert needs_work.returncode == 0, needs_work.stderr
+        repair_state = json.loads(state_path.read_text())
+        assert repair_state["phases"]["verify"]["verdict"] == "NEEDS_WORK"
+        writer["do_spawn"](repair_state, "implement", 1, "verify", None, None, None)
+        assert repair_state["rounds"]["global"] == 1
+
     try:
         loads_strict_json('{"verdict":"PASS","verdict":"BLOCKED"}')
     except ValueError as exc:
@@ -3424,10 +3509,16 @@ def main() -> int:
     if not devlyn.is_dir():
         sys.stderr.write(f"error: {devlyn} is not a directory\n")
         return 1
+    if args.write_state:
+        lock = runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["file_lock"]
+        with lock(devlyn.resolve() / "pipeline.state.lock", blocking=True):
+            findings, source_verdicts = read_findings(devlyn)
+            summary = write_outputs(devlyn, findings, source_verdicts)
+            write_state(devlyn, summary)
+            print(json.dumps(summary, sort_keys=True))
+        return 0
     findings, source_verdicts = read_findings(devlyn)
     summary = write_outputs(devlyn, findings, source_verdicts)
-    if args.write_state:
-        write_state(devlyn, summary)
     print(json.dumps(summary, sort_keys=True))
     return 0
 

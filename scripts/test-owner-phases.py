@@ -8,6 +8,7 @@ import runpy
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 SHARED = Path(__file__).resolve().parents[1] / "config/skills/_shared"
@@ -33,7 +34,7 @@ class OwnerPhases(unittest.TestCase):
         self.git("commit", "-qm", "fixture")
         self.head = self.git("rev-parse", "HEAD")
         self.save({"version": "3.0", "run_id": "rs-owner-test", "engine": "codex",
-                   "phases": {}})
+                   "rounds": {"global": 0, "max_rounds": 4}, "phases": {}})
 
     def git(self, *args):
         return subprocess.check_output(["git", *args], cwd=self.work, text=True).strip()
@@ -88,7 +89,8 @@ class OwnerPhases(unittest.TestCase):
 
     def test_owner_identity_and_current_round_artifacts(self):
         for phase in ("plan", "cleanup"):
-            self.save({"version": "3.0", "run_id": "rs-owner-test", "engine": "codex", "phases": {}})
+            self.save({"version": "3.0", "run_id": "rs-owner-test", "engine": "codex",
+                       "rounds": {"global": 0, "max_rounds": 4}, "phases": {}})
             spawn = ("spawn", "--round", "0") + (("--pre-sha", self.head) if phase == "cleanup" else ())
             self.cli(phase, *spawn)
             opened = self.state()
@@ -159,6 +161,46 @@ class OwnerPhases(unittest.TestCase):
         (self.devlyn / "cleanup.findings.jsonl").write_text("\n")
         self.cli("cleanup", "transition", "--verdict", "PASS", "--post-sha", fixed_head,
                  "--next-phase", "verify", "--next-round", "1", "--next-engine", "claude")
+
+    def test_repair_admission_lock_serializes_contenders(self):
+        self.cli("cleanup", "spawn", "--round", "0", "--pre-sha", self.head)
+        self.cli("cleanup", "complete", "--verdict", "FAIL", "--post-sha", self.head)
+        lock = runpy.run_path(str(SHARED / "platform-support.py"))["file_lock"]
+        command = [sys.executable, str(SHARED / "state-phase-write.py"), "--devlyn-dir", ".devlyn",
+                   "--phase", "implement", "spawn", "--round", "1", "--triggered-by", "cleanup",
+                   "--engine", "claude"]
+        with lock(self.devlyn / "pipeline.state.lock", blocking=True):
+            first = subprocess.Popen(command, cwd=self.work, env=ENV, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            second = subprocess.Popen(command, cwd=self.work, env=ENV, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            time.sleep(0.1)
+            self.assertIsNone(first.poll())
+            self.assertIsNone(second.poll())
+        results = [(process.returncode, stderr) for process in (first, second)
+                   for _stdout, stderr in [process.communicate(timeout=10)]]
+        self.assertEqual(sorted(code for code, _ in results), [0, 1], results)
+        self.assertEqual(self.state()["rounds"]["global"], 1)
+        self.assertEqual(self.state()["phases"]["implement"]["round"], 1)
+
+    def test_refused_repair_closes_and_archives_terminal_report(self):
+        self.cli("cleanup", "spawn", "--round", "0", "--pre-sha", self.head)
+        state = self.state()
+        state["rounds"] = {"global": 1, "max_rounds": 1}
+        self.save(state)
+        self.cli("cleanup", "transition", "--verdict", "FAIL", "--post-sha", self.head,
+                 "--next-phase", "implement", "--next-round", "1", "--next-triggered-by", "cleanup",
+                 "--next-engine", "claude", error="BLOCKED:repair-budget-exhausted")
+        self.cli("cleanup", "complete", "--verdict", "FAIL", "--post-sha", self.head)
+        self.cli("final_report", "spawn", "--round", "0")
+        (self.devlyn / "final-report.md").write_text(
+            "<!-- devlyn:final-report run_id=rs-owner-test -->\n# Repair budget exhausted\n")
+        self.cli("final_report", "complete", "--verdict", "BLOCKED:repair-budget-exhausted",
+                 "--log-file", ".devlyn/final-report.md")
+        archived = subprocess.run([sys.executable, str(SHARED / "archive_run.py"), "--devlyn-dir", ".devlyn"],
+                                  cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertEqual(archived.returncode, 0, archived.stderr)
+        checked = subprocess.run([sys.executable, str(SHARED / "terminal-claim-check.py")],
+                                 cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
 
     def test_cleanup_repair_bypass_still_requires_durability(self):
         self.cli("cleanup", "spawn", "--round", "0", "--pre-sha", self.head)

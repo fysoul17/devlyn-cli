@@ -9,6 +9,7 @@ import json
 import os
 import pathlib
 import re
+import runpy
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -34,8 +35,6 @@ HALT_WITNESS_PHASES = {
     "plan-empty": "plan",
     "risk-halt": "plan",
     "implement-empty": "implement",
-    "build-gate-exhausted": "build_gate",
-    "verify-exhausted": "verify",
 }
 
 
@@ -130,6 +129,30 @@ def terminal_halt_witness(phases: dict[str, object]) -> tuple[str, str] | None:
     return target, reason
 
 
+def exhausted_origin(state: dict[str, object]) -> str | None:
+    writer = runpy.run_path(str(pathlib.Path(__file__).with_name("state-phase-write.py")))
+    predecessor = writer["repair_predecessor"](state)
+    if predecessor is None:
+        return None
+    name, entry = predecessor
+    if entry.get("completed_at") is None:
+        return None
+    if name == "verify":
+        merged = entry.get("merged")
+        return "verify" if entry.get("verdict") == "NEEDS_WORK" and isinstance(merged, dict) and merged.get("verdict") == "NEEDS_WORK" else None
+    if name == "cleanup":
+        return name if entry.get("verdict") == "FAIL" and entry.get("execution_kind") == "orchestrator_commands" else None
+    if name == "build_gate":
+        return name if entry.get("verdict") == "FAIL" else None
+    progress = entry.get("exec")
+    if not writer["valid_phase_gate_progress"](progress):
+        return None
+    if (entry.get("verdict") == "FAIL"
+        and progress["statuses"][progress["current"] - 1] == "FAIL"):
+        return "phase_gate"
+    return None
+
+
 def classify_state_bytes(
     root: pathlib.Path,
     state_path: pathlib.Path,
@@ -206,6 +229,39 @@ def classify_state_bytes(
     archive_valid = (
         archived and state_path.parent.name == run_id
     ) or archive_state.is_file()
+    report_verdict = final_report.get("verdict") if isinstance(final_report, dict) else None
+    rounds = state.get("rounds")
+    schema_v3 = state.get("version") == "3.0"
+    has_v3_repair_round = schema_v3 and any(
+        isinstance(phases.get(name), dict) and "round" in phases[name]
+        for name in ("implement", "build_gate", "cleanup", "verify")
+    )
+    try:
+        origin = exhausted_origin(state) if schema_v3 and (rounds is not None or has_v3_repair_round) else None
+    except SystemExit:
+        return malformed("repair predecessor has invalid round", run_id), state
+    exhausted = (isinstance(rounds, dict) and type(rounds.get("global")) is int
+                 and type(rounds.get("max_rounds")) is int and rounds["global"] == rounds["max_rounds"]
+                 and rounds["max_rounds"] >= 1)
+    claims_exhaustion = schema_v3 and (report_verdict == "BLOCKED:repair-budget-exhausted" or (
+        report_verdict == "NEEDS_WORK" and state.get("mode") != "verify-only"
+        and (rounds is not None or origin is not None)
+    ))
+    if claims_exhaustion:
+        expected = "NEEDS_WORK" if origin == "verify" else "BLOCKED:repair-budget-exhausted"
+        blocked_source = any(
+            isinstance(entry, dict) and entry.get("verdict") == "BLOCKED"
+            for name, entry in phases.items() if name != "final_report"
+        )
+        if not final_completed or not exhausted or origin is None or report_verdict != expected or blocked_source:
+            return incomplete("final_report", "repair exhaustion witness invalid", run_id), state
+        if not archive_valid:
+            return incomplete("archive", "repair exhaustion report not archived", run_id), state
+        return Classification("CLEAN", None, f"repair budget exhausted at {origin}", run_id, False), state
+    if (origin is not None and verdict is not None
+        and not (state.get("mode") == "verify-only" and origin == "verify" and report_verdict == "NEEDS_WORK")
+        and not (isinstance(report_verdict, str) and report_verdict.startswith("BLOCKED:"))):
+        return incomplete("final_report", "current repair exhaustion cannot use stale VERIFY", run_id), state
     if verdict is not None:
         if not final_completed:
             return incomplete(
@@ -396,6 +452,177 @@ def self_test() -> int:
             },
         }
 
+        def exhausted_case(origin: str) -> dict[str, object]:
+            span = {"started_at": "2026-07-20T00:00:00Z", "completed_at": "2026-07-20T00:01:00Z"}
+            phases = {"verify": {**span, "round": 0, "verdict": "PASS"}}
+            if origin == "phase_gate":
+                phases["implement"] = {**span, "round": 1, "verdict": "FAIL",
+                                        "exec": {"total": 2, "current": 2, "statuses": ["PASS", "FAIL"]}}
+            elif origin == "verify":
+                phases["verify"] = {**span, "round": 1, "verdict": "NEEDS_WORK",
+                                    "merged": {"verdict": "NEEDS_WORK"}}
+            else:
+                phases[origin] = {**span, "round": 1, "verdict": "FAIL"}
+                if origin == "cleanup":
+                    phases[origin]["execution_kind"] = "orchestrator_commands"
+            phases["final_report"] = {**span, "round": 0,
+                                      "verdict": "NEEDS_WORK" if origin == "verify" else "BLOCKED:repair-budget-exhausted"}
+            return {"version": "3.0", "run_id": "repair-" + origin,
+                    "rounds": {"global": 1, "max_rounds": 1},
+                    "phases": phases}
+
+        for origin in ("build_gate", "cleanup", "verify", "phase_gate"):
+            state = exhausted_case(origin)
+            path = base / ".devlyn" / "runs" / state["run_id"] / "pipeline.state.json"
+            raw = json.dumps(state).encode()
+            result, _ = classify_state_bytes(base, path, raw, archived=True)
+            assert result.status == "CLEAN" and not result.incomplete, (origin, result)
+            tests += 1
+            result, _ = classify_state_bytes(base, path, raw, archived=False)
+            assert result.status == "INCOMPLETE:archive", (origin, result)
+            tests += 1
+            for bad in (True, 2):
+                forged = json.loads(raw)
+                forged["rounds"]["global"] = bad
+                result, _ = classify_state_bytes(base, path, json.dumps(forged).encode(), archived=True)
+                assert result.status != "CLEAN", (origin, bad, result)
+                tests += 1
+            opened = json.loads(raw)
+            name = "implement" if origin == "phase_gate" else origin
+            opened["phases"][name]["completed_at"] = None
+            result, _ = classify_state_bytes(base, path, json.dumps(opened).encode(), archived=True)
+            assert result.incomplete, (origin, result)
+            tests += 1
+            opened = json.loads(raw)
+            opened["phases"][name]["history"] = [{"started_at": "2026-07-19T00:00:00Z", "completed_at": None}]
+            result, _ = classify_state_bytes(base, path, json.dumps(opened).encode(), archived=True)
+            assert result.incomplete, (origin, result)
+            tests += 1
+            opened = json.loads(raw)
+            opened["phases"]["final_report"]["completed_at"] = None
+            result, _ = classify_state_bytes(base, path, json.dumps(opened).encode(), archived=True)
+            assert result.incomplete, (origin, result)
+            tests += 1
+            if origin != "verify":
+                stale = json.loads(raw)
+                stale["phases"]["final_report"]["verdict"] = "PASS"
+                result, _ = classify_state_bytes(base, path, json.dumps(stale).encode(), archived=True)
+                assert result.status == "INCOMPLETE:final_report", (origin, result)
+                tests += 1
+            if origin == "phase_gate":
+                forged = json.loads(raw)
+                forged["phases"]["implement"]["exec"]["total"] = 1
+                result, _ = classify_state_bytes(base, path, json.dumps(forged).encode(), archived=True)
+                assert result.status == "INCOMPLETE:final_report", result
+                tests += 1
+            blocked = json.loads(raw)
+            blocked["phases"]["surface_close"] = {"started_at": "2026-07-19T00:00:00Z",
+                "completed_at": "2026-07-19T00:01:00Z", "verdict": "BLOCKED"}
+            result, _ = classify_state_bytes(base, path, json.dumps(blocked).encode(), archived=True)
+            assert result.status == "INCOMPLETE:final_report", (origin, result)
+            tests += 1
+            for missing in (True, False):
+                without_rounds = json.loads(raw)
+                if missing:
+                    del without_rounds["rounds"]
+                else:
+                    without_rounds["rounds"] = None
+                without_rounds["phases"]["final_report"]["verdict"] = (
+                    "NEEDS_WORK" if origin == "verify" else "PASS"
+                )
+                result, _ = classify_state_bytes(
+                    base, path, json.dumps(without_rounds).encode(), archived=True,
+                )
+                assert result.status == "INCOMPLETE:final_report", (origin, missing, result)
+                tests += 1
+
+        def test_higher_priority_terminal_floor() -> None:
+            state = exhausted_case("build_gate")
+            state["rounds"] = {"global": 4, "max_rounds": 4}
+            state["phases"]["build_gate"]["round"] = 4
+            state["phases"]["verify"]["round"] = 3
+            state["phases"]["final_report"]["verdict"] = "BLOCKED:finish-gate-unclean"
+            path = base / ".devlyn" / "runs" / state["run_id"] / "pipeline.state.json"
+            result, _ = classify_state_bytes(base, path, json.dumps(state).encode(), archived=True)
+            assert result.status == "CLEAN", result
+
+        def test_invalid_counters_reject_stale_verify() -> None:
+            for global_ in (True, 5):
+                state = exhausted_case("build_gate")
+                state["rounds"] = {"global": global_, "max_rounds": 4}
+                state["phases"]["build_gate"]["round"] = 4
+                state["phases"]["verify"]["round"] = 3
+                state["phases"]["final_report"]["verdict"] = "PASS"
+                path = base / ".devlyn" / "runs" / state["run_id"] / "pipeline.state.json"
+                result, _ = classify_state_bytes(base, path, json.dumps(state).encode(), archived=True)
+                assert result.status != "CLEAN", (global_, result)
+
+        def test_invalid_phase_gate_witness() -> None:
+            state = exhausted_case("phase_gate")
+            state["phases"]["implement"]["exec"] = {
+                "total": 2, "current": 1, "statuses": ["FAIL", "UNKNOWN"],
+            }
+            writer = runpy.run_path(str(pathlib.Path(__file__).with_name("state-phase-write.py")))
+            try:
+                writer["repair_admission"](state, "implement", 2, None)
+            except SystemExit as exc:
+                assert str(exc) == "BLOCKED:repair-edge-invalid", exc
+            else:
+                raise AssertionError("writer admitted malformed phase gate")
+            path = base / ".devlyn" / "runs" / state["run_id"] / "pipeline.state.json"
+            result, _ = classify_state_bytes(base, path, json.dumps(state).encode(), archived=True)
+            assert result.status == "INCOMPLETE:final_report", result
+
+        def test_verify_only_direct_report_and_stale_verify() -> None:
+            state = exhausted_case("verify")
+            state["mode"] = "verify-only"
+            state["rounds"] = {"global": 0, "max_rounds": 4}
+            state["phases"]["verify"]["round"] = 0
+            path = base / ".devlyn" / "runs" / state["run_id"] / "pipeline.state.json"
+            result, _ = classify_state_bytes(base, path, json.dumps(state).encode(), archived=True)
+            assert result.status == "CLEAN", result
+            for missing in (True, False):
+                direct = json.loads(json.dumps(state))
+                if missing:
+                    del direct["rounds"]
+                else:
+                    direct["rounds"] = None
+                result, _ = classify_state_bytes(base, path, json.dumps(direct).encode(), archived=True)
+                assert result.status == "CLEAN", (missing, result)
+                ordinary = json.loads(json.dumps(direct))
+                ordinary.pop("mode")
+                ordinary["phases"]["verify"]["verdict"] = "PASS"
+                ordinary["phases"]["verify"]["merged"]["verdict"] = "PASS"
+                ordinary["phases"]["final_report"]["verdict"] = "PASS"
+                result, _ = classify_state_bytes(base, path, json.dumps(ordinary).encode(), archived=True)
+                assert result.status == "CLEAN", (missing, result)
+            stale = exhausted_case("build_gate")
+            stale["mode"] = "verify-only"
+            stale["rounds"] = {"global": 0, "max_rounds": 4}
+            stale["phases"]["final_report"]["verdict"] = "PASS"
+            path = base / ".devlyn" / "runs" / stale["run_id"] / "pipeline.state.json"
+            result, _ = classify_state_bytes(base, path, json.dumps(stale).encode(), archived=True)
+            assert result.status == "INCOMPLETE:final_report", result
+
+        def test_pre_v3_exhaustion_archive_compatibility() -> None:
+            for version, expected in (("2.0", "CLEAN"), ("3.0", "INCOMPLETE:final_report")):
+                state = exhausted_case("verify")
+                state["version"] = version
+                state["rounds"] = {"global": 4, "max_rounds": 4}
+                state["phases"]["verify"]["round"] = 4
+                del state["phases"]["verify"]["merged"]
+                root = base / f"exhausted-archive-{version}"
+                write_archived_state(root, state)
+                result = classify(root)
+                assert result.status == expected, (version, result)
+
+        test_higher_priority_terminal_floor()
+        test_invalid_counters_reject_stale_verify()
+        test_invalid_phase_gate_witness()
+        test_verify_only_direct_report_and_stale_verify()
+        test_pre_v3_exhaustion_archive_compatibility()
+        tests += 11
+
         root = base / "set-quantification"
         write_archived_state(root, f23_state)
         write_archived_state(root, fs1_state)
@@ -458,8 +685,6 @@ def self_test() -> int:
             ("plan-empty", "plan", "PASS"),
             ("risk-halt", "plan", "PASS"),
             ("implement-empty", "implement", "PASS"),
-            ("build-gate-exhausted", "build_gate", "FAIL"),
-            ("verify-exhausted", "verify", "NEEDS_WORK"),
             ("fresh-context-unavailable", "implement", "BLOCKED"),
             ("codex-unavailable", "plan", "BLOCKED"),
         )
