@@ -14,7 +14,7 @@ const { updateInstructions, InstructionError } = require('./instructions');
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
 // skill here installs it everywhere.
-const DEVLYN_CORE_SKILLS = ['devlyn:intent', 'devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];
+const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];
 const DEVLYN_SKILL_DIR_STAMP = '__DEVLYN_SKILL_DIR__';
 const DEVLYN_INSTALL_MARKER = '.devlyn-install.json';
 

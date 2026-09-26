@@ -27,7 +27,7 @@ If devlyn-cli saved you time, [give it a star](https://github.com/fysoul17/devly
 npx devlyn-cli
 ```
 
-That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, **Pi**, or **Grok Build CLI**, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills — plus the `devlyn:engines` and `devlyn:queue` utilities and the `devlyn:intent` preview (explicit invocation only; see its SKILL.md) — in the directory each one loads from: Codex → `~/.codex/skills/`, Grok → `~/.grok/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn:resolve`, `$devlyn:ideate`, `$devlyn:design-ui`); in Claude Code and Grok Build CLI they're slash commands (`/devlyn:resolve`). Rerunning refreshes skills and the managed instruction block for selected agents while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
+That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, **Pi**, or **Grok Build CLI**, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn:resolve`, `devlyn:ideate`, and `devlyn:design-ui` skills — plus the `devlyn:engines` and `devlyn:queue` utilities — in the directory each one loads from: Codex → `~/.codex/skills/`, Grok → `~/.grok/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn:resolve`, `$devlyn:ideate`, `$devlyn:design-ui`); in Claude Code and Grok Build CLI they're slash commands (`/devlyn:resolve`). Rerunning refreshes skills and the managed instruction block for selected agents while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
 
 ---
 
@@ -83,19 +83,6 @@ PLAN  →  IMPLEMENT  →  BUILD_GATE  →  CLEANUP  →  VERIFY (fresh subagent
 
 Common flags: `--engine claude|codex|omp` (default: the orchestrator-supported default), `--role-config <path>` (one-run worker/judge profiles, see below), `--bypass build-gate,cleanup`, `--pair-verify` (force pair-mode JUDGE in VERIFY), `--no-pair` (intentional solo VERIFY), `--risk-probes` / `--no-risk-probes`, `--perf` (per-phase timing).
 `--pair-verify` and `--no-pair` are mutually exclusive; using both stops with `BLOCKED:invalid-flags`.
-
-Free-form goals that ask for benchmark evidence, pair-evidence, risk-probe
-measurement, `solo<pair` proof, or solo-headroom work must include an
-actionable `solo-headroom hypothesis` naming the visible behavior `solo_claude`
-is expected to miss plus a backticked observable command; the backticked line
-itself must contain `miss` and be framed as the command/observable that exposes it. Without that,
-`/devlyn:resolve` stops with `BLOCKED:solo-headroom-hypothesis-required` and
-points you to `/devlyn:ideate` instead of inventing a weak hypothesis.
-Free-form goals that add or run a new unmeasured benchmark, shadow fixture,
-golden fixture, risk-probe, or pair-evidence candidate must also include
-`solo ceiling avoidance`, mention `solo_claude`, and name the concrete
-difference from rejected or solo-saturated controls such as `S2`-`S6`; without
-that, `/devlyn:resolve` stops with `BLOCKED:solo-ceiling-avoidance-required`.
 
 Accepted tasks default to scoped commit → push → PR; the task branch is retained
 for review. Set `git config --local devlyn.completionMode auto` to also request a

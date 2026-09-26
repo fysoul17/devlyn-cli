@@ -200,11 +200,7 @@ When eligible and the orchestrator spawns a second VERIFY agent with the OTHER e
   narrated-preamble recovery (iter-0082), and binds a whole-message NDJSON
   capture only through its uniquely attested terminal `end_turn` assistant
   message (iter-0106); every other non-empty line blocks the pair source.
-  If the spec includes a solo-headroom hypothesis, one targeted review must use
-  the hypothesis's backticked observable command as its exact anchor and inspect
-  the complete sealed result (stdout/stderr/exit plus the full parsed output
-  object). Missing matching evidence is a coverage finding; do not substitute or
-  run a neighboring edge case. When the spec names exact keys, row shapes, JSON
+  When the spec names exact keys, row shapes, JSON
   object shape, or an exact error body, compare the sealed parsed key sets/deep
   equality so aliased keys, missing keys, and extra keys are verdict-binding
   failures. For priority/stateful specs, trace implementation code order for an

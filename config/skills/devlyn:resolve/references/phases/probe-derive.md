@@ -48,15 +48,6 @@ and classify the base outcome: bug-exposing probes fail on base for the asserted
 reason, while preservation/regression probes may pass on base when they exercise
 unchanged behavior.
 
-If the visible spec includes a solo-headroom hypothesis, the first probe must
-target that hypothesis: use the visible command/input shape it names, exercise
-the behavior the spec says `solo_claude` is expected to miss, and assert the
-full observable result. The emitted probe `cmd` must contain the hypothesis's
-backticked observable command so `.devlyn/risk-probes.jsonl` can be validated
-mechanically, and `derived_from` must be an exact substring of that hypothesis
-bullet. Do not replace the hypothesis with a neighboring easier edge case, and
-do not cite hidden or benchmark-only verifier files.
-
 For high-complexity specs with two or more behavior bullets, at least one probe
 must be compound: one command must exercise two or more visible verification
 bullets together. Do not split every risk into isolated one-axis probes.
@@ -180,8 +171,6 @@ Rules:
   local server.
 - `cmd` may invoke `.devlyn/probes/<id>.<ext>`; the script is part of the
   replayed probe and obeys the same hidden-path/external-URL rules as `cmd`.
-  Solo-headroom hypothesis probes keep the hypothesis's backticked observable
-  command inline in `cmd` for mechanical validation.
 - A probe may declare `timeout_sec` from 1 through 600 when the exercised
   verification legitimately needs more than the default 60 seconds.
 - Match the spec's visible input and output key names literally; do not invent
@@ -211,10 +200,6 @@ Rules:
   full test suite.
 - Coverage over cleverness: mirror the verification bullet literally before
   inventing an edge case.
-- If the spec includes a solo-headroom hypothesis and the emitted probes do not
-  exercise the stated `solo_claude` miss with a `cmd` containing the hypothesis's
-  backticked observable command and `derived_from` pointing at the hypothesis
-  bullet, the artifact is too weak for pair-evidence work.
 - If a probe passes while an implementation processes entities in input order
   instead of the required priority/order, or emits extra zero-value state rows,
   the probe is too weak.

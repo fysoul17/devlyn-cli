@@ -40,27 +40,6 @@ For most coding tasks, the under-specified blanks are:
    auth/error priority, or exact output shape, ask for one concrete compound
    scenario that exercises the interaction end-to-end instead of accepting only
    isolated happy-path checks.
-8. **Pair-candidate headroom**: when the user is creating a benchmark, risk
-   probe, or pair-evidence candidate, ask for one solo-headroom hypothesis in
-   actionable form: the spec must literally contain `solo-headroom hypothesis`,
-   `solo_claude`, `miss`, and a backticked observable command while naming the
-   visible behavior a capable `solo_claude` baseline should miss; the backticked
-   line itself must contain `miss` and be framed as the command/observable that exposes it. If the
-   answer is only "the task is hard", rework the candidate before spending provider
-   calls. Do not write a benchmark/risk-probe/pair-evidence spec until this
-   hypothesis is actionable; if the user cannot provide it, stop with
-   `spec not ready — solo-headroom hypothesis required` and ask them to return
-   with the visible behavior `solo_claude` is expected to miss.
-9. **Solo ceiling avoidance**: for a new unmeasured benchmark, shadow-fixture,
-   golden-fixture, risk-probe, or pair-evidence candidate, ask how this candidate
-   differs from rejected or solo-saturated controls such as `S2`-`S6`. The note
-   must literally contain `solo ceiling avoidance`, mention `solo_claude`, and
-   name the concrete difference expected to preserve `solo_claude` headroom.
-   Benchmark fixture directories put this in `NOTES.md` as
-   `## Solo ceiling avoidance`; ordinary specs keep it in `## Verification`
-   next to the solo-headroom hypothesis. Do not write or measure the candidate
-   if this answer is missing; stop with
-   `spec not ready — solo ceiling avoidance required`.
 
 Walk through these in roughly this order. Skip the ones already clear from the user's initial text.
 </missing_decisions_to_surface>
@@ -94,8 +73,8 @@ Before declaring the spec ready, verify structurally:
 If the lint fails, fix the missing piece (ask one focused question if needed) before announcing.
 
 After lint passes, run both mechanical checks:
-1. `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` validates the spec's verification carrier shape, supported `complexity` frontmatter, and any present actionable solo-headroom hypothesis; if the spec uses a legacy inline `## Verification` JSON carrier, any solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`.
-2. `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` validates sibling `spec.expected.json` against `_shared/expected.schema.json` plus sibling spec `complexity` frontmatter and any present actionable solo-headroom hypothesis; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`.
+1. `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` validates the spec's verification carrier shape and supported `complexity` frontmatter.
+2. `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` validates sibling `spec.expected.json` against `_shared/expected.schema.json` plus sibling spec `complexity` frontmatter.
 
 If either exits 2: read the stderr message, fix the malformed carrier or JSON, and re-run the failed command. Both commands must exit 0 before ready.
 </lint>
@@ -119,18 +98,6 @@ When `--quick` is set:
 3. User responds with "go" / "fix X to be Y" / "no, different".
 4. On "go": write the spec + spec.expected.json, run both lint checks, announce.
 5. On "fix X": apply correction, re-present, ask again. Maximum 3 correction rounds before escalating to default mode.
-
-Exception: quick mode must not infer a solo-headroom hypothesis for benchmark,
-risk-probe, or pair-evidence goals. If the one-line goal lacks the actionable
-`solo-headroom hypothesis` / `solo_claude` / `miss` / backticked-command
-contract, ask exactly one focused follow-up for that hypothesis before showing a
-draft; if the user cannot provide it, exit with
-`spec not ready — solo-headroom hypothesis required`. For a new unmeasured
-benchmark, shadow-fixture, golden-fixture, risk-probe, or pair-evidence
-candidate, quick mode also must not infer the `solo ceiling avoidance` note; ask
-for the concrete difference from rejected or solo-saturated controls such as
-`S2`-`S6`, and exit with `spec not ready — solo ceiling avoidance required` if
-the user cannot provide it.
 
 Quick mode trades thoroughness for speed. Use it for trivial-medium tasks where the user has a clear-enough goal that one round of inference + correction is sufficient.
 
