@@ -1,0 +1,10 @@
+# Amendment 1 re-dispatch (execution invalidated); original rows kept as <name>.stop-1
+s6-07-I0185-F-codex I0185 F codex
+s6-08-D4-C-claude D4 C claude
+s6-09-D4-Bp-claude D4 B' claude
+s6-11-D4-F-codex D4 F codex
+s6-12-I0185-C-claude I0185 C claude
+s6-13-D4-A-claude D4 A claude
+s6-14-I0185-Bp-codex I0185 B' codex
+s6-15-D4-C-codex D4 C codex
+s6-16-I0185-F-claude I0185 F claude

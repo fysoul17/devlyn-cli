@@ -99,17 +99,36 @@ def claude_result(stdout):
     return totals if final else None
 
 
-def claude_nested(devlyn):
-    """Separate `claude -p --output-format json` runs (3.2.1 judges, SURFACE_CLOSE) archive their own results.
-    They are separate processes, so they are not in the owner's modelUsage; deduplicated by session."""
-    totals, seen, unreadable = {}, set(), []
-    for path in sorted(devlyn.rglob('*.output.json')):
+def intent_reviews(devlyn):
+    """B': the intent gate's review calls in the current and archived runs, as (engine, stdout path); an
+    archived run keeps its recorded `.devlyn/intent/...` paths, so each is re-rooted at its own run.json."""
+    calls, unreadable = [], []
+    for path in sorted(devlyn.glob('intent/**/run.json')):
         try:
-            result = json.loads(path.read_text(errors='replace'))
+            reviews = json.loads(path.read_text()).get('reviews') or ()
         except ValueError:
             unreadable.append(path.name)
             continue
-        if not isinstance(result, dict) or not result.get('modelUsage') or result.get('session_id') in seen:
+        calls += [(r['engine'], path.parent / Path(r['stdout']['path']).relative_to('.devlyn/intent')) for r in reviews]
+    return calls, unreadable
+
+
+def claude_nested(devlyn):
+    """Separate `claude -p --output-format json` runs (3.2.1 judges, SURFACE_CLOSE, intent-gate Claude reviews)
+    keep their own results. They are separate processes, so they are not in the owner's modelUsage; deduplicated
+    by session."""
+    totals, seen = {}, set()
+    calls, unreadable = intent_reviews(devlyn)
+    for path in sorted(devlyn.rglob('*.output.json')) + [p for engine, p in calls if engine == 'claude']:
+        try:
+            result = json.loads(path.read_text(errors='replace'))
+        except (OSError, ValueError):  # e.g. a review killed before it wrote its result
+            unreadable.append(path.name)
+            continue
+        if not isinstance(result, dict) or not result.get('modelUsage'):  # e.g. an error result: usage unknown
+            unreadable.append(path.name)
+            continue
+        if result.get('session_id') in seen:
             continue
         seen.add(result.get('session_id'))
         for model, usage in result['modelUsage'].items():
@@ -153,14 +172,16 @@ def record(cell):
     result = claude_result(cell / 'run/stdout')
     transcripts = claude_transcripts(home / '.claude/projects')
     nested, unreadable = claude_nested(work / '.devlyn')
+    intent_codex = any(engine == 'codex' for engine, _ in intent_reviews(work / '.devlyn')[0])
     calls = reviews(work)
     plan = json.loads((cell / 'plan.json').read_text())
     owner_known = bool(result) if plan['engine'] == 'claude' else bool(native) and not failures
-    # 3.2.1 runs isolated Codex judges with --ephemeral: they persist no rollout, so F usage cannot be complete.
+    # 3.2.1 and the intent gate run isolated Codex judges with --ephemeral: they persist no rollout.
     gaps = [name for name, missing in (('owner', not owner_known), ('codex rollout', bool(failures)),
                                        ('review', any(c['usage'] == 'UNKNOWN' for c in calls)),
                                        ('unreadable nested Claude result ' + ', '.join(unreadable), bool(unreadable)),
-                                       ('F isolated codex judges', plan['arm'] == 'F')) if missing]
+                                       ('F isolated codex judges', plan['arm'] == 'F'),
+                                       ("B' isolated codex reviews", intent_codex)) if missing]
     completeness = 'COMPLETE' if not gaps else 'PARTIAL' if owner_known or native or transcripts else 'UNKNOWN'
     usage = dict(completeness=completeness, gaps=gaps, codex=native, codex_failures=failures, claude_result=result,
                  claude_nested=nested, claude_transcripts=transcripts, reviews=calls)

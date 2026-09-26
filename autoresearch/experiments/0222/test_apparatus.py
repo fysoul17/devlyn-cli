@@ -253,6 +253,70 @@ class Pure(unittest.TestCase):
         got = cell.identity(work, dict(engine='claude', model='claude-opus-5-5', config='claude', arm='F'))
         self.assertEqual(got['status'], 'MATCH', got['violations'])
 
+    def b_cell(self, *states):
+        """A B' Codex cell whose intent gate recorded these runs; the first is current, the rest archived."""
+        work = Path(tempfile.mkdtemp(dir=self.root))
+        (work / 'run').mkdir()
+        (work / 'run/stdout').write_text(json.dumps(dict(type='thread.started', thread_id='owner')) + '\n')
+        rollout(work / 'home/.codex/sessions/rollout-owner.jsonl', 'owner', 'exec', 'gpt-6-astra', 1)
+        for index, state in enumerate(states):
+            folder = work / 'work/.devlyn/intent' / ('runs/in-%d' % index if index else '')
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / 'run.json').write_text(state if isinstance(state, str) else json.dumps(state))
+        return work
+
+    def test_b_prime_calls_are_bound_to_their_roles(self):
+        routes = json.loads((HERE / 'tasks.json').read_text())['routes']['codex']['product_roles']
+        roles = dict(roles={r: dict(engine=e['engine'], model_requested=e.get('model')) for r, e in routes.items()})
+        good = dict(roles=roles, delegations=[dict(model_observed='gpt-6-sol')],
+                    reviews=[dict(role='primary_judge', engine='codex', model_observed='gpt-6-astra'),
+                             dict(role='pair_judge', engine='claude', model_observed='claude-opus-5-5[1m]')])
+        plan = dict(engine='codex', model='gpt-6-astra', config='codex', arm="B'")
+        got = cell.identity(self.b_cell(good, good), plan)
+        self.assertEqual((got['status'], got['gaps']), ('MATCH', []), got['violations'])
+        swapped = dict(good, reviews=[dict(role='primary_judge', engine='codex', model_observed='gpt-6-sol')])
+        self.assertEqual(cell.identity(self.b_cell(good, swapped), plan)['status'], 'MISMATCH')  # archived run too
+        executor = dict(good, delegations=[dict(model_observed='gpt-6-astra')])
+        self.assertEqual(cell.identity(self.b_cell(executor), plan)['status'], 'MISMATCH')
+        frozen = dict(good, roles=dict(roles=dict(roles['roles'], worker=dict(engine='codex', model_requested='gpt-6-astra'))))
+        self.assertEqual(cell.identity(self.b_cell(frozen), plan)['status'], 'MISMATCH')
+        timed_out = dict(good, reviews=[dict(role='pair_judge', engine='claude', model_observed=None)])
+        got = cell.identity(self.b_cell(timed_out), plan)
+        self.assertEqual((got['status'], len(got['gaps'])), ('MATCH', 1))
+        # A failed call is left unauthenticated by the gate; its saved native evidence still binds the model.
+        failed = dict(good, reviews=[dict(role='primary_judge', engine='codex', model_observed=None,
+                                          stderr=dict(path='.devlyn/intent/reviews/x.stderr')),
+                                     dict(role='pair_judge', engine='claude', model_observed=None,
+                                          stdout=dict(path='.devlyn/intent/reviews/y.stdout'))])
+        for header, result, status in (('gpt-6-astra', 'claude-opus-5-5', 'MATCH'), ('gpt-6-sol', 'claude-opus-5-5', 'MISMATCH'),
+                                       ('gpt-6-astra', 'claude-sonnet-5', 'MISMATCH')):
+            work = self.b_cell(failed)
+            (work / 'work/.devlyn/intent/reviews').mkdir()
+            (work / 'work/.devlyn/intent/reviews/x.stderr').write_text(
+                f'OpenAI Codex\nmodel: {header}\nuser\nmodel: gpt-6-astra\n')  # prompt text never counts
+            (work / 'work/.devlyn/intent/reviews/y.stdout').write_text(json.dumps(dict(modelUsage={result: {}})))
+            got = cell.identity(work, plan)
+            self.assertEqual((got['status'], got['gaps']), (status, []), got['violations'])
+        self.assertEqual(len(cell.identity(self.b_cell('{"roles": {'), plan)['gaps']), 1)
+
+    def test_b_prime_claude_reviews_are_counted_and_codex_reviews_are_a_gap(self):
+        devlyn = self.root / '.devlyn'
+        result = dict(session_id='r', modelUsage={'claude-opus-5-5[1m]': dict(inputTokens=1, outputTokens=40)})
+        for folder, name in ((devlyn / 'intent', 'b'), (devlyn / 'intent/runs/in-1', 'a')):
+            (folder / 'reviews').mkdir(parents=True)
+            (folder / 'reviews' / (name + '.stdout')).write_text(json.dumps(dict(result, session_id=name)))
+            (folder / 'reviews' / (name + '-c.stdout')).write_text('plain codex text, not JSON')
+            (folder / 'run.json').write_text(json.dumps(dict(reviews=[
+                dict(engine='claude', stdout=dict(path=f'.devlyn/intent/reviews/{name}.stdout')),
+                dict(engine='codex', stdout=dict(path=f'.devlyn/intent/reviews/{name}-c.stdout'))])))
+        totals, unreadable = usage.claude_nested(devlyn)
+        self.assertEqual((totals['claude-opus-5-5']['output'], unreadable), (80, []))  # both runs, codex text skipped
+        self.assertTrue(any(engine == 'codex' for engine, _ in usage.intent_reviews(devlyn)[0]))
+        (devlyn / 'intent/reviews/b.stdout').write_text(json.dumps(dict(session_id='e', is_error=True)))
+        self.assertEqual(usage.claude_nested(devlyn)[1], ['b.stdout'])  # an error result without usage is named
+        (devlyn / 'intent/reviews/b.stdout').unlink()
+        self.assertEqual(usage.claude_nested(devlyn)[1], ['b.stdout'])  # a killed review is named, not zero
+
     def test_torn_pipeline_state_is_a_gap_not_a_crash(self):
         result = self.f_cell('{"role_resolution": {"ro')
         self.assertEqual((result['status'], len(result['gaps'])), ('MATCH', 1))
@@ -297,6 +361,13 @@ class Pure(unittest.TestCase):
         self.assertEqual(run_cell.verdict(passing, [ok, dict(complete=None, severe=0)]), 'PRODUCT_INCOMPLETE')
         self.assertEqual(run_cell.verdict(dict(product_check_pass=False, adjudication_needed=True), [ok, ok]),
                          'ADJUDICATE')
+
+    def test_assessor_without_verdict_stops(self):
+        ok = dict(route=dict(model='a'), exit_code=0, complete=False, severe=0)
+        self.assertEqual(run_cell.unassessed([ok, dict(ok, route=dict(model='b'), complete=True)]), [])
+        limited = dict(ok, route=dict(model='c'), exit_code=1, complete=None)  # e.g. the 0224 weekly-limit 429
+        self.assertEqual(run_cell.unassessed([ok, limited]), ['c'])
+        self.assertEqual(run_cell.unassessed([dict(ok, complete=None)]), ['a'])  # unparseable answer
 
     def test_evaluator_crash_stops_but_product_crash_is_a_row(self):
         with self.assertRaises(check.NoVerdict):
@@ -378,6 +449,21 @@ class Container(unittest.TestCase):
             record = self.run_cell(['true'], 30)
         self.assertEqual(record['teardown'], 'FAILED')
 
+    def test_second_codex_keeps_a_live_codex_helper_dir(self):
+        """0224: on the bind-mounted home a new codex process deleted a running one's arg0 helpers."""
+        script = ('(sleep 20 | codex exec --skip-git-repo-check - >/dev/null 2>&1) & sleep 5; '
+                  'live=$(ls /home/participant/.codex/tmp/arg0); [ -n "$live" ] || exit 8; '
+                  'codex --version >/dev/null 2>&1; sleep 1; [ -d /home/participant/.codex/tmp/arg0/$live ] || exit 9')
+        out = self.root / 'cell'
+        out.mkdir()
+        plan = dict(name='t', work=str(self.root / 'work'), home=str(self.root / 'home'),
+                    control=str(self.root / 'control'), image=IMAGE, argv=['bash', '-c', script], wall_seconds=60,
+                    env=dict(HOME='/home/participant', CODEX_HOME='/home/participant/.codex'),
+                    engine='codex', model='gpt-6-astra', config='codex', arm='A')
+        (out / 'plan.json').write_text(json.dumps(plan))
+        record = cell.run(out, dict(auth=str(self.root / 'auth'), scratch=str(self.root)))
+        self.assertEqual((record['owner_status'], record['teardown']), ('EXITED_0', 'CLEAN'))
+
     @unittest.skipUnless(CONTROL, 'APPARATUS_CONTROL not set')
     def test_reviewer_failure_is_recorded_and_more_calls_allowed(self):
         work = self.root / 'repo'
@@ -411,7 +497,7 @@ class Container(unittest.TestCase):
         for config in ('claude', 'codex'):
             work = self.root / config
             (work / '.devlyn').mkdir(parents=True)
-            (work / '.devlyn/engines.json').write_text(json.dumps(dict(roles=routes[config]['F_roles'])))
+            (work / '.devlyn/engines.json').write_text(json.dumps(dict(roles=routes[config]['product_roles'])))
             done = subprocess.run(['docker', 'run', '--rm', '--network', 'none', '--mount',
                                    f'type=bind,src={self.root},dst=/w', '--mount', f'type=bind,src={CONTROL},dst=/control,readonly',
                                    '--env', 'HOME=/w/home', IMAGE, 'python3',
@@ -419,9 +505,34 @@ class Container(unittest.TestCase):
                                    '--workdir', f'/w/{config}', '--default-engine', config], capture_output=True, text=True)
             self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
             roles = json.loads(done.stdout)['roles']
-            for role, entry in routes[config]['F_roles'].items():
+            for role, entry in routes[config]['product_roles'].items():
                 self.assertEqual(roles[role]['engine'], entry['engine'])
                 self.assertEqual(roles[role]['model_requested'], entry.get('model'))
+
+    @unittest.skipUnless(CONTROL, 'APPARATUS_CONTROL not set')
+    def test_b_prime_installs_intent_and_its_gate_freezes_the_product_roles(self):
+        routes = json.loads((HERE / 'tasks.json').read_text())['routes']
+        runtime = dict(sources=str(SOURCES), control=CONTROL, image=IMAGE, output=str(self.root), auth='/a',
+                       models_cache=str(Path.home() / '.codex/models_cache.json'))
+        gates = {'claude': '/work/.claude/skills/_shared/intent-gate.py',
+                 'codex': '/home/participant/.codex/skills/_shared/intent-gate.py'}
+        for config, gate in gates.items():
+            out = prepare.prepare(runtime, 'b-' + config, 'SMOKE', "B'", config)
+            prompt = (out / 'prompt.txt').read_text()
+            self.assertTrue(prompt.endswith('/devlyn:intent --goal-file .devlyn/goal.txt'), prompt)
+            self.assertIn('devlyn:intent/SKILL.md' if config == 'codex' else '/devlyn:intent', prompt)
+            self.assertEqual(git(out / 'work', 'status', '--porcelain', '--untracked-files=all'), '')
+            done = subprocess.run(['docker', 'run', '--rm', '--network', 'none', '--mount',
+                                   f'type=bind,src={out / "work"},dst=/work', '--mount',
+                                   f'type=bind,src={out / "home"},dst=/home/participant', '--env', 'HOME=/home/participant',
+                                   IMAGE, 'python3', gate, 'start', '--owner', config, '--',
+                                   '--goal-file', '.devlyn/goal.txt'], capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            state = json.loads((out / 'work/.devlyn/intent/run.json').read_text())
+            self.assertEqual(state['delegate_required'], config == 'codex')
+            for role, entry in routes[config]['product_roles'].items():
+                frozen = state['roles']['roles'][role]
+                self.assertEqual((frozen['engine'], frozen['model_requested']), (entry['engine'], entry.get('model')))
 
     @unittest.skipUnless(SOURCES.exists() and CONTROL, 'registered sources or APPARATUS_CONTROL absent')
     def test_d4_file_beside_package_breaks_collection_but_package_file_does_not(self):

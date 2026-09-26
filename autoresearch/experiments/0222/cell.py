@@ -36,12 +36,37 @@ def docker(*args, timeout=60):
 
 
 INTERNAL = re.compile(r'^claude-haiku-')  # Claude Code's own helper calls, never a routed role
+PRODUCT = ('F', "B'")  # arms that install a devlyn package and bind route['product_roles']
+
+
+def frozen_mismatch(frozen, roles):
+    """A product's own frozen role table must equal the registered one (engine and requested model)."""
+    return [f'role {role} frozen as {frozen[role].get("engine")}/{frozen[role].get("model_requested")}'
+            for role, want in roles.items() if role in frozen
+            and (frozen[role].get('engine'), frozen[role].get('model_requested')) != (want['engine'], want.get('model'))]
+
+
+def recorded(item, run, engine):
+    """Models an intent gate call ran on: its authenticated model, plus the native evidence it saved, which the
+    gate leaves unauthenticated after a failed or timed-out call (Codex header; Claude result modelUsage)."""
+    seen = {item['model_observed']} if item.get('model_observed') else set()
+    stream = item.get('stderr' if engine == 'codex' else 'stdout') or {}
+    path = run / Path(stream.get('path', '.devlyn/intent')).relative_to('.devlyn/intent')
+    text = path.read_text(errors='replace') if path.is_file() else ''
+    if engine == 'codex':
+        seen |= set(re.findall(r'^model: (\S+)$', text.partition('\nuser\n')[0], re.M))
+    else:
+        try:
+            seen |= {m for m in json.loads(text).get('modelUsage') or {} if not INTERNAL.match(m)}
+        except (ValueError, AttributeError):
+            pass
+    return {m.split('[')[0] for m in seen}
 
 
 def routed(plan):
     """Models each engine may run in this cell, from its route roles."""
     route = TASKS['routes'][plan['config']]
-    roles = [route['owner'], *(route['F_roles'].values() if plan['arm'] == 'F' else ())]
+    roles = [route['owner'], *(route['product_roles'].values() if plan['arm'] in PRODUCT else ())]
     allowed = {'claude': set(), 'codex': set()}
     for role in roles:
         allowed[role['engine']] |= {role.get('model'), role.get('child_model')} - {None}
@@ -106,7 +131,7 @@ def identity(cell, plan):
     claude = {str(m).split('[')[0] for m in claude - {None, '<synthetic>'}}
     violations += [f'claude {m} unrouted' for m in claude - allowed['claude'] if not INTERNAL.match(m)]
     gaps = []
-    roles = TASKS['routes'][plan['config']]['F_roles'] if plan['arm'] == 'F' else {}
+    roles = TASKS['routes'][plan['config']]['product_roles'] if plan['arm'] in PRODUCT else {}
     for path in (cell / 'work/.devlyn').rglob('pipeline.state.json'):
         try:
             state = json.loads(path.read_text())
@@ -118,10 +143,23 @@ def identity(cell, plan):
         violations += [f'pipeline requested {d["model_requested"]} but ran {d["model_effective"]}'
                        for d in dicts(state) if d.get('model_requested') and d.get('model_effective')
                        and d['model_requested'].split('[')[0] != d['model_effective'].split('[')[0]]
-        frozen = ((state.get('role_resolution') or {}).get('roles') or {})
-        violations += [f'role {role} frozen as {frozen[role].get("engine")}/{frozen[role].get("model_requested")}'
-                       for role, want in roles.items() if role in frozen
-                       and (frozen[role].get('engine'), frozen[role].get('model_requested')) != (want['engine'], want.get('model'))]
+        violations += frozen_mismatch((state.get('role_resolution') or {}).get('roles') or {}, roles)
+    # B': the intent gate records each executor and reviewer call with the model it authenticated; archived runs too.
+    for path in (cell / 'work/.devlyn/intent').rglob('run.json'):
+        try:
+            state = json.loads(path.read_text())
+        except ValueError:
+            gaps.append(f'unreadable {path.relative_to(cell)}')
+            continue
+        violations += frozen_mismatch((state.get('roles') or {}).get('roles') or {}, roles)
+        calls = ([dict(item, role='worker', engine=roles['worker']['engine']) for item in state.get('delegations') or ()]
+                 + list(state.get('reviews') or ()))
+        for item in calls:
+            want, seen = roles[item['role']], recorded(item, path.parent, item['engine'])
+            if not seen:  # no model evidence at all (killed before the header or result): a gap, never a match
+                gaps.append(f'{item["role"]} call without model evidence in {path.relative_to(cell)}')
+            violations += [f'intent {item["role"]} ran {m}, not {want.get("model")}' for m in sorted(seen)
+                           if m not in ({want['model']} if want.get('model') else allowed[want['engine']])]
     # 3.2.1 leaves a Codex worker's model_effective null; bind each wrapper-captured Codex worker session to its
     # rollout. Claude transcripts share the file pattern (surface-close) and are covered by the checks above.
     worker = roles.get('worker', {})
@@ -169,7 +207,10 @@ def run(cell, runtime):
     argv = ['create', '--name', name, '--label', 'devlyn.task=0222', '--network', 'bridge', '--cap-drop', 'ALL',
             '--security-opt', 'no-new-privileges', '--security-opt', 'seccomp=unconfined', '--read-only',
             '--restart=no', '--pids-limit', '256', '--memory', '4g', '--cpus', '2',
-            '--tmpfs', '/tmp:rw,nosuid,exec,size=536870912', '-w', '/work']
+            '--tmpfs', '/tmp:rw,nosuid,exec,size=536870912',
+            # Codex keeps per-process helper links under CODEX_HOME/tmp/arg0; on the host bind mount a second codex
+            # process's janitor cannot see the live lock and deletes them (0224: F worker exec/writes failed).
+            '--tmpfs', '/home/participant/.codex/tmp:rw,nosuid,exec,uid=501,gid=501', '-w', '/work']
     for src, dst, readonly in mounts:
         argv += ['--mount', f'type=bind,src={src},dst={dst}' + (',readonly' if readonly else '')]
     for key, value in plan['env'].items():
