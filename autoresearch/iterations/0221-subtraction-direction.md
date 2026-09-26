@@ -1,6 +1,6 @@
 # 0221 — 책임 단위 축소, `/devlyn:intent`로의 full 교체 평가, 세션별 실행 계약
 
-2026-09-24. **상태: REGISTERED.** 이 unit은 설계·등록만 한다. 제품 변경과 모델 실행은 없다.
+2026-09-24. **상태: CLOSED (2026-09-26, Session 8).** 0224 구조 스크린이 B′·C 모두 계속시키지 않아(`SCREEN:B'=none;C=none`) §5 row 8 탈락 분기로 끝났다: `/devlyn:intent` 후보는 제거, full resolve는 이행 규칙대로 유지(0224에서 완수는 입증되지 않음), T1b b1·b2·b4·b5 정리. Session 7·9는 실행하지 않는다. 등록 당시: 이 unit은 설계·등록만 한다. 제품 변경과 모델 실행은 없다.
 
 - **작성 과정:** root Opus 5.5 + Astra(gpt-6-astra, reasoning ultra, read-only, isolated).
   - 방향 합의: 독립 R0 두 개 → R1 → R2 → R3 → R4 FREEZE.
