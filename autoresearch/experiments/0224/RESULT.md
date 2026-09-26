@@ -4,7 +4,7 @@
 
 **Outcome token: `SCREEN:B'=none;C=none`.** Neither candidate continues. Under the registered coupling, Session 7 does not run and Session 8 takes the candidate-close branch (full stays).
 
-- The Claude config shows a quality signal for both candidates (D4). The block rule stops it: in every B′ and C cell on I0185, a HIGH assessor finding is reproduced against the final tree.
+- The Claude config shows a quality signal for both candidates (D4). The block rule stops it: in B′-claude, C-claude and C-codex on I0185, a HIGH assessor finding is reproduced against the final tree.
 - In the Codex config, neither candidate has any signal over native A or F.
 - The final Astra verification (REVISE item 1) found that the first computation had left `reproduced_severe` empty without checking assessor HIGH findings against the saved oracle runs, which is a step of the frozen procedure. That computation (`SCREEN:B'=claude;C=claude`) is kept as `analysis.pre-final-review.json`.
 
@@ -26,9 +26,10 @@ Wall is owner seconds. OUTPUT is total output tokens across every recorded model
   - F-codex: ended `BLOCKED:required-tools-unavailable` (no mypy/pyright in the image); the assessors disagreed.
 - There are no ADJUDICATE rows. After re-dispatch, cell 7 has no NOT_TRIGGERED row, so `decisions.adjudicated` is empty.
 - **Final-report audit:** 0 false completions. Cells that report success (A ×2 on I0185, C-claude on I0185) fail only hidden oracle rows. The B′ NEEDS_WORK runs quote the gate verbatim, and the F runs report their BLOCKED verdicts. There are 0 scope violations.
-- **Reproduced HIGH defects (block input):** cells 5, 12, 14 and 3, i.e. every B′ and C cell on I0185.
+- **Reproduced HIGH defects (block input):** cells 5 (B′-claude), 12 (C-claude) and 3 (C-codex).
   - Each has a codex-assessor HIGH on Requirement 2: after one lock-release failure, the prior installation is not restored.
   - The `release` replay reproduces it against the final tree: the fault fires, an error propagates, `restored: false` (`checks-raw.json`).
+  - Cell 14 (B′-codex) is excluded. Its HIGH is about recovery data destroyed during partial backup disposal. Its replay failure is instead the spec-exempt case: a backup-disposal failure after commit, reported, with recovery data kept.
   - The same replay fails for A and F too, but the block rule applies only to candidates. Criterion 1's "new" also holds, because the base code had no lock.
   - D4's candidate cells have no HIGH findings.
 
@@ -38,7 +39,7 @@ Wall is owner seconds. OUTPUT is total output tokens across every recorded model
 |---|---|---|---|---|---|
 | B′ / claude | yes (D4: B′ ✓, A ✗) | no (F-claude D4 ✗) | no | **yes** (cell 5) | no |
 | C / claude | yes (D4: C ✓, A ✗) | no | no | **yes** (cell 12) | no |
-| B′ / codex | no (A ✓ on D4) | no (F ✗) | no | yes (cell 14) | no |
+| B′ / codex | no (A ✓ on D4) | no (F ✗) | no | no | no |
 | C / codex | no | no | no | yes (cell 3) | no |
 
 - Even without the block, the Claude signal would be thin. It rests on one draw of D4, where A-claude's product passes every check and every oracle row and is incomplete only because the Codex assessor reported one severe finding while the Claude assessor called it complete.
