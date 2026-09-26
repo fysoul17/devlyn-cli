@@ -19,7 +19,7 @@ Wall is owner seconds. OUTPUT is total output tokens across every recorded model
 | D4 | claude | ✗ 434 s / 10.6k | ✓ 493 s / ≥25.8k | ✓ 628 s / 23.5k | ✗ 1278 s / ≥93.1k |
 | D4 | codex | ✓ 172 s / 4.4k | ✓ 1065 s / ≥45.3k | ✓ 603 s / 36.7k | ✗ 527 s / ≥21.2k |
 
-- **I0185:** no cell is COMPLETE. Every product passes the public acceptance check, and every product fails the `release` replay (lock release after the backups are gone, the same class as 0185). Some also fail `terminal-alias` (A-codex, F ×2), `absence-lock` (A-claude) or the heldout suite (F-codex).
+- **I0185:** no cell is COMPLETE. Every product passes the public acceptance check, and every product fails the `release` replay (an injected lock-release failure; the same failure point as 0185). Some also fail `terminal-alias` (A-codex, F ×2), `absence-lock` (A-claude) or the heldout suite (F-codex).
 - **D4:** every product passes the public checks and all oracle rows. The incomplete cells were decided by the assessors:
   - A-claude: the Codex assessor found 1 severe issue; the assessors disagreed.
   - F-claude: ended `BLOCKED:verify-exhausted`; the Codex assessor said incomplete; the assessors disagreed.
