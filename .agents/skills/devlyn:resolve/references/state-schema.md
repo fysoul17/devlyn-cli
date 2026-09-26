@@ -135,7 +135,7 @@ Per-phase summary table: `phase | verdict | duration_ms | round | triggered_by |
 
 Findings table: each emitted finding's `severity | rule_id | file:line | message | confidence`.
 
-Follow-up notes: when `phases.surface_close.continued_after_block` is true, exactly one explicit `pipeline continued to BUILD_GATE — surface_close_rolled_back_adjudication_malformed` line (never a terminal floor); any large-mode assumptions; any pair-judge TIMEOUT surfaced as `solo verdict after pair TIMEOUT`; pair/risk-probe opt-out state; engine setup guidance for `BLOCKED:<engine>-unavailable`; `/devlyn:ideate` guidance for `BLOCKED:solo-headroom-hypothesis-required` that asks for the visible behavior `solo_claude` is expected to miss; `/devlyn:ideate` guidance for `BLOCKED:solo-ceiling-avoidance-required` that asks for the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`; and any `state.verify.coverage_failed` axes.
+Follow-up notes: when `phases.surface_close.continued_after_block` is true, exactly one explicit `pipeline continued to BUILD_GATE — surface_close_rolled_back_adjudication_malformed` line (never a terminal floor); any large-mode assumptions; any pair-judge TIMEOUT surfaced as `solo verdict after pair TIMEOUT`; pair/risk-probe opt-out state; engine setup guidance for `BLOCKED:<engine>-unavailable`; and any `state.verify.coverage_failed` axes.
 
 ## Archive contract
 

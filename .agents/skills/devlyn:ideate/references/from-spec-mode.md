@@ -37,8 +37,8 @@ You must NOT:
 3. For each missing/malformed piece: apply the smallest allowed fix.
 4. Write the normalized spec. Default location: `<spec-dir>/<id>-<slug>/spec.md`. With `--in-place` flag: write to `<path>` directly (overwrites the original).
 5. Generate or fix `spec.expected.json` per the rules above. Same dir as the spec.
-6. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` to validate the actual spec's carrier shape and supported `complexity` frontmatter. Sibling `spec.expected.json` takes precedence over the legacy inline `## Verification` JSON carrier; any present actionable solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`. If exit 2, fix the file named in the error and re-run.
-7. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` to validate sibling `spec.expected.json` plus sibling spec `complexity` frontmatter and any present solo-headroom hypothesis command against `spec.expected.json.verification_commands[].cmd`.
+6. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` to validate the actual spec's carrier shape and supported `complexity` frontmatter. Sibling `spec.expected.json` takes precedence over the legacy inline `## Verification` JSON carrier. If exit 2, fix the file named in the error and re-run.
+7. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` to validate sibling `spec.expected.json` plus sibling spec `complexity` frontmatter.
 8. If lint still fails after allowed fixes (e.g. Requirements section is empty in the source), surface the issue and exit non-zero — do NOT invent Requirements.
 9. If the preserved Requirements combine state mutation with ordering/priority,
    idempotency, auth/error priority, or exact output shape but the Verification
@@ -46,27 +46,12 @@ You must NOT:
    content. Add a final warning that `/devlyn:resolve` may need default-mode
    ideation or a stronger Verification section before pair-relevant risks are
    measurable.
-10. If the source is a benchmark, risk probe, or pair-evidence candidate and it
-    lacks an actionable solo-headroom hypothesis, do not invent one. Add a final
-    warning that the candidate may be solo-saturated until Context or
-    Verification literally contains `solo-headroom hypothesis`, `solo_claude`,
-    `miss`, and a backticked observable command while naming the visible
-    behavior a capable `solo_claude` baseline is expected to miss; the
-    backticked line itself must contain `miss` and be framed as the
-    command/observable that exposes it. Do not call the normalized spec pair-evidence ready.
-11. If the source is a new unmeasured benchmark, shadow-fixture, golden-fixture,
-    risk-probe, or pair-evidence candidate and it lacks a solo ceiling avoidance
-    note, do not invent one. Add a final warning that the candidate may replay
-    rejected or solo-saturated controls until Context, Verification, or fixture
-    `NOTES.md` literally contains `solo ceiling avoidance`, mentions
-    `solo_claude`, and names a concrete difference from rejected controls such
-    as `S2`-`S6`. Do not call the normalized spec pair-evidence ready.
 </flow>
 
 <output>
 Same as default mode: `<spec-dir>/<id>-<slug>/spec.md` + `<spec-dir>/<id>-<slug>/spec.expected.json`.
 
-Final announcement: `spec normalized — /devlyn:resolve --spec <spec-path>`. If the spec was lint-passing with no changes needed, announce: `spec already canonical — /devlyn:resolve --spec <spec-path>`. If step 9 applies, append: `warning: Verification may need one compound end-to-end scenario before pair-relevant risks are measurable`. If step 10 applies, append: `pair-evidence not ready — Pair-candidate headroom is unproven until the spec states a solo-headroom hypothesis`. If step 11 applies, append: `pair-evidence not ready — Pair-candidate headroom is unproven until the spec states solo ceiling avoidance`.
+Final announcement: `spec normalized — /devlyn:resolve --spec <spec-path>`. If the spec was lint-passing with no changes needed, announce: `spec already canonical — /devlyn:resolve --spec <spec-path>`. If step 9 applies, append: `warning: Verification may need one compound end-to-end scenario before pair-relevant risks are measurable`.
 
 If lint failed unfixably: print the specific failure, exit non-zero. Do not write a partial output.
 </output>

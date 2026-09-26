@@ -67,8 +67,7 @@ tool-use loop (2/3 made zero tool calls and fabricated findings), and a
 
 The judge prompt must name the exact permitted command(s). Derive the prompt
 anchor and allow-list string identically from one source, in this precedence:
-the solo-headroom hypothesis's backticked observable command when present;
-otherwise the backticked commands in the spec's `## Verification` bullets;
+the backticked commands in the spec's `## Verification` bullets;
 otherwise the repo's existing test/CLI runner. If none exists, the probe
 obligation does not arise and a static review is correct for that spec.
 The documented `Bash(<command>)` form matches the exact command or its prefix;

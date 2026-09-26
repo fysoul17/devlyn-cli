@@ -15,21 +15,6 @@ The user wants to build a project, not a single feature. Your job is to elicit t
    auth/error priority, or exact output shape, its per-feature Verification must
    include one compound end-to-end scenario; do not hide the interaction in
    project-level prose.
-6. When a feature is intended as a benchmark, risk probe, or pair-evidence
-   candidate, its per-feature Verification must include a solo-headroom
-   hypothesis. The feature spec must literally contain
-   `solo-headroom hypothesis`, `solo_claude`, `miss`, and a backticked
-   observable command while naming the visible behavior a capable
-   `solo_claude` baseline is expected to miss; the backticked line itself must
-   contain `miss` and be framed as the command/observable that exposes it. Do not defer that to
-   project-level prose, and rework the feature spec if the hypothesis is only
-   "the task is hard".
-7. When a feature is a new unmeasured benchmark, shadow-fixture, golden-fixture,
-   risk-probe, or pair-evidence candidate, its per-feature Verification must also include a solo ceiling avoidance note. The feature spec must literally
-   contain `solo ceiling avoidance`, mention `solo_claude`, and name a concrete
-   difference from rejected or solo-saturated controls such as `S2`-`S6`. Do not
-   defer that to project-level prose; benchmark fixture directories mirror the
-   same note in `NOTES.md` as `## Solo ceiling avoidance`.
 </conversation_rules>
 
 <decomposition_rules>
@@ -82,7 +67,7 @@ Anything binding all features (e.g. "no new top-level dependencies", "all CLI ou
 - `<spec-dir>/<id-N>/spec.md` for each feature (per `references/spec-template.md`).
 - `<spec-dir>/<id-N>/spec.expected.json` for each feature (per `_shared/expected.schema.json`).
 
-Each per-feature spec is structurally lint-validated using `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>`, including supported `complexity` frontmatter and any present actionable solo-headroom hypothesis, and each sibling expected contract plus sibling spec `complexity` frontmatter and any present actionable solo-headroom hypothesis is validated using `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>`; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`.
+Each per-feature spec is structurally lint-validated using `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>`, including supported `complexity` frontmatter, and each sibling expected contract plus sibling spec `complexity` frontmatter is validated using `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>`.
 
 Final announcement: `project ready — N specs at <spec-dir>/. Start with /devlyn:resolve --spec <first-spec-path>`.
 </output>

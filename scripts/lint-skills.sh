@@ -72,9 +72,6 @@ _shared/state-phase-write.py
 _shared/terminal-claim-check.py
 _shared/resolve-stop-hook.py
 _shared/resolve-bootstrap.py
-_shared/intent-gate.py
-devlyn:intent/SKILL.md
-devlyn:intent/references/review.md
 devlyn:ideate/SKILL.md
 devlyn:ideate/references/spec-template.md
 devlyn:ideate/references/elicitation.md
@@ -270,7 +267,7 @@ if [ ! -e "optional-skills/devlyn:design-ui" ]; then
 else
   bad "devlyn:design-ui must not be installed as an optional addon"
 fi
-if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn:intent', 'devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];" bin/devlyn.js \
+if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];" bin/devlyn.js \
    && grep -Fq "skillsToInstall: DEVLYN_CORE_SKILLS" bin/devlyn.js; then
   ok "Codex install includes devlyn:design-ui (via shared DEVLYN_CORE_SKILLS bundle)"
 else
@@ -407,7 +404,7 @@ check_skill_mirror_parity \
 
 # ---------------------------------------------------------------------------
 # 6b. VERIFY merge verdict binding self-test.
-for helper in role-config judge-role-evidence task-complete intent-gate; do
+for helper in role-config judge-role-evidence task-complete; do
   if python3 "config/skills/_shared/$helper.py" --self-test; then
     ok "$helper.py self-test passed"
   else
@@ -875,33 +872,13 @@ done
 if [ $expected_check_missing -eq 0 ]; then
   ok "ideate docs require --check-expected for sibling expected contracts"
 fi
-if ! grep -Fq 'any present actionable solo-headroom hypothesis' config/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'any present actionable solo-headroom hypothesis' .agents/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'any present actionable solo-headroom hypothesis' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'any present actionable solo-headroom hypothesis' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'any present actionable solo-headroom hypothesis' config/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'any present actionable solo-headroom hypothesis' .agents/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'any present actionable solo-headroom hypothesis' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'any present actionable solo-headroom hypothesis' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" config/skills/devlyn:ideate/SKILL.md \
+if ! grep -Fq "legacy inline \`## Verification\` JSON carrier" config/skills/devlyn:ideate/SKILL.md \
   || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" .agents/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" .agents/skills/devlyn:ideate/references/elicitation.md \
   || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" config/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" .agents/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq "inline \`## Verification\` JSON carrier" config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq "inline \`## Verification\` JSON carrier" .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' config/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' .agents/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' config/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' .agents/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' .agents/skills/devlyn:resolve/SKILL.md; then
-  bad "ideate/resolve docs must describe mechanical solo-headroom validation"
+  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" .agents/skills/devlyn:ideate/references/from-spec-mode.md; then
+  bad "ideate docs must keep sibling spec.expected.json precedence over the legacy inline carrier"
 else
-  ok "ideate/resolve docs describe mechanical solo-headroom validation"
+  ok "ideate docs keep sibling spec.expected.json precedence over the legacy inline carrier"
 fi
 if ! grep -Fq 'def validate_expected_against_sibling_spec' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'empty verification_commands should fail for runtime specs' config/skills/_shared/spec-verify-check.py \
@@ -920,76 +897,6 @@ if ! grep -Fq 'ask for one concrete compound' config/skills/devlyn:ideate/refere
   bad "ideate elicitation must ask for compound interaction scenarios when pair-relevant risks appear"
 else
   ok "ideate elicitation asks for compound interaction scenarios when pair-relevant risks appear"
-fi
-if ! grep -Fq 'solo-headroom hypothesis inside `## Verification`' config/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'solo-headroom hypothesis inside `## Verification`' .agents/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'ask for one solo-headroom hypothesis' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'ask for one solo-headroom hypothesis' .agents/skills/devlyn:ideate/references/elicitation.md; then
-  bad "ideate must require a visible solo-headroom hypothesis for benchmark and pair-evidence specs"
-else
-  ok "ideate requires solo-headroom hypothesis for benchmark and pair-evidence specs"
-fi
-if ! grep -Fq 'must literally contain `solo-headroom hypothesis`' config/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'must literally contain `solo-headroom hypothesis`' .agents/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'backticked line itself must contain `miss`' config/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'backticked line itself must contain `miss`' .agents/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq '`solo_claude`, `miss`, and a backticked observable command' config/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq '`solo_claude`, `miss`, and a backticked observable command' .agents/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'command/observable' config/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'command/observable' .agents/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'must literally contain `solo-headroom hypothesis`' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'must literally contain `solo-headroom hypothesis`' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'line itself must contain `miss`' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'line itself must contain `miss`' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'Do not write a benchmark/risk-probe/pair-evidence spec until this' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'Do not write a benchmark/risk-probe/pair-evidence spec until this' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'spec not ready — solo-headroom hypothesis required' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'spec not ready — solo-headroom hypothesis required' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq '`solo_claude`, `miss`, and a backticked observable command' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq '`solo_claude`, `miss`, and a backticked observable command' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'command/observable' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'command/observable' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'Verification literally contains `solo-headroom hypothesis`, `solo_claude`' config/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'Verification literally contains `solo-headroom hypothesis`, `solo_claude`' .agents/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'backticked line itself must contain `miss`' config/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'backticked line itself must contain `miss`' .agents/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'command/observable' config/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'command/observable' .agents/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' config/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' .agents/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq "source for VERIFY's canonical \`spec.solo_headroom_hypothesis\` trigger reason" config/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq "source for VERIFY's canonical \`spec.solo_headroom_hypothesis\` trigger reason" .agents/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' config/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'spec.expected.json.verification_commands[].cmd' .agents/skills/devlyn:ideate/references/spec-template.md; then
-  bad "ideate solo-headroom hypothesis prompt must match the actionable checker contract"
-else
-  ok "ideate solo-headroom hypothesis prompt matches checker contract"
-fi
-if ! grep -Fq 'quick mode must not infer a solo-headroom hypothesis' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'quick mode must not infer a solo-headroom hypothesis' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'do not infer a solo-headroom hypothesis' config/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'do not infer a solo-headroom hypothesis' .agents/skills/devlyn:ideate/SKILL.md; then
-  bad "ideate quick mode must not invent solo-headroom hypotheses"
-else
-  ok "ideate quick mode does not invent solo-headroom hypotheses"
-fi
-if ! grep -Fq 'solo ceiling avoidance' config/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'solo ceiling avoidance' .agents/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'rejected or solo-saturated controls such as `S2`-`S6`' config/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'rejected or solo-saturated controls such as `S2`-`S6`' .agents/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'Solo ceiling avoidance' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'Solo ceiling avoidance' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'spec not ready — solo ceiling avoidance required' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'spec not ready — solo ceiling avoidance required' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'pair-evidence not ready — Pair-candidate headroom is unproven until the spec states solo ceiling avoidance' config/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'pair-evidence not ready — Pair-candidate headroom is unproven until the spec states solo ceiling avoidance' .agents/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'also do not infer solo ceiling avoidance' config/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'also do not infer solo ceiling avoidance' .agents/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'per-feature Verification must also include a solo ceiling avoidance note' config/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'per-feature Verification must also include a solo ceiling avoidance note' .agents/skills/devlyn:ideate/references/project-mode.md; then
-  bad "ideate must require solo ceiling avoidance for new unmeasured pair candidates"
-else
-  ok "ideate requires solo ceiling avoidance for new unmeasured pair candidates"
 fi
 if ! grep -Fq 'complexity: medium' config/skills/devlyn:ideate/references/spec-template.md \
   || ! grep -Fq 'complexity: medium' .agents/skills/devlyn:ideate/references/spec-template.md \
@@ -1022,89 +929,13 @@ if ! grep -Fq 'warning: Verification may need one compound end-to-end scenario b
 else
   ok "ideate from-spec mode warns on pair-relevant specs with weak verification"
 fi
-if ! grep -Fq 'pair-evidence not ready — Pair-candidate headroom is unproven until the spec states a solo-headroom hypothesis' \
-  config/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'pair-evidence not ready — Pair-candidate headroom is unproven until the spec states a solo-headroom hypothesis' .agents/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'Do not call' config/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'Do not call' .agents/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'announcement must say `pair-evidence not ready`' config/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'announcement must say `pair-evidence not ready`' .agents/skills/devlyn:ideate/SKILL.md; then
-  bad "ideate from-spec mode must warn when pair-candidate specs lack solo-headroom hypothesis"
-else
-  ok "ideate from-spec mode warns on missing solo-headroom hypothesis"
-fi
 if ! grep -Fq 'per-feature Verification must' config/skills/devlyn:ideate/references/project-mode.md \
   || ! grep -Fq 'per-feature Verification must' .agents/skills/devlyn:ideate/references/project-mode.md; then
   bad "ideate project mode must require compound verification inside each pair-relevant feature spec"
 else
   ok "ideate project mode keeps compound verification inside pair-relevant feature specs"
 fi
-if ! grep -Fq 'per-feature Verification must include a solo-headroom' config/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'per-feature Verification must include a solo-headroom' .agents/skills/devlyn:ideate/references/project-mode.md \
-  || grep -rq 'Context or Verification' config/skills/devlyn:ideate/references .agents/skills/devlyn:ideate/references; then
-  bad "ideate project mode must keep solo-headroom hypothesis inside each pair-candidate feature spec"
-else
-  ok "ideate project mode keeps solo-headroom hypothesis inside each pair-candidate feature spec"
-fi
-if ! grep -Fq 'feature spec must literally contain' config/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'feature spec must literally contain' .agents/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq '`solo-headroom hypothesis`, `solo_claude`, `miss`, and a backticked' config/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq '`solo-headroom hypothesis`, `solo_claude`, `miss`, and a backticked' .agents/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'behavior a capable' config/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'behavior a capable' .agents/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'backticked line itself must' config/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'backticked line itself must' .agents/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'command/observable' config/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'command/observable' .agents/skills/devlyn:ideate/references/project-mode.md; then
-  bad "ideate project mode solo-headroom prompt must keep the actionable checker contract"
-else
-  ok "ideate project mode solo-headroom prompt keeps checker contract"
-fi
 
-if ! grep -Fq 'If the visible spec includes a solo-headroom hypothesis, the first probe must' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq 'If the visible spec includes a solo-headroom hypothesis, the first probe must' .agents/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq 'When the visible spec includes a solo-headroom hypothesis, the first probe must' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'When the visible spec includes a solo-headroom hypothesis, the first probe must' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'its `cmd` must contain the hypothesis'\''s backticked' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'its `cmd` must contain the hypothesis'\''s backticked' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'its `derived_from` must reference the hypothesis bullet' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'its `derived_from` must reference the hypothesis bullet' .agents/skills/devlyn:resolve/SKILL.md; then
-  bad "resolve risk-probe prompts must consume solo-headroom hypothesis before pair-evidence work"
-else
-  ok "resolve risk-probe prompts consume solo-headroom hypothesis"
-fi
-if ! grep -Fq 'the behavior the spec says `solo_claude` is expected to miss' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq 'the behavior the spec says `solo_claude` is expected to miss' .agents/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq 'exercise the stated `solo_claude` miss' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq 'exercise the stated `solo_claude` miss' .agents/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq 'with a `cmd` containing the hypothesis'\''s' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq 'with a `cmd` containing the hypothesis'\''s' .agents/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`derived_from` pointing at the hypothesis' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`derived_from` pointing at the hypothesis' .agents/skills/devlyn:resolve/references/phases/probe-derive.md; then
-  bad "resolve risk-probe solo-headroom prompt must target the stated solo_claude miss"
-else
-  ok "resolve risk-probe solo-headroom prompt targets the stated solo_claude miss"
-fi
-if ! grep -Fq 'If the spec includes a solo-headroom hypothesis, one targeted review must use' \
-  config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'If the spec includes a solo-headroom hypothesis, one targeted review must use' \
-    .agents/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'If the spec includes a solo-headroom hypothesis, one targeted review must use' \
-    config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'If the spec includes a solo-headroom hypothesis, one targeted review must use' \
-    .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'hypothesis'\''s backticked observable command as the exact anchor' \
-    config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'hypothesis'\''s backticked observable command as the exact anchor' \
-    .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'hypothesis'\''s backticked observable command as its exact anchor' \
-    config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'hypothesis'\''s backticked observable command as its exact anchor' \
-    .agents/skills/devlyn:resolve/references/phases/verify.md; then
-  bad "resolve pair-JUDGE prompts must prioritize solo-headroom hypothesis"
-else
-  ok "resolve pair-JUDGE prompts prioritize solo-headroom hypothesis"
-fi
 if ! grep -Fq 'The `--engine` flag does not disable default pairing' config/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq 'The `--engine` flag does not disable default pairing' .agents/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq 'the second judge uses the OTHER engine by default when available' config/skills/devlyn:resolve/SKILL.md \
@@ -1171,18 +1002,12 @@ if ! grep -Fq 'def spec_has_solo_headroom_hypothesis' config/skills/_shared/veri
   || ! grep -Fq '`spec.solo_headroom_hypothesis`' config/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq '`spec.solo_headroom_hypothesis`' .agents/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq '`spec.solo_headroom_hypothesis`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq '`spec.solo_headroom_hypothesis`' .agents/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'same actionable solo-headroom hypothesis is a VERIFY pair-trigger reason' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'same actionable solo-headroom hypothesis is a VERIFY pair-trigger reason' .agents/skills/devlyn:resolve/SKILL.md; then
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`' .agents/skills/devlyn:resolve/references/state-schema.md; then
   bad "resolve VERIFY pair trigger must include actionable solo-headroom hypothesis specs"
 else
   ok "resolve VERIFY pair trigger includes actionable solo-headroom hypothesis specs"
 fi
-if ! grep -Fq 'pair_evidence_intent' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'pair_evidence_intent' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'has_actionable_solo_headroom' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'has_actionable_solo_headroom' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'state.source.type = "generated"' config/skills/devlyn:resolve/SKILL.md \
+if ! grep -Fq 'state.source.type = "generated"' config/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'state.source.type = "generated"' .agents/skills/devlyn:resolve/SKILL.md \
   || ! grep -Fq 'state.source.criteria_path = ".devlyn/criteria.generated.md"' config/skills/devlyn:resolve/references/free-form-mode.md \
   || ! grep -Fq 'state.source.criteria_path = ".devlyn/criteria.generated.md"' .agents/skills/devlyn:resolve/references/free-form-mode.md \
@@ -1191,44 +1016,10 @@ if ! grep -Fq 'pair_evidence_intent' config/skills/devlyn:resolve/references/fre
   || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' config/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' .agents/skills/devlyn:resolve/references/phases/verify.md \
   || ! grep -Fq 'Free-form sets `type: "generated"`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Free-form sets `type: "generated"`' .agents/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'backticked observable command line that itself contains `miss`' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'backticked observable command line that itself contains `miss`' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'BLOCKED:solo-headroom-hypothesis-required' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'BLOCKED:solo-headroom-hypothesis-required' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'pair-evidence intent without an actionable solo-headroom hypothesis must halt' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'pair-evidence intent without an actionable solo-headroom hypothesis must halt' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'preserve that literal hypothesis in `.devlyn/criteria.generated.md`' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'preserve that literal hypothesis in `.devlyn/criteria.generated.md`' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'emit the canonical `spec.solo_headroom_hypothesis` pair trigger reason' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'emit the canonical `spec.solo_headroom_hypothesis` pair trigger reason' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq '/devlyn:ideate` guidance for `BLOCKED:solo-headroom-hypothesis-required`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq '/devlyn:ideate` guidance for `BLOCKED:solo-headroom-hypothesis-required`' .agents/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq '/devlyn:ideate` guidance after `BLOCKED:solo-headroom-hypothesis-required`' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq '/devlyn:ideate` guidance after `BLOCKED:solo-headroom-hypothesis-required`' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'Free-form goals that ask for benchmark evidence, pair-evidence, risk-probe' README.md \
-  || ! grep -Fq '`/devlyn:resolve` stops with `BLOCKED:solo-headroom-hypothesis-required`' README.md \
-  || ! grep -Fq 'points you to `/devlyn:ideate` instead of inventing a weak hypothesis' README.md; then
-  bad "resolve free-form mode must block pair-evidence goals without actionable solo-headroom hypothesis"
+  || ! grep -Fq 'Free-form sets `type: "generated"`' .agents/skills/devlyn:resolve/references/state-schema.md; then
+  bad "resolve free-form mode must record the generated criteria source"
 else
-  ok "resolve free-form mode blocks pair-evidence goals without actionable solo-headroom hypothesis"
-fi
-if ! grep -Fq 'unmeasured_pair_candidate_intent' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'unmeasured_pair_candidate_intent' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'has_solo_ceiling_avoidance' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'has_solo_ceiling_avoidance' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'BLOCKED:solo-ceiling-avoidance-required' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'BLOCKED:solo-ceiling-avoidance-required' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'unmeasured pair-candidate intent without solo ceiling avoidance must halt' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'unmeasured pair-candidate intent without solo ceiling avoidance must halt' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq '/devlyn:ideate` guidance after `BLOCKED:solo-ceiling-avoidance-required`' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq '/devlyn:ideate` guidance after `BLOCKED:solo-ceiling-avoidance-required`' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq '/devlyn:ideate` guidance for `BLOCKED:solo-ceiling-avoidance-required`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq '/devlyn:ideate` guidance for `BLOCKED:solo-ceiling-avoidance-required`' .agents/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq '`/devlyn:resolve` stops with `BLOCKED:solo-ceiling-avoidance-required`' README.md; then
-  bad "resolve free-form mode must block new unmeasured pair candidates without solo ceiling avoidance"
-else
-  ok "resolve free-form mode blocks new unmeasured pair candidates without solo ceiling avoidance"
+  ok "resolve free-form mode records the generated criteria source"
 fi
 
 section "Check 6g: resolve consumes sibling spec.expected.json"

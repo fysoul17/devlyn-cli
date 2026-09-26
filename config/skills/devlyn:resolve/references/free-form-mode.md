@@ -13,14 +13,6 @@ Compute these signals from the goal text + project state:
 3. **verb_class** — primary verb of the goal: `fix | add | refactor | debug | review | rewrite | migrate | ...`.
 4. **codebase_size** — `git ls-files | wc -l`. Coarse buckets: `<50` / `<500` / `≥500`.
 5. **has_failing_test** — does the goal mention a specific failing test or include a stack trace?
-6. **pair_evidence_intent** — does the goal ask for benchmark evidence, pair-evidence, risk-probe measurement, solo<pair proof, or solo-headroom work?
-7. **has_actionable_solo_headroom** — does the goal itself include the actionable contract: literal `solo-headroom hypothesis`, `solo_claude`, `miss`, and a backticked observable command line that itself contains `miss` and is framed as the command/observable that exposes it?
-8. **unmeasured_pair_candidate_intent** — does the goal ask to add, create,
-   promote, or run a new unmeasured benchmark, shadow fixture, golden fixture,
-   risk-probe, or pair-evidence candidate?
-9. **has_solo_ceiling_avoidance** — does the goal itself include the literal
-   phrase `solo ceiling avoidance`, mention `solo_claude`, and name a concrete
-   difference from rejected or solo-saturated controls such as `S2`-`S6`?
 
 Evaluate Large first, then Medium, then Trivial; stop at the first matching branch.
 
@@ -55,14 +47,10 @@ Conditions (any one):
 - `file_scope_signals > 10` OR zero signals (vague enough that the classifier cannot pick scope).
 - `verb_class ∈ {rewrite, migrate}` and scope is multi-subsystem.
 - The goal mentions a new feature whose surface area requires design decisions the harness cannot make from a one-shot prompt.
-- `pair_evidence_intent == true` and `has_actionable_solo_headroom == false`.
-- `unmeasured_pair_candidate_intent == true` and `has_solo_ceiling_avoidance == false`.
 
 Action:
 - Default: synthesize a best-effort spec from the goal with an explicit `## Assumptions` block (every assumption scope-narrowing and reversible — when in doubt, narrower); log `recommend: /devlyn:ideate first` in `.devlyn/criteria.generated.md` AND the final report; proceed to PHASE 1; the final report flags every assumption for user review.
 - Zero-signal exception: if the large classification includes `file_scope_signals == 0` (classifier cannot pick scope), halt with terminal verdict `BLOCKED:large-needs-ideation` — assumptions there would be scope-invention, not narrowing.
-- Exception: if the large classification came from pair-evidence intent without an actionable solo-headroom hypothesis, halt with `BLOCKED:solo-headroom-hypothesis-required`. Do not invent a hypothesis; recommend `/devlyn:ideate` so the user can supply the visible behavior `solo_claude` is expected to miss.
-- Exception: if the large classification came from unmeasured pair-candidate intent without solo ceiling avoidance, halt with `BLOCKED:solo-ceiling-avoidance-required`. Do not invent the note; recommend `/devlyn:ideate` so the user can supply the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`.
 
 ## Anti-pattern: drift to LLM judgment
 
@@ -77,8 +65,6 @@ The internal mini-spec written for trivial / medium / large-assumptions paths mu
 - `## Requirements` non-empty, each bullet testable (CLI command, test command, observable file change).
 - For executable generated verification, put one fenced `json` object with `verification_commands` inside the sentinel-marked `## Verification` section. Generated mode reads this inline carrier, not a sibling file. Follow `../../devlyn:ideate/references/spec-template.md` § "Sibling file: `spec.expected.json`" for constraint coverage, diff scope and violating/allowed controls, but express those checks as executable `verification_commands`; sibling-only fields such as `required_files` and `forbidden_patterns` are rejected inline. Preserve uncovered semantics as source-review obligations.
 - `## Verification` is preceded by a `<!-- devlyn:verification -->` sentinel on its own line directly above the heading — the machine locator `spec-verify-check.py` uses; the heading text itself is decorative and may be any language. When all Requirements are pure-design with no runnable acceptance check, put `{"pure_design": true, "verification_commands": []}` in the fenced `json` block and retain semantic source-review obligations. This explicit declaration is required; a missing block, an unmarked empty list, or `pure_design: true` with commands is invalid.
-- If a free-form goal includes pair-evidence intent and already includes an actionable solo-headroom hypothesis, preserve that literal hypothesis in `.devlyn/criteria.generated.md` unchanged enough for VERIFY to detect `solo-headroom hypothesis`, `solo_claude`, `miss`, and the backticked observable command line that itself contains `miss`, emit the canonical `spec.solo_headroom_hypothesis` pair trigger reason, and satisfy regenerated-evidence checks such as `audit-pair-evidence.py --require-hypothesis-trigger` (benchmark scripts, git checkout).
-- If a free-form goal includes unmeasured pair-candidate intent and already includes solo ceiling avoidance, preserve that literal note in `.devlyn/criteria.generated.md` unchanged enough for reviewers to see `solo ceiling avoidance`, `solo_claude`, and the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`.
 - Free-form mode mini-specs are written to `.devlyn/criteria.generated.md` (not to a roadmap path) — this is run-scoped artifact, not a documented spec.
 - After writing `.devlyn/criteria.generated.md`, set `state.source.type = "generated"`, `state.source.spec_path = null`, `state.source.spec_sha256 = null`, `state.source.criteria_path = ".devlyn/criteria.generated.md"`, and `state.source.criteria_sha256` to the raw-byte SHA-256 of the generated criteria file. Downstream PLAN/IMPLEMENT/VERIFY phases and `spec-verify-check.py --include-risk-probes` depend on this pointer; do not rely on the file existing by convention.
 

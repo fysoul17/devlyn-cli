@@ -110,8 +110,8 @@ Structural lint (inline check, no script needed):
 After lint passes:
 1. Write `<spec-dir>/<id>-<slug>/spec.md` (the spec).
 2. Generate `<spec-dir>/<id>-<slug>/spec.expected.json` following `references/spec-template.md` § "Sibling file: `spec.expected.json`" for constraint coverage, diff scope and guard controls.
-3. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` to validate the actual spec's carrier shape and supported `complexity` frontmatter. Sibling `spec.expected.json` takes precedence over the legacy inline `## Verification` JSON carrier; any present actionable solo-headroom hypothesis command must match that carrier's `verification_commands[].cmd`. If exit 2, fix the file named in the error and re-run.
-4. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` to validate sibling `spec.expected.json` against `_shared/expected.schema.json` plus sibling spec `complexity` frontmatter and any present actionable solo-headroom hypothesis; if the spec has a solo-headroom hypothesis, its observable command must match `spec.expected.json.verification_commands[].cmd`. If exit 2, fix the JSON/frontmatter/hypothesis and re-run.
+3. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` to validate the actual spec's carrier shape and supported `complexity` frontmatter. Sibling `spec.expected.json` takes precedence over the legacy inline `## Verification` JSON carrier. If exit 2, fix the file named in the error and re-run.
+4. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` to validate sibling `spec.expected.json` against `_shared/expected.schema.json` plus sibling spec `complexity` frontmatter. If exit 2, fix the JSON/frontmatter and re-run.
 5. Print: `spec ready — /devlyn:resolve --spec <spec-path>`.
 
 ## PHASE 1Q: QUICK MODE
@@ -123,7 +123,6 @@ Single-turn assume-and-confirm. Prompt body: see `references/elicitation.md` § 
 3. User responds with "go" / "fix X" / "no, different".
 4. On "go": write spec + spec.expected.json + lint + announce.
 5. On "fix X": apply correction, re-show, ask again. Maximum 3 correction rounds before escalating to default mode.
-6. Exception: for benchmark, risk-probe, or pair-evidence goals, do not infer a solo-headroom hypothesis. Ask for the actionable hypothesis first; if unavailable, exit with `spec not ready — solo-headroom hypothesis required`. For new unmeasured benchmark, shadow-fixture, golden-fixture, risk-probe, or pair-evidence candidates, also do not infer solo ceiling avoidance; ask for the concrete difference from rejected or solo-saturated controls such as `S2`-`S6`, and exit with `spec not ready — solo ceiling avoidance required` if unavailable.
 
 ## PHASE 1F: FROM-SPEC MODE
 
@@ -136,7 +135,7 @@ Prompt body: `references/from-spec-mode.md`.
 5. Generate `spec.expected.json` if absent, following the same template carrier guidance as default mode.
 6. Write the normalized spec back to `<spec-dir>/<id>-<slug>/` (preserves original at `<path>` untouched unless user passes `--in-place`).
 7. Run both lint checks: `--check <spec-path>` and `--check-expected <expected-path>`.
-8. Lint pass → announce. Lint fail → surface the unfixable issue and exit non-zero. If the source is a pair-evidence candidate without an actionable solo-headroom hypothesis, the announcement must say `pair-evidence not ready` instead of implying measurement readiness.
+8. Lint pass → announce. Lint fail → surface the unfixable issue and exit non-zero.
 
 ## PHASE 1P: PROJECT MODE
 

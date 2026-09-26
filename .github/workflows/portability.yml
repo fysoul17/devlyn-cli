@@ -188,9 +188,9 @@ jobs:
           skills = project / '.claude/skills'
           marker = json.loads((skills / '.devlyn-install.json').read_text(encoding='utf-8'))
           assert marker['package'] == 'devlyn-cli', marker
-          intent = skills / 'devlyn\uf03aintent'
-          assert intent.is_dir() and 'name: devlyn:intent' in (intent / 'SKILL.md').read_text(encoding='utf-8')
-          print('Real CLI complete-install marker and legal intent directory passed', flush=True)
+          resolve = skills / 'devlyn\uf03aresolve'
+          assert resolve.is_dir() and 'name: devlyn:resolve' in (resolve / 'SKILL.md').read_text(encoding='utf-8')
+          print('Real CLI complete-install marker and legal resolve directory passed', flush=True)
 
           failed = []
           for label, command in (

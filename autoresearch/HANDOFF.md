@@ -1,6 +1,6 @@
-# Continue 0221 — subtraction and `/devlyn:intent` full-replacement evaluation
+# 0221 closed — subtraction and `/devlyn:intent` full-replacement evaluation
 
-2026-09-24 KST. Root direct. The contract is [0221](iterations/0221-subtraction-direction.md). It is registered, and the user's decisions are quoted verbatim in §2. Session-ready scoping lives in [experiments/0221/packets](experiments/0221/packets/README.md). The previous HANDOFF (0201–0209 narrative) is in git history; 0201's diagnosis still stands, but 0221 §7 lists which of its rules are superseded.
+2026-09-24 KST. Root direct. The contract is [0221](iterations/0221-subtraction-direction.md). It closed in Session 8 (candidate not adopted, full resolve stays), and the user's decisions are quoted verbatim in §2. Session-ready scoping lives in [experiments/0221/packets](experiments/0221/packets/README.md). The previous HANDOFF (0201–0209 narrative) is in git history; 0201's diagnosis still stands, but 0221 §7 lists which of its rules are superseded.
 
 ## Start here (every new session)
 
@@ -24,12 +24,23 @@
 | 3 | Comparison apparatus v2 without budgets; arm F = published 3.2.1, verified in-container; evaluator fixes (branch `candidate/0221-s3-apparatus-v2`, [0222](experiments/0222/DESIGN.md)) | E1 | merged (PR #112) |
 | 4 | Always-loaded instruction screen, 288 short runs (branch `candidate/0221-s4-instruction-layer`, [0223](experiments/0223/RESULT.md)) | E2 | merged (PR #113) — `SLIM_REJECTED` |
 | 5 | Add the `/devlyn:intent` candidate (no default change); counterexample tests (branch `candidate/0221-s5-intent-candidate`) | I1, I2 PR-A | merged (PR #114) |
-| 6 | Structure screen: 0185 + D4 × {A, B′, C, F} × 2 configs, plus 4 Grok static checks (branch `candidate/0221-s6-structure-screen`, [0224](experiments/0224/RESULT.md)) | E1 apparatus | PR open — `SCREEN:B'=none;C=none` |
+| 6 | Structure screen: 0185 + D4 × {A, B′, C, F} × 2 configs, plus 4 Grok static checks (branch `candidate/0221-s6-structure-screen`, [0224](experiments/0224/RESULT.md)) | E1 apparatus | merged (PR #115) — `SCREEN:B'=none;C=none` |
 | 7 | Freeze, then untouched confirmation (40, plus 8 light); adopt, hold or stop per config | — | not run: no candidate continues (0224) |
-| 8 | Next major: intent becomes the default and resolve/ideate become guidance-only, OR the candidate is closed | I2 PR-B, T1b (b) | **NEXT** — candidate-close branch |
-| 9 | After one major: remove the stubs and any helpers left without references | I2 PR-C, I1 | pending |
+| 8 | Next major: intent becomes the default and resolve/ideate become guidance-only, OR the candidate is closed | T1b (b1, b2, b4, b5) | candidate closed (branch `candidate/0221-s8-candidate-close`) |
+| 9 | After one major: remove the stubs and any helpers left without references | I2 PR-C, I1 | not applicable: no stubs, and no helper lost its references |
 
-**Next:** Session 8, candidate-close branch, after the Session 6 PR (branch `candidate/0221-s6-structure-screen`) is merged. The structure screen continued neither B′ nor C ([0224 RESULT](experiments/0224/RESULT.md)), so Session 7 does not run (0221 §4: no signal → close without the confirmation and light stages). Per 0221 §5 row 8 (drop branch): close the `/devlyn:intent` candidate and keep full resolve as it is; then do the research-vocabulary cleanup (T1b b1, b2, b4, b5). Do not auto-merge or publish to npm. If the user rejects the block reading, the only route is a new registration, not a regrade of 0224.
+**Next:** no 0221 session remains. Open user decisions, each needing its own registration:
+- whether to test a slim instruction block with the orphan-cleanup sentence added back ([0223 RESULT](experiments/0223/RESULT.md) "Follow-up");
+- whether to diagnose full resolve's 0224 non-completion. Published 3.2.1 ended BLOCKED in all 4 cells (`verify-exhausted` ×3, `required-tools-unavailable` ×1). Both D4 F products pass every check and oracle row, but the assessors split on both, and I0185 has real failures. Full stays by the 0221 transition policy; its successful completion was not established.
+
+Session 8 record (base `ad97baca`): drop branch per 0221 §5 row 8. Root R0 and Astra R0 (independent) agreed on every question; root adopted three Astra deltas: keep Session 5's list-derived installer comment and log line, record F as "retained by transition policy; successful completion not established", and state the Lane A change below.
+- Candidate removed: `config/skills/devlyn:intent/**`, `_shared/intent-gate.py` and their `.agents` mirrors; `DEVLYN_CORE_SKILLS`, lint Checks 5a/6/6a/6b, the Windows real-CLI assertion (back to `devlynresolve`) and README:30 return to their pre-Session 5 bytes. It was never released (npm 3.2.1 predates PR #114), so there is no migration or `DEPRECATED_DIRS` entry. 0222 packs B′ from the pinned commit `79532e97`, so 0224 stays reproducible.
+- T1b b1/b4: the free-form classifier loses signals 6–9 and both `BLOCKED:solo-*` halts; resolve SKILL.md, state-schema, probe-derive, verify and the grok adapter lose the solo-headroom anchors and guidance that nothing enforced after Session 1's b3. T1b b2: ideate loses items 8–9, quick-mode step 6, from-spec steps 10–11 and project rules 6–7; compound-verification guidance and carrier precedence (ideate SKILL.md, from-spec step 6) stay. T1b b5: the lint pins for that text go; the generated-source pins and the kept telemetry pins stay.
+- Kept (b-keep, now indefinite, since no intent PR will retire it): the verify-merge `spec.solo_headroom_hypothesis` reason and its reason lists, BENCH_WORKDIR trust, hidden-input guards, CODEX_BLOCKED and the fixture-shaped examples. Lane A: probe #1 and the pair judge no longer anchor on a spec's hypothesis, so new Lane A pair evidence is not comparable with archived evidence.
+- Local only: the gitignored `.claude/skills` mirror in this checkout was re-synced and its intent copies and `intent-gate` bytecode removed.
+- Checks: spec-verify-check, verify-merge-findings, resolve-bootstrap self-tests and test-owner-phases pass; lint-fixtures (21 active), lint-shadow-fixtures (6), test-lint-fixtures pass; the CI package route replayed locally (pack → offline install → test-windows-portability.py: 61 tests OK, 17 skipped); npm pack has 131 entries with no intent, benchmark or `__pycache__` path; `git grep -E 'solo-headroom|solo_claude|solo ceiling|solo-ceiling|pair-evidence|BLOCKED:solo'` over config, .agents, README, CLAUDE.md and AGENTS.md hits only `_shared/verify-merge-findings.py` and `_shared/codex-monitored.sh` (the kept reason name `spec.solo_headroom_hypothesis` stays in the resolve reason lists, and the kept lint pins keep their messages); `diff -r -x __pycache__ config/skills .agents/skills` is empty; `git diff --check` passes; `scripts/lint-skills.sh` All checks passed.
+- Reviews: final verification, Astra R1 REVISE (2 record items) and Grok 4.7 REVISE (1 record wording). All were adopted, except Astra item 1 only in part: the no-resolve rule is the user's instruction (0201:153), so only 0221's arm-F exception ended. Astra R2 SHIP confirmed that reading. Grok's first two headless runs with read tools were cancelled before any review; the third ran with the compact diff inline and no tools.
+- Open: the Session 6 completion scratch (`.git/devlyn-completion/def536965e5b1678b8c023ac/scratch`) is still retained.
 
 Session 6 record (base `79532e97`): B′ is bound in the 0222 apparatus, and the structure screen was registered, run and resulted as [0224](experiments/0224/DESIGN.md).
 - Binding: `control.py` packs the Session 5 merge (`npm pack`, byte-reproducible, sha256 `433cb672…`) into control tree v2 (manifest `f51c73f2…`). `prepare.py` installs it like F with the shared `product_roles` (renamed from `F_roles`). `cell.identity` checks every executor and reviewer model the gate recorded, including failed calls' saved Codex header or Claude result. `record_usage` counts intent Claude reviews and names the isolated Codex review gap.
@@ -86,13 +97,12 @@ Checks:
 
 Reviews: Astra design R0 REVISE, adopted; implementation R1–R4 REVISE from Astra and Grok, all fixed; R5 SMOKE-READY from both.
 
-Open (carried from Session 1): the `/devlyn:queue` branch-reconciliation rule is not exercised by a model-driven drain; ideate/resolve prose still mentions solo-headroom checks that spec-verify-check no longer enforces (T1b b1/b2/b4, Session 8); a null `autoMergeRequest` does not prove merge-queue removal.
+Open (carried from Session 1): the `/devlyn:queue` branch-reconciliation rule is not exercised by a model-driven drain; a null `autoMergeRequest` does not prove merge-queue removal.
 
 ## Standing rules
 
 - **No token, cost or call budgets** in the harness or in tests. Keep only the watchdog (90 min per task, 10 min per review) and post-hoc usage recording; missing usage is recorded as UNKNOWN, never 0.
 - **Models.** Claude config: `claude-opus-5-5`. Codex config: `gpt-6-astra` owner with `gpt-6-sol` implementation. Light path: `claude-sonnet-5` or `gpt-6-sol`. `grok-4.7` is an optional reviewer only. Do not auto-substitute Fable 5.2+.
-- **No resolve invocation** except as arm F. Do not rerun D1. 0185 and D1–D4 are not holdout evidence.
+- **No resolve invocation** in research (0201 rule 5, the user's no-resolve instruction); 0221's arm-F exception ended with 0221. Do not rerun D1. 0185 and D1–D4 are not holdout evidence.
 - **Checkpoints.** Every 2 business days, decide whether to continue, shrink or stop the current path.
 - **Frozen material.** A16, frozen results and the original WIP stay untouched. Past stop verdicts (0211–0219) are history, not something to regrade.
-- **Open user item.** The only one left is old-name handling: an executing alias vs guidance-only. The default is guidance-only (0221 §8).
