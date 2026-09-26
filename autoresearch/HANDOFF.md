@@ -23,13 +23,24 @@
 | 2 | Benchmark out of the npm package (branch `candidate/0221-s2-benchmark-unpackage`) | T1b (a1–a5) | merged (PR #111) |
 | 3 | Comparison apparatus v2 without budgets; arm F = published 3.2.1, verified in-container; evaluator fixes (branch `candidate/0221-s3-apparatus-v2`, [0222](experiments/0222/DESIGN.md)) | E1 | merged (PR #112) |
 | 4 | Always-loaded instruction screen, 288 short runs (branch `candidate/0221-s4-instruction-layer`, [0223](experiments/0223/RESULT.md)) | E2 | merged (PR #113) — `SLIM_REJECTED` |
-| 5 | Add the `/devlyn:intent` candidate (no default change); counterexample tests (branch `candidate/0221-s5-intent-candidate`) | I1, I2 PR-A | PR open |
-| 6 | Structure screen: 0185 + D4 × {A, B′, C, F} × 2 configs, plus 4 Grok static checks | E1 apparatus | **NEXT** |
-| 7 | Freeze, then untouched confirmation (40, plus 8 light); adopt, hold or stop per config | — | pending |
+| 5 | Add the `/devlyn:intent` candidate (no default change); counterexample tests (branch `candidate/0221-s5-intent-candidate`) | I1, I2 PR-A | merged (PR #114) |
+| 6 | Structure screen: 0185 + D4 × {A, B′, C, F} × 2 configs, plus 4 Grok static checks (branch `candidate/0221-s6-structure-screen`, [0224](experiments/0224/RESULT.md)) | E1 apparatus | PR open — `SCREEN:B'=claude;C=claude` |
+| 7 | Freeze, then untouched confirmation, Claude config only (B′ and C continue there; both stop in the Codex config); adopt, hold or stop | — | **NEXT** |
 | 8 | Next major: intent becomes the default and resolve/ideate become guidance-only, OR the candidate is closed | I2 PR-B, T1b (b) | pending |
 | 9 | After one major: remove the stubs and any helpers left without references | I2 PR-C, I1 | pending |
 
-**Next:** Session 6, after the Session 5 PR (branch `candidate/0221-s5-intent-candidate`) is merged. First bind B′ in `autoresearch/experiments/0222/prepare.py`: pack the merged commit into the control tree, install it like F (`-y` / `agents codex`), bind the same role table through `.devlyn/engines.json`, prompt `/devlyn:intent --goal-file .devlyn/goal.txt` (Codex: read the installed SKILL.md first), and extend `cell.identity` to the gate's recorded reviewer and executor models (`.devlyn/intent/run.json`).
+**Next:** Session 7, after the Session 6 PR (branch `candidate/0221-s6-structure-screen`) is merged. The screen continues B′ and C **in the Claude config only** ([0224 RESULT](experiments/0224/RESULT.md)). Register the confirmation for that config under 0221 §4 K-3: selection criteria first; freeze the candidate, the slim instructions, the roles and the evaluator; an author blind to candidate implementation and arm results writes the tasks and oracles; reference/mutant calibration. Size it from 0221's 40-run table restricted to the continuing config and arms, stating the count before dispatch. Codex-config adoption is closed by the screen; do not reopen it. Before dispatch, check the Claude account's weekly utilization (`/api/oauth/usage`), because the registered account hit its weekly limit mid-screen.
+
+Session 6 record (base `79532e97`): B′ is bound in the 0222 apparatus, and the structure screen was registered, run and resulted as [0224](experiments/0224/DESIGN.md).
+- Binding: `control.py` packs the Session 5 merge (`npm pack`, byte-reproducible, sha256 `433cb672…`) into control tree v2 (manifest `f51c73f2…`). `prepare.py` installs it like F with the shared `product_roles` (renamed from `F_roles`). `cell.identity` checks every executor and reviewer model the gate recorded, including failed calls' saved Codex header or Claude result. `record_usage` counts intent Claude reviews and names the isolated Codex review gap.
+- B′ route smoke: 2/2 held every prediction (gate PASS, routed models, usage PARTIAL only for the Codex review gap).
+- Registration: Astra R0 REVISE (6 items, all adopted) → R1 FREEZE; branch pushed before dispatch; `analyze.py` committed before the first verdict.
+- Run: the first pass hit two shared faults. The registered Claude account's weekly limit (429) broke cells 6–16. On the bind-mounted `CODEX_HOME`, a second `codex` deleted a live process's `arg0` helpers, which broke F's worker in cells 7 and 11 (reproduced model-free). Amendment 1 (Astra A1 PROCEED after 2 script fixes):
+  - fixes: a tmpfs `CODEX_HOME/tmp`, and a screen stop when an assessor returns no verdict;
+  - 9 cells re-dispatched and 2 re-assessed on a second Max account, with the originals kept as `*.stop-1`.
+- Result `SCREEN:B'=claude;C=claude`: I0185 0/8 COMPLETE (every product fails the `release` replay). D4 COMPLETE: A-codex, B′ ×2, C ×2. F ended BLOCKED in all 4 cells. 0 false completions, 0 scope violations. Grok: B′ defect and repair `NONE`; both C calls timed out at 600 s. Predictions 1, 4 and 7 were falsified, 2 half held, 3, 5 and 6 held.
+- Caveat: the Claude signal rests on one D4 draw in which A-claude's product passes every check and oracle row but one assessor reported a severe finding. It is a reason to confirm, not evidence of quality.
+- Open: the Session 6 completion scratch (`.git/devlyn-completion/def536965e5b1678b8c023ac/scratch`) holds a copy of the evidence; the preserved evidence is `.devlyn/0224/`. The slim+orphan add-back decision (Session 4) is still open.
 
 Session 5 record (base `f3b2b81`): `/devlyn:intent` is added as an explicit-only preview next to the unchanged resolve and ideate. Nothing is deleted and no default changes.
 - `config/skills/devlyn:intent/SKILL.md` (7.9 KB) holds the kernel, modes and run steps. `references/review.md` is the reviewer prompt body.
