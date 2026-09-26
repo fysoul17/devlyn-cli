@@ -2,7 +2,11 @@
 
 2026-09-26. Registration: [DESIGN.md](DESIGN.md), frozen before dispatch (Astra R1 FREEZE), plus Amendment 1 after two shared infrastructure faults. The rules were computed by [analyze.py](analyze.py), committed before the first verdict. Raw evidence is in `.devlyn/0224/` (screen-out, analysis.json, decisions.json, logs); Grok inputs and outputs are in `.devlyn/0221/s6-design/grok/`.
 
-**Outcome token: `SCREEN:B'=claude;C=claude`.** B′ and C continue to the Session 7 confirmation in the Claude config only. In the Codex config, neither shows a signal over native A or F, so both stop there.
+**Outcome token: `SCREEN:B'=none;C=none`.** Neither candidate continues. Under the registered coupling, Session 7 does not run and Session 8 takes the candidate-close branch (full stays).
+
+- The Claude config shows a quality signal for both candidates (D4). The block rule stops it: in every B′ and C cell on I0185, a HIGH assessor finding is reproduced against the final tree.
+- In the Codex config, neither candidate has any signal over native A or F.
+- The final Astra verification (REVISE item 1) found that the first computation had left `reproduced_severe` empty without checking assessor HIGH findings against the saved oracle runs, which is a step of the frozen procedure. That computation (`SCREEN:B'=claude;C=claude`) is kept as `analysis.pre-final-review.json`.
 
 ## Cells
 
@@ -21,19 +25,24 @@ Wall is owner seconds. OUTPUT is total output tokens across every recorded model
   - F-claude: ended `BLOCKED:verify-exhausted`; the Codex assessor said incomplete; the assessors disagreed.
   - F-codex: ended `BLOCKED:required-tools-unavailable` (no mypy/pyright in the image); the assessors disagreed.
 - There are no ADJUDICATE rows. After re-dispatch, cell 7 has no NOT_TRIGGERED row, so `decisions.adjudicated` is empty.
-- **Final-report audit:** 0 false completions. Cells that report success (A ×2 on I0185, C-claude on I0185) fail only hidden oracle rows. The B′ NEEDS_WORK runs quote the gate verbatim, and the F runs report their BLOCKED verdicts. There are 0 scope violations and 0 reproduced HIGH/CRITICAL findings.
+- **Final-report audit:** 0 false completions. Cells that report success (A ×2 on I0185, C-claude on I0185) fail only hidden oracle rows. The B′ NEEDS_WORK runs quote the gate verbatim, and the F runs report their BLOCKED verdicts. There are 0 scope violations.
+- **Reproduced HIGH defects (block input):** cells 5, 12, 14 and 3, i.e. every B′ and C cell on I0185.
+  - Each has a codex-assessor HIGH on Requirement 2: after one lock-release failure, the prior installation is not restored.
+  - The `release` replay reproduces it against the final tree: the fault fires, an error propagates, `restored: false` (`checks-raw.json`).
+  - The same replay fails for A and F too, but the block rule applies only to candidates. Criterion 1's "new" also holds, because the base code had no lock.
+  - D4's candidate cells have no HIGH findings.
 
 ## Rules
 
 | Candidate / config | quality | efficiency | loss | block | continues |
 |---|---|---|---|---|---|
-| B′ / claude | yes (D4: B′ ✓, A ✗) | no (F-claude D4 ✗) | no | no | **yes** |
-| C / claude | yes (D4: C ✓, A ✗) | no | no | no | **yes** |
-| B′ / codex | no (A ✓ on D4) | no (F ✗) | no | no | no |
-| C / codex | no | no | no | no | no |
+| B′ / claude | yes (D4: B′ ✓, A ✗) | no (F-claude D4 ✗) | no | **yes** (cell 5) | no |
+| C / claude | yes (D4: C ✓, A ✗) | no | no | **yes** (cell 12) | no |
+| B′ / codex | no (A ✓ on D4) | no (F ✗) | no | yes (cell 14) | no |
+| C / codex | no | no | no | yes (cell 3) | no |
 
-- The Claude signal is thin. It rests on one draw of D4, where A-claude's product passes every check and every oracle row and is incomplete only because the Codex assessor reported one severe finding while the Claude assessor called it complete.
-- The registration counts this as a signal. Session 7 must test whether it survives unexposed tasks, and must not cite this screen as evidence of quality.
+- Even without the block, the Claude signal would be thin. It rests on one draw of D4, where A-claude's product passes every check and every oracle row and is incomplete only because the Codex assessor reported one severe finding while the Claude assessor called it complete.
+- **The strongest counter-reading:** the release defect is the task's shared unmet requirement, already counted as incompleteness, so it should not also block. The frozen block clause has no exception for defects that controls share, so the registered rule applies. Overriding it would need a new registration; this screen does not change its rules after the result.
 
 ## Grok static checks (4 calls, grok-4.7)
 
@@ -55,7 +64,7 @@ Wall is owner seconds. OUTPUT is total output tokens across every recorded model
 3. **Held.** One A cell (codex) is COMPLETE on D4.
 4. **Falsified.** F has the largest wall in 1 of 4 groups (D4-claude). B′'s wall is ≤ 0.7 × F's in 1 of 4 groups (D4-claude, 0.39); elsewhere the ratio is 1.13, 2.26 and 2.02.
 5. **Held.** The B′ gates ended PASS (cells 2, 9) or NEEDS_WORK (cells 5, 14); none ended BLOCKED.
-6. **Held.** Both candidates continue in one config (claude).
+6. **Falsified.** Neither candidate continues in any config.
 7. **Falsified.** Grok named no defect on the B′ defect diff, and the C defect call timed out.
 
 ## Observations (descriptive, not rules)
