@@ -32,10 +32,15 @@
 - **The fifth defect** (s6-04 r1, writer readiness) was found at the same line and bound the verdict both times, but the Codex pair labeled it MEDIUM `verdict_binding: true`, not HIGH.
 - **The step-2 revision** (PR #122: leading judge narrative skipped, never yielding PASS) absorbed attempt 1's s6-16-r0 BLOCKED, which recurred in attempt 2.
 
-**Open user decision** (Astra's recommendation is (b)+(c); npm publish is the user's in every case):
-- (a) Keep steps 2 and 2r on main and never publish them unless a new registration adopts them. A step-1-only release then needs a separate ref.
-- (b) Revert steps 2 and 2r (PRs #120 and #122) on main, keeping every candidate commit and all evidence, so that main matches "only step 1 can ship".
-- (c) Register 0226: a recall-defined criterion (same mechanism, verdict-binding) tested on fresh, unexposed tasks with controls. The 0225 corpus is exposed and cannot serve as fresh confirmation.
+**User decision (2026-09-28, "추천대로"): (b) + (c).**
+- **(b) Revert.** Branch `candidate/0225-hold-revert` restores every non-`autoresearch` path to `366d837a` (step 1 as merged), which reverts PRs #120 and #122. Research records and the 0225 registration (including its replay-mechanics addendum) are kept. Candidate commits stay in git history.
+  - The local run passed: all self-tests, the collector contract, `lint-skills.sh` and packed portability (`.devlyn/0225/rv-*.log`).
+- **(c)** Register 0226: a recall-defined criterion (same mechanism, verdict-binding) tested on fresh, unexposed tasks, with controls and a false-positive assessment. The 0225 corpus is exposed.
+
+**Next session:**
+1. Have Astra verify the revert PR: the product tree equals `366d837a`, and the evidence is intact.
+2. Once CI (posix + windows) is green, merge it with `task-complete complete --mode auto --writers-stopped`, run from a cwd outside the checkout.
+3. Then design 0226 with Astra: independent R0s → critique → FREEZE, then register.
 
 **Must not happen:** regrading either attempt, a third 0225 replay, the 0225 live comparison, or publishing the held bundle.
 

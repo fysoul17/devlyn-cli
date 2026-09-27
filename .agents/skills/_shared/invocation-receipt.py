@@ -27,11 +27,6 @@ NETWORK_ACCESS_CONFIG = "sandbox_workspace_write.network_access"
 PLATFORM = runpy.run_path(pathlib.Path(__file__).with_name("platform-support.py"))
 
 
-TRANSPORT_V1_KEYS = ("schema_version", "transport", "prompt", "command", "argv", "timeout_sec",
-                     "isolated", "status", "exit_code")
-TRANSPORT_OUTCOME_KEYS = ("started_at", "ended_at", "elapsed_ms", "outcome")
-
-
 class ReceiptError(ValueError):
     pass
 
@@ -163,10 +158,10 @@ def prepare_transport(prompt_path, command, argv, seconds, *, isolated=False):
     path = pathlib.Path(prompt_path).resolve(strict=True)
     with PLATFORM["open_stdin"](path) as source:
         raw = source.read()
-    record = {"schema_version": 2, "transport": "stdin-file",
+    record = {"schema_version": 1, "transport": "stdin-file",
               "prompt": {"path": str(path), "sha256": sha256(raw), "bytes": len(raw)},
               "command": command, "argv": argv, "timeout_sec": seconds, "isolated": isolated,
-              "status": "started", "exit_code": None, **dict.fromkeys(TRANSPORT_OUTCOME_KEYS)}
+              "status": "started", "exit_code": None}
     carrier = path.with_name(path.name + ".transport.json")
     if carrier.exists():
         raise ReceiptError(f"prompt transport already exists: {carrier}")
@@ -185,40 +180,28 @@ def write_transport(path, record):
         stream.write((json.dumps(record, sort_keys=True) + "\n").encode("utf-8"))
 
 
-def finish_transport(path, exit_code, result):
+def finish_transport(path, exit_code):
     record = read_receipt(path)
-    if record.get("status") != "started" or set(result) != set(TRANSPORT_OUTCOME_KEYS):
-        raise ReceiptError("prompt transport is not open or its runner outcome is incomplete")
-    record.update(status="completed", exit_code=exit_code, **result)
+    if record.get("status") != "started":
+        raise ReceiptError("prompt transport is not open")
+    record.update(status="completed", exit_code=exit_code)
     atomic_write(path, record)
 
 
-def validate_transport(path, prompt_raw, *, require_outcome=False):
-    """Validate a completed carrier; judges require the runner-authored v2 outcome."""
+def validate_transport(path, prompt_raw):
     record = read_receipt(path)
-    keys, legacy = set(record), set(TRANSPORT_V1_KEYS)
-    if not (keys == legacy and record.get("schema_version") == 1 and not require_outcome
-            or keys == legacy | set(TRANSPORT_OUTCOME_KEYS) and record.get("schema_version") == 2):
+    if set(record) != {"schema_version", "transport", "prompt", "command", "argv", "timeout_sec", "isolated", "status", "exit_code"}:
         raise ReceiptError("invalid prompt transport shape")
     prompt = record["prompt"]
     if not isinstance(prompt, dict) or set(prompt) != {"path", "sha256", "bytes"}:
         raise ReceiptError("invalid delivered prompt binding")
-    if (record["transport"] != "stdin-file"
+    if (record["schema_version"] != 1 or record["transport"] != "stdin-file"
             or record["status"] != "completed" or type(record["exit_code"]) is not int
             or type(record["timeout_sec"]) is not int or record["timeout_sec"] < 0
             or type(record["isolated"]) is not bool
             or prompt["sha256"] != sha256(prompt_raw) or type(prompt["bytes"]) is not int
             or prompt["bytes"] != len(prompt_raw)):
         raise ReceiptError("delivered prompt/transport mismatch")
-    if record["schema_version"] == 2:
-        outcome, timing = record["outcome"], (record["started_at"], record["ended_at"])
-        launched = all(isinstance(value, str) and value for value in timing)
-        if (outcome not in {"exited", "timed_out", "cancelled", "launch_error"}
-                or type(record["elapsed_ms"]) is not int or record["elapsed_ms"] < 0
-                or (outcome == "launch_error") != (timing == (None, None) and record["elapsed_ms"] == 0)
-                or (outcome != "launch_error" and not launched)
-                or (outcome == "timed_out" and (record["exit_code"] != 124 or record["timeout_sec"] <= 0))):
-            raise ReceiptError("prompt transport runner outcome is invalid")
     original = pathlib.Path(prompt["path"])
     # Custody may relocate this sealed bundle; rehash its local prompt, not a live source tree.
     if (not original.is_absolute() or path.name != original.name + ".transport.json"
@@ -798,64 +781,8 @@ def monitor_descendant_regression() -> None:
             raise
 
 
-def runner_outcome_regression() -> None:
-    """The runner, not its caller, records whether the deadline fired."""
-    bounded = pathlib.Path(__file__).with_name("run-bounded.py")
-    with tempfile.TemporaryDirectory() as raw:
-        root = pathlib.Path(raw)
-
-        def dispatch(name, seconds, command, *, cancel=False):
-            prompt = root / f"{name}.prompt"
-            prompt.write_bytes(b"judge prompt")
-            argv = [sys.executable, str(bounded), str(seconds), "--stdin-file", str(prompt), "--record-transport", "--", *command]
-            if cancel:
-                proc = subprocess.Popen(argv, start_new_session=True)
-                time.sleep(1.0)
-                os.killpg(proc.pid, signal.SIGTERM)
-                code = proc.wait(timeout=30)
-            else:
-                code = subprocess.run(argv, capture_output=True, timeout=60).returncode
-            return code, validate_transport(root / f"{name}.prompt.transport.json", b"judge prompt", require_outcome=True)
-
-        code, record = dispatch("own-124", 30, [sys.executable, "-c", "raise SystemExit(124)"])
-        assert code == 124 and record["outcome"] == "exited" and record["exit_code"] == 124, record
-        code, record = dispatch("deadline", 1, [sys.executable, "-c", "import time; time.sleep(30)"])
-        assert code == 124 and record["outcome"] == "timed_out" and record["elapsed_ms"] < 5000, record
-        code, record = dispatch("launch", 30, ["definitely-missing-judge-binary"])
-        assert code == 2 and record["outcome"] == "launch_error" and record["started_at"] is None, record
-        if os.name != "nt":
-            code, record = dispatch("cancel", 30, [sys.executable, "-c", "import time; time.sleep(30)"], cancel=True)
-            assert code == 143 and record["outcome"] == "cancelled", record
-            # The POSIX wrapper's exec failure is a launch error, not an exited run.
-            prompt = root / "monitored.prompt"
-            prompt.write_bytes(b"judge prompt")
-            env = {key: value for key, value in os.environ.items() if not key.startswith("DEVLYN_INVOCATION_")}
-            env.update(DEVLYN_CODEX_PROMPT_FILE=str(prompt), CODEX_BIN=str(root / "missing-codex"))
-            with (root / "monitored.out").open("wb") as out:
-                code = subprocess.run(["bash", str(pathlib.Path(__file__).with_name("codex-monitored.sh")), "-s", "read-only", "-"],
-                                      env=env, stdout=out, stderr=subprocess.DEVNULL, timeout=60).returncode
-            record = validate_transport(root / "monitored.prompt.transport.json", b"judge prompt", require_outcome=True)
-            assert code == 2 and record["outcome"] == "launch_error" and record["exit_code"] == 2, (code, record)
-        carrier = root / "own-124.prompt.transport.json"
-        completed = read_receipt(carrier)
-        legacy = {key: completed[key] for key in TRANSPORT_V1_KEYS} | {"schema_version": 1}
-        for value, require, accepted in ((legacy, False, True), (legacy, True, False),
-                                         ({**completed, "status": "started"}, True, False),
-                                         ({**completed, "outcome": "timed_out", "exit_code": 0}, True, False),
-                                         ({**completed, "outcome": "launch_error"}, True, False),
-                                         ({**completed, "outcome": "unknown"}, True, False)):
-            atomic_write(carrier, value)
-            try:
-                validate_transport(carrier, b"judge prompt", require_outcome=require)
-            except ReceiptError:
-                assert not accepted, value
-            else:
-                assert accepted, value
-
-
 def self_test() -> int:
     monitor_descendant_regression()
-    runner_outcome_regression()
     with tempfile.TemporaryDirectory() as raw_tmp:
         work = pathlib.Path(raw_tmp)
         devlyn = work / ".devlyn"
@@ -1145,22 +1072,6 @@ def self_test() -> int:
         )
         assert wrapper_bound["exit_code"] == 0
         assert wrapper_bound["sandbox_network_access"] is True
-        # A receipt-only exec failure is completed once by the dispatcher; the wrapper keeps its exit 2.
-        failed_prompt = devlyn / "build_gate.prompt.9"
-        failed_prompt.write_text("verify the task\n", encoding="utf-8")
-        failed_session = devlyn / "build_gate.worker-session.9.jsonl"
-        failed_receipt = devlyn / "build_gate.invocation.9.json"
-        failed_env = {**env, "CODEX_BIN": str(work / "missing-codex"), "DEVLYN_INVOCATION_ROUND": "9",
-                      "DEVLYN_INVOCATION_PROMPT_FILE": str(failed_prompt),
-                      "DEVLYN_INVOCATION_SESSION_FILE": str(failed_session), "DEVLYN_INVOCATION_RECEIPT": str(failed_receipt)}
-        with failed_session.open("wb") as stdout:
-            failed = subprocess.run(
-                ["bash", str(wrapper), "--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-wrapper", "-c",
-                 "sandbox_workspace_write.network_access=true", "verify the task"],
-                cwd=work, env=failed_env, stdout=stdout, stderr=subprocess.PIPE, check=False,
-            )
-        assert failed.returncode == 2, failed.stderr.decode("utf-8", errors="replace")
-        assert read_receipt(failed_receipt)["exit_code"] == 2 and b"not open" not in failed.stderr, failed.stderr
 
         wrapped_plan_prompt = devlyn / "plan.prompt.1"
         wrapped_plan_prompt.write_text("plan through wrapper\n", encoding="utf-8")
@@ -1211,26 +1122,11 @@ def self_test() -> int:
     return 0
 
 
-def dispatcher_completed_launch():
-    """True when the POSIX dispatcher already completed its own failed exec (it completes nothing else)."""
+def complete_dispatch(exit_code):
     prompt = os.environ.get("DEVLYN_CODEX_PROMPT_FILE")
     if prompt:
         path = pathlib.Path(prompt).resolve()
-        carrier = path.with_name(path.name + ".transport.json")
-        return carrier.is_file() and read_receipt(carrier).get("outcome") == "launch_error"
-    receipt = os.environ.get("DEVLYN_INVOCATION_RECEIPT")
-    if receipt:
-        path = pathlib.Path(receipt)
-        path = path if path.is_absolute() else pathlib.Path(os.environ["DEVLYN_INVOCATION_WORKDIR"]).resolve() / path
-        return path.is_file() and read_receipt(path).get("status") == "completed"
-    return False
-
-
-def complete_dispatch(exit_code, result):
-    prompt = os.environ.get("DEVLYN_CODEX_PROMPT_FILE")
-    if prompt:
-        path = pathlib.Path(prompt).resolve()
-        finish_transport(path.with_name(path.name + ".transport.json"), exit_code, result)
+        finish_transport(path.with_name(path.name + ".transport.json"), exit_code)
     if os.environ.get("DEVLYN_INVOCATION_RECEIPT"):
         work = pathlib.Path(os.environ["DEVLYN_INVOCATION_WORKDIR"]).resolve()
         path = pathlib.Path(os.environ["DEVLYN_INVOCATION_RECEIPT"])
@@ -1262,28 +1158,13 @@ def dispatch_codex(args):
                           env["DEVLYN_INVOCATION_SESSION_FILE"], argv, transport=transport)
         if transport is not None:
             write_transport(carrier, transport)
-        launch_error = {"started_at": None, "ended_at": None, "elapsed_ms": 0, "outcome": "launch_error"}
         if os.name != "nt":
             if stream is not None:
                 os.dup2(stream.fileno(), 0)
-            try:
-                os.execvp(actual[0], actual)
-            except OSError:
-                complete_dispatch(2, launch_error)
-                raise
-        result = {}
-        try:
-            code = PLATFORM["run_process"](actual, stream if stream is not None else subprocess.DEVNULL,
-                                           args.timeout, heartbeat=args.heartbeat, result=result)
-        except SystemExit as exc:
-            if result.get("outcome") == "cancelled":
-                complete_dispatch(exc.code, result)
-            raise
-        except OSError:
-            if not result:
-                complete_dispatch(2, launch_error)
-            raise
-        complete_dispatch(code, result)
+            os.execvp(actual[0], actual)
+        code = PLATFORM["run_process"](actual, stream if stream is not None else subprocess.DEVNULL,
+                                       args.timeout, heartbeat=args.heartbeat)
+        complete_dispatch(code)
         print(f"[codex-monitored] codex exited: code={code}", file=sys.stderr)
         return code
     finally:
@@ -1315,9 +1196,6 @@ def main() -> int:
     dispatch.add_argument("argv", nargs=argparse.REMAINDER)
     completed = subparsers.add_parser("complete-dispatch")
     completed.add_argument("--exit-code", type=int, required=True)
-    completed.add_argument("--outcome", choices=("exited", "timed_out", "cancelled"), required=True)
-    completed.add_argument("--started-ms", type=int, required=True)
-    completed.add_argument("--ended-ms", type=int, required=True)
     args = parser.parse_args()
     if args.self_test:
         return self_test()
@@ -1325,12 +1203,7 @@ def main() -> int:
         if args.action == "dispatch":
             return dispatch_codex(args)
         elif args.action == "complete-dispatch":
-            if dispatcher_completed_launch():
-                return 0
-            complete_dispatch(args.exit_code, {
-                "started_at": PLATFORM["utc_from_ms"](args.started_ms),
-                "ended_at": PLATFORM["utc_from_ms"](args.ended_ms),
-                "elapsed_ms": max(0, args.ended_ms - args.started_ms), "outcome": args.outcome})
+            complete_dispatch(args.exit_code)
         elif args.action == "start":
             argv = args.argv[1:] if args.argv[:1] == ["--"] else args.argv
             start_receipt(

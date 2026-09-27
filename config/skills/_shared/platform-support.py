@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import contextlib
-import datetime
 import errno
 import json
 import os
@@ -184,8 +183,7 @@ if os.name == "nt":
             self.creating = False
             self.interrupted_signal = None
 
-        def start(self, argv, stdin, **popen):
-            """Launch argv inside this job; `popen` passes cwd/env/captures to the enclosed bootstrap."""
+        def start(self, argv, stdin):
             self.handle = _kernel.CreateJobObjectW(None, None)
             limits = _ExtendedLimits()
             limits.BasicLimitInformation.LimitFlags = 0x2000  # KILL_ON_JOB_CLOSE; no breakaway.
@@ -210,7 +208,7 @@ if os.name == "nt":
                 self.child = subprocess.Popen.__new__(subprocess.Popen)
                 self.creating = True
                 try:
-                    self.child.__init__(command, stdin=stdin, startupinfo=startup, close_fds=True, **popen)
+                    self.child.__init__(command, stdin=stdin, startupinfo=startup, close_fds=True)
                 finally:
                     self.creating = False
                 if self.interrupted_signal is not None:
@@ -305,8 +303,7 @@ def terminate_tree(child, job=None):
         return
     try:
         os.killpg(child.pid, signal.SIGTERM)
-    except (ProcessLookupError, PermissionError):
-        # Gone, or only an unreaped leader remains (macOS reports EPERM for that group).
+    except ProcessLookupError:
         child.wait()
         return
     # Reap the leader and retain the grace period for its surviving descendants.
@@ -323,17 +320,7 @@ def terminate_tree(child, job=None):
     child.wait()
 
 
-def utc_from_ms(epoch_ms):
-    moment = datetime.datetime.fromtimestamp(epoch_ms / 1000, datetime.timezone.utc)
-    return moment.isoformat(timespec="milliseconds").replace("+00:00", "Z")
-
-
-def utc_now():
-    return utc_from_ms(time.time_ns() // 1_000_000)
-
-
-def run_process(argv, stdin, seconds, *, heartbeat=0, result=None):
-    """Run a bounded child; `result` receives runner-authored timing and outcome."""
+def run_process(argv, stdin, seconds, *, heartbeat=0):
     child = None
     job = _WindowsJob() if os.name == "nt" else None
     previous = {}
@@ -350,35 +337,21 @@ def run_process(argv, stdin, seconds, *, heartbeat=0, result=None):
             previous[sig] = signal.signal(sig, interrupted)
         child = job.start(argv, stdin) if job is not None else subprocess.Popen(argv, stdin=stdin, start_new_session=True)
         started = time.monotonic()
-        started_at = utc_now()
         next_heartbeat = started + heartbeat
-
-        def finished(outcome):
-            if result is not None:
-                result.update(started_at=started_at, ended_at=utc_now(), outcome=outcome,
-                              elapsed_ms=int((time.monotonic() - started) * 1000))
-        try:
-            if heartbeat:
-                print(f"[codex-monitored] codex pid={job.target_pid if job is not None else child.pid}", file=sys.stderr, flush=True)
-            while True:
-                try:
-                    code = child.wait(timeout=0.1)
-                    finished("exited")
-                    return code
-                except subprocess.TimeoutExpired:
-                    now = time.monotonic()
-                    if seconds and now - started >= seconds:
-                        # Only the deadline is a timeout; a child's own exit 124 stays "exited".
-                        finished("timed_out")
-                        if heartbeat:
-                            print(f"[codex-monitored] timeout: elapsed={int(now-started)}s limit={seconds}s", file=sys.stderr, flush=True)
-                        return 124
-                    if heartbeat and now >= next_heartbeat:
-                        print(f"[codex-monitored] heartbeat: elapsed={int(now-started)}s", file=sys.stderr, flush=True)
-                        next_heartbeat = now + heartbeat
-        except SystemExit:
-            finished("cancelled")
-            raise
+        if heartbeat:
+            print(f"[codex-monitored] codex pid={job.target_pid if job is not None else child.pid}", file=sys.stderr, flush=True)
+        while True:
+            try:
+                return child.wait(timeout=0.1)
+            except subprocess.TimeoutExpired:
+                now = time.monotonic()
+                if seconds and now - started >= seconds:
+                    if heartbeat:
+                        print(f"[codex-monitored] timeout: elapsed={int(now-started)}s limit={seconds}s", file=sys.stderr, flush=True)
+                    return 124
+                if heartbeat and now >= next_heartbeat:
+                    print(f"[codex-monitored] heartbeat: elapsed={int(now-started)}s", file=sys.stderr, flush=True)
+                    next_heartbeat = now + heartbeat
     finally:
         try:
             if job is not None or child is not None:

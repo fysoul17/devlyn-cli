@@ -32,12 +32,7 @@ def main(argv: list[str]) -> int:
             record_transport, index = True, index + 1
     if argv[index] != "--" or not argv[index + 1:]:
         return fail("expected -- before command")
-    stream, open_carrier, result = None, None, {}
-
-    def finish(code, outcome):
-        if open_carrier is not None:
-            transport["finish_transport"](open_carrier, code, outcome)
-
+    stream = None
     try:
         command = argv[index + 1:]
         actual = PLATFORM["native_argv"](command)
@@ -45,21 +40,13 @@ def main(argv: list[str]) -> int:
             transport = runpy.run_path(Path(__file__).with_name("invocation-receipt.py"))
             stream, carrier, record = transport["prepare_transport"](prompt, command, actual, seconds)
             transport["write_transport"](carrier, record)
-            open_carrier = carrier
         elif prompt is not None:
             stream = PLATFORM["open_stdin"](prompt)
-        try:
-            code = PLATFORM["run_process"](actual, stream if stream is not None else subprocess.DEVNULL, seconds,
-                                           result=result)
-        except SystemExit as exc:
-            if result.get("outcome") == "cancelled":
-                finish(exc.code, result)
-            raise
-        finish(code, result)
+        code = PLATFORM["run_process"](actual, stream if stream is not None else subprocess.DEVNULL, seconds)
+        if record_transport:
+            transport["finish_transport"](carrier, code)
         return code
     except (OSError, ValueError) as exc:
-        if not result:
-            finish(2, {"started_at": None, "ended_at": None, "elapsed_ms": 0, "outcome": "launch_error"})
         return fail(str(exc))
     finally:
         if stream is not None:
