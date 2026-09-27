@@ -18,7 +18,7 @@ A finding that names the right code but a different failure, or the right failur
 
 Each decision records the candidate row verbatim, and Astra verifies it.
 
-**Timing correction.** The criteria were written at 12:58:51Z, while round s6-04-r0 (started 12:58:26Z) was running. They were committed at 12:59:08Z (`e477e9a0`, pushed immediately), after that round had exited. Root's own account, which no artifact can independently confirm: no output had been read before the commit, and the first round's exit line reached root after it.
+**Timing correction.** The criteria were written at 12:58:51Z, while round s6-04-r0 (started 12:58:26Z) was running. They were committed at 12:59:08Z (`e477e9a0`), after that round had exited. Root's own account, which no artifact here independently confirms: the commit was pushed in the same command, no output had been read before the commit, and the first round's exit line reached root after it.
 
 ## Attempt 1 (2026-09-27, 12:58–13:04Z)
 
@@ -60,12 +60,11 @@ The binding-MEDIUM channel is not new in step 2. Pre-step-2 `verify.md` (`6996a1
 
 ### Apparatus divergence found after the run (Claude seats only)
 
-All 7 Claude judges received the user's global `~/.claude/CLAUDE.md` (4,623 characters, loaded as a "Project" instruction file) in addition to the copy's own `CLAUDE.md`. The replay copies sit under `$HOME`, and Claude Code loads `<ancestor>/.claude/CLAUDE.md` for every ancestor of the cwd. `$HOME` is an ancestor, so the user's global file matched. Root's pre-run probe used a cwd outside `$HOME` and missed this. It is shown by each retained transcript's `instructions` attachment (`~/.local/share/nx01/0225-replay/transcripts/*.jsonl`).
-- The archived judges loaded only `/work/CLAUDE.md` (their transcripts' attachments).
+All 7 Claude judges received the user's global `~/.claude/CLAUDE.md` (4,623 characters, loaded as a "Project" instruction file). In s6-04 and s6-16 it came in addition to the copy's own `CLAUDE.md`. In s6-07 it was the only instruction file: that repo has an `AGENTS.md` and no `CLAUDE.md`, and the ancestor file suppressed Claude Code's `AGENTS.md` fallback. The replay copies sit under `$HOME`, and Claude Code loads `<ancestor>/.claude/CLAUDE.md` for every ancestor of the cwd. `$HOME` is an ancestor, so the user's global file matched. Root's pre-run probe used a cwd outside `$HOME` and missed this. It is shown by each retained transcript's `instructions` attachment (`~/.local/share/nx01/0225-replay/transcripts/*.jsonl`).
+- The archived judges loaded only the project file: `/work/CLAUDE.md` in s6-04 and s6-16, `/work/AGENTS.md` in s6-07 (their transcripts' attachments).
 - The Codex seats were isolated as designed: their own HOME, no `~/.agents` skills, no global `AGENTS.md`.
 - Every binding-HIGH candidate above came from a Codex seat. The one non-input BLOCKED came from a contaminated Claude seat.
 - The textual scan of judge-authored text (Codex log and output, Claude result and transcript) found no path to another round's copy, the archive or the registration. `outside_paths` shows only the injected CLAUDE.md path and the Claude CLI's own auto-memory path. Reads outside the scan's coverage are not excluded by it, but the seal made the replay root unreadable except for the round's own copy.
-- A second effect of the same cause: the archived s6-07 Claude seats loaded `/work/AGENTS.md` (Claude Code falls back to it when no CLAUDE.md applies), while the replay s6-07 seats loaded only the host CLAUDE.md, because the ancestor file suppressed that fallback.
 
 ### Registered outcome of attempt 1
 
