@@ -2060,19 +2060,20 @@ assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work
         git = lambda *args: run(['git', '-c', 'user.name=f', '-c', 'user.email=f@example.com', *args],
                                 cwd=work, env=self.env).stdout.decode().strip()
         git('init', '-q')
-        for name, text in (('.gitignore', '.devlyn/\n'), ('spec.md', '# Spec\n'), ('app.py', 'a\n')):
-            (work / name).write_text(text, encoding='utf-8')
+        # Exact bytes: text mode would write CRLF on Windows and break the recorded spec hash.
+        for name, raw in (('.gitignore', b'.devlyn/\n'), ('spec.md', b'# Spec\n'), ('app.py', b'a\n')):
+            (work / name).write_bytes(raw)
         git('add', '.'); git('commit', '-qm', 'base'); base = git('rev-parse', 'HEAD')
-        (work / 'app.py').write_text('b\n', encoding='utf-8'); git('commit', '-qam', 'change')
+        (work / 'app.py').write_bytes(b'b\n'); git('commit', '-qam', 'change')
         codex_home = work / 'codex-home'; codex_home.mkdir()
         (codex_home / 'models_cache.json').write_text(json.dumps({'client_version': '1.2.3', 'models': [
             {'slug': 'fixture-model', 'supported_reasoning_levels': [{'effort': 'high'}]}]}), encoding='utf-8')
         (devlyn / 'engines.json').write_bytes(role['encoded']({'roles': {
             'primary_judge': {'engine': 'claude', 'model': 'fixture-claude-model'},
             'pair_judge': {'engine': 'codex', 'model': 'fixture-model', 'effort': 'high'}}}))
-        (devlyn / 'plan.md').write_text('<!-- devlyn:authorized-surface -->\n## Files\n```json\n{"authorized_surface": ["app.py"]}\n```\n', encoding='utf-8')
-        (devlyn / 'verify-mechanical.findings.jsonl').write_text('', encoding='utf-8')
-        (devlyn / 'spec-verify.results.json').write_text('{"commands": [], "process_evidence": null}\n', encoding='utf-8')
+        (devlyn / 'plan.md').write_bytes(b'<!-- devlyn:authorized-surface -->\n## Files\n```json\n{"authorized_surface": ["app.py"]}\n```\n')
+        (devlyn / 'verify-mechanical.findings.jsonl').write_bytes(b'')
+        (devlyn / 'spec-verify.results.json').write_bytes(b'{"commands": [], "process_evidence": null}\n')
         resolution = role['resolve'](work, 'claude', available=lambda engine: True)
         state = {'version': '3.0', 'run_id': 'rs-native-verify', 'engine': 'claude', 'mode': 'spec', 'base_ref': {'sha': base},
                  'source': {'type': 'spec', 'spec_path': 'spec.md', 'spec_sha256': hashlib.sha256(b'# Spec\n').hexdigest()},
