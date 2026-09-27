@@ -64,8 +64,6 @@ PER_RUN_PATTERNS = (
     "spec-verify.results.json",
     "spec-verify-findings.jsonl",
     "verify-merge.summary.json",
-    "verify.primary.timeout.json",
-    "verify.pair.timeout.json",
     "finish-gate.summary.json",
     # iter-0033a/2026-04-30 archive-fix iter: NEW /devlyn:resolve emits
     # plan.md (PLAN output) + final-report.md (PHASE 6 render) +
@@ -381,13 +379,18 @@ def dynamic_judge_role_artifacts(devlyn: pathlib.Path, state: dict) -> list[path
     for record in records:
         if not isinstance(record, dict):
             continue
-        bindings = record.get("role_evidence") or {}
-        if not isinstance(bindings, dict):
+        evidence, executions = (record.get(field) or {} for field in ("role_evidence", "executions"))
+        if not isinstance(evidence, dict) or not isinstance(executions, dict):
             raise ArchiveError("malformed state-bound judge role evidence")
-        for binding in bindings.values():
+        # Role evidence binds its own file plus artifacts; an unsuccessful seat binds only its
+        # artifacts; the dispatch record binds itself.
+        groups = [(binding, True) for binding in evidence.values()] + [(binding, False) for binding in executions.values()]
+        if record.get("dispatch") is not None:
+            groups.append(({**record["dispatch"], "artifacts": []} if isinstance(record["dispatch"], dict) else None, True))
+        for binding, bound_self in groups:
             if not isinstance(binding, dict) or not isinstance(binding.get("artifacts"), list):
                 raise ArchiveError("malformed judge role artifact binding")
-            for artifact in [binding, *binding["artifacts"]]:
+            for artifact in [binding] * bound_self + binding["artifacts"]:
                 relative = pathlib.PurePosixPath(artifact.get("path", ""))
                 if len(relative.parts) != 2 or relative.parts[0] != ".devlyn":
                     raise ArchiveError("judge role artifact path escapes canonical .devlyn")
@@ -586,6 +589,29 @@ def self_test() -> int:
         pass
     else:
         raise AssertionError("malformed non-null VERIFY phase accepted")
+    with tempfile.TemporaryDirectory() as tmp:
+        # Dispatch records and unsuccessful-seat captures are bound in the
+        # current span and in history; missing or altered bytes stop archive.
+        devlyn = pathlib.Path(tmp)
+        seal = {}
+        for name in ("verify-judge.r0.dispatch.json", "codex-judge.r0.stdout", "verify-judge.r1.dispatch.json"):
+            (devlyn / name).write_bytes(name.encode())
+            seal[name] = {"path": ".devlyn/" + name, "sha256": hashlib.sha256(name.encode()).hexdigest(), "bytes": len(name)}
+        state = {"phases": {"verify": {"dispatch": seal["verify-judge.r1.dispatch.json"], "history": [{
+            "dispatch": seal["verify-judge.r0.dispatch.json"],
+            "executions": {"pair_judge": {"outcome": "timed_out", "exit_code": 124,
+                                          "artifacts": [seal["codex-judge.r0.stdout"]]}}}]}}}
+        assert [path.name for path in dynamic_judge_role_artifacts(devlyn, state)] == sorted(seal)
+        for name in seal:
+            original = (devlyn / name).read_bytes()
+            (devlyn / name).write_bytes(original + b"x")
+            try:
+                dynamic_judge_role_artifacts(devlyn, state)
+            except ArchiveError:
+                pass
+            else:
+                raise AssertionError(f"altered bound {name} accepted")
+            (devlyn / name).write_bytes(original)
     try:
         loads_strict_json('{"run_id":"a","run_id":"b"}')
     except ValueError as exc:
@@ -703,8 +729,7 @@ def self_test() -> int:
             "plan.prompt",
             "probe-derive.stdout",
             "probe-derive.stderr",
-            "verify.primary.timeout.json",
-            "verify.pair.timeout.json",
+            "verify-judge.r0.dispatch.json",
             "codex-judge.stdout",
             "codex-judge.summary.json",
             "claude-judge.stdout",
@@ -789,8 +814,7 @@ def self_test() -> int:
             "plan.prompt",
             "probe-derive.stdout",
             "probe-derive.stderr",
-            "verify.primary.timeout.json",
-            "verify.pair.timeout.json",
+            "verify-judge.r0.dispatch.json",
             "codex-judge.stdout",
             "codex-judge.summary.json",
             "claude-judge.stdout",

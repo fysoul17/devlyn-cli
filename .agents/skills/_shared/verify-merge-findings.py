@@ -10,7 +10,9 @@ write the merged verdict back to `.devlyn/pipeline.state.json`.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import pathlib
 import re
 import sys
@@ -21,27 +23,21 @@ from typing import Any
 
 JUDGE_OUTPUT_PARSER = runpy.run_path(pathlib.Path(__file__).with_name("judge-output-parser.py"))
 PROCESS_EVIDENCE = runpy.run_path(pathlib.Path(__file__).with_name("process-evidence.py"))
+RECEIPT = runpy.run_path(pathlib.Path(__file__).with_name("invocation-receipt.py"))
+RENDER = runpy.run_path(pathlib.Path(__file__).with_name("phase-prompt-render.py"))
 
 
 SOURCE_FILES = (
     ("mechanical", "verify-mechanical.findings.jsonl"),
     ("judge", "verify.findings.jsonl"),
     ("pair_judge", "verify.pair.findings.jsonl"),
-    ("pair_judge", "verify.pair-judge.findings.jsonl"),
 )
 REQUIRED_SOURCE_FILES = {
     "mechanical": "verify-mechanical.findings.jsonl",
     "judge": "verify.findings.jsonl",
 }
 
-VERDICT_RANK = {
-    "PASS": 0,
-    "TIMEOUT": 0,
-    "PASS_WITH_ISSUES": 1,
-    "FAIL": 2,
-    "NEEDS_WORK": 2,
-    "BLOCKED": 3,
-}
+VERDICT_RANK = JUDGE_OUTPUT_PARSER["VERDICT_RANK"]
 RANK_VERDICT = {0: "PASS", 1: "PASS_WITH_ISSUES", 2: "NEEDS_WORK", 3: "BLOCKED"}
 ALLOWED_PAIR_SKIP_REASONS = {
     "user_no_pair",
@@ -136,15 +132,7 @@ def state_uses_default_pair_contract(state: dict[str, Any]) -> bool:
     return state.get("version") == "3.0"
 
 
-def finding_rank(finding: dict[str, Any]) -> int:
-    severity = str(finding.get("severity") or "").upper()
-    if severity in {"CRITICAL", "HIGH"}:
-        return 2
-    if severity == "MEDIUM" and finding.get("verdict_binding") is True:
-        return 2
-    if severity in {"LOW", "MEDIUM"}:
-        return 1
-    return 0
+finding_rank = JUDGE_OUTPUT_PARSER["finding_rank"]
 
 
 def mechanical_evidence_required(devlyn: pathlib.Path, state: dict[str, Any]) -> bool:
@@ -251,279 +239,328 @@ def resolved_primary_engine(state):
     return ROLE_CONFIG["primary_engine"](state)
 
 
-def primary_timeout_blocker(id_: str, message: str) -> dict[str, Any]:
+def judge_blocker(source: str, id_: str, message: str, rule_id: str) -> dict[str, Any]:
     return {
         "id": id_,
-        "rule_id": "verify.primary.timeout-contract",
+        "rule_id": rule_id,
         "severity": "CRITICAL",
         "confidence": "high",
-        "file": "verify.primary.timeout.json",
+        "file": "pipeline.state.json",
         "line": 1,
         "message": message,
-        "criterion_ref": "verify.primary.timeout",
-        "source": "judge",
+        "criterion_ref": "verify.judge",
+        "source": source,
     }
 
 
-def read_primary_timeout_marker(
-    devlyn: pathlib.Path,
-) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-    path = devlyn / "verify.primary.timeout.json"
-    if not path.is_file():
-        return None, None
-    try:
-        marker = loads_strict_json(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, ValueError) as exc:
-        return None, primary_timeout_blocker(
-            "verify-primary-timeout-marker-malformed",
-            f"verify.primary.timeout.json is malformed: {exc}",
-        )
-    if not isinstance(marker, dict) or set(marker) != {"engine", "budget_seconds"}:
-        return None, primary_timeout_blocker(
-            "verify-primary-timeout-marker-malformed",
-            "verify.primary.timeout.json must contain exactly engine and budget_seconds.",
-        )
-    engine = marker["engine"]
-    budget_seconds = marker["budget_seconds"]
-    if not isinstance(engine, str) or not engine:
-        return None, primary_timeout_blocker(
-            "verify-primary-timeout-marker-malformed",
-            "verify.primary.timeout.json engine must be a non-empty string.",
-        )
-    if (
-        not isinstance(budget_seconds, int)
-        or isinstance(budget_seconds, bool)
-        or budget_seconds != 600
-    ):
-        return None, primary_timeout_blocker(
-            "verify-primary-timeout-budget-mismatch",
-            "verify.primary.timeout.json budget_seconds must equal 600.",
-        )
-    try:
-        state = loads_strict_json(
-            (devlyn / "pipeline.state.json").read_text(encoding="utf-8")
-        )
-    except (OSError, UnicodeError, ValueError) as exc:
-        return None, primary_timeout_blocker(
-            "verify-primary-timeout-engine-mismatch",
-            f"Cannot authenticate the primary timeout engine from pipeline.state.json: {exc}",
-        )
-    try:
-        expected_engine = resolved_primary_engine(state) if isinstance(state, dict) else None
-    except ValueError:
-        expected_engine = None
-    if (
-        not isinstance(expected_engine, str)
-        or not expected_engine
-        or engine != expected_engine
-    ):
-        return None, primary_timeout_blocker(
-            "verify-primary-timeout-engine-mismatch",
-            "Primary timeout engine does not match the resolved primary judge.",
-        )
-    return {"engine": engine, "budget_seconds": budget_seconds}, None
-
-
-def read_findings(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, str | None]]:
-    findings: list[dict[str, Any]] = []
-    source_verdicts: dict[str, str | None] = {source: "PASS" for source, _ in SOURCE_FILES}
-    primary_timeout_marker, primary_timeout_violation = read_primary_timeout_marker(devlyn)
-    # A verdict must come from a judge that ran: pair_judge stays null until
-    # spawn evidence exists (a pair findings file or pair stdout). verify.md's
-    # pair contract records null when no second agent is spawned.
-    source_verdicts["pair_judge"] = None
-    for source, name in SOURCE_FILES:
-        path = devlyn / name
-        if not path.is_file():
-            # A verdict-binding mechanical result contractually skips both
-            # judges. Its absent primary carrier is therefore not evidence a
-            # dispatched primary judge failed to produce.
-            if source == "judge" and rank(source_verdicts.get("mechanical")) >= 2:
-                source_verdicts[source] = None
+def read_jsonl_source(
+    devlyn: pathlib.Path, source: str, name: str, findings: list[dict[str, Any]], verdict: str,
+) -> str:
+    with (devlyn / name).open(encoding="utf-8") as handle:
+        for line_no, line in enumerate(handle, 1):
+            raw = line.strip()
+            if not raw:
                 continue
-            if source == "judge" and primary_timeout_marker is not None:
-                continue
-            if REQUIRED_SOURCE_FILES.get(source) == name:
+            try:
+                item = loads_strict_json(raw)
+            except ValueError as exc:
                 findings.append({
-                    "id": f"verify-merge-required-source-missing-{source}",
-                    "rule_id": "verify.findings.required-source-missing",
+                    "id": f"verify-merge-invalid-json-{name}-{line_no}",
+                    "rule_id": "verify.findings.invalid-json",
                     "severity": "CRITICAL",
                     "confidence": "high",
                     "file": name,
-                    "line": 1,
-                    "message": f"Required VERIFY {source} findings file is missing: {name}",
+                    "line": line_no,
+                    "message": f"Invalid JSONL finding: {exc}",
                     "criterion_ref": "verify-merge",
                     "source": source,
                 })
-                source_verdicts[source] = "BLOCKED"
-            continue
-        if source_verdicts[source] is None:
-            source_verdicts[source] = "PASS"
-        with path.open(encoding="utf-8") as handle:
-            for line_no, line in enumerate(handle, 1):
-                raw = line.strip()
-                if not raw:
-                    continue
-                try:
-                    item = loads_strict_json(raw)
-                except ValueError as exc:
-                    blocked = {
-                        "id": f"verify-merge-invalid-json-{name}-{line_no}",
-                        "rule_id": "verify.findings.invalid-json",
-                        "severity": "CRITICAL",
-                        "confidence": "high",
-                        "file": name,
-                        "line": line_no,
-                        "message": f"Invalid JSONL finding: {exc}",
-                        "criterion_ref": "verify-merge",
-                        "source": source,
-                    }
-                    findings.append(blocked)
-                    source_verdicts[source] = "BLOCKED"
-                    continue
-                if not isinstance(item, dict):
-                    continue
-                item = dict(item)
-                item.setdefault("source", source)
-                findings.append(item)
-                source_verdicts[source] = worse(
-                    source_verdicts[source], RANK_VERDICT[finding_rank(item)]
-                )
+                verdict = "BLOCKED"
+                continue
+            if not isinstance(item, dict):
+                continue
+            item = dict(item)
+            item.setdefault("source", source)
+            findings.append(item)
+            verdict = worse(verdict, RANK_VERDICT[finding_rank(item)])
+    return verdict
+
+
+def required_source_missing(source: str, name: str) -> dict[str, Any]:
+    return {
+        "id": f"verify-merge-required-source-missing-{source}",
+        "rule_id": "verify.findings.required-source-missing",
+        "severity": "CRITICAL",
+        "confidence": "high",
+        "file": name,
+        "line": 1,
+        "message": f"Required VERIFY {source} findings file is missing: {name}",
+        "criterion_ref": "verify-merge",
+        "source": source,
+    }
+
+
+def mechanical_source(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], str]:
+    """MECHANICAL findings plus the sealed-evidence verdict; rank >= 2 skips both judges."""
+    findings: list[dict[str, Any]] = []
+    name = REQUIRED_SOURCE_FILES["mechanical"]
+    if (devlyn / name).is_file():
+        verdict = read_jsonl_source(devlyn, "mechanical", name, findings, "PASS")
+    else:
+        findings.append(required_source_missing("mechanical", name))
+        verdict = "BLOCKED"
     evidence_violation = mechanical_evidence_violation(devlyn)
     if evidence_violation is not None:
         findings.append(evidence_violation)
-        source_verdicts["mechanical"] = "BLOCKED"
-    else:
-        outcome = mechanical_evidence_outcome(devlyn)
-        if outcome is not None and outcome["verdict"] != "PASS":
-            blocked = outcome["verdict"] == "BLOCKED"
-            ids = (
-                [item["id"] for item in outcome["capability_denials"]]
-                if blocked else outcome["failed_ids"]
+        return findings, "BLOCKED"
+    outcome = mechanical_evidence_outcome(devlyn)
+    if outcome is not None and outcome["verdict"] != "PASS":
+        blocked = outcome["verdict"] == "BLOCKED"
+        ids = (
+            [item["id"] for item in outcome["capability_denials"]]
+            if blocked else outcome["failed_ids"]
+        )
+        findings.append({
+            "id": (
+                "verify-mechanical-capability-denied"
+                if blocked else "verify-mechanical-expectation-mismatch"
+            ),
+            "rule_id": (
+                "invariant.build-env-underprovisioned"
+                if blocked else "invariant.mechanical-expectation-mismatch"
+            ),
+            "severity": "CRITICAL" if blocked else "HIGH",
+            "confidence": "high",
+            "file": "spec-verify.results.json",
+            "line": 1,
+            "message": (
+                "Sealed VERIFY MECHANICAL evidence records a capability denial: "
+                if blocked else
+                "Sealed VERIFY MECHANICAL evidence records failed expectations: "
+            ) + ",".join(ids),
+            "criterion_ref": "process-evidence://mechanical",
+            "source": "mechanical",
+            "verdict_binding": True,
+        })
+        verdict = outcome["verdict"]
+    return findings, verdict
+
+
+def read_findings(
+    devlyn: pathlib.Path, collected: dict[str, Any] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, str | None]]:
+    findings, mechanical = mechanical_source(devlyn)
+    # A verdict must come from a judge that ran: pair_judge stays null until
+    # its findings exist. A binding MECHANICAL result skips both judges.
+    source_verdicts: dict[str, str | None] = {"mechanical": mechanical, "judge": "PASS", "pair_judge": None}
+    for source, name in SOURCE_FILES[1:]:
+        if (devlyn / name).is_file():
+            source_verdicts[source] = read_jsonl_source(
+                devlyn, source, name, findings, source_verdicts[source] or "PASS",
             )
-            findings.append({
-                "id": (
-                    "verify-mechanical-capability-denied"
-                    if blocked else "verify-mechanical-expectation-mismatch"
-                ),
-                "rule_id": (
-                    "invariant.build-env-underprovisioned"
-                    if blocked else "invariant.mechanical-expectation-mismatch"
-                ),
-                "severity": "CRITICAL" if blocked else "HIGH",
-                "confidence": "high",
-                "file": "spec-verify.results.json",
-                "line": 1,
-                "message": (
-                    "Sealed VERIFY MECHANICAL evidence records a capability denial: "
-                    if blocked else
-                    "Sealed VERIFY MECHANICAL evidence records failed expectations: "
-                ) + ",".join(ids),
-                "criterion_ref": "process-evidence://mechanical",
-                "source": "mechanical",
-                "verdict_binding": True,
-            })
-            source_verdicts["mechanical"] = outcome["verdict"]
-    if primary_timeout_violation is not None:
-        findings.append(primary_timeout_violation)
-        source_verdicts["judge"] = "BLOCKED"
-    elif primary_timeout_marker is not None:
-        findings.append(primary_timeout_blocker(
-            "verify-primary-timeout",
-            "Primary JUDGE exceeded its authenticated 600-second wall budget.",
-        ))
-        source_verdicts["judge"] = "BLOCKED"
-    findings.extend(detect_pair_stdout_contract_violations(devlyn, source_verdicts))
-    pair_summary_path = devlyn / "pair-judge.summary.json"
-    pair_carrier_exists = any(
-        (devlyn / name).is_file()
-        for name in ("verify.pair.findings.jsonl", "verify.pair-judge.findings.jsonl")
-    )
-    if pair_carrier_exists and pair_summary_path.is_file():
-        try:
-            pair_summary = loads_strict_json(pair_summary_path.read_text(encoding="utf-8"))
-        except ValueError as exc:
-            summary_error = f"pair-judge.summary.json is malformed JSON: {exc}"
-        else:
-            pair_verdict = pair_summary.get("verdict") if isinstance(pair_summary, dict) else None
-            summary_error = None
-            if not isinstance(pair_summary, dict):
-                summary_error = "pair-judge.summary.json must be a JSON object."
-            elif not isinstance(pair_verdict, str) or pair_verdict not in {
-                "PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK", "BLOCKED"
-            }:
-                summary_error = (
-                    "pair-judge.summary.json verdict must be PASS, PASS_WITH_ISSUES, "
-                    "FAIL, NEEDS_WORK, or BLOCKED."
-                )
-        if summary_error is not None:
-            findings.append(
-                pair_blocker(
-                    "verify-pair-summary-invalid",
-                    summary_error,
-                    pair_summary_path.name,
-                )
-            )
-            source_verdicts["pair_judge"] = "BLOCKED"
-        elif (
-            source_verdicts["pair_judge"] != "TIMEOUT"
-            or rank(pair_verdict) > rank("TIMEOUT")
-        ):
-            source_verdicts["pair_judge"] = worse(
-                source_verdicts["pair_judge"], pair_verdict
-            )
-    if (devlyn / "pipeline.state.json").is_file():
-        try:
-            state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
-            required = JUDGE_ROLE_EVIDENCE["required_roles"](state)
-            if rank(source_verdicts.get("mechanical")) >= 2:
-                required = []
-            for role in required:
-                source = "judge" if role == "primary_judge" else "pair_judge"
-                if source_verdicts.get(source) in {"BLOCKED", "TIMEOUT"}:
-                    continue
-                try:
-                    JUDGE_ROLE_EVIDENCE["authenticate"](devlyn, state, role)
-                except (ValueError, OSError, TypeError, KeyError) as exc:
-                    source_verdicts[source] = "BLOCKED"
-                    findings.append({**primary_timeout_blocker("verify-role-evidence-invalid", str(exc)),
-                                     "source": source, "rule_id": "verify.role-evidence"})
-        except (ValueError, OSError, TypeError, KeyError) as exc:
-            source_verdicts["judge"] = "BLOCKED"
-            findings.append({**primary_timeout_blocker("verify-role-resolution-invalid", str(exc)),
-                             "rule_id": "verify.role-resolution"})
+        elif source == "judge" and rank(mechanical) >= 2:
+            source_verdicts[source] = None
+        elif source == "judge":
+            findings.append(required_source_missing(source, name))
+            source_verdicts[source] = "BLOCKED"
+    for role, seat in (collected or {}).get("roles", {}).items():
+        source = "judge" if role == "primary_judge" else "pair_judge"
+        findings.extend(seat["blockers"])
+        if seat["verdict"] is not None:
+            source_verdicts[source] = worse(source_verdicts[source], seat["verdict"])
+        if seat["timeout"] and rank(source_verdicts[source]) <= rank("TIMEOUT"):
+            source_verdicts[source] = "TIMEOUT"
+    findings.extend(pair_state_contract_violations(devlyn, source_verdicts))
     return findings, source_verdicts
 
 
-def has_pair_findings(devlyn: pathlib.Path) -> bool:
-    for name in ("verify.pair.findings.jsonl", "verify.pair-judge.findings.jsonl"):
-        path = devlyn / name
-        if path.is_file() and path.read_text(encoding="utf-8").strip():
-            return True
-    return False
+def dispatch_name(round_: object) -> str:
+    return f"verify-judge.r{round_}.dispatch.json"
 
 
-def canonical_other_judge_stdout(devlyn: pathlib.Path, primary_engine: str) -> list[pathlib.Path]:
-    adapters = pathlib.Path(__file__).with_name("adapters")
-    engine_names = {
-        path.stem for path in adapters.glob("*.md")
-        if path.stem != "README"
-    }
-    return sorted(
-        devlyn / f"{engine}-judge.stdout"
-        for engine in engine_names
-        if engine != primary_engine and (devlyn / f"{engine}-judge.stdout").is_file()
-    )
+def seal_file(path: pathlib.Path) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"not a regular judge artifact: {path.name}")
+    raw = path.read_bytes()
+    return {"path": ".devlyn/" + path.name, "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw)}
 
 
-def pair_capture_exists(devlyn: pathlib.Path, stdout_paths: list[pathlib.Path]) -> bool:
-    return bool(stdout_paths) or has_pair_findings(devlyn) or any(
-        (devlyn / name).is_file()
-        for name in (
-            "verify.pair.timeout.json",
-            "pair-judge.summary.json",
-        )
-    )
+def atomic_write_text(path: pathlib.Path, text: str) -> None:
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as handle:
+        handle.write(text)
+    pathlib.Path(handle.name).replace(path)
+
+
+def judge_seat(
+    devlyn: pathlib.Path, state: dict[str, Any], record: dict[str, Any], role: str, collected: dict[str, Any],
+) -> dict[str, Any]:
+    """One seat's verdict from its runner-authored outcome and authenticated output."""
+    source = "judge" if role == "primary_judge" else "pair_judge"
+    entry = record["roles"][role]
+    seat: dict[str, Any] = {"verdict": None, "blockers": [], "timeout": False}
+
+    def blocked(id_: str, message: str, rule_id: str = "verify.judge.execution") -> dict[str, Any]:
+        seat["verdict"] = "BLOCKED"
+        seat["blockers"].append(judge_blocker(source, id_, message, rule_id))
+        return seat
+
+    if entry["decision"] == "skip":
+        return seat
+    if entry["decision"] == "blocked":
+        return blocked("verify-judge-route-blocked", str(entry.get("reason")), "verify.judge.route")
+    # Artifact names come from the frozen selection, never from the dispatch record alone.
+    engine = ROLE_CONFIG["snapshot"](state)["roles"][role]["engine"]
+    stem = f"{engine}-judge.r{state['phases']['verify']['round']}"
+    capture = devlyn / (stem + (".output.json" if engine == "claude" else ".stdout"))
+    # Seal every artifact the seat left before judging it, so none can change unobserved.
+    names = [stem + suffix for suffix in (".prompt", ".argv.json", ".stderr", ".prompt.transport.json",
+                                          ".role-evidence.json", ".stdout")] + [capture.name]
+    try:
+        artifacts = [seal_file(devlyn / name) for name in dict.fromkeys(names) if os.path.lexists(devlyn / name)]
+    except ValueError as exc:
+        return blocked("verify-judge-execution-incomplete", f"{stem}: {exc}")
+    execution = {"artifacts": artifacts, "outcome": None, "exit_code": None}
+    try:
+        prompt = (devlyn / (stem + ".prompt")).read_bytes()
+        argv = loads_strict_json((devlyn / (stem + ".argv.json")).read_text(encoding="utf-8"))
+        if (entry.get("engine") != engine or entry.get("stem") != stem or argv != entry.get("argv")
+                or hashlib.sha256(prompt).hexdigest() != entry["prompt_sha256"]
+                or hashlib.sha256(RENDER["prompt_frames"](prompt)["snapshot"]).hexdigest() != record["snapshot_sha256"]):
+            raise ValueError("prompt, argv or seat differ from the dispatch record")
+        transport = JUDGE_ROLE_EVIDENCE["bound_transport"](devlyn, stem, ROLE_CONFIG["snapshot"](state)["roles"][role],
+                                                           argv, prompt.decode("utf-8"))
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+        collected["executions"][role] = execution
+        return blocked("verify-judge-execution-incomplete", f"{stem}: {exc}")
+    collected["durations"][source] = transport["elapsed_ms"]
+    outcome, exit_code = transport["outcome"], transport["exit_code"]
+    execution.update(outcome=outcome, exit_code=exit_code)
+    if outcome == "exited" and exit_code == 0:
+        try:
+            collected["role_evidence"][role] = JUDGE_ROLE_EVIDENCE["authenticate"](devlyn, state, role)
+        except (ValueError, OSError, TypeError, KeyError) as exc:
+            detail = str(exc)
+            if not (devlyn / (stem + ".role-evidence.json")).exists():
+                try:
+                    JUDGE_ROLE_EVIDENCE["describe"](devlyn, state, role, 0)
+                except (ValueError, OSError, TypeError, KeyError) as reason:
+                    detail = str(reason)
+            collected["executions"][role] = execution
+            return blocked("verify-role-evidence-invalid", detail, "verify.role-evidence")
+        output = devlyn / (stem + ".stdout")
+    else:
+        collected["executions"][role] = execution
+        if outcome != "timed_out":
+            return blocked("verify-judge-exit-nonzero" if outcome == "exited" else "verify-judge-not-completed",
+                           f"{stem} {outcome} with exit {exit_code}")
+        seat["timeout"] = True
+        if role == "primary_judge":
+            blocked("verify-primary-timeout", "Primary JUDGE exceeded its runner-authenticated 600-second budget.",
+                    "verify.primary.timeout-contract")
+        else:
+            collected["pair_timeout"] = {"engine": engine, "budget_seconds": transport["timeout_sec"]}
+        output = capture
+    try:
+        text = output.read_text(encoding="utf-8")
+        if seat["timeout"] and not text.strip():
+            return seat
+        if seat["timeout"] and engine == "claude":
+            # A Claude seat killed at the deadline after writing its result envelope still said something.
+            result = loads_strict_json(text).get("result")
+            if not isinstance(result, str):
+                raise ValueError("timed-out Claude capture has no result text")
+            found, summary = JUDGE_OUTPUT_PARSER["judge_findings"](*JUDGE_OUTPUT_PARSER["collect_text"](result, output))
+        else:
+            found, summary = JUDGE_OUTPUT_PARSER["collect_judge"](output)
+    except (SystemExit, UnicodeError, OSError, ValueError, AttributeError) as exc:
+        return blocked("verify-judge-emission-contract-violated", f"{output.name}: {exc}",
+                       "verify.judge.emission-contract")
+    collected["findings"][source] = found
+    verdict = worse(RANK_VERDICT[max((finding_rank(item) for item in found), default=0)], summary["verdict"])
+    seat["verdict"] = worse(seat["verdict"], verdict)
+    return seat
+
+
+def collect_judges(devlyn: pathlib.Path) -> dict[str, Any]:
+    """Validate this round's dispatch record and derive each seat's findings.
+
+    Runs under the state lock. The findings files are regenerated outputs of
+    this call, never trusted inputs; the pre-launch pair_trigger is published
+    to both state locations before any contract check reads it. It runs once
+    per VERIFY round: a round that already has a merged verdict, or a dispatch
+    record for a different run, round or span, stops the merge without writing.
+    """
+    state_path = devlyn / "pipeline.state.json"
+    state = loads_strict_json(state_path.read_text(encoding="utf-8"))
+    collected: dict[str, Any] = {"roles": {}, "role_evidence": {}, "executions": {}, "findings": {},
+                                 "durations": {"judge": None, "pair_judge": None}, "dispatch": None}
+    verify = (state.get("phases") or {}).get("verify") or {}
+    if verify.get("merged") is not None:
+        raise SystemExit("BLOCKED:verify-already-merged: this VERIFY round already has a merged verdict; open a new round")
+    name = dispatch_name(verify.get("round"))
+
+    def invalid(detail: object) -> dict[str, Any]:
+        collected["roles"]["primary_judge"] = {"verdict": "BLOCKED", "timeout": False, "blockers": [
+            judge_blocker("judge", "verify-dispatch-invalid", f"{name}: {detail}", "verify.judge.dispatch")]}
+        return collected
+
+    try:
+        raw = (devlyn / name).read_bytes()
+        record = loads_strict_json(raw.decode("utf-8"))
+        identity = (state.get("run_id"), verify.get("round"), verify.get("started_at"),
+                    ROLE_CONFIG["snapshot"](state)["sha256"])
+        recorded = (record.get("run_id"), record.get("round"), record.get("verify_started_at"),
+                    record.get("resolution_sha256"))
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        return invalid(exc)
+    # A record for another run, round or span is never published here.
+    if recorded != identity:
+        raise SystemExit("BLOCKED:verify-state-changed: dispatch record differs from the open VERIFY span")
+    try:
+        collected["dispatch"] = seal_file(devlyn / name)
+    except ValueError as exc:
+        return invalid(exc)
+    try:
+        roles = record["roles"]
+        if record.get("schema") != 1 or set(roles) != {"primary_judge", "pair_judge"} or any(
+            entry.get("decision") not in {"dispatch", "skip", "blocked"} for entry in roles.values()
+        ):
+            raise ValueError("dispatch record is malformed")
+        # Re-derive what the record may skip: a binding MECHANICAL result skips both seats,
+        # and a pair skip is exactly the published ineligible trigger.
+        mechanical_blocker = rank(mechanical_source(devlyn)[1]) >= 2
+        trigger = record["pair_trigger"]
+        pair_skipped = roles["pair_judge"]["decision"] == "skip"
+        if ((roles["primary_judge"]["decision"] == "skip") != mechanical_blocker
+                or (mechanical_blocker and not pair_skipped)
+                or trigger.get("eligible") is pair_skipped
+                or (pair_skipped and trigger.get("skipped_reason") != roles["pair_judge"].get("reason"))):
+            raise ValueError("dispatch skip decisions contradict MECHANICAL or the pair trigger")
+        # A pair skip must be one the frozen selection allows: a pinned pair never skips as unavailable.
+        pair = ROLE_CONFIG["snapshot"](state)["roles"]["pair_judge"]
+        allowed = ({"mechanical_blocker"} if mechanical_blocker else {pair["skipped_reason"]} if pair.get("skipped_reason")
+                   else {"auto_pair_other_engine_unavailable"}
+                   if pair.get("source") == "default" and state.get("pair_verify") is not True else set())
+        if pair_skipped and roles["pair_judge"].get("reason") not in allowed:
+            raise ValueError("dispatch pair skip is not allowed by the frozen pair selection")
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        return invalid(exc)  # The sealed record stays bound as the evidence of its own defect.
+    verify["pair_trigger"] = record["pair_trigger"]
+    state["verify"] = {**(state.get("verify") if isinstance(state.get("verify"), dict) else {}),
+                       "pair_trigger": record["pair_trigger"]}
+    atomic_write_text(state_path, json.dumps(state, indent=2, sort_keys=True) + "\n")
+    for role in ("primary_judge", "pair_judge"):
+        collected["roles"][role] = judge_seat(devlyn, state, record, role, collected)
+        source = "judge" if role == "primary_judge" else "pair_judge"
+        findings_path = devlyn / SOURCE_FILES[1 if source == "judge" else 2][1]
+        if record["roles"][role]["decision"] == "skip":
+            findings_path.unlink(missing_ok=True)  # A skipped seat has no findings, stale or not.
+            continue
+        atomic_write_text(findings_path, "".join(
+            json.dumps(item, sort_keys=True, separators=(",", ":")) + "\n"
+            for item in collected["findings"].get(source, [])
+        ))
+    return collected
 
 
 def pair_trigger_status(devlyn: pathlib.Path) -> tuple[bool, dict[str, Any] | None]:
@@ -607,11 +644,6 @@ def pair_trigger_status(devlyn: pathlib.Path) -> tuple[bool, dict[str, Any] | No
             "file": "pipeline.state.json",
         }
     return eligible is True and len(reasons) > 0, None
-
-
-def pair_trigger_required(devlyn: pathlib.Path) -> bool:
-    required, _malformed = pair_trigger_status(devlyn)
-    return required
 
 
 def pair_trigger_present(devlyn: pathlib.Path) -> bool:
@@ -1041,50 +1073,6 @@ def pair_trigger_skip_contract_violation(
     return None
 
 
-def pair_trigger_reason_completeness_violation(
-    devlyn: pathlib.Path,
-    source_verdicts: dict[str, str | None],
-) -> dict[str, Any] | None:
-    if rank(source_verdicts.get("mechanical")) >= 2:
-        return None
-    state_path = devlyn / "pipeline.state.json"
-    if not state_path.is_file():
-        return None
-    try:
-        state = loads_strict_json(state_path.read_text(encoding="utf-8"))
-    except ValueError:
-        return None
-    phases = state.get("phases") if isinstance(state, dict) else {}
-    verify_phase = phases.get("verify") if isinstance(phases, dict) else None
-    trigger = None
-    if isinstance(verify_phase, dict):
-        trigger = verify_phase.get("pair_trigger")
-    if trigger is None and isinstance(state, dict):
-        verify_state = state.get("verify")
-        if isinstance(verify_state, dict):
-            trigger = verify_state.get("pair_trigger")
-    if not isinstance(trigger, dict) or trigger.get("eligible") is not True:
-        return None
-    reasons = trigger.get("reasons")
-    if not isinstance(reasons, list) or not all(isinstance(item, str) for item in reasons):
-        return None
-    missing = [
-        reason
-        for reason in state_pair_trigger_reasons(devlyn, source_verdicts)
-        if reason not in reasons
-    ]
-    if not missing:
-        return None
-    return {
-        "id": "verify-pair-trigger-reasons-incomplete",
-        "message": (
-            "pair_trigger.reasons is missing applicable canonical reason(s): "
-            + ", ".join(missing)
-        ),
-        "file": "pipeline.state.json",
-    }
-
-
 def pair_blocker(
     id_: str,
     message: str,
@@ -1104,269 +1092,50 @@ def pair_blocker(
     }
 
 
-def read_pair_timeout_marker(devlyn: pathlib.Path) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-    path = devlyn / "verify.pair.timeout.json"
-    if not path.is_file():
-        return None, None
-    try:
-        marker = loads_strict_json(path.read_text(encoding="utf-8"))
-    except ValueError as exc:
-        return None, {
-            "id": "verify-pair-timeout-marker-malformed",
-            "message": f"verify.pair.timeout.json is malformed JSON: {exc}",
-            "file": "verify.pair.timeout.json",
-        }
-    if not isinstance(marker, dict):
-        return None, {
-            "id": "verify-pair-timeout-marker-malformed",
-            "message": "verify.pair.timeout.json must be a JSON object.",
-            "file": "verify.pair.timeout.json",
-        }
-    engine = marker.get("engine")
-    budget_seconds = marker.get("budget_seconds")
-    if not isinstance(engine, str) or not engine:
-        return None, {
-            "id": "verify-pair-timeout-marker-malformed",
-            "message": "verify.pair.timeout.json engine must be a non-empty string.",
-            "file": "verify.pair.timeout.json",
-        }
-    if (
-        not isinstance(budget_seconds, int)
-        or isinstance(budget_seconds, bool)
-        or budget_seconds <= 0
-    ):
-        return None, {
-            "id": "verify-pair-timeout-marker-malformed",
-            "message": "verify.pair.timeout.json budget_seconds must be a positive integer.",
-            "file": "verify.pair.timeout.json",
-        }
-    return {"engine": engine, "budget_seconds": budget_seconds}, None
-
-
-def is_result_less_message_stream(stdout_text: str) -> bool:
-    """True when a declared whole-message stream stops before its terminal result.
-
-    The timeout marker attests the killed process. This classifier admits only a
-    valid stream prefix, optionally ending in one truncated JSON record.
-    """
-    lines = [raw for line in stdout_text.splitlines() if (raw := line.strip())]
-    if not lines:
-        return False
-    try:
-        first = JUDGE_OUTPUT_PARSER["loads_strict_json"](lines[0])
-    except ValueError:
-        return False
-    if (
-        not isinstance(first, dict)
-        or first.get("type") != "system"
-        or first.get("subtype") != "init"
-        or not isinstance(first.get("session_id"), str)
-    ):
-        return False
-    session_id = first["session_id"]
-    for index, raw in enumerate(lines[1:], 1):
-        try:
-            item = JUDGE_OUTPUT_PARSER["loads_strict_json"](raw)
-        except ValueError:
-            return index == len(lines) - 1 and raw.startswith("{") and not raw.endswith("}")
-        if (
-            not isinstance(item, dict)
-            or item.get("type") not in {"assistant", "user"}
-            or item.get("session_id") != session_id
-        ):
-            return False
-    return True
-
-
-def detect_pair_stdout_contract_violations(
+def pair_state_contract_violations(
     devlyn: pathlib.Path,
     source_verdicts: dict[str, str | None],
 ) -> list[dict[str, Any]]:
-    # The primary uses its explicit phase engine, or the legacy executor; only the OTHER engine's
-    # capture is pair evidence.
-    timeout_marker, timeout_violation = read_pair_timeout_marker(devlyn)
-    if timeout_violation is not None:
+    """Pair routing state must be well formed and justify the pair seat's presence or absence."""
+    def blocked(violation: dict[str, Any]) -> list[dict[str, Any]]:
         source_verdicts["pair_judge"] = "BLOCKED"
-        return [
-            pair_blocker(
-                timeout_violation["id"],
-                timeout_violation["message"],
-                timeout_violation["file"],
-            )
-        ]
-    flag_violation = pair_flag_contract_violation(devlyn)
-    if flag_violation is not None:
-        source_verdicts["pair_judge"] = "BLOCKED"
-        return [
-            pair_blocker(
-                flag_violation["id"],
-                flag_violation["message"],
-                flag_violation["file"],
-            )
-        ]
+        return [pair_blocker(violation["id"], violation["message"], violation["file"],
+                             violation.get("rule_id", "verify.pair.emission-contract"))]
+
     required, malformed_trigger = pair_trigger_status(devlyn)
-    if malformed_trigger is not None:
-        source_verdicts["pair_judge"] = "BLOCKED"
-        return [
-            pair_blocker(
-                malformed_trigger["id"],
-                malformed_trigger["message"],
-                malformed_trigger["file"],
-            )
-        ]
-    risk_profile_violation = risk_profile_contract_violation(devlyn)
-    if risk_profile_violation is not None:
-        source_verdicts["pair_judge"] = "BLOCKED"
-        return [
-            pair_blocker(
-                risk_profile_violation["id"],
-                risk_profile_violation["message"],
-                risk_profile_violation["file"],
-            )
-        ]
-    state_violation = verify_state_contract_violation(devlyn)
-    if state_violation is not None:
-        source_verdicts["pair_judge"] = "BLOCKED"
-        return [
-            pair_blocker(
-                state_violation["id"],
-                state_violation["message"],
-                state_violation["file"],
-                state_violation["rule_id"],
-            )
-        ]
-    state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
-    assert isinstance(state, dict)
-    engine = resolved_primary_engine(state)
-    assert isinstance(engine, str) and engine.strip()
-    stdout_paths = canonical_other_judge_stdout(devlyn, engine)
-    if not required and not pair_trigger_present(devlyn):
-        missing_violation = pair_trigger_missing_contract_violation(devlyn, source_verdicts)
-        if missing_violation is not None:
-            source_verdicts["pair_judge"] = "BLOCKED"
-            return [
-                pair_blocker(
-                    missing_violation["id"],
-                    missing_violation["message"],
-                    missing_violation["file"],
-                )
-            ]
-    skip_violation = pair_trigger_skip_contract_violation(devlyn, source_verdicts)
-    if skip_violation is not None:
-        source_verdicts["pair_judge"] = "BLOCKED"
-        return [
-            pair_blocker(
-                skip_violation["id"],
-                skip_violation["message"],
-                skip_violation["file"],
-            )
-        ]
-    reason_violation = pair_trigger_reason_completeness_violation(devlyn, source_verdicts)
-    if reason_violation is not None:
-        source_verdicts["pair_judge"] = "BLOCKED"
-        return [
-            pair_blocker(
-                reason_violation["id"],
-                reason_violation["message"],
-                reason_violation["file"],
-            )
-        ]
-    trigger_present = pair_trigger_present(devlyn)
-    if trigger_present and not required:
-        if pair_capture_exists(devlyn, stdout_paths):
-            source_verdicts["pair_judge"] = "BLOCKED"
-            return [
-                pair_blocker(
-                    "verify-pair-skipped-output-present",
-                    "Pair state is skipped or ineligible, but a canonical OTHER-judge carrier exists.",
-                    stdout_paths[0].name if stdout_paths else "verify.pair.findings.jsonl",
-                    "verify.pair.state-capture-contradiction",
-                )
-            ]
+    for violation in (
+        pair_flag_contract_violation(devlyn),
+        malformed_trigger,
+        risk_profile_contract_violation(devlyn),
+        verify_state_contract_violation(devlyn),
+    ):
+        if violation is not None:
+            return blocked(violation)
+    present = pair_trigger_present(devlyn)
+    if not required and not present:
+        violation = pair_trigger_missing_contract_violation(devlyn, source_verdicts)
+        if violation is not None:
+            return blocked(violation)
+    violation = pair_trigger_skip_contract_violation(devlyn, source_verdicts)
+    if violation is not None:
+        return blocked(violation)
+    pair_output = (devlyn / SOURCE_FILES[2][1]).is_file()
+    if present and not required:
+        if pair_output:
+            return blocked({
+                "id": "verify-pair-skipped-output-present",
+                "message": "Pair state is skipped or ineligible, but pair findings exist.",
+                "file": SOURCE_FILES[2][1],
+                "rule_id": "verify.pair.state-capture-contradiction",
+            })
         source_verdicts["pair_judge"] = None
         return []
-    if len(stdout_paths) > 1:
-        source_verdicts["pair_judge"] = "BLOCKED"
-        return [
-            pair_blocker(
-                "verify-pair-output-ambiguous",
-                "Multiple canonical OTHER-engine stdout carriers exist: "
-                + ", ".join(path.name for path in stdout_paths),
-                stdout_paths[0].name,
-            )
-        ]
-    if timeout_marker is not None:
-        expected_timeout_stdout = f"{timeout_marker['engine']}-judge.stdout"
-        if timeout_marker["engine"] == engine or (
-            stdout_paths and stdout_paths[0].name != expected_timeout_stdout
-        ):
-            source_verdicts["pair_judge"] = "BLOCKED"
-            return [
-                pair_blocker(
-                    "verify-pair-timeout-engine-mismatch",
-                    "Pair timeout engine does not match the canonical OTHER-engine carrier.",
-                    "verify.pair.timeout.json",
-                )
-            ]
-    if not stdout_paths:
-        if timeout_marker is not None:
-            if rank(source_verdicts["pair_judge"]) <= rank("TIMEOUT"):
-                source_verdicts["pair_judge"] = "TIMEOUT"
-            return []
-        if required:
-            source_verdicts["pair_judge"] = "BLOCKED"
-            return [
-                pair_blocker(
-                    "verify-pair-required-output-missing",
-                    "Pair-mode was required, but the pair-JUDGE produced no canonical OTHER-engine stdout.",
-                    "verify.pair.findings.jsonl",
-                )
-            ]
-        return []
-    if has_pair_findings(devlyn):
-        return []
-    if source_verdicts["pair_judge"] is None and timeout_marker is None:
-        source_verdicts["pair_judge"] = "PASS"
-    for stdout_path in stdout_paths:
-        stdout_text = stdout_path.read_text(encoding="utf-8")
-        if not stdout_text.strip():
-            if timeout_marker is not None:
-                continue
-            source_verdicts["pair_judge"] = "BLOCKED"
-            return [
-                pair_blocker(
-                    "verify-pair-empty-output",
-                    f"pair-JUDGE stdout {stdout_path.name} was empty; the bounded contract requires a JSONL finding or PASS line.",
-                    stdout_path.name,
-                )
-            ]
-        try:
-            stdout_findings, stdout_summary = JUDGE_OUTPUT_PARSER["collect_stdout"](stdout_path)
-        except SystemExit as exc:
-            if timeout_marker is not None and is_result_less_message_stream(stdout_text):
-                continue
-            source_verdicts["pair_judge"] = "BLOCKED"
-            return [
-                pair_blocker(
-                    "verify-pair-emission-contract-violated",
-                    f"pair-JUDGE stdout {stdout_path.name} violates the shared emission parser: {exc}",
-                    stdout_path.name,
-                )
-            ]
-        if stdout_findings or stdout_summary is None or stdout_summary["verdict"] != "PASS":
-            source_verdicts["pair_judge"] = "BLOCKED"
-            return [
-                pair_blocker(
-                    "verify-pair-emission-contract-violated",
-                    (
-                        f"pair-JUDGE stdout {stdout_path.name} contained findings or a non-PASS "
-                        "verdict, but the canonical pair findings JSONL file was empty."
-                    ),
-                    stdout_path.name,
-                )
-            ]
-    if timeout_marker is not None:
-        source_verdicts["pair_judge"] = "TIMEOUT"
+    if required and source_verdicts["pair_judge"] is None:
+        return blocked({
+            "id": "verify-pair-required-output-missing",
+            "message": "Pair-mode was required, but the pair-JUDGE produced no findings.",
+            "file": SOURCE_FILES[2][1],
+        })
     return []
 
 
@@ -1374,6 +1143,7 @@ def write_outputs(
     devlyn: pathlib.Path,
     findings: list[dict[str, Any]],
     source_verdicts: dict[str, str | None],
+    collected: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     merged_path = devlyn / "verify-merged.findings.jsonl"
     summary_path = devlyn / "verify-merge.summary.json"
@@ -1389,16 +1159,14 @@ def write_outputs(
         "findings_count": len(findings),
         "findings_file": str(merged_path),
     }
-    if source_verdicts.get("pair_judge") == "TIMEOUT":
-        timeout_marker, _timeout_violation = read_pair_timeout_marker(devlyn)
-        if timeout_marker is not None:
-            summary["pair_timeout"] = timeout_marker
-            summary["report_header_note"] = "solo verdict after pair TIMEOUT"
+    if source_verdicts.get("pair_judge") == "TIMEOUT" and (collected or {}).get("pair_timeout"):
+        summary["pair_timeout"] = collected["pair_timeout"]
+        summary["report_header_note"] = "solo verdict after pair TIMEOUT"
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return summary
 
 
-def write_state(devlyn: pathlib.Path, summary: dict[str, Any]) -> None:
+def write_state(devlyn: pathlib.Path, summary: dict[str, Any], collected: dict[str, Any] | None = None) -> None:
     state_path = devlyn / "pipeline.state.json"
     if not state_path.is_file():
         raise SystemExit(f"error: {state_path} not found")
@@ -1431,19 +1199,12 @@ def write_state(devlyn: pathlib.Path, summary: dict[str, Any]) -> None:
     if not isinstance(verify, dict):
         verify = {}
         phases["verify"] = verify
-    role_evidence = {}
-    try:
-        required_roles = JUDGE_ROLE_EVIDENCE["required_roles"](state)
-    except ValueError as exc:
-        if summary.get("source_verdicts", {}).get("judge") != "BLOCKED":
-            raise SystemExit(str(exc)) from exc
-        required_roles = []  # Persist the invalid-resolution failure; no legacy dispatch.
-    for role in required_roles:
-        source = "judge" if role == "primary_judge" else "pair_judge"
-        if summary.get("source_verdicts", {}).get(source) in {"PASS", "PASS_WITH_ISSUES", "NEEDS_WORK"}:
-            role_evidence[role] = JUDGE_ROLE_EVIDENCE["authenticate"](devlyn, state, role)
-    if role_evidence:
-        verify["role_evidence"] = role_evidence
+    if collected is not None:
+        # Bindings were authenticated or sealed by collect_judges under this same lock.
+        for field in ("role_evidence", "executions", "dispatch"):
+            if collected[field]:
+                verify[field] = collected[field]
+        verify["judge_durations_ms"] = collected["durations"]
     verify["verdict"] = summary["verdict"]
     sub = verify.get("sub_verdicts")
     if sub is None:
@@ -1465,96 +1226,11 @@ def write_state(devlyn: pathlib.Path, summary: dict[str, Any]) -> None:
         "findings_file": ".devlyn/verify-merged.findings.jsonl",
         "summary_file": ".devlyn/verify-merge.summary.json",
     }
-    state_path.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    atomic_write_text(state_path, json.dumps(state, indent=2, sort_keys=True) + "\n")
 
 
 def self_test() -> int:
     import subprocess
-
-    with tempfile.TemporaryDirectory() as tmp:
-        work = pathlib.Path(tmp).resolve()
-        devlyn = work / ".devlyn"
-        devlyn.mkdir()
-        role = JUDGE_ROLE_EVIDENCE["ROLE"]
-        (devlyn / "engines.json").write_bytes(role["encoded"]({
-            "roles": {"primary_judge": {"engine": "claude", "model": "fixture-claude-model", "effort": "high"}},
-        }))
-        resolution = role["resolve"](work, "claude", no_pair=True, available=lambda engine: True)
-        state = {"run_id": "merge-relative-role", "engine": "claude", "role_resolution": resolution,
-                 "rounds": {"global": 0, "max_rounds": 1},
-                 "phases": {"verify": {"engine": "claude", "round": 0, "verdict": None,
-                                       "started_at": "2026-01-01T00:00:00Z", "completed_at": "2026-01-01T00:01:00Z"}}}
-        state_path = devlyn / "pipeline.state.json"
-        state_path.write_text(json.dumps(state), encoding="utf-8")
-        stem = "claude-judge.r0"
-        prompt_path = devlyn / (stem + ".prompt")
-        prompt = b"review"
-        prompt_path.write_bytes(prompt)
-        command = ["claude", "-p", "--model", "fixture-claude-model", "--effort", "high",
-                   "--permission-mode", "dontAsk", "--tools", "Read,Grep,Glob",
-                   "--allowedTools", "Read,Grep,Glob", "--setting-sources", "project",
-                   "--output-format", "json", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
-        argv = ["python3", "run-bounded.py", "600", "--stdin-file", str(prompt_path),
-                "--record-transport", "--", *command]
-        argv_path = devlyn / (stem + ".argv.json")
-        argv_path.write_bytes(role["encoded"](argv))
-        (devlyn / (stem + ".stderr")).write_bytes(b"")
-        (devlyn / (stem + ".output.json")).write_bytes(role["encoded"]({
-            "type": "result", "subtype": "success", "is_error": False, "stop_reason": "end_turn",
-            "session_id": "fixture-claude", "result": "PASS", "modelUsage": {"fixture-claude-model": {}},
-        }))
-        transport = {"schema_version": 1, "transport": "stdin-file",
-                     "prompt": {"path": str(prompt_path), "sha256": role["digest"](prompt), "bytes": len(prompt)},
-                     "command": command, "argv": command, "timeout_sec": 600, "isolated": False,
-                     "status": "completed", "exit_code": 0}
-        (devlyn / (stem + ".prompt.transport.json")).write_text(json.dumps(transport), encoding="utf-8")
-        evidence, derived = JUDGE_ROLE_EVIDENCE["describe"](devlyn, state, "primary_judge", 0)
-        (devlyn / (stem + ".role-evidence.json")).write_bytes(role["encoded"](evidence))
-        (devlyn / (stem + ".stdout")).write_bytes(derived)
-        (devlyn / "claude-judge.stdout").write_bytes(derived)
-        (devlyn / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
-        (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
-        script = str(pathlib.Path(__file__).resolve())
-        def merge_at(directory):
-            return subprocess.run([sys.executable, script, "--devlyn-dir", directory, "--write-state"],
-                                  cwd=work, capture_output=True, text=True)
-        relative = merge_at(".devlyn")
-        assert relative.returncode == 0, relative.stderr
-        relative_state = json.loads(state_path.read_text())
-        assert relative_state["phases"]["verify"]["verdict"] == "PASS", relative.stdout
-        state_path.write_text(json.dumps(state), encoding="utf-8")
-        absolute = merge_at(str(devlyn))
-        assert absolute.returncode == 0, absolute.stderr
-        absolute_state = json.loads(state_path.read_text())
-        assert absolute_state["phases"]["verify"]["role_evidence"] == relative_state["phases"]["verify"]["role_evidence"]
-        argv[4] = str(work / "wrong.prompt")
-        argv_path.write_bytes(role["encoded"](argv))
-        state_path.write_text(json.dumps(state), encoding="utf-8")
-        wrong = merge_at(".devlyn")
-        assert wrong.returncode == 0, wrong.stderr
-        blocked_state = json.loads(state_path.read_text())
-        assert blocked_state["phases"]["verify"]["verdict"] == "BLOCKED"
-        writer = runpy.run_path(str(pathlib.Path(__file__).with_name("state-phase-write.py")))
-        try:
-            writer["do_spawn"](blocked_state, "implement", 1, "verify", None, None, None)
-        except SystemExit as exc:
-            assert str(exc) == "BLOCKED:repair-edge-invalid"
-        else:
-            raise AssertionError("BLOCKED VERIFY entered product repair")
-        assert blocked_state["rounds"]["global"] == 0
-        argv[4] = str(prompt_path)
-        argv_path.write_bytes(role["encoded"](argv))
-        finding = {"id": "fixture-high", "rule_id": "fixture.binding", "severity": "HIGH",
-                   "confidence": "high", "file": "source.txt", "line": 1,
-                   "message": "required behavior is missing", "criterion_ref": "fixture"}
-        (devlyn / "verify.findings.jsonl").write_text(json.dumps(finding) + "\n", encoding="utf-8")
-        state_path.write_text(json.dumps(state), encoding="utf-8")
-        needs_work = merge_at(".devlyn")
-        assert needs_work.returncode == 0, needs_work.stderr
-        repair_state = json.loads(state_path.read_text())
-        assert repair_state["phases"]["verify"]["verdict"] == "NEEDS_WORK"
-        writer["do_spawn"](repair_state, "implement", 1, "verify", None, None, None)
-        assert repair_state["rounds"]["global"] == 1
 
     try:
         loads_strict_json('{"verdict":"PASS","verdict":"BLOCKED"}')
@@ -1726,7 +1402,7 @@ def self_test() -> int:
             assert not any(
                 finding.get("file") == generic_primary.name for finding in generic_findings
             ), generic_findings
-        (skipped_work / "codex-judge.stdout").write_text("PASS\n", encoding="utf-8")
+        (skipped_work / "verify.pair.findings.jsonl").write_text("", encoding="utf-8")
         contradiction_findings, contradiction_verdicts = read_findings(skipped_work)
         assert contradiction_verdicts["pair_judge"] == "BLOCKED", contradiction_verdicts
         assert any(
@@ -1745,8 +1421,11 @@ def self_test() -> int:
             "judge": 23, "pair_judge": 31,
         }, state
         original_state = (devlyn / "pipeline.state.json").read_bytes()
+        # A present dispatch record makes the frozen-selection check itself the failing step.
+        (devlyn / "verify-judge.rNone.dispatch.json").write_text("{}", encoding="utf-8")
         for malformed in (None, {}, {"roles": {}}):
             bad_state = loads_strict_json(original_state)
+            bad_state["phases"]["verify"].pop("merged", None)
             bad_state["role_resolution"] = malformed
             (devlyn / "pipeline.state.json").write_text(json.dumps(bad_state), encoding="utf-8")
             result = subprocess.run([sys.executable, str(pathlib.Path(__file__).resolve()),
@@ -1754,17 +1433,9 @@ def self_test() -> int:
             assert result.returncode == 0 and "Traceback" not in result.stderr, result.stderr
             persisted = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
             assert persisted["phases"]["verify"]["verdict"] == "BLOCKED"
-            assert "verify-role-resolution-invalid" in (devlyn / "verify-merged.findings.jsonl").read_text(encoding="utf-8")
-        (devlyn / "pipeline.state.json").write_bytes(original_state)
-        different_primary = {"engine": "codex", "phases": {"verify": {"engine": "claude"}}}
-        (devlyn / "pipeline.state.json").write_text(json.dumps(different_primary), encoding="utf-8")
-        (devlyn / "verify.primary.timeout.json").write_text(json.dumps({"engine": "claude", "budget_seconds": 600}), encoding="utf-8")
-        marker, violation = read_primary_timeout_marker(devlyn)
-        assert marker is not None and violation is None
-        different_primary["phases"]["verify"]["engine"] = None
-        (devlyn / "pipeline.state.json").write_text(json.dumps(different_primary), encoding="utf-8")
-        assert read_primary_timeout_marker(devlyn)[1] is not None
-        (devlyn / "verify.primary.timeout.json").unlink()
+            merged = (devlyn / "verify-merged.findings.jsonl").read_text(encoding="utf-8")
+            assert "verify-dispatch-invalid" in merged and "role resolution" in merged, merged
+        (devlyn / "verify-judge.rNone.dispatch.json").unlink()
         (devlyn / "pipeline.state.json").write_bytes(original_state)
 
         (devlyn / "verify.findings.jsonl").unlink()
@@ -1777,51 +1448,6 @@ def self_test() -> int:
             for finding in findings
         ), findings
 
-        # iter-0113: a valid primary timeout is an explicit BLOCKED source,
-        # never the generic missing-source path or pair-style TIMEOUT.
-        (devlyn / "verify.primary.timeout.json").write_text(
-            json.dumps({"engine": "claude", "budget_seconds": 600}) + "\n",
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "BLOCKED", summary
-        assert summary["source_verdicts"]["judge"] == "BLOCKED", summary
-        assert any(
-            finding["id"] == "verify-primary-timeout"
-            for finding in findings
-        ), findings
-        assert not any(
-            finding["id"] == "verify-merge-required-source-missing-judge"
-            for finding in findings
-        ), findings
-
-        (devlyn / "verify.findings.jsonl").write_text(
-            json.dumps({"id": "primary-timeout-high", "severity": "HIGH"}) + "\n",
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        assert source_verdicts["judge"] == "BLOCKED", source_verdicts
-        assert {finding["id"] for finding in findings} >= {
-            "primary-timeout-high", "verify-primary-timeout",
-        }, findings
-
-        for marker, expected_id in (
-            ("{\n", "verify-primary-timeout-marker-malformed"),
-            (
-                json.dumps({"engine": "codex", "budget_seconds": 600}) + "\n",
-                "verify-primary-timeout-engine-mismatch",
-            ),
-            (
-                json.dumps({"engine": "claude", "budget_seconds": 601}) + "\n",
-                "verify-primary-timeout-budget-mismatch",
-            ),
-        ):
-            (devlyn / "verify.primary.timeout.json").write_text(marker, encoding="utf-8")
-            findings, source_verdicts = read_findings(devlyn)
-            assert source_verdicts["judge"] == "BLOCKED", source_verdicts
-            assert any(finding["id"] == expected_id for finding in findings), findings
-        (devlyn / "verify.primary.timeout.json").unlink()
         (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
 
         # iter-0072 Amendment 3: generated schema-v3 runs mechanically prove
@@ -2012,7 +1638,6 @@ def self_test() -> int:
             json.dumps({"id": "p1", "severity": "HIGH"}) + "\n",
             encoding="utf-8",
         )
-        (devlyn / "codex-judge.stdout").write_text("PASS\n", encoding="utf-8")
         findings, source_verdicts = read_findings(devlyn)
         summary = write_outputs(devlyn, findings, source_verdicts)
         write_state(devlyn, summary)
@@ -2021,7 +1646,6 @@ def self_test() -> int:
         assert state["phases"]["verify"]["verdict"] == "NEEDS_WORK", state
         assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] == "NEEDS_WORK", state
         assert (devlyn / "verify-merged.findings.jsonl").read_text(encoding="utf-8")
-        (devlyn / "codex-judge.stdout").unlink()
         (devlyn / "verify.findings.jsonl").write_text(
             '{"id":"nan","severity":NaN}\n',
             encoding="utf-8",
@@ -2047,290 +1671,7 @@ def self_test() -> int:
         assert summary["verdict"] == "PASS", summary
         assert state["phases"]["verify"]["verdict"] == "PASS", state
         assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] == "PASS", state
-        (devlyn / "codex-judge.stdout").write_text(
-            json.dumps({"id": "cj1", "severity": "HIGH"}) + "\n"
-            + '# SUMMARY {"verdict":"NEEDS_WORK"}\n',
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        write_state(devlyn, summary)
-        state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
-        assert summary["verdict"] == "BLOCKED", summary
-        assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] == "BLOCKED", state
-        (devlyn / "codex-judge.stdout").unlink()
-
-        # Engine-neutral stdout contract (iter-0060): a Claude pair-judge
-        # capture (claude-judge.stdout, adapters/claude.md ## Invocation)
-        # binds the same emission contract as the Codex one.
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"engine": "codex", "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
-            encoding="utf-8",
-        )
-        (devlyn / "claude-judge.stdout").write_text(
-            json.dumps({"id": "clj1", "severity": "HIGH"}) + "\n",
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "BLOCKED", summary
-        assert any(
-            finding.get("id") == "verify-pair-emission-contract-violated"
-            and "claude-judge.stdout" in finding.get("message", "")
-            for finding in findings
-        ), findings
-        (devlyn / "claude-judge.stdout").unlink()
-
-        # iter-0065 case 1: a valid pair timeout marker plus empty pair output
-        # records TIMEOUT and leaves the merged verdict to mechanical+primary.
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({
-                "engine": "codex",
-                "phases": {
-                    "verify": {
-                        "verdict": "PASS",
-                        "sub_verdicts": {},
-                        "pair_trigger": {
-                            "eligible": True,
-                            "reasons": ["judge.warning"],
-                            "skipped_reason": None,
-                        },
-                    }
-                }
-            }),
-            encoding="utf-8",
-        )
-        (devlyn / "verify.findings.jsonl").write_text(
-            json.dumps({"id": "j-timeout-low", "severity": "LOW"}) + "\n",
-            encoding="utf-8",
-        )
-        (devlyn / "verify.pair.findings.jsonl").write_text("", encoding="utf-8")
-        (devlyn / "claude-judge.stdout").write_text("", encoding="utf-8")
-        (devlyn / "verify.pair.timeout.json").write_text(
-            json.dumps({"engine": "claude", "budget_seconds": 600}),
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        write_state(devlyn, summary)
-        state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
-        assert summary["verdict"] == "PASS_WITH_ISSUES", summary
-        assert summary["source_verdicts"]["pair_judge"] == "TIMEOUT", summary
-        assert summary["pair_timeout"] == {"engine": "claude", "budget_seconds": 600}, summary
-        assert summary["report_header_note"] == "solo verdict after pair TIMEOUT", summary
-        assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] == "TIMEOUT", state
-        (devlyn / "claude-judge.stdout").unlink()
-        (devlyn / "verify.pair.timeout.json").unlink()
-        (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
-
-        # iter-0065 case 2: canonical pair findings still bind after timeout.
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"engine": "claude", "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
-            encoding="utf-8",
-        )
-        (devlyn / "verify.pair.findings.jsonl").write_text(
-            json.dumps({"id": "p-timeout-high", "severity": "HIGH"}) + "\n",
-            encoding="utf-8",
-        )
-        (devlyn / "verify.pair.timeout.json").write_text(
-            json.dumps({"engine": "codex", "budget_seconds": 600}),
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "NEEDS_WORK", summary
-        assert summary["source_verdicts"]["pair_judge"] == "NEEDS_WORK", summary
-        assert "pair_timeout" not in summary, summary
-        (devlyn / "verify.pair.timeout.json").unlink()
-        (devlyn / "verify.pair.findings.jsonl").write_text("", encoding="utf-8")
-
-        # iter-0065 case 2b: stdout-only HIGH still blocks on emission contract;
-        # timeout never converts an observed finding into a solo pass.
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"engine": "claude", "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
-            encoding="utf-8",
-        )
-        (devlyn / "codex-judge.stdout").write_text(
-            json.dumps({"id": "cj-timeout-high", "severity": "HIGH"}) + "\n",
-            encoding="utf-8",
-        )
-        (devlyn / "verify.pair.timeout.json").write_text(
-            json.dumps({"engine": "codex", "budget_seconds": 600}),
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "BLOCKED", summary
-        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
-        assert any(
-            finding.get("id") == "verify-pair-emission-contract-violated"
-            for finding in findings
-        ), findings
-        (devlyn / "codex-judge.stdout").unlink()
-        (devlyn / "verify.pair.timeout.json").unlink()
-
-        # iter-0106: a budget abort can truncate the whole-message stream before
-        # its terminal result. With a valid marker that capture stays TIMEOUT.
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({
-                "engine": "claude",
-                "phases": {
-                    "verify": {
-                        "verdict": "PASS",
-                        "sub_verdicts": {},
-                        "pair_trigger": {
-                            "eligible": True,
-                            "reasons": ["judge.warning"],
-                            "skipped_reason": None,
-                        },
-                    }
-                }
-            }),
-            encoding="utf-8",
-        )
-        partial_stream = (
-            '{"type":"system","subtype":"init","session_id":"s106"}\n'
-            '{"type":"assistant","session_id":"s106","message":{"stop_reason":null,'
-            '"content":[{"type":"text","text":"reading the diff"}]}}\n'
-        )
-        (devlyn / "grok-judge.stdout").write_text(partial_stream, encoding="utf-8")
-        (devlyn / "verify.pair.timeout.json").write_text(
-            json.dumps({"engine": "grok", "budget_seconds": 600}),
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "PASS", summary
-        assert summary["source_verdicts"]["pair_judge"] == "TIMEOUT", summary
-        assert summary["pair_timeout"] == {"engine": "grok", "budget_seconds": 600}, summary
-        assert not findings, findings
-
-        # A kill may cut the final JSON record mid-write; one malformed tail is
-        # still a valid prefix, while malformed/unknown complete records are not.
-        (devlyn / "grok-judge.stdout").write_text(
-            partial_stream + '{"type":"assistant","session_id":"s106"',
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["source_verdicts"]["pair_judge"] == "TIMEOUT", summary
-        assert not findings, findings
-
-        for invalid_prefix in (
-            '{"type":"system","subtype":"init"}\n',
-            partial_stream + "trailing narration\n",
-            partial_stream
-            + '{"type":"user","session_id":"other"}\n',
-            partial_stream
-            + '{"type":"stream_event","session_id":"s106"}\n',
-            partial_stream
-            + '{"type":"system","subtype":"compact_boundary","session_id":"s106"}\n',
-            partial_stream
-            + '{"type":"assistant"\n'
-            + '{"type":"user","session_id":"s106"}\n',
-        ):
-            (devlyn / "grok-judge.stdout").write_text(invalid_prefix, encoding="utf-8")
-            findings, source_verdicts = read_findings(devlyn)
-            summary = write_outputs(devlyn, findings, source_verdicts)
-            assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
-            assert any(
-                finding.get("id") == "verify-pair-emission-contract-violated"
-                for finding in findings
-            ), findings
-
-        # iter-0106 control: the marker conserves TIMEOUT only for that shape. A
-        # stream that reached its result but welded narration into the terminal
-        # message stays BLOCKED on the emission contract.
-        (devlyn / "grok-judge.stdout").write_text(
-            '{"type":"system","subtype":"init","session_id":"s106"}\n'
-            + json.dumps({
-                "type": "assistant",
-                "session_id": "s106",
-                "message": {
-                    "stop_reason": "end_turn",
-                    "content": [{"type": "text", "text": "I reviewed the diff.\nPASS"}],
-                },
-            }) + "\n"
-            + json.dumps({
-                "type": "result",
-                "subtype": "success",
-                "is_error": False,
-                "stop_reason": "end_turn",
-                "session_id": "s106",
-                "result": "I reviewed the diff.\nPASS",
-            }) + "\n",
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "BLOCKED", summary
-        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
-        assert any(
-            finding.get("id") == "verify-pair-emission-contract-violated"
-            for finding in findings
-        ), findings
-        (devlyn / "verify.pair.timeout.json").unlink()
-
-        # iter-0106 control: without a marker the same truncated stream is a
-        # plain emission-contract violation.
-        (devlyn / "grok-judge.stdout").write_text(partial_stream, encoding="utf-8")
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "BLOCKED", summary
-        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
-        assert any(
-            finding.get("id") == "verify-pair-emission-contract-violated"
-            for finding in findings
-        ), findings
-        (devlyn / "grok-judge.stdout").unlink()
-
-        # iter-0065 case 3: without a marker, required empty pair output remains BLOCKED.
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({
-                "engine": "codex",
-                "phases": {
-                    "verify": {
-                        "verdict": "PASS",
-                        "sub_verdicts": {},
-                        "pair_trigger": {
-                            "eligible": True,
-                            "reasons": ["risk.high"],
-                            "skipped_reason": None,
-                        },
-                    }
-                }
-            }),
-            encoding="utf-8",
-        )
-        (devlyn / "claude-judge.stdout").write_text("", encoding="utf-8")
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "BLOCKED", summary
-        assert any(
-            finding.get("id") == "verify-pair-empty-output"
-            for finding in findings
-        ), findings
-        (devlyn / "claude-judge.stdout").unlink()
-
-        # iter-0065 malformed timeout markers fail closed as a CRITICAL pair blocker.
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"engine": "claude", "phases": {"verify": {"verdict": "PASS", "sub_verdicts": {}}}}),
-            encoding="utf-8",
-        )
-        (devlyn / "verify.pair.timeout.json").write_text(
-            json.dumps({"engine": "claude", "budget_seconds": 0}),
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "BLOCKED", summary
-        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
-        assert any(
-            finding.get("id") == "verify-pair-timeout-marker-malformed"
-            and finding.get("severity") == "CRITICAL"
-            for finding in findings
-        ), findings
-        (devlyn / "verify.pair.timeout.json").unlink()
+        (devlyn / "verify.pair.findings.jsonl").unlink()
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "engine": "claude",
@@ -2589,38 +1930,6 @@ def self_test() -> int:
             for finding in findings
         ), findings
 
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({
-                "engine": "claude",
-                "mode": "spec",
-                "source": {"spec_path": str(spec_path)},
-                "risk_profile": {
-                    "high_risk": True,
-                    "risk_probes_enabled": False,
-                    "pair_default_enabled": True,
-                },
-                "phases": {
-                    "verify": {
-                        "verdict": "PASS",
-                        "sub_verdicts": {},
-                        "pair_trigger": {
-                            "eligible": True,
-                            "reasons": ["risk.high"],
-                            "skipped_reason": None,
-                        },
-                    }
-                },
-            }),
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "BLOCKED", summary
-        assert any(
-            finding.get("id") == "verify-pair-trigger-reasons-incomplete"
-            and "spec.solo_headroom_hypothesis" in str(finding.get("message"))
-            for finding in findings
-        ), findings
 
         criteria_path = devlyn / "criteria.generated.md"
         criteria_path.write_text(
@@ -3186,7 +2495,7 @@ def self_test() -> int:
             for finding in findings
         ), findings
 
-        # Self-test: schema-v3 default pair reason is required before merge.
+        # Self-test: a schema-v3 trigger merges on its recorded telemetry reasons.
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({
                 "version": "3.0",
@@ -3211,15 +2520,6 @@ def self_test() -> int:
             json.dumps({"id": "p-preknown", "severity": "LOW"}) + "\n",
             encoding="utf-8",
         )
-        (devlyn / "codex-judge.stdout").write_text("PASS\n", encoding="utf-8")
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "BLOCKED", summary
-        assert any(
-            finding.get("id") == "verify-pair-trigger-reasons-incomplete"
-            and "pair.default" in str(finding.get("message"))
-            for finding in findings
-        ), findings
         state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
         state["phases"]["verify"]["pair_trigger"]["reasons"].insert(0, "pair.default")
         (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
@@ -3231,7 +2531,6 @@ def self_test() -> int:
         assert '"id":"p-preknown"' in (
             devlyn / "verify-merged.findings.jsonl"
         ).read_text(encoding="utf-8"), findings
-        (devlyn / "codex-judge.stdout").unlink()
 
         # Self-test: archived-v2 sequential primary blocker remains legal.
         (devlyn / "verify.pair.findings.jsonl").unlink()
@@ -3301,48 +2600,12 @@ def self_test() -> int:
             for finding in findings
         ), findings
 
-        # stdout-only spawn evidence: no pair findings file at all; a clean
-        # PASS stdout from a claude judge promotes pair_judge null -> PASS.
         (devlyn / "verify.pair.findings.jsonl").unlink()
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"engine": "codex", "phases": {"verify": {"verdict": None, "sub_verdicts": None}}}),
-            encoding="utf-8",
-        )
-        (devlyn / "claude-judge.stdout").write_text("PASS\n", encoding="utf-8")
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        write_state(devlyn, summary)
-        state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
-        assert summary["verdict"] == "PASS", summary
-        assert state["phases"]["verify"]["sub_verdicts"]["pair_judge"] == "PASS", state
-        (devlyn / "claude-judge.stdout").unlink()
-
-        # The primary capture must not be misattributed to the OTHER-engine
-        # pair seat merely because both adapters use *-judge.stdout names.
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({"engine": "claude", "phases": {"verify": {"verdict": None, "sub_verdicts": None}}}),
-            encoding="utf-8",
-        )
-        (devlyn / "claude-judge.stdout").write_text("primary prose\n", encoding="utf-8")
-        (devlyn / "codex-judge.stdout").write_text("PASS\n", encoding="utf-8")
-        findings, source_verdicts = read_findings(devlyn)
-        assert source_verdicts["pair_judge"] == "PASS", source_verdicts
-        assert not any(finding["source"] == "pair_judge" for finding in findings), findings
-        (devlyn / "codex-judge.stdout").write_text("pair prose\n", encoding="utf-8")
-        findings, source_verdicts = read_findings(devlyn)
-        assert source_verdicts["pair_judge"] == "BLOCKED", source_verdicts
-        assert any(finding["id"] == "verify-pair-emission-contract-violated" for finding in findings)
-        (devlyn / "claude-judge.stdout").unlink()
-        (devlyn / "codex-judge.stdout").unlink()
-
-        # A primary capture cannot become pair evidence when the state needed
-        # to identify the primary seat is absent, incomplete, or malformed.
-        (devlyn / "claude-judge.stdout").write_text("primary prose\n", encoding="utf-8")
+        # Pair state is checked even when state is absent, incomplete, or malformed.
         (devlyn / "pipeline.state.json").unlink()
         findings, source_verdicts = read_findings(devlyn)
         assert source_verdicts["pair_judge"] == "BLOCKED", source_verdicts
         assert any(finding["id"] == "verify-state-missing" for finding in findings), findings
-        assert not any(finding.get("file") == "claude-judge.stdout" for finding in findings), findings
 
         (devlyn / "pipeline.state.json").write_text(
             json.dumps({"version": "3.0", "phases": {"verify": {}}}), encoding="utf-8",
@@ -3355,152 +2618,16 @@ def self_test() -> int:
         findings, source_verdicts = read_findings(devlyn)
         assert source_verdicts["pair_judge"] == "BLOCKED", source_verdicts
         assert any(finding["id"] == "verify-pair-trigger-state-malformed" for finding in findings), findings
-        (devlyn / "claude-judge.stdout").unlink()
-
-        # iter-0083: canonical summary verdict conservation.
-        iter_0083_paths = (
-            "pipeline.state.json",
-            "verify-mechanical.findings.jsonl",
-            "verify.findings.jsonl",
-            "verify.pair.findings.jsonl",
-            "verify.pair-judge.findings.jsonl",
-            "pair-judge.summary.json",
-            "codex-primary-judge.summary.json",
-            "grok-judge.summary.json",
-            "verify.pair.timeout.json",
-            "codex-judge.stdout",
-            "claude-judge.stdout",
-        )
-
-        def iter_0083_reset() -> None:
-            for name in iter_0083_paths:
-                (devlyn / name).unlink(missing_ok=True)
-
-        def iter_0083_case(
-            summary_payload: object | None,
-            severity: str | None,
-            *,
-            carrier: str | None = "verify.pair.findings.jsonl",
-            other_summary: str | None = None,
-            timeout: bool = False,
-        ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-            iter_0083_reset()
-            (devlyn / "pipeline.state.json").write_text(
-                json.dumps({"engine": "claude", "phases": {"verify": {}}}), encoding="utf-8",
-            )
-            (devlyn / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
-            (devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
-            if carrier is not None:
-                content = (
-                    json.dumps({"id": "iter-0083", "severity": severity}) + "\n"
-                    if severity
-                    else ""
-                )
-                (devlyn / carrier).write_text(content, encoding="utf-8")
-            if summary_payload is not None:
-                content = (
-                    summary_payload
-                    if isinstance(summary_payload, str)
-                    else json.dumps(summary_payload)
-                )
-                (devlyn / "pair-judge.summary.json").write_text(content, encoding="utf-8")
-            if other_summary is not None:
-                (devlyn / other_summary).write_text(
-                    json.dumps({"verdict": "BLOCKED"}), encoding="utf-8"
-                )
-            if timeout:
-                (devlyn / "verify.pair.timeout.json").write_text(
-                    json.dumps({"engine": "codex", "budget_seconds": 600}),
-                    encoding="utf-8",
-                )
-            case_findings, case_source_verdicts = read_findings(devlyn)
-            return case_findings, write_outputs(devlyn, case_findings, case_source_verdicts)
-
-        for case_id, verdict, severity, expected in (
-            ("P1", "NEEDS_WORK", "INFO", "NEEDS_WORK"),
-            ("P2", "NEEDS_WORK", "LOW", "NEEDS_WORK"),
-            ("P3", "NEEDS_WORK", "MEDIUM", "NEEDS_WORK"),
-            ("P4", "PASS", "HIGH", "NEEDS_WORK"),
-            ("P5", "BLOCKED", "INFO", "BLOCKED"),
-            ("P6", "FAIL", "INFO", "NEEDS_WORK"),
-            ("P7", "PASS", None, "PASS"),
-        ):
-            _, summary = iter_0083_case({"verdict": verdict}, severity)
-            assert summary["source_verdicts"]["pair_judge"] == expected, case_id
-            assert summary["verdict"] == expected, case_id
-
-        for case_id, severity, expected in (
-            ("P8-INFO", "INFO", "PASS"),
-            ("P8-LOW", "LOW", "PASS_WITH_ISSUES"),
-        ):
-            _, summary = iter_0083_case(None, severity)
-            assert summary["source_verdicts"]["pair_judge"] == expected, case_id
-            assert summary["verdict"] == expected, case_id
-
-        def assert_iter_0083_blocked(
-            case_id: str,
-            case_findings: list[dict[str, Any]],
-            summary: dict[str, Any],
-        ) -> None:
-            assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", case_id
-            assert summary["verdict"] == "BLOCKED", case_id
-            assert any(
-                finding.get("source") == "pair_judge"
-                and finding.get("severity") == "CRITICAL"
-                and finding.get("file") == "pair-judge.summary.json"
-                for finding in case_findings
-            ), case_id
-
-        for case_id, payload in (
-            ("N1-malformed", "{"),
-            ("N1-non-object", []),
-            ("N1-unknown", {"verdict": "UNKNOWN"}),
-            ("N2", {}),
-            ("N7", {"verdict": "TIMEOUT"}),
-        ):
-            case_findings, summary = iter_0083_case(payload, "INFO")
-            assert_iter_0083_blocked(case_id, case_findings, summary)
-
-        _, summary = iter_0083_case({"verdict": "BLOCKED"}, None, carrier=None)
-        assert summary["source_verdicts"]["pair_judge"] is None, summary
-        assert summary["verdict"] == "PASS", summary
-
-        _, summary = iter_0083_case(
-            {"verdict": "PASS"},
-            "INFO",
-            other_summary="codex-primary-judge.summary.json",
-        )
-        assert summary["source_verdicts"]["pair_judge"] == "PASS", "N4"
-        assert summary["verdict"] == "PASS", "N4"
-
-        _, summary = iter_0083_case(
-            None,
-            "INFO",
-            other_summary="grok-judge.summary.json",
-        )
-        assert summary["source_verdicts"]["pair_judge"] == "PASS", "N5"
-        assert summary["verdict"] == "PASS", "N5"
-
-        _, summary = iter_0083_case(
-            {"verdict": "NEEDS_WORK"},
-            "INFO",
-            carrier="verify.pair-judge.findings.jsonl",
-        )
-        assert summary["source_verdicts"]["pair_judge"] == "NEEDS_WORK", "N6"
-        assert summary["verdict"] == "NEEDS_WORK", "N6"
-
-        case_findings, summary = iter_0083_case({"verdict": "BLOCKED"}, None, timeout=True)
-        assert case_findings == [], "VERIFY-JUDGE-001"
-        assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", "VERIFY-JUDGE-001"
-        assert summary["verdict"] == "BLOCKED", "VERIFY-JUDGE-001"
     return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--devlyn-dir", default=".devlyn")
-    parser.add_argument("--write-state", action="store_true")
-    parser.add_argument("--self-test", action="store_true")
+    # Publication happens only through the locked, once-per-round collection.
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--write-state", action="store_true")
+    mode.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         return self_test()
@@ -3509,17 +2636,13 @@ def main() -> int:
     if not devlyn.is_dir():
         sys.stderr.write(f"error: {devlyn} is not a directory\n")
         return 1
-    if args.write_state:
-        lock = runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["file_lock"]
-        with lock(devlyn.resolve() / "pipeline.state.lock", blocking=True):
-            findings, source_verdicts = read_findings(devlyn)
-            summary = write_outputs(devlyn, findings, source_verdicts)
-            write_state(devlyn, summary)
-            print(json.dumps(summary, sort_keys=True))
-        return 0
-    findings, source_verdicts = read_findings(devlyn)
-    summary = write_outputs(devlyn, findings, source_verdicts)
-    print(json.dumps(summary, sort_keys=True))
+    lock = runpy.run_path(str(pathlib.Path(__file__).with_name("platform-support.py")))["file_lock"]
+    with lock(devlyn.resolve() / "pipeline.state.lock", blocking=True):
+        collected = collect_judges(devlyn)
+        findings, source_verdicts = read_findings(devlyn, collected)
+        summary = write_outputs(devlyn, findings, source_verdicts, collected)
+        write_state(devlyn, summary, collected)
+        print(json.dumps(summary, sort_keys=True))
     return 0
 
 

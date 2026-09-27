@@ -22,7 +22,7 @@ if [ ! -f "$CODEX_MONITORED_PATH" ]; then
 fi
 ```
 
-**Read-only critique / adversarial review / debate** (`/devlyn:resolve` VERIFY pair-mode, plus any future ideate read-only critique). Codex returns findings on stdout; the orchestrator writes files.
+**Read-only critique / adversarial review / debate** (any future ideate read-only critique; `/devlyn:resolve` VERIFY judges use `verify-judges.py`, which builds this route with `high` primary and `medium` pair effort). Codex returns findings on stdout; the orchestrator writes files.
 
 ```bash
 DEVLYN_CODEX_PROMPT_FILE="<prompt-file>" CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" \
@@ -55,10 +55,6 @@ Notes:
 - `CODEX_MONITORED_ISOLATED=1` — required for bounded read-only critique/probe/judge calls. The wrapper adds `--ignore-user-config --ignore-rules --ephemeral --disable codex_hooks --disable hooks` so user config, AGENTS.md, hooks, and project rules cannot add hidden context, tool calls, or transcript side effects. Do not set it for workspace-write implementation phases.
 - Wrapper calls are **foreground-blocking**. Never launch them via a backgrounded shell (`run_in_background`, `&`, `nohup`) and never end the orchestrator message while one runs: a headless print-mode session kills backgrounded children at wind-down (observed 2026-07-07: an FS1 A-arm IMPLEMENT codex call was killed at turn end → 0-byte delivery). The heartbeat stream is the observability channel; block on the call. Interactive Claude Code caps a foreground Bash call at `BASH_MAX_TIMEOUT_MS` (the installer sets at least 3600000 ms, IMPLEMENT's effective outer ceiling), so every foreground Codex wrapper call must pass the Bash `timeout` explicitly at that ceiling or the phase's own budget (for example, 600s judges) — never rely on the 120 s default.
 - Raw `codex exec ...` invocations are **forbidden** in skill prompts. The benchmark variant arm runs a PATH shim (`scripts/codex-shim/codex`) that transparently re-routes any raw `codex exec` to the wrapper as a safety net, but skills should always emit the wrapper form directly so the orchestrator's first-attempt has the right shape. Two prior iterations (iter-0006 universal foreground ban, iter-0008 prompt-level kill-shape contract) failed because the orchestrator picked starvation-prone shapes (`codex exec ... 2>&1 | tail -200`) from its own pattern prior — the wrapper plus the shim is the runtime binding layer those iters lacked. See `autoresearch/iterations/0009-wrapper-and-hook.md`.
-
-## Constrained Windows judge reads
-
-Codex supports [native Windows sandboxing](https://learn.chatgpt.com/docs/windows/windows-sandbox). A policy-denied read selects a constrained-read route for that judge; it does not establish that Windows lacks sandbox support or denies every read. The orchestrator supplies the complete spec, sibling expected contract, accepted source SHA and cumulative diff, relevant source/tests with file:line locators, and validated sealed MECHANICAL results, manifests and required raw streams inline in the prompt file. Tell the fresh judge: "Judge only the supplied evidence; run no tools. Missing, truncated or unbound inputs require a verdict-binding BLOCKED finding." Keep `-s read-only`, isolation, freshness, selected model/effort, the 600s budget and normal findings/timeout handling. Never widen sandbox permissions or invent evidence to complete the packet.
 
 ## Availability check
 
