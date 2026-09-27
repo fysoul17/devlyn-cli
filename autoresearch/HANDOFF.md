@@ -10,23 +10,23 @@
 2. **Read the contract.** Read 0225 "Plan" and "Confirmation", then the step's row below.
 3. **Allocate a task branch:** `python3 config/skills/_shared/task-complete.py allocate --repo . --task '<id>' --branch 'candidate/<id>' --repository fysoul17/devlyn-cli --remote origin --base main` (move untracked files aside first; allocation needs a clean tree).
 4. **Design, implement, verify.** Astra writes the exact step spec (read-only, isolated, `config/skills/_shared/codex-monitored.sh -m gpt-6-astra -c model_reasoning_effort=ultra`); `gpt-6-sol` implements it (`-s workspace-write`, it cannot write `.agents/`); root mirrors `.agents/skills` and the local `.claude/skills`, runs the checks, and repeats Astra verification until SHIP. Grok 4.7 is an optional counterexample reviewer: pass the diff inline (under ~90 KB), no tools, `--permission-mode dontAsk`.
-5. **Deliver as a PR.** Commit, write the acceptance file (kind `direct`), then `python3 config/skills/_shared/task-complete.py complete --receipt <receipt> --acceptance <file> --mode pr`. Root merges only with the user's authorization (asked 2026-09-27; pending until the user answers).
+5. **Deliver as a PR.** Commit, write the acceptance file (kind `direct`), then `python3 config/skills/_shared/task-complete.py complete --receipt <receipt> --acceptance <file> --mode pr`. Root merges each step PR once Astra verification is SHIP and CI (posix + windows) is green (user decision 2026-09-27: "둘다 오케이").
 6. **Hand off.** In the same PR, update the table and "Next" below.
 
 ## Steps
 
 | # | Scope (0225 "Plan") | Status |
 |---|---|---|
-| 1 | Repair budget owned by the state writer; VERIFY `BLOCKED` no longer repairs; judge path fix (branch `candidate/0225-s1-budget-path`) | this PR |
+| 1 | Repair budget owned by the state writer; VERIFY `BLOCKED` no longer repairs; judge path fix (branch `candidate/0225-s1-budget-path`) | merged (PR #117) |
 | 2 | Scripted VERIFY (renderer, one supervisor starts both judges, one merge call) | pending |
 | — | Replay: 7 archived VERIFY rounds × 2 judges | after step 2 |
 | 3 | One final mechanical gate; SURFACE_CLOSE removed | pending |
 | 4 | Fewer owner turns (no API-discovery reads, no polling, one rendered report) | pending |
 | 5 | Contract-first PLAN; defect-4 executable witnesses | pending |
 | 6 | Claude inline IMPLEMENT (separate arm) | pending |
-| — | Live confirmation: 8 + 2 runs (needs the user's approval to invoke resolve) | pending |
+| — | Live confirmation: 8 + 2 runs (user approved 2026-09-27) | pending |
 
-**Next:** step 2, after the step 1 PR is merged. Open user decisions: approval of the live confirmation runs (0201 rule 5), and root merge authority for 0225 PRs.
+**Next:** step 2 (scripted VERIFY) from main `6fc425f2` or later. Both user decisions are settled (2026-09-27): root merges step PRs after Astra SHIP + green CI, and the live confirmation runs are approved.
 
 Step 1 record (base `62eb2d98` + registration `ec3e1d24`):
 - `rounds.global` now counts repair IMPLEMENT admissions and is written only by `state-phase-write.py`, under `.devlyn/pipeline.state.lock` (`verify-merge-findings.py --write-state` takes the same lock). Admission covers BUILD_GATE FAIL, CLEANUP FAIL, VERIFY NEEDS_WORK and phase-gate FAIL, requires the exact trigger and the next invocation round, and refuses with `BLOCKED:repair-budget-exhausted` when `global >= max_rounds` (default stays 4). The two-strike VERIFY rule and the one-fix phase-gate cap are gone; `verify-exhausted`, `build-gate-exhausted` and `phase-gate-exhausted` are retired. VERIFY exhaustion ends `NEEDS_WORK`; pre-VERIFY exhaustion ends `BLOCKED:repair-budget-exhausted`. VERIFY `BLOCKED` goes to the report without a repair. FINAL_REPORT stores the full terminal verdict; `terminal-claim-check.py` and `archive_run.py` accept it and validate exhaustion witnesses (schema v3 only; older archives classify as before).
@@ -41,6 +41,6 @@ Carried from 0221: the `/devlyn:queue` branch-reconciliation rule is not exercis
 
 - **No token, cost or call budgets** in the harness or in tests. Keep only the watchdog (90 min per task, 10 min per review) and post-hoc usage recording; missing usage is recorded as UNKNOWN, never 0.
 - **Models.** Claude config: `claude-opus-5-5`. Codex config: `gpt-6-astra` owner with `gpt-6-sol` implementation. Light path: `claude-sonnet-5` or `gpt-6-sol`. `grok-4.7` is an optional reviewer only. Do not auto-substitute Fable 5.2+.
-- **No resolve invocation** in research (0201 rule 5, the user's no-resolve instruction) until the user approves 0225's live confirmation. Do not rerun D1. 0185 and D1–D4 are not holdout evidence.
+- **No resolve invocation** in research (0201 rule 5, the user's no-resolve instruction), except 0225's registered live confirmation runs, which the user approved on 2026-09-27. Do not rerun D1. 0185 and D1–D4 are not holdout evidence.
 - **Frozen material.** A16, frozen results and the original WIP stay untouched. Past stop verdicts (0211–0219, 0224) are history, not something to regrade.
 - **User-facing messages** are always in Korean, plain and short: conclusion first, then what the user must decide, then the recommendation.
