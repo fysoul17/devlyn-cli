@@ -12,10 +12,10 @@ import tempfile
 from typing import Any
 
 
-MERGE_CONTRACT = runpy.run_path(pathlib.Path(__file__).with_name("verify-merge-findings.py"))
 PARSER = runpy.run_path(pathlib.Path(__file__).with_name("judge-output-parser.py"))
-VERDICT_RANK = MERGE_CONTRACT["VERDICT_RANK"]
-finding_rank = MERGE_CONTRACT["finding_rank"]
+VERDICT_RANK = PARSER["VERDICT_RANK"]
+finding_rank = PARSER["finding_rank"]
+collect_stdout = PARSER["collect_judge"]
 
 
 def reject_json_constant(token: str) -> None:
@@ -47,30 +47,6 @@ def atomic_write(path: pathlib.Path, text: str) -> None:
         handle.write(text)
         tmp_name = handle.name
     pathlib.Path(tmp_name).replace(path)
-
-
-def collect_text(
-    text: str, source: pathlib.Path
-) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-    findings, summary = PARSER["collect_text"](text, source)
-    if findings and summary is None:
-        raise SystemExit("error: findings without terminal verdict")
-    if summary is not None and summary["verdict"] == "PASS" and any(finding_rank(finding) == 2 for finding in findings):
-        raise SystemExit("error: verdict-binding finding cannot have a PASS verdict")
-    if not findings and (summary is None or summary.get("verdict") != "PASS"):
-        raise SystemExit("error: non-PASS verdict without JSONL findings")
-    return findings, summary
-
-
-def collect_stdout(stdout_path: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-    findings, summary = PARSER["collect_stdout"](stdout_path)
-    if findings and summary is None:
-        raise SystemExit("error: findings without terminal verdict")
-    if summary is not None and summary["verdict"] == "PASS" and any(finding_rank(finding) == 2 for finding in findings):
-        raise SystemExit("error: verdict-binding finding cannot have a PASS verdict")
-    if not findings and (summary is None or summary.get("verdict") != "PASS"):
-        raise SystemExit("error: non-PASS verdict without JSONL findings")
-    return findings, summary
 
 
 def self_test() -> int:

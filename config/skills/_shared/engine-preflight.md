@@ -21,7 +21,7 @@ Worker controls IMPLEMENT, its included code/doc cleanup, and their repair round
 
 Before the first phase, `/devlyn:resolve` freezes resolution with `state-phase-write.py --freeze-roles`; subsequent status/dispatch reads that state instead of mutable config. `state.engine` stays the legacy executor. The resolver rejects statically unsupported selected channel fields before PLAN, and validates adapter names and the existing ASCII `executor: yes|no` / `pair_judge: yes|no` eligibility markers; absent eligibility section means both. Malformed configuration fails with `BLOCKED:invalid-engine-config`.
 
-Before each affected worker/judge, read `role-config.py --state .devlyn/pipeline.state.json --role <role> [--resolved-model <inherited-exact-model>]`. It returns source/channel, requested values and argv additions. Explicit Codex options require current version-matching native model metadata; refresh the native CLI's cache when missing/stale. Explicit Claude judge effort requires the adapter's version/exact-model capability declaration; model-only selection passes the exact ID without that effort declaration and validates the native result. No model/effort fields means unchanged phase defaults. Unknown support fails with `BLOCKED:unsupported-role-option`; no clamp, fallback or invented model identity. Native Agent workers reject unsupported explicit Claude fields without switching to a CLI worker. Show inherited/unknown values honestly; availability is not role fitness.
+Before each affected worker dispatch, read `role-config.py --state .devlyn/pipeline.state.json --role worker [--resolved-model <inherited-exact-model>]`; `verify-judges.py` performs the same validation for both judge seats. It returns source/channel, requested values and argv additions. Explicit Codex options require current version-matching native model metadata; refresh the native CLI's cache when missing/stale. Explicit Claude judge effort requires the adapter's version/exact-model capability declaration; model-only selection passes the exact ID without that effort declaration and validates the native result. A judge effort needs an explicit judge model, so role freeze rejects effort-only judge profiles. No model/effort fields means unchanged phase defaults. Unknown support fails with `BLOCKED:unsupported-role-option`; no clamp, fallback or invented model identity. Native Agent workers reject unsupported explicit Claude fields without switching to a CLI worker. Show inherited/unknown values honestly; availability is not role fitness.
 
 Engine-only adapter routes remain supported according to existing eligibility. New adapters do not automatically gain explicit model/effort mappings. Status reports unavailable pins and unresolved legacy channels without weakening run freeze/dispatch. CLI presence is not authentication. Status never launches a model, changes user configuration or promotes a default.
 
@@ -33,7 +33,7 @@ When a run or phase requires engine `<name>` (claude, codex, omp, or any adapter
 
 Never prompt the user mid-pipeline. Missing engines for explicit routes are BLOCKED states, not silent fallbacks. Missing OTHER engines for automatic escalations are reported solo-skips, not fallbacks — the auto route was never selected.
 
-Per-skill defaults: `/devlyn:resolve` uses Claude for IMPLEMENT when the orchestrator has Claude Code's native Agent primitive; Codex CLI and oh-my-pi orchestrators use their own fresh worker as the default route (Codex child process, omp native `task`) so implementation and independent verification retain structural isolation. PLAN uses the owner context; BUILD_GATE/CLEANUP use owner commands. VERIFY invokes the OTHER engine by default when available unless `--no-pair` was passed. `/devlyn:ideate` defaults to Claude; `--engine` selects the elicitation/normalization adapter, not an automatic cross-model challenge phase. Any future ideate read-only critique must follow `_shared/codex-config.md` isolation rules. Each SKILL.md flag block is source of truth for that skill's default.
+Per-skill defaults: `/devlyn:resolve` uses Claude for IMPLEMENT when the orchestrator has Claude Code's native Agent primitive; Codex CLI and oh-my-pi orchestrators use their own fresh worker as the default route (Codex child process, omp native `task`) so implementation retains structural isolation; VERIFY judges run through `verify-judges.py`, so an oh-my-pi orchestrator selects a claude or codex primary judge (an omp judge seat fails at role freeze with `BLOCKED:judge-route-unsupported:omp`). PLAN uses the owner context; BUILD_GATE/CLEANUP use owner commands. VERIFY invokes the OTHER engine by default when available unless `--no-pair` was passed. `/devlyn:ideate` defaults to Claude; `--engine` selects the elicitation/normalization adapter, not an automatic cross-model challenge phase. Any future ideate read-only critique must follow `_shared/codex-config.md` isolation rules. Each SKILL.md flag block is source of truth for that skill's default.
 
 ## What a skill must report after a BLOCKED engine check
 
@@ -49,13 +49,9 @@ Do not report a downgraded successful run when a required engine is missing.
 
 ## Canonical cross-engine invocations
 
-For native Windows, use native Node/npm and Python (`python3` on PATH), with Git for Windows Bash for the shipped shell wrapper. Supported npm engine shims resolve to native argv; unsupported/malformed shims fail visibly. Deliver multiline prompts from files: Codex uses `DEVLYN_CODEX_PROMPT_FILE` with explicit `-`; Claude uses `run-bounded.py 600 --stdin-file <prompt-file> --record-transport -- claude -p`. Retain generated transport evidence. A policy-denied Codex judge read uses the complete inline no-tools packet in `_shared/codex-config.md#constrained-windows-judge-reads`, keeping read-only isolation and the selected role.
+For native Windows, use native Node/npm and Python (`python3` on PATH), with Git for Windows Bash for the shipped shell wrapper. Supported npm engine shims resolve to native argv; unsupported/malformed shims fail visibly. Deliver multiline prompts from files: Codex uses `DEVLYN_CODEX_PROMPT_FILE` with explicit `-`; Claude uses `run-bounded.py 600 --stdin-file <prompt-file> --record-transport -- claude -p`. Retain generated transport evidence.
 
-After the availability check passes, Codex keeps the monitored `codex-monitored.sh`
-path; every other resolved OTHER engine follows `_shared/adapters/<name>.md`
-`## Invocation`. Capture `.devlyn/<name>-judge.stdout`, then normalize it with
-`collect-codex-findings.py --devlyn-dir "<abs repo>/.devlyn" --stdout-file
-<name>-judge.stdout`. A non-zero collector exit writes no canonical findings:
-the pair source is `BLOCKED` for `verify.pair.emission-contract`, and unparsed
-stdout remains diagnostic-only rather than being merged. On exit 124, the
-timeout marker's `engine` field is the resolved `<name>`.
+VERIFY judges run only through `verify-judges.py`, which scripts the claude and
+codex seats. A judge seat on any other engine stops with
+`BLOCKED:judge-route-unsupported:<engine>`, distinct from
+`BLOCKED:<engine>-unavailable`.

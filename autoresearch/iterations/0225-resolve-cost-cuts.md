@@ -92,6 +92,19 @@ Render packets for the 7 archived VERIFY rounds and run both judges (14 calls). 
 
 If the replay fails, the failure is recorded, step 2 may be revised once, and the replay is repeated on the same 7 rounds. After a second failure, steps 2–5 are held as a bundle, no live comparison of the cuts runs, and only step 1 can ship.
 
+**Replay mechanics** (addendum registered with step 2, frozen before any replay call):
+
+- **Rounds and inputs.** For each of the 7 rounds, materialize a disposable copy of the archived repository (never the archive itself) checked out at that round's HEAD, keeping the archived base commit. Copy the archived criteria and goal byte-exact and check them against the archived state hashes. Copy the round's authorized surface from the archived `plan.md`.
+- **MECHANICAL.** Never rerun it and never reuse a later round's results file. Copy the round's archived VERIFY process-evidence manifest and streams unchanged, and rebuild that round's `spec-verify.results.json` from its manifest with `process-evidence.py`. Historical judge findings are excluded.
+- **Seats.** Use each archived run's frozen role resolution exactly as recorded (engine, model and effort), so the only change is step 2's packet and dispatch: s6-04 and s6-16 run a Claude `claude-opus-5-5` primary and a Codex `gpt-6-astra` pair at `high`; s6-07 runs a Codex `gpt-6-astra` primary at `high` and a Claude `claude-opus-5-5` pair.
+- **Run.** Each round is one `verify-judges.py` call on a synthesized open VERIFY span. Before the first call, freeze a manifest with the full SHAs, the candidate commit, the CLI versions and the per-round snapshot hash.
+- **Retained outputs.** Keep the dispatch records, prompts, argv, transport carriers (outcome and timing), native usage, raw and parsed judge output, and merged findings. Missing usage is UNKNOWN, and a PARTIAL total is a lower bound.
+- **Pass rules.**
+  - A binding HIGH counts as retained when the same defect appears as an authenticated binding HIGH/CRITICAL in either seat's merged findings, whatever its wording or ID.
+  - Zero input `BLOCKED`s.
+  - Every round overlaps: the earlier `ended_at` of the two transport carriers is later than the later `started_at`.
+  - Artifact integrity is checked by inventorying the original archives before and after the replay as sorted `[relative_path, bytes, sha256]` lists, which must match byte for byte.
+
 ### Live
 
 Live runs start only after the user approves invoking resolve (0201 rule 5 still holds). Approving comparison runs is not merge approval.

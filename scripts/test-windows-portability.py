@@ -1824,7 +1824,7 @@ if (process.env.DEVLYN_TEST_LEAF) {
 } else {
  const chunks = [];
  process.stdin.on('data', data => chunks.push(data));
- process.stdin.on('end', () => {
+ process.stdin.on('end', () => setTimeout(() => {
   const data = Buffer.concat(chunks);
   fs.writeFileSync(process.env.DEVLYN_TEST_SEEN, JSON.stringify({argv:a, stdin:data.toString('hex')}));
   if (a.includes('read-only')) {
@@ -1834,7 +1834,8 @@ if (process.env.DEVLYN_TEST_LEAF) {
   } else if (a.includes('--output-format')) {
    console.log(JSON.stringify({type:'result',subtype:'success',is_error:false,stop_reason:'end_turn',session_id:'fixture-claude',result:'PASS',modelUsage:{'fixture-claude-model':{}}}));
   } else console.log(JSON.stringify({type:'fixture'}));
- });
+  process.exitCode = Number(process.env.DEVLYN_TEST_EXIT || 0);
+ }, Number(process.env.DEVLYN_TEST_DELAY_MS || 0)));
 }
 """
         for engine, package in [('codex', '@openai/codex'), ('claude', '@anthropic-ai/claude-code')]:
@@ -2051,6 +2052,89 @@ assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work
                 with self.assertRaises((ValueError, OSError)):
                     judge['authenticate'](self.devlyn, state, selected)
                 path.write_bytes(original)
+
+    def verify_run(self):
+        role = helper('role-config')
+        work = Path(tempfile.mkdtemp(dir=self.root, prefix='verify 한글 ')).resolve()
+        devlyn = work / '.devlyn'; devlyn.mkdir()
+        git = lambda *args: run(['git', '-c', 'user.name=f', '-c', 'user.email=f@example.com', *args],
+                                cwd=work, env=self.env).stdout.decode().strip()
+        git('init', '-q')
+        # Exact bytes: text mode would write CRLF on Windows and break the recorded spec hash.
+        for name, raw in (('.gitignore', b'.devlyn/\n'), ('spec.md', b'# Spec\n'), ('app.py', b'a\n')):
+            (work / name).write_bytes(raw)
+        git('add', '.'); git('commit', '-qm', 'base'); base = git('rev-parse', 'HEAD')
+        (work / 'app.py').write_bytes(b'b\n'); git('commit', '-qam', 'change')
+        codex_home = work / 'codex-home'; codex_home.mkdir()
+        (codex_home / 'models_cache.json').write_text(json.dumps({'client_version': '1.2.3', 'models': [
+            {'slug': 'fixture-model', 'supported_reasoning_levels': [{'effort': 'high'}]}]}), encoding='utf-8')
+        (devlyn / 'engines.json').write_bytes(role['encoded']({'roles': {
+            'primary_judge': {'engine': 'claude', 'model': 'fixture-claude-model'},
+            'pair_judge': {'engine': 'codex', 'model': 'fixture-model', 'effort': 'high'}}}))
+        (devlyn / 'plan.md').write_bytes(b'<!-- devlyn:authorized-surface -->\n## Files\n```json\n{"authorized_surface": ["app.py"]}\n```\n')
+        (devlyn / 'verify-mechanical.findings.jsonl').write_bytes(b'')
+        (devlyn / 'spec-verify.results.json').write_bytes(b'{"commands": [], "process_evidence": null}\n')
+        resolution = role['resolve'](work, 'claude', available=lambda engine: True)
+        state = {'version': '3.0', 'run_id': 'rs-native-verify', 'engine': 'claude', 'mode': 'spec', 'base_ref': {'sha': base},
+                 'source': {'type': 'spec', 'spec_path': 'spec.md', 'spec_sha256': hashlib.sha256(b'# Spec\n').hexdigest()},
+                 'risk_profile': {'high_risk': False, 'risk_probes_enabled': False, 'pair_default_enabled': True, 'reasons': []},
+                 'rounds': {'global': 0, 'max_rounds': 2}, 'role_resolution': resolution, 'verify': {'coverage_failed': False, 'pair_trigger': None},
+                 'phases': {'verify': {'engine': 'claude', 'round': 0, 'started_at': '2026-09-27T00:00:00Z', 'completed_at': None, 'verdict': None, 'sub_verdicts': None}}}
+        (devlyn / 'pipeline.state.json').write_bytes(role['encoded'](state))
+        env = {k: v for k, v in self.env.items() if not k.startswith('CODEX_MONITORED_')}
+        env['CODEX_HOME'] = str(codex_home)
+        return work, devlyn, env
+
+    def carriers(self, devlyn):
+        receipt = helper('invocation-receipt')
+        return {engine: receipt['read_receipt'](devlyn / f'{engine}-judge.r0.prompt.transport.json') for engine in ('claude', 'codex')}
+
+    def seats(self, devlyn):
+        """Diagnostics for a failed native VERIFY run: merged findings plus each seat's captures."""
+        names = ['verify-merged.findings.jsonl'] + [f'{e}-judge.r0{s}' for e in ('claude', 'codex')
+                                                   for s in ('.stderr', '.stdout', '.output.json')]
+        return {name: (devlyn / name).read_text(encoding='utf-8', errors='replace')[-2000:]
+                for name in names if (devlyn / name).exists()}
+
+    def test_verify_supervisor_runs_both_native_seats(self):
+        work, devlyn, env = self.verify_run()
+        result = run([sys.executable, self.shared / 'verify-judges.py', '--devlyn-dir', devlyn], cwd=work, env=env, timeout=180)
+        summary = json.loads(result.stdout)
+        self.assertEqual(summary['verdict'], 'PASS', (result.stderr, self.seats(devlyn)))
+        saved = helper('role-config')['loads']((devlyn / 'pipeline.state.json').read_bytes())['phases']['verify']
+        self.assertEqual(set(saved['role_evidence']), {'primary_judge', 'pair_judge'})
+        render = helper('phase-prompt-render')
+        frames = [render['prompt_frames']((devlyn / f'{engine}-judge.r0.prompt').read_bytes()) for engine in ('claude', 'codex')]
+        self.assertEqual(frames[0]['snapshot'], frames[1]['snapshot'])
+        carriers = self.carriers(devlyn)
+        self.assertEqual({record['outcome'] for record in carriers.values()}, {'exited'})
+        self.assertEqual(carriers['claude']['command'][:2], ['claude', '-p'])
+        if os.name == 'nt':
+            self.assertNotEqual(carriers['claude']['argv'][0], 'claude')  # npm shim resolved to native node
+        print('verify supervisor ran both native seats: ' + json.dumps({e: c['argv'][:2] for e, c in carriers.items()}, ensure_ascii=False), flush=True)
+
+    def test_verify_supervisor_native_timeout_and_own_124(self):
+        work, devlyn, env = self.verify_run()
+        env['DEVLYN_TEST_EXIT'] = '124'
+        result = run([sys.executable, self.shared / 'verify-judges.py', '--devlyn-dir', devlyn], cwd=work, env=env, timeout=180)
+        self.assertEqual(json.loads(result.stdout)['source_verdicts'], {'mechanical': 'PASS', 'judge': 'BLOCKED', 'pair_judge': 'BLOCKED'},
+                         (result.stderr, self.seats(devlyn)))
+        self.assertEqual(sorted(p.name for p in devlyn.glob('*.transport.json')),
+                         ['claude-judge.r0.prompt.transport.json', 'codex-judge.r0.prompt.transport.json'], self.seats(devlyn))
+        self.assertEqual({(c['outcome'], c['exit_code']) for c in self.carriers(devlyn).values()}, {('exited', 124)})
+        work, devlyn, env = self.verify_run()
+        judges = helper('verify-judges')['run'].__globals__  # runpy returns a copy; patch the live globals
+        original = judges['launch_argv']
+        judges['launch_argv'] = lambda d, entry: (([a if a != '600' else '2' for a in original(d, entry)[0]], {})
+                                                  if entry['engine'] == 'claude' else original(d, entry))
+        env['DEVLYN_TEST_DELAY_MS'] = '8000'
+        with patch.dict(os.environ, env, clear=True), contextlib.redirect_stdout(open(os.devnull, 'w')):
+            judges['run'](devlyn)
+        carriers = self.carriers(devlyn)
+        self.assertEqual((carriers['claude']['outcome'], carriers['codex']['outcome']), ('timed_out', 'exited'))
+        summary = json.loads((devlyn / 'verify-merge.summary.json').read_text(encoding='utf-8'))
+        self.assertEqual(summary['source_verdicts']['judge'], 'BLOCKED')
+        print('verify supervisor native timeout and child 124 kept distinct', flush=True)
 
     def test_git_bash_timeout_stops_native_node_and_python(self):
         leaf = self.work / 'leaf.py'

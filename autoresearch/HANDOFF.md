@@ -18,22 +18,26 @@
 | # | Scope (0225 "Plan") | Status |
 |---|---|---|
 | 1 | Repair budget owned by the state writer; VERIFY `BLOCKED` no longer repairs; judge path fix (branch `candidate/0225-s1-budget-path`) | merged (PR #117) |
-| 2 | Scripted VERIFY (renderer, one supervisor starts both judges, one merge call) | pending |
-| — | Replay: 7 archived VERIFY rounds × 2 judges | after step 2 |
+| 2 | Scripted VERIFY (renderer, one supervisor starts both judges, one merge call) (branch `candidate/0225-s2-scripted-verify`) | done (Astra SHIP) |
+| — | Replay: 7 archived VERIFY rounds × 2 judges (mechanics registered in 0225 "Replay mechanics") | next |
 | 3 | One final mechanical gate; SURFACE_CLOSE removed | pending |
 | 4 | Fewer owner turns (no API-discovery reads, no polling, one rendered report) | pending |
 | 5 | Contract-first PLAN; defect-4 executable witnesses | pending |
 | 6 | Claude inline IMPLEMENT (separate arm) | pending |
 | — | Live confirmation: 8 + 2 runs (user approved 2026-09-27) | pending |
 
-**Next:** step 2 (scripted VERIFY) from main `6fc425f2` or later. Both user decisions are settled (2026-09-27): root merges step PRs after Astra SHIP + green CI, and the live confirmation runs are approved.
+**Next:** the registered replay, from main with step 2 merged. Build the replay driver outside the product (materialize each archived round in a disposable copy, rebuild its results file from its own manifest, synthesize an open VERIFY span with the archived role resolution), freeze its input manifest, then make the 14 judge calls with `verify-judges.py`, one call per round. Score against 0225 "Replay" and "Replay mechanics". The replay invokes judges directly, not `/devlyn:resolve`. If it passes, continue with step 3.
 
-Step 1 record (base `62eb2d98` + registration `ec3e1d24`):
-- `rounds.global` now counts repair IMPLEMENT admissions and is written only by `state-phase-write.py`, under `.devlyn/pipeline.state.lock` (`verify-merge-findings.py --write-state` takes the same lock). Admission covers BUILD_GATE FAIL, CLEANUP FAIL, VERIFY NEEDS_WORK and phase-gate FAIL, requires the exact trigger and the next invocation round, and refuses with `BLOCKED:repair-budget-exhausted` when `global >= max_rounds` (default stays 4). The two-strike VERIFY rule and the one-fix phase-gate cap are gone; `verify-exhausted`, `build-gate-exhausted` and `phase-gate-exhausted` are retired. VERIFY exhaustion ends `NEEDS_WORK`; pre-VERIFY exhaustion ends `BLOCKED:repair-budget-exhausted`. VERIFY `BLOCKED` goes to the report without a repair. FINAL_REPORT stores the full terminal verdict; `terminal-claim-check.py` and `archive_run.py` accept it and validate exhaustion witnesses (schema v3 only; older archives classify as before).
-- `judge-role-evidence.py:103` compares resolved paths, so a relative `--devlyn-dir` no longer BLOCKs Claude judges.
-- Process: Astra spec (after root draft REVISE ×4) → sol implementation → Astra verification R1 REVISE (6) → R2 REVISE (2) → R3 REVISE (2 + one subtraction) → R4 REVISE (1) → R5 SHIP (1,060 admission assertions, 142 checker cases, 192 extra checks).
-- Checks: self-tests of state-phase-write, terminal-claim-check, judge-role-evidence, verify-merge-findings, resolve-bootstrap, spec-verify-check and archive_run; `scripts/test-owner-phases.py` (12); `scripts/lint-skills.sh` All checks passed; `git diff --check`; `.agents/skills` parity.
-- Open: no saving is claimed for step 1. The owner lock for hand-edited `exec` metadata is a documented contract, not script-enforced.
+Step 1 (PR #117): the state writer owns the repair budget (`rounds.global` admissions under the state lock, `BLOCKED:repair-budget-exhausted`); VERIFY `BLOCKED` goes to the report without repair; relative `--devlyn-dir` judge paths resolve. No saving claimed.
+
+Step 2 record (base `366d837a`; design `.devlyn/0225/s2-design.md`, spec `s2-spec-astra.out.md` amended by `s2-spec-r1-astra.out.md`):
+- The owner runs MECHANICAL, then one foreground command, `verify-judges.py`. It claims the round by exclusively creating `.devlyn/verify-judge.r<N>.dispatch.json`, routes each seat from the frozen roles, and renders both prompts from one hash-checked snapshot with `phase-prompt-render.py` (contract, goal, sibling expected, authorized surface, diff, sealed MECHANICAL results). It starts both judges before waiting on either (Claude `claude -p` under `run-bounded.py 600`, Codex isolated read-only `codex-monitored.sh`), writes role evidence for each successful seat, and ends with the single `verify-merge-findings.py --write-state` call.
+- The merge runs once per round, under the lock. It validates the dispatch record against the span and the frozen selection, publishes `pair_trigger`, authorizes every seat's runner-written transport (v2: `outcome`, `started_at`, `ended_at`, `elapsed_ms`), and regenerates the findings files from authenticated output. Each seat is floored at its own terminal verdict; a primary timeout is BLOCKED and a pair timeout with no findings is TIMEOUT. It seals seats that did not exit 0 in `phases.verify.executions`.
+- Deleted: owner-written judge packets and launch recipes, the no-tools Windows packet route, the judge-side contract re-hash, orchestration prose in `verify.md`, pair-reason completeness, both timeout marker files, stdout-versus-findings reconciliation, the evidence CLI, and the streaming-capture classifier.
+- Behavior changes: unconfigured Claude primary judges run through the CLI, not a native Agent. Grok/omp judge seats and effort-only judge profiles fail at role freeze (`BLOCKED:judge-route-unsupported:<engine>` / `unsupported-role-option`). Judges get no owner focus text; the replay tests the recall risk. The replay addendum was registered in 0225.
+- Process: Astra design review R0 REVISE → spec → root counters C1–C6 (C1 synthesized, C2–C6 adopted) → root implementation → Astra verification R1 REVISE (8) → R2 (7) → R3 (7; the root cause was re-merge, fixed by one merge per round) → R4 (3) → R5 SHIP. A Claude adversarial review confirmed 12 of 15 claims, and every non-duplicate was fixed.
+- Checks: self-tests of verify-judges (stub end-to-end), verify-merge-findings, judge-role-evidence, phase-prompt-render, invocation-receipt, role-config, state-phase-write, archive_run, resolve-bootstrap, collect-codex-findings and terminal-claim-check; r-weld collector contract; `scripts/lint-skills.sh` All checks passed; the packed `scripts/test-windows-portability.py` on POSIX (63 tests); `git diff --check`; `.agents`/`.claude` parity. Native Windows runs only in CI.
+- Open: no saving claimed. Pre-existing and untouched: pyflakes reports an undefined `prior_results` in `state-phase-write.py` self-test code.
 
 Carried from 0221: the `/devlyn:queue` branch-reconciliation rule is not exercised by a model-driven drain; a null `autoMergeRequest` does not prove merge-queue removal; the slim+orphan instruction add-back (0223) is an open user decision.
 

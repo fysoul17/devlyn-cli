@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Parse the one permitted pair-JUDGE stdout emission contract."""
+"""Parse the one permitted VERIFY judge stdout emission contract."""
 
 from __future__ import annotations
 
@@ -17,6 +17,25 @@ NARRATIVE_PREAMBLE_BYTES = frozenset(
     b"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz|}~"
 ) | frozenset(range(0x80, 0x100))
 STREAM_RECORD_TYPES = {"system", "assistant", "user", "result"}
+VERDICT_RANK = {
+    "PASS": 0,
+    "TIMEOUT": 0,
+    "PASS_WITH_ISSUES": 1,
+    "FAIL": 2,
+    "NEEDS_WORK": 2,
+    "BLOCKED": 3,
+}
+
+
+def finding_rank(finding: dict[str, Any]) -> int:
+    severity = str(finding.get("severity") or "").upper()
+    if severity in {"CRITICAL", "HIGH"}:
+        return 2
+    if severity == "MEDIUM" and finding.get("verdict_binding") is True:
+        return 2
+    if severity in {"LOW", "MEDIUM"}:
+        return 1
+    return 0
 
 
 def reject_json_constant(token: str) -> None:
@@ -198,3 +217,19 @@ def collect_stdout(stdout_path: pathlib.Path) -> tuple[list[dict[str, Any]], dic
     if stream is not None:
         return stream
     return collect_text(stdout_text, stdout_path)
+
+
+def collect_judge(stdout_path: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    return judge_findings(*collect_stdout(stdout_path))
+
+
+def judge_findings(
+    findings: list[dict[str, Any]], summary: dict[str, Any] | None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if findings and summary is None:
+        raise SystemExit("error: findings without terminal verdict")
+    if summary is not None and summary["verdict"] == "PASS" and any(finding_rank(finding) == 2 for finding in findings):
+        raise SystemExit("error: verdict-binding finding cannot have a PASS verdict")
+    if not findings and (summary is None or summary.get("verdict") != "PASS"):
+        raise SystemExit("error: non-PASS verdict without JSONL findings")
+    return findings, summary

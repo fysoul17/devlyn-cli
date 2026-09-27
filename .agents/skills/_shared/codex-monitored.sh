@@ -260,8 +260,34 @@ cleanup() {
   [ -z "$TIMEOUT_FLAG" ] || rm -f "$TIMEOUT_FLAG"
 }
 
-trap 'forward_signal TERM; exit 143' TERM
-trap 'forward_signal INT; exit 130' INT
+now_ms() {
+  python3 -c 'import time; print(time.time_ns() // 1000000)'
+}
+
+complete_transport() {
+  if [ -n "$RECEIPT_ENABLED" ] || [ -n "${DEVLYN_CODEX_PROMPT_FILE:-}" ]; then
+    python3 "$RECEIPT_HELPER" complete-dispatch --exit-code "$1" --outcome "$2" \
+      --started-ms "$STARTED_MS" --ended-ms "$3"
+  fi
+}
+
+# A handled signal reaps codex's whole group (the normal-exit path does the
+# same) before recording the cancelled outcome.
+on_signal() {
+  local sig="$1" code="$2" ended
+  ended=$(now_ms)
+  forward_signal "$sig"
+  if [ -n "${CODEX_PID:-}" ]; then
+    terminate_process_group "$CODEX_PID" "signal"
+    wait "$CODEX_PID" 2>/dev/null || true
+    CODEX_PID=""
+    complete_transport "$code" cancelled "$ended" || true
+  fi
+  exit "$code"
+}
+
+trap 'on_signal TERM 143' TERM
+trap 'on_signal INT 130' INT
 trap cleanup EXIT
 
 printf '[codex-monitored] start: ts=%s heartbeat=%ds timeout=%ss bin=%s\n' \
@@ -278,6 +304,7 @@ if [ "${OS:-}" = Windows_NT ]; then
 fi
 
 # The dispatcher snapshots file input, seals actual argv, then execs in this group.
+STARTED_MS=$(now_ms)
 set -m
 python3 "$RECEIPT_HELPER" dispatch --binary "$CODEX_BIN" \
   --timeout "$TIMEOUT_SEC" --heartbeat "$HEARTBEAT_SEC" -- "${CODEX_ARGS[@]}" < /dev/null &
@@ -297,16 +324,17 @@ set +m
 
 wait "$CODEX_PID"
 EXIT=$?
+ENDED_MS=$(now_ms)
 terminate_process_group "$CODEX_PID" "post-exit-descendants"
 CODEX_PID=""
 forward_signal TERM
+OUTCOME=exited
 if [ -n "$TIMEOUT_FLAG" ] && [ -f "$TIMEOUT_FLAG" ]; then
   EXIT=124
+  OUTCOME=timed_out
 fi
 
-if [ -n "$RECEIPT_ENABLED" ] || [ -n "${DEVLYN_CODEX_PROMPT_FILE:-}" ]; then
-  python3 "$RECEIPT_HELPER" complete-dispatch --exit-code "$EXIT" || exit 64
-fi
+complete_transport "$EXIT" "$OUTCOME" "$ENDED_MS" || exit 64
 
 printf '[codex-monitored] codex exited: code=%d elapsed=%ds\n' \
   "$EXIT" $(( $(date +%s) - START )) >&2
