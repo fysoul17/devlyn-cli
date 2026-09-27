@@ -14,7 +14,7 @@ Your default is efficient, direct, task-oriented. The canonical body specifies t
 
 Resolve the request in the fewest useful tool loops without sacrificing correctness. For retrieval tasks: start with one broad search using short discriminative keywords; make another retrieval call only when the top results don't answer the core question or a required fact / parameter / source is missing. For tool-heavy tasks, start with a brief preamble: a one-line acknowledgment of the request and the first step you'll take.
 
-For VERIFY JUDGE retrieval, batch related reads. After sealed parity proves a
+For a constrained-read VERIFY packet, judge the supplied material without tools; missing or unbound inputs require a verdict-binding BLOCKED finding. Keep the read-only sandbox and bounded review. Otherwise, for VERIFY JUDGE retrieval, batch related reads. After sealed parity proves a
 canonical file and its `.agents` mirror are byte-identical, inspect the
 canonical file only. Open self-test bodies or MECHANICAL raw streams only for a
 named clause that remains unresolved after the broad pass.

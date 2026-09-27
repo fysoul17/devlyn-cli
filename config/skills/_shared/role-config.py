@@ -117,14 +117,13 @@ def read_config(path, *, run=False, optional=False, shared=SHARED):
     return value, {"path": str(path.resolve()), "sha256": digest(raw)}
 
 
-JUDGE_ROUTES = ("claude", "codex")
-
-
-def channel(engine, role):
+def channel(engine, role, explicit=False):
     if engine == "codex":
         return "codex-monitored" if role == "worker" else "codex-monitored-isolated"
     if engine == "claude":
-        return "native-Agent" if role == "worker" else "claude-CLI"
+        if role == "worker":
+            return "native-Agent"
+        return "claude-CLI" if explicit or role == "pair_judge" else "inherited/adapter-defined"
     return "adapter"
 
 
@@ -160,29 +159,16 @@ def resolve(work, default_engine, *, flag_engine=None, run_input=None, no_pair=F
             continue
         selected[role] = {"engine": entry["engine"], "model_requested": entry.get("model"),
                           "effort_requested": entry.get("effort"), "source": origin,
-                          "channel": channel(entry["engine"], role)}
+                          "channel": channel(entry["engine"], role, any(field in entry for field in ("model", "effort")))}
         if role != "pair_judge" or not no_pair:
             validate_channel(selected[role], role)
     primary = selected["primary_judge"]["engine"]
     adapter(primary, judge=True, shared=shared)
-    # verify-judges.py scripts only these seats and cannot learn a judge's inherited model;
-    # fail at freeze, before any phase runs.
-    for role in ("primary_judge", "pair_judge"):
-        entry = selected.get(role, {})
-        if for_status or (role == "pair_judge" and no_pair):
-            continue
-        if entry.get("engine") not in (None, *JUDGE_ROUTES):
-            fail(f"{role}/{entry['engine']}: no scripted VERIFY judge route; select claude or codex for this seat",
-                 f"judge-route-unsupported:{entry['engine']}")
-        if entry.get("effort_requested") and not entry.get("model_requested"):
-            fail(f"{role}/{entry['engine']}: a judge effort needs an explicit judge model to validate against",
-                 "unsupported-role-option")
     if not no_pair and "pair_judge" in selected and selected["pair_judge"]["engine"] == primary:
         fail("explicit pair_judge must be a different engine from primary_judge")
     if "pair_judge" not in selected:
         choices = project.get("pair_judge_priority", ["codex" if primary == "claude" else "claude"])
-        other = next((engine for engine in choices if engine != primary and engine in JUDGE_ROUTES
-                      and available(engine)), None)
+        other = next((engine for engine in choices if engine != primary and available(engine)), None)
         if other:
             adapter(other, judge=True, shared=shared)
         elif not no_pair and "pair_judge_priority" in project:
@@ -368,25 +354,8 @@ def self_test():
         path = work / ".devlyn/engines.json"
         base = resolve(work, "codex", available=lambda e: True)
         assert [base["roles"][r]["engine"] for r in ROLES] == ["codex", "codex", "claude"]
-        assert resolve(work, "claude", available=lambda e: True)["roles"]["primary_judge"]["channel"] == "claude-CLI"
-        # An omp orchestrator's default judge, or a grok pair pin, stops at freeze rather than after every phase.
-        for kwargs in ({"default_engine": "omp"}, {"default_engine": "claude", "run_input": {
-                "value": {"roles": {"pair_judge": {"engine": "grok"}}}, "path": "fixture", "sha256": "fixture"}}):
-            default = kwargs.pop("default_engine")
-            try:
-                resolve(work, default, available=lambda e: True, **kwargs)
-            except ValueError as exc:
-                assert "judge-route-unsupported" in str(exc), exc
-            else:
-                raise AssertionError("an unscripted judge seat survived role freeze")
-        assert resolve(work, "omp", available=lambda e: True, for_status=True)["roles"]["primary_judge"]["engine"] == "omp"
-        try:
-            resolve(work, "claude", available=lambda e: True, run_input={
-                "value": {"roles": {"primary_judge": {"engine": "claude", "effort": "high"}}}, "path": "fixture", "sha256": "fixture"})
-        except ValueError as exc:
-            assert "unsupported-role-option" in str(exc), exc
-        else:
-            raise AssertionError("an effort-only judge profile survived role freeze")
+        assert resolve(work, "claude", available=lambda e: True)["roles"]["primary_judge"]["channel"] == "inherited/adapter-defined"
+        assert channel("claude", "primary_judge", explicit=True) == "claude-CLI"
         for role, engine in (("worker", "claude"), ("pair_judge", "grok")):
             unsupported = {"value": {"roles": {role: {"engine": engine, "model": "fixture-model"}}}, "path": "fixture", "sha256": "fixture"}
             try:
