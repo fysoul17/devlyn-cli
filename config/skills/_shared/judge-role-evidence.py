@@ -78,25 +78,25 @@ def native_executable(command, actual, windows=os.name == "nt"):
         return actual == command
     if actual[len(actual) - len(command) + 1:] != command[1:]:
         return False
-    named = Path(command[0])
-    engine, suffix, explicit = named.stem.lower(), named.suffix.lower(), named.parent != Path(".")
+    directory, name = os.path.split(command[0])  # As shutil.which splits it: `./codex.exe` names a path.
+    engine, suffix = Path(name).stem.lower(), Path(name).suffix.lower()
     if len(actual) == len(command):
         executable = Path(actual[0])
         if executable.suffix.lower() not in {".exe", ".com"} or executable.stem.lower() != engine:
             return False
-        if not explicit:
+        if not directory:
             return True  # A bare name resolves through the dispatch-time PATH.
-        if suffix:
-            return str(executable).lower() == str(named).lower()
-        return str(executable.with_suffix("")).lower() == str(named).lower()
+        found, resolved = os.path.split(actual[0])
+        return found == directory and (resolved == name if suffix else Path(resolved).stem == name)
     package = {"claude": "@anthropic-ai/claude-code", "codex": "@openai/codex"}.get(engine)
     if (package is None or suffix not in {"", ".cmd"} or len(actual) != len(command) + 1
             or Path(actual[0]).name.lower() != "node.exe" or Path(actual[1]).suffix not in {".js", ".cjs", ".mjs"}):
         return False
     script = Path(actual[1])
     root = None
-    if explicit:
-        root = (named.parent.parent if named.parent.name == ".bin" else named.parent / "node_modules") / package
+    if directory:
+        shims = Path(directory)
+        root = (shims.parent if shims.name == ".bin" else shims / "node_modules") / package
     for folder in script.parents:
         try:
             manifest = loads((folder / "package.json").read_bytes())
@@ -341,7 +341,7 @@ def self_test():
         original_carrier = codex_carrier.read_bytes()
         alias_command = ["codex", "exec", *isolation, *alias_argv[2:]]
         codex_carrier.write_bytes(encoded({**loads(original_carrier), "command": alias_command, "argv": native(alias_command)}))
-        (devlyn / "codex-judge.r0.stderr").write_text(alias_header, encoding="utf-8")
+        (devlyn / "codex-judge.r0.stderr").write_bytes(alias_header.encode())
         receipt, _ = describe(devlyn, state, "pair_judge", 0)
         assert receipt["artifacts"]["argv"]["sha256"] == digest(encoded(alias_argv))
         assert (devlyn / "codex-judge.r0.stderr").read_text(encoding="utf-8") == alias_header
@@ -389,6 +389,10 @@ def self_test():
                 ("C:/authorized/codex.exe", ["C:/authorized/codex.com"], False),
                 ("C:/authorized/codex.exe", ["C:/authorized/codex.bat"], False),
                 ("C:/authorized/codex.exe", ["node.exe", str(nested / "bin" / "codex.js")], False),
+                ("./codex.exe", ["./codex.exe"], True),
+                ("./codex.exe", ["codex.exe"], False),
+                ("./codex.exe", ["C:/substituted/codex.exe"], False),
+                ("./codex.exe", ["C:/substituted/codex.com"], False),
                 ("C:/authorized/codex", ["C:/authorized/codex.EXE"], True),
                 ("codex", ["node.exe", str(nested / "bin" / "codex.js")], True),
                 (str(shims / "codex.cmd"), ["node.exe", str(nested / "bin" / "codex.js")], True),
