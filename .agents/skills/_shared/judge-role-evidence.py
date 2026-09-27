@@ -69,31 +69,39 @@ def codex_header(stderr):
 def native_executable(command, actual, windows=os.name == "nt"):
     """Whether `actual` is what platform-support.native_argv makes of `command`, checked without PATH.
 
-    POSIX runs the command unchanged; Windows runs the resolved executable itself or, for an npm
-    shim, node.exe with the entry that the engine package's own manifest declares.
+    POSIX runs the command unchanged. Windows runs an .exe/.com of the same name (at the named path
+    when the command gives one) or, for an npm shim, node.exe with the entry that the engine
+    package's own manifest declares.
     """
     if not windows:
         return actual == command
     if actual[len(actual) - len(command) + 1:] != command[1:]:
         return False
-    engine = Path(command[0]).stem.lower()
+    authorized = Path(command[0])
+    engine = authorized.stem.lower()
     if len(actual) == len(command):
-        return Path(actual[0]).stem.lower() == engine
+        executable = Path(actual[0])
+        if executable.suffix.lower() not in {".exe", ".com"} or executable.stem.lower() != engine:
+            return False
+        if authorized.parent == Path("."):
+            return True  # A bare name resolves through the dispatch-time PATH.
+        named = authorized.with_suffix("") if authorized.suffix.lower() in {".exe", ".com"} else authorized
+        return str(executable.with_suffix("")).lower() == str(named).lower()
     package = {"claude": "@anthropic-ai/claude-code", "codex": "@openai/codex"}.get(engine)
     script = Path(actual[1]) if len(actual) == len(command) + 1 else None
     if package is None or script is None or Path(actual[0]).name.lower() != "node.exe" \
             or script.suffix not in {".js", ".cjs", ".mjs"}:
         return False
     for folder in script.parents:
-        if (folder / "package.json").is_file():
-            try:
-                manifest = loads((folder / "package.json").read_bytes())
-            except ValueError:
-                return False
-            entry = manifest.get("bin") if isinstance(manifest, dict) else None
-            entry = entry.get(engine) if isinstance(entry, dict) else entry
-            return (manifest.get("name") == package and isinstance(entry, str)
-                    and (folder / entry).resolve() == script.resolve())
+        try:
+            manifest = loads((folder / "package.json").read_bytes())
+        except (OSError, ValueError):
+            continue  # No manifest here, or a nested non-package one.
+        if not isinstance(manifest, dict) or manifest.get("name") != package:
+            continue
+        entry = manifest.get("bin")
+        entry = entry.get(engine) if isinstance(entry, dict) else entry
+        return isinstance(entry, str) and (folder / entry).resolve() == script.resolve()
     return False
 
 
@@ -357,6 +365,14 @@ def self_test():
         command = ["claude", "-p", "--model", "m"]
         assert native_executable(command, list(command), windows=False)
         assert not native_executable(command, ["not-claude", *command[1:]], windows=False)
+        nested = Path(temp) / "nested"; (nested / "bin").mkdir(parents=True)
+        (nested / "package.json").write_bytes(encoded({"name": "@openai/codex", "bin": {"codex": "bin/codex.js"}}))
+        (nested / "bin" / "package.json").write_bytes(encoded({"type": "module"})); (nested / "bin" / "codex.js").write_bytes(b"")
+        explicit = ["C:/authorized/codex.exe", "exec", "-"]
+        for actual, accepted in ((["C:/authorized/codex.exe", "exec", "-"], True), (["C:/substituted/codex.exe", "exec", "-"], False),
+                                 (["C:/authorized/codex.bat", "exec", "-"], False),
+                                 (["node.exe", str(nested / "bin" / "codex.js"), "exec", "-"], True)):
+            assert native_executable(explicit if actual[0] != "node.exe" else ["codex", "exec", "-"], actual, windows=True) is accepted, actual
         for actual, accepted in ((["node.exe", str(package / "cli.js"), *command[1:]], True),
                                  (["claude.exe", *command[1:]], True), (["not-claude.exe", *command[1:]], False),
                                  (["python.exe", str(package / "cli.js"), *command[1:]], False),
