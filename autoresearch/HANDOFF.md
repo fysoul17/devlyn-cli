@@ -19,18 +19,22 @@
 |---|---|---|
 | 1 | Repair budget owned by the state writer; VERIFY `BLOCKED` no longer repairs; judge path fix (branch `candidate/0225-s1-budget-path`) | merged (PR #117) |
 | 2 | Scripted VERIFY (renderer, one supervisor starts both judges, one merge call) (branch `candidate/0225-s2-scripted-verify`) | done (Astra SHIP) |
-| — | Replay: 7 archived VERIFY rounds × 2 judges (mechanics registered in 0225 "Replay mechanics") | attempt 1 FAIL 4/5 ([RESULT](experiments/0225/RESULT.md)); step-2 revision, then the one repeat |
+| — | Replay: 7 archived VERIFY rounds × 2 judges (mechanics registered in 0225 "Replay mechanics") | attempt 1 FAIL 4/5 ([RESULT](experiments/0225/RESULT.md)); step-2 revision merged (branch `candidate/0225-s2r-emission`); next = attempt 2 |
 | 3 | One final mechanical gate; SURFACE_CLOSE removed | pending |
 | 4 | Fewer owner turns (no API-discovery reads, no polling, one rendered report) | pending |
 | 5 | Contract-first PLAN; defect-4 executable witnesses | pending |
 | 6 | Claude inline IMPLEMENT (separate arm) | pending |
 | — | Live confirmation: 8 + 2 runs (user approved 2026-09-27) | pending |
 
-**Next:** the one registered step-2 revision, then replay attempt 2 (the registration's only repeat; a second failure holds steps 2–5 and only step 1 ships).
-- **Attempt 1** ([RESULT](experiments/0225/RESULT.md)) FAILED by the letter. 4 of 5 binding HIGHs came back as HIGH, and the fifth (s6-04 r1, writer readiness) came back as MEDIUM `verdict_binding: true` at the same line. It had 0 input BLOCKEDs, overlap in all 7 rounds and an unchanged archive.
-- **Revision (Astra-concurred).** Fix the step-2 regression it exposed. Step 2 extended the pair-only strict emission contract to the primary seat, so a Claude primary's one prose line made s6-16-r0 BLOCKED although the pair had the binding HIGH. Keep the fix general, with negative cases. Do not touch the binding-MEDIUM channel, which predates step 2.
-- **Apparatus before the repeat.** Move the replay root outside `$HOME`: attempt 1's Claude seats loaded `~/.claude/CLAUDE.md` as an ancestor `.claude/CLAUDE.md`. Verify the Claude instruction attachments (s6-07 must fall back to its `AGENTS.md`) before any call, and widen the scanner.
-- **Repeat.** Re-prepare, re-freeze, and run all 7 rounds once, scored by the committed criteria.
+**Next:** replay attempt 2, the registration's only repeat. A second failure holds steps 2–5, and only step 1 ships.
+- **Attempt 1** ([RESULT](experiments/0225/RESULT.md)) FAILED by the letter. 4 of 5 binding HIGHs came back as HIGH; the fifth (s6-04 r1, writer readiness) came back at the same line as MEDIUM `verdict_binding: true`. It had 0 input BLOCKEDs, overlap in all 7 rounds and an unchanged archive.
+- **The one step-2 revision is done** (branch `candidate/0225-s2r-emission`, Astra spec + SHIP).
+  - Rule: narrative before a judge's first record carries no authority and is skipped in both seats and every ingress, but it never yields PASS.
+  - It fixes attempt 1's s6-16-r0 BLOCKED, where a Claude primary's prose line blocked the round beside the pair's binding HIGH.
+  - `recover_envelope_text` was deleted, since the general rule subsumes it.
+  - The binding-MEDIUM channel is unchanged.
+- **Apparatus before the repeat.** Move the replay root outside `$HOME` (attempt 1's Claude seats loaded `~/.claude/CLAUDE.md` as an ancestor `.claude/CLAUDE.md`). Verify each Claude seat's instruction attachments before any call (s6-07 must fall back to its `AGENTS.md`), and widen the scanner. Attempt 1 stays as recorded.
+- **Repeat.** On main with the revision: re-prepare, re-freeze, and run all 7 rounds once, scored by the committed criteria.
 - **Driver.** `autoresearch/experiments/0225/replay.py` (prepare → freeze commit → run → score).
 
 Step 1 (PR #117): the state writer owns the repair budget (`rounds.global` admissions under the state lock, `BLOCKED:repair-budget-exhausted`); VERIFY `BLOCKED` goes to the report without repair; relative `--devlyn-dir` judge paths resolve. No saving claimed.
