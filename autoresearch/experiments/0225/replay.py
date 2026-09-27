@@ -27,10 +27,27 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 SHARED = REPO / 'config/skills/_shared'
 SCREEN = REPO / '.devlyn/0224/screen-out'
-ROOT = Path.home() / '.local/share/nx01/0225-replay'  # no CLAUDE.md/AGENTS.md in any ancestor
-FROZEN = HERE / 'replay-manifest.json'
+# Attempt 2. Outside $HOME: Claude Code loads <ancestor>/.claude/CLAUDE.md for every ancestor of its cwd, so a root
+# under $HOME fed the user's global ~/.claude/CLAUDE.md to every Claude seat in attempt 1 (RESULT.md). No ancestor of
+# this root holds CLAUDE.md, AGENTS.md, .claude, .agents or .codex. Attempt 1 is retained in ~/.local/share/nx01/0225-replay.
+ROOT = Path('/Users/Shared/devlyn-0225-replay-a2')
+FROZEN = HERE / 'replay-manifest-a2.json'
+# Instruction files each Claude seat must load, relative to its cwd: the copy's own project file, nothing else
+# (the archived judges loaded /work/CLAUDE.md, or /work/AGENTS.md in s6-07, whose repo has no CLAUDE.md).
+INSTRUCTIONS = {'s6-04': ['CLAUDE.md'], 's6-16': ['CLAUDE.md'], 's6-07': ['AGENTS.md']}
+DISCOVERED = ('CLAUDE.md', 'CLAUDE.local.md', '.claude/CLAUDE.md', '.claude/rules', 'AGENTS.md')
+
+
+def discovery(work):
+    """Instruction files the Claude CLI can discover from this cwd: in the copy and in every ancestor."""
+    return sorted(str(folder / name) for folder in (work, *work.parents) for name in DISCOVERED
+                  if (folder / name).exists())
 CLAUDE = Path.home() / '.local/share/claude/versions/2.1.281'  # the archived judges' Claude Code
-CODEX = Path(shutil.which('codex'))
+# The archived judges and attempt 1 ran codex-cli 0.156.1; the host's nvm Codex has since auto-updated, so attempt 2
+# runs a private 0.156.1 install and a 0.156.1 model cache (written by attempt 1's own judges).
+CODEX = Path('/Users/Shared/devlyn-0225-codex-0.156.1/node_modules/.bin/codex')
+MODELS_CACHE = Path.home() / '.local/share/nx01/0225-replay/homes/s6-04-r0/.codex/models_cache.json'
+NODE = Path(shutil.which('node')).parent
 VERIFY_BODY = 'config/skills/devlyn:resolve/references/phases/verify.md'
 ROLE = runpy.run_path(str(SHARED / 'role-config.py'))
 RENDER = runpy.run_path(str(SHARED / 'phase-prompt-render.py'))
@@ -103,7 +120,7 @@ def minimal_env(path):
 
 def replay_env(rid, work):
     """What a real judge sees: an allowlist, never the operator's shell (it carries CLAUDECODE, effort and session vars)."""
-    env = minimal_env([ROOT / 'bin', CODEX.parent, '/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'])
+    env = minimal_env([ROOT / 'bin', NODE, '/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'])
     return {**env, 'CODEX_HOME': str(ROOT / 'homes' / rid / '.codex'), 'PYTHONPATH': str(work / 'src'),
             **CELLS[parse(rid)[0]]['owner_env']}
 
@@ -140,7 +157,7 @@ def runtime():
     with environment(replay_env(rid, ROOT / 'rounds' / rid), ROOT):
         versions = {engine: subprocess.run([engine, '--version'], capture_output=True, text=True).stdout.strip()
                     for engine in ('claude', 'codex')}
-        resolved = {name: str(Path(shutil.which(name)).resolve()) for name in ('claude', 'codex', 'bash', 'python3', 'git')}
+        resolved = {name: str(Path(shutil.which(name)).resolve()) for name in ('claude', 'codex', 'node', 'bash', 'python3', 'git')}
     return dict(versions=versions, resolved=resolved, python=sys.executable, codex=str(CODEX.resolve()),
                 claude_sha256=sha256(CLAUDE.read_bytes()), codex_shim_sha256=sha256((ROOT / 'bin/codex').read_bytes()))
 
@@ -286,6 +303,33 @@ def dry_run(rid):
                 carriers=[{k: c[k] for k in ('outcome', 'started_at', 'ended_at')} for c in carriers])
 
 
+def instructions(rid):
+    """The instruction files a Claude seat actually loads, read from its session transcript (a model's own report
+    missed attempt 1's injection). One cheap real call with the seat's own flags but another model, in the dry copy,
+    whose ancestors are the real copy's except its last two components; the real copy is never touched."""
+    key, n = parse(rid)
+    dry = ROOT / 'dry' / rid
+    state = ROLE['loads']((dry / '.devlyn/pipeline.state.json').read_bytes())
+    with environment(replay_env(rid, dry), dry):
+        resolution = ROLE['snapshot'](state)
+        role = next(r for r in JUDGES['ROLES'] if resolution['roles'][r]['engine'] == 'claude')
+        argv, _ = JUDGES['launch_argv'](dry / '.devlyn', JUDGES['decide'](state, resolution, role, False))
+    argv = argv[argv.index('--') + 1:]
+    argv[argv.index('--model') + 1] = 'claude-sonnet-5'
+    proc = subprocess.run(argv, cwd=dry, env=replay_env(rid, dry), input='Reply with exactly: OK',
+                          capture_output=True, text=True, timeout=300)
+    session = json.loads(proc.stdout)['session_id']
+    found = list((Path.home() / '.claude/projects').glob(f'*/{session}.jsonl'))
+    assert len(found) == 1, f'{rid}: no transcript for probe session {session}'
+    files = [entry['path'] for line in found[0].read_text().splitlines()
+             for entry in (json.loads(line).get('attachment') or {}).get('files', [])
+             if (json.loads(line).get('attachment') or {}).get('type') == 'instructions']
+    loaded = sorted(str(Path(path).relative_to(dry)) if Path(path).is_relative_to(dry) else path for path in files)
+    if loaded != INSTRUCTIONS[key]:
+        raise SystemExit(f'{rid}: the Claude seat loads {loaded}, not {INSTRUCTIONS[key]}')
+    return dict(session_id=session, files=loaded)
+
+
 def prepare():
     if ROOT.exists():
         raise SystemExit(f'{ROOT} exists; prepare runs once, on a fresh root')
@@ -294,14 +338,17 @@ def prepare():
         'the product under test must be main as merged'
     before = inventory()
     ROOT.mkdir(parents=True)
+    ROOT.chmod(0o700)  # /Users/Shared is world-readable
     dump(ROOT / 'inventory-before.json', before)
     (ROOT / 'bin').mkdir()
     (ROOT / 'bin/claude').symlink_to(CLAUDE)
     (ROOT / 'bin/codex').write_text(CODEX_SHIM, encoding='utf-8')
     (ROOT / 'bin/codex').chmod(0o500)
+    version = subprocess.run([CODEX, '--version'], capture_output=True, text=True).stdout.split()[-1]
+    assert load(MODELS_CACHE)['client_version'] == version, 'the model cache must match the pinned Codex'
     for rid in ORDER:  # the round's own HOME; auth.json is added only for its call (see call())
         (ROOT / 'homes' / rid / '.codex').mkdir(parents=True)
-        shutil.copyfile(Path.home() / '.codex/models_cache.json', ROOT / 'homes' / rid / '.codex/models_cache.json')
+        shutil.copyfile(MODELS_CACHE, ROOT / 'homes' / rid / '.codex/models_cache.json')
     (ROOT / 'dry/bin').mkdir(parents=True)
     for engine in ('claude', 'codex'):
         (ROOT / 'dry/bin' / engine).write_text(JUDGES['STUB'], encoding='utf-8')
@@ -318,7 +365,12 @@ def prepare():
                            base=state['base_ref']['sha'], head=CELLS[key]['heads'][n],
                            verify_started_at=state['phases']['verify']['started_at'], work=str(work),
                            resolution_sha256=state['role_resolution']['sha256'], env=replay_env(rid, work),
-                           models_cache_sha256=sha256((ROOT / 'homes' / rid / '.codex/models_cache.json').read_bytes()), **facts, **preflight(rid, work, state), dry_run=dry_run(rid)))
+                           models_cache_sha256=sha256((ROOT / 'homes' / rid / '.codex/models_cache.json').read_bytes()), **facts, **preflight(rid, work, state), dry_run=dry_run(rid),
+                           claude_instructions=instructions(rid), discovery=discovery(work)))
+        dry = ROOT / 'dry' / rid
+        if [path.replace(str(dry), str(work)) for path in discovery(dry)] != rounds[-1]['discovery'] \
+                or any(not Path(path).is_relative_to(work) for path in rounds[-1]['discovery']):
+            raise SystemExit(f'{rid}: instruction discovery differs from the probed copy or reaches an ancestor')
         print(f'[replay] prepared {rid}', file=sys.stderr, flush=True)
     manifest = dict(schema=1, contract='autoresearch/iterations/0225-resolve-cost-cuts.md#replay-mechanics',
                     repo_head=git(REPO, 'rev-parse', 'HEAD'), product_commit=git(REPO, 'rev-parse', 'origin/main'),
@@ -389,6 +441,7 @@ def call(rid, entry):
     checks = preflight(rid, work, state)
     cache = sha256((ROOT / 'homes' / rid / '.codex/models_cache.json').read_bytes())
     if checks != {k: entry[k] for k in checks} or env != entry['env'] or cache != entry['models_cache_sha256'] \
+            or discovery(work) != entry['discovery'] \
             or state['role_resolution']['sha256'] != entry['resolution_sha256']:
         raise SystemExit(f'{rid}: inputs, dispatch or environment differ from the frozen manifest')
     auth = ROOT / 'homes' / rid / '.codex/auth.json'
@@ -513,8 +566,8 @@ def facts(entry):
     usage['codex'] = dict(status='PARTIAL' if tokens else 'UNKNOWN', output_tokens='UNKNOWN',
                           total_tokens=int(tokens[-1].replace(b',', b'')) if tokens else None)
     # What the judges authored or ran (argv and carriers name the product scripts by design): Codex's log and output,
-    # Claude's result and its session transcript (retained here). Flag any path under the user's home outside this
-    # round's copy and home, and any other round's id, so a read beyond the copy cannot pass silently.
+    # Claude's result and its session transcript (retained here). Flag any path under the user's home or the replay
+    # root outside this round's copy and home, and any other round's id, so a read beyond the copy cannot pass silently.
     authored = [codex_log, devlyn / f'codex-judge.r{n}.stdout', output]
     if usage['claude'].get('session_id'):
         found = list((Path.home() / '.claude/projects').glob(f'*/{usage["claude"]["session_id"]}.jsonl'))
@@ -522,12 +575,16 @@ def facts(entry):
             (ROOT / 'transcripts').mkdir(exist_ok=True)
             authored.append(Path(shutil.copyfile(found[0], ROOT / 'transcripts' / f'{rid}.jsonl')))
         usage['claude']['transcript'] = len(found) == 1
-    own = tuple(str(p) for p in (work, ROOT / 'homes' / rid, ROOT / 'bin'))
+    own = (work, ROOT / 'homes' / rid, ROOT / 'bin')
     others = '|'.join(re.escape(other) for other in ORDER if other != rid)
-    pattern = re.compile(rf'{re.escape(str(Path.home()))}/[^\s"\'`)\]]*|\b(?:{others})\b'.encode())
-    outside = sorted({m.group(0).decode(errors='replace') for p in authored if p.is_file()
-                      for m in pattern.finditer(p.read_bytes())} - {''})
-    outside = [path for path in outside if not path.startswith(own)]
+    roots = '|'.join(re.escape(str(path)) for path in (Path.home(), ROOT))
+    paths = re.compile(rf'(?:{roots})/[^\s"\'`)\]]*'.encode())
+    ids = re.compile(rf'\b(?:{others})\b'.encode())
+    texts = [p.read_bytes() for p in authored if p.is_file()]
+    found = {m.group(0).decode(errors='replace') for text in texts for m in paths.finditer(text)}
+    outside = sorted({path for path in found if not any(
+        Path(os.path.normpath(path)).is_relative_to(mine) for mine in own)}
+        | {m.group(0).decode() for text in texts for m in ids.finditer(text)})
     stamps = [c.get(k) for c in carriers.values() for k in ('started_at', 'ended_at')]
     return dict(
         id=rid, exit_code=driver.get('exit_code'), wall_ms=driver.get('wall_ms'),

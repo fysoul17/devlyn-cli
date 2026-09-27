@@ -87,3 +87,57 @@ The registration's failure branch is "step 2 may be revised once, and the replay
   - the actual Claude instruction attachments are verified before any call, which also restores s6-07's `AGENTS.md` fallback;
   - the scanner coverage is updated.
 - **Attempt 1 is retained as recorded.** The repeat scores with the same rules and criteria.
+
+## Attempt 2 (2026-09-27, 14:28–14:35Z): the registration's only repeat
+
+- **Product:** main `22616b57`, which has step 2 plus the one revision (PR #122). Under that revision, narrative before a judge's first record carries no authority and is skipped in both seats, but never yields PASS.
+- **Apparatus:** frozen manifest [`replay-manifest-a2.json`](replay-manifest-a2.json), commit `a6bccace` at 14:28:08Z, before the first call at 14:28:17Z. By root's account the commit was pushed in the same command; GitHub's public event feed does not list that push. It repairs attempt 1's disclosed divergence:
+  - The replay root is `/Users/Shared/devlyn-0225-replay-a2`, outside `$HOME`, with clean ancestors.
+  - Each Claude seat was probed before freeze, and each call rechecks instruction discovery.
+  - codex-cli is pinned to 0.156.1 (the host's had auto-updated to 0.157.1), as in the archive and attempt 1. Claude Code is 2.1.281.
+- **Scoring:** the same rules and the committed criteria.
+
+The run ended normally (`run exit=0`), and the archive inventory was unchanged (17,784 files). In every round the snapshot, resolution and argv hashes matched the manifest. Each of the 7 judge transcripts shows exactly the copy's project instruction file (`CLAUDE.md`, or `AGENTS.md` in s6-07), as the archived judges had.
+
+| round | wall s | Claude s | Codex s | overlap | verdict (primary / pair) | Claude out tok | Codex total tok |
+|---|---|---|---|---|---|---|---|
+| s6-04-r0 | 44.0 | 43.3 | 24.6 | yes | NEEDS_WORK / NEEDS_WORK | 3454 | 12836 |
+| s6-04-r1 | 34.9 | 34.0 | 21.7 | yes | PASS_WITH_ISSUES / NEEDS_WORK | 3114 | 13026 |
+| s6-04-r2 | 29.8 | 28.8 | 27.4 | yes | PASS_WITH_ISSUES / NEEDS_WORK | 2496 | 14336 |
+| s6-16-r0 | 92.2 | 91.3 | 26.5 | yes | PASS_WITH_ISSUES / NEEDS_WORK | 8571 | 19898 |
+| s6-16-r1 | 67.7 | 66.6 | 35.0 | yes | PASS_WITH_ISSUES / NEEDS_WORK | 6272 | 25287 |
+| s6-07-r0 | 76.2 | 74.9 | 58.9 | yes | NEEDS_WORK / PASS_WITH_ISSUES | 7537 | 28665 |
+| s6-07-r1 | 75.7 | 73.0 | 58.1 | yes | NEEDS_WORK / PASS_WITH_ISSUES | 7145 | 32422 |
+
+Usage is recorded the same way as attempt 1: Claude is COMPLETE; Codex is PARTIAL, with OUTPUT UNKNOWN.
+
+### Binding HIGHs (the same pre-committed criteria)
+
+| # | round | replay candidate (authenticated seat) | decision |
+|---|---|---|---|
+| 1 | s6-04 r1 | Codex pair **MEDIUM, `verdict_binding: true`** `spec.timeout-cleanup`, `test_File.py:98`: "`assert writer.stdout.readline() == b"ready\n"` without a timeout. If the spawned writer stalls before signaling readiness, the test blocks indefinitely and never reaches `writer.kill()`". The Claude primary flagged the same line as LOW `quality.unbounded-wait`. | same defect and same line, verdict-binding, **not HIGH/CRITICAL** → not retained |
+| 2 | s6-04 r2 | Codex pair HIGH `spec-compliance.reader-cleanup`, `test_File.py:76`: "the reader … subsequently blocks without a writer. The second join expires and leaves the daemon reader alive" | retained |
+| 3 | s6-16 r0 | Codex pair HIGH `spec.recovery-marker`, `bin/devlyn.js:754`: "writeInstallMarker publishes the marker … `fs.renameSync(tempPath, markerPath)` … If that operation throws … no undo removes the newly published marker" | retained |
+| 4 | s6-16 r1 | Codex pair HIGH `spec.preserve-unrelated-content`, `bin/devlyn.js:426`: "If that file already exists, `flag: 'wx'` … throws EEXIST, but `fs.rmSync(tempPath …)` … deletes the preexisting file anyway" | retained |
+| 5 | s6-07 r0 | Codex primary HIGH `spec.lock-release-recovery`, `bin/devlyn.js:782`: "`try { fs.rmdirSync(lock); }` attempts release once … one ordinary filesystem failure permanently blocks subsequent" installs | retained |
+
+### BLOCKEDs and the revision
+
+- **Input BLOCKEDs: 0**, and there was no BLOCKED of any kind: no harness row, no early refusal, and `input_flags` was empty in all 7 rounds.
+- **The attempt-1 failure recurred, and the revision absorbed it.** In s6-16-r0 the Claude primary again opened with a prose line: "Code review is done. Nothing blocks the merge; I'm recording …". The revised parser skipped it as narrative, and the seat's JSONL findings and `PASS_WITH_ISSUES` stood. The round verdict was NEEDS_WORK, carrying the pair's binding HIGH #3 to repair.
+
+### Scanner flags
+
+`outside_paths` lists two kinds of entry:
+- the round's own copy path followed by a JSON escape (`…/rounds/<id>\` and `…/rounds/<id>\n`, from the transcript's escaped strings), which the frozen pattern does not end at `\`;
+- the Claude CLI's auto-memory directory, named in its own system prompt (the archived judges' prompts also carry it).
+
+Outside the copies, the transcripts' quoted absolute paths are only command strings inside the sealed MECHANICAL evidence the judges read (for example `"cmd": "/control/ruff …"`). No tool read outside a round's copy was observed. This supports that narrower statement, not an unconditional claim that no path beyond the copy was touched.
+
+### Registered outcome of attempt 2
+
+**FAIL by the registered letter, the second failure.** Condition 1 holds for 4 of 5. Conditions 2–4 hold: 0 input BLOCKEDs, overlap in every round, and archive integrity unchanged.
+
+Per 0225 "Replay": "After a second failure, steps 2–5 are held as a bundle, no live comparison of the cuts runs, and only step 1 can ship."
+
+Across both attempts, the fifth defect (s6-04 r1, writer readiness) was found at the same line and bound the verdict, and the Codex pair labeled it binding MEDIUM both times. The archived Codex pair had labeled it HIGH under the same rubric sentence. The replay therefore shows that this defect's recall held, while its severity label shifted consistently. The frozen rule counts the label. The replay corpus is now exposed, so it cannot serve as a fresh test of any amended rule.
