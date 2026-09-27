@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 from typing import Any
 
 
@@ -12,10 +13,11 @@ FINDING_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}
 VERDICTS = {"PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK", "BLOCKED"}
 ENVELOPE_KEYS = {"text", "stopReason", "sessionId", "requestId"}
 IGNORABLE_FENCES = {"```", "```json", "```jsonl"}
-NARRATIVE_PREAMBLE_BYTES = frozenset(
-    b"\t\n\r !\"$%&'()*+,-./0123456789:;<=>?@"
-    b"ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz|}~"
-) | frozenset(range(0x80, 0x100))
+# Narrative: prose that cannot be read as a record, verdict, fence, comment or JSON word.
+NARRATIVE_EXCLUDED = frozenset("{}[]#`")
+VERDICT_WORD = re.compile(r"(?<![A-Za-z0-9_])(?:PASS_WITH_ISSUES|NEEDS_WORK|BLOCKED|PASS|FAIL)(?![A-Za-z0-9_])", re.I)
+JSON_WORD = re.compile(r"(?:true|false|null|NaN|Infinity)(?![A-Za-z0-9_])")
+LONE_IDENTIFIER = re.compile(r"[A-Z][A-Z0-9_]*")
 STREAM_RECORD_TYPES = {"system", "assistant", "user", "result"}
 VERDICT_RANK = {
     "PASS": 0,
@@ -59,13 +61,29 @@ def loads_strict_json(text: str) -> Any:
     )
 
 
+def narrative(text: str) -> bool:
+    return (text[:1].isalpha() and not NARRATIVE_EXCLUDED.intersection(text) and VERDICT_WORD.search(text) is None
+            and JSON_WORD.match(text) is None and LONE_IDENTIFIER.fullmatch(text) is None)
+
+
 def collect_text(text: str, source: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    """JSONL findings, then one terminal verdict. Narrative before the first record or fence carries no authority
+    and is skipped, including narration welded to the first record; anything else that is not a record rejects."""
     findings: list[dict[str, Any]] = []
     summary: dict[str, Any] | None = None
+    leading = True
     for line_no, line in enumerate(text.splitlines(), 1):
         raw = line.strip()
-        if not raw or raw in IGNORABLE_FENCES:
+        if not raw:
             continue
+        if raw in IGNORABLE_FENCES:
+            leading = False
+            continue
+        if leading and narrative(raw):
+            continue
+        if leading and "{" in raw and narrative(raw[:raw.index("{")].strip()):
+            raw = raw[raw.index("{"):]
+        leading = False
         if raw.startswith("# SUMMARY "):
             if summary is not None:
                 raise SystemExit(f"error: record after terminal verdict at {source}:{line_no}")
@@ -95,28 +113,13 @@ def collect_text(text: str, source: pathlib.Path) -> tuple[list[dict[str, Any]],
     return findings, summary
 
 
-def recover_envelope_text(text: str, source: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-    encoded = text.encode("utf-8")
-    for cut, byte in enumerate(encoded[:-1], 1):
-        if byte not in NARRATIVE_PREAMBLE_BYTES:
-            break
-        try:
-            findings, summary = collect_text(encoded[cut:].decode("utf-8"), source)
-        except (UnicodeDecodeError, SystemExit):
-            continue
-        if summary is not None and summary.get("verdict") == "NEEDS_WORK" and findings:
-            return findings, summary
-    raise SystemExit("error: no admissible envelope recovery")
-
-
 def collect_message_stream(
     text: str, source: pathlib.Path
 ) -> tuple[list[dict[str, Any]], dict[str, Any] | None] | None:
     """Bind adjudication to a whole-message NDJSON stream's terminal assistant turn.
 
     Returns None when the first record does not declare that stream. Once it does,
-    this returns or rejects: tool and narration turns are never forwarded, and no
-    envelope recovery is attempted.
+    this returns or rejects: tool and narration turns are never forwarded.
     """
     lines = [(no, raw) for no, line in enumerate(text.splitlines(), 1) if (raw := line.strip())]
     if not lines:
@@ -206,13 +209,7 @@ def collect_stdout(stdout_path: pathlib.Path) -> tuple[list[dict[str, Any]], dic
             )
         if not isinstance(candidate["text"], str):
             raise SystemExit(f"error: envelope text must be a string at {stdout_path}")
-        try:
-            return collect_text(candidate["text"], stdout_path)
-        except SystemExit as exc:
-            try:
-                return recover_envelope_text(candidate["text"], stdout_path)
-            except SystemExit:
-                raise SystemExit(f"error: envelope text rejected: {exc}") from None
+        return collect_text(candidate["text"], stdout_path)
     stream = collect_message_stream(stdout_text, stdout_path)
     if stream is not None:
         return stream

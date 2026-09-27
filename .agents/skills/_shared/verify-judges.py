@@ -329,9 +329,11 @@ if mode == "sleep":
 if mode in {"fail", "exit124"}:
     sys.exit(1 if mode == "fail" else 124)
 option = lambda name, default: args[args.index(name) + 1] if name in args else default
-finding = {"id": engine + "-1", "rule_id": "fixture.binding", "severity": "HIGH" if mode == "high" else "CRITICAL",
+finding = {"id": engine + "-1", "rule_id": "fixture.binding",
+           "severity": {"high": "HIGH", "narrated": "LOW"}.get(mode, "CRITICAL"),
            "file": "app.py", "line": 1, "message": engine + " finding", "criterion_ref": "spec", "confidence": "high"}
 text = {"pass": "PASS\n", "high": json.dumps(finding) + "\nNEEDS_WORK\n",
+        "narrated": "I found no blocking issues, only one low-severity one.\n\n" + json.dumps(finding) + "\nPASS_WITH_ISSUES",
         "blocked": json.dumps(finding) + "\nBLOCKED\n", "garbage": "not a verdict\n"}[mode]
 if engine == "codex":
     effort = next(arg.split("=", 1)[1] for arg in args if arg.startswith("model_reasoning_effort="))
@@ -567,6 +569,24 @@ def self_test() -> int:
         work = make_run("garbage")
         _, summary, _ = verify(work, codex="garbage")
         assert summary["source_verdicts"]["pair_judge"] == "BLOCKED" and "verify-judge-emission-contract-violated" in merged_ids(work)
+        # 0225: leading narrative carries no authority in either seat, so a narrated advisory review never hides
+        # the other seat's binding finding behind a BLOCKED round; a malformed emission still BLOCKs its seat
+        # while the other seat's finding is kept.
+        for name, modes, verdicts in (
+                ("narrated-primary", {"claude": "narrated", "codex": "high"}, ("PASS_WITH_ISSUES", "NEEDS_WORK")),
+                ("narrated-pair", {"claude": "high", "codex": "narrated"}, ("NEEDS_WORK", "PASS_WITH_ISSUES"))):
+            work = make_run(name)
+            _, summary, state = verify(work, **modes)
+            assert summary["verdict"] == "NEEDS_WORK" and (
+                summary["source_verdicts"]["judge"], summary["source_verdicts"]["pair_judge"]) == verdicts, summary
+            assert {"claude-1", "codex-1"} <= set(merged_ids(work)) and set(state["phases"]["verify"]["role_evidence"]) == set(ROLES)
+            if modes["claude"] == "narrated":  # the derived stdout is the result text, byte for byte
+                envelope = json.loads((work / ".devlyn/claude-judge.r0.output.json").read_text())
+                assert (work / ".devlyn/claude-judge.r0.stdout").read_text() == envelope["result"]
+        work = make_run("garbage-beside-high")
+        _, summary, _ = verify(work, claude="high", codex="garbage")
+        assert summary["verdict"] == "BLOCKED" and summary["source_verdicts"]["judge"] == "NEEDS_WORK", summary
+        assert {"claude-1", "verify-judge-emission-contract-violated"} <= set(merged_ids(work))
 
         # Explicit profiles apply field by field; a model-only role keeps its default effort.
         work = make_run("profiles", {"primary_judge": {"engine": "claude", "model": "fixture-claude-model"},
@@ -720,11 +740,14 @@ def self_test() -> int:
         verify(work, hold=True)
         summary = timed_out(work, "claude")
         assert summary["source_verdicts"]["judge"] == "BLOCKED" and "verify-primary-timeout" in merged_ids(work), summary
-        # A Claude seat killed after writing its result envelope keeps what it found.
-        work = make_run("primary-timeout-after-result")
-        verify(work, hold=True, claude="high")
-        summary = timed_out(work, "claude", keep_capture=True)
-        assert summary["source_verdicts"]["judge"] == "BLOCKED" and {"claude-1", "verify-primary-timeout"} <= set(merged_ids(work)), summary
+        # A Claude seat killed after writing its result envelope keeps what it found, narrated or not.
+        for name, mode in (("primary-timeout-after-result", "high"), ("primary-timeout-narrated", "narrated")):
+            work = make_run(name)
+            verify(work, hold=True, claude=mode)
+            summary = timed_out(work, "claude", keep_capture=True)
+            ids = set(merged_ids(work))
+            assert summary["source_verdicts"]["judge"] == "BLOCKED" and {"claude-1", "verify-primary-timeout"} <= ids, summary
+            assert "verify-judge-emission-contract-violated" not in ids, ids
         work = make_run("own-124")
         _, summary, _ = verify(work, codex="exit124")
         assert carriers(work)["codex"]["outcome"] == "exited" and summary["source_verdicts"]["pair_judge"] == "BLOCKED"

@@ -128,7 +128,7 @@ When the role frame is `pair_judge`, both judgments are merged:
 </judging>
 
 <output>
-Both seats emit only JSONL findings — one JSON object per line with `id`, `rule_id`, `severity`, `file`, `line`, `message`, `criterion_ref`, `confidence`, and `verdict_binding: true` on a binding MEDIUM — followed by one bare terminal verdict line: `PASS`, `PASS_WITH_ISSUES`, `NEEDS_WORK`, or `BLOCKED`. Emit only `PASS` when clean. No other prose: the harness rejects any other non-empty line, and a verdict-binding finding cannot carry `PASS`.
+Both seats emit only JSONL findings — one JSON object per line with `id`, `rule_id`, `severity`, `file`, `line`, `message`, `criterion_ref`, `confidence`, and `verdict_binding: true` on a binding MEDIUM — followed by one bare terminal verdict line: `PASS`, `PASS_WITH_ISSUES`, `NEEDS_WORK`, or `BLOCKED`. Emit only `PASS` when clean. Text before the first record is ignored and carries no finding or verdict; after it, the harness rejects any non-record line, and a verdict-binding finding cannot carry `PASS`.
 </output>
 
 <quality_bar>
