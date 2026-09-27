@@ -66,6 +66,13 @@ TERMINAL_VERDICT_REQUIRED_OVERRIDES_2026_08_18 = {
         "rationale": "terminal-verdict required per user ruling 2026-08-18",
     },
 }
+# 0225: one leading-narrative rule for both VERIFY seats and every ingress (verify.md). Narrative before the first
+# record or fence carries no authority and is skipped (never yielding PASS, so N4 stands), so these frozen
+# rejections now accept; every other negative stands. Expectations are (findings severities, verdict).
+LEADING_NARRATIVE_ACCEPTANCES_0225 = {
+    "S1 narration welded into the terminal message": (["HIGH"], "NEEDS_WORK"),
+    "raw-weld-devlyn.stdout": (["CRITICAL"], "NEEDS_WORK"),
+}
 LEGACY_OBJECT_VERDICTS = frozenset({
     "env-weld-0081-run1.json", "env-weld-0081-run2.json", "env-weld-0081-run3.json",
     "env-weld-0081-run4.json", "env-weld-0081-run5.json", "env-weld-0081-run6.json",
@@ -276,6 +283,13 @@ STREAM_NEGATIVES = [
 ]
 
 
+def accepted_as(label, code, findings, summary, expected):
+    """0225 overrides: the capture must now collect exactly as expected, not merely stop rejecting."""
+    severities, verdict = expected
+    got = ([str(f.get("severity") or "").upper() for f in findings], (summary or {}).get("verdict"))
+    return [] if code == 0 and got == (severities, verdict) else [f"  {label}: exit {code} {got}, want {expected} (0225)"]
+
+
 def main():
     failures = []
 
@@ -284,8 +298,11 @@ def main():
         for path_name, kwargs in PATHS:
             if path_name not in paths:
                 continue
-            code, _, _ = collect(body, **kwargs)
-            if code == 0:
+            code, findings, summary = collect(body, **kwargs)
+            if name in LEADING_NARRATIVE_ACCEPTANCES_0225:
+                failures += accepted_as(f"{name} [{path_name}]", code, findings, summary,
+                                        LEADING_NARRATIVE_ACCEPTANCES_0225[name])
+            elif code == 0:
                 failures.append(f"  {name} [{path_name}]: ACCEPTED, must reject")
 
     # A non-SUMMARY comment is not pair-JUDGE output.
@@ -323,8 +340,10 @@ def main():
                 f"{(summary or {}).get('verdict')}, want {n_findings} / {verdict}"
             )
     for name, body in STREAM_NEGATIVES:
-        code, _, _ = collect(body)
-        if code == 0:
+        code, findings, summary = collect(body)
+        if name in LEADING_NARRATIVE_ACCEPTANCES_0225:
+            failures += accepted_as(name, code, findings, summary, LEADING_NARRATIVE_ACCEPTANCES_0225[name])
+        elif code == 0:
             failures.append(f"  {name}: ACCEPTED, must reject")
 
     # Tier 2 — the real-capture corpus.
@@ -343,6 +362,9 @@ def main():
             got = [json.loads(l) for l in canonical.open()] if canonical.exists() else []
             summary = json.loads((root / "s.json").read_text()) if (root / "s.json").exists() else None
         want = {"exit": 1} if row["file"] in LEGACY_OBJECT_VERDICTS else row["expect"]
+        if row["file"] in LEADING_NARRATIVE_ACCEPTANCES_0225:
+            severities, verdict = LEADING_NARRATIVE_ACCEPTANCES_0225[row["file"]]
+            want = {"exit": 0, "findings": [{"severity": s} for s in severities], "verdict": verdict}
         if proc.returncode != want["exit"]:
             failures.append(f"  corpus {row['file']}: exit {proc.returncode}, want {want['exit']}")
             continue
@@ -358,6 +380,11 @@ def main():
             )
         # v1's N8 carried a merge half: collecting is not enough, the run must
         # actually come back NEEDS_WORK. Written down rather than implied.
+        # merge_verdict() writes only a pair findings file, which the step-2 merge
+        # (MECHANICAL and state required) blocks; 0225 rows are merged in
+        # verify-merge-findings.py's self-test instead.
+        if row["file"] in LEADING_NARRATIVE_ACCEPTANCES_0225:
+            continue
         merged = merge_verdict(got)
         if merged != want["verdict"]:
             failures.append(
