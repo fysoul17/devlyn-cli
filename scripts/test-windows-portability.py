@@ -2088,11 +2088,18 @@ assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work
         receipt = helper('invocation-receipt')
         return {engine: receipt['read_receipt'](devlyn / f'{engine}-judge.r0.prompt.transport.json') for engine in ('claude', 'codex')}
 
+    def seats(self, devlyn):
+        """Diagnostics for a failed native VERIFY run: merged findings plus each seat's captures."""
+        names = ['verify-merged.findings.jsonl'] + [f'{e}-judge.r0{s}' for e in ('claude', 'codex')
+                                                   for s in ('.stderr', '.stdout', '.output.json')]
+        return {name: (devlyn / name).read_text(encoding='utf-8', errors='replace')[-2000:]
+                for name in names if (devlyn / name).exists()}
+
     def test_verify_supervisor_runs_both_native_seats(self):
         work, devlyn, env = self.verify_run()
         result = run([sys.executable, self.shared / 'verify-judges.py', '--devlyn-dir', devlyn], cwd=work, env=env, timeout=180)
         summary = json.loads(result.stdout)
-        self.assertEqual(summary['verdict'], 'PASS', result.stderr)
+        self.assertEqual(summary['verdict'], 'PASS', (result.stderr, self.seats(devlyn)))
         saved = helper('role-config')['loads']((devlyn / 'pipeline.state.json').read_bytes())['phases']['verify']
         self.assertEqual(set(saved['role_evidence']), {'primary_judge', 'pair_judge'})
         render = helper('phase-prompt-render')
@@ -2109,7 +2116,10 @@ assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work
         work, devlyn, env = self.verify_run()
         env['DEVLYN_TEST_EXIT'] = '124'
         result = run([sys.executable, self.shared / 'verify-judges.py', '--devlyn-dir', devlyn], cwd=work, env=env, timeout=180)
-        self.assertEqual(json.loads(result.stdout)['source_verdicts'], {'mechanical': 'PASS', 'judge': 'BLOCKED', 'pair_judge': 'BLOCKED'})
+        self.assertEqual(json.loads(result.stdout)['source_verdicts'], {'mechanical': 'PASS', 'judge': 'BLOCKED', 'pair_judge': 'BLOCKED'},
+                         (result.stderr, self.seats(devlyn)))
+        self.assertEqual(sorted(p.name for p in devlyn.glob('*.transport.json')),
+                         ['claude-judge.r0.prompt.transport.json', 'codex-judge.r0.prompt.transport.json'], self.seats(devlyn))
         self.assertEqual({(c['outcome'], c['exit_code']) for c in self.carriers(devlyn).values()}, {('exited', 124)})
         work, devlyn, env = self.verify_run()
         judges = helper('verify-judges')['run'].__globals__  # runpy returns a copy; patch the live globals

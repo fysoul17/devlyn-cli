@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import re
 import runpy
@@ -65,6 +66,24 @@ def codex_header(stderr):
     return fields
 
 
+def native_executable(command, actual):
+    """Whether `actual` is what platform-support.native_argv makes of `command`, checked without PATH.
+
+    POSIX runs the command unchanged; Windows runs the resolved executable itself or, for an npm
+    shim, node.exe with that engine package's own JavaScript entry.
+    """
+    if os.name != "nt":
+        return actual == command
+    if actual[len(actual) - len(command) + 1:] != command[1:]:
+        return False
+    engine = Path(command[0]).stem.lower()
+    package = {"claude": "claude-code", "codex": "codex"}.get(engine)
+    if len(actual) == len(command):
+        return Path(actual[0]).stem.lower() == engine
+    return (len(actual) == len(command) + 1 and Path(actual[0]).name.lower() == "node.exe" and package is not None
+            and Path(actual[1]).suffix in {".js", ".cjs", ".mjs"} and package in Path(actual[1]).parts)
+
+
 def bound_transport(devlyn, stem, entry, argv, prompt):
     """The runner-written carrier for `argv`, authorized against the frozen judge route.
 
@@ -76,11 +95,7 @@ def bound_transport(devlyn, stem, entry, argv, prompt):
     transport = receipt["validate_transport"](devlyn / (stem + ".prompt.transport.json"), prompt.encode("utf-8"),
                                               require_outcome=True)
     require(transport["timeout_sec"] == 600, "file transport budget mismatch")
-    try:
-        native = runpy.run_path(Path(__file__).with_name("platform-support.py"))["native_argv"](transport["command"])
-    except OSError as exc:
-        native = exc
-    require(transport["argv"] == native, "actual executable differs from the authorized command")
+    require(native_executable(transport["command"], transport["argv"]), "actual executable differs from the authorized command")
     if model is not None:
         require(option(argv, "-m", "--model") == model, "requested model differs from argv")
     if engine == "claude":
