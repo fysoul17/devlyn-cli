@@ -67,13 +67,11 @@ TERMINAL_VERDICT_REQUIRED_OVERRIDES_2026_08_18 = {
     },
 }
 # 0225: one leading-narrative rule for both VERIFY seats and every ingress (verify.md). Narrative before the first
-# record or fence carries no authority and is skipped, so these frozen rejections now accept; every other negative
-# stands. Expectations are (findings severities, verdict).
+# record or fence carries no authority and is skipped (never yielding PASS, so N4 stands), so these frozen
+# rejections now accept; every other negative stands. Expectations are (findings severities, verdict).
 LEADING_NARRATIVE_ACCEPTANCES_0225 = {
-    "N4 recovered preamble + INFO + PASS (recovery may never yield PASS)": (["INFO"], "PASS"),
     "S1 narration welded into the terminal message": (["HIGH"], "NEEDS_WORK"),
     "raw-weld-devlyn.stdout": (["CRITICAL"], "NEEDS_WORK"),
-    "benchmark/ceiling/results/nodeg-20260720e/FS1-schedule-max-runs/A1/devlyn-snapshot/runs/rs-20260720T140815Z-068baf0da60c/claude-judge.stdout": {"exit": 0, "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "verdict": "PASS"},
 }
 LEGACY_OBJECT_VERDICTS = frozenset({
     "env-weld-0081-run1.json", "env-weld-0081-run2.json", "env-weld-0081-run3.json",
@@ -417,8 +415,6 @@ def main():
                "verdict": (summary or {}).get("verdict")}
         if rel in LEGACY_COMMENTED_OUTPUTS:
             want = {"exit": 1, "findings_sha256": None, "verdict": None}
-        elif rel in LEADING_NARRATIVE_ACCEPTANCES_0225:
-            want = LEADING_NARRATIVE_ACCEPTANCES_0225[rel]
         else:
             terminal_verdict_override = TERMINAL_VERDICT_REQUIRED_OVERRIDES_2026_08_18.get(rel)
             want = (

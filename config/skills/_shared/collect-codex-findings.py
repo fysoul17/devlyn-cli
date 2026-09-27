@@ -218,8 +218,9 @@ def self_test() -> int:
         assert summary == clean_summary
 
         # 0225 — one leading-narrative rule for both seats: narrative before the first record or fence
-        # carries no authority and is skipped; every other non-record line still rejects. The first case is
-        # the exact s6-16-r0 replay capture (Claude primary), which the pre-0225 contract BLOCKED.
+        # carries no authority and is skipped, but never yields PASS; every other non-record line still
+        # rejects. The first case is the exact s6-16-r0 replay capture (Claude primary), which the pre-0225
+        # contract BLOCKED.
         observed = OBSERVED_S6_16_R0.encode("utf-8")
         assert len(observed) == 1409 and hashlib.sha256(observed).hexdigest() == (
             "328a03681a30ef0ab8da4e3d0e7361f926078b7d0c8a700f786caf38ac7c0405")
@@ -229,7 +230,6 @@ def self_test() -> int:
         binding_medium = json.dumps({"id": "m", "severity": "MEDIUM", "verdict_binding": True})
         accepted = (
             ("P-observed-s6-16-r0", OBSERVED_S6_16_R0, observed_findings, "PASS_WITH_ISSUES"),
-            ("P-leading-clean-PASS", "I reviewed every clause and the sealed evidence.\nPASS\n", [], "PASS"),
             ("P-leading-binding-NEEDS_WORK", f"Two notes follow.\n\n{high}\nNEEDS_WORK\n",
              [loads_strict_json(high)], "NEEDS_WORK"),
             ("P-leading-Unicode-CRLF", f"Überprüft: zwei Hinweise.\r\n{high}\r\nNEEDS_WORK\r\n",
@@ -254,13 +254,19 @@ def self_test() -> int:
             ("N-nan", 'Notes.\n{"id":"a","severity":"HIGH","line":NaN}\nNEEDS_WORK\n', "NaN"),
             ("N-invalid-severity", 'Notes.\n{"id":"a","severity":"URGENT"}\nNEEDS_WORK\n', "valid severity"),
             ("N-concatenated", f"Notes.\n{high}{high}\nNEEDS_WORK\n", "invalid JSONL"),
+            # N-narrated-PASS: skipped prose may hold an unreported defect.
+            ("N-narrated-defect-PASS", "Critical defect: the implementation deletes every customer record.\nPASS\n",
+             "PASS cannot follow narrative"),
+            ("N-narrated-advisory-PASS", f"Notes.\n{info}\nPASS\n", "PASS cannot follow narrative"),
+            ("N-welded-PASS", f"Notes.{info}\nPASS\n", "PASS cannot follow narrative"),
+            ("N-narrated-SUMMARY-PASS", f'Notes.\n{info}\n# SUMMARY {{"verdict":"PASS"}}\n', "PASS cannot follow narrative"),
             # N-verdict.
             ("N-missing-verdict", f"Notes.\n{high}\n", "findings without terminal verdict"),
             ("N-duplicate-verdict", f"Notes.\n{high}\nNEEDS_WORK\nNEEDS_WORK\n", "record after terminal verdict"),
             ("N-unknown-summary", f"Notes.\n{high}\n# SUMMARY {{\"verdict\":\"MAYBE\"}}\n", "unknown value"),
             ("N-non-PASS-without-findings", "Nothing to add.\nNEEDS_WORK\n", "non-PASS verdict without JSONL findings"),
-            ("N-HIGH-with-PASS", f"Notes.\n{high}\nPASS\n", "cannot have a PASS verdict"),
-            ("N-binding-MEDIUM-with-PASS", f"Notes.\n{binding_medium}\nPASS\n", "cannot have a PASS verdict"),
+            ("N-HIGH-with-PASS", f"{high}\nPASS\n", "cannot have a PASS verdict"),
+            ("N-binding-MEDIUM-with-PASS", f"{binding_medium}\nPASS\n", "cannot have a PASS verdict"),
             # N-authority-prefix: a leading line that could carry authority is not narrative.
             ("N-verdict-word-prefix", "This review would pass.\nNEEDS_WORK\n", "invalid JSONL"),
             ("N-lone-identifier-prefix", f"LGTM\n{high}\nNEEDS_WORK\n", "invalid JSONL"),

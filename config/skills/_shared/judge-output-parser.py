@@ -68,10 +68,11 @@ def narrative(text: str) -> bool:
 
 def collect_text(text: str, source: pathlib.Path) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     """JSONL findings, then one terminal verdict. Narrative before the first record or fence carries no authority
-    and is skipped, including narration welded to the first record; anything else that is not a record rejects."""
+    and is skipped, including narration welded to the first record; anything else that is not a record rejects.
+    Skipped prose may hold an unreported defect, so it never yields PASS."""
     findings: list[dict[str, Any]] = []
     summary: dict[str, Any] | None = None
-    leading = True
+    leading, narrated = True, False
     for line_no, line in enumerate(text.splitlines(), 1):
         raw = line.strip()
         if not raw:
@@ -80,9 +81,10 @@ def collect_text(text: str, source: pathlib.Path) -> tuple[list[dict[str, Any]],
             leading = False
             continue
         if leading and narrative(raw):
+            narrated = True
             continue
         if leading and "{" in raw and narrative(raw[:raw.index("{")].strip()):
-            raw = raw[raw.index("{"):]
+            raw, narrated = raw[raw.index("{"):], True
         leading = False
         if raw.startswith("# SUMMARY "):
             if summary is not None:
@@ -110,6 +112,8 @@ def collect_text(text: str, source: pathlib.Path) -> tuple[list[dict[str, Any]],
         if severity not in FINDING_SEVERITIES:
             raise SystemExit(f"error: finding missing valid severity at {source}:{line_no}")
         findings.append(item)
+    if narrated and summary is not None and summary.get("verdict") == "PASS":
+        raise SystemExit(f"error: PASS cannot follow narrative at {source}")
     return findings, summary
 
 
