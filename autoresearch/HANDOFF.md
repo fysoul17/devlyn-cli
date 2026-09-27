@@ -19,22 +19,26 @@
 |---|---|---|
 | 1 | Repair budget owned by the state writer; VERIFY `BLOCKED` no longer repairs; judge path fix (branch `candidate/0225-s1-budget-path`) | merged (PR #117) |
 | 2 | Scripted VERIFY (renderer, one supervisor starts both judges, one merge call) (branch `candidate/0225-s2-scripted-verify`) | done (Astra SHIP) |
-| — | Replay: 7 archived VERIFY rounds × 2 judges (mechanics registered in 0225 "Replay mechanics") | attempt 1 FAIL 4/5 ([RESULT](experiments/0225/RESULT.md)); step-2 revision merged (branch `candidate/0225-s2r-emission`); next = attempt 2 |
-| 3 | One final mechanical gate; SURFACE_CLOSE removed | pending |
-| 4 | Fewer owner turns (no API-discovery reads, no polling, one rendered report) | pending |
-| 5 | Contract-first PLAN; defect-4 executable witnesses | pending |
+| — | Replay: 7 archived VERIFY rounds × 2 judges (mechanics registered in 0225 "Replay mechanics") | **FAIL twice** (4/5 each, [RESULT](experiments/0225/RESULT.md)) → steps 2–5 held |
+| 3 | One final mechanical gate; SURFACE_CLOSE removed | held (0225 second replay failure) |
+| 4 | Fewer owner turns (no API-discovery reads, no polling, one rendered report) | held |
+| 5 | Contract-first PLAN; defect-4 executable witnesses | held |
 | 6 | Claude inline IMPLEMENT (separate arm) | pending |
-| — | Live confirmation: 8 + 2 runs (user approved 2026-09-27) | pending |
+| — | Live confirmation: 8 + 2 runs (user approved 2026-09-27) | not run (the registration forbids it after a second replay failure) |
 
-**Next:** replay attempt 2, the registration's only repeat. A second failure holds steps 2–5, and only step 1 ships.
-- **Attempt 1** ([RESULT](experiments/0225/RESULT.md)) FAILED by the letter. 4 of 5 binding HIGHs came back as HIGH; the fifth (s6-04 r1, writer readiness) came back at the same line as MEDIUM `verdict_binding: true`. It had 0 input BLOCKEDs, overlap in all 7 rounds and an unchanged archive.
-- **The one step-2 revision is done** (branch `candidate/0225-s2r-emission`, Astra spec + SHIP).
-  - Rule: narrative before a judge's first record carries no authority and is skipped in both seats and every ingress, but it never yields PASS.
-  - It fixes attempt 1's s6-16-r0 BLOCKED, where a Claude primary's prose line blocked the round beside the pair's binding HIGH.
-  - `recover_envelope_text` was deleted, since the general rule subsumes it.
-  - The binding-MEDIUM channel is unchanged.
-- **Apparatus before the repeat.** Move the replay root outside `$HOME` (attempt 1's Claude seats loaded `~/.claude/CLAUDE.md` as an ancestor `.claude/CLAUDE.md`). Verify each Claude seat's instruction attachments before any call (s6-07 must fall back to its `AGENTS.md`), and widen the scanner. Attempt 1 stays as recorded.
-- **Repeat.** On main with the revision: re-prepare, re-freeze, and run all 7 rounds once, scored by the committed criteria.
+**Status: 0225's replay failed twice by the registered letter** ([RESULT](experiments/0225/RESULT.md)).
+- **Rule applied.** Per 0225 "Replay": steps 2–5 are held as a bundle, no live comparison of the cuts runs, and only step 1 can ship.
+- **Both attempts:** 4 of 5 binding HIGHs came back as HIGH, with 0 input BLOCKEDs, both judges overlapping in every round and the archive unchanged.
+- **The fifth defect** (s6-04 r1, writer readiness) was found at the same line and bound the verdict both times, but the Codex pair labeled it MEDIUM `verdict_binding: true`, not HIGH.
+- **The step-2 revision** (PR #122: leading judge narrative skipped, never yielding PASS) absorbed attempt 1's s6-16-r0 BLOCKED, which recurred in attempt 2.
+
+**Open user decision** (Astra's recommendation is (b)+(c); npm publish is the user's in every case):
+- (a) Keep steps 2 and 2r on main and never publish them unless a new registration adopts them. A step-1-only release then needs a separate ref.
+- (b) Revert steps 2 and 2r (PRs #120 and #122) on main, keeping every candidate commit and all evidence, so that main matches "only step 1 can ship".
+- (c) Register 0226: a recall-defined criterion (same mechanism, verdict-binding) tested on fresh, unexposed tasks with controls. The 0225 corpus is exposed and cannot serve as fresh confirmation.
+
+**Must not happen:** regrading either attempt, a third 0225 replay, the 0225 live comparison, or publishing the held bundle.
+
 - **Driver.** `autoresearch/experiments/0225/replay.py` (prepare → freeze commit → run → score).
 
 Step 1 (PR #117): the state writer owns the repair budget (`rounds.global` admissions under the state lock, `BLOCKED:repair-budget-exhausted`); VERIFY `BLOCKED` goes to the report without repair; relative `--devlyn-dir` judge paths resolve. No saving claimed.
