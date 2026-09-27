@@ -100,7 +100,7 @@ def describe(devlyn, state, role, exit_code):
             index = next((i for i, arg in enumerate(argv) if Path(arg).name == "run-bounded.py"), -1)
             require(index >= 0 and argv[index + 1:index + 3] == ["600", "--stdin-file"]
                     and len(argv) > index + 6 and argv[index + 4:index + 6] == ["--record-transport", "--"], "invalid bounded file transport")
-            require(Path(argv[index + 3]).resolve() == devlyn / (stem + ".prompt"), "bounded prompt path mismatch")
+            require(Path(argv[index + 3]).resolve() == (devlyn / (stem + ".prompt")).resolve(), "bounded prompt path mismatch")
             require(transport["command"] == argv[index + 6:] and prompt not in transport["command"], "bounded actual argv mismatch")
             require("-p" in transport["command"] or "--print" in transport["command"], "Claude print mode missing")
         else:
@@ -199,6 +199,26 @@ def self_test():
         (devlyn / "claude-judge.r0.stdout").write_bytes(text)
         (devlyn / "claude-judge.r0.role-evidence.json").write_bytes(encoded(receipt))
         authenticate(devlyn, state, "primary_judge")
+        file_command = [argv[4], argv[5], *argv[7:]]
+        file_argv = ["python3", "run-bounded.py", "600", "--stdin-file",
+                     str(devlyn / "claude-judge.r0.prompt"), "--record-transport", "--", *file_command]
+        (devlyn / "claude-judge.r0.argv.json").write_bytes(encoded(file_argv))
+        carrier = devlyn / "claude-judge.r0.prompt.transport.json"
+        carrier.write_bytes(encoded({"schema_version": 1, "transport": "stdin-file",
+            "prompt": {"path": str(devlyn / "claude-judge.r0.prompt"), "sha256": digest(b"review"), "bytes": 6},
+            "command": file_command, "argv": file_command, "timeout_sec": 600,
+            "isolated": False, "status": "completed", "exit_code": 0}))
+        describe(devlyn, state, "primary_judge", 0)
+        file_argv[4] = str(work / "wrong.prompt")
+        (devlyn / "claude-judge.r0.argv.json").write_bytes(encoded(file_argv))
+        try:
+            describe(devlyn, state, "primary_judge", 0)
+        except ValueError as exc:
+            assert "bounded prompt path mismatch" in str(exc)
+        else:
+            raise AssertionError("wrong file-transport prompt accepted")
+        carrier.unlink()
+        (devlyn / "claude-judge.r0.argv.json").write_bytes(encoded(argv))
         for field, value in (("subtype", "error_max_turns"), ("stop_reason", "tool_use"), ("is_error", True), ("session_id", ""), ("result", None)):
             bad = {**envelope, field: value}
             try:

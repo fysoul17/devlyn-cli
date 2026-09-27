@@ -32,7 +32,9 @@ The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the s
 
 **0118 exception — accepted 2026-09-07 KST:** the user's concurrent same-project tasks/sessions request permits bounded bootstrap admission protection. [Current0118 checkpoint](iterations/0118-concurrent-admission.md#current-continuation--2026-09-06) owns full R5 PASS_WITH_ISSUES, BUILD6/6 plus independent MECHANICAL6/6, actual final trio, two retained LOW advisories and pushed implementation `9d70cd8`. Original/failed acceptance histories are preserved. Mission1 floor/ceiling and frozen A16 remain open and separate; no fleet, lifetime lease, automatic placement or merge/shared-resource guarantee follows. Main73919fa adopts exact0118/0119 sources after integration checks;0115/0116 remain separate candidates.
 
-**Latest unit (2026-09-24, closed 2026-09-26):** [0221 subtraction direction](iterations/0221-subtraction-direction.md)
+**Current work (2026-09-27):** [0225 resolve cost cuts](iterations/0225-resolve-cost-cuts.md) cuts full resolve's own time and tokens in six PR-sized steps, then confirms with registered runs after user approval.
+
+**Latest closed unit (2026-09-24, closed 2026-09-26):** [0221 subtraction direction](iterations/0221-subtraction-direction.md)
 ran the session-ordered cleanup and the budget-free comparison (native / `/devlyn:intent`
 candidate / native+review / current full). Neither candidate continued (0224), so
 `/devlyn:intent` was removed and full resolve stays; a next Mission1 direction needs its

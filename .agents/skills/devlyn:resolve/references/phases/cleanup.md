@@ -19,13 +19,13 @@ Files outside this allowlist must not change. Pre-existing tooling leaks (alread
 </allowlist>
 
 <output>
-The owner removes only run-owned untracked/ignored generated artifacts from item 1, preserving deliverables, evidence and recovery inputs. It records PASS when the source checkpoint is unchanged and no cleanup finding remains. A code/doc finding returns through the selected IMPLEMENT repair route and reruns BUILD before fresh VERIFY. Never modify source inside owner CLEANUP or reuse stale checks. Record lifecycle via `state-phase-write.py`.
+The owner removes only run-owned untracked/ignored generated artifacts from item 1, preserving deliverables, evidence and recovery inputs. It records PASS when the source checkpoint is unchanged and no cleanup finding remains. A code/doc finding returns through the budget-admitted selected IMPLEMENT repair route and reruns BUILD before fresh VERIFY. Never modify source inside owner CLEANUP or reuse stale checks. Record lifecycle via `state-phase-write.py`.
 </output>
 
 <quality_bar>
 - Subtractive-first applies most strongly here. Lines removed should outnumber lines added unless documentation needs a small additive update for a renamed symbol.
 - Do not "improve" code outside the allowlist, even if it looks fixable. The allowlist is the contract.
-- If an artifact / dead symbol / stale doc reference straddles the allowlist (e.g. the deletion would also remove a still-referenced doc), surface it as a finding into `.devlyn/cleanup.findings.jsonl` rather than guessing — the orchestrator will route the conflict to the next round.
+- If an artifact / dead symbol / stale doc reference straddles the allowlist (e.g. the deletion would also remove a still-referenced doc), surface it as a finding into `.devlyn/cleanup.findings.jsonl` rather than guessing — the orchestrator will route the conflict to the next budget-admitted round.
 </quality_bar>
 
 <runtime_principles>

@@ -123,8 +123,7 @@ solo.
 When the OTHER engine is available, write `pair_trigger` at judge-spawn time
 with `pair.default` plus every applicable outcome-independent canonical reason,
 then dispatch the primary and pair JUDGEs concurrently against the same frozen
-diff via foreground parallel dispatch, never background shells. A primary blocker does not cancel the pair-JUDGE; both finding sets join the same fix
-round and merge by worst source verdict without vote counting. An orchestrator
+diff via foreground parallel dispatch, never background shells. A primary blocker does not cancel the pair-JUDGE; both finding sets join the same VERIFY invocation and merge by worst source verdict without vote counting. An orchestrator
 without foreground parallel dispatch runs the same two required judges
 sequentially, with no flag or extra state marker. This is a dispatch-shape
 fallback, not outcome-dependent escalation; the primary cannot skip the pair.
@@ -280,7 +279,7 @@ python3 "$DEVLYN_SHARED_DIR/verify-merge-findings.py" --write-state
 This deterministic merge is the routing source of truth for VERIFY. It writes
 `.devlyn/verify-merged.findings.jsonl`, `.devlyn/verify-merge.summary.json`, and
 updates `state.phases.verify.{verdict,sub_verdicts,merged}`. Branch on the
-merged state verdict, not on either model's prose verdict. Any HIGH/CRITICAL
+merged state verdict, not on either model's prose verdict. Absent a BLOCKED source, any HIGH/CRITICAL
 finding from either judge is `NEEDS_WORK`; a MEDIUM must set literal
 `verdict_binding: true` to become `NEEDS_WORK`, regardless of confidence.
 
