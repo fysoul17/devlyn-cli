@@ -101,6 +101,12 @@
 3. Apparatus: driver, Astra SHIP, stub dry run.
 4. Freeze commit and witness, 64 rounds, masked scoring with Astra audit, RESULT.
 
+## Addendum A1 (2026-09-28, before any candidate call)
+
+A Claude seat reports CLI and API errors (usage or rate limit, overload, authentication) in its result envelope rather than on stderr: a probe of Claude Code 2.1.281 with an unknown model exited 1 with `is_error: true`, `api_error_status: 404` and `terminal_reason: "api_error"` in the envelope, and only a `[claude-code:unrecognized_model]` tag line on stderr. The infra classifier ("Faults") therefore also reads those three envelope fields of a Claude seat, never `result` or any other judge-authored text. Nothing else changes. Review: Astra (see "Registration review").
+
 ## Registration review
 
 Astra (gpt-6-astra, ultra, read-only), in parallel with three Claude critics (gaming, executability, subtractive lenses): R0 REVISE (4; the critics added coverage-finding scoring, the timeout/INCONCLUSIVE overlap, masked support, opaque identity, the seal, the witness head and the instruction-file rule) → R1 REVISE (6: coverage exemption scope, own-tree first, base failure, unsupported terminal, `CODEX_HOME`, input-BLOCKED field) → R2 FREEZE. The user's two further decisions came between R0 and R1. Raw: `.devlyn/0226/reg-*`.
+
+Addendum A1: Astra driver-spec review R1 (legitimate before the freeze and any candidate call; the three-field allowlist keeps judge text out) → R2 SHIP. Raw: `.devlyn/0226/driver-spec-r*`.

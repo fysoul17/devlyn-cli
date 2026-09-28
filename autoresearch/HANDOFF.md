@@ -17,10 +17,11 @@
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Registration: Astra FREEZE, PR, merge | in progress (branch `candidate/0226-registration`) |
-| 2 | Corpus: repository selection, blind authoring, implementation, calibration, calibration review | not started |
-| 3 | Apparatus: driver, Astra SHIP, stub dry run of all 64 spans | not started |
-| 4 | Freeze commit + PR witness, 64 rounds, scoring, masked adjudication with Astra audit, RESULT | not started |
+| 1 | Registration: Astra FREEZE, PR, merge | merged (PR #125) |
+| 2 | Corpus: repository selection, blind authoring, implementation, calibration, calibration review | done: tkem/cachetools `3c082c65` and hapijs/joi `fc3f3bcb`; 8 tasks calibrated; fresh Astra review SHIP (C4 repaired three times) — material sealed under `/Users/Shared/devlyn-vr/private` (and `/Users/Shared/devlyn-0226` until `prepare` moves it) |
+| 3 | Apparatus: driver, Astra SHIP, stub dry run of all 64 spans | done: `autoresearch/experiments/0226/screen.py` (Astra review v1–v11 → SHIP, with Claude critics in v1–v2; addendum A1 registered). A trial `prepare` built all 64 rounds (MECHANICAL, stub dry runs, instruction probes, label scan) but its manifest is void because the driver changed mid-run |
+| 4 | Freeze and run | next: delete `/Users/Shared/devlyn-vr/manifest.json`, rerun `screen.py prepare` alone (joi's upstream timing test flakes under load), commit the manifest as the single commit of a freeze PR, then `screen.py run --pr <N>` |
+| 5 | Score, pool, checks, labels/reads/audit, join, RESULT | not started |
 
 ## 0225 (steps 2–5 held)
 
