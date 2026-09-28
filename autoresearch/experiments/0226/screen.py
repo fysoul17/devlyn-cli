@@ -69,6 +69,7 @@ DRIFT_CLASSES = frozenset({'manifest-drift', 'driver-drift', 'product-drift', 'n
                            'sealed-input-drift',
                            'home-drift', 'account-drift', 'dispatch-drift'})
 FIX_CLASSES = INFRA_CLASSES | DRIFT_CLASSES | {'instruction-load'}
+MECHANICAL_ATTEMPTS = 3
 
 
 class Fault(Exception):
@@ -438,9 +439,25 @@ def materialize(tok, task, variant, orientation, task_slug, work, *, apparatus=T
     env = round_env(tok, work, info['repo'])
     env.update(SPEC_VERIFY_PHASE='verify_mechanical', SPEC_VERIFY_FINDINGS_FILE='verify-mechanical.findings.jsonl',
                SPEC_VERIFY_FINDING_PREFIX='VERIFY-MECH')
-    proc = subprocess.run(['python3', str(SHARED / 'spec-verify-check.py'), '--include-risk-probes'],
-                          cwd=work, env=env, capture_output=True, text=True)
-    require(proc.returncode == 0, f'{tok}: MECHANICAL failed ({proc.returncode}): {proc.stderr}\n{proc.stdout}')
+    # joi's upstream timing test ("externals ... in linear time", 3000 ms) timed out under host load in two
+    # prepares. A failed MECHANICAL is kept, sealed, and rerun from the same inputs; a real calibration break
+    # fails every attempt. No judge has run at this point.
+    pristine_devlyn = Path(tempfile.mkdtemp(dir=ROOT)) / 'devlyn'
+    shutil.copytree(devlyn, pristine_devlyn, symlinks=True)
+    for attempt in range(1, MECHANICAL_ATTEMPTS + 1):
+        proc = subprocess.run(['python3', str(SHARED / 'spec-verify-check.py'), '--include-risk-probes'],
+                              cwd=work, env=env, capture_output=True, text=True)
+        if proc.returncode == 0 or attempt == MECHANICAL_ATTEMPTS:
+            break
+        kept = PRIVATE / 'mechanical-attempts' / tok / ('dry' if 'dry' in work.parts else 'round') / f'attempt-{attempt}'
+        kept.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(devlyn), kept)
+        (kept / 'mechanical.proc.json').write_text(json.dumps(
+            {'returncode': proc.returncode, 'stdout': proc.stdout, 'stderr': proc.stderr}, indent=2) + '\n')
+        shutil.copytree(pristine_devlyn, devlyn, symlinks=True)
+    shutil.rmtree(pristine_devlyn.parent)
+    require(proc.returncode == 0, f'{tok}: MECHANICAL failed ({proc.returncode}) in {attempt} attempts: '
+                                  f'{proc.stderr}\n{proc.stdout}')
     with environment(round_env(tok, work, info['repo']), work):
         findings, verdict = product_code['merge']['mechanical_source'](devlyn)
     require(verdict == 'PASS' and not findings, f'{tok}: MECHANICAL {verdict}: {findings}')
@@ -592,6 +609,7 @@ def prepare():
     for name in ('salt', 'mapping.json'):
         (PRIVATE / name).unlink(missing_ok=True)
     shutil.rmtree(PRIVATE / 'pristine', ignore_errors=True)
+    shutil.rmtree(PRIVATE / 'mechanical-attempts', ignore_errors=True)
     require(not ROOT.is_relative_to(Path.home()), 'ROOT must be outside HOME')
     for parent in (ROOT, *ROOT.parents):
         if parent == Path('/'):
