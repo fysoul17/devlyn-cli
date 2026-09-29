@@ -1,0 +1,528 @@
+{
+ "rule": "root labels a seat target-matched when its own rank-2 finding names the twin mechanism of hidden/mechanism.md (the code line quoted in each record); every listed finding was read in full by root",
+ "labels": {
+  "C1|twin|claude|1": {
+   "primary_judge": [
+    {
+     "finding_key": "bb405f6b2c8a26a019d4e61f828ce79489460755dc4e2697424b7c9103c6cb02",
+     "rule_id": "spec.obsolete-records-counted-toward-limit",
+     "line": 704
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "8823f4b9635e5ba148478a891af2674ee643d7f9a8dc44296a7f0c6ada3373ca",
+     "rule_id": "spec.compliance",
+     "line": 704
+    }
+   ]
+  },
+  "C1|twin|claude|2": {
+   "primary_judge": [
+    {
+     "finding_key": "faf578fe3823635d09b77486f4ab4b063beec9cce5f36868ffb5aaf2fab66527",
+     "rule_id": "spec.obsolete-records-count-toward-limit",
+     "line": 704
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "639a6e5cbd8bdf7e39b6601bd7a4434c53a9406e0bc31115e2c8908413d566e0",
+     "rule_id": "spec-compliance.obsolete-record-limit",
+     "line": 704
+    }
+   ]
+  },
+  "C1|twin|codex|1": {
+   "primary_judge": [
+    {
+     "finding_key": "0358a8a8e39087da36fc4832facddc179a320cc7cd59db8ee292eb086d41ec65",
+     "rule_id": "spec-compliance.obsolete-record-limit",
+     "line": 704
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "45f21807299088034eb282c8f795d76d5c0453db207c54c67e36b19aca594386",
+     "rule_id": "spec.obsolete-records-counted-toward-limit",
+     "line": 704
+    }
+   ]
+  },
+  "C1|twin|codex|2": {
+   "primary_judge": [
+    {
+     "finding_key": "532e0338b8b805aab2cb0bc1365bcf6e2f2534ec4e6f2b9889e9a60a631a9ea7",
+     "rule_id": "spec.expiration-limit-counts-obsolete-records",
+     "line": 704
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "0098f4afa6e3fd7c2dfefc3c25c8cfcae252226e3fc9880beee4bcd7b6450477",
+     "rule_id": "spec.obsolete-records-counted-toward-limit",
+     "line": 704
+    }
+   ]
+  },
+  "C2|twin|claude|1": {
+   "primary_judge": [
+    {
+     "finding_key": "f9f7459eccac605e7d94daa6ecdbe943ae1021b8484b4bf8cfb395f0c543bf64",
+     "rule_id": "spec.replacement-order-reused",
+     "line": 660
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "b6237990ae811c7358c8ca7fc26a672b23a36e580268fd9d1673c5547e032545",
+     "rule_id": "spec.assignment-order",
+     "line": 660
+    }
+   ]
+  },
+  "C2|twin|claude|2": {
+   "primary_judge": [
+    {
+     "finding_key": "2b51b7e5d44dc138f21e72eb9c4a9d988a0a7de26c8e0d86edf02150bf67cc05",
+     "rule_id": "spec.replacement-order-reused",
+     "line": 659
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "a9eb3242c5781597ad30d69d3689041b7a889142b267482ba576d0f291c64290",
+     "rule_id": "spec-compliance.replacement-order",
+     "line": 660
+    }
+   ]
+  },
+  "C2|twin|codex|1": {
+   "primary_judge": [
+    {
+     "finding_key": "2f583c7c8a062dbcb85ce007f3f86599f8b2577952d2da39b490d76e2551f889",
+     "rule_id": "spec-compliance.replacement-order",
+     "line": 660
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "c06a2bafb2e5e89aa62a062b1f8fe2da0e1d4a94451e225756f0d730efff18cb",
+     "rule_id": "spec.replacement-order-not-renewed",
+     "line": 660
+    }
+   ]
+  },
+  "C2|twin|codex|2": {
+   "primary_judge": [
+    {
+     "finding_key": "6d0c72a2c17c353af7a56d213d7623e045ebdae2a3069d465d276595b16d04b7",
+     "rule_id": "spec-compliance.replacement-order",
+     "line": 660
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "278075cf6020e4092eb6a3083ba10225d3fc689c604f8d30fa01ab13b517eae4",
+     "rule_id": "spec.replacement-order-not-renewed",
+     "line": 660
+    }
+   ]
+  },
+  "C3|twin|claude|1": {
+   "primary_judge": [
+    {
+     "finding_key": "f652418e318777d9f68ff7e7af113da86c385b88cf09ff104920dd342b9577c4",
+     "rule_id": "spec.compliance.state-mutated-before-deadline",
+     "line": 499
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "f1b990907904daad9387326f2680f2c07cad211d4819b4bad73b36ea59965668",
+     "rule_id": "spec.deadline-failure-mutates-state",
+     "line": 499
+    }
+   ]
+  },
+  "C3|twin|claude|2": {
+   "primary_judge": [
+    {
+     "finding_key": "6878b401d101131744ba7c4c730fcd5228d1592b90a5f4bbf1133fd04b98736c",
+     "rule_id": "spec.compliance.mutation-before-deadline",
+     "line": 499
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "0c955527c04d3ce6cc161d849adf892201472f05fc815c69f85bee310df1dbbf",
+     "rule_id": "spec.deadline-before-mutation",
+     "line": 499
+    }
+   ]
+  },
+  "C3|twin|codex|1": {
+   "primary_judge": [
+    {
+     "finding_key": "54dcd39d484cf7254febb980ba974b31a2c6d2841b7925295b2e6298962b0cd6",
+     "rule_id": "spec.deadline-failure-mutates-state",
+     "line": 499
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "d5d0961bb72805c5f8b799fad22250eac6c66720a008c2d65abe897db9c7fca8",
+     "rule_id": "spec.compliance.mutation-before-deadline",
+     "line": 499
+    }
+   ]
+  },
+  "C3|twin|codex|2": {
+   "primary_judge": [
+    {
+     "finding_key": "3ad7df9cb298d042d3ca82898b3a9c1cb1d617ae998cb2e12c547ac45b24e6f3",
+     "rule_id": "spec-compliance.deadline-before-mutation",
+     "line": 499
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "123d2334f79cc806f1f26c62059f0e53290071481be6cbd37cf02d90f9b47273",
+     "rule_id": "spec.compliance.mutation-before-deadline",
+     "line": 499
+    }
+   ]
+  },
+  "C4|twin|claude|1": {
+   "primary_judge": [
+    {
+     "finding_key": "055659620628cad25b8fcb969509b77061e7b5de9a0cd8f974b3b30903aba617",
+     "rule_id": "spec.capacity-uses-entry-count",
+     "line": 160
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "fc0aa36e1ef14a2a08cbd8085c6b6e3311e332f33d12cd1091e6db9ba5289ba3",
+     "rule_id": "spec-compliance.stored-size-capacity",
+     "line": 160
+    }
+   ]
+  },
+  "C4|twin|claude|2": {
+   "primary_judge": [
+    {
+     "finding_key": "5b4fdd85a6e1f318c605ec541ed04eb39535e15f93af8897db3b654c0a05ffc8",
+     "rule_id": "spec.capacity-uses-entry-count",
+     "line": 160
+    },
+    {
+     "finding_key": "d8e433cefcd13ba70e3bcec7fa33758ff5d7768b2ebc409bd04cf53254ee35b4",
+     "rule_id": "spec.unnecessary-eviction",
+     "line": 160
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "e657e651f46eba4b7c80c6903ad84dfdb5928f6e9e3ab8525091600b13ca49a2",
+     "rule_id": "spec-compliance.size-accounting",
+     "line": 160
+    }
+   ]
+  },
+  "C4|twin|codex|1": {
+   "primary_judge": [
+    {
+     "finding_key": "e3ce127bfb6b316551baa73a015d98fad041b756ff6fe9a77e473c137d83e02a",
+     "rule_id": "spec.capacity-accounting",
+     "line": 160
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "52eda54ff154a896a97610ea04b968051e404af3b5a37ae5b16ac60303a2e69b",
+     "rule_id": "spec.capacity-uses-entry-count",
+     "line": 160
+    }
+   ]
+  },
+  "C4|twin|codex|2": {
+   "primary_judge": [
+    {
+     "finding_key": "5f0baf8a31c3b17bf3adf6e08741d92a861c1d3a6ced8c8e154cedc84399fd2e",
+     "rule_id": "spec-compliance.size-accounting",
+     "line": 160
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "2fbcd8bfdee0f6aa61823bd717456a98b01c8c1410992f301181117b0148e239",
+     "rule_id": "spec.capacity-uses-entry-count",
+     "line": 160
+    }
+   ]
+  },
+  "J1|twin|claude|1": {
+   "primary_judge": [
+    {
+     "finding_key": "c8069fd5c49623ba89dcb6915aa3fead6a6d2c5edca618a81a81816bf4bd5fc9",
+     "rule_id": "spec.surrogate-pair-slice-offset",
+     "line": 135
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "40483f13b43c120ae735d503f63abd6fd5b5b6db4fed4d8af46155ed5855a51e",
+     "rule_id": "spec-compliance.code-point-boundary",
+     "line": 135
+    }
+   ]
+  },
+  "J1|twin|claude|2": {
+   "primary_judge": [
+    {
+     "finding_key": "867a7376d6d4b67bd95ba6b60ccba6f59dd5ccaa9ab9b3dc17612b08f008d862",
+     "rule_id": "spec.surrogate-pair-slice-offset",
+     "line": 135
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "206da096ade9bc555368788da8d072cfd060bb1ba0181313f40b3aac751c0804",
+     "rule_id": "spec.surrogate-pair-preservation",
+     "line": 135
+    }
+   ]
+  },
+  "J1|twin|codex|1": {
+   "primary_judge": [
+    {
+     "finding_key": "cf4911a83cd80e821daf59d03844e934e9bcb2d32f259d0987f193af57b2f62b",
+     "rule_id": "spec.complete-code-point-boundaries",
+     "line": 135
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "5d01fa9bffca39eee1222367350fbe8aa36425f237c2993c44242557dfeb3881",
+     "rule_id": "spec.surrogate-pair-truncation",
+     "line": 135
+    }
+   ]
+  },
+  "J1|twin|codex|2": {
+   "primary_judge": [
+    {
+     "finding_key": "43469f146030af885a2a379517dc1886f2bc8ac74cdb36456141c7be2492d612",
+     "rule_id": "spec-compliance.code-point-boundary",
+     "line": 135
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "9ac058afd8d4a0052e26ab444c6d52fc138bb10b776e6fc4ddce70d7a8464a84",
+     "rule_id": "spec.surrogate-pair-slice-mismatch",
+     "line": 135
+    }
+   ]
+  },
+  "J2|twin|claude|1": {
+   "primary_judge": [
+    {
+     "finding_key": "42e1eae41cbaad3ec9bb7b6469f1946a1936d8ae369ad78c767bdb093daa4ddf",
+     "rule_id": "spec.precedence-order-violation",
+     "line": 54
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "f625eddfbe8e5178f88527f4994490faddb6d399b1b35f91c4398d0cd965c8b5",
+     "rule_id": "spec.matching-precedence",
+     "line": 54
+    }
+   ]
+  },
+  "J2|twin|claude|2": {
+   "primary_judge": [
+    {
+     "finding_key": "756a1c10ad0ed95b047ec85eb2b88ff09466a7589bd2cfad6428440dc6c4d569",
+     "rule_id": "spec.precedence-violation",
+     "line": 54
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "a2dcdbda37476bf71ca189dfc291dc2714a77c786a0d0c6979360e8095299e72",
+     "rule_id": "spec.matching-precedence",
+     "line": 54
+    }
+   ]
+  },
+  "J2|twin|codex|1": {
+   "primary_judge": [
+    {
+     "finding_key": "e1507403d98d504f5120ce86a2b73888415045b38b87f80fbbc35c76256a6560",
+     "rule_id": "spec-compliance.matching-precedence",
+     "line": 54
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "64188aaf0be1747209f9ea82434677b964be3b1cb78b8f80c62c03e896794353",
+     "rule_id": "spec.precedence-violation",
+     "line": 54
+    }
+   ]
+  },
+  "J2|twin|codex|2": {
+   "primary_judge": [
+    {
+     "finding_key": "95e8c327c8b1eefb9bd40e667def258266df4d53134f32b5fe21d60d51ecbee2",
+     "rule_id": "spec-compliance.matching-precedence",
+     "line": 54
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "1dfed1381ad8b848b7851323dfc185941c57d543101727d864da56e1a7418a56",
+     "rule_id": "spec.precedence-violation",
+     "line": 54
+    }
+   ]
+  },
+  "J3|twin|claude|1": {
+   "primary_judge": [
+    {
+     "finding_key": "a401a1f8e101b205770b081e67b6eae0a40ad7969603f05da7450c0539991017",
+     "rule_id": "spec.compliance.rollback-reused-artifact-id",
+     "line": 223
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "367a5a0c79b378e32ec2ea4ec3d57f1e6c7138ab96c0236b15950583aa60e4b2",
+     "rule_id": "spec-compliance.artifact-rollback",
+     "line": 223
+    }
+   ]
+  },
+  "J3|twin|claude|2": {
+   "primary_judge": [
+    {
+     "finding_key": "ae68d634649986ab1cd210914818ab4e00306c01f024f32a8ee29ba3bb36ba6f",
+     "rule_id": "spec.rollback-shared-path-array",
+     "line": 223
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "1b99870d94e0e5aba0e1ff1ff1ec7093bddb7878bc2b0798b156f826fa6396cc",
+     "rule_id": "spec.rollback-shared-artifact",
+     "line": 223
+    }
+   ]
+  },
+  "J3|twin|codex|1": {
+   "primary_judge": [
+    {
+     "finding_key": "c5435acfdbf11dd955d96f932beaa0882fbcf64271e4dcc2b889baf3ccecef84",
+     "rule_id": "spec.artifact-rollback",
+     "line": 223
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "50f9de84bf176d431c267ca9ba5b0ef7d8886b93cac2612fe4ec4de84a94b72c",
+     "rule_id": "spec.rollback-shared-path-array",
+     "line": 223
+    }
+   ]
+  },
+  "J3|twin|codex|2": {
+   "primary_judge": [
+    {
+     "finding_key": "e50a2e23312ec177fcc3e3597b8b37504bffc2e48f953fc54e067d901a63bfe7",
+     "rule_id": "spec.artifact-rollback",
+     "line": 223
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "8751f5f0936c4d95bc7a9bb070595040aa40e5475c10bd1e9ccd383aac2792df",
+     "rule_id": "spec.rollback-shared-id-leak",
+     "line": 223
+    }
+   ]
+  },
+  "J4|twin|claude|1": {
+   "primary_judge": [
+    {
+     "finding_key": "45cc2184815f6a998366bb20be74d54749164ff00a42df513a508208e5cd6d79",
+     "rule_id": "spec.divisor-precision-not-used",
+     "line": 221
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "a27ffa56a68de575c5ca6f51d92947d3826240ba8418592065e4d0f051f938d2",
+     "rule_id": "spec-compliance.divisor-precision",
+     "line": 222
+    }
+   ]
+  },
+  "J4|twin|claude|2": {
+   "primary_judge": [
+    {
+     "finding_key": "e37d3b2cd34e6d25c110cf743c38baa5ad15bfc652cb2e9a728b7c5fd55fa95a",
+     "rule_id": "spec.arithmetic-uses-value-precision",
+     "line": 221
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "b0e5d09d02cc957ed7df9f1a65bf4bb403128d70e25c566712ce40df58fd095e",
+     "rule_id": "spec.divisor-precision",
+     "line": 222
+    }
+   ]
+  },
+  "J4|twin|codex|1": {
+   "primary_judge": [
+    {
+     "finding_key": "1e7e46aa9584abf23f911074e461a1060bead8aa8267de653dd5dd72e2a8d642",
+     "rule_id": "spec-compliance.divisor-precision",
+     "line": 222
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "4c5c4264c5a78c31b0f74cfb62e5d2de7724c284bcc847e8157106b283e6acfc",
+     "rule_id": "spec.arithmetic-uses-value-precision",
+     "line": 221
+    }
+   ]
+  },
+  "J4|twin|codex|2": {
+   "primary_judge": [
+    {
+     "finding_key": "fee82dd8b6d9424d8b0c33be5300b273453fdb48abbd9606379a861d6a8e7ddf",
+     "rule_id": "spec.arithmetic-divisor-precision",
+     "line": 222
+    }
+   ],
+   "pair_judge": [
+    {
+     "finding_key": "1cdf32a76240670792e663228fd39d02b86e53b59881ce0caef944e635d37a36",
+     "rule_id": "spec.compliance.divisor-precision",
+     "line": 221
+    }
+   ]
+  }
+ },
+ "blocked_reference_rounds": {
+  "J2|reference|codex|2": "execution-condition: the unchanged 0226 spec states \"offline, with Node 22\"; MECHANICAL recorded neither"
+ },
+ "needs_work_reference_rounds": {
+  "J2|reference|codex|1": "execution-condition only (not a G3 criterion)"
+ }
+}

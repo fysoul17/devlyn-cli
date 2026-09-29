@@ -1,0 +1,268 @@
+{
+  "candidate": "f40da73b6db6521286fb742a264666bdc141d462",
+  "rounds": [
+    {
+      "claude_findings": [
+        {
+          "file": "test/types/boolean.js",
+          "id": "F1",
+          "line": 632,
+          "message": "Unmatched-input test checks only `expect(result.value).to.equal(' unknown ');` and `details[0].type`; it does not assert `result.error.details[0].context.value` retains the padded input. Source review confirms it is preserved: `validate(value, { error })` returns `error('boolean.base')` with the untouched `value` (lib/types/boolean.js:74-75), and the loop assigns `value` only on a match. Advisory only.",
+          "rule_id": "coverage.test-gap",
+          "severity": "LOW",
+          "verdict_binding": false
+        },
+        {
+          "file": "test/types/boolean.js",
+          "id": "F2",
+          "line": 654,
+          "message": "No test covers original-over-trimmed precedence across mappings, such as `truthy('yes').falsy(' yes ')` validating `' yes '`, where the original should return false. Source order `const candidates = typeof value === 'string' ? [value, value.trim()] : [value];` (lib/types/boolean.js:54) with `break` on the first match implements it correctly. The Verification list does not require this case, so this is advisory.",
+          "rule_id": "coverage.test-gap",
+          "severity": "LOW",
+          "verdict_binding": false
+        },
+        {
+          "file": "test/types/boolean.js",
+          "id": "F3",
+          "line": 620,
+          "message": "New tests are in a separate top-level `describe('trimmed custom boolean values', ...)` placed after the closing `describe('boolean', ...)` instead of being nested with the existing `truthy()`/`falsy()` sections. This is a style inconsistency only.",
+          "rule_id": "design.consistency",
+          "severity": "LOW",
+          "verdict_binding": false
+        },
+        {
+          "file": "API.md",
+          "id": "F4",
+          "line": 1817,
+          "message": "The added docs say `For strings, the value is checked as supplied first, then with leading and trailing whitespace trimmed if no match is found.` They do not say that the built-in `true`/`false` recognition takes precedence over custom mappings, or that the trimmed match uses the same sensitivity setting. The existing sentence `String comparisons are by default case insensitive` implicitly covers sensitivity. The text is accurate, just less explicit than it could be.",
+          "rule_id": "docs.completeness",
+          "severity": "LOW",
+          "verdict_binding": false
+        }
+      ],
+      "claude_reads": {
+        "ambiguous": [],
+        "outside": []
+      },
+      "claude_reasks": 0,
+      "claude_seat_verdict": "PASS_WITH_ISSUES",
+      "claude_tools": {
+        "Grep": 1,
+        "Read": 2,
+        "StructuredOutput": 1
+      },
+      "envelope": {
+        "api_error_status": null,
+        "is_error": false,
+        "num_turns": 5,
+        "stop_reason": "tool_use",
+        "structured_output": true,
+        "subtype": "success",
+        "terminal_reason": "completed"
+      },
+      "exit_code": 0,
+      "rid": "J2|reference|claude|1",
+      "started_at": "2026-09-29T10:50:39.825Z",
+      "token": "7fd802c40126"
+    },
+    {
+      "claude_findings": [
+        {
+          "file": "API.md",
+          "id": "F1",
+          "line": 1817,
+          "message": "The added text \"An original-value match takes precedence over a trimmed-value match; for the same value, `truthy()` takes precedence over `falsy()`.\" covers custom-mapping precedence. It does not say that the built-in trimmed `true`/`false` recognition (lib/types/boolean.js:48-50 `const trimmedValue = value.trim(); ... normalized === 'true' ? true : ...`) takes precedence over custom mappings. The spec asks for 'matching precedence' to be documented, and it is arguably complete for custom mappings only. This is advisory.",
+          "rule_id": "spec.docs-precedence-incomplete",
+          "severity": "LOW",
+          "verdict_binding": false
+        },
+        {
+          "file": "test/types/boolean.js",
+          "id": "F2",
+          "line": 620,
+          "message": "The new tests are in a separate top-level block, `describe('trimmed custom boolean values', () => {`, outside the file's existing `describe('boolean', ...)` block. This is a style inconsistency with the surrounding test structure.",
+          "rule_id": "design.test-organization",
+          "severity": "LOW",
+          "verdict_binding": false
+        }
+      ],
+      "claude_reads": {
+        "ambiguous": [],
+        "outside": []
+      },
+      "claude_reasks": 0,
+      "claude_seat_verdict": "PASS_WITH_ISSUES",
+      "claude_tools": {
+        "Read": 1,
+        "StructuredOutput": 1
+      },
+      "envelope": {
+        "api_error_status": null,
+        "is_error": false,
+        "num_turns": 3,
+        "stop_reason": "tool_use",
+        "structured_output": true,
+        "subtype": "success",
+        "terminal_reason": "completed"
+      },
+      "exit_code": 0,
+      "rid": "J2|reference|codex|1",
+      "started_at": "2026-09-29T10:51:20.649Z",
+      "token": "fa83a07f3d4d"
+    },
+    {
+      "claude_findings": [
+        {
+          "file": "tests/test_tlru.py",
+          "id": "F1",
+          "line": 52,
+          "message": "None of the new tests mixes obsolete heap records (from overwrites or deletes) with a positive limit. For example, `cache['a']=2; cache['a']=9; cache.expire(5, limit=1)` would check that the obsolete record for 'a' is skipped without counting toward the limit or removing the current 'a'. The spec leaves this as a source-review obligation, and source review passes: `if not item.removed:` ... `count += 1` (src/cachetools/__init__.py:704-708) counts only live items, and a popped obsolete item never touches `Cache.__delitem__` or `items`. This is advisory only.",
+          "rule_id": "coverage.untested-source-review-clause",
+          "severity": "LOW",
+          "verdict_binding": false
+        },
+        {
+          "file": "src/cachetools/__init__.py",
+          "id": "F2",
+          "line": 691,
+          "message": "When the heap is large enough (`if len(order) > len(items) * self.__HEAP_CLEANUP_FACTOR:`), compaction runs before the bounded loop. This keeps the existing compaction behavior, and live items left behind by a bounded call are still not marked `removed`, so compaction keeps them in the heap for a later drain. No test covers compaction combined with limit. This is advisory only; source review finds it correct.",
+          "rule_id": "coverage.untested-source-review-clause",
+          "severity": "LOW",
+          "verdict_binding": false
+        }
+      ],
+      "claude_reads": {
+        "ambiguous": [],
+        "outside": []
+      },
+      "claude_reasks": 0,
+      "claude_seat_verdict": "PASS_WITH_ISSUES",
+      "claude_tools": {
+        "Grep": 1,
+        "Read": 2,
+        "StructuredOutput": 1
+      },
+      "envelope": {
+        "api_error_status": null,
+        "is_error": false,
+        "num_turns": 5,
+        "stop_reason": "tool_use",
+        "structured_output": true,
+        "subtype": "success",
+        "terminal_reason": "completed"
+      },
+      "exit_code": 0,
+      "rid": "C1|reference|claude|1",
+      "started_at": "2026-09-29T10:51:48.202Z",
+      "token": "3d1120428ca4"
+    },
+    {
+      "claude_findings": [],
+      "claude_reads": {
+        "ambiguous": [],
+        "outside": []
+      },
+      "claude_reasks": 0,
+      "claude_seat_verdict": "PASS",
+      "claude_tools": {
+        "Grep": 1,
+        "Read": 1,
+        "StructuredOutput": 1
+      },
+      "envelope": {
+        "api_error_status": null,
+        "is_error": false,
+        "num_turns": 4,
+        "stop_reason": "tool_use",
+        "structured_output": true,
+        "subtype": "success",
+        "terminal_reason": "completed"
+      },
+      "exit_code": 0,
+      "rid": "C1|reference|codex|1",
+      "started_at": "2026-09-29T10:52:19.069Z",
+      "token": "83ef5c5b9332"
+    },
+    {
+      "claude_findings": [
+        {
+          "file": "src/cachetools/__init__.py",
+          "id": "F1",
+          "line": 704,
+          "message": "Spec requires: \"Obsolete heap records from overwritten or deleted entries do not count toward limit\" and \"remove and return exactly the smaller of limit and the number of resident entries expired\". The loop increments `count += 1` right after `item = heapq.heappop(order)`, before `if not item.removed:`, so every popped obsolete record uses up the limit. Counterexample: `cache['a']=2; cache['a']=3` (the old record for 'a' is marked removed, with expires=2 at the heap top), `cache['b']=4`, then `expire(10, limit=1)`. The first iteration pops the removed record (count=1), the loop guard `count < limit` fails, and the call returns `[]` while 2 resident entries have expired. It should return exactly 1 pair. The sealed pytest evidence passes only because no test combines limit with overwritten or deleted entries. The fix is to increment count only inside the `if not item.removed:` branch.",
+          "rule_id": "spec.obsolete-records-counted-toward-limit",
+          "severity": "HIGH",
+          "verdict_binding": true
+        },
+        {
+          "file": "tests/test_tlru.py",
+          "id": "F2",
+          "line": 52,
+          "message": "The new tests (`test_expire_limit_drains_distinct_deadlines`, `test_expire_limit_values_and_exact_deadline`, etc.) only use fresh `cache.update(a=2, b=4, c=8)`-style inserts. None of them overwrites or deletes a key before a bounded `expire(..., limit=N)`, so the obsolete-record clause and the interaction with heap compaction have no test coverage. The spec keeps these as source-review obligations, and that review found the defect in F1.",
+          "rule_id": "coverage.obsolete-record-limit-untested",
+          "severity": "MEDIUM",
+          "verdict_binding": false
+        }
+      ],
+      "claude_reads": {
+        "ambiguous": [],
+        "outside": []
+      },
+      "claude_reasks": 0,
+      "claude_seat_verdict": "NEEDS_WORK",
+      "claude_tools": {
+        "Read": 1,
+        "StructuredOutput": 1
+      },
+      "envelope": {
+        "api_error_status": null,
+        "is_error": false,
+        "num_turns": 3,
+        "stop_reason": "tool_use",
+        "structured_output": true,
+        "subtype": "success",
+        "terminal_reason": "completed"
+      },
+      "exit_code": 0,
+      "rid": "C1|twin|claude|1",
+      "started_at": "2026-09-29T10:52:43.783Z",
+      "token": "57176741dafd"
+    },
+    {
+      "claude_findings": [
+        {
+          "file": "src/cachetools/__init__.py",
+          "id": "F1",
+          "line": 704,
+          "message": "The spec says: \"Obsolete heap records from overwritten or deleted entries do not count toward limit\" and \"For a positive limit, remove and return exactly the smaller of limit and the number of resident entries expired at the selected time\". The loop increments the counter for every popped heap record, including obsolete ones: `item = heapq.heappop(order)` / `count += 1` / `if not item.removed:` (lines 703-705). The guard `(limit is None or count < limit)` (line 700) therefore stops early whenever obsolete records are popped. Counterexample, using ttu=value and a timer at 0: `cache['a']=2; cache['a']=5; cache['b']=3`. This leaves the obsolete record a(2) in the heap. Compaction at line 691 does not run because 3 heap records is not more than 2 items * factor. `cache.expire(10, limit=2)` pops the obsolete a(2) (count=1) and then b(3) (count=2), and returns only [('b',3)] instead of the required two resident pairs [('b',3),('a',5)]. The count should only increase inside the `if not item.removed:` branch. None of the new tests cover an overwritten or deleted entry together with a positive limit, so the sealed pytest pass does not cover this clause.",
+          "rule_id": "spec.obsolete-records-counted-toward-limit",
+          "severity": "HIGH",
+          "verdict_binding": true
+        }
+      ],
+      "claude_reads": {
+        "ambiguous": [],
+        "outside": []
+      },
+      "claude_reasks": 0,
+      "claude_seat_verdict": "NEEDS_WORK",
+      "claude_tools": {
+        "Read": 1,
+        "StructuredOutput": 1
+      },
+      "envelope": {
+        "api_error_status": null,
+        "is_error": false,
+        "num_turns": 3,
+        "stop_reason": "tool_use",
+        "structured_output": true,
+        "subtype": "success",
+        "terminal_reason": "completed"
+      },
+      "exit_code": 0,
+      "rid": "C1|twin|codex|1",
+      "started_at": "2026-09-29T10:53:08.808Z",
+      "token": "dd5cfa17e1df"
+    }
+  ]
+}
