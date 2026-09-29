@@ -84,14 +84,14 @@ PLAN  →  IMPLEMENT  →  BUILD_GATE  →  CLEANUP  →  VERIFY (fresh subagent
 Common flags: `--engine claude|codex|omp` (default: the orchestrator-supported default), `--role-config <path>` (one-run worker/judge profiles, see below), `--bypass build-gate,cleanup`, `--pair-verify` (force pair-mode JUDGE in VERIFY), `--no-pair` (intentional solo VERIFY), `--risk-probes` / `--no-risk-probes`, `--perf` (per-phase timing).
 `--pair-verify` and `--no-pair` are mutually exclusive; using both stops with `BLOCKED:invalid-flags`.
 
-Accepted tasks default to scoped commit → push → PR; the task branch is retained
-for review. Set `git config --local devlyn.completionMode auto` to also request a
-normal protected merge and recoverable cleanup after it merges;
-`task-complete.py complete --mode auto|pr` overrides one task.
-Local-only/no-push instructions take precedence. Linked worktrees are optional;
-existing branches cannot be adopted. Full runs require successful archive before
-delivery; direct tasks use their actual checks and root acceptance. Verify-only
-never publishes. Pending checks or unsupported merge policy retain resources and
+Each task gets its own linked worktree; accepted tasks default to scoped commit → push → PR.
+After the PR merges, either mode cleans the worktree and branch its session
+released; anything in use is kept. Set `git config --local devlyn.completionMode auto` to
+also request a normal protected merge; `task-complete.py complete --mode auto|pr`
+overrides one task. Local-only/no-push instructions take precedence; existing
+branches cannot be adopted. Full runs require successful archive before delivery;
+direct tasks use their actual checks and root acceptance. Verify-only never
+publishes. Pending checks or unsupported merge policy retain resources and
 report a receipt-based resume command separately from product verification.
 See [task completion](config/skills/devlyn:resolve/references/task-completion.md)
 for allocation, acceptance, writer cessation and recovery.

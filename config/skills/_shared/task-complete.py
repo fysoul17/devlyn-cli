@@ -185,18 +185,15 @@ def allocate(args):
     require(re.fullmatch(r"[A-Za-z0-9_.-]+", args.remote), "unsafe remote name")
     receipt = {"task": args.task, "repository": args.repository, "remote": args.remote,
                "base": args.base, "branch": args.branch, "common_gitdir": str(common),
-               "anchor": str(work), "linked": bool(args.worktree), "allocation": "allocating"}
+               "anchor": str(work), "linked": True, "allocation": "allocating"}
     policy(receipt, None)
     receipt["remote_url"] = remote_url(receipt)
     require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
     require(not ref_sha(receipt, "refs/heads/"+args.branch), "existing branch cannot be adopted")
-    require(git(work, "symbolic-ref", "HEAD") == "refs/heads/" + args.base, "allocate from the retained base checkout")
-    require(not git(work, "status", "--porcelain", "--untracked-files=all"), "allocation requires clean tracked/untracked contents")
-    receipt["baseline"] = git(work, "rev-parse", "HEAD")
-    target = Path(args.worktree).absolute() if args.worktree else work
+    receipt["baseline"] = remote_base(receipt)
+    target = Path(args.worktree).absolute()
     require(target == target.resolve(), "worktree path must not traverse symlinks")
-    if args.worktree:
-        require(not target.exists() and not target.is_relative_to(work) and not work.is_relative_to(target), "linked worktree must be an absent disjoint path")
+    require(not target.exists() and all(not target.is_relative_to(p) and not p.is_relative_to(target) for p in map(Path, registrations(receipt))), "linked worktree must be an absent path disjoint from every registered worktree")
     receipt["worktree"] = str(target)
     key = hashlib.sha256(args.branch.encode()).hexdigest()[:24]
     directory = common / "devlyn-completion" / key
@@ -210,15 +207,13 @@ def allocate(args):
     # Persist prospective intent BEFORE native creation. An interrupted allocation
     # stays visibly incomplete; a later call may not adopt whatever now exists.
     atomic_json(path, receipt)
-    if args.worktree:
-        git(work, "worktree", "add", "-b", args.branch, str(target), receipt["baseline"])
-    else:
-        git(work, "switch", "-c", args.branch, receipt["baseline"])
+    gref(receipt, "worktree", "add", "-b", args.branch, str(target), receipt["baseline"])
     receipt["worktree_gitdir"] = git(target, "rev-parse", "--absolute-git-dir")
     receipt["worktree_identity"] = workspace_identity(target, Path(receipt["worktree_gitdir"]))
     receipt["allocation"] = "owned"
     atomic_json(path, receipt)
-    return {"status": "ALLOCATED", "receipt": str(path), "worktree": str(target), "scratch": str(scratch)}
+    return {"status": "ALLOCATED", "receipt": str(path), "worktree": str(target), "scratch": str(scratch),
+            "reconciled": reconcile(common, path, work)}
 
 
 def pipeline_acceptance(work, acceptance, files, directory):
@@ -298,8 +293,6 @@ def bind_acceptance(receipt, path, supplied):
         if supplied:
             require(file_record(Path(supplied))["sha256"] == receipt["acceptance_digest"], "acceptance changed; resume with the original acceptance")
         verify_files(path.parent / "custody", receipt["files"])
-        if work.exists() and not receipt.get("cleanup_started"):
-            verify_files(work, receipt["files"])
         return
     require(supplied, "first completion requires explicit root acceptance")
     acceptance_path = Path(supplied).absolute()
@@ -377,6 +370,13 @@ def repo_policy(receipt):
     return info
 
 
+def remote_base(receipt):
+    # Never write FETCH_HEAD: a concurrent `git pull` in the anchor would merge ours.
+    tracking = "refs/remotes/" + receipt["remote"] + "/" + receipt["base"]
+    gref(receipt, "fetch", "--no-tags", "--no-write-fetch-head", receipt["remote"], "+refs/heads/" + receipt["base"] + ":" + tracking)
+    return gref(receipt, "rev-parse", "--verify", tracking)
+
+
 def remote_head(receipt, branch):
     rows = gref(receipt, "ls-remote", "--heads", receipt["remote"], "refs/heads/"+branch).splitlines()
     require(len(rows) <= 1, "ambiguous remote ref")
@@ -395,24 +395,35 @@ def workspace_identity(work, gitdir):
     return [[p.stat().st_dev, p.stat().st_ino] for p in (work, gitdir)]
 
 
-def inspect_workspace(receipt, *, allow_returned=False):
+def inspect_workspace(receipt):
     work = Path(receipt["worktree"])
     row = registrations(receipt).get(str(work))
     require(row and "locked" not in row and "prunable" not in row and "detached" not in row, "worktree missing, detached or locked; retain and inspect registration")
     expected = "refs/heads/" + receipt["branch"]
-    returned = allow_returned and not receipt["linked"] and row.get("branch") == "refs/heads/"+receipt["base"] and receipt.get("cleanup_started")
-    require(row.get("branch") == expected or returned, "foreign worktree branch; retain workspace")
+    require(row.get("branch") == expected, "foreign worktree branch; retain workspace")
     require(git(work, "rev-parse", "--absolute-git-dir") == receipt["worktree_gitdir"] and str(Path(git(work, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()) == receipt["common_gitdir"], "worktree Gitdir ownership changed")
     require(workspace_identity(work, Path(receipt["worktree_gitdir"])) == receipt["worktree_identity"], "worktree/registration was replaced; receipt no longer owns it")
-    if not returned:
-        require(git(work, "rev-parse", "HEAD") == receipt.get("publish_sha", receipt["baseline"]), "task HEAD changed")
+    require(git(work, "rev-parse", "HEAD") == receipt.get("publish_sha", receipt["baseline"]), "task HEAD changed")
     require(not git(work, "status", "--porcelain", "--untracked-files=all"), "dirty/untracked workspace; retain files and commit only accepted scope")
-    return returned
 
 
-def stopped_writers(work, *, linked):
-    require(not linked or not Path.cwd().resolve().is_relative_to(work), "caller cwd is inside removable worktree; yield it and resume from outside")
-    require(not linked or not Path(__file__).resolve().is_relative_to(work), "invoke the installed helper outside the removable worktree so resume remains available")
+def outside(work):
+    require(not Path.cwd().resolve().is_relative_to(work), "caller cwd is inside removable worktree; yield it and resume from outside")
+    require(not Path(__file__).resolve().is_relative_to(work), "invoke the installed helper outside the removable worktree so resume remains available")
+
+
+def removable(receipt, work):
+    inspect_workspace(receipt)
+    verify_files(work, receipt["files"])
+    # Git lists a nested repository or worktree under an ignored path as `dir/`;
+    # native removal would delete it with its uncommitted work.
+    nested = [p for p in git(work, "ls-files", "--others", "--ignored", "--exclude-standard", "-z").split("\0") if p.endswith("/")]
+    require(not nested, "nested repository or worktree inside the task tree: " + ", ".join(nested) + "; retain")
+    stopped_writers(work)
+
+
+def stopped_writers(work):
+    outside(work)
     # The owner assertion covers its actual children; an OS observation catches
     # other currently open files/cwds, not future writers or a universal lease.
     if sys.platform == "darwin":
@@ -431,10 +442,15 @@ def stopped_writers(work, *, linked):
             try:
                 links = [process / "cwd", *(process / "fd").iterdir()]
                 for link in links:
-                    target = Path(os.readlink(link))
+                    try:
+                        target = Path(os.readlink(link))
+                    except FileNotFoundError:
+                        if link == process / "cwd":
+                            break
+                        continue
                     require(not target.is_absolute() or not target.is_relative_to(work), f"active process {process.name} uses task files; stop/yield it before resume")
             except FileNotFoundError:
-                continue  # Process or fd exited during observation.
+                continue  # Process exited during observation.
             except PermissionError as exc:
                 raise CompletionError("unknown process access; retain tree until writer cessation can be established") from exc
     else:
@@ -478,7 +494,7 @@ def clean_scratch(receipt, path, writers_stopped):
     require(workspace_identity(scratch, path.parent) == identity, "scratch directory was replaced; retain")
     require(shutil.rmtree.avoids_symlink_attacks, "safe scratch removal unsupported on this platform; retain")
     require(not any(mount.is_relative_to(scratch) for mount in scratch_mounts()), "scratch contains a mounted filesystem; retain")
-    stopped_writers(scratch, linked=True)
+    stopped_writers(scratch)
     size = 0
     for directory, dirs, files in os.walk(scratch, followlinks=False, onerror=raise_walk_error):
         require(not any(name.casefold() == ".git" for name in dirs + files), "scratch contains Git recovery data; move it to retained custody before cleanup")
@@ -487,7 +503,7 @@ def clean_scratch(receipt, path, writers_stopped):
             info = item.lstat()
             require(info.st_dev == identity[0][0], "scratch contains a mounted filesystem; retain")
             size += info.st_size if stat.S_ISREG(info.st_mode) else 0
-    stopped_writers(scratch, linked=True)
+    stopped_writers(scratch)
     require(workspace_identity(scratch, path.parent) == identity, "scratch changed before removal; retain")
     require(not any(mount.is_relative_to(scratch) for mount in scratch_mounts()), "scratch mount appeared before removal; retain")
     for item in scratch.iterdir():
@@ -510,57 +526,47 @@ def clean_scratch_command(args):
                 "receipt": str(path), "scratch_cleanup": result, "product_verdict_unchanged": True}
 
 
-def cleanup(receipt, path, pr, writers_stopped):
+def cleanup(receipt, path, pr):
     require(pr["state"] == "MERGED" and pr.get("mergedAt") and pr.get("mergeCommit", {}).get("oid"), "actual matching merge evidence is required")
-    require(writers_stopped, "wait actual children, stop/yield known writers, then resume with --writers-stopped")
     sha = receipt["publish_sha"]
     branch_ref = "refs/heads/" + receipt["branch"]
+    # The recovery ref keeps the accepted commit reachable, so squash and
+    # rebase merges need only the merge commit on base.
     require(ref_sha(receipt, receipt["recovery_ref"]) == sha, "recovery reachability changed; retain resources")
     verify_files(path.parent / "custody", receipt["files"])
     require(read_json(path.parent / "manifest.json") == receipt["files"], "custody manifest changed")
-    gref(receipt, "fetch", "--no-tags", receipt["remote"], "refs/heads/"+receipt["base"])
-    base_sha = gref(receipt, "rev-parse", "FETCH_HEAD")
-    gref(receipt, "merge-base", "--is-ancestor", pr["mergeCommit"]["oid"], base_sha)
-    gref(receipt, "merge-base", "--is-ancestor", sha, pr["mergeCommit"]["oid"])
+    gref(receipt, "merge-base", "--is-ancestor", pr["mergeCommit"]["oid"], remote_base(receipt))
     gref(receipt, "merge-base", "--is-ancestor", receipt["source_sha"], sha)
     work = Path(receipt["worktree"])
     local = ref_sha(receipt, branch_ref)
-    require(local == sha or (local is None and receipt.get("cleanup_started")), "local task ref changed; retain")
-    if work.exists():
-        returned = inspect_workspace(receipt, allow_returned=True)
-        if not returned:
-            verify_files(work, receipt["files"])
-        if receipt["linked"]:
+    require(local in {None, sha}, "local task ref changed; retain")
+    if receipt["linked"]:
+        if work.exists():
+            require(receipt.get("writers_released"), "wait actual children, stop/yield known writers, then resume with --writers-stopped")
             require(work != Path(receipt["anchor"]) and work != Path(receipt["common_gitdir"]).parent, "cannot remove retained/main checkout")
-            ignored = git(work, "ls-files", "--others", "--ignored", "--exclude-standard", "-z").split("\0")
-            require(all(not p or p in receipt["files"] for p in ignored), "unknown ignored content; retain tree and arrange explicit custody outside this helper")
-            stopped_writers(work, linked=True)
-            inspect_workspace(receipt)
-            verify_files(work, receipt["files"])
-            receipt["cleanup_started"] = True
-            atomic_json(path, receipt)
+            removable(receipt, work)
+            devlyn = safe_path(work, ".devlyn")
+            if devlyn.exists():
+                require(devlyn.is_dir(), ".devlyn records must be a directory; retain tree")
+                paths = [str((Path(directory) / name).relative_to(work))
+                         for directory, dirs, files in os.walk(devlyn, onerror=raise_walk_error)
+                         for name in files + [name for name in dirs if (Path(directory) / name).is_symlink()]]
+                if paths:
+                    records = snapshot_files(work, paths)
+                    destination = path.parent / "records"
+                    if not destination.exists():
+                        with tempfile.TemporaryDirectory(prefix=".records-", dir=path.parent) as temporary:
+                            shutil.copytree(devlyn, Path(temporary) / ".devlyn", symlinks=True)
+                            verify_files(Path(temporary), records)
+                            Path(temporary).rename(destination)
+                    verify_files(destination, records)
+                    verify_files(work, records)
+            removable(receipt, work)
             gref(receipt, "worktree", "remove", str(work))
         else:
-            # In-place ignored user data stays in the retained checkout. Native
-            # switch --no-overwrite-ignore prevents a base file replacing it.
-            stopped_writers(work, linked=False)
-            base_ref = "refs/heads/" + receipt["base"]
-            old_base = ref_sha(receipt, base_ref)
-            require(old_base, "local base branch is missing")
-            gref(receipt, "merge-base", "--is-ancestor", old_base, base_sha)
-            receipt["cleanup_started"] = True
-            atomic_json(path, receipt)
-            inspect_workspace(receipt, allow_returned=True)
-            if not returned:
-                other = [row for p, row in registrations(receipt).items() if p != str(work) and row.get("branch") == base_ref]
-                require(not other, "base checked out elsewhere; retain task checkout")
-                gref(receipt, "update-ref", base_ref, base_sha, old_base)
-                git(work, "switch", "--no-overwrite-ignore", receipt["base"])
-            else:
-                git(work, "merge", "--no-overwrite-ignore", "--ff-only", base_sha)
-    else:
-        require(receipt["linked"] and receipt.get("cleanup_started") and str(work) not in registrations(receipt), "missing/replaced worktree was not removed by this receipt")
-    require(all(row.get("branch") != branch_ref for row in registrations(receipt).values()), "task branch is still checked out; retain ref")
+            require(str(work) not in registrations(receipt), "missing worktree is still registered; retain")
+    checked_out = [p for p, row in registrations(receipt).items() if row.get("branch") == branch_ref]
+    require(not checked_out, "task branch is still checked out at " + ", ".join(checked_out) + "; switch it off the task branch before cleanup")
     # Check ownership/ref identity once more immediately before each deletion.
     repo_policy(receipt)
     require(remote_url(receipt) == receipt["remote_url"], "remote changed before deletion")
@@ -578,12 +584,12 @@ def cleanup(receipt, path, pr, writers_stopped):
 
 
 @contextlib.contextmanager
-def locked_receipt(path):
+def locked_receipt(path, *, blocking=True):
     require(path.name == "receipt.json" and path.parent.parent.name == "devlyn-completion" and path == path.resolve(), "receipt must be its original external nonsymlink path")
     require(not (path.parent / "lock").is_symlink(), "receipt lock must not be a symlink")
     with contextlib.ExitStack() as stack:
         try:
-            stack.enter_context(shared("platform-support")["file_lock"](path.parent / "lock", blocking=True))
+            stack.enter_context(shared("platform-support")["file_lock"](path.parent / "lock", blocking=blocking))
         except (ImportError, OSError, AttributeError) as exc:
             raise CompletionError(f"receipt lock unavailable: {path}: {exc}") from exc
         receipt = read_json(path)
@@ -593,29 +599,73 @@ def locked_receipt(path):
         yield receipt
 
 
+def completion_result(receipt, path, status):
+    released = receipt.get("writers_released", False)
+    resume = shlex.join([sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)] +
+                        (["--writers-stopped"] if released else []))
+    scratch = {"status": "NOT_OWNED"}
+    if "scratch_identity" in receipt:
+        try:
+            scratch = clean_scratch(receipt, path, released)
+        except (CompletionError, OSError, ValueError, KeyError, TypeError, IndexError) as error:
+            scratch = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
+                sys.executable, str(Path(__file__).resolve()), "clean-scratch", "--receipt", str(path), "--writers-stopped"])}
+            receipt["scratch_cleanup"] = scratch
+            try:
+                atomic_json(path, receipt)
+            except OSError as record_error:
+                scratch["record_error"] = str(record_error)
+    return {"status": "CLEANUP_PENDING" if status == "COMPLETE" and scratch["status"] == "RETAINED" else status,
+            "delivery_status": status, "receipt": str(path), "pr": receipt.get("pr_url"), "resume": resume,
+            "acceptance": (receipt.get("acceptance") or {}).get("kind"), "product_verdict_unchanged": True,
+            "scratch_path": str(path.parent / "scratch") if "scratch_identity" in receipt else None,
+            "scratch_cleanup": scratch}
+
+
+def reconcile(common, allocated, anchor):
+    results = []
+    for path in sorted((common / "devlyn-completion").glob("*/receipt.json")):
+        if path == allocated:
+            continue
+        try:
+            receipt = read_json(path)
+            if receipt.get("allocation") != "owned" or not receipt.get("acceptance") or not receipt.get("pr_number") or receipt.get("local_only"):
+                continue
+            if receipt.get("status") == "COMPLETE" and (not receipt.get("writers_released") or "scratch_identity" not in receipt or receipt.get("scratch_cleanup", {}).get("status") == "CLEAN"):
+                continue
+            with locked_receipt(path, blocking=False) as receipt:
+                if receipt.get("status") == "COMPLETE":
+                    if receipt.get("writers_released") and "scratch_identity" in receipt and receipt.get("scratch_cleanup", {}).get("status") != "CLEAN":
+                        results.append(completion_result(receipt, path, "COMPLETE"))
+                    continue
+                if not receipt.get("acceptance") or not receipt.get("pr_number") or receipt.get("local_only"):
+                    continue
+                pr = json.loads(gh(receipt, "pr", "view", str(receipt["pr_number"]), "--json", PR_FIELDS))
+                if pr["state"] != "MERGED":
+                    continue
+                validate_pr(receipt, pr)
+                require(not receipt["linked"] or Path(receipt["worktree"]) != anchor, "cannot clean the current allocation's anchor checkout: " + str(anchor))
+                require(remote_url(receipt) == receipt["remote_url"], "remote URL changed since allocation")
+                repo_policy(receipt)
+                receipt["merge"] = pr
+                atomic_json(path, receipt)
+                cleanup(receipt, path, pr)
+                results.append(completion_result(receipt, path, "COMPLETE"))
+        except (Exception, SystemExit) as error:
+            results.append({"receipt": str(path), "status": "RETAINED", "reason": str(error)})
+    return results
+
+
 def complete(args):
     path = Path(args.receipt).absolute()
-    resume = shlex.join([sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)] +
-                        (["--writers-stopped"] if args.writers_stopped else []))
     with locked_receipt(path) as receipt:
+        if args.writers_stopped:
+            if receipt["linked"]:
+                outside(Path(receipt["worktree"]))
+            receipt["writers_released"] = True
+            atomic_json(path, receipt)
         def result(status):
-            scratch = {"status": "NOT_OWNED"}
-            if "scratch_identity" in receipt:
-                try:
-                    scratch = clean_scratch(receipt, path, args.writers_stopped)
-                except (CompletionError, OSError, ValueError, KeyError, TypeError, IndexError) as error:
-                    scratch = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
-                        sys.executable, str(Path(__file__).resolve()), "clean-scratch", "--receipt", str(path), "--writers-stopped"])}
-                    receipt["scratch_cleanup"] = scratch
-                    try:
-                        atomic_json(path, receipt)
-                    except OSError as record_error:
-                        scratch["record_error"] = str(record_error)
-            return {"status": "CLEANUP_PENDING" if status == "COMPLETE" and scratch["status"] == "RETAINED" else status,
-                    "delivery_status": status, "receipt": str(path), "pr": receipt.get("pr_url"), "resume": resume,
-                    "acceptance": (receipt.get("acceptance") or {}).get("kind"), "product_verdict_unchanged": True,
-                    "scratch_path": str(path.parent / "scratch") if "scratch_identity" in receipt else None,
-                    "scratch_cleanup": scratch}
+            return completion_result(receipt, path, status)
         if args.local_only or receipt.get("local_only"):
             receipt["local_only"] = True
             atomic_json(path, receipt)
@@ -628,14 +678,12 @@ def complete(args):
         if receipt.get("status") == "COMPLETE":
             verify_files(path.parent / "custody", receipt["files"])
             return result("COMPLETE")
-        if not receipt.get("cleanup_started"):
+        if not receipt.get("acceptance"):
             # Before first binding the owner has committed the product; inspect
             # uses the actual branch head until acceptance pins its exact SHA.
             current = dict(receipt, publish_sha=ref_sha(receipt, "refs/heads/"+receipt["branch"]))
             inspect_workspace(current)
         bind_acceptance(receipt, path, args.acceptance)
-        if not receipt.get("cleanup_started"):
-            inspect_workspace(receipt)
         info = repo_policy(receipt)
         if mode == "auto":
             require(info["mergeCommitAllowed"], "repository disallows merge commits; use pr mode or resolve policy with repository owner")
@@ -649,11 +697,11 @@ def complete(args):
             validate_pr(receipt, pr)
         actual = remote_head(receipt, receipt["branch"])
         if not pr or pr["state"] != "MERGED":
+            inspect_workspace(receipt)
+            verify_files(Path(receipt["worktree"]), receipt["files"])
             require(actual in {None, receipt["publish_sha"]}, "remote task head changed; refusing to overwrite or merge")
             require(actual is not None or (not pr and not receipt.get("pushed")), "published task ref disappeared; retain and inspect")
             if actual is None:
-                inspect_workspace(receipt)
-                verify_files(Path(receipt["worktree"]), receipt["files"])
                 gref(receipt, "push", receipt["remote"], receipt["publish_sha"]+":refs/heads/"+receipt["branch"])
             receipt["pushed"] = True
             atomic_json(path, receipt)
@@ -665,13 +713,14 @@ def complete(args):
                 validate_pr(receipt, pr)
         receipt.update(pr_number=pr["number"], pr_url=pr["url"])
         atomic_json(path, receipt)
-        if mode == "pr":
-            if pr["state"] == "OPEN" and pr.get("autoMergeRequest"):
+        if mode == "pr" and pr["state"] == "OPEN":
+            if pr.get("autoMergeRequest"):
                 gh(receipt, "pr", "merge", str(pr["number"]), "--disable-auto")
                 pr = json.loads(gh(receipt, "pr", "view", str(pr["number"]), "--json", PR_FIELDS))
                 validate_pr(receipt, pr)
                 require(not pr.get("autoMergeRequest"), "auto-merge request remains on owned PR; retain and inspect")
-            return result("PR")
+            if pr["state"] == "OPEN":
+                return result("PR")
         if pr["state"] != "MERGED":
             inspect_workspace(receipt)
             verify_files(Path(receipt["worktree"]), receipt["files"])
@@ -684,7 +733,7 @@ def complete(args):
                 return result("PENDING")
         receipt["merge"] = pr
         atomic_json(path, receipt)
-        cleanup(receipt, path, pr, args.writers_stopped)
+        cleanup(receipt, path, pr)
         return result("COMPLETE")
 
 
@@ -697,7 +746,7 @@ def main():
     for name in ("task", "branch", "repository", "base"):
         allocation.add_argument("--"+name, required=True)
     allocation.add_argument("--remote", default="origin")
-    allocation.add_argument("--worktree")
+    allocation.add_argument("--worktree", required=True)
     completion = actions.add_parser("complete")
     completion.add_argument("--receipt", required=True)
     completion.add_argument("--acceptance")
@@ -747,7 +796,7 @@ def remote(ref):
     return r.stdout.strip() if r.returncode == 0 else None
 if a[:2] == ['repo', 'view']:
     assert a[2:] == ['github.com/test/project', '--json', 'nameWithOwner,url,defaultBranchRef,mergeCommitAllowed'], 'unsupported gh repo view arguments: '+str(a)
-    print(json.dumps({'nameWithOwner':'test/project', 'url':'https://github.com/test/project', 'defaultBranchRef':{'name':'main'}, 'mergeCommitAllowed':d.get('merge_allowed',True)}))
+    print(json.dumps({'nameWithOwner':'test/project', 'url':'https://github.com/test/project', 'defaultBranchRef':{'name':d.get('default_branch','main')}, 'mergeCommitAllowed':d.get('merge_allowed',True)}))
 elif a[:2] == ['pr', 'list']:
     assert '--repo' in a and a[a.index('--repo')+1] == 'github.com/test/project'
     print(json.dumps([d['pr']] if d.get('pr') else []))
@@ -846,7 +895,7 @@ class CompletionTests(unittest.TestCase):
         self.env["PATH"] = str(self.bin) + os.pathsep + os.environ["PATH"]
         self.run_cmd(["git", "init", "--bare", "--initial-branch=main", str(self.bare)])
         self.run_cmd(["git", "init", "--initial-branch=main", str(self.work)])
-        (self.work / ".gitignore").write_text(".devlyn/\nignored/\n", encoding="utf-8")
+        (self.work / ".gitignore").write_text(".devlyn/\nignored/\nnode_modules/\n.env\n", encoding="utf-8")
         (self.work / "product").write_text("baseline\n", encoding="utf-8")
         self.g("add", ".")
         self.g("commit", "-m", "baseline")
@@ -871,33 +920,61 @@ class CompletionTests(unittest.TestCase):
         r = self.run_cmd([sys.executable, str(Path(__file__).resolve()), *map(str, args)], success=success, cwd=cwd)
         return json.loads(r.stdout), r
 
-    def allocate(self, linked=False, base="main"):
-        args = ["allocate", "--repo", self.work, "--task", "fixture", "--branch", "task/fixture", "--repository", "test/project", "--base", base]
-        if linked:
-            args += ["--worktree", self.root / "linked"]
+    def allocate(self, name="fixture", base="main"):
+        args = ["allocate", "--repo", self.work, "--task", name, "--branch", "task/"+name, "--repository", "test/project", "--base", base,
+                "--worktree", self.root / ("linked" if name == "fixture" else name)]
         result, _ = self.cli(*args)
         self.receipt = Path(result["receipt"])
         self.task = Path(result["worktree"])
         return result
 
+    def allocate_legacy(self):
+        common = Path(self.g("rev-parse", "--absolute-git-dir"))
+        key = hashlib.sha256(b"task/fixture").hexdigest()[:24]
+        receipt = {"task": "fixture", "repository": "test/project", "remote": "origin", "base": "main", "branch": "task/fixture",
+                   "common_gitdir": str(common), "anchor": str(self.work), "linked": False, "allocation": "owned",
+                   "baseline": self.g("rev-parse", "HEAD"), "worktree": str(self.work), "id": key,
+                   "recovery_ref": "refs/devlyn/completed/"+key, "worktree_gitdir": str(common),
+                   "remote_url": dict.fromkeys(("literal", "fetch", "push"), "https://github.com/test/project.git")}
+        self.receipt = common / "devlyn-completion" / key / "receipt.json"
+        self.receipt.parent.mkdir(parents=True)
+        scratch = self.receipt.parent / "scratch"
+        scratch.mkdir()
+        receipt["scratch_identity"] = workspace_identity(scratch, self.receipt.parent)
+        self.g("switch", "-c", "task/fixture")
+        receipt["worktree_identity"] = workspace_identity(self.work, common)
+        self.receipt.write_text(json.dumps(receipt), encoding="utf-8")
+        self.task = self.work
+
+    def merge_pr(self):
+        self.configure(pending=False)
+        self.run_cmd(["gh", "pr", "merge", "1", "--auto", "--merge", "--match-head-commit", self.sha])
+
+    def anchor_state(self, work=None):
+        work = work or self.work
+        return (self.g("symbolic-ref", "HEAD", work=work), self.g("rev-parse", "HEAD", work=work),
+                self.g("status", "--porcelain", "--untracked-files=all", work=work), (work / "product").read_bytes(),
+                (Path(self.g("rev-parse", "--absolute-git-dir", work=work)) / "index").read_bytes())
+
     def test_allocate_base_with_same_named_tag(self):
         self.g("tag", "main")
-        result = self.allocate(linked=True)
+        result = self.allocate()
         self.assertEqual(result["status"], "ALLOCATED")
         self.assertEqual(json.loads(self.receipt.read_text(encoding="utf-8"))["base"], "main")
 
     def test_allocate_base_preserves_unicode_whitespace(self):
         base = "main\u00a0"
         self.g("switch", "-c", base)
+        self.g("push", "origin", "HEAD:refs/heads/"+base)
         result = self.allocate(base=base)
         self.assertEqual(result["status"], "ALLOCATED")
         self.assertEqual(json.loads(self.receipt.read_text(encoding="utf-8"))["base"], base)
 
     def assert_base_identity_rejected(self, actual, base):
         result, process = self.cli("allocate", "--repo", self.work, "--task", "fixture",
-            "--branch", "task/fixture", "--repository", "test/project", "--base", base, success=False)
+            "--branch", "task/fixture", "--repository", "test/project", "--base", base, "--worktree", self.root / "linked", success=False)
         self.assertNotEqual(process.returncode, 0)
-        self.assertIn("retained base checkout", result["reason"])
+        self.assertIn("refs/heads/"+base, result["reason"])
         head = self.run_cmd(["git", "-C", str(self.work), "symbolic-ref", "HEAD"]).stdout
         self.assertEqual(head, "refs/heads/" + actual + "\n")
         self.assertFalse((self.work / ".git/devlyn-completion").exists())
@@ -906,12 +983,37 @@ class CompletionTests(unittest.TestCase):
 
     def test_allocate_rejects_trimmed_base_alias(self):
         self.g("switch", "-c", "main\u00a0")
+        self.g("push", "origin", "HEAD:refs/heads/main\u00a0")
+        self.run_cmd(["git", "--git-dir", str(self.bare), "update-ref", "-d", "refs/heads/main"])
         self.assert_base_identity_rejected("main\u00a0", "main")
 
     def test_allocate_rejects_short_base_alias(self):
         self.g("branch", "heads/main")
         self.g("tag", "main")
         self.assert_base_identity_rejected("main", "heads/main")
+
+    def test_allocate_uses_remote_base_with_dirty_foreign_anchor(self):
+        baseline = self.g("rev-parse", "main")
+        (self.work / "product").write_text("remote advance\n", encoding="utf-8")
+        self.g("commit", "-am", "remote advance")
+        self.g("push", "origin", "main")
+        remote = self.g("rev-parse", "main")
+        self.g("switch", "-c", "busy")
+        (self.work / "product").write_text("local advance\n", encoding="utf-8")
+        self.g("commit", "-am", "local advance")
+        ahead = self.g("rev-parse", "HEAD")
+        (self.work / "product").write_text("busy edits\n", encoding="utf-8")
+        (self.work / "untracked").write_bytes(b"owner data")
+        for name, local in (("behind", baseline), ("ahead", ahead)):
+            self.g("update-ref", "refs/heads/main", local)
+            before = self.anchor_state()
+            result = self.allocate(name)
+            self.assertEqual(result["status"], "ALLOCATED")
+            self.assertEqual(json.loads(self.receipt.read_text())["baseline"], remote)
+            self.assertEqual(self.g("rev-parse", "HEAD", work=self.task), remote)
+            self.assertEqual(self.anchor_state(), before)
+            self.assertEqual((self.work / "untracked").read_bytes(), b"owner data")
+            self.assertFalse((self.work / ".git" / "FETCH_HEAD").exists())
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_disposable_scratch_cleans_for_local_only_and_preserves_source(self):
@@ -942,6 +1044,29 @@ class CompletionTests(unittest.TestCase):
             child.terminate()
             child.wait(timeout=5)
         self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped")
+
+    def test_linux_writer_scan_continues_after_vanished_fd(self):
+        from unittest.mock import patch
+        process = Path("/proc") / str(os.getpid() + 1)
+        vanished, active = process / "fd/0", process / "fd/1"
+        iterdir, readlink = Path.iterdir, os.readlink
+        def entries(path):
+            if path == Path("/proc"):
+                return iter([process])
+            if path == process / "fd":
+                return iter([vanished, active])
+            return iterdir(path)
+        def target(path, *args, **kwargs):
+            if path == process / "cwd":
+                return str(self.root)
+            if path == vanished:
+                raise FileNotFoundError(path)
+            if path == active:
+                return str(self.work / "product")
+            return readlink(path, *args, **kwargs)
+        with patch.object(sys, "platform", "linux"), patch.object(Path, "iterdir", entries), patch.object(os, "readlink", target):
+            with self.assertRaisesRegex(CompletionError, "active process " + process.name):
+                stopped_writers(self.work)
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_scratch_rejects_redirect_and_git_data_but_does_not_follow_child_links(self):
@@ -1183,28 +1308,364 @@ class CompletionTests(unittest.TestCase):
         d = json.loads(self.data.read_text(encoding="utf-8"))
         self.assertEqual((d["creates"], d["merges"], d["pushs"]), (1, 1, 1))
 
-    def test_in_place_retains_ignored_data(self):
-        self.allocate(); self.accept()
+    def test_legacy_in_place_retains_checked_out_branch_then_retires_refs(self):
+        self.allocate_legacy(); self.accept()
         (self.task / "ignored").mkdir()
         (self.task / "ignored" / "user.txt").write_text("retain me", encoding="utf-8")
-        result, _ = self.complete("--writers-stopped", "--mode", "auto")
-        self.assertEqual(result["status"], "COMPLETE")
-        self.assertEqual(self.g("branch", "--show-current"), "main")
-        self.assertEqual((self.task / "ignored/user.txt").read_text(encoding="utf-8"), "retain me")
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        before = self.anchor_state()
+        receipt, task = self.receipt, self.task
+        result = self.allocate("next")
+        self.assertEqual(result["reconciled"][0]["status"], "RETAINED")
+        self.assertIn(str(task), result["reconciled"][0]["reason"])
+        self.assertIn("switch", result["reconciled"][0]["reason"])
+        self.assertEqual(self.anchor_state(), before)
+        self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+        self.g("switch", "main")
+        (self.work / "product").write_text("owner edits\n", encoding="utf-8")
+        (self.work / "untracked").write_bytes(b"owner data")
+        before = self.anchor_state()
+        result = self.allocate("retired")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
+        self.assertEqual(self.anchor_state(), before)
+        self.assertEqual((self.work / "untracked").read_bytes(), b"owner data")
+        self.assertEqual((task / "ignored/user.txt").read_text(encoding="utf-8"), "retain me")
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
-        again, _ = self.complete("--writers-stopped", acceptance=False)
+        self.receipt, self.task = receipt, task
+        again, _ = self.complete(acceptance=False)
         self.assertEqual(again["status"], "COMPLETE")
 
+    def test_pr_mode_cleans_after_human_merge(self):
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr")
+        self.merge_pr()
+        before = self.data.read_bytes()
+        result, _ = self.complete("--mode", "pr", "--writers-stopped")
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertFalse(self.task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+        saved, current = json.loads(before), json.loads(self.data.read_bytes())
+        self.assertEqual((current["merges"], current.get("disables", 0)), (saved["merges"], saved.get("disables", 0)))
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_nested_repository_or_worktree_retains_tree(self):
+        self.allocate(); self.accept()
+        _, r = self.cli("allocate", "--repo", self.work, "--task", "inner", "--branch", "task/inner", "--repository", "test/project",
+                        "--base", "main", "--worktree", self.task / "ignored" / "inner", success=False)
+        self.assertIn("disjoint from every registered worktree", json.loads(r.stdout)["reason"])
+        nested = self.task / "ignored" / "nested"
+        self.g("worktree", "add", "-b", "nested/work", str(nested), "main")
+        (nested / "product").write_text("unsaved nested work\n", encoding="utf-8")
+        clone = self.task / "ignored" / "clone"
+        self.run_cmd(["git", "init", "--initial-branch=main", str(clone)])
+        for remove in (lambda: self.g("worktree", "remove", "--force", str(nested)), lambda: shutil.rmtree(clone)):
+            _, r = self.complete("--mode", "auto", "--writers-stopped", success=False)
+            self.assertIn("nested repository or worktree", json.loads(r.stdout)["reason"])
+            self.assertTrue(self.task.exists())
+            self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+            if nested.exists():
+                self.assertEqual((nested / "product").read_text(encoding="utf-8"), "unsaved nested work\n")
+            remove()
+        result, _ = self.complete("--mode", "auto", "--writers-stopped")
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertFalse(self.task.exists())
+
+    def test_release_is_refused_from_inside_the_task_tree(self):
+        self.allocate(); self.accept()
+        _, r = self.complete("--mode", "pr", "--writers-stopped", cwd=self.task, success=False)
+        self.assertIn("caller cwd is inside", json.loads(r.stdout)["reason"])
+        self.assertNotIn("writers_released", json.loads(self.receipt.read_text(encoding="utf-8")))
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_squash_merge_cleans_and_recovery_ref_keeps_commit(self):
+        self.allocate(); self.accept()
+        result, _ = self.complete("--mode", "pr", "--writers-stopped")
+        self.assertEqual(result["status"], "PR")
+        bare = ["git", "--git-dir", str(self.bare)]
+        base = self.run_cmd(bare + ["rev-parse", "refs/heads/main"]).stdout.strip()
+        tree = self.run_cmd(bare + ["rev-parse", self.sha + "^{tree}"]).stdout.strip()
+        squash = self.run_cmd(bare + ["commit-tree", tree, "-p", base, "-m", "squash fixture"]).stdout.strip()
+        self.run_cmd(bare + ["update-ref", "refs/heads/main", squash, base])
+        pr = json.loads(self.data.read_text(encoding="utf-8"))["pr"]
+        self.configure(pr=dict(pr, state="MERGED", mergedAt="now", mergeCommit={"oid": squash}))
+        result, _ = self.complete()
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertFalse(self.task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+        self.assertEqual(self.g("rev-parse", json.loads(self.receipt.read_text(encoding="utf-8"))["recovery_ref"]), self.sha)
+        self.assertFalse((self.work / ".git" / "FETCH_HEAD").exists())
+
+    def test_linked_ignored_output_disposed_and_records_preserved(self):
+        self.allocate(); self.accept()
+        for relative, raw in (("node_modules/x", b"build"), (".env", b"SECRET=value\n"), (".devlyn/runs/extra/log", b"extra\x00bytes\n")):
+            path = self.task / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+            path.chmod(0o640)
+        records = snapshot_files(self.task, [".devlyn"])
+        (self.task / "untracked").write_bytes(b"owner data")
+        _, process = self.complete("--mode", "auto", "--writers-stopped", success=False)
+        self.assertNotEqual(process.returncode, 0)
+        self.assertTrue(self.task.exists())
+        self.assertEqual((self.task / "untracked").read_bytes(), b"owner data")
+        self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+        (self.task / "untracked").unlink()
+        result, _ = self.complete("--mode", "auto", "--writers-stopped")
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertFalse(self.task.exists())
+        verify_files(self.receipt.parent / "records", records)
+        self.assertEqual(snapshot_files(self.receipt.parent / "records", [".devlyn"]), records)
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+
+    def test_reconcile_released_merge_and_retains_without_release(self):
+        self.allocate(); self.accept()
+        result, _ = self.complete("--mode", "pr")
+        self.assertEqual(result["status"], "PR")
+        receipt, task = self.receipt, self.task
+        self.merge_pr()
+        result = self.allocate("unreleased")
+        self.assertEqual(len(result["reconciled"]), 1)
+        self.assertEqual(result["reconciled"][0]["status"], "RETAINED")
+        self.assertIn("writers", result["reconciled"][0]["reason"])
+        self.assertTrue(task.exists())
+        self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+        # Reopen only the fixture PR to exercise the owner's pre-merge release.
+        d = json.loads(self.data.read_text())
+        self.configure(pr=dict(d["pr"], state="OPEN", mergedAt=None, mergeCommit=None))
+        self.receipt, self.task = receipt, task
+        result, _ = self.complete("--mode", "pr", "--writers-stopped")
+        self.assertEqual(result["status"], "PR")
+        self.assertTrue(json.loads(receipt.read_text())["writers_released"])
+        self.merge_pr()
+        server = json.loads(self.data.read_text())
+        result = self.allocate("released")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
+        self.assertFalse(task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+        current = json.loads(self.data.read_text())
+        self.assertEqual((current["pushs"], current["creates"], current["merges"], current.get("disables", 0)),
+                         (server["pushs"], server["creates"], server["merges"], server.get("disables", 0)))
+
+    def test_reconcile_checks_repo_policy_before_cleanup(self):
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        receipt, task = self.receipt, self.task
+        self.configure(default_branch="changed")
+        result = self.allocate("next")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "RETAINED")])
+        self.assertIn("base/default branch changed", result["reconciled"][0]["reason"])
+        self.assertTrue(task.exists())
+        self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+
+    def test_reconcile_skips_open_and_unaccepted_and_retains_in_use_tree(self):
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        receipt, task = self.receipt, self.task
+        before = receipt.read_bytes()
+        result = self.allocate("unaccepted")
+        self.assertEqual(result["reconciled"], [])
+        self.assertEqual(receipt.read_bytes(), before)
+        unaccepted, unaccepted_tree = self.receipt, self.task
+        saved = json.loads(unaccepted.read_text())
+        saved.update(pr_number=1, writers_released=True)
+        unaccepted.write_text(json.dumps(saved))
+        unaccepted_before = unaccepted.read_bytes()
+        pr = json.loads(self.data.read_text())["pr"]
+        self.configure(pr=dict(pr, state="CLOSED"))
+        result = self.allocate("closed")
+        self.assertEqual(result["reconciled"], [])
+        self.assertEqual(receipt.read_bytes(), before)
+        self.assertTrue(task.exists())
+        self.configure(pr=pr)
+        self.merge_pr()
+        self.g("worktree", "lock", str(task))
+        result = self.allocate("locked")
+        self.assertEqual(len(result["reconciled"]), 1)
+        self.assertEqual(result["reconciled"][0]["status"], "RETAINED")
+        self.assertIn("locked", result["reconciled"][0]["reason"])
+        self.assertTrue(task.exists())
+        self.g("worktree", "unlock", str(task))
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], cwd=task)
+        try:
+            result = self.allocate("active")
+            self.assertEqual(len(result["reconciled"]), 1)
+            self.assertEqual(result["reconciled"][0]["status"], "RETAINED")
+            self.assertIn("active process", result["reconciled"][0]["reason"])
+            self.assertTrue(task.exists())
+            self.assertIsNone(child.poll())
+        finally:
+            child.terminate(); child.wait(timeout=5)
+        self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+        self.assertEqual(unaccepted.read_bytes(), unaccepted_before)
+        self.assertTrue(unaccepted_tree.exists())
+
+    def test_reconcile_already_retired_tree_and_branch(self):
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        receipt, task = self.receipt, self.task
+        self.g("worktree", "remove", str(task))
+        self.g("update-ref", "-d", "refs/heads/task/fixture", self.sha)
+        before = self.anchor_state()
+        result = self.allocate("next")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
+        self.assertFalse(task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+        self.assertEqual(self.anchor_state(), before)
+
+    def test_reconcile_never_removes_allocation_anchor(self):
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        before = self.anchor_state(self.task)
+        result, _ = self.cli("allocate", "--repo", self.task, "--task", "next", "--branch", "task/next",
+            "--repository", "test/project", "--base", "main", "--worktree", self.root / "next")
+        self.assertEqual(result["status"], "ALLOCATED")
+        self.assertEqual(len(result["reconciled"]), 1)
+        self.assertEqual(result["reconciled"][0]["status"], "RETAINED")
+        self.assertIn("anchor", result["reconciled"][0]["reason"])
+        self.assertEqual(self.anchor_state(self.task), before)
+        self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+
+    def test_reconcile_reports_scratch_cleanup_pending(self):
+        scratch = Path(self.allocate()["scratch"])
+        self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        receipt, task = self.receipt, self.task
+        (scratch / "object").write_bytes(b"rebuildable")
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], cwd=scratch)
+        try:
+            result = self.allocate("next")
+            self.assertEqual(len(result["reconciled"]), 1)
+            row = result["reconciled"][0]
+            self.assertEqual((row["status"], row["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+            self.assertEqual(row["scratch_cleanup"]["status"], "RETAINED")
+            self.assertIn("active process", row["scratch_cleanup"]["reason"])
+            self.assertEqual((scratch / "object").read_bytes(), b"rebuildable")
+            self.assertIsNone(child.poll())
+        finally:
+            child.terminate(); child.wait(timeout=5)
+        self.assertFalse(task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+        self.configure(default_branch="changed")
+        server = json.loads(self.data.read_text())
+        result = self.allocate("retry")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
+        self.assertFalse(any(scratch.iterdir()))
+        self.assertEqual(json.loads(self.data.read_text()), server)
+        self.assertEqual(self.allocate("later")["reconciled"], [])
+
+    def test_reconcile_retries_unattempted_scratch_cleanup(self):
+        scratch = Path(self.allocate()["scratch"])
+        self.accept()
+        self.complete("--mode", "auto", "--writers-stopped")
+        receipt = self.receipt
+        saved = json.loads(receipt.read_text())
+        del saved["scratch_cleanup"]
+        receipt.write_text(json.dumps(saved))
+        (scratch / "object").write_bytes(b"rebuildable")
+        result = self.allocate("next")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
+        self.assertFalse(any(scratch.iterdir()))
+
+    def test_reconcile_retains_busy_receipt_without_waiting(self):
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        code = "import pathlib, runpy, sys, time\nwith runpy.run_path(sys.argv[1])['file_lock'](pathlib.Path(sys.argv[2]), blocking=True):\n print('locked', flush=True)\n time.sleep(30)\n"
+        child = subprocess.Popen([sys.executable, "-c", code, str(Path(__file__).resolve().with_name("platform-support.py")),
+                                  str(self.receipt.parent / "lock")], stdout=subprocess.PIPE, text=True)
+        try:
+            self.assertEqual(child.stdout.readline().strip(), "locked")
+            process = subprocess.run([sys.executable, str(Path(__file__).resolve()), "allocate", "--repo", str(self.work),
+                "--task", "next", "--branch", "task/next", "--repository", "test/project", "--base", "main",
+                "--worktree", str(self.root / "next")], cwd=self.root, env=self.env, capture_output=True, text=True, timeout=10)
+            self.assertEqual(process.returncode, 0, process.stdout+process.stderr)
+            result = json.loads(process.stdout)
+            self.assertEqual(result["status"], "ALLOCATED")
+            self.assertEqual(len(result["reconciled"]), 1)
+            self.assertEqual(result["reconciled"][0]["status"], "RETAINED")
+            self.assertIn("lock", result["reconciled"][0]["reason"])
+            self.assertTrue(self.task.exists())
+            self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+            self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+            self.assertIsNone(child.poll())
+        finally:
+            child.terminate(); child.wait(timeout=5)
+            child.stdout.close()
+
+    def test_reconcile_retains_malformed_receipt_without_failing_allocation(self):
+        self.allocate()
+        receipt, task = self.receipt, self.task
+        receipt.write_text("[]", encoding="utf-8")
+        result = self.allocate("next")
+        self.assertEqual(result["status"], "ALLOCATED")
+        self.assertTrue(self.task.exists())
+        self.assertEqual(len(result["reconciled"]), 1)
+        self.assertEqual(result["reconciled"][0]["status"], "RETAINED")
+        self.assertEqual(result["reconciled"][0]["receipt"], str(receipt))
+        self.assertTrue(result["reconciled"][0]["reason"])
+        self.assertEqual(receipt.read_text(), "[]")
+        self.assertTrue(task.exists())
+        self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+
+    def test_records_refuse_symlink_nonregular_and_tampered_resume(self):
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        other = self.root / "owner-file"
+        other.write_bytes(b"owner data")
+        link = self.task / ".devlyn/link"
+        link.symlink_to(other)
+        result, _ = self.complete(success=False)
+        self.assertIn("path escapes custody", result["reason"])
+        self.assertTrue(self.task.exists())
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(other.read_bytes(), b"owner data")
+        link.unlink()
+        if hasattr(os, "mkfifo"):
+            os.mkfifo(link)
+            result, _ = self.complete(success=False)
+            self.assertIn("regular file", result["reason"])
+            self.assertTrue(self.task.exists())
+            link.unlink()
+        saved = self.receipt.parent / "records/.devlyn"
+        shutil.copytree(self.task / ".devlyn", saved)
+        (saved / "checks.txt").write_bytes(b"tampered copy")
+        result, _ = self.complete(success=False)
+        self.assertIn("bytes/mode changed", result["reason"])
+        self.assertEqual((saved / "checks.txt").read_bytes(), b"tampered copy")
+        self.assertTrue(self.task.exists())
+        self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+        shutil.copy2(self.task / ".devlyn/checks.txt", saved / "checks.txt")
+        result, _ = self.complete()
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertFalse(self.task.exists())
+
     def test_linked_custody_and_interrupted_removal(self):
-        self.allocate(linked=True); self.accept(pipeline=True)
-        # Direct evidence unrelated to the pipeline is unknown ignored content.
-        (self.task / ".devlyn/checks.txt").unlink()
+        self.allocate(); self.accept(pipeline=True)
         self.configure(interrupt_remove=True)
         result, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertFalse(self.task.exists())
         saved = json.loads(self.receipt.read_text(encoding="utf-8"))
+        self.assertNotIn("cleanup_started", saved)
         recovered = self.receipt.parent / "custody" / ".devlyn/runs/fixture-run/final-report.md"
         self.assertEqual(hashlib.sha256(recovered.read_bytes()).hexdigest(), saved["files"][".devlyn/runs/fixture-run/final-report.md"]["sha256"])
         result, _ = self.complete("--writers-stopped", acceptance=False)
@@ -1258,11 +1719,11 @@ class CompletionTests(unittest.TestCase):
         d = json.loads(self.data.read_text(encoding="utf-8"))
         self.assertEqual((d["pushs"], d["creates"], d["merges"]), (1, 1, 1))
 
-    def test_retains_unknown_dirty_locked_and_active_tree(self):
-        self.allocate(linked=True); self.accept()
-        for case in ("ignored", "dirty", "untracked", "locked", "cwd", "no-yield"):
-            path = self.task / ("ignored/unknown" if case == "ignored" else "product" if case == "dirty" else "unknown")
-            if case in {"ignored", "dirty", "untracked"}:
+    def test_retains_dirty_locked_and_active_tree(self):
+        self.allocate(); self.accept()
+        for case in ("no-yield", "dirty", "untracked", "locked", "cwd"):
+            path = self.task / ("product" if case == "dirty" else "unknown")
+            if case in {"dirty", "untracked"}:
                 path.parent.mkdir(exist_ok=True); path.write_text("do not delete", encoding="utf-8")
             if case == "locked": self.g("worktree", "lock", str(self.task))
             with self.subTest(case=case):
@@ -1270,12 +1731,12 @@ class CompletionTests(unittest.TestCase):
                 self.assertNotEqual(r.returncode, 0)
                 self.assertTrue(self.task.exists())
                 self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
-            if case in {"ignored", "untracked"}: path.unlink()
+            if case == "untracked": path.unlink()
             if case == "dirty": path.write_text("accepted\n", encoding="utf-8")
             if case == "locked": self.g("worktree", "unlock", str(self.task))
 
     def test_no_adoption_and_remote_head_race(self):
-        _, r = self.cli("allocate", "--repo", self.work, "--task", "foreign", "--branch", "main", "--repository", "test/project", "--base", "main", success=False)
+        _, r = self.cli("allocate", "--repo", self.work, "--task", "foreign", "--branch", "main", "--repository", "test/project", "--base", "main", "--worktree", self.root / "foreign", success=False)
         self.assertNotEqual(r.returncode, 0)
         self.allocate(); self.accept()
         self.complete("--mode", "pr")
@@ -1295,7 +1756,7 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual((d["pushs"], d["creates"], d["merges"]), (1,1,1))
 
     def test_custody_failure_and_evidence_tamper(self):
-        self.allocate(linked=True); self.accept()
+        self.allocate(); self.accept()
         bad = self.receipt.parent / "custody/.devlyn/checks.txt"
         bad.parent.mkdir(parents=True)
         bad.write_text("partial interrupted copy", encoding="utf-8")
@@ -1312,7 +1773,7 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("merges",0), 0)
 
     def test_actual_foreign_writer_and_registration(self):
-        self.allocate(linked=True); self.accept()
+        self.allocate(); self.accept()
         child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], cwd=self.task)
         try:
             _, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
@@ -1390,15 +1851,19 @@ class CompletionTests(unittest.TestCase):
         result, _ = self.complete("--mode", "pr")
         self.assertEqual(result["status"], "PR")
 
-    def test_in_place_resume_does_not_overwrite_ignored_collision(self):
-        self.allocate(); self.accept()
+    def test_legacy_in_place_resume_does_not_overwrite_ignored_collision(self):
+        self.allocate_legacy(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        self.g("switch", "main")
         user_file = self.task / "ignored/user.txt"
         user_file.parent.mkdir()
         user_file.write_text("retained user data", encoding="utf-8")
+        before = self.anchor_state()
         self.configure(interrupt_delete=True)
-        _, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
+        _, r = self.complete(acceptance=False, success=False)
         self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(self.g("branch", "--show-current"), "main")
+        self.assertEqual(self.anchor_state(), before)
         other = self.root / "advance"
         self.run_cmd(["git", "clone", str(self.bare), str(other)])
         (other / "ignored").mkdir()
@@ -1406,13 +1871,15 @@ class CompletionTests(unittest.TestCase):
         self.g("add", "-f", "ignored/user.txt", work=other)
         self.g("commit", "-m", "upstream collision", work=other)
         self.g("push", "origin", "main", work=other)
-        _, r = self.complete("--writers-stopped", acceptance=False, success=False)
-        self.assertNotEqual(r.returncode, 0)
+        result, _ = self.complete(acceptance=False)
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertEqual(self.anchor_state(), before)
         self.assertEqual(user_file.read_text(encoding="utf-8"), "retained user data")
-        self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
 
     def test_replaced_tree_and_unsafe_custody(self):
-        self.allocate(linked=True); self.accept()
+        self.allocate(); self.accept()
         elsewhere = self.root / "elsewhere"
         elsewhere.mkdir()
         (self.receipt.parent / "custody").symlink_to(elsewhere, target_is_directory=True)

@@ -1037,7 +1037,7 @@ print(payload, file=sys.stderr)
                 self.fail('unavailable lock admitted')
         if os.name == 'nt':
             with self.assertRaisesRegex(complete['CompletionError'], 'unsupported.*retain workspace'):
-                complete['stopped_writers'](repo, linked=False)
+                complete['stopped_writers'](repo)
 
     @unittest.skipUnless(os.name == 'nt', 'native Windows junction invariant')
     def test_bootstrap_directory_junction(self):

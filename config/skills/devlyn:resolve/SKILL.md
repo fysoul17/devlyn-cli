@@ -77,7 +77,7 @@ For every direct complete→spawn handoff, call `state-phase-write.py ... --phas
 
 ## PHASE 0: PARSE + CLASSIFY + ROUTE
 
-Outer-owner boundary: before normal task writes, follow `references/task-completion.md` for prospective task-branch ownership (linked worktree optional) and `references/outer-loop.md` for owner-input commits. Existing branches cannot be retroactively adopted. Verify-only does not allocate or publish; phase workers never own delivery.
+Outer-owner boundary: before normal task writes, follow `references/task-completion.md` for prospective task-branch ownership (own linked worktree) and `references/outer-loop.md` for owner-input commits. Existing branches cannot be retroactively adopted. Verify-only does not allocate or publish; phase workers never own delivery.
 
 1. Run the bootstrap once with the exact tokenized `<pipeline_config>` and this orchestrator's default engine from `<engine_routing>`:
 
