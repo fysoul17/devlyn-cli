@@ -93,6 +93,7 @@ As 0226 ("Faults" and Addendum A1; A1's envelope fields now also carry Claude st
 - **G2 spec copies:** `autoresearch/experiments/0227/g2-specs/{C1,J2}/`.
 - **Author and implementer templates:** `autoresearch/experiments/0227/author/` — `CORPUS-RULE.md`, `PHASE-A.md`, `PHASE-B.md`, `PHASE-C.md` and `run-seat.sh` (pinned codex-cli 0.156.1 under `env -i` with a fresh `CODEX_HOME`, `web_search="disabled"`, and apps, plugins, remote plugins, sub-agents, browser and computer use disabled). The author workspace also receives F's `spec-template.md` and `expected.schema.json`, as in 0226.
 - **Pins:** `/Users/Shared/devlyn-pins-0227` holds Claude Code 2.1.281 (`a922981f…`) and the models cache (`b7105827…`), 0226's digests.
+- **Review:** Astra driver R0 REVISE (2) with two Claude critics (correctness, gate executability) → R1 REVISE (2) → R2 SHIP (`.devlyn/0227/driver-r*`); the 64-span dry run and the G2 rehearsal passed with the shipped driver.
 
 ## Registration review
 
