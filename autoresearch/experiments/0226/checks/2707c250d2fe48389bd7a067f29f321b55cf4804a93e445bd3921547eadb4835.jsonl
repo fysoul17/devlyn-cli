@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-29T05:54:10.602Z", "finding_key": "2707c250d2fe48389bd7a067f29f321b55cf4804a93e445bd3921547eadb4835", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0226/check-scripts/J1-utf8-truncate-surrogate-pairs.sh", "script_sha256": "beb7a828bc148f668bd858d0a80c43b6b87119bfcba9d78cc0ab0e49c0999378", "task": "J1"}

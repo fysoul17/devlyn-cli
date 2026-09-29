@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-29T05:54:04.110Z", "finding_key": "dd818e67a51c2b5600d845f0163ce1c06da9ee128011025c00b97bd4917997e2", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0226/check-scripts/C4-resize-uses-stored-sizes.sh", "script_sha256": "59997905a076021fe3c4e1cabf61566749b12c88127a690f223e1ae6e51d27fb", "task": "C4"}

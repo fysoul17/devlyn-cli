@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-29T05:56:27.330Z", "finding_key": "8a9a1ca784bffed072d8acf2f2bdf88329977e5aaa024fa96d907b0cc8eea853", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0226/check-scripts/J4-rebuilt-ref-divisor.sh", "script_sha256": "333032047e5c94cfe9863d126f67e05ececb759dcfb64dca04980e8731bdc65b", "task": "J4"}
