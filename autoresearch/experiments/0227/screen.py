@@ -1,6 +1,6 @@
 """0227 frozen VERIFY re-screen. Commands: prepare, run --pr N,
 redispatch --cause FILE --audit FILE --tokens TOKEN..., score, pool, check, join, self-test;
-development gates on the exposed 0226 corpus: dev-stage, dev-dry (model-free), dev-prepare, dev-run,
+development gates on the exposed 0226 corpus: dev-stage, dev-dry (model-free), dev-prepare, dev-run, dev-redispatch,
 dev-report (G3), g2-dry (model-free), g2.
 
 The committed, pushed Astra audit is JSON with reviewer="Astra",
@@ -40,7 +40,8 @@ from datetime import datetime, timezone
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
-SCREEN_ROOT = Path('/Users/Shared/devlyn-vr-0227')
+ROOT_PARENT = Path('/Users/Shared')
+SCREEN_ROOT = ROOT_PARENT / 'devlyn-vr-0227'
 DEV_ROOT = Path('/Users/Shared/devlyn-vr-0227-dev')
 G2_ROOT = Path('/Users/Shared/devlyn-vr-0227-g2')
 FROZEN = HERE / 'manifest.json'
@@ -1399,11 +1400,13 @@ def excluded_path(raw, cwd, work, repo):
     allowed = (work, ROOT / 'product', ROOT / 'bin', ROOT / 'toolchains' / repo)
     if any(path.is_relative_to(folder) for folder in allowed):
         return None
-    targets = (ROOT, REPO, Path.home() / '.claude/projects', DEV_SOURCE, SCREEN_ROOT, DEV_ROOT, G2_ROOT,
-               G2_ROOT.with_name(G2_ROOT.name + '-dry'))
-    if any(path.is_relative_to(target) for target in targets):
+    targets = (ROOT, REPO, Path.home() / '.claude/projects')
+    # Every sealed root (0226's, each 0227 root and any retained .stop-N copy) is devlyn-vr* under /Users/Shared.
+    in_sealed_root = (path.is_relative_to(ROOT_PARENT) and path != ROOT_PARENT
+                      and path.relative_to(ROOT_PARENT).parts[0].startswith('devlyn-vr'))
+    if in_sealed_root or any(path.is_relative_to(target) for target in targets):
         return str(path)
-    if any(target.is_relative_to(path) for target in targets):
+    if ROOT_PARENT.is_relative_to(path) or any(target.is_relative_to(path) for target in targets):
         raise ValueError(f'ancestor of an excluded area: {path}')
     return None
 
@@ -2293,9 +2296,19 @@ def self_test():
     require(not unparsed and all('/' in path or path in ('.', '..') for path, *_ in paths)
             and not any('sorter' in path or 'results.json' in path for path, *_ in paths),
             'slash-free regex or glob words became read candidates')
-    require(excluded_path(str(DEV_SOURCE / 'private/corpus/C1/hidden/mechanism.md'), ROOT / 'rounds/tok/work',
-                          ROOT / 'rounds/tok/work', 'joi') == str(DEV_SOURCE / 'private/corpus/C1/hidden/mechanism.md'),
-            "0226's sealed root is not an excluded read area")
+    for hidden in (DEV_SOURCE / 'private/corpus/C1/hidden/mechanism.md',
+                   ROOT_PARENT / 'devlyn-vr-0227-g2.stop-1/private/corpus/C1/hidden/mechanism.md'):
+        require(excluded_path(str(hidden), ROOT / 'rounds/tok/work', ROOT / 'rounds/tok/work', 'joi') == str(hidden),
+                f'a sealed root is not an excluded read area: {hidden}')
+    require(excluded_path(str(ROOT_PARENT / 'other-app/readme'), ROOT / 'rounds/tok/work', ROOT / 'rounds/tok/work',
+                          'joi') is None, 'an unrelated shared folder became an excluded read')
+    for ancestor in (ROOT_PARENT, ROOT_PARENT.parent):
+        try:
+            excluded_path(str(ancestor), ROOT / 'rounds/tok/work', ROOT / 'rounds/tok/work', 'joi')
+        except ValueError:
+            pass
+        else:
+            fail(f'an ancestor of the sealed roots must go to adjudication: {ancestor}')
     recorded = [{'event': 'committed', 'sha': 'abc123'}]
     require(timeline_intact(recorded, 'abc123') and not timeline_intact(
             recorded + [{'event': 'committed', 'sha': 'def456'}], 'abc123') and not timeline_intact(
@@ -2687,6 +2700,10 @@ def main(argv):
     elif argv == ['dev-run']:
         set_root(DEV_ROOT)
         run(None)
+    elif (len(argv) >= 7 and argv[:2] == ['dev-redispatch', '--cause'] and argv[3] == '--audit'
+          and argv[5] == '--tokens'):
+        set_root(DEV_ROOT)
+        redispatch(argv[2], argv[4], argv[6:])
     elif argv == ['dev-report']:
         set_root(DEV_ROOT)
         dev_report()
