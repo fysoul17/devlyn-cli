@@ -1,7 +1,7 @@
 """0227 frozen VERIFY re-screen. Commands: prepare, run --pr N,
 redispatch --cause FILE --audit FILE --tokens TOKEN..., score, pool, check, join, self-test;
 development gates on the exposed 0226 corpus: dev-stage, dev-dry (model-free), dev-prepare, dev-run,
-dev-report (G3), g2.
+dev-report (G3), g2-dry (model-free), g2.
 
 The committed, pushed Astra audit is JSON with reviewer="Astra",
 genuine_registered_fault=true, cause_sha256, stop_evidence_sha256 and the
@@ -803,6 +803,10 @@ def timeline_intact(timeline, freeze_head):
                                              'head_ref_deleted', 'head_ref_changed') for item in timeline))
 
 
+def witness_pr():
+    return None if DEV else load(ROOT / 'witness.json')['pr']
+
+
 def witness(pr, *, observation, first_started=None):
     if DEV:
         return None
@@ -1152,13 +1156,16 @@ def recurred(fixes, classes):
     return any(kind in row['classes'] for kind in set(classes) & FIX_CLASSES for row in fixes)
 
 
+def ledger_recurrence_in(stops, fixes):
+    return [row for row in stops
+            if any(set(row.get('classes', [row.get('class')])) & set(fix['classes']) & FIX_CLASSES
+                   and row['time'] > fix['time'] for fix in fixes)]
+
+
 def ledger_recurrence():
     """Recurrence derived from the durable ledgers, never from a marker a crash could lose: a stop recorded after a
     committed fix whose registered classes it repeats."""
-    fixes = jsonl(ROOT / 'fixes.jsonl')
-    return [row for row in jsonl(ROOT / 'stops.jsonl')
-            if any(set(row.get('classes', [row['class']])) & set(fix['classes']) & FIX_CLASSES
-                   and row['time'] > fix['time'] for fix in fixes)]
+    return ledger_recurrence_in(jsonl(ROOT / 'stops.jsonl'), jsonl(ROOT / 'fixes.jsonl'))
 
 
 def recurrence(tok, classes, cause=None):
@@ -1346,7 +1353,7 @@ def redispatch(cause_file, audit_file, tokens):
             (staging / 'homes' / tok).rename(ROOT / 'homes' / tok)
             try:
                 if number == 1:
-                    witness(load(ROOT / 'witness.json')['pr'], observation='start')
+                    witness(witness_pr(), observation='start')
                 frozen()
             except Fault as exc:
                 charge_drift(tok, exc, str(cause_path))
@@ -1365,7 +1372,7 @@ def redispatch(cause_file, audit_file, tokens):
     except Fault as exc:
         charge_drift(tok, exc, str(cause_path))
     if all((ROOT / 'rounds' / tok / f'{tok}.classified.json').exists() for tok in order):
-        finish_run(load(ROOT / 'witness.json')['pr'], order, tok, str(cause_path))
+        finish_run(witness_pr(), order, tok, str(cause_path))
 
 
 def score_ready():
@@ -1392,7 +1399,8 @@ def excluded_path(raw, cwd, work, repo):
     allowed = (work, ROOT / 'product', ROOT / 'bin', ROOT / 'toolchains' / repo)
     if any(path.is_relative_to(folder) for folder in allowed):
         return None
-    targets = (ROOT, REPO, Path.home() / '.claude/projects')
+    targets = (ROOT, REPO, Path.home() / '.claude/projects', DEV_SOURCE, SCREEN_ROOT, DEV_ROOT, G2_ROOT,
+               G2_ROOT.with_name(G2_ROOT.name + '-dry'))
     if any(path.is_relative_to(target) for target in targets):
         return str(path)
     if any(target.is_relative_to(path) for target in targets):
@@ -1667,7 +1675,7 @@ def claude_reasks(tok):
 
 def score():
     manifest = score_ready()
-    witness(load(ROOT / 'witness.json')['pr'], observation='score')
+    witness(witness_pr(), observation='score')
     rows = [facts(entry) for entry in manifest['rounds']]
     require(not any(tok in read['read'] for row in rows for read in row['ambiguous_reads']
                     for tok in (item['token'] for item in manifest['rounds'])),
@@ -1866,7 +1874,7 @@ def bind_audit(labels, reads, audit, pool_map, mapping):
 
 def join():
     score_ready()
-    witness(load(ROOT / 'witness.json')['pr'], observation='join')
+    witness(witness_pr(), observation='join')
     branch = git(REPO, 'symbolic-ref', '--short', 'HEAD')
     require(git(REPO, 'ls-remote', 'origin', 'refs/heads/' + branch).split()[0] ==
             git(REPO, 'rev-parse', 'HEAD'), 'labels and checks have not been pushed')
@@ -1986,20 +1994,73 @@ def claude_tools(tok):
 
 
 G2_SPANS = (('J2', 'reference'), ('C1', 'reference'), ('C1', 'twin'))
+G2_DRY_ROOT = G2_ROOT.with_name(G2_ROOT.name + '-dry')
+G2_STOPS = G2_ROOT.with_name(G2_ROOT.name + '-stops.jsonl')  # outside the root, so a restaged G2 still sees them
+G2_FIXES = G2_ROOT.with_name(G2_ROOT.name + '-fixes.jsonl')
+# The Codex seat in G2 is the candidate's stub (version 9.9.9); its models cache must name that version.
+STUB_MODELS_CACHE = {'client_version': '9.9.9', 'models': [
+    {'slug': 'gpt-6-astra', 'supported_reasoning_levels': [{'effort': 'medium'}, {'effort': 'high'}]}]}
 
 
-def g2():
-    """G2: the Claude seat alone, live, with its exact seat argv; the Codex seat is the candidate's stub."""
+def claude_reads(tok, work, repo):
+    """The Claude seat's Read/Grep/Glob inputs outside its round copy (definite) or unresolvable (ambiguous)."""
+    events = claude_transcript_events(tok)
+    if events is None:
+        return None
+    outside, ambiguous = [], []
+    for event in events:
+        message = event.get('message')
+        for block in message.get('content', []) if isinstance(message, dict) and isinstance(message.get('content'), list) else []:
+            if not isinstance(block, dict) or block.get('type') != 'tool_use' or block.get('name') not in ('Read', 'Grep', 'Glob'):
+                continue
+            for raw in ((block.get('input') or {}).get(key) for key in ('file_path', 'path')):
+                if isinstance(raw, str):
+                    try:
+                        found = excluded_path(raw, work, work, repo)
+                    except ValueError:
+                        ambiguous.append(raw)
+                    else:
+                        outside.extend([found] if found else [])
+    return {'outside': sorted(set(outside)), 'ambiguous': ambiguous}
+
+
+def g2(cause_file=None, audit_file=None, *, dry=False):
+    """G2: the Claude seat alone, live, with its exact seat argv, sealed like a screen round; the Codex seat is the
+    candidate's stub. dry=True rehearses the same path with the stub as both seats (no model call).
+
+    Faults follow 0226: each round is classified before any judge output is read; a registered fault keeps the
+    round as a stop and ends G2; a rerun of the whole gate needs a committed cause and a committed Astra audit of
+    the exact stop evidence, and the same cause recurring after that fix fails the gate."""
+    root = G2_DRY_ROOT if dry else G2_ROOT
+    if dry:
+        shutil.rmtree(root, ignore_errors=True)
+    else:
+        history = jsonl(G2_STOPS)
+        require(not ledger_recurrence_in(history, jsonl(G2_FIXES)), 'G2 FAILED: a fixed fault recurred')
+        if history or G2_ROOT.exists():
+            require(history and cause_file and audit_file, 'G2 already ran: a rerun needs a recorded stop, cause and audit')
+            cause_raw, audit_raw = committed_file(cause_file), committed_file(audit_file)
+            require(json.loads(audit_raw) == {'reviewer': 'Astra', 'genuine_registered_fault': True,
+                                             'cause_sha256': sha256(cause_raw),
+                                             'stop_evidence_sha256': sha256(json.dumps(history, sort_keys=True).encode()),
+                                             'affected_bundle': ['g2']},
+                    'Astra audit must confirm this cause and the exact G2 stop evidence')
+            with G2_FIXES.open('a', encoding='utf-8') as handle:
+                handle.write(json.dumps({'classes': sorted({kind for row in history for kind in row['classes']}),
+                                         'cause_sha256': sha256(cause_raw), 'time': now()}, sort_keys=True) + '\n')
+            G2_ROOT.rename(G2_ROOT.with_name(f'{G2_ROOT.name}.stop-{len(history)}'))
     overrides = {task: {name: (HERE / 'g2-specs' / task / name).read_bytes() for name in ('spec.md', 'spec.expected.json')}
                  for task in sorted({task for task, _ in G2_SPANS})}
-    dev_stage(G2_ROOT, overrides)
-    set_root(G2_ROOT)
-    require(sha256(CLAUDE_SOURCE.read_bytes()) == CLAUDE_SHA256 and sha256(MODELS_CACHE.read_bytes()) == MODELS_CACHE_SHA256,
-            'durable Claude or models-cache pin changed')
+    dev_stage(root, overrides)
+    set_root(root)
+    require(sha256(CLAUDE_SOURCE.read_bytes()) == CLAUDE_SHA256, 'durable Claude pin changed')
     extract_archive(REPO, CANDIDATE, ROOT / 'product', 'config/skills')
     code = modules()
     (ROOT / 'bin').mkdir()
-    shutil.copyfile(CLAUDE_SOURCE, CLAUDE)
+    if dry:
+        CLAUDE.write_text(code['judges']['STUB'], encoding='utf-8')
+    else:
+        shutil.copyfile(CLAUDE_SOURCE, CLAUDE)
     CLAUDE.chmod(0o500)
     (ROOT / 'bin/codex').write_text(code['judges']['STUB'], encoding='utf-8')
     (ROOT / 'bin/codex').chmod(0o500)
@@ -2012,20 +2073,40 @@ def g2():
             work = ROOT / 'rounds' / tok / 'work'
             home = ROOT / 'homes' / tok / '.codex'
             home.mkdir(parents=True)
-            shutil.copyfile(MODELS_CACHE, home / 'models_cache.json')
+            dump(home / 'models_cache.json', STUB_MODELS_CACHE)
             material = materialize(tok, task, variant, orientation, slug(salt, task), work)
             preflight(tok, work, material['repo'])
-            stubs = ROOT / 'stubs' / tok
-            stubs.mkdir(parents=True)
+            stubs = work.parent / 'stubs'  # inside the round, so the seal leaves it reachable
+            stubs.mkdir()
             env = {**round_env(tok, work, material['repo']), 'STUB_DIR': str(stubs)}
             started = now()
-            proc = subprocess.run([sys.executable, str(SHARED / 'verify-judges.py'), '--devlyn-dir', str(work / '.devlyn')],
-                                  cwd=work, env=env, capture_output=True, text=True)
+            with sealed(tok, material['repo']):
+                proc = subprocess.run([sys.executable, str(SHARED / 'verify-judges.py'), '--devlyn-dir',
+                                       str(work / '.devlyn')], cwd=work, env=env, capture_output=True, text=True)
             (work.parent / f'{tok}.driver.stdout').write_text(proc.stdout)
             (work.parent / f'{tok}.driver.stderr').write_text(proc.stderr)
-            move_claude_project(tok)
-            classified(tok, work.parent, ['none'])  # locates attempt-1 for the transcript readers
             devlyn = work / '.devlyn'
+            seats = [{'engine': engine, 'carrier': load_envelope(devlyn / f'{engine}-judge.r0.prompt.transport.json'),
+                      'stderr': (devlyn / f'{engine}-judge.r0.stderr').read_bytes().decode('utf-8', errors='replace')
+                      if (devlyn / f'{engine}-judge.r0.stderr').is_file() else '',
+                      'prompt': (devlyn / f'{engine}-judge.r0.prompt').read_text(encoding='utf-8')
+                      if (devlyn / f'{engine}-judge.r0.prompt').is_file() else None,
+                      'envelope': load_envelope(devlyn / 'claude-judge.r0.output.json') if engine == 'claude' else {}}
+                     for engine in ('claude', 'codex')]
+            classes = classify_infra(seats)  # before any judge output is read
+            if not dry:
+                instruction = find_claude_session(tok)
+                if instruction['files'] is None or instruction['files']:
+                    classes.append('instruction-load')
+            classified(tok, work.parent, classes or ['none'])
+            if classes:
+                if not dry:
+                    with G2_STOPS.open('a', encoding='utf-8') as handle:
+                        handle.write(json.dumps({'rid': rid, 'token': tok, 'classes': sorted(classes), 'time': now()},
+                                                sort_keys=True) + '\n')
+                dump(ROOT / 'g2-report.json', {'candidate': CANDIDATE, 'rounds': report, 'stopped': rid})
+                fail(f'G2 stopped at {rid} for {sorted(classes)}: name and fix the cause, then rerun with a committed '
+                     'cause and Astra audit')
             summary = load(devlyn / 'verify-merge.summary.json')
             source = 'judge' if orientation == 'claude' else 'pair_judge'
             findings = jsonl(devlyn / ('verify.findings.jsonl' if source == 'judge' else 'verify.pair.findings.jsonl'))
@@ -2035,11 +2116,15 @@ def g2():
                            'claude_findings': [{key: row.get(key) for key in ('id', 'severity', 'verdict_binding', 'rule_id',
                                                                               'file', 'line', 'message')}
                                                for row in findings],
-                           'envelope': {key: envelope.get(key) for key in ('subtype', 'is_error', 'stop_reason', 'num_turns')}
+                           'envelope': {key: envelope.get(key) for key in ('subtype', 'is_error', 'stop_reason', 'num_turns',
+                                                                           'api_error_status', 'terminal_reason')}
                                        | {'structured_output': isinstance(envelope.get('structured_output'), dict)},
-                           'claude_tools': claude_tools(tok), 'claude_reasks': claude_reasks(tok)})
+                           'claude_tools': claude_tools(tok), 'claude_reasks': claude_reasks(tok),
+                           'claude_reads': claude_reads(tok, work, material['repo'])})
+            dump(ROOT / 'g2-report.json', {'candidate': CANDIDATE, 'rounds': report})  # kept after every round
             print(f'[0227] g2 {rid}: seat {report[-1]["claude_seat_verdict"]}', file=sys.stderr, flush=True)
-    dump(ROOT / 'g2-report.json', {'candidate': CANDIDATE, 'rounds': report})
+    if dry:
+        require(all(row['claude_seat_verdict'] == 'PASS' for row in report), f'G2 rehearsal failed: {report}')
 
 
 def dev_report():
@@ -2208,6 +2293,9 @@ def self_test():
     require(not unparsed and all('/' in path or path in ('.', '..') for path, *_ in paths)
             and not any('sorter' in path or 'results.json' in path for path, *_ in paths),
             'slash-free regex or glob words became read candidates')
+    require(excluded_path(str(DEV_SOURCE / 'private/corpus/C1/hidden/mechanism.md'), ROOT / 'rounds/tok/work',
+                          ROOT / 'rounds/tok/work', 'joi') == str(DEV_SOURCE / 'private/corpus/C1/hidden/mechanism.md'),
+            "0226's sealed root is not an excluded read area")
     recorded = [{'event': 'committed', 'sha': 'abc123'}]
     require(timeline_intact(recorded, 'abc123') and not timeline_intact(
             recorded + [{'event': 'committed', 'sha': 'def456'}], 'abc123') and not timeline_intact(
@@ -2604,6 +2692,10 @@ def main(argv):
         dev_report()
     elif argv == ['g2']:
         g2()
+    elif argv == ['g2-dry']:
+        g2(dry=True)
+    elif len(argv) == 5 and argv[:2] == ['g2', '--cause'] and argv[3] == '--audit':
+        g2(argv[2], argv[4])
     else:
         fail(__doc__)
 
