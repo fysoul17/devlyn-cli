@@ -17,9 +17,9 @@
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Registration: Astra FREEZE, PR, merge | in review |
-| 2 | Fix commit F on `22616b57` (pushed branch, no PR): implementation, G1, Astra SHIP | not started |
-| 3 | Driver copy with the registered changes and development mode, stub dry run, Astra SHIP; addendum B1 (F, driver, G2 spec copies, author/implementer templates) | not started |
+| 1 | Registration: Astra FREEZE, PR, merge | merged (PR #130) |
+| 2 | Fix commit F on `22616b57` (pushed branch, no PR): implementation, G1, Astra SHIP | done: F = `f40da73b` on `candidate/0227-fix`, Astra SHIP after one REVISE (3) |
+| 3 | Driver copy with the registered changes and development mode, stub dry run, Astra SHIP; addendum B1 (F, driver, G2 spec copies, author/implementer templates) | in review (dev dry run of 64 spans passed) |
 | 4 | G2 (6 live Claude calls), then G3 (64 exposed 0226 spans in a development root); Astra reviews | not started |
 | 5 | Corpus: two fresh repositories, isolated blind author, Sol, calibration, calibration review | not started |
 | 6 | Fresh-corpus driver bindings, Astra SHIP; freeze, 64 rounds, masked scoring with Astra audit, join, RESULT | not started |
