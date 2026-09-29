@@ -2,7 +2,7 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current work: [0226 recall screen](iterations/0226-verify-recall-screen.md) (2026-09-28): decide on fresh tasks whether the held scripted VERIFY from [0225](iterations/0225-resolve-cost-cuts.md) may re-enter the resolve cost-cut bundle.
+Current work: [0227 re-screen](iterations/0227-verify-rescreen.md) (2026-09-29): fix the two BLOCKED causes found by [0226](iterations/0226-verify-recall-screen.md) and decide on fresh tasks whether the held scripted VERIFY from [0225](iterations/0225-resolve-cost-cuts.md) may re-enter the resolve cost-cut bundle.
 Latest closed unit: [0221 subtraction direction](iterations/0221-subtraction-direction.md)
 (2026-09-24, closed 2026-09-26: `/devlyn:intent` not adopted, full resolve stays; supersedes 0201's comparison/adoption rules, keeps its diagnosis).
 Accuracy/completeness → verified-resolution speed → tokens/cost stays the priority;

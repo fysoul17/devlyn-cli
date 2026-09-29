@@ -1,30 +1,30 @@
-# 0226 closed NOT PASS — next move is the user's
+# Continue 0227 — fix the two 0226 BLOCKED causes, then re-screen on fresh tasks
 
-2026-09-29 KST. Root direct, no resolve. The contract is [0226](iterations/0226-verify-recall-screen.md): registered and frozen before any corpus authoring or candidate call, designed with Astra (gpt-6-astra, ultra). The raw record is `.devlyn/0226/`. The 0225 handoff is in git history (last version at `3eec48b4`).
+2026-09-29 KST. Root direct, no resolve. The contract is [0227](iterations/0227-verify-rescreen.md), designed with Astra (gpt-6-astra, ultra) and registered before the fix commit, any probe call and any corpus authoring. The raw record is `.devlyn/0227/`. 0226 closed NOT PASS ([RESULT](experiments/0226/RESULT.md)); its handoff is in git history (last version at `f72f74f4`).
 
 ## Start here (every new session)
 
 1. **Confirm the previous PR is merged, then start from updated `main`** (checkout `~/.local/share/nx01/core-continuation-20260912`):
    - `gh pr list --repo fysoul17/devlyn-cli --state all --head <previous branch> --json number,state,mergedAt,url` must show `MERGED`; otherwise stop and report.
    - `git status --porcelain` must be empty apart from files you can prove you own; then `git switch main && git pull --ff-only origin main`.
-2. **Read 0226** end to end, then the step's row below.
+2. **Read 0227** end to end (and 0226, which it amends by reference), then the step's row below.
 3. **Allocate a task branch:** `python3 config/skills/_shared/task-complete.py allocate --repo . --task '<id>' --branch 'candidate/<id>' --repository fysoul17/devlyn-cli --remote origin --base main`.
-4. **Work and verify.** Root works directly. Astra reviews read-only and isolated (`CODEX_MONITORED_ISOLATED=1 DEVLYN_CODEX_PROMPT_FILE=<prompt> config/skills/_shared/codex-monitored.sh -C <repo> -s read-only -m gpt-6-astra -c model_reasoning_effort=ultra -`, stdout to a file, never a pipe) until SHIP. `gpt-6-sol` implements where 0226 says so (`-s workspace-write`; it cannot write `.agents/`).
-5. **Deliver as a PR.** Commit, write the acceptance file (kind `direct`), then `task-complete.py complete --receipt <resolved path>/.git/devlyn-completion/<id>/receipt.json --acceptance <file> --mode pr`. Root merges 0226 PRs once Astra verification is SHIP and CI is green where it runs (user decision 2026-09-28, "예, 병합해도 됨"), with `--mode auto --writers-stopped` from a cwd outside the checkout.
+4. **Work and verify.** Root works directly. Astra reviews read-only and isolated (`CODEX_MONITORED_ISOLATED=1 DEVLYN_CODEX_PROMPT_FILE=<prompt> config/skills/_shared/codex-monitored.sh -C <repo> -s read-only -m gpt-6-astra -c model_reasoning_effort=ultra -`, stdout to a file, never a pipe) until SHIP. `gpt-6-sol` implements where 0227 says so (`-s workspace-write`; it cannot write `.agents/`).
+5. **Deliver as a PR.** Commit, write the acceptance file (kind `direct`), then `task-complete.py complete --receipt <resolved path>/.git/devlyn-completion/<id>/receipt.json --acceptance <file> --mode pr`. Root merges 0227 research PRs once Astra verification is SHIP and CI is green where it runs (user decision 2026-09-29, "둘 다 예"), with `--mode auto --writers-stopped` from a cwd outside the checkout. The fixed candidate is a pushed branch with no PR, not merged during 0227.
 6. **Hand off** in the same PR: update the table below.
 
-## Steps (0226 "Work order")
+## Steps (0227 "Work order")
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Registration: Astra FREEZE, PR, merge | merged (PR #125) |
-| 2 | Corpus: repository selection, blind authoring, implementation, calibration, calibration review | done: tkem/cachetools `3c082c65` and hapijs/joi `fc3f3bcb`; 8 tasks calibrated; fresh Astra review SHIP (C4 repaired three times) — material sealed under `/Users/Shared/devlyn-vr/private` (and `/Users/Shared/devlyn-0226` until `prepare` moves it) |
-| 3 | Apparatus: driver, Astra SHIP, stub dry run of all 64 spans | done: `autoresearch/experiments/0226/screen.py` (Astra review v1–v11 → SHIP, with Claude critics in v1–v2; addendum A1 registered). A trial `prepare` built all 64 rounds (MECHANICAL, stub dry runs, instruction probes, label scan) but its manifest is void because the driver changed mid-run |
-| 4 | Freeze and run | done: freeze PR #128 (manifest only, `c8aa8277`); 64 rounds, no stop |
-| 5 | Score, pool, checks, labels/reads/audit, join, RESULT | done: **NOT PASS, condition 5 only** ([RESULT](experiments/0226/RESULT.md)) — 32/32 hits, 0 false alarms, 0 unsupported extras, 0 invalid references; 5 reference rounds BLOCKED (3 Claude seats opened with prose containing a verdict word or a markdown list, which the candidate's narrative skip does not accept; 3 Codex primaries chose BLOCKED because the sealed MECHANICAL record does not show the spec's "offline, with Node 22") |
+| 1 | Registration: Astra FREEZE, PR, merge | in review |
+| 2 | Fix commit F on `22616b57` (pushed branch, no PR): implementation, G1, Astra SHIP | not started |
+| 3 | Driver copy with the registered changes and development mode, stub dry run, Astra SHIP; addendum B1 (F, driver, G2 spec copies, author/implementer templates) | not started |
+| 4 | G2 (6 live Claude calls), then G3 (64 exposed 0226 spans in a development root); Astra reviews | not started |
+| 5 | Corpus: two fresh repositories, isolated blind author, Sol, calibration, calibration review | not started |
+| 6 | Fresh-corpus driver bindings, Astra SHIP; freeze, 64 rounds, masked scoring with Astra audit, join, RESULT | not started |
 
-**Next (user decision):** steps 2–5 stay held and any next move needs a new registration. Open questions for the user: whether to register a fix for the two BLOCKED causes (what the narrative skip accepts, or how Claude seats are told to open; runtime evidence in the MECHANICAL record, or no runtime demands in specs) and re-screen on fresh tasks, or to drop step 2.
-
+0226 in one line: 32/32 hits and 0 false alarms, NOT PASS on condition 5 because 5 reference rounds ended BLOCKED (3 Claude prose preambles the parser rejected; 3 Codex BLOCKEDs on an unevidenced "offline, with Node 22" condition). 
 ## 0225 (steps 2–5 held)
 
 - The replay failed twice by its letter ([RESULT](experiments/0225/RESULT.md)); steps 2–5 are held. The user chose (2026-09-28) to revert and register 0226.
@@ -38,6 +38,6 @@ Carried from 0221: the `/devlyn:queue` branch-reconciliation rule is not exercis
 - **No token, cost or call budgets** in the harness or in tests. Keep only the watchdogs (90 min per task, 10 min per review, the candidate's 600 s per judge seat) and post-hoc usage recording; missing usage is UNKNOWN, never 0.
 - **Models.** Claude: `claude-opus-5-5`. Codex: `gpt-6-astra` (design, review, judges) and `gpt-6-sol` (implementation). `grok-4.7` is an optional reviewer only. Do not auto-substitute Fable 5.2+.
 - **No resolve invocation** in research (0201 rule 5; the user repeated it on 2026-09-28). Running only the judge script `verify-judges.py` on synthesized spans, as the 0225 replay did, is not a resolve invocation (user decision 2026-09-28, "괜찮음"). 0225's live-run approval does not transfer. Do not rerun D1. 0185 and D1–D4 are not holdout evidence.
-- **Frozen material.** A16, frozen results and the original WIP stay untouched. Past stop verdicts (0211–0219, 0224, 0225) are history, not something to regrade.
+- **Frozen material.** A16, frozen results and the original WIP stay untouched; 0226's sealed root `/Users/Shared/devlyn-vr` stays byte-identical. Past stop verdicts (0211–0219, 0224, 0225) are history, not something to regrade.
 - **Replay apparatus gotchas** (0225): judge roots go outside `$HOME` (Claude loads every ancestor `.claude/CLAUDE.md`); Codex judges need an isolated HOME (shim), because `--ignore-user-config` still loads `$CODEX_HOME/AGENTS.md` and `~/.agents/skills`; nvm Codex auto-updates silently, so pin a private install (0.156.1 at `/Users/Shared/devlyn-0225-codex-0.156.1`).
 - **User-facing messages** are always in Korean, plain and short: conclusion first, then what the user must decide, then the recommendation.
