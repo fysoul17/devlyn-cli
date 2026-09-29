@@ -20,7 +20,8 @@ Every task owns a linked worktree; `--worktree` is required. Its baseline is the
 exact fetched remote base, independent of the anchor's branch or dirty state;
 allocation leaves the anchor's HEAD, index and files untouched. Save the returned
 receipt path under the common Gitdir. `reconciled` reports earlier accepted,
-PR-delivered tasks whose merged resources were cleaned or retained. Existing
+PR-delivered tasks whose merged resources were cleaned or retained; it is
+informational, so never resume or release a receipt you do not own. Existing
 branches/trees cannot be adopted, even when their names look generated. An
 interrupted allocation stays blocked for inspection; do not delete its receipt
 and enroll the resulting branch. Unreceipted tasks remain owner-managed.
@@ -106,8 +107,8 @@ the user's delivery restriction. These per-task choices persist in the receipt.
 
 `pr` pushes the exact accepted task ref and creates/reuses its exact repository,
 head and base PR. While OPEN, it cancels owned auto-merge, reports `PR` with its URL
-and retains the checkout. Once MERGED, either mode cleans released resources in
-that call, on resume or at the next allocation. Opt-in `auto` also requests
+and retains the checkout. Once MERGED by any method, either mode cleans released
+resources in that call, on resume or at the next allocation. Opt-in `auto` also requests
 `gh pr merge --auto --merge --match-head-commit <accepted SHA>`. Repository
 checks/reviews and merge policy remain authoritative: no admin bypass, strategy
 fallback or repository setting changes. A repository that disallows
@@ -125,14 +126,15 @@ immutable product result; do not rewrite an archived PASS for a delivery error.
 Cleanup requires actual matching MERGED evidence; linked-tree removal also
 requires the owner's recorded release. OS observation supplements it; neither the receipt
 nor a scan guarantees exclusion of future writers. Processes with cwd or open
-files inside the tree, inaccessible process state, caller cwd inside the tree,
-dirty/untracked files or changed refs/Gitdir/registration retain affected
-resources. Use `git worktree lock` to keep a tree.
-On native Windows, locking and file durability are supported, but the helper cannot prove writer cessation and reports `writer observation unsupported on this platform; retain workspace`. Even `--writers-stopped` cannot authorize deletion without that observation: retain the workspace, refs and external receipt/custody, report delivery separately, and preserve the receipt-based resume command. Do not kill unknown processes or force worktree removal to make completion pass.
+files inside the tree, inaccessible process state (on Linux, other users'
+processes unless run as root), caller cwd inside the tree, dirty/untracked files,
+a nested repository or worktree, or changed refs/Gitdir/registration retain
+affected resources. Use `git worktree lock` to keep a tree.
+On native Windows, locking and file durability are supported, but the helper cannot prove writer cessation and reports `writer observation unsupported on this platform; retain workspace`. Even `--writers-stopped` cannot authorize deletion without that observation: retain the workspace, its task refs and external receipt/custody, report delivery separately, and preserve the receipt-based resume command. Do not kill unknown processes or force worktree removal to make completion pass.
 
 The receipt directory holds byte-verified `custody/`, `manifest.json` and a guarded
 `refs/devlyn/completed/<id>` recovery ref. Archive/check evidence is copied there
-before publication; removal rechecks it and source reachability through the merge.
+before publication; removal rechecks it, the recovery ref and the merge commit on base.
 Ignored build output and other ignored files are disposable under native
 non-force worktree removal. The tree's `.devlyn/` files are byte/mode-verified
 and preserved as `<receipt dir>/records/.devlyn`; non-regular files or symlinks

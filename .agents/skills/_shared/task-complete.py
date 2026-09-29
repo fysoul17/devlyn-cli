@@ -190,12 +190,10 @@ def allocate(args):
     receipt["remote_url"] = remote_url(receipt)
     require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
     require(not ref_sha(receipt, "refs/heads/"+args.branch), "existing branch cannot be adopted")
-    base_ref = "refs/remotes/" + args.remote + "/" + args.base
-    gref(receipt, "fetch", "--no-tags", args.remote, "+refs/heads/" + args.base + ":" + base_ref)
-    receipt["baseline"] = gref(receipt, "rev-parse", "--verify", base_ref)
+    receipt["baseline"] = remote_base(receipt)
     target = Path(args.worktree).absolute()
     require(target == target.resolve(), "worktree path must not traverse symlinks")
-    require(not target.exists() and not target.is_relative_to(work) and not work.is_relative_to(target), "linked worktree must be an absent disjoint path")
+    require(not target.exists() and all(not target.is_relative_to(p) and not p.is_relative_to(target) for p in map(Path, registrations(receipt))), "linked worktree must be an absent path disjoint from every registered worktree")
     receipt["worktree"] = str(target)
     key = hashlib.sha256(args.branch.encode()).hexdigest()[:24]
     directory = common / "devlyn-completion" / key
@@ -372,6 +370,13 @@ def repo_policy(receipt):
     return info
 
 
+def remote_base(receipt):
+    # Never write FETCH_HEAD: a concurrent `git pull` in the anchor would merge ours.
+    tracking = "refs/remotes/" + receipt["remote"] + "/" + receipt["base"]
+    gref(receipt, "fetch", "--no-tags", "--no-write-fetch-head", receipt["remote"], "+refs/heads/" + receipt["base"] + ":" + tracking)
+    return gref(receipt, "rev-parse", "--verify", tracking)
+
+
 def remote_head(receipt, branch):
     rows = gref(receipt, "ls-remote", "--heads", receipt["remote"], "refs/heads/"+branch).splitlines()
     require(len(rows) <= 1, "ambiguous remote ref")
@@ -402,9 +407,23 @@ def inspect_workspace(receipt):
     require(not git(work, "status", "--porcelain", "--untracked-files=all"), "dirty/untracked workspace; retain files and commit only accepted scope")
 
 
-def stopped_writers(work):
+def outside(work):
     require(not Path.cwd().resolve().is_relative_to(work), "caller cwd is inside removable worktree; yield it and resume from outside")
     require(not Path(__file__).resolve().is_relative_to(work), "invoke the installed helper outside the removable worktree so resume remains available")
+
+
+def removable(receipt, work):
+    inspect_workspace(receipt)
+    verify_files(work, receipt["files"])
+    # Git lists a nested repository or worktree under an ignored path as `dir/`;
+    # native removal would delete it with its uncommitted work.
+    nested = [p for p in git(work, "ls-files", "--others", "--ignored", "--exclude-standard", "-z").split("\0") if p.endswith("/")]
+    require(not nested, "nested repository or worktree inside the task tree: " + ", ".join(nested) + "; retain")
+    stopped_writers(work)
+
+
+def stopped_writers(work):
+    outside(work)
     # The owner assertion covers its actual children; an OS observation catches
     # other currently open files/cwds, not future writers or a universal lease.
     if sys.platform == "darwin":
@@ -507,28 +526,25 @@ def clean_scratch_command(args):
                 "receipt": str(path), "scratch_cleanup": result, "product_verdict_unchanged": True}
 
 
-def cleanup(receipt, path, pr, writers_stopped):
+def cleanup(receipt, path, pr):
     require(pr["state"] == "MERGED" and pr.get("mergedAt") and pr.get("mergeCommit", {}).get("oid"), "actual matching merge evidence is required")
     sha = receipt["publish_sha"]
     branch_ref = "refs/heads/" + receipt["branch"]
+    # The recovery ref keeps the accepted commit reachable, so squash and
+    # rebase merges need only the merge commit on base.
     require(ref_sha(receipt, receipt["recovery_ref"]) == sha, "recovery reachability changed; retain resources")
     verify_files(path.parent / "custody", receipt["files"])
     require(read_json(path.parent / "manifest.json") == receipt["files"], "custody manifest changed")
-    gref(receipt, "fetch", "--no-tags", receipt["remote"], "refs/heads/"+receipt["base"])
-    base_sha = gref(receipt, "rev-parse", "FETCH_HEAD")
-    gref(receipt, "merge-base", "--is-ancestor", pr["mergeCommit"]["oid"], base_sha)
-    gref(receipt, "merge-base", "--is-ancestor", sha, pr["mergeCommit"]["oid"])
+    gref(receipt, "merge-base", "--is-ancestor", pr["mergeCommit"]["oid"], remote_base(receipt))
     gref(receipt, "merge-base", "--is-ancestor", receipt["source_sha"], sha)
     work = Path(receipt["worktree"])
     local = ref_sha(receipt, branch_ref)
     require(local in {None, sha}, "local task ref changed; retain")
     if receipt["linked"]:
         if work.exists():
-            require(writers_stopped, "wait actual children, stop/yield known writers, then resume with --writers-stopped")
+            require(receipt.get("writers_released"), "wait actual children, stop/yield known writers, then resume with --writers-stopped")
             require(work != Path(receipt["anchor"]) and work != Path(receipt["common_gitdir"]).parent, "cannot remove retained/main checkout")
-            inspect_workspace(receipt)
-            verify_files(work, receipt["files"])
-            stopped_writers(work)
+            removable(receipt, work)
             devlyn = safe_path(work, ".devlyn")
             if devlyn.exists():
                 require(devlyn.is_dir(), ".devlyn records must be a directory; retain tree")
@@ -545,9 +561,7 @@ def cleanup(receipt, path, pr, writers_stopped):
                             Path(temporary).rename(destination)
                     verify_files(destination, records)
                     verify_files(work, records)
-            inspect_workspace(receipt)
-            verify_files(work, receipt["files"])
-            stopped_writers(work)
+            removable(receipt, work)
             gref(receipt, "worktree", "remove", str(work))
         else:
             require(str(work) not in registrations(receipt), "missing worktree is still registered; retain")
@@ -585,13 +599,14 @@ def locked_receipt(path, *, blocking=True):
         yield receipt
 
 
-def completion_result(receipt, path, status, writers_stopped):
+def completion_result(receipt, path, status):
+    released = receipt.get("writers_released", False)
     resume = shlex.join([sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)] +
-                        (["--writers-stopped"] if writers_stopped else []))
+                        (["--writers-stopped"] if released else []))
     scratch = {"status": "NOT_OWNED"}
     if "scratch_identity" in receipt:
         try:
-            scratch = clean_scratch(receipt, path, writers_stopped)
+            scratch = clean_scratch(receipt, path, released)
         except (CompletionError, OSError, ValueError, KeyError, TypeError, IndexError) as error:
             scratch = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
                 sys.executable, str(Path(__file__).resolve()), "clean-scratch", "--receipt", str(path), "--writers-stopped"])}
@@ -621,7 +636,7 @@ def reconcile(common, allocated, anchor):
             with locked_receipt(path, blocking=False) as receipt:
                 if receipt.get("status") == "COMPLETE":
                     if receipt.get("writers_released") and "scratch_identity" in receipt and receipt.get("scratch_cleanup", {}).get("status") != "CLEAN":
-                        results.append(completion_result(receipt, path, "COMPLETE", True))
+                        results.append(completion_result(receipt, path, "COMPLETE"))
                     continue
                 if not receipt.get("acceptance") or not receipt.get("pr_number") or receipt.get("local_only"):
                     continue
@@ -634,9 +649,8 @@ def reconcile(common, allocated, anchor):
                 repo_policy(receipt)
                 receipt["merge"] = pr
                 atomic_json(path, receipt)
-                released = receipt.get("writers_released", False)
-                cleanup(receipt, path, pr, released)
-                results.append(completion_result(receipt, path, "COMPLETE", released))
+                cleanup(receipt, path, pr)
+                results.append(completion_result(receipt, path, "COMPLETE"))
         except (Exception, SystemExit) as error:
             results.append({"receipt": str(path), "status": "RETAINED", "reason": str(error)})
     return results
@@ -646,10 +660,12 @@ def complete(args):
     path = Path(args.receipt).absolute()
     with locked_receipt(path) as receipt:
         if args.writers_stopped:
+            if receipt["linked"]:
+                outside(Path(receipt["worktree"]))
             receipt["writers_released"] = True
             atomic_json(path, receipt)
         def result(status):
-            return completion_result(receipt, path, status, receipt.get("writers_released", False))
+            return completion_result(receipt, path, status)
         if args.local_only or receipt.get("local_only"):
             receipt["local_only"] = True
             atomic_json(path, receipt)
@@ -717,7 +733,7 @@ def complete(args):
                 return result("PENDING")
         receipt["merge"] = pr
         atomic_json(path, receipt)
-        cleanup(receipt, path, pr, receipt.get("writers_released", False))
+        cleanup(receipt, path, pr)
         return result("COMPLETE")
 
 
@@ -997,6 +1013,7 @@ class CompletionTests(unittest.TestCase):
             self.assertEqual(self.g("rev-parse", "HEAD", work=self.task), remote)
             self.assertEqual(self.anchor_state(), before)
             self.assertEqual((self.work / "untracked").read_bytes(), b"owner data")
+            self.assertFalse((self.work / ".git" / "FETCH_HEAD").exists())
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_disposable_scratch_cleans_for_local_only_and_preserves_source(self):
@@ -1333,6 +1350,55 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
         saved, current = json.loads(before), json.loads(self.data.read_bytes())
         self.assertEqual((current["merges"], current.get("disables", 0)), (saved["merges"], saved.get("disables", 0)))
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_nested_repository_or_worktree_retains_tree(self):
+        self.allocate(); self.accept()
+        _, r = self.cli("allocate", "--repo", self.work, "--task", "inner", "--branch", "task/inner", "--repository", "test/project",
+                        "--base", "main", "--worktree", self.task / "ignored" / "inner", success=False)
+        self.assertIn("disjoint from every registered worktree", json.loads(r.stdout)["reason"])
+        nested = self.task / "ignored" / "nested"
+        self.g("worktree", "add", "-b", "nested/work", str(nested), "main")
+        (nested / "product").write_text("unsaved nested work\n", encoding="utf-8")
+        clone = self.task / "ignored" / "clone"
+        self.run_cmd(["git", "init", "--initial-branch=main", str(clone)])
+        for remove in (lambda: self.g("worktree", "remove", "--force", str(nested)), lambda: shutil.rmtree(clone)):
+            _, r = self.complete("--mode", "auto", "--writers-stopped", success=False)
+            self.assertIn("nested repository or worktree", json.loads(r.stdout)["reason"])
+            self.assertTrue(self.task.exists())
+            self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+            if nested.exists():
+                self.assertEqual((nested / "product").read_text(encoding="utf-8"), "unsaved nested work\n")
+            remove()
+        result, _ = self.complete("--mode", "auto", "--writers-stopped")
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertFalse(self.task.exists())
+
+    def test_release_is_refused_from_inside_the_task_tree(self):
+        self.allocate(); self.accept()
+        _, r = self.complete("--mode", "pr", "--writers-stopped", cwd=self.task, success=False)
+        self.assertIn("caller cwd is inside", json.loads(r.stdout)["reason"])
+        self.assertNotIn("writers_released", json.loads(self.receipt.read_text(encoding="utf-8")))
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_squash_merge_cleans_and_recovery_ref_keeps_commit(self):
+        self.allocate(); self.accept()
+        result, _ = self.complete("--mode", "pr", "--writers-stopped")
+        self.assertEqual(result["status"], "PR")
+        bare = ["git", "--git-dir", str(self.bare)]
+        base = self.run_cmd(bare + ["rev-parse", "refs/heads/main"]).stdout.strip()
+        tree = self.run_cmd(bare + ["rev-parse", self.sha + "^{tree}"]).stdout.strip()
+        squash = self.run_cmd(bare + ["commit-tree", tree, "-p", base, "-m", "squash fixture"]).stdout.strip()
+        self.run_cmd(bare + ["update-ref", "refs/heads/main", squash, base])
+        pr = json.loads(self.data.read_text(encoding="utf-8"))["pr"]
+        self.configure(pr=dict(pr, state="MERGED", mergedAt="now", mergeCommit={"oid": squash}))
+        result, _ = self.complete()
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertFalse(self.task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+        self.assertEqual(self.g("rev-parse", json.loads(self.receipt.read_text(encoding="utf-8"))["recovery_ref"]), self.sha)
+        self.assertFalse((self.work / ".git" / "FETCH_HEAD").exists())
 
     def test_linked_ignored_output_disposed_and_records_preserved(self):
         self.allocate(); self.accept()

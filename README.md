@@ -85,8 +85,8 @@ Common flags: `--engine claude|codex|omp` (default: the orchestrator-supported d
 `--pair-verify` and `--no-pair` are mutually exclusive; using both stops with `BLOCKED:invalid-flags`.
 
 Each task gets its own linked worktree; accepted tasks default to scoped commit → push → PR.
-After the PR merges, either mode automatically cleans its worktree and branch;
-anything in use is kept. Set `git config --local devlyn.completionMode auto` to
+After the PR merges, either mode cleans the worktree and branch its session
+released; anything in use is kept. Set `git config --local devlyn.completionMode auto` to
 also request a normal protected merge; `task-complete.py complete --mode auto|pr`
 overrides one task. Local-only/no-push instructions take precedence; existing
 branches cannot be adopted. Full runs require successful archive before delivery;

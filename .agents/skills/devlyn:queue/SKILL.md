@@ -23,7 +23,7 @@ DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
 Before processing the first item, read and obey
 `../devlyn:resolve/references/outer-loop.md`. Its scoped-commit order is binding.
 
-Queue state is base's `docs/specs/queue.md` plus owned receipts: for each `$(git rev-parse --git-common-dir)/devlyn-completion/*/receipt.json`, read `git show <ref>:docs/specs/queue.md` from its `recovery_ref` (never deleted) when present, else its `branch` if it still exists; an item unmarked on base but `[x]`/`[F]` there counts as that mark. Two different terminal marks for one item stop for inspection. Status and drain selection both use this view.
+Queue state is base's `docs/specs/queue.md` plus owned receipts: for each `$(git rev-parse --git-common-dir)/devlyn-completion/*/receipt.json`, read `git show <ref>:docs/specs/queue.md` from its `recovery_ref` if that ref exists (it is never deleted), else its `branch` if it still exists; an item unmarked on base but `[x]`/`[F]` there counts as that mark. Two different terminal marks for one item stop for inspection. Status and drain selection both use this view.
 
 ## No args — status
 
