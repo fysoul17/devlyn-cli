@@ -1,0 +1,36 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "python -m pytest -q",
+      "exit_code": 0,
+      "timeout_sec": 120
+    },
+    {
+      "cmd": "ruff check .",
+      "exit_code": 0,
+      "timeout_sec": 120
+    },
+    {
+      "cmd": "ruff format --check .",
+      "exit_code": 0,
+      "timeout_sec": 120
+    },
+    {
+      "cmd": "pyright",
+      "exit_code": 0,
+      "timeout_sec": 120
+    }
+  ],
+  "required_files": [
+    "src/cachetools/__init__.py",
+    "tests/test_tlru.py",
+    "docs/index.rst"
+  ],
+  "spec_output_files": [
+    "src/cachetools/__init__.py",
+    "tests/test_tlru.py",
+    "docs/index.rst"
+  ],
+  "max_deps_added": 0
+}
+

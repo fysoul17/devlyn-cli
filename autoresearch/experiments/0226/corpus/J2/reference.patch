@@ -1,0 +1,99 @@
+diff --git a/API.md b/API.md
+index a3552cf..85a38f8 100755
+--- a/API.md
++++ b/API.md
+@@ -1814,6 +1814,9 @@ Allows for additional values to be considered valid booleans by converting them
+ Requires the validation `convert` option to be `true`.
+ 
+ String comparisons are by default case insensitive, see [`boolean.sensitive()`](#booleansensitiveenabled) to change this behavior.
++For strings, the value is checked as supplied first, then with leading and trailing whitespace trimmed if no match is found.
++An original-value match takes precedence over a trimmed-value match; for the same value, `truthy()` takes precedence over `falsy()`.
++Registered values are not trimmed.
+ 
+ ```js
+ const boolean = Joi.boolean().falsy('N');
+@@ -1835,6 +1838,9 @@ Allows for additional values to be considered valid booleans by converting them
+ Requires the validation `convert` option to be `true`.
+ 
+ String comparisons are by default case insensitive, see [`boolean.sensitive()`](#booleansensitiveenabled) to change this behavior.
++For strings, the value is checked as supplied first, then with leading and trailing whitespace trimmed if no match is found.
++An original-value match takes precedence over a trimmed-value match; for the same value, `truthy()` takes precedence over `falsy()`.
++Registered values are not trimmed.
+ 
+ ```js
+ const boolean = Joi.boolean().truthy('Y');
+diff --git a/lib/types/boolean.js b/lib/types/boolean.js
+index a8b49e4..40161dc 100755
+--- a/lib/types/boolean.js
++++ b/lib/types/boolean.js
+@@ -51,8 +51,19 @@ module.exports = Any.extend({
+         }
+ 
+         if (typeof value !== 'boolean') {
+-            value = schema.$_terms.truthy && schema.$_terms.truthy.has(value, null, null, !schema._flags.sensitive) ||
+-                (schema.$_terms.falsy && schema.$_terms.falsy.has(value, null, null, !schema._flags.sensitive) ? false : value);
++            const candidates = typeof value === 'string' ? [value, value.trim()] : [value];
++
++            for (const candidate of candidates) {
++                if (schema.$_terms.truthy && schema.$_terms.truthy.has(candidate, null, null, !schema._flags.sensitive)) {
++                    value = true;
++                    break;
++                }
++
++                if (schema.$_terms.falsy && schema.$_terms.falsy.has(candidate, null, null, !schema._flags.sensitive)) {
++                    value = false;
++                    break;
++                }
++            }
+         }
+ 
+         return { value };
+diff --git a/test/types/boolean.js b/test/types/boolean.js
+index 9fb8762..e2e385d 100755
+--- a/test/types/boolean.js
++++ b/test/types/boolean.js
+@@ -615,3 +615,44 @@ describe('boolean', () => {
+         });
+     });
+ });
++
++
++describe('trimmed custom boolean values', () => {
++
++    it('converts whitespace around custom strings', () => {
++
++        const schema = Joi.boolean().truthy('yes').falsy('no');
++        for (const [input, output] of [[' yes ', true], [' NO ', false], ['yes', true], ['no', false]]) {
++            const result = schema.validate(input);
++            expect(result.error).to.not.exist();
++            expect(result.value).to.equal(output);
++        }
++
++        const result = schema.validate(' unknown ');
++        expect(result.value).to.equal(' unknown ');
++        expect(result.error.details[0].type).to.equal('boolean.base');
++    });
++
++    it('preserves case sensitivity and conversion preferences', () => {
++
++        const schema = Joi.boolean().truthy('YES').falsy('NO').sensitive();
++        expect(schema.validate(' YES ').value).to.equal(true);
++        expect(schema.validate(' NO ').value).to.equal(false);
++        expect(schema.validate(' yes ').error.details[0].type).to.equal('boolean.base');
++        expect(schema.validate(' YES ', { convert: false }).error.details[0].type).to.equal('boolean.base');
++    });
++
++    it('preserves canonical booleans and custom values', () => {
++
++        const schema = Joi.boolean().truthy('false').falsy('true');
++        expect(schema.validate(' false ').value).to.equal(false);
++        expect(schema.validate(' true ').value).to.equal(true);
++        expect(schema.validate(true).value).to.equal(true);
++        expect(schema.validate(false).value).to.equal(false);
++        expect(Joi.boolean().truthy(1).falsy(0).validate(1).value).to.equal(true);
++        expect(Joi.boolean().truthy(1).falsy(0).validate(0).value).to.equal(false);
++        expect(Joi.boolean().truthy('x').falsy('x').validate(' x ').value).to.equal(true);
++        expect(Joi.boolean().truthy(' yes ').validate(' yes ').value).to.equal(true);
++        expect(Joi.boolean().truthy(' yes ').validate('yes').error.details[0].type).to.equal('boolean.base');
++    });
++});

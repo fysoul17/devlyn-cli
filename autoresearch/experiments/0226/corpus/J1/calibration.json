@@ -1,0 +1,80 @@
+{
+  "task": "J1",
+  "files": {
+    "reference": [
+      "API.md",
+      "lib/types/string.js",
+      "test/types/string.js"
+    ],
+    "twin": [
+      "API.md",
+      "lib/types/string.js",
+      "test/types/string.js"
+    ]
+  },
+  "base": {
+    "oracle": {
+      "J1-1": false,
+      "J1-2": false,
+      "J1-3": false,
+      "J1-4": false,
+      "J1-5": true,
+      "J1-W": false
+    },
+    "oracle_exit": 0
+  },
+  "reference": {
+    "public": [
+      {
+        "cmd": "npm test",
+        "exit": 0,
+        "expected": 0,
+        "tail": "............................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ........................................\n\n1840 tests complete\nTest duration: 19719 ms\nAssertions count: 48173 (verbosity: 26.18)\nLeaks: No issues\nCoverage: 100.00%\nLint: No issues\nTypes: No issues\n\n"
+      }
+    ],
+    "oracle": {
+      "J1-1": true,
+      "J1-2": true,
+      "J1-3": true,
+      "J1-4": true,
+      "J1-5": true,
+      "J1-W": true
+    },
+    "oracle_exit": 0
+  },
+  "twin": {
+    "public": [
+      {
+        "cmd": "npm test",
+        "exit": 0,
+        "expected": 0,
+        "tail": ".............................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ........................................\n\n1840 tests complete\nTest duration: 6531 ms\nAssertions count: 48173 (verbosity: 26.18)\nLeaks: No issues\nCoverage: 100.00%\nLint: No issues\nTypes: No issues\n\n"
+      }
+    ],
+    "oracle": {
+      "J1-1": true,
+      "J1-2": true,
+      "J1-3": true,
+      "J1-4": true,
+      "J1-5": true,
+      "J1-W": false
+    },
+    "oracle_exit": 0
+  },
+  "verdict": {
+    "same_files": true,
+    "reference_public_pass": true,
+    "twin_public_pass": true,
+    "reference_oracle_all_true": true,
+    "twin_oracle_failed_rows": [
+      "J1-W"
+    ],
+    "base_oracle_failed_rows": [
+      "J1-1",
+      "J1-2",
+      "J1-3",
+      "J1-4",
+      "J1-W"
+    ]
+  }
+}

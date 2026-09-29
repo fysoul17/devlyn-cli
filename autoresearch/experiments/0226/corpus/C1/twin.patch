@@ -1,0 +1,228 @@
+diff --git a/docs/index.rst b/docs/index.rst
+index 22a5e68..d41ce64 100644
+--- a/docs/index.rst
++++ b/docs/index.rst
+@@ -191,18 +191,23 @@ inserted into the cache.
+    expired items are there to remove, the least recently used items
+    will be discarded first to make space when necessary.
+ 
+-   .. method:: expire(self, time=None)
++   .. method:: expire(self, time=None, *, limit=None)
+ 
+       Expired items will be removed from a cache only at the next
+       mutating operation, e.g. :meth:`__setitem__` or
+       :meth:`__delitem__`, and therefore may still claim memory.
+-      Calling this method removes all items whose time-to-use would
+-      have expired by `time`, so garbage collection is free to reuse
+-      their memory.  If `time` is :const:`None`, this removes all
+-      items that have expired by the current value returned by
+-      :attr:`timer`.
+-
+-      :returns: An iterable of expired `(key, value)` pairs.
++      Calling this method removes items whose time-to-use has expired
++      by `time`.  If `time` is :const:`None`, the current value returned
++      by :attr:`timer` is used.
++
++      The keyword-only `limit` bounds the number of expired values
++      removed and returned.  :const:`None` removes all eligible values;
++      zero removes none.  Expired values left by a bounded call remain
++      in memory until a later cleanup, but cannot be accessed through
++      ordinary cache lookup.  The limit bounds values removed, not the
++      number of heap records examined or the work performed.
++
++      :returns: A list of expired `(key, value)` pairs.
+ 
+ 
+ Extending cache classes
+diff --git a/src/cachetools/__init__.py b/src/cachetools/__init__.py
+index c9eecb2..4447bff 100644
+--- a/src/cachetools/__init__.py
++++ b/src/cachetools/__init__.py
+@@ -671,11 +671,18 @@ class TLRUCache(_TimedCache):
+         """The local time-to-use function used by the cache."""
+         return self.__ttu
+ 
+-    def expire(self, time=None):
+-        """Remove expired items from the cache and return an iterable of the
+-        expired `(key, value)` pairs.
++    def expire(self, time=None, *, limit=None):
++        """Remove up to `limit` expired items and return their `(key, value)`
++        pairs.  An unlimited call removes all expired items.
+ 
+         """
++        if limit is not None:
++            if not isinstance(limit, int):
++                raise TypeError("limit must be an integer or None")
++            if limit < 0:
++                raise ValueError("limit must be non-negative")
++            if limit == 0:
++                return []
+         if time is None:
+             time = self.timer()
+         items = self.__items
+@@ -685,10 +692,16 @@ class TLRUCache(_TimedCache):
+             self.__order = order = [item for item in order if not item.removed]
+             heapq.heapify(order)
+         expired = []
++        count = 0
+         cache_delitem = Cache.__delitem__
+         cache_getitem = Cache.__getitem__
+-        while order and (order[0].removed or not (time < order[0].expires)):
++        while (
++            order
++            and (limit is None or count < limit)
++            and (order[0].removed or not (time < order[0].expires))
++        ):
+             item = heapq.heappop(order)
++            count += 1
+             if not item.removed:
+                 expired.append((item.key, cache_getitem(self, item.key)))
+                 cache_delitem(self, item.key)
+diff --git a/src/cachetools/__init__.pyi b/src/cachetools/__init__.pyi
+index c7b4d48..238fb68 100644
+--- a/src/cachetools/__init__.pyi
++++ b/src/cachetools/__init__.pyi
+@@ -131,7 +131,9 @@ class TLRUCache(_TimedCache[_KT, _VT, _TT]):
+     ) -> None: ...
+     @property
+     def ttu(self) -> Callable[[_KT, _VT, _TT], _TT]: ...
+-    def expire(self, time: _TT | None = None) -> list[tuple[_KT, _VT]]: ...
++    def expire(
++        self, time: _TT | None = None, *, limit: int | None = None
++    ) -> list[tuple[_KT, _VT]]: ...
+ 
+ class _CacheInfo(NamedTuple):
+     hits: int
+diff --git a/tests/test_tlru.py b/tests/test_tlru.py
+index b0dac65..40a51f8 100644
+--- a/tests/test_tlru.py
++++ b/tests/test_tlru.py
+@@ -1,7 +1,8 @@
+ import math
+ import unittest
++from typing import Any
+ 
+-from cachetools import TLRUCache
++from cachetools import Cache, TLRUCache
+ 
+ from . import CacheTestMixin
+ 
+@@ -10,6 +11,12 @@ def default_ttu(_key, _value, _time):
+     return math.inf
+ 
+ 
++def resident_size(cache: Cache[str, int]) -> float:
++    getter = Cache.currsize.fget
++    assert getter is not None
++    return getter(cache)
++
++
+ class Timer:
+     def __init__(self, auto=False):
+         self.auto = auto
+@@ -24,6 +31,16 @@ class Timer:
+         self.time += 1
+ 
+ 
++class CountingTimer(Timer):
++    def __init__(self):
++        super().__init__()
++        self.calls = 0
++
++    def __call__(self):
++        self.calls += 1
++        return super().__call__()
++
++
+ class TLRUTestCache(TLRUCache):
+     def __init__(self, maxsize, ttu=default_ttu, **kwargs):
+         TLRUCache.__init__(self, maxsize, ttu, timer=Timer(), **kwargs)
+@@ -32,6 +49,88 @@ class TLRUTestCache(TLRUCache):
+ class TLRUCacheTest(unittest.TestCase, CacheTestMixin):
+     Cache = TLRUTestCache
+ 
++    def test_expire_limit_drains_distinct_deadlines(self):
++        timer = Timer()
++        cache = TLRUCache[str, int, int](
++            maxsize=3, ttu=lambda _key, value, _time: value, timer=timer
++        )
++        cache.update(a=2, b=4, c=8)
++
++        self.assertEqual([("a", 2), ("b", 4)], cache.expire(10, limit=2))
++        self.assertEqual(1, Cache.__len__(cache))
++        self.assertEqual(1, resident_size(cache))
++        timer.time = 10
++        self.assertNotIn("c", cache)
++        self.assertEqual("absent", cache.get("c", "absent"))
++        self.assertEqual([("c", 8)], cache.expire(10))
++        self.assertEqual(0, Cache.__len__(cache))
++        self.assertEqual(0, resident_size(cache))
++
++    def test_expire_limit_values_and_exact_deadline(self):
++        def make_cache():
++            cache = TLRUCache[str, int, int](
++                maxsize=2, ttu=lambda _key, value, _time: value, timer=Timer()
++            )
++            cache["a"] = 2
++            return cache
++
++        cache = make_cache()
++        self.assertEqual([], cache.expire(2, limit=0))
++        self.assertEqual(1, Cache.__len__(cache))
++        self.assertEqual([("a", 2)], cache.expire(2, limit=None))
++
++        cache = make_cache()
++        self.assertEqual([], cache.expire(1, limit=2))
++        self.assertEqual([("a", 2)], cache.expire(2, limit=2))
++
++        cache = make_cache()
++        self.assertEqual([], cache.expire(2, limit=False))
++        self.assertEqual([("a", 2)], cache.expire(2, limit=True))
++
++    def test_expire_limit_validates_before_timer_or_mutation(self):
++        timer = CountingTimer()
++        cache = TLRUCache[str, int, int](
++            maxsize=2, ttu=lambda _key, value, _time: value, timer=timer
++        )
++        cache["a"] = 2
++        calls = timer.calls
++        expire: Any = cache.expire
++
++        for limit, error in ((-1, ValueError), (1.5, TypeError), ("1", TypeError)):
++            with self.assertRaises(error):
++                expire(limit=limit)
++            self.assertEqual(calls, timer.calls)
++            self.assertEqual(1, Cache.__len__(cache))
++            self.assertEqual(1, resident_size(cache))
++
++    def test_expire_limit_timer_and_automatic_cleanup(self):
++        timer = CountingTimer()
++        cache = TLRUCache[str, int, int](
++            maxsize=3, ttu=lambda _key, value, _time: value, timer=timer
++        )
++        cache.update(a=2, b=3, c=9)
++        before = timer.calls
++        self.assertEqual([("a", 2)], cache.expire(4, limit=1))
++        self.assertEqual(before, timer.calls)
++
++        timer.time = 4
++        before = timer.calls
++        self.assertEqual([("b", 3)], cache.expire(limit=1))
++        self.assertEqual(before + 1, timer.calls)
++
++        insertion_timer = Timer()
++        cache = TLRUCache[str, int, int](
++            maxsize=3, ttu=lambda _key, value, _time: value, timer=insertion_timer
++        )
++        cache.update(a=2, b=3, c=9)
++        self.assertEqual([("a", 2)], cache.expire(4, limit=1))
++        insertion_timer.time = 4
++        cache["d"] = 5
++        self.assertEqual(2, Cache.__len__(cache))
++        self.assertEqual(2, resident_size(cache))
++        self.assertEqual([], cache.expire(4))
++        self.assertEqual(5, cache["d"])
++
+     def test_ttu(self):
+         cache = TLRUCache[int, int, int](
+             maxsize=6, ttu=lambda _, v, t: t + v + 1, timer=Timer()
