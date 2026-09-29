@@ -33,9 +33,11 @@ Grade the diff against the spec on rubric axes:
 source contract, sealed MECHANICAL carrier, and cumulative diff, covering all
 four rubric axes and every binding Requirement and Constraint clause. It then makes one
 targeted interaction pass over the clauses the broad pass left unresolved.
-Before any third pass, emit the required terminal result. If R1–R8 or another
-spec axis remains uncovered, emit a verdict-binding BLOCKED coverage finding
-instead of continuing or assuming PASS.
+Before any third pass, emit the required terminal result. If a spec axis
+remains uncovered, emit a verdict-binding coverage finding instead of continuing
+or assuming PASS. Use `BLOCKED` only when evidence essential to judging a
+mandatory condition is unavailable and no change within the authorized surface
+could produce it.
 
 For each finding, write file:line evidence. Do not paraphrase code; quote it.
 
@@ -128,7 +130,7 @@ When the role frame is `pair_judge`, both judgments are merged:
 </judging>
 
 <output>
-Both seats emit only JSONL findings — one JSON object per line with `id`, `rule_id`, `severity`, `file`, `line`, `message`, `criterion_ref`, `confidence`, and `verdict_binding: true` on a binding MEDIUM — followed by one bare terminal verdict line: `PASS`, `PASS_WITH_ISSUES`, `NEEDS_WORK`, or `BLOCKED`. Emit only `PASS` when clean. Text before the first record is ignored, carries no finding or verdict, and cannot precede `PASS`; after it, the harness rejects any non-record line, and a verdict-binding finding cannot carry `PASS`.
+Both seats emit only JSONL findings — one JSON object per line with `id`, `rule_id`, `severity`, `file`, `line`, `message`, `criterion_ref`, `confidence`, and `verdict_binding: true` on a binding MEDIUM — followed by one bare terminal verdict line: `PASS`, `PASS_WITH_ISSUES`, `NEEDS_WORK`, or `BLOCKED`. Emit only `PASS` when clean. After the first record, the harness rejects any non-record line, and a verdict-binding finding cannot carry `PASS`.
 </output>
 
 <quality_bar>

@@ -466,9 +466,7 @@ def judge_seat(
             return seat
         if seat["timeout"] and engine == "claude":
             # A Claude seat killed at the deadline after writing its result envelope still said something.
-            result = loads_strict_json(text).get("result")
-            if not isinstance(result, str):
-                raise ValueError("timed-out Claude capture has no result text")
+            result = JUDGE_ROLE_EVIDENCE["structured_judgment"](loads_strict_json(text)).decode("utf-8")
             found, summary = JUDGE_OUTPUT_PARSER["judge_findings"](*JUDGE_OUTPUT_PARSER["collect_text"](result, output))
         else:
             found, summary = JUDGE_OUTPUT_PARSER["collect_judge"](output)

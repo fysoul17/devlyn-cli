@@ -1832,7 +1832,7 @@ if (process.env.DEVLYN_TEST_LEAF) {
    console.error('OpenAI Codex v1.2.3\n--------\nworkdir: '+val('-C')+'\nmodel: '+val('-m')+'\nsandbox: read-only\nreasoning effort: high\nsession id: fixture-session\n--------\nuser\n'+data.toString('utf8'));
    console.log('PASS');
   } else if (a.includes('--output-format')) {
-   console.log(JSON.stringify({type:'result',subtype:'success',is_error:false,stop_reason:'end_turn',session_id:'fixture-claude',result:'PASS',modelUsage:{'fixture-claude-model':{}}}));
+   console.log(JSON.stringify({type:'result',subtype:'success',is_error:false,stop_reason:'end_turn',session_id:'fixture-claude',result:'PASS',structured_output:{findings:[],verdict:'PASS'},modelUsage:{'fixture-claude-model':{}}}));
   } else console.log(JSON.stringify({type:'fixture'}));
   process.exitCode = Number(process.env.DEVLYN_TEST_EXIT || 0);
  }, Number(process.env.DEVLYN_TEST_DELAY_MS || 0)));
@@ -2020,7 +2020,7 @@ assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work
                 argv = [sys.executable, str(self.shared / 'run-bounded.py'), '600', '--stdin-file', str(prompt), '--record-transport', '--', 'claude', '-p',
                         '--model','fixture-claude-model','--effort','high','--permission-mode','dontAsk','--tools','Read,Grep,Glob',
                         '--allowedTools','Read,Grep,Glob','--setting-sources','project','--output-format','json',
-                        '--strict-mcp-config','--mcp-config','{"mcpServers":{}}']
+                        '--json-schema',judge['JUDGE_SCHEMA_TEXT'],'--strict-mcp-config','--mcp-config','{"mcpServers":{}}']
                 result = run(argv, cwd=self.work, env=self.env)
                 (self.devlyn / (stem + '.output.json')).write_bytes(result.stdout)
                 (self.devlyn / (stem + '.stderr')).write_bytes(result.stderr)

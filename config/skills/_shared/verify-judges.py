@@ -95,7 +95,7 @@ def launch_argv(devlyn: pathlib.Path, entry: dict) -> tuple[list[str], dict[str,
             "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
     argv += ["--model", model] if model else []
     argv += ["--effort", effort] if effort else []
-    return argv + ["--output-format", "json"], {}
+    return argv + ["--output-format", "json", "--json-schema", EVIDENCE["JUDGE_SCHEMA_TEXT"]], {}
 
 
 def write_new(path: pathlib.Path, raw: bytes) -> None:
@@ -335,6 +335,9 @@ finding = {"id": engine + "-1", "rule_id": "fixture.binding",
 text = {"pass": "PASS\n", "high": json.dumps(finding) + "\nNEEDS_WORK\n",
         "narrated": "I found no blocking issues, only one low-severity one.\n\n" + json.dumps(finding) + "\nPASS_WITH_ISSUES",
         "blocked": json.dumps(finding) + "\nBLOCKED\n", "garbage": "not a verdict\n"}[mode]
+judgment = {"pass": {"findings": [], "verdict": "PASS"}, "high": {"findings": [finding], "verdict": "NEEDS_WORK"},
+            "narrated": {"findings": [finding], "verdict": "PASS_WITH_ISSUES"},
+            "blocked": {"findings": [finding], "verdict": "BLOCKED"}}.get(mode)
 if engine == "codex":
     effort = next(arg.split("=", 1)[1] for arg in args if arg.startswith("model_reasoning_effort="))
     sys.stderr.write("OpenAI Codex v9.9.9\n--------\nworkdir: " + option("-C", "") + "\nmodel: "
@@ -342,9 +345,9 @@ if engine == "codex":
                      + effort + "\nsession id: fixture-codex\n--------\nuser\n" + prompt)
     sys.stdout.write(text)
 else:
-    sys.stdout.write(json.dumps({"type": "result", "subtype": "success", "is_error": False, "stop_reason": "end_turn",
-                                 "session_id": "fixture-claude", "result": text,
-                                 "modelUsage": {option("--model", "fixture-claude-default"): {}}}))
+    envelope = {"type": "result", "subtype": "success", "is_error": False, "stop_reason": "end_turn",
+                "session_id": "fixture-claude", "result": text, "modelUsage": {option("--model", "fixture-claude-default"): {}}}
+    sys.stdout.write(json.dumps({**envelope, **({"structured_output": judgment} if judgment else {})}))
 """
 
 
@@ -486,6 +489,7 @@ def self_test() -> int:
         claude_argv = json.loads((work / "stubs/claude.argv").read_text())
         codex_argv = json.loads((work / "stubs/codex.argv").read_text())
         assert "--effort" not in claude_argv and "--model" not in claude_argv and "--output-format" in claude_argv
+        assert claude_argv[claude_argv.index("--json-schema") + 1] == EVIDENCE["JUDGE_SCHEMA_TEXT"]
         assert "model_reasoning_effort=medium" in codex_argv and "-m" not in codex_argv
         record = loads(work / ".devlyn/verify-judge.r0.dispatch.json")
         prompts = [(work / ".devlyn" / (record["roles"][role]["stem"] + ".prompt")).read_bytes() for role in ROLES]
@@ -569,9 +573,14 @@ def self_test() -> int:
         work = make_run("garbage")
         _, summary, _ = verify(work, codex="garbage")
         assert summary["source_verdicts"]["pair_judge"] == "BLOCKED" and "verify-judge-emission-contract-violated" in merged_ids(work)
-        # 0225: leading narrative carries no authority in either seat, so a narrated advisory review never hides
-        # the other seat's binding finding behind a BLOCKED round; a malformed emission still BLOCKs its seat
-        # while the other seat's finding is kept.
+        # 0227: a Claude seat answers only through structured output; prose without it BLOCKs that seat alone.
+        work = make_run("claude-without-structured-output")
+        _, summary, _ = verify(work, claude="garbage", codex="high")
+        assert summary["source_verdicts"]["judge"] == "BLOCKED" and summary["source_verdicts"]["pair_judge"] == "NEEDS_WORK", summary
+        assert {"codex-1", "verify-role-evidence-invalid"} <= set(merged_ids(work))
+        # 0225: leading narrative carries no authority, so a narrated advisory review never hides the other seat's
+        # binding finding behind a BLOCKED round; a Claude seat's prose stays outside its structured output, and a
+        # malformed emission still BLOCKs its seat while the other seat's finding is kept.
         for name, modes, verdicts in (
                 ("narrated-primary", {"claude": "narrated", "codex": "high"}, ("PASS_WITH_ISSUES", "NEEDS_WORK")),
                 ("narrated-pair", {"claude": "high", "codex": "narrated"}, ("NEEDS_WORK", "PASS_WITH_ISSUES"))):
@@ -580,9 +589,10 @@ def self_test() -> int:
             assert summary["verdict"] == "NEEDS_WORK" and (
                 summary["source_verdicts"]["judge"], summary["source_verdicts"]["pair_judge"]) == verdicts, summary
             assert {"claude-1", "codex-1"} <= set(merged_ids(work)) and set(state["phases"]["verify"]["role_evidence"]) == set(ROLES)
-            if modes["claude"] == "narrated":  # the derived stdout is the result text, byte for byte
+            if modes["claude"] == "narrated":  # the derived stdout renders structured_output; the prose is not in it
                 envelope = json.loads((work / ".devlyn/claude-judge.r0.output.json").read_text())
-                assert (work / ".devlyn/claude-judge.r0.stdout").read_text() == envelope["result"]
+                derived = (work / ".devlyn/claude-judge.r0.stdout").read_bytes()
+                assert derived == EVIDENCE["structured_judgment"](envelope) and b"blocking issues" not in derived
         work = make_run("garbage-beside-high")
         _, summary, _ = verify(work, claude="high", codex="garbage")
         assert summary["verdict"] == "BLOCKED" and summary["source_verdicts"]["judge"] == "NEEDS_WORK", summary
@@ -740,6 +750,17 @@ def self_test() -> int:
         verify(work, hold=True)
         summary = timed_out(work, "claude")
         assert summary["source_verdicts"]["judge"] == "BLOCKED" and "verify-primary-timeout" in merged_ids(work), summary
+        # A timed-out Claude seat's envelope passes the same check as authentication: an unsuccessful envelope with
+        # valid-looking structured output still BLOCKs the seat instead of counting as a solo TIMEOUT.
+        for field, value in (("subtype", "error_max_structured_output_retries"), ("is_error", True), ("session_id", "")):
+            work = make_run("pair-timeout-bad-envelope-" + field, {"primary_judge": {"engine": "codex"},
+                                                                   "pair_judge": {"engine": "claude"}})
+            verify(work, hold=True, claude="high")
+            output = work / ".devlyn/claude-judge.r0.output.json"
+            output.write_text(json.dumps({**json.loads(output.read_text()), field: value}))
+            summary = timed_out(work, "claude", keep_capture=True)
+            assert summary["source_verdicts"]["pair_judge"] == "BLOCKED", summary
+            assert "verify-judge-emission-contract-violated" in merged_ids(work), merged_ids(work)
         # A Claude seat killed after writing its result envelope keeps what it found, narrated or not.
         for name, mode in (("primary-timeout-after-result", "high"), ("primary-timeout-narrated", "narrated")):
             work = make_run(name)

@@ -1277,7 +1277,7 @@ do
     'It then makes one' \
     'targeted interaction pass over the clauses the broad pass left unresolved.' \
     'Before any third pass' \
-    'verdict-binding BLOCKED coverage finding'
+    'verdict-binding coverage finding'
   do
     if ! grep -Fq "$needle" "$file"; then
       bad "$file — bounded primary review instruction missing: $needle"

@@ -24,9 +24,10 @@ python3 "$DEVLYN_SHARED_DIR/run-bounded.py" 600 --stdin-file .devlyn/claude-judg
   --permission-mode dontAsk \
   --tools "Read,Grep,Glob" --allowedTools "Read,Grep,Glob" \
   --setting-sources project --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
-  [--model <model>] [--effort <effort>] --output-format json
+  [--model <model>] [--effort <effort>] --output-format json --json-schema '<judge schema>'
 ```
 
+- `--json-schema` carries `judge-role-evidence.py`'s `JUDGE_SCHEMA`; the harness validates the envelope's `structured_output` and renders it as the seat's canonical JSONL, findings then the verdict line.
 - The prompt travels as exact file bytes on stdin; `--record-transport` binds the delivered bytes, actual native argv, runner outcome and timing in `<prompt>.transport.json`.
 - `dontAsk` denies anything not allowlisted (official guide: "denies
   anything not in your permissions.allow rules or the read-only command
@@ -53,7 +54,7 @@ You are Claude by Anthropic. Anthropic's prompt-engineering guide for this model
 
 ## Output discipline
 
-You calibrate response length to task complexity automatically — keep simple lookups short, scale up only when the task warrants it. Do NOT pad with context the user didn't ask for. When the canonical body sets a structural format (XML, JSON, sections), follow it literally; do not silently restructure.
+You calibrate response length to task complexity automatically — keep simple lookups short, scale up only when the task warrants it. Do NOT pad with context the user didn't ask for. When the canonical body sets a structural format (XML, JSON, sections), follow it literally; do not silently restructure. In a VERIFY judge seat started with a JSON schema, return the findings and verdict only through the structured-output tool.
 
 ## Examples and structure
 

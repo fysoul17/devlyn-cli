@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import re
@@ -40,15 +41,49 @@ def seal(devlyn, name):
     return {"path": ".devlyn/" + name, "sha256": digest(raw), "bytes": len(raw)}, raw
 
 
+FINDING_FIELDS = {"id": str, "rule_id": str, "severity": str, "file": str, "line": int,
+                  "message": str, "criterion_ref": str, "confidence": str}
+VERDICTS = ["PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED"]
+# Claude judges answer through the CLI's structured output (--json-schema), never free text.
+JUDGE_SCHEMA = {
+    "type": "object", "required": ["findings", "verdict"],
+    "properties": {
+        "findings": {"type": "array", "items": {
+            "type": "object", "required": list(FINDING_FIELDS),
+            "properties": {**{key: {"type": "integer" if kind is int else "string"} for key, kind in FINDING_FIELDS.items()},
+                           "severity": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]},
+                           "verdict_binding": {"type": "boolean"}}}},
+        "verdict": {"enum": VERDICTS}}}
+JUDGE_SCHEMA_TEXT = json.dumps(JUDGE_SCHEMA, separators=(",", ":"))
+
+
+def structured_judgment(value):
+    """Canonical JSONL for a successful Claude envelope's validated structured_output: findings, then the verdict.
+
+    Authentication and the timed-out capture use this one check. ASCII escapes keep U+0085/U+2028/U+2029 from
+    splitting a record under the parser's str.splitlines().
+    """
+    require(isinstance(value, dict) and value.get("type") == "result" and value.get("subtype") == "success"
+            and value.get("is_error") is False and isinstance(value.get("session_id"), str)
+            and bool(value["session_id"].strip()), "unsuccessful or malformed Claude terminal envelope")
+    judgment = value.get("structured_output")
+    require(isinstance(judgment, dict) and isinstance(judgment.get("findings"), list)
+            and judgment.get("verdict") in VERDICTS, "missing or invalid Claude structured_output")
+    severities = JUDGE_SCHEMA["properties"]["findings"]["items"]["properties"]["severity"]["enum"]
+    for finding in judgment["findings"]:
+        require(isinstance(finding, dict) and finding.get("severity") in severities
+                and all(type(finding.get(key)) is kind for key, kind in FINDING_FIELDS.items())
+                and type(finding.get("verdict_binding", False)) is bool, "Claude structured finding violates the judge schema")
+    lines = [json.dumps(finding) for finding in judgment["findings"]] + [judgment["verdict"]]
+    return ("\n".join(lines) + "\n").encode()
+
+
 def claude_result(raw, exit_code):
     value = loads(raw)
     require(type(exit_code) is int and exit_code == 0 and isinstance(value, dict), "unsuccessful Claude execution")
-    require(value.get("type") == "result" and value.get("subtype") == "success"
-            and value.get("is_error") is False and value.get("stop_reason") == "end_turn"
-            and isinstance(value.get("session_id"), str) and bool(value["session_id"].strip())
-            and isinstance(value.get("result"), str), "unsuccessful or malformed Claude terminal envelope")
+    derived = structured_judgment(value)
     model = runpy.run_path(Path(__file__).with_name("state-phase-write.py"))["select_claude_primary_model"](value)
-    return value["result"].encode(), model, value["session_id"]
+    return derived, model, value["session_id"]
 
 
 def codex_header(stderr):
@@ -136,6 +171,7 @@ def bound_transport(devlyn, stem, entry, argv, prompt):
                                ("--allowedTools", "Read,Grep,Glob"), ("--setting-sources", "project"), ("--output-format", "json")):
             require(option(argv, flag) == expected, f"Claude {flag} differs from read-only contract")
         require("--strict-mcp-config" in argv and loads(option(argv, "--mcp-config") or "null") == {"mcpServers": {}}, "Claude MCP isolation missing")
+        require(option(argv, "--json-schema") == JUDGE_SCHEMA_TEXT, "Claude judge schema differs from the structured-output contract")
         if effort:
             require(option(argv, "--effort") == effort, "requested effort differs from argv")
     else:
@@ -250,11 +286,13 @@ def self_test():
         selection = ROLE["resolve"](work, "codex", available=lambda e: True)
         state = {"run_id": "fixture", "role_resolution": selection, "engine": "codex", "phases": {"verify": {"engine": "claude", "round": 0}}}
         envelope = {"type": "result", "subtype": "success", "is_error": False, "stop_reason": "end_turn",
-                    "session_id": "fixture-claude", "result": "PASS", "modelUsage": {"fixture-claude-model": {}}}
+                    "session_id": "fixture-claude", "result": "", "structured_output": {"findings": [], "verdict": "PASS"},
+                    "modelUsage": {"fixture-claude-model": {}}}
         prompt_path = devlyn / "claude-judge.r0.prompt"
         file_command = ["claude", "-p", "--model", "fixture-claude-model", "--effort", "high", "--permission-mode", "dontAsk",
                         "--tools", "Read,Grep,Glob", "--allowedTools", "Read,Grep,Glob", "--setting-sources", "project",
-                        "--output-format", "json", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
+                        "--output-format", "json", "--json-schema", JUDGE_SCHEMA_TEXT,
+                        "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
         file_argv = ["python3", "run-bounded.py", "600", "--stdin-file", str(prompt_path), "--record-transport", "--", *file_command]
         for suffix, raw in (("argv.json", encoded(file_argv)), ("prompt", b"review"), ("stderr", b""), ("output.json", encoded(envelope))):
             (devlyn / ("claude-judge.r0." + suffix)).write_bytes(raw)
@@ -278,29 +316,57 @@ def self_test():
                 raise AssertionError("legacy or unsuccessful judge transport accepted")
         carrier.write_bytes(encoded(completed))
         receipt, text = describe(devlyn, state, "primary_judge", 0)
-        assert text == b"PASS" and receipt["effort_observed"] is None
+        assert text == b"PASS\n" and receipt["effort_observed"] is None
         (devlyn / "claude-judge.stdout").write_bytes(text)
         (devlyn / "claude-judge.r0.stdout").write_bytes(text)
         (devlyn / "claude-judge.r0.role-evidence.json").write_bytes(encoded(receipt))
         authenticate(devlyn, state, "primary_judge")
+        schema_at = file_argv.index("--json-schema")
         for broken in (file_argv[:4] + [str(work / "wrong.prompt")] + file_argv[5:],
-                       [arg for arg in file_argv if arg != "--record-transport"]):
+                       [arg for arg in file_argv if arg != "--record-transport"],
+                       file_argv[:schema_at] + file_argv[schema_at + 2:]):
             (devlyn / "claude-judge.r0.argv.json").write_bytes(encoded(broken))
             try:
                 describe(devlyn, state, "primary_judge", 0)
             except ValueError as exc:
-                assert "bounded" in str(exc) or "file transport" in str(exc), exc
+                assert "bounded" in str(exc) or "file transport" in str(exc) or "schema" in str(exc), exc
             else:
                 raise AssertionError("wrong file-transport argv accepted")
         (devlyn / "claude-judge.r0.argv.json").write_bytes(encoded(file_argv))
-        for field, value in (("subtype", "error_max_turns"), ("stop_reason", "tool_use"), ("is_error", True), ("session_id", ""), ("result", None)):
+        finding = {"id": "F1", "rule_id": "r", "severity": "LOW", "file": "a.md", "line": 1,
+                   "message": "quotes `code`, a \\ backslash, \"quotes\", a newline\nand non-ASCII é 漢, \u0085 \u2028 \u2029",
+                   "criterion_ref": "spec", "confidence": "high"}
+        for judgment in ({"findings": [finding], "verdict": "PASS_WITH_ISSUES"},
+                         {"findings": [{**finding, "severity": "MEDIUM", "verdict_binding": True}], "verdict": "NEEDS_WORK"}):
+            text = claude_result(encoded({**envelope, "structured_output": judgment}), 0)[0]
+            *records, verdict = text.decode().splitlines()
+            assert [json.loads(record) for record in records] == judgment["findings"] and verdict == judgment["verdict"]
+        # Terminal authority comes from subtype, is_error and a valid structured_output; stop_reason and result are recorded only.
+        accepted = {key: value for key, value in envelope.items() if key != "result"}
+        assert claude_result(encoded({**accepted, "stop_reason": "tool_use"}), 0)[0] == b"PASS\n"
+        for field, value in (("subtype", "error_max_turns"), ("subtype", "error_max_structured_output_retries"),
+                             ("is_error", True), ("session_id", ""), ("structured_output", None),
+                             ("structured_output", "PASS"), ("structured_output", {"findings": [], "verdict": "MAYBE"}),
+                             ("structured_output", {"findings": "none", "verdict": "PASS"}),
+                             ("structured_output", {"verdict": "PASS"}),
+                             ("structured_output", {"findings": [{"severity": "HIGH"}], "verdict": "NEEDS_WORK"}),
+                             ("structured_output", {"findings": [{**finding, "line": "1"}], "verdict": "NEEDS_WORK"}),
+                             ("structured_output", {"findings": [{**finding, "severity": "SEVERE"}], "verdict": "NEEDS_WORK"}),
+                             ("structured_output", {"findings": [{**finding, "verdict_binding": "yes"}], "verdict": "NEEDS_WORK"})):
             bad = {**envelope, field: value}
             try:
                 claude_result(encoded(bad), 0)
             except ValueError:
                 pass
             else:
-                raise AssertionError(field)
+                raise AssertionError((field, value))
+        for raw in (encoded(envelope).rstrip()[:-1], encoded(envelope).replace(b'"type"', b'"type":"result","type"', 1)):
+            try:
+                claude_result(raw, 0)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("truncated or duplicate-key envelope accepted")
         for status in (1, 124, True):
             try:
                 describe(devlyn, state, "primary_judge", status)
@@ -404,7 +470,7 @@ def self_test():
                                  (["node.exe", str(other / "x.js"), *command[1:]], False),
                                  (["node.exe", str(package / "cli.js"), "-p", "--model", "other"], False)):
             assert native_executable(command, actual, windows=True) is accepted, actual
-    print("PASS judge-role-evidence self-test: success/error/timeout, raw derivation, tampering and native header identity")
+    print("PASS judge-role-evidence self-test: success/error/timeout, structured derivation, tampering and native header identity")
     return 0
 
 
