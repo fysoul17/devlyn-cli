@@ -4,7 +4,7 @@ A full `/devlyn:resolve` run starts only from committed owner inputs. Keep each
 commit scoped: no unrelated paths or queue-item changes.
 
 1. Before task writes, the outer owner allocates an absent task branch per
-   [task completion](task-completion.md); linked worktree allocation is optional.
+   [task completion](task-completion.md).
    Never adopt a pre-existing task branch. Before an item's first full run, commit the current queue-item delta, when
    applicable, together with its linked spec bundle. For conversational work,
    commit the agreed spec bundle before the full run.
