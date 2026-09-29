@@ -1,0 +1,1811 @@
+{
+ "01a1fc9a1b06209205a5f193d3e9c989691fad41259b535da3fb4ee225771755": {
+  "check": "autoresearch/experiments/0226/check-scripts/J1-utf8-truncate-surrogate-pairs.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "beb7a828bc148f668bd858d0a80c43b6b87119bfcba9d78cc0ab0e49c0999378"
+ },
+ "04163720a359c17d234e7dfc4d56cddb780298aa1966e55e8719958ee3f22fa0": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "0436bb063b8bc26f0cfe37e36907b9759eb20308dcd9145456722e362a65172f": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "074c6b72059febd22ad31015517f3b0d793d5964e22f91a889e7b8e9c8fc65d3": {
+  "check": "autoresearch/experiments/0226/check-scripts/C1-obsolete-records-limit.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "64f2d2e385ea60ad7d5e214ea9f13fa1622fa65f3ec66b709664844bb7b8ab00"
+ },
+ "09f8579062b708bed5ba809757624dcb52e8baf79467d02f8e5ed19bb1d60ef4": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "0a138ed45678e6db385bc70dd9740255cf93fd06f65ee2c38509ec404933842c": {
+  "check": "autoresearch/experiments/0226/check-scripts/J3-rollback-reused-artifact-id.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "abcc270bc770aa4064c69516b56ff8e7e53e3ea6fbdeb63afe3a77141221160b"
+ },
+ "0a8e40a3b86a992a2eef770a732f8654698248211fbd60c9e65c9bf22893ae7e": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "0c892d29e8130a61385749b7f681ea1504821a6c359afbd30b1939bd54e7aff2": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "0e2b34c63b70446ecb988154b467c5d5659539022cc40b7a3a913b5406b8201c": {
+  "check": "autoresearch/experiments/0226/check-scripts/J4-ref-precision-guard.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "9730064cef72f19e7399fe9c23174f7dde3238f71d83c2378ffacb820417d515"
+ },
+ "0fa28f9dff1d27504ee64d8ce0321a82395feb8efbec379d536b1344628daf9e": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "13d873b8a3262d7a7a95503458c1698b01c025465d0eb2415707175d7c79c47f": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "19438650f7ee11576e65b796f5774a37bf4ceb634846da3d122408ae59f988bb": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "1a6cfbff40f8dfba1124f2f11199cc5d6eef85de2b5823a76c8418af0051ebfa": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "1a8bbec41d31f375224bd601bf00b579ecdc87dd22bf73ef4f79112fcc325240": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "1b07a81f5f71c480527196adcae249629f5129fcec383c1ec04238f6330411d4": {
+  "check": "autoresearch/experiments/0226/check-scripts/C1-obsolete-records-limit.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "64f2d2e385ea60ad7d5e214ea9f13fa1622fa65f3ec66b709664844bb7b8ab00"
+ },
+ "1b0c09db5a0fd3f0a629bd3fd9a14cf8a71c953f3e4e581a7964e192308e75fa": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "1b45b9120f1d287bc264ae25c463fac27f5b8d5e87c172ee2e67e932ecf551d5": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "1b8ceace6a2fa8e216808be83fcb3e2eb524aee984250fb9f001f2ce23c7fc28": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "1e092714ef9a84e0140562cff8ad8f17f1acdd9766341f078b0caf01de39d09e": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "20896abab1fdfdaf01d38957fa56fc106f1da2d6c2843b699c6a49436f0d5880": {
+  "check": "autoresearch/experiments/0226/check-scripts/C4-resize-uses-stored-sizes.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "59997905a076021fe3c4e1cabf61566749b12c88127a690f223e1ae6e51d27fb"
+ },
+ "20897e4b61bda49ed49dcc2df65987bf3fb8763d43163c84c11acad05b4dc0a4": {
+  "check": "autoresearch/experiments/0226/check-scripts/J4-ref-divisor-precision.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "dc6920ad4c042a781561f392e2cdc08da5678bc7bfc8b330a12b5e75d56fb6cc"
+ },
+ "2162285ea124ff67dd579b46f1542f2063dde112e7b3d42d4414b43538378a3f": {
+  "check": "autoresearch/experiments/0226/check-scripts/J4-ref-divisor-precision.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "dc6920ad4c042a781561f392e2cdc08da5678bc7bfc8b330a12b5e75d56fb6cc"
+ },
+ "25857ea2f32fd40c9538a2bfe4e01a8977ccc554a46c6d7e066c447999ed139b": {
+  "check": "autoresearch/experiments/0226/check-scripts/C2-replacement-tie-order.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "61e3b98417abfe5f94491175bb538acf00841e84cc463607a6b1198ee1241ad3"
+ },
+ "258c1165f9f727082b26cc4113bcc0a3049519ce8734f6f1ac02b2555d71261c": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "2598ee4abfca1e978cd66ac80177d30c493943622e411a7ffa35edaf8cea5926": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "2707c250d2fe48389bd7a067f29f321b55cf4804a93e445bd3921547eadb4835": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "27525c29440b316ec1ec2de43418df14febf612b781d6f01904baccdb5d737f3": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "29968d84eb4c27905f2938d00aeb9866b4390e7bdc7adfc0630754602aafde1a": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "29dfa841c0d465bf3ca2e9257e1cb4ec3adaf5342c1a56b35c2c2772a4226022": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "2b6434b8ba0c6ec1253a9fab21ab3f2284a5ae5b6aff66ac1aae8eb1e3696924": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "2b8c65973263d35bf8ba5c05342cd8b025b63be6d6f8d507887d1e5a2c326ad2": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "2e46b31b5fc0037c7e6eacae2821bb01a18e2c049aac183cb29a656950f7392e": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "2e9b83719c8369739329e4b8e7d54f5ebcdb4e19f6cfd8bb07e06104160a8e6d": {
+  "check": "autoresearch/experiments/0226/check-scripts/J4-ref-divisor-precision.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "dc6920ad4c042a781561f392e2cdc08da5678bc7bfc8b330a12b5e75d56fb6cc"
+ },
+ "2fc7d1ac6626c4b7705ce3bc343b2302fa6370612b605a9bdfc45be63a0fff54": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "3140c9c660eba73633f60e7a80c7a9103832e90260602c03021221f56bc183b1": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "315ad66248b888bf15b4a5e4b1c1f37ba3ebe27bb8fa9b3af96ea358f7c22c67": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "344c1e9d87a8eb802847ea4683f61cc359b7810c6954b09ceda819f89aef5c81": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "3450c5bad93b4eb8bb89fe5a1982360314480ea965d346395e29ec63923a5174": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "351542c58f518053e5a104de7a03dec82d1072731d3d45f8d9921c79afe6607c": {
+  "check": "autoresearch/experiments/0226/check-scripts/C2-replacement-tie-order.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "61e3b98417abfe5f94491175bb538acf00841e84cc463607a6b1198ee1241ad3"
+ },
+ "357f29fcc57ed0b6776dda0bb0350e322c2225fb09518cda75e848c3f148280c": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "365d894d7c1f573caebc3bbd65ae43a5cbbc273081b86d2908aebd490009c816": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "37a0aec458f8c1422c358fe3794288a8d6f9940b36f701bc1dae07464c127d7b": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "37b78d5b15923b8ee5f3d2feaf70725634d7dd6984a810e9bc680fd390b4a048": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "39adf628010681d4c70a8bd47e3fdbdc5886f4a39251d3fef4c602230d2a8851": {
+  "check": "autoresearch/experiments/0226/check-scripts/C2-replacement-tie-order.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "61e3b98417abfe5f94491175bb538acf00841e84cc463607a6b1198ee1241ad3"
+ },
+ "3b1ba4a13e66b64cdff6bd78d7df57e1b79149f84f471365f27d233673e64e76": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "40380230c62ba1917c26f14c33d28d530993eebe6b8b632d1faa359d3caae9cf": {
+  "check": "autoresearch/experiments/0226/check-scripts/J1-utf8-truncate-surrogate-pairs.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "beb7a828bc148f668bd858d0a80c43b6b87119bfcba9d78cc0ab0e49c0999378"
+ },
+ "40fd0557930d14a00dbb5bac53632bacda5a77a41d42ececdea407e72a8d79bb": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "42238bd06c4d16993c9381bd866094a3db54478dc1d146d759e2ca75a340ddd8": {
+  "check": "autoresearch/experiments/0226/check-scripts/J3-rollback-reused-artifact-id.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "abcc270bc770aa4064c69516b56ff8e7e53e3ea6fbdeb63afe3a77141221160b"
+ },
+ "4549544bc648a760b6969cf9a86eab4ca0b3c70615af235c60339aa6fe4066a8": {
+  "check": "autoresearch/experiments/0226/check-scripts/C1-obsolete-records-limit.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "64f2d2e385ea60ad7d5e214ea9f13fa1622fa65f3ec66b709664844bb7b8ab00"
+ },
+ "46d6e6b5f1bb708342630a043ae6174fe2a90d5b513fd6a3a192e59a09695d92": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "480aba2145c4c00170ea9062d423068b0b7e71703d1cdf6bf00f4a8f36e36486": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "4870ded124b58143c5cc0850488a23223b6b749eaa534f955a6d515d5217c7d0": {
+  "check": "autoresearch/experiments/0226/check-scripts/J4-ref-divisor-precision.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "dc6920ad4c042a781561f392e2cdc08da5678bc7bfc8b330a12b5e75d56fb6cc"
+ },
+ "4915fb0bf450016451b410bbba8c7eb9f702e995addb895de6eee23ab07e5e76": {
+  "check": "autoresearch/experiments/0226/check-scripts/J3-rollback-reused-artifact-id.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "abcc270bc770aa4064c69516b56ff8e7e53e3ea6fbdeb63afe3a77141221160b"
+ },
+ "49ff9e40ebc0a82558c7d56c6b35c1b2f4d67a854af7e2e03f13305bc63cb341": {
+  "check": "autoresearch/experiments/0226/check-scripts/C4-resize-uses-stored-sizes.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "59997905a076021fe3c4e1cabf61566749b12c88127a690f223e1ae6e51d27fb"
+ },
+ "4c2bd26e6739f11b078dd5325be803e43405fa499d783f0fc6f6bfe8005b38e6": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "4cb0c34e49e05ac5e5ec2f54d150cc16a781a1d3a952543b7362ef04e8b9ad1a": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "522a4b9ac33bf88bda3eee2da33211d50a28dbef8dc9033c6aa3ce14ed4ccb71": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": null,
+  "script_sha256": null
+ },
+ "53fa41181573aa4e6928792f9f156dc75a00622bb5fcf4f06f0ba229195569a1": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "557073bd55fd095c3fd0c604fb634b253fc51113362bfdb2a85f762d89c8f99c": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "5c1b72350a5faf5d328343468177442275498059fe4fc724b77756b8c3f88c45": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "5ca1f4c0e44791c5a5bc8be839859b751d3477fa078c796c499c816deb469cca": {
+  "check": "autoresearch/experiments/0226/check-scripts/J3-rollback-reused-artifact-id.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "abcc270bc770aa4064c69516b56ff8e7e53e3ea6fbdeb63afe3a77141221160b"
+ },
+ "5dec9369ff32edcd622fc5697b1b4f87b71074c4a17700cf3d10020ea409ef84": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "5f563397c6f2cc1a0c4e4b83d686dd2c1ffed3973a72f477feaa93c549db10b0": {
+  "check": "autoresearch/experiments/0226/check-scripts/C1-obsolete-records-limit.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "64f2d2e385ea60ad7d5e214ea9f13fa1622fa65f3ec66b709664844bb7b8ab00"
+ },
+ "632f481a0f80a263a4ec6a2e7a5a0a44f86c8e0a78cf351b9f02b20860277582": {
+  "check": "autoresearch/experiments/0226/check-scripts/J1-utf8-truncate-surrogate-pairs.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "beb7a828bc148f668bd858d0a80c43b6b87119bfcba9d78cc0ab0e49c0999378"
+ },
+ "63f9cb42cfc3d706f7261104ad7f99dd3145e865897e7035301e53cc5ce8b22f": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "650a189425364bd7ad51bcd94ea7d69bd098dfaba8910e175ff0aeecb8644f39": {
+  "check": "autoresearch/experiments/0226/check-scripts/C2-replacement-tie-order.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "61e3b98417abfe5f94491175bb538acf00841e84cc463607a6b1198ee1241ad3"
+ },
+ "66199e939d866f21ddb99e777c36fa6aba97d124bd01223245a9f76e5a454334": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "67b0d94cdc603ad954aa4b44663cf6c90347a882053797c96fc90dec1e27c0b7": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "6934fa0c8027802beabcd842c5678e97dab778a67fa6aa90b10572927c3b9b4a": {
+  "check": "autoresearch/experiments/0226/check-scripts/J4-ref-divisor-precision.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "dc6920ad4c042a781561f392e2cdc08da5678bc7bfc8b330a12b5e75d56fb6cc"
+ },
+ "69697f4dbb84344e7dabe95d931d4f0da569a00024121a5ef32d53ae33b63b33": {
+  "check": "autoresearch/experiments/0226/check-scripts/J1-utf8-truncate-surrogate-pairs.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "beb7a828bc148f668bd858d0a80c43b6b87119bfcba9d78cc0ab0e49c0999378"
+ },
+ "699810eefa991795968278067a2f4141ebdc745da23a105c9d16c75cde08c35c": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "69a238a4184f178c422ab2501f76a140d3f60d30bb87364a5617b3b0a01a5c9d": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "69b56fac3e28f104bdfa69522062db1b9915266eca8a7ce51a8eeee77becf2a1": {
+  "check": "autoresearch/experiments/0226/check-scripts/C4-resize-uses-stored-sizes.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "59997905a076021fe3c4e1cabf61566749b12c88127a690f223e1ae6e51d27fb"
+ },
+ "69e39e1518101f1ef853cf274bd766bb4dc865e30c96d55db3dbb9017011b49b": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "6b2c1a3cdeae6895c04479af0c850fb9216c31bf214fad13fb13a51e222dcdb0": {
+  "check": "autoresearch/experiments/0226/check-scripts/J3-nested-rollback-reused-artifact-id.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "5fdf93afbb5d5872454c5ad0db4a791fc7484272be2fb284a825efefb60e9305"
+ },
+ "6b945dbf1110ca342ed66d2f066a53e9a9952bb2db127dd28f9c545edd547db5": {
+  "check": "autoresearch/experiments/0226/check-scripts/C1-obsolete-records-limit.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "64f2d2e385ea60ad7d5e214ea9f13fa1622fa65f3ec66b709664844bb7b8ab00"
+ },
+ "6f84e49d0c97f88c5490162fb91f2b985ae51e02a6f4287046863c23a02f3d17": {
+  "check": "autoresearch/experiments/0226/check-scripts/C2-replacement-tie-order.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "61e3b98417abfe5f94491175bb538acf00841e84cc463607a6b1198ee1241ad3"
+ },
+ "70653e30f0204ebd86e8117b0421870cdc4b7f65debf040072377a06c0fb05cb": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "71352d2cec7e106ddee7f40683d13eba6ffe2d8ca1002d6b1864d5682b42ece9": {
+  "check": "autoresearch/experiments/0226/check-scripts/J3-rollback-reused-artifact-id.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "abcc270bc770aa4064c69516b56ff8e7e53e3ea6fbdeb63afe3a77141221160b"
+ },
+ "7184ab13b63fd538b0a3159a335d3ff3c632f2fce9aa108201b0f9fade0b186f": {
+  "check": "autoresearch/experiments/0226/check-scripts/C2-replacement-tie-order.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "61e3b98417abfe5f94491175bb538acf00841e84cc463607a6b1198ee1241ad3"
+ },
+ "729873a791bb6a736176d9b36d4cf6e701be54c3a98ce948a2071c31b58535a3": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "72f25fa706bc3885b7bb513670bc7af849071997ccd06bd19f8882a325f2619f": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "73c9670a9f519709659499680e4cfa9cae419fbb82942b87c79ba3bb6ded2264": {
+  "check": "autoresearch/experiments/0226/check-scripts/C4-resize-uses-stored-sizes.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "59997905a076021fe3c4e1cabf61566749b12c88127a690f223e1ae6e51d27fb"
+ },
+ "7488f7ecd0201675755f1b9ec3471e9de526163a80b2252f8d149d76baef42e5": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "74a008ff39fdf937d69796400d6c151cd4cc9d76608e1bf5d3e77d2ec3da2f34": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "757d5565cd548573ac96d2c76fc992317eb1e68185efa13fedd54c22c32fa828": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "7abc7e6ce0da55cc86dd92977ddc7f93a285b33fbad82f88926a5208f798361b": {
+  "check": "autoresearch/experiments/0226/check-scripts/C4-resize-uses-stored-sizes.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "59997905a076021fe3c4e1cabf61566749b12c88127a690f223e1ae6e51d27fb"
+ },
+ "7d3b4c396ddebd7812faa3f3b7a2dc0ad108bf153e6adb8dc440b9e5a3e5d962": {
+  "check": "autoresearch/experiments/0226/check-scripts/C2-replacement-tie-order.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "61e3b98417abfe5f94491175bb538acf00841e84cc463607a6b1198ee1241ad3"
+ },
+ "804a6ba589be845b1315906b4205ba9e6aecee6e16002f0b0bfe4f72bf2ccc3b": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "80a02b88d24b435a088b17a7267a286a10fecba32f1ba1952a3910575c4ec93c": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "8200557bfdb461cae26619373ead4c396a27456ed86246fe7ced687d0c1659c6": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "821a2129db91b7d3b4ab9ad43c64918fe17a60d8b19146a6333b6678624ee752": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "82691e35f346ff97d0f388db99c403dd10ac6b4ca06542294d243165d33b1313": {
+  "check": "autoresearch/experiments/0226/check-scripts/J3-rollback-reused-artifact-id.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "abcc270bc770aa4064c69516b56ff8e7e53e3ea6fbdeb63afe3a77141221160b"
+ },
+ "867f267f01c76792ac871fab5bee8dd7b5f178e2739381321ba5e8cbf26fb403": {
+  "check": "autoresearch/experiments/0226/check-scripts/J4-ref-divisor-precision.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "dc6920ad4c042a781561f392e2cdc08da5678bc7bfc8b330a12b5e75d56fb6cc"
+ },
+ "887d6c57afabfdfecb7b0fe1c7f857e1e2e6486a91ed01bc66c0e4e3a2578961": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "8a7dd582b6016c9443da384efc0236fada4741fa6b9beecf038551e6345ae0ab": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "8a9a1ca784bffed072d8acf2f2bdf88329977e5aaa024fa96d907b0cc8eea853": {
+  "check": "autoresearch/experiments/0226/check-scripts/J4-rebuilt-ref-divisor.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "333032047e5c94cfe9863d126f67e05ececb759dcfb64dca04980e8731bdc65b"
+ },
+ "90f2f7fab40cee5eb62750c1c90c68616fe5532d944e56e0dff2ff24f0476699": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "90f9c7516227db27d27895c7f00d71b4bad3c2eb99fc8e48bcc96d054ce4fc71": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "91e149fdfa443b0984441678bbcf54c5869c6c7610d7fa03ccfb2caeeef81f0d": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "9312911817cbd66a9ce1638e8d6190e8d734950f922361a34b850ee221f789a2": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "952fcef2b9cf43565d474356b1b53f1ceb4c09b767ec585bb4d9d7bd92da6035": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "964177a2ef606a26f456eb873dfa7de7f5472080cf32c2a45a2b2a0b200daa90": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "96542ab52490bcfc5ff5269c8a2229c5525a6253edf628046fa467d2c0f83702": {
+  "check": "autoresearch/experiments/0226/check-scripts/J4-ref-divisor-precision.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "dc6920ad4c042a781561f392e2cdc08da5678bc7bfc8b330a12b5e75d56fb6cc"
+ },
+ "9774179a1277bc4f8b618fcc938e9e154fae61dc8f63ccb9ac1d99b2cdd6b136": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "97b0a2910143fa7529d8344133cf2fe6eebdd77fec9ea7652209598a1035e55e": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "9bc8f6a9f3e3bfce39e2a2c84903c9d9e855293b00d852d4df2de82786472486": {
+  "check": "autoresearch/experiments/0226/check-scripts/C4-resize-uses-stored-sizes.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "59997905a076021fe3c4e1cabf61566749b12c88127a690f223e1ae6e51d27fb"
+ },
+ "9cb1a1c96c717f1cf1881c1a7ef8d4cc6f42aa7d29f159920d588313289aa83e": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "a1540de7d5acb3781fee918ae82b3bd63605279bb6a94fd7122241ead35edc7e": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "a2dede0fe593230342e61f82231e22c21f3c96b4177c16190c2fbacd181e78ab": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "a4acfabe5a099af112d65e2feecd17f75108eeff3cbc42c6e5a717e0a2cb8373": {
+  "check": "autoresearch/experiments/0226/check-scripts/C2-replacement-tie-order.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "61e3b98417abfe5f94491175bb538acf00841e84cc463607a6b1198ee1241ad3"
+ },
+ "a5a0e628f7e28cc40bbf06d975448e9456bd9047f2b5a41e50358d303bf8a667": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "a6e45fe61b5bd41993a8d6b0995eb532f9827daab1e697ea9ac4e3d801b22fe6": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "a72ffdcd5c922e02ea05ac1cb760f226d452c02cd63b4830167298e1f61b05be": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "a76a8b66adfe1ce807236a4cacdb10702fd7179cb1f87bf2cf1592dcf70a6a6d": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "a810a0768725c38dd999b567b5740380b61fa820276415712a4c2ad2b75140c1": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "a84e6144db6f1bcae8bf9f37a631b96f461fba79272dd8b09e4a450e928aeba7": {
+  "check": "autoresearch/experiments/0226/check-scripts/J4-ref-divisor-precision.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "dc6920ad4c042a781561f392e2cdc08da5678bc7bfc8b330a12b5e75d56fb6cc"
+ },
+ "a86c80e227194ba20a445bcdcc2d13760badaf374d812c0cd337f4afc1e3ef51": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "b1f90765e3b8b8a27d3e7b64ee9a8c832007baf4aa650a54991bbcf3d22aae0f": {
+  "check": "autoresearch/experiments/0226/check-scripts/C1-obsolete-records-limit.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "64f2d2e385ea60ad7d5e214ea9f13fa1622fa65f3ec66b709664844bb7b8ab00"
+ },
+ "b2e53746707ad4018b75995f1101224c5872cadfe7a93d4c97fce20fd070c333": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "b61eb1824d2017e58c27b6877a86033f497aca306be2305e8afe451538c2d2fe": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "b9757a4a424ec94f21f2802b4928a2d50e554edafd6f31cb6ab7bcda1a342421": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "bc283303664e578d54093c7bae90f432d057cf967549e3343dac9ebbd77dba4e": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "be244384269f20e877963407f8d0be0caff6e9cf3570ea3a6f07e2f8dcc49931": {
+  "check": "autoresearch/experiments/0226/check-scripts/J1-utf8-truncate-surrogate-pairs.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "beb7a828bc148f668bd858d0a80c43b6b87119bfcba9d78cc0ab0e49c0999378"
+ },
+ "be8fcd8920d950879a61116c3805e9606e9d4284917a51983bca8d03d237b4cb": {
+  "check": "autoresearch/experiments/0226/check-scripts/J1-utf8-truncate-surrogate-pairs.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "beb7a828bc148f668bd858d0a80c43b6b87119bfcba9d78cc0ab0e49c0999378"
+ },
+ "c194caa53a04ef2b0dbd23b4b12596ec2d7d6654356a0a35ef7a9c828b663b11": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "c23679f2745f0f2c2deddd93f4041dd822697804f15e3e99483a632642adfb4a": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "c71d14051fda98ff314e128205235bca2c61a1d729662021489def83d2773f72": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "c944aee0dfe94491ff2836ad14c6bf4540bbb0eeecc74e6bf158474e00396b1d": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "cb624abc1196e2d8e2f26086dcf6a51e9354148f7435299fc843b248b2b42cff": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "cc7cdd95754ab7f5ea1d134e2df69e6e1b4b95151f7db0eed6161813eefce4ba": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "cfd72ef12385d50659ce294ba527698a8ad36053c086e372d754c348688f0214": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "d08bb00662b87f84f5957fe9ce5e1fb7f2a31696292f23b6784bf5864cb0fda6": {
+  "check": "autoresearch/experiments/0226/check-scripts/C1-obsolete-records-limit.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "64f2d2e385ea60ad7d5e214ea9f13fa1622fa65f3ec66b709664844bb7b8ab00"
+ },
+ "d35c6896d6a19eaf4f24d9003584ad869e9377acbff23ad3cf46114d936a502a": {
+  "check": "autoresearch/experiments/0226/check-scripts/C4-resize-uses-stored-sizes.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "59997905a076021fe3c4e1cabf61566749b12c88127a690f223e1ae6e51d27fb"
+ },
+ "d389a7e7fdf13fccac878057e84a8d01f14001cde8731f97093e05e7d3932e95": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "d61ce6516f810645ec937dcc35adfa401a92bda0cf877ac913d2df00e0573e8c": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "d626581378d67fd82d4e2631b481a3a75c33b37f7fccc1f3104bdc4b37291b3e": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "d8e2c11056dbeca3e7e8e78e02b371a93efc587f71d3cf856080418f91b790d5": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "d9a2ce017ad910fa1b24a5d564b8c55583de31d6e613420ea91e4ae9dd94f0a4": {
+  "check": "autoresearch/experiments/0226/check-scripts/J3-rollback-reused-artifact-id.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "abcc270bc770aa4064c69516b56ff8e7e53e3ea6fbdeb63afe3a77141221160b"
+ },
+ "d9b915a459cc7ec0c219508053bd0507324ac36b1d4af805150fd7154789624d": {
+  "check": "autoresearch/experiments/0226/check-scripts/J3-rollback-reused-artifact-id.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "abcc270bc770aa4064c69516b56ff8e7e53e3ea6fbdeb63afe3a77141221160b"
+ },
+ "dbb866ab15b1187f56dee32ac40d904bb9535155d207fb007e3db94025497cfa": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "dc7fecf47447b5b1eb717f14eb68265f765ab990531f7a20314f453ad561a367": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "dd818e67a51c2b5600d845f0163ce1c06da9ee128011025c00b97bd4917997e2": {
+  "check": "autoresearch/experiments/0226/check-scripts/C4-resize-uses-stored-sizes.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "59997905a076021fe3c4e1cabf61566749b12c88127a690f223e1ae6e51d27fb"
+ },
+ "de3975af593c3dae569072f04fe0e55f5c0964a4a48923e010efcb6975440753": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "dfa4deb4cbd208cfe081c8eea611d5c55766cd1f557ca6d58a02ec6d5045ca53": {
+  "check": "autoresearch/experiments/0226/check-scripts/C2-replacement-tie-order.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "61e3b98417abfe5f94491175bb538acf00841e84cc463607a6b1198ee1241ad3"
+ },
+ "e0454796f9d0b2a8e2cbb3d8a806a5800e3264298eb4db27297dd062077c8001": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "e1b347eb68b109623f397752f4ef71cc2e6e74f6ee3126754699b945145b30e0": {
+  "check": "autoresearch/experiments/0226/check-scripts/J4-ref-divisor-precision.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "dc6920ad4c042a781561f392e2cdc08da5678bc7bfc8b330a12b5e75d56fb6cc"
+ },
+ "e387d92676ac1f6cff065e1b8e6aa45ab76d425a37769e7178880979abc3cce6": {
+  "check": "autoresearch/experiments/0226/check-scripts/J1-utf8-truncate-surrogate-pairs.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "beb7a828bc148f668bd858d0a80c43b6b87119bfcba9d78cc0ab0e49c0999378"
+ },
+ "e55f7e828ce1d3014a746d497767da8937d0eb8c42b69c06cdf80e906741fb9e": {
+  "check": "autoresearch/experiments/0226/check-scripts/C2-replacement-tie-order.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "61e3b98417abfe5f94491175bb538acf00841e84cc463607a6b1198ee1241ad3"
+ },
+ "e637d605fb7f953795fdba5bdbe40341e20644ea19bbbf65f45051ffa9cb6faf": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "e6bb079030a1ca7886105f5185ccce43b957589c5f582288f55414c800bd86f1": {
+  "check": "autoresearch/experiments/0226/check-scripts/J1-utf8-truncate-surrogate-pairs.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "beb7a828bc148f668bd858d0a80c43b6b87119bfcba9d78cc0ab0e49c0999378"
+ },
+ "e76553deb55817e2144b434146ef66badd0fc6743114d8a03b9cbc4776dcbd58": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "e765a1e23757ec17646b489a8e9374e5c3d852f75f19b9625b758cf02fd797f2": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "ea2a1ef90cda235bfa36222c353c18020450d9a23d3e6d34d3db96704c90ae1a": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "eb8116073aa45a9b97cbee6aa2a4b68b64805d3f9ba7c01fc7d53068ec72b1be": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "edf13f18140f57468e722dd47d31270f6522aa55e08cf7868fc3039f3cf0af58": {
+  "check": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51"
+ },
+ "eef4123c9b5fe1af797844667d78517752b388f1bf188c0fc2903180c919c870": {
+  "check": "autoresearch/experiments/0226/check-scripts/J3-rollback-reused-artifact-id.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "abcc270bc770aa4064c69516b56ff8e7e53e3ea6fbdeb63afe3a77141221160b"
+ },
+ "f117c2f1724fca856e5213d88f4248398c1420e359107386f2b796d654116e9a": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "f16e64b17287bfafd1f12a23fff00a691a97dd0e60f6570cd1b29e7a9703a7ef": {
+  "check": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": true,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f"
+ },
+ "f33841c89bff992f5728e22276c53559de6a2eeac02d440b60af55265860aef6": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "f3e0cdafba25b3ff8cff89e040657183b8e18a6401213bc622ba3c806bd611bf": {
+  "check": "autoresearch/experiments/0226/check-scripts/C1-obsolete-records-limit.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "64f2d2e385ea60ad7d5e214ea9f13fa1622fa65f3ec66b709664844bb7b8ab00"
+ },
+ "f579d038666ecfec561c6ef44c5c3a415b5c24a1874fbbfcb53bce4541776680": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "f69d459af71d71d1bb1b2e27ce850923f8fd8e2fb9cd86191c0006fa58c52791": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "fc33dd21898d694a3a262adce75cb19b9d1cd174e58fd269eee0510e6a862d86": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "fddc841367af9189e733e76539a2d20c85e62e9294227a8dceb1fff3eb91562b": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ }
+}
