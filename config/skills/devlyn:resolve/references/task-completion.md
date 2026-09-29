@@ -49,8 +49,9 @@ history are never adopted or swept. A refused cleanup does not block source
 delivery; it stays visible in the handoff with its receipt and retry command
 (`CLEANUP_PENDING` after delivered source). No task is described as cleaned
 while owned disposable files remain. On resumption, finish any pending scratch
-cleanup before allocating more temporary storage. Rebuild from retained inputs
-when needed; cleanup is not an instruction to restart parked work.
+cleanup before allocating more temporary storage; the next allocation also
+retries it for completed deliveries with released writers. Rebuild from retained
+inputs when needed; cleanup is not an instruction to restart parked work.
 
 ## Accept a scoped commit
 

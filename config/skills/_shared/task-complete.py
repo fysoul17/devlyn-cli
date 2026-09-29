@@ -423,10 +423,15 @@ def stopped_writers(work):
             try:
                 links = [process / "cwd", *(process / "fd").iterdir()]
                 for link in links:
-                    target = Path(os.readlink(link))
+                    try:
+                        target = Path(os.readlink(link))
+                    except FileNotFoundError:
+                        if link == process / "cwd":
+                            break
+                        continue
                     require(not target.is_absolute() or not target.is_relative_to(work), f"active process {process.name} uses task files; stop/yield it before resume")
             except FileNotFoundError:
-                continue  # Process or fd exited during observation.
+                continue  # Process exited during observation.
             except PermissionError as exc:
                 raise CompletionError("unknown process access; retain tree until writer cessation can be established") from exc
     else:
@@ -543,8 +548,6 @@ def cleanup(receipt, path, pr, writers_stopped):
             inspect_workspace(receipt)
             verify_files(work, receipt["files"])
             stopped_writers(work)
-            receipt["cleanup_started"] = True
-            atomic_json(path, receipt)
             gref(receipt, "worktree", "remove", str(work))
         else:
             require(str(work) not in registrations(receipt), "missing worktree is still registered; retain")
@@ -611,10 +614,16 @@ def reconcile(common, allocated, anchor):
             continue
         try:
             receipt = read_json(path)
-            if receipt.get("allocation") != "owned" or receipt.get("status") == "COMPLETE" or not receipt.get("acceptance") or not receipt.get("pr_number") or receipt.get("local_only"):
+            if receipt.get("allocation") != "owned" or not receipt.get("acceptance") or not receipt.get("pr_number") or receipt.get("local_only"):
+                continue
+            if receipt.get("status") == "COMPLETE" and (not receipt.get("writers_released") or "scratch_identity" not in receipt or receipt.get("scratch_cleanup", {}).get("status") == "CLEAN"):
                 continue
             with locked_receipt(path, blocking=False) as receipt:
-                if receipt.get("status") == "COMPLETE" or not receipt.get("acceptance") or not receipt.get("pr_number") or receipt.get("local_only"):
+                if receipt.get("status") == "COMPLETE":
+                    if receipt.get("writers_released") and "scratch_identity" in receipt and receipt.get("scratch_cleanup", {}).get("status") != "CLEAN":
+                        results.append(completion_result(receipt, path, "COMPLETE", True))
+                    continue
+                if not receipt.get("acceptance") or not receipt.get("pr_number") or receipt.get("local_only"):
                     continue
                 pr = json.loads(gh(receipt, "pr", "view", str(receipt["pr_number"]), "--json", PR_FIELDS))
                 if pr["state"] != "MERGED":
@@ -622,6 +631,7 @@ def reconcile(common, allocated, anchor):
                 validate_pr(receipt, pr)
                 require(not receipt["linked"] or Path(receipt["worktree"]) != anchor, "cannot clean the current allocation's anchor checkout: " + str(anchor))
                 require(remote_url(receipt) == receipt["remote_url"], "remote URL changed since allocation")
+                repo_policy(receipt)
                 receipt["merge"] = pr
                 atomic_json(path, receipt)
                 released = receipt.get("writers_released", False)
@@ -770,7 +780,7 @@ def remote(ref):
     return r.stdout.strip() if r.returncode == 0 else None
 if a[:2] == ['repo', 'view']:
     assert a[2:] == ['github.com/test/project', '--json', 'nameWithOwner,url,defaultBranchRef,mergeCommitAllowed'], 'unsupported gh repo view arguments: '+str(a)
-    print(json.dumps({'nameWithOwner':'test/project', 'url':'https://github.com/test/project', 'defaultBranchRef':{'name':'main'}, 'mergeCommitAllowed':d.get('merge_allowed',True)}))
+    print(json.dumps({'nameWithOwner':'test/project', 'url':'https://github.com/test/project', 'defaultBranchRef':{'name':d.get('default_branch','main')}, 'mergeCommitAllowed':d.get('merge_allowed',True)}))
 elif a[:2] == ['pr', 'list']:
     assert '--repo' in a and a[a.index('--repo')+1] == 'github.com/test/project'
     print(json.dumps([d['pr']] if d.get('pr') else []))
@@ -1017,6 +1027,29 @@ class CompletionTests(unittest.TestCase):
             child.terminate()
             child.wait(timeout=5)
         self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped")
+
+    def test_linux_writer_scan_continues_after_vanished_fd(self):
+        from unittest.mock import patch
+        process = Path("/proc") / str(os.getpid() + 1)
+        vanished, active = process / "fd/0", process / "fd/1"
+        iterdir, readlink = Path.iterdir, os.readlink
+        def entries(path):
+            if path == Path("/proc"):
+                return iter([process])
+            if path == process / "fd":
+                return iter([vanished, active])
+            return iterdir(path)
+        def target(path, *args, **kwargs):
+            if path == process / "cwd":
+                return str(self.root)
+            if path == vanished:
+                raise FileNotFoundError(path)
+            if path == active:
+                return str(self.work / "product")
+            return readlink(path, *args, **kwargs)
+        with patch.object(sys, "platform", "linux"), patch.object(Path, "iterdir", entries), patch.object(os, "readlink", target):
+            with self.assertRaisesRegex(CompletionError, "active process " + process.name):
+                stopped_writers(self.work)
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_scratch_rejects_redirect_and_git_data_but_does_not_follow_child_links(self):
@@ -1355,6 +1388,19 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual((current["pushs"], current["creates"], current["merges"], current.get("disables", 0)),
                          (server["pushs"], server["creates"], server["merges"], server.get("disables", 0)))
 
+    def test_reconcile_checks_repo_policy_before_cleanup(self):
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        receipt, task = self.receipt, self.task
+        self.configure(default_branch="changed")
+        result = self.allocate("next")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "RETAINED")])
+        self.assertIn("base/default branch changed", result["reconciled"][0]["reason"])
+        self.assertTrue(task.exists())
+        self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+
     def test_reconcile_skips_open_and_unaccepted_and_retains_in_use_tree(self):
         self.allocate(); self.accept()
         self.complete("--mode", "pr", "--writers-stopped")
@@ -1405,7 +1451,6 @@ class CompletionTests(unittest.TestCase):
         receipt, task = self.receipt, self.task
         self.g("worktree", "remove", str(task))
         self.g("update-ref", "-d", "refs/heads/task/fixture", self.sha)
-        self.assertNotIn("cleanup_started", json.loads(receipt.read_text()))
         before = self.anchor_state()
         result = self.allocate("next")
         self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
@@ -1435,21 +1480,42 @@ class CompletionTests(unittest.TestCase):
         self.complete("--mode", "pr", "--writers-stopped")
         self.merge_pr()
         receipt, task = self.receipt, self.task
-        (scratch / ".git").mkdir()
-        result = self.allocate("next")
-        self.assertEqual(len(result["reconciled"]), 1)
-        row = result["reconciled"][0]
-        self.assertEqual((row["status"], row["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
-        self.assertEqual(row["scratch_cleanup"]["status"], "RETAINED")
-        self.assertIn("Git recovery data", row["scratch_cleanup"]["reason"])
-        self.assertTrue((scratch / ".git").is_dir())
+        (scratch / "object").write_bytes(b"rebuildable")
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], cwd=scratch)
+        try:
+            result = self.allocate("next")
+            self.assertEqual(len(result["reconciled"]), 1)
+            row = result["reconciled"][0]
+            self.assertEqual((row["status"], row["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+            self.assertEqual(row["scratch_cleanup"]["status"], "RETAINED")
+            self.assertIn("active process", row["scratch_cleanup"]["reason"])
+            self.assertEqual((scratch / "object").read_bytes(), b"rebuildable")
+            self.assertIsNone(child.poll())
+        finally:
+            child.terminate(); child.wait(timeout=5)
         self.assertFalse(task.exists())
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
-        (scratch / ".git").rmdir()
-        self.receipt = receipt
-        result, _ = self.complete(acceptance=False)
-        self.assertEqual(result["status"], "COMPLETE")
+        self.configure(default_branch="changed")
+        server = json.loads(self.data.read_text())
+        result = self.allocate("retry")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
+        self.assertFalse(any(scratch.iterdir()))
+        self.assertEqual(json.loads(self.data.read_text()), server)
+        self.assertEqual(self.allocate("later")["reconciled"], [])
+
+    def test_reconcile_retries_unattempted_scratch_cleanup(self):
+        scratch = Path(self.allocate()["scratch"])
+        self.accept()
+        self.complete("--mode", "auto", "--writers-stopped")
+        receipt = self.receipt
+        saved = json.loads(receipt.read_text())
+        del saved["scratch_cleanup"]
+        receipt.write_text(json.dumps(saved))
+        (scratch / "object").write_bytes(b"rebuildable")
+        result = self.allocate("next")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
+        self.assertFalse(any(scratch.iterdir()))
 
     def test_reconcile_retains_busy_receipt_without_waiting(self):
         self.allocate(); self.accept()
@@ -1533,6 +1599,7 @@ class CompletionTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertFalse(self.task.exists())
         saved = json.loads(self.receipt.read_text(encoding="utf-8"))
+        self.assertNotIn("cleanup_started", saved)
         recovered = self.receipt.parent / "custody" / ".devlyn/runs/fixture-run/final-report.md"
         self.assertEqual(hashlib.sha256(recovered.read_bytes()).hexdigest(), saved["files"][".devlyn/runs/fixture-run/final-report.md"]["sha256"])
         result, _ = self.complete("--writers-stopped", acceptance=False)
