@@ -1,0 +1,62 @@
+[
+ {
+  "id": "963e09508f95ee8b4586734e0af0bc784910ec0b0e6c4ffd7c68f600916048e5",
+  "verdict": "allowed",
+  "reason": "A Claude Read/Grep/Glob path field holding a regex or glob, not a path; relative to the round work directory it names nothing outside the round copy, and the round seal hid everything else."
+ },
+ {
+  "id": "9128f1a3ecc646a2ce75e0b67b10f2434ab350170e2a82f3f91d7d67138e9d27",
+  "verdict": "allowed",
+  "reason": "A Claude Read/Grep/Glob path field holding a regex or glob, not a path; relative to the round work directory it names nothing outside the round copy, and the round seal hid everything else."
+ },
+ {
+  "id": "c839f9ddb9fe47583b35e2f54605dee8a0a45ae699923dcf71ce746dab77aff7",
+  "verdict": "allowed",
+  "reason": "A Claude Read/Grep/Glob path field holding a regex or glob, not a path; relative to the round work directory it names nothing outside the round copy, and the round seal hid everything else."
+ },
+ {
+  "id": "f2c291d1033f332838dda2519548c4a6f1619b995a53ab964468d60e59a5745f",
+  "verdict": "allowed",
+  "reason": "A Claude Read/Grep/Glob path field holding a regex or glob, not a path; relative to the round work directory it names nothing outside the round copy, and the round seal hid everything else."
+ },
+ {
+  "id": "6b0735e464e934245f9837415e76dab538cf6c11d4c438a292a0270e78208c72",
+  "verdict": "allowed",
+  "reason": "A Claude Read/Grep/Glob path field holding a regex or glob, not a path; relative to the round work directory it names nothing outside the round copy, and the round seal hid everything else."
+ },
+ {
+  "id": "b08109d6e5e0b2236887b34883735d8166776f4e541b892b3761dae1297acc04",
+  "verdict": "allowed",
+  "reason": "A Claude Read/Grep/Glob path field holding a regex or glob, not a path; relative to the round work directory it names nothing outside the round copy, and the round seal hid everything else."
+ },
+ {
+  "id": "71117c5033a7c015ba29e4622affbb67ddceb8b4a221d7781c8f6784fdb55db6",
+  "verdict": "allowed",
+  "reason": "A Claude Read/Grep/Glob path field holding a regex or glob, not a path; relative to the round work directory it names nothing outside the round copy, and the round seal hid everything else."
+ },
+ {
+  "id": "fd7c8b7de81ff659c12a08cd8ed1b7717bcf45cce220de0955c92d36f0cc0f86",
+  "verdict": "allowed",
+  "reason": "A Claude Read/Grep/Glob path field holding a regex or glob, not a path; relative to the round work directory it names nothing outside the round copy, and the round seal hid everything else."
+ },
+ {
+  "id": "140324054994cd61c3ee38764f395cf9dd60047f3217e2cabb803f25d5117b0c",
+  "verdict": "allowed",
+  "reason": "A Claude Read/Grep/Glob path field holding a regex or glob, not a path; relative to the round work directory it names nothing outside the round copy, and the round seal hid everything else."
+ },
+ {
+  "id": "473e65b8007fbd9538ccf8549ab713714e5fb9fffa1e8431b975dda3656b0aa1",
+  "verdict": "allowed",
+  "reason": "A Claude Read/Grep/Glob path field holding a regex or glob, not a path; relative to the round work directory it names nothing outside the round copy, and the round seal hid everything else."
+ },
+ {
+  "id": "51d821b18a031f840417aa1c618df6cb2a64aec1573ec86181b410cea5dc6f2e",
+  "verdict": "allowed",
+  "reason": "Codex exec block of relative reads (lib/, test/, API.md, .devlyn/process-evidence) and git diff inside the round work directory; unparsed only because a heartbeat line split it from its status line."
+ },
+ {
+  "id": "f7f77320d52b646fcb2dae4ef10bda5d57f6d0c10394a65839518c9bdb64e7ac",
+  "verdict": "allowed",
+  "reason": "A Claude Read/Grep/Glob path field holding a regex or glob, not a path; relative to the round work directory it names nothing outside the round copy, and the round seal hid everything else."
+ }
+]

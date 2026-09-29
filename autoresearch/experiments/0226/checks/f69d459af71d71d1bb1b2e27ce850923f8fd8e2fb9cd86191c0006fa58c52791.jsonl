@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-29T05:56:47.954Z", "finding_key": "f69d459af71d71d1bb1b2e27ce850923f8fd8e2fb9cd86191c0006fa58c52791", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0226/check-scripts/J4-ref-divisor-precision.sh", "script_sha256": "dc6920ad4c042a781561f392e2cdc08da5678bc7bfc8b330a12b5e75d56fb6cc", "task": "J4"}

@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-29T05:53:28.084Z", "finding_key": "80a02b88d24b435a088b17a7267a286a10fecba32f1ba1952a3910575c4ec93c", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0226/check-scripts/C3-failed-deadline-keeps-expired.sh", "script_sha256": "2c5ce6caf8a7dcd6a535b10a146cd8e7f69b76b2da79f046126a6c1d7057ad51", "task": "C3"}

@@ -1,0 +1,70 @@
+diff --git a/API.md b/API.md
+index a3552cf..be9c5cc 100755
+--- a/API.md
++++ b/API.md
+@@ -2235,6 +2235,8 @@ Specifies that the value must be a multiple of `base` (or a reference):
+ const schema = Joi.number().multiple(3);
+ ```
+ 
++When `base` is a numeric reference, Joi uses the resolved divisor with the same decimal arithmetic as a literal divisor.
++
+ Notes: `Joi.number.multiple(base)` _uses the modulo operator (%) to determine if a number is multiple of another number.
+ Therefore, it has the normal limitations of Javascript modulo operator. The results with decimal/floats may be incorrect._
+ 
+diff --git a/lib/types/number.js b/lib/types/number.js
+index ae07eae..e7d03b1 100755
+--- a/lib/types/number.js
++++ b/lib/types/number.js
+@@ -218,6 +218,11 @@ module.exports = Any.extend({
+             },
+             validate(value, helpers, { base, baseDecimalPlace, pfactor }, options) {
+ 
++                if (baseDecimalPlace === null) {
++                    baseDecimalPlace = internals.decimalPlaces(base);
++                    pfactor = Math.pow(10, baseDecimalPlace);
++                }
++
+                 const valueDecimalPlace = internals.decimalPlaces(value);
+ 
+                 if (valueDecimalPlace > baseDecimalPlace) {
+diff --git a/test/types/number.js b/test/types/number.js
+index 107d49d..fa007f6 100755
+--- a/test/types/number.js
++++ b/test/types/number.js
+@@ -969,6 +969,36 @@ describe('number', () => {
+         });
+     });
+ 
++    describe('decimal reference multiples', () => {
++
++        it('uses resolved decimal divisors across validations', () => {
++
++            const schema = Joi.object({
++                step: Joi.number(),
++                amount: Joi.number().multiple(Joi.ref('step'))
++            });
++            for (const [step, amount, valid] of [[0.25, 0.75, true], [0.25, 0.65, false], [0.25, 0.251, false], [0.2, 0.6, true], [0.25, -0.75, true], ['0.25', 0.75, true]]) {
++                const result = schema.validate({ step, amount });
++                expect(!result.error).to.equal(valid);
++                if (!valid) {
++                    expect(result.error.details[0].type).to.equal('number.multiple');
++                }
++            }
++        });
++
++        it('supports context references and scientific notation', () => {
++
++            const ref = Joi.ref('$step');
++            const schema = Joi.number().multiple(ref);
++            expect(schema.validate(0.75, { context: { step: 0.25 } }).error).to.not.exist();
++            expect(schema.validate(3e-7, { context: { step: 1e-7 } }).error).to.not.exist();
++            const result = schema.validate(0.65, { context: { step: 0.25 } });
++            expect(result.error.details[0].type).to.equal('number.multiple');
++            expect(result.error.details[0].context.multiple).to.shallow.equal(ref);
++            expect(schema.validate(0.75, { context: { step: '0.25' } }).error.details[0].type).to.equal('any.ref');
++        });
++    });
++
+     describe('port()', () => {
+ 
+         it('validates correctly', () => {

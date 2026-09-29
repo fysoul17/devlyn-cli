@@ -1,0 +1,111 @@
+{
+  "task": "C3",
+  "files": {
+    "reference": [
+      "docs/index.rst",
+      "src/cachetools/__init__.py",
+      "tests/test_ttl.py"
+    ],
+    "twin": [
+      "docs/index.rst",
+      "src/cachetools/__init__.py",
+      "tests/test_ttl.py"
+    ]
+  },
+  "base": {
+    "oracle": {
+      "C3-O1": true,
+      "C3-O2": false,
+      "C3-O3": false,
+      "C3-O4": false,
+      "C3-O5": true
+    },
+    "oracle_exit": 0
+  },
+  "reference": {
+    "public": [
+      {
+        "cmd": "python -m pytest -q",
+        "exit": 0,
+        "expected": 0,
+        "tail": "........................................................................ [ 21%]\n........................................................................ [ 42%]\n........................................................................ [ 63%]\n........................................................................ [ 84%]\n.....................................................                    [100%]\n341 passed in 4.25s\n"
+      },
+      {
+        "cmd": "ruff check .",
+        "exit": 0,
+        "expected": 0,
+        "tail": "All checks passed!\n"
+      },
+      {
+        "cmd": "ruff format --check .",
+        "exit": 0,
+        "expected": 0,
+        "tail": "29 files already formatted\n"
+      },
+      {
+        "cmd": "pyright",
+        "exit": 0,
+        "expected": 0,
+        "tail": "ionalContextManager)\n  /Users/Shared/devlyn-0226/tmpv46nymu8/reference/src/cachetools/_cachedmethod.py:215:22 - warning: Object of type \"None\" cannot be used with \"with\" (reportOptionalContextManager)\n  /Users/Shared/devlyn-0226/tmpv46nymu8/reference/src/cachetools/_cachedmethod.py:225:22 - warning: Object of type \"None\" cannot be used with \"with\" (reportOptionalContextManager)\n  /Users/Shared/devlyn-0226/tmpv46nymu8/reference/src/cachetools/_cachedmethod.py:230:22 - warning: Object of type \"None\" cannot be used with \"with\" (reportOptionalContextManager)\n0 errors, 11 warnings, 17 informations\n"
+      }
+    ],
+    "oracle": {
+      "C3-O1": true,
+      "C3-O2": true,
+      "C3-O3": true,
+      "C3-O4": true,
+      "C3-O5": true
+    },
+    "oracle_exit": 0
+  },
+  "twin": {
+    "public": [
+      {
+        "cmd": "python -m pytest -q",
+        "exit": 0,
+        "expected": 0,
+        "tail": "........................................................................ [ 21%]\n........................................................................ [ 42%]\n........................................................................ [ 63%]\n........................................................................ [ 84%]\n.....................................................                    [100%]\n341 passed in 4.26s\n"
+      },
+      {
+        "cmd": "ruff check .",
+        "exit": 0,
+        "expected": 0,
+        "tail": "All checks passed!\n"
+      },
+      {
+        "cmd": "ruff format --check .",
+        "exit": 0,
+        "expected": 0,
+        "tail": "29 files already formatted\n"
+      },
+      {
+        "cmd": "pyright",
+        "exit": 0,
+        "expected": 0,
+        "tail": "ith\" (reportOptionalContextManager)\n  /Users/Shared/devlyn-0226/tmpv46nymu8/twin/src/cachetools/_cachedmethod.py:215:22 - warning: Object of type \"None\" cannot be used with \"with\" (reportOptionalContextManager)\n  /Users/Shared/devlyn-0226/tmpv46nymu8/twin/src/cachetools/_cachedmethod.py:225:22 - warning: Object of type \"None\" cannot be used with \"with\" (reportOptionalContextManager)\n  /Users/Shared/devlyn-0226/tmpv46nymu8/twin/src/cachetools/_cachedmethod.py:230:22 - warning: Object of type \"None\" cannot be used with \"with\" (reportOptionalContextManager)\n0 errors, 11 warnings, 17 informations\n"
+      }
+    ],
+    "oracle": {
+      "C3-O1": true,
+      "C3-O2": true,
+      "C3-O3": true,
+      "C3-O4": false,
+      "C3-O5": true
+    },
+    "oracle_exit": 0
+  },
+  "verdict": {
+    "same_files": true,
+    "reference_public_pass": true,
+    "twin_public_pass": true,
+    "reference_oracle_all_true": true,
+    "twin_oracle_failed_rows": [
+      "C3-O4"
+    ],
+    "base_oracle_failed_rows": [
+      "C3-O2",
+      "C3-O3",
+      "C3-O4"
+    ]
+  }
+}

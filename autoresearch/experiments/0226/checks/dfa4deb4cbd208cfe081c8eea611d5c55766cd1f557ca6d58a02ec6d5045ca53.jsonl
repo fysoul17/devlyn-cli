@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-29T05:52:57.120Z", "finding_key": "dfa4deb4cbd208cfe081c8eea611d5c55766cd1f557ca6d58a02ec6d5045ca53", "results": {"base": true, "reference": true, "twin": false}, "script": "autoresearch/experiments/0226/check-scripts/C2-replacement-tie-order.sh", "script_sha256": "61e3b98417abfe5f94491175bb538acf00841e84cc463607a6b1198ee1241ad3", "task": "C2"}

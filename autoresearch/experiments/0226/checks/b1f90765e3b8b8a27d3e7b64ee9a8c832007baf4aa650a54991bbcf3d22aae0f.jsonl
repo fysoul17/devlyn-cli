@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-29T05:52:25.064Z", "finding_key": "b1f90765e3b8b8a27d3e7b64ee9a8c832007baf4aa650a54991bbcf3d22aae0f", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0226/check-scripts/C1-obsolete-records-limit.sh", "script_sha256": "64f2d2e385ea60ad7d5e214ea9f13fa1622fa65f3ec66b709664844bb7b8ab00", "task": "C1"}

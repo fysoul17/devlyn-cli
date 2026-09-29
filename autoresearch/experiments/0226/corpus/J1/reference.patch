@@ -1,0 +1,101 @@
+diff --git a/API.md b/API.md
+index a3552cf..4219f1e 100755
+--- a/API.md
++++ b/API.md
+@@ -3123,6 +3123,7 @@ Possible validation errors: [`string.trim`](#stringtrim)
+ #### `string.truncate([enabled])`
+ 
+ Specifies whether the `string.max()` limit should be used as a truncation.
++When the maximum uses UTF-8 encoding (`utf8` or `utf-8`, case-insensitive), truncation retains the longest prefix of complete code points that fits the byte limit.
+ 
+ Parameters are:
+ - `enabled` - optional parameter defaulting to `true` which allows you to reset the behavior of truncate by providing a falsy value.
+diff --git a/lib/types/string.js b/lib/types/string.js
+index 77578d5..425ce06 100755
+--- a/lib/types/string.js
++++ b/lib/types/string.js
+@@ -118,7 +118,28 @@ module.exports = Any.extend({
+                         }
+                     }
+ 
+-                    value = value.slice(0, limit);
++                    const encoding = rule.args.encoding;
++
++                    if (encoding && ['utf8', 'utf-8'].includes(encoding.toLowerCase())) {
++                        let bytes = 0;
++                        let end = 0;
++
++                        for (const character of value) {
++                            const size = Buffer.byteLength(character, encoding);
++
++                            if (bytes + size > limit) {
++                                break;
++                            }
++
++                            bytes += size;
++                            end += character.length;
++                        }
++
++                        value = value.slice(0, end);
++                    }
++                    else {
++                        value = value.slice(0, limit);
++                    }
+                 }
+             }
+ 
+diff --git a/test/types/string.js b/test/types/string.js
+index 3d28056..4ca5fee 100755
+--- a/test/types/string.js
++++ b/test/types/string.js
+@@ -9301,4 +9301,50 @@ describe('string', () => {
+             ]);
+         });
+     });
++
++    describe('UTF-8 truncation', () => {
++
++        it('honors byte budgets for ASCII and BMP text', () => {
++
++            const cases = [
++                [4, 'ééx', 'éé'],
++                [3, 'éé', 'é'],
++                [2, '漢x', ''],
++                [5, '漢abz', '漢ab'],
++                [0, 'abc', ''],
++                [8, 'abc', 'abc'],
++                [2, '', '']
++            ];
++
++            for (const [limit, input, output] of cases) {
++                const result = Joi.string().allow('').max(limit, 'utf8').truncate().validate(input);
++                expect(result.error).to.not.exist();
++                expect(result.value).to.equal(output);
++            }
++        });
++
++        it('supports UTF-8 aliases and resolved limits', () => {
++
++            for (const encoding of ['utf-8', 'UTF8', 'UTF-8']) {
++                expect(Joi.string().max(4, encoding).truncate().validate('ééx').value).to.equal('éé');
++            }
++
++            const schema = Joi.object({
++                limit: Joi.number(),
++                text: Joi.string().max(Joi.ref('limit'), 'utf8').truncate()
++            });
++            expect(schema.validate({ limit: '4', text: 'ééx' }).value).to.equal({ limit: 4, text: 'éé' });
++            expect(schema.validate({ text: 'ééx' }).error.details[0].type).to.equal('any.ref');
++        });
++
++        it('preserves conversion preferences and earlier transforms', () => {
++
++            const schema = Joi.string().max(3, 'utf8').truncate();
++            expect(schema.validate('éé', { convert: false }).error.details[0].type).to.equal('string.max');
++            expect(schema.truncate(false).validate('éé').error.details[0].type).to.equal('string.max');
++            expect(schema.trim().replace(/x/g, 'é').validate(' xx ').value).to.equal('é');
++            expect(Joi.string().max(2, 'latin1').truncate().validate('ééx').value).to.equal('éé');
++            expect(Joi.string().max(0, 'utf8').truncate().validate('x').error.details[0].type).to.equal('string.empty');
++        });
++    });
+ });

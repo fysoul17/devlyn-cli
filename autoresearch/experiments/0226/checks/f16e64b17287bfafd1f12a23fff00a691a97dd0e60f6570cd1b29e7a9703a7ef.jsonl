@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-29T05:55:24.102Z", "finding_key": "f16e64b17287bfafd1f12a23fff00a691a97dd0e60f6570cd1b29e7a9703a7ef", "results": {"base": true, "reference": true, "twin": false}, "script": "autoresearch/experiments/0226/check-scripts/J2-original-before-trimmed.sh", "script_sha256": "b57b1e812cc0b59fb9bf7e96114579b5538ab62197c5f71530100a5a1631ef7f", "task": "J2"}

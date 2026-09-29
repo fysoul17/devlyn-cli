@@ -1,0 +1,148 @@
+diff --git a/docs/index.rst b/docs/index.rst
+index 22a5e68..800ccb5 100644
+--- a/docs/index.rst
++++ b/docs/index.rst
+@@ -202,7 +202,9 @@ inserted into the cache.
+       items that have expired by the current value returned by
+       :attr:`timer`.
+ 
+-      :returns: An iterable of expired `(key, value)` pairs.
++      :returns: An iterable of expired `(key, value)` pairs in ascending
++         expiration time order.  Items with the same expiration time
++         appear in the order their current values were assigned.
+ 
+ 
+ Extending cache classes
+diff --git a/src/cachetools/__init__.py b/src/cachetools/__init__.py
+index c9eecb2..1c28883 100644
+--- a/src/cachetools/__init__.py
++++ b/src/cachetools/__init__.py
+@@ -596,20 +596,26 @@ class TLRUCache(_TimedCache):
+ 
+     @functools.total_ordering
+     class _Item:
+-        __slots__ = ("expires", "key", "removed")
++        __slots__ = ("expires", "key", "order", "removed")
+ 
+-        def __init__(self, key=None, expires=None):
++        def __init__(self, key=None, expires=None, order=0):
+             self.key = key
+             self.expires = expires
++            self.order = order
+             self.removed = False
+ 
+         def __lt__(self, other):
+-            return self.expires < other.expires
++            if self.expires < other.expires:
++                return True
++            if other.expires < self.expires:
++                return False
++            return self.order < other.order
+ 
+     def __init__(self, maxsize, ttu, timer=time.monotonic, getsizeof=None):
+         _TimedCache.__init__(self, maxsize, timer, getsizeof)
+         self.__items = collections.OrderedDict()
+         self.__order = []
++        self.__counter = 0
+         self.__ttu = ttu
+ 
+     def __contains__(self, key):
+@@ -641,13 +647,18 @@ class TLRUCache(_TimedCache):
+                 # one should remove the existing item
+                 return self.__delitem(key)
+             cache_setitem(self, key, value)
++        self.__counter += 1
+         # removing an existing item would break the heap structure, so
+         # only mark it as removed for now
+         try:
+-            self.__getitem(key).removed = True
++            previous = self.__getitem(key)
+         except KeyError:
+-            pass
+-        self.__items[key] = item = TLRUCache._Item(key, expires)
++            previous = None
++        if previous is not None:
++            previous.removed = True
++        self.__items[key] = item = TLRUCache._Item(
++            key, expires, previous.order if previous is not None else self.__counter
++        )
+         heapq.heappush(self.__order, item)
+ 
+     def __delitem__(self, key, cache_delitem=Cache.__delitem__):
+diff --git a/tests/test_tlru.py b/tests/test_tlru.py
+index b0dac65..cc95bf8 100644
+--- a/tests/test_tlru.py
++++ b/tests/test_tlru.py
+@@ -144,6 +144,72 @@ class TLRUCacheTest(unittest.TestCase, CacheTestMixin):
+         self.assertEqual(cache[4], 4)
+         self.assertEqual(cache[5], 5)
+ 
++    def test_ttu_equal_deadlines_assignment_order(self):
++        cache = TLRUCache[str, tuple[int, str], int](
++            maxsize=3, ttu=lambda _k, value, _t: value[0], timer=Timer()
++        )
++        cache["a"] = (10, "A")
++        cache["b"] = (10, "B")
++        cache["c"] = (10, "C")
++
++        self.assertEqual((10, "A"), cache["a"])
++        self.assertIn("b", cache)
++        self.assertEqual(
++            [("a", (10, "A")), ("b", (10, "B")), ("c", (10, "C"))],
++            cache.expire(10),
++        )
++
++    def test_ttu_mixed_deadlines_assignment_order(self):
++        cache = TLRUCache[str, tuple[int, str], int](
++            maxsize=4, ttu=lambda _k, value, _t: value[0], timer=Timer()
++        )
++        cache["a"] = (10, "A")
++        cache["b"] = (5, "B")
++        cache["c"] = (10, "C")
++        cache["d"] = (5, "D")
++
++        self.assertEqual(
++            ["b", "d", "a", "c"], [key for key, _value in cache.expire(10)]
++        )
++
++    def test_ttu_equal_deadlines_after_deletion(self):
++        cache = TLRUCache(maxsize=3, ttu=lambda _k, _v, _t: 10, timer=Timer())
++        cache["a"] = "A"
++        cache["b"] = "B"
++        cache["c"] = "C"
++        del cache["b"]
++
++        self.assertEqual([("a", "A"), ("c", "C")], cache.expire(10))
++
++    def test_ttu_replacement_with_distinct_deadline(self):
++        cache = TLRUCache[str, tuple[int, str], int](
++            maxsize=2, ttu=lambda _k, value, _t: value[0], timer=Timer()
++        )
++        cache["a"] = (5, "old")
++        cache["b"] = (8, "B")
++        cache["a"] = (12, "new")
++
++        self.assertEqual([("b", (8, "B"))], cache.expire(8))
++        self.assertEqual([("a", (12, "new"))], cache.expire(12))
++
++    def test_ttu_equal_deadlines_nonorderable_keys(self):
++        cache = TLRUCache(maxsize=3, ttu=lambda _k, _v, _t: 10, timer=Timer())
++        keys = [object() for _ in range(3)]
++        for value, key in enumerate(keys):
++            cache[key] = value
++
++        self.assertEqual(list(zip(keys, range(3))), cache.expire(10))
++
++    def test_ttu_equal_deadlines_lru_eviction(self):
++        cache = TLRUCache(maxsize=2, ttu=lambda _k, _v, _t: 10, timer=Timer())
++        cache["a"] = "A"
++        cache["b"] = "B"
++        self.assertEqual("A", cache["a"])
++        cache["c"] = "C"
++
++        self.assertNotIn("b", cache)
++        self.assertEqual([("a", "A"), ("c", "C")], cache.expire(10))
++
+     def test_overwrite_existing_with_expired(self):
+         # Overwriting an existing key with an already-expired value must not
+         # silently retain the previous value: the assignment cannot store the

@@ -1,0 +1,20 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "timeout_sec": 120
+    }
+  ],
+  "required_files": [
+    "lib/validator.js",
+    "test/base.js",
+    "API.md"
+  ],
+  "spec_output_files": [
+    "lib/validator.js",
+    "test/base.js",
+    "API.md"
+  ],
+  "max_deps_added": 0
+}

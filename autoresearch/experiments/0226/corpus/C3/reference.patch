@@ -1,0 +1,188 @@
+diff --git a/docs/index.rst b/docs/index.rst
+index 22a5e68..47c4fac 100644
+--- a/docs/index.rst
++++ b/docs/index.rst
+@@ -132,6 +132,13 @@ inserted into the cache.
+    of `timer()`, but `ttl` does not necessarily have to be a number,
+    either.
+ 
++   If calculating this expiration time raises an exception, the
++   assignment leaves cached values, sizes, eviction order, and
++   expiration records unchanged.  Entries already due to expire remain
++   available for reporting by a later :meth:`expire` call.  Side
++   effects of caller-supplied `timer` or `ttl` objects are outside this
++   guarantee.
++
+    .. testcode::
+ 
+       from datetime import datetime, timedelta
+diff --git a/src/cachetools/__init__.py b/src/cachetools/__init__.py
+index c9eecb2..67c5cdd 100644
+--- a/src/cachetools/__init__.py
++++ b/src/cachetools/__init__.py
+@@ -496,6 +496,7 @@ class TTLCache(_TimedCache):
+ 
+     def __setitem__(self, key, value, cache_setitem=Cache.__setitem__):
+         with self.timer as time:
++            expires = time + self.__ttl
+             self.expire(time)
+             cache_setitem(self, key, value)
+         try:
+@@ -504,7 +505,7 @@ class TTLCache(_TimedCache):
+             self.__links[key] = link = TTLCache._Link(key)
+         else:
+             link.unlink()
+-        link.expires = time + self.__ttl
++        link.expires = expires
+         link.next = root = self.__root
+         link.prev = prev = root.prev
+         prev.next = root.prev = link
+diff --git a/tests/test_ttl.py b/tests/test_ttl.py
+index e023173..a1ff43a 100644
+--- a/tests/test_ttl.py
++++ b/tests/test_ttl.py
+@@ -1,7 +1,7 @@
+ import math
+ import unittest
+ 
+-from cachetools import TTLCache
++from cachetools import Cache, TTLCache
+ 
+ from . import CacheTestMixin
+ 
+@@ -20,6 +20,29 @@ class Timer:
+         self.time += 1
+ 
+ 
++class CountingTimer(Timer):
++    def __init__(self):
++        super().__init__()
++        self.calls = 0
++
++    def __call__(self):
++        self.calls += 1
++        return super().__call__()
++
++
++class CountingTTL:
++    def __init__(self):
++        self.calls = 0
++        self.fail = False
++        self.error = ValueError("deadline unavailable")
++
++    def __radd__(self, now):
++        self.calls += 1
++        if self.fail:
++            raise self.error
++        return now + 5
++
++
+ class TTLTestCache(TTLCache):
+     def __init__(self, maxsize, ttl=math.inf, **kwargs):
+         TTLCache.__init__(self, maxsize, ttl=ttl, timer=Timer(), **kwargs)
+@@ -191,6 +214,105 @@ class TTLCacheTest(unittest.TestCase, CacheTestMixin):
+         cache.clear()
+         self.assertEqual(0, len(cache))
+ 
++    def test_ttl_failed_replacement_preserves_lru_and_size(self):
++        timer = CountingTimer()
++        ttl = CountingTTL()
++        cache = TTLCache(maxsize=2, ttl=ttl, timer=timer, getsizeof=len)
++        cache["a"] = "A"
++        cache["b"] = "B"
++
++        ttl.fail = True
++        with self.assertRaises(ValueError) as raised:
++            cache["a"] = "XX"
++        self.assertIs(raised.exception, ttl.error)
++        self.assertEqual("A", Cache.__getitem__(cache, "a"))
++        self.assertEqual("B", Cache.__getitem__(cache, "b"))
++        self.assertEqual(2, vars(cache)["_Cache__currsize"])
++        self.assertEqual({"a": 1, "b": 1}, vars(cache)["_Cache__size"])
++        ttl.fail = False
++
++        cache["c"] = "C"
++        self.assertNotIn("a", cache)
++        self.assertEqual("B", cache["b"])
++        self.assertEqual("C", cache["c"])
++        self.assertEqual(2, cache.currsize)
++
++        timer.time = 5
++        self.assertEqual([("b", "B"), ("c", "C")], cache.expire(5))
++        cache["d"] = "D"
++        self.assertEqual("D", cache["d"])
++        self.assertEqual(1, cache.currsize)
++        self.assertEqual([("d", "D")], cache.expire(10))
++
++    def test_ttl_failed_new_key_preserves_full_cache(self):
++        timer = CountingTimer()
++        ttl = CountingTTL()
++        cache = TTLCache(maxsize=2, ttl=ttl, timer=timer, getsizeof=len)
++        cache["a"] = "A"
++        cache["b"] = "B"
++
++        ttl.fail = True
++        with self.assertRaises(ValueError) as raised:
++            cache["c"] = "C"
++        self.assertIs(raised.exception, ttl.error)
++        self.assertEqual("A", Cache.__getitem__(cache, "a"))
++        self.assertEqual("B", Cache.__getitem__(cache, "b"))
++        self.assertEqual(2, vars(cache)["_Cache__currsize"])
++        self.assertEqual({"a": 1, "b": 1}, vars(cache)["_Cache__size"])
++        self.assertNotIn("c", cache)
++        self.assertEqual([("a", "A"), ("b", "B")], cache.expire(5))
++
++    def test_ttl_deadline_calculated_once_and_replacement_refreshes(self):
++        timer = CountingTimer()
++        ttl = CountingTTL()
++        cache = TTLCache(maxsize=3, ttl=ttl, timer=timer, getsizeof=len)
++
++        cache["a"] = "A"
++        self.assertEqual(1, timer.calls)
++        self.assertEqual(1, ttl.calls)
++        cache["b"] = "B"
++        timer.time = 3
++
++        timer_calls, ttl_calls = timer.calls, ttl.calls
++        cache["a"] = "AA"
++        self.assertEqual(timer_calls + 1, timer.calls)
++        self.assertEqual(ttl_calls + 1, ttl.calls)
++        self.assertEqual(3, cache.currsize)
++        self.assertEqual([("b", "B")], cache.expire(5))
++        self.assertEqual("AA", cache["a"])
++        self.assertEqual([("a", "AA")], cache.expire(8))
++        self.assertEqual(0, cache.currsize)
++
++        timer = CountingTimer()
++        ttl = CountingTTL()
++        cache = TTLCache(maxsize=2, ttl=ttl, timer=timer, getsizeof=len)
++        cache["a"] = "A"
++        cache["b"] = "B"
++        cache["a"] = "A"
++        cache["c"] = "C"
++        self.assertNotIn("b", cache)
++        self.assertEqual("A", cache["a"])
++        self.assertEqual("C", cache["c"])
++
++    def test_ttl_failed_deadline_restores_timer_context(self):
++        timer = CountingTimer()
++        ttl = CountingTTL()
++        cache = TTLCache(maxsize=2, ttl=ttl, timer=timer)
++
++        ttl.fail = True
++        with self.assertRaises(ValueError) as raised:
++            cache["a"] = "A"
++        self.assertIs(raised.exception, ttl.error)
++        timer.time = 20
++        ttl.fail = False
++
++        timer_calls, ttl_calls = timer.calls, ttl.calls
++        cache["b"] = "B"
++        self.assertEqual(timer_calls + 1, timer.calls)
++        self.assertEqual(ttl_calls + 1, ttl.calls)
++        self.assertEqual([], cache.expire(24))
++        self.assertEqual([("b", "B")], cache.expire(25))
++
+     def test_ttl_tuple_key(self):
+         cache = TTLCache[tuple[int, ...], int, int](maxsize=1, ttl=1, timer=Timer())
+         self.assertEqual(1, cache.ttl)

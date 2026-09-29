@@ -1,0 +1,238 @@
+diff --git a/docs/index.rst b/docs/index.rst
+index 22a5e68..57a4ef6 100644
+--- a/docs/index.rst
++++ b/docs/index.rst
+@@ -59,6 +59,15 @@ especially important when using a custom `getsizeof` function, since
+ the size of an item's value will only be computed when the item is
+ inserted into the cache.
+ 
++Use :meth:`Cache.resize` to change a cache's maximum size in place.
++If the recorded size of the retained values exceeds the new maximum,
++items are discarded using the cache's eviction policy until they fit.
++Resizing uses the sizes recorded at insertion and does not call
++:meth:`getsizeof` again for retained values.  It uses the existing
++size accounting, so floating-point rounding or overflow may leave a
++residual current size after all entries are evicted.  Resizing stops
++evicting when the cache is empty.
++
+ .. note::
+ 
+    Please be aware that all these classes are *not* thread-safe.
+@@ -67,7 +76,7 @@ inserted into the cache.
+    suitable `lock` object.
+ 
+ .. autoclass:: Cache(maxsize, getsizeof=None)
+-   :members: currsize, getsizeof, maxsize
++   :members: currsize, getsizeof, maxsize, resize
+ 
+    This class discards arbitrary items using :meth:`popitem` to make
+    space when necessary.  Derived classes may override :meth:`popitem`
+diff --git a/src/cachetools/__init__.py b/src/cachetools/__init__.py
+index c9eecb2..c36f2fd 100644
+--- a/src/cachetools/__init__.py
++++ b/src/cachetools/__init__.py
+@@ -152,6 +152,15 @@ class Cache(collections.abc.MutableMapping):
+         self.__size.clear()
+         self.__currsize = 0
+ 
++    def resize(self, maxsize):
++        """Resize the cache, discarding items until they fit if necessary."""
++        if maxsize < 0:
++            raise ValueError("maxsize must be non-negative")
++        _ = self.currsize
++        while len(self) > maxsize and len(self):
++            self.popitem()
++        self.__maxsize = maxsize
++
+     @property
+     def maxsize(self):
+         """The maximum size of the cache."""
+@@ -415,6 +424,12 @@ class _TimedCache(Cache):
+             self.expire(time)
+             return cache_len(self)
+ 
++    def resize(self, maxsize):
++        if maxsize < 0:
++            raise ValueError("maxsize must be non-negative")
++        with self.__timer:
++            Cache.resize(self, maxsize)
++
+     @property
+     def currsize(self):
+         with self.__timer as time:
+diff --git a/src/cachetools/__init__.pyi b/src/cachetools/__init__.pyi
+index c7b4d48..db1b3a8 100644
+--- a/src/cachetools/__init__.pyi
++++ b/src/cachetools/__init__.pyi
+@@ -52,6 +52,7 @@ class Cache(MutableMapping[_KT, _VT]):
+     @overload
+     def pop(self, key: _KT, default: _VT | _T) -> _VT | _T: ...
+     def setdefault(self, key: _KT, default: _VT | None = None) -> _VT: ...
++    def resize(self, maxsize: float) -> None: ...
+     @property
+     def maxsize(self) -> float: ...
+     @property
+diff --git a/tests/test_cache.py b/tests/test_cache.py
+index afcb196..5ae0f6e 100644
+--- a/tests/test_cache.py
++++ b/tests/test_cache.py
+@@ -1,3 +1,4 @@
++import math
+ import unittest
+ 
+ import cachetools
+@@ -7,3 +8,154 @@ from . import CacheTestMixin
+ 
+ class CacheTest(unittest.TestCase, CacheTestMixin):
+     Cache = cachetools.Cache
++
++
++class ResizeCacheTest(unittest.TestCase):
++    def test_lru_policy_and_later_admission(self):
++        cache = cachetools.LRUCache[str, str](3)
++        cache.update(a="A", b="B", c="C")
++        self.assertEqual("A", cache["a"])
++
++        self.assertIsNone(cache.resize(2))
++        self.assertEqual(2, cache.maxsize)
++        self.assertEqual(2, cache.currsize)
++        self.assertEqual({"a", "c"}, set(cache))
++
++        cache["d"] = "D"
++        self.assertEqual({"a", "d"}, set(cache))
++        self.assertEqual(2, cache.currsize)
++
++    def test_capacity_boundaries(self):
++        cache = cachetools.FIFOCache(2)
++        cache.update(a="A", b="B")
++
++        self.assertIsNone(cache.resize(4))
++        self.assertEqual({"a", "b"}, set(cache))
++        self.assertEqual(2, cache.currsize)
++        self.assertIsNone(cache.resize(4))
++        self.assertEqual({"a", "b"}, set(cache))
++
++        cache.resize(math.inf)
++        self.assertEqual(math.inf, cache.maxsize)
++        self.assertEqual({"a", "b"}, set(cache))
++
++        cache.resize(1.5)
++        self.assertEqual(1.5, cache.maxsize)
++        self.assertEqual({"b"}, set(cache))
++        cache.resize(0)
++        self.assertEqual(0, cache.maxsize)
++        self.assertEqual(0, cache.currsize)
++        self.assertEqual(0, len(cache))
++        self.assertIsNone(cache.resize(0))
++
++        empty = cachetools.Cache(0)
++        self.assertIsNone(empty.resize(math.inf))
++        self.assertEqual(math.inf, empty.maxsize)
++        self.assertEqual(0, empty.currsize)
++
++    def test_negative_capacity_preserves_fifo_order(self):
++        cache = cachetools.FIFOCache(2)
++        cache.update(a="A", b="B")
++
++        with self.assertRaises(ValueError):
++            cache.resize(-1)
++        self.assertEqual(2, cache.maxsize)
++        self.assertEqual(2, cache.currsize)
++        self.assertEqual({"a", "b"}, set(cache))
++
++        cache.resize(1)
++        self.assertEqual({"b"}, set(cache))
++
++    def test_inherited_eviction_policies(self):
++        cache = cachetools.Cache(3)
++        cache.update(a="A", b="B", c="C")
++        cache.resize(2)
++        self.assertEqual(2, cache.maxsize)
++        self.assertEqual(2, cache.currsize)
++        self.assertEqual(2, len(cache))
++
++        fifo = cachetools.FIFOCache(3)
++        fifo.update(a="A", b="B", c="C")
++        fifo.resize(2)
++        self.assertEqual({"b", "c"}, set(fifo))
++
++        lfu = cachetools.LFUCache(3)
++        lfu.update(a="A", b="B", c="C")
++        lfu["a"]
++        lfu["a"]
++        lfu["b"]
++        lfu.resize(2)
++        self.assertEqual({"a", "b"}, set(lfu))
++
++        rr = cachetools.RRCache(3, choice=min)
++        rr.update(a="A", b="B", c="C")
++        rr.resize(2)
++        self.assertEqual({"b", "c"}, set(rr))
++
++    def test_timed_cleanup_precedes_eviction(self):
++        for kind in ("ttl", "tlru"):
++            with self.subTest(kind=kind):
++                now = [0]
++                if kind == "ttl":
++                    cache = cachetools.TTLCache(3, 5, timer=lambda now=now: now[0])
++                else:
++                    cache = cachetools.TLRUCache(
++                        3,
++                        lambda key, value, time: time + 5,
++                        timer=lambda now=now: now[0],
++                    )
++                cache["a"] = "A"
++                now[0] = 3
++                cache.update(b="B", c="C")
++                now[0] = 5
++
++                cache.resize(2)
++                self.assertEqual({"b", "c"}, set(cache))
++                self.assertEqual(2, cache.maxsize)
++                self.assertEqual(2, cache.currsize)
++
++    def test_cached_wrapper_uses_resized_cache(self):
++        cache = cachetools.LRUCache(3)
++
++        @cachetools.cached(cache, info=True)
++        def double(value):
++            return value * 2
++
++        self.assertEqual(2, double(1))
++        self.assertEqual(4, double(2))
++        cache.resize(1)
++        self.assertIs(cache, double.cache)
++        self.assertEqual(1, double.cache_info().maxsize)
++        self.assertEqual(1, double.cache_info().currsize)
++        self.assertEqual(6, double(3))
++        self.assertEqual(1, double.cache_info().currsize)
++
++    def test_retained_values_are_not_remeasured(self):
++        calls = []
++
++        def size(value):
++            calls.append(value)
++            return len(value)
++
++        cache = cachetools.Cache(20, getsizeof=size)
++        a, b = [1, 2, 3], [4, 5, 6]
++        cache["a"], cache["b"] = a, b
++        a.append(7)
++
++        cache.resize(10)
++        cache.resize(8)
++        self.assertEqual(8, cache.maxsize)
++        self.assertEqual(6, cache.currsize)
++        self.assertIs(a, cache["a"])
++        self.assertIs(b, cache["b"])
++        self.assertEqual(2, len(calls))
++
++    def test_replacement_uses_resized_capacity(self):
++        cache = cachetools.Cache(3, getsizeof=len)
++        cache.update(a="A", b="B")
++        cache.resize(2)
++
++        cache["a"] = "AA"
++        self.assertEqual({"a"}, set(cache))
++        self.assertEqual(2, cache.maxsize)
++        self.assertEqual(2, cache.currsize)

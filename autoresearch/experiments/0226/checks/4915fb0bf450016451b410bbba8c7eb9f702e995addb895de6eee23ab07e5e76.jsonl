@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-29T05:55:34.921Z", "finding_key": "4915fb0bf450016451b410bbba8c7eb9f702e995addb895de6eee23ab07e5e76", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0226/check-scripts/J3-rollback-reused-artifact-id.sh", "script_sha256": "abcc270bc770aa4064c69516b56ff8e7e53e3ea6fbdeb63afe3a77141221160b", "task": "J3"}

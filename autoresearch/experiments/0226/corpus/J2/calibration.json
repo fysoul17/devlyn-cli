@@ -1,0 +1,78 @@
+{
+  "task": "J2",
+  "files": {
+    "reference": [
+      "API.md",
+      "lib/types/boolean.js",
+      "test/types/boolean.js"
+    ],
+    "twin": [
+      "API.md",
+      "lib/types/boolean.js",
+      "test/types/boolean.js"
+    ]
+  },
+  "base": {
+    "oracle": {
+      "J2-1": false,
+      "J2-2": true,
+      "J2-3": false,
+      "J2-4": false,
+      "J2-5": true,
+      "J2-W": true
+    },
+    "oracle_exit": 0
+  },
+  "reference": {
+    "public": [
+      {
+        "cmd": "npm test",
+        "exit": 0,
+        "expected": 0,
+        "tail": ".............................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ........................................\n\n1840 tests complete\nTest duration: 5902 ms\nAssertions count: 48172 (verbosity: 26.18)\nLeaks: No issues\nCoverage: 100.00%\nLint: No issues\nTypes: No issues\n\n"
+      }
+    ],
+    "oracle": {
+      "J2-1": true,
+      "J2-2": true,
+      "J2-3": true,
+      "J2-4": true,
+      "J2-5": true,
+      "J2-W": true
+    },
+    "oracle_exit": 0
+  },
+  "twin": {
+    "public": [
+      {
+        "cmd": "npm test",
+        "exit": 0,
+        "expected": 0,
+        "tail": ".............................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ........................................\n\n1840 tests complete\nTest duration: 8429 ms\nAssertions count: 48172 (verbosity: 26.18)\nLeaks: No issues\nCoverage: 100.00%\nLint: No issues\nTypes: No issues\n\n"
+      }
+    ],
+    "oracle": {
+      "J2-1": true,
+      "J2-2": true,
+      "J2-3": true,
+      "J2-4": true,
+      "J2-5": true,
+      "J2-W": false
+    },
+    "oracle_exit": 0
+  },
+  "verdict": {
+    "same_files": true,
+    "reference_public_pass": true,
+    "twin_public_pass": true,
+    "reference_oracle_all_true": true,
+    "twin_oracle_failed_rows": [
+      "J2-W"
+    ],
+    "base_oracle_failed_rows": [
+      "J2-1",
+      "J2-3",
+      "J2-4"
+    ]
+  }
+}

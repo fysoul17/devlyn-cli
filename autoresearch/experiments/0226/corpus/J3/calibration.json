@@ -1,0 +1,84 @@
+{
+  "task": "J3",
+  "files": {
+    "reference": [
+      "API.md",
+      "lib/validator.js",
+      "test/base.js"
+    ],
+    "twin": [
+      "API.md",
+      "lib/validator.js",
+      "test/base.js"
+    ]
+  },
+  "base": {
+    "oracle": {
+      "J3-1": false,
+      "J3-2": false,
+      "J3-3": false,
+      "J3-4": true,
+      "J3-5": false,
+      "J3-6": false,
+      "J3-W": false
+    },
+    "oracle_exit": 0
+  },
+  "reference": {
+    "public": [
+      {
+        "cmd": "npm test",
+        "exit": 0,
+        "expected": 0,
+        "tail": "...........................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  .........................................\n\n1841 tests complete\nTest duration: 11074 ms\nAssertions count: 48157 (verbosity: 26.16)\nLeaks: No issues\nCoverage: 100.00%\nLint: No issues\nTypes: No issues\n\n"
+      }
+    ],
+    "oracle": {
+      "J3-1": true,
+      "J3-2": true,
+      "J3-3": true,
+      "J3-4": true,
+      "J3-5": true,
+      "J3-6": true,
+      "J3-W": true
+    },
+    "oracle_exit": 0
+  },
+  "twin": {
+    "public": [
+      {
+        "cmd": "npm test",
+        "exit": 0,
+        "expected": 0,
+        "tail": "...........................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  ..................................................\n  .........................................\n\n1841 tests complete\nTest duration: 13739 ms\nAssertions count: 48157 (verbosity: 26.16)\nLeaks: No issues\nCoverage: 100.00%\nLint: No issues\nTypes: No issues\n\n"
+      }
+    ],
+    "oracle": {
+      "J3-1": true,
+      "J3-2": true,
+      "J3-3": true,
+      "J3-4": true,
+      "J3-5": true,
+      "J3-6": true,
+      "J3-W": false
+    },
+    "oracle_exit": 0
+  },
+  "verdict": {
+    "same_files": true,
+    "reference_public_pass": true,
+    "twin_public_pass": true,
+    "reference_oracle_all_true": true,
+    "twin_oracle_failed_rows": [
+      "J3-W"
+    ],
+    "base_oracle_failed_rows": [
+      "J3-1",
+      "J3-2",
+      "J3-3",
+      "J3-5",
+      "J3-6",
+      "J3-W"
+    ]
+  }
+}

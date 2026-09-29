@@ -1,6 +1,6 @@
-# Continue 0226 — recall screen for the held scripted VERIFY
+# 0226 closed NOT PASS — next move is the user's
 
-2026-09-28 KST. Root direct, no resolve. The contract is [0226](iterations/0226-verify-recall-screen.md): registered and frozen before any corpus authoring or candidate call, designed with Astra (gpt-6-astra, ultra). The raw record is `.devlyn/0226/`. The 0225 handoff is in git history (last version at `3eec48b4`).
+2026-09-29 KST. Root direct, no resolve. The contract is [0226](iterations/0226-verify-recall-screen.md): registered and frozen before any corpus authoring or candidate call, designed with Astra (gpt-6-astra, ultra). The raw record is `.devlyn/0226/`. The 0225 handoff is in git history (last version at `3eec48b4`).
 
 ## Start here (every new session)
 
@@ -20,8 +20,10 @@
 | 1 | Registration: Astra FREEZE, PR, merge | merged (PR #125) |
 | 2 | Corpus: repository selection, blind authoring, implementation, calibration, calibration review | done: tkem/cachetools `3c082c65` and hapijs/joi `fc3f3bcb`; 8 tasks calibrated; fresh Astra review SHIP (C4 repaired three times) — material sealed under `/Users/Shared/devlyn-vr/private` (and `/Users/Shared/devlyn-0226` until `prepare` moves it) |
 | 3 | Apparatus: driver, Astra SHIP, stub dry run of all 64 spans | done: `autoresearch/experiments/0226/screen.py` (Astra review v1–v11 → SHIP, with Claude critics in v1–v2; addendum A1 registered). A trial `prepare` built all 64 rounds (MECHANICAL, stub dry runs, instruction probes, label scan) but its manifest is void because the driver changed mid-run |
-| 4 | Freeze and run | next: delete `/Users/Shared/devlyn-vr/manifest.json`, rerun `screen.py prepare` alone (joi's upstream timing test flakes under load), commit the manifest as the single commit of a freeze PR, then `screen.py run --pr <N>` |
-| 5 | Score, pool, checks, labels/reads/audit, join, RESULT | not started |
+| 4 | Freeze and run | done: freeze PR #128 (manifest only, `c8aa8277`); 64 rounds, no stop |
+| 5 | Score, pool, checks, labels/reads/audit, join, RESULT | done: **NOT PASS, condition 5 only** ([RESULT](experiments/0226/RESULT.md)) — 32/32 hits, 0 false alarms, 0 unsupported extras, 0 invalid references; 5 reference rounds BLOCKED (3 Claude seats opened with prose containing a verdict word or a markdown list, which the candidate's narrative skip does not accept; 3 Codex primaries chose BLOCKED because the sealed MECHANICAL record does not show the spec's "offline, with Node 22") |
+
+**Next (user decision):** steps 2–5 stay held and any next move needs a new registration. Open questions for the user: whether to register a fix for the two BLOCKED causes (what the narrative skip accepts, or how Claude seats are told to open; runtime evidence in the MECHANICAL record, or no runtime demands in specs) and re-screen on fresh tasks, or to drop step 2.
 
 ## 0225 (steps 2–5 held)
 
