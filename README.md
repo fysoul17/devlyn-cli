@@ -84,10 +84,10 @@ PLAN  →  IMPLEMENT  →  BUILD_GATE  →  CLEANUP  →  VERIFY (fresh subagent
 Common flags: `--engine claude|codex|omp` (default: the orchestrator-supported default), `--role-config <path>` (one-run worker/judge profiles, see below), `--bypass build-gate,cleanup`, `--pair-verify` (force pair-mode JUDGE in VERIFY), `--no-pair` (intentional solo VERIFY), `--risk-probes` / `--no-risk-probes`, `--perf` (per-phase timing).
 `--pair-verify` and `--no-pair` are mutually exclusive; using both stops with `BLOCKED:invalid-flags`.
 
-Each task gets its own linked worktree; accepted tasks default to scoped commit → push → PR.
-After the PR merges, either mode cleans the worktree and branch its session
-released; anything in use is kept. Set `git config --local devlyn.completionMode auto` to
-also request a normal protected merge; `task-complete.py complete --mode auto|pr`
+Each task gets its own linked worktree; accepted tasks default to scoped commit → push → PR
+→ merge when the repository allows it (otherwise the PR waits for a person). After the
+PR merges, the worktree and branch its session released are cleaned; anything in use is
+kept. Set `git config --local devlyn.completionMode pr` to stop at the PR; `task-complete.py complete --mode auto|pr`
 overrides one task. Local-only/no-push instructions take precedence; existing
 branches cannot be adopted. Full runs require successful archive before delivery;
 direct tasks use their actual checks and root acceptance. Verify-only never

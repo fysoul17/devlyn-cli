@@ -172,7 +172,7 @@ def policy(receipt, override):
     require(config.returncode == 1 or config.stdout in {"auto\n", "pr\n"}, "invalid local devlyn.completionMode; use auto|pr")
     value = config.stdout.strip() if config.returncode == 0 else None
     require(override is None or override in {"auto", "pr"}, "invalid task mode; use auto|pr")
-    return override or value or "pr"
+    return override or value or "auto"
 
 
 def allocate(args):
@@ -685,8 +685,6 @@ def complete(args):
             inspect_workspace(current)
         bind_acceptance(receipt, path, args.acceptance)
         info = repo_policy(receipt)
-        if mode == "auto":
-            require(info["mergeCommitAllowed"], "repository disallows merge commits; use pr mode or resolve policy with repository owner")
         if receipt.get("pr_number"):
             pr = json.loads(gh(receipt, "pr", "view", str(receipt["pr_number"]), "--json", PR_FIELDS))
         else:
@@ -725,12 +723,18 @@ def complete(args):
             inspect_workspace(receipt)
             verify_files(Path(receipt["worktree"]), receipt["files"])
             require(remote_head(receipt, receipt["branch"]) == receipt["publish_sha"], "remote head race before merge")
+            refused = None
             if not pr.get("autoMergeRequest"):
-                gh(receipt, "pr", "merge", str(pr["number"]), "--auto", "--merge", "--match-head-commit", receipt["publish_sha"])
+                try:
+                    require(info["mergeCommitAllowed"], "repository disallows merge commits")
+                    gh(receipt, "pr", "merge", str(pr["number"]), "--auto", "--merge", "--match-head-commit", receipt["publish_sha"])
+                except CompletionError as error:
+                    refused = str(error)
             pr = json.loads(gh(receipt, "pr", "view", str(pr["number"]), "--json", PR_FIELDS))
             validate_pr(receipt, pr)
             if pr["state"] != "MERGED":
-                return result("PENDING")
+                # Merge only when the repository allows it; a refused request leaves the PR for a person.
+                return dict(result("PR"), merge_refused=refused) if refused and not pr.get("autoMergeRequest") else result("PENDING")
         receipt["merge"] = pr
         atomic_json(path, receipt)
         cleanup(receipt, path, pr)
@@ -1242,7 +1246,7 @@ class CompletionTests(unittest.TestCase):
         self.g("config", "url." + alias + ".insteadOf", intended)
         self.allocate(); self.accept()
         self.assertEqual(json.loads(self.receipt.read_text(encoding="utf-8"))["remote_url"], {"literal": intended, "fetch": alias, "push": alias})
-        result, _ = self.complete()
+        result, _ = self.complete("--mode", "pr")
         self.assertEqual(result["status"], "PR")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
         d = json.loads(self.data.read_text(encoding="utf-8"))
@@ -1373,6 +1377,15 @@ class CompletionTests(unittest.TestCase):
         result, _ = self.complete("--mode", "auto", "--writers-stopped")
         self.assertEqual(result["status"], "COMPLETE")
         self.assertFalse(self.task.exists())
+
+    @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
+    def test_default_mode_merges_when_possible_and_cleans(self):
+        self.allocate(); self.accept()
+        result, _ = self.complete("--writers-stopped")
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("merges"), 1)
+        self.assertFalse(self.task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
 
     def test_release_is_refused_from_inside_the_task_tree(self):
         self.allocate(); self.accept()
@@ -1710,10 +1723,12 @@ class CompletionTests(unittest.TestCase):
 
     def test_interrupted_external_effects(self):
         self.allocate(); self.accept()
-        for effect in ("push", "create", "merge"):
+        for effect in ("push", "create"):
             self.configure(**{"interrupt_"+effect: True})
             _, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
             self.assertNotEqual(r.returncode, 0)
+        # A merge command that fails after merging is judged by the PR state, not its exit code.
+        self.configure(interrupt_merge=True)
         result, _ = self.complete("--writers-stopped")
         self.assertEqual(result["status"], "COMPLETE")
         d = json.loads(self.data.read_text(encoding="utf-8"))
@@ -1801,16 +1816,19 @@ class CompletionTests(unittest.TestCase):
     def test_policy_and_local_only_persist(self):
         self.allocate(); self.accept()
         self.configure(merge_allowed=False)
-        _, r = self.complete("--mode", "auto", success=False)
-        self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
+        result, _ = self.complete()
+        self.assertEqual((result["status"], result["merge_refused"]), ("PR", "repository disallows merge commits"))
+        d = json.loads(self.data.read_text(encoding="utf-8"))
+        self.assertEqual((d.get("pushs", 0), d.get("merges", 0)), (1, 0))
         self.complete("--mode", "pr")
         result, _ = self.complete()
         self.assertEqual(result["status"], "PR")
+        self.assertNotIn("merge_refused", result)
         self.configure(merge_allowed=True, auto_allowed=False, pending=True)
-        _, r = self.complete("--mode", "auto", success=False)
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn("disallows auto merge", json.loads(r.stdout)["reason"])
+        result, _ = self.complete("--mode", "auto")
+        self.assertEqual(result["status"], "PR")
+        self.assertIn("disallows auto merge", result["merge_refused"])
+        self.assertTrue(self.task.exists())
         result, _ = self.complete("--no-push")
         self.assertEqual(result["status"], "LOCAL_ONLY")
         result, _ = self.complete(acceptance=False)
