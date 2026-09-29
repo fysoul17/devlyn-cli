@@ -1,0 +1,28 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "node --version",
+      "exit_code": 0,
+      "timeout_sec": 120,
+      "stdout_contains": [
+        "v22."
+      ]
+    },
+    {
+      "cmd": "npm test",
+      "exit_code": 0,
+      "timeout_sec": 120
+    }
+  ],
+  "required_files": [
+    "lib/types/boolean.js",
+    "test/types/boolean.js",
+    "API.md"
+  ],
+  "spec_output_files": [
+    "lib/types/boolean.js",
+    "test/types/boolean.js",
+    "API.md"
+  ],
+  "max_deps_added": 0
+}
