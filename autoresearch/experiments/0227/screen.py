@@ -1,4 +1,4 @@
-"""0227 frozen VERIFY re-screen. Commands: prepare, run --pr N,
+"""0227 frozen VERIFY re-screen. Commands: dry (model-free), prepare, run --pr N,
 redispatch --cause FILE --audit FILE --tokens TOKEN..., score, pool, check, join, self-test;
 development gates on the exposed 0226 corpus: dev-stage, dev-dry (model-free), dev-prepare, dev-run, dev-redispatch,
 dev-report (G3), g2-dry (model-free), g2.
@@ -54,11 +54,15 @@ CLAUDE_SHA256 = 'a922981f6f3b55a251ef9f9dbaa0621a5f99cbcb5ca67f8a797476ccfc83f62
 MODELS_CACHE = PINS / 'models_cache.json'
 MODELS_CACHE_SHA256 = 'b7105827bb13220acb9149b80c746be4a92f0b856b6383e580883e3b000717d7'
 CODEX = Path('/Users/Shared/devlyn-0225-codex-0.156.1/node_modules/.bin/codex')
-# Task-id letter -> repository, and each repository's toolchain; rebound for the fresh corpus.
-REPOS = {'C': 'cachetools', 'J': 'joi'}
-TOOLCHAINS = {'cachetools': {'kind': 'python', 'python': 'Python 3.13.', 'pythonpath': 'src',
+# Task-id letter -> repository for the fresh corpus (screen) and for 0226's exposed corpus (development gates).
+SCREEN_REPOS = {'P': 'attrs', 'J': 'node-lru-cache'}
+DEV_REPOS = {'C': 'cachetools', 'J': 'joi'}
+TOOLCHAINS = {'attrs': {'kind': 'python', 'python': 'Python 3.14.', 'pythonpath': 'src',
+                        'tools': ('pytest', 'ruff', 'pyright', 'mypy'), 'modules': ('hypothesis',)},
+              'node-lru-cache': {'kind': 'node', 'node': 'v25.', 'scratch': ('.tap',)},
+              'cachetools': {'kind': 'python', 'python': 'Python 3.13.', 'pythonpath': 'src',
                              'tools': ('pytest', 'ruff', 'pyright'), 'modules': ('pytest_cov',)},
-              'joi': {'kind': 'node'}}
+              'joi': {'kind': 'node', 'node': 'v22.'}}
 # 0226's exposed corpus, repositories and toolchains feed the development gates (copied, never written).
 DEV_SOURCE = Path('/Users/Shared/devlyn-vr')
 REASK = 'tool to complete this request. Call this tool now.'
@@ -83,13 +87,18 @@ DRIFT_CLASSES = frozenset({'manifest-drift', 'driver-drift', 'product-drift', 'n
                            'sealed-input-drift',
                            'home-drift', 'account-drift', 'dispatch-drift'})
 FIX_CLASSES = INFRA_CLASSES | DRIFT_CLASSES | {'instruction-load'}
-MECHANICAL_ATTEMPTS = 3
+# node-lru-cache's suite fails under host load in pre-existing timing-dependent code (test/onInsert.ts,
+# test/ttl-autopurge-flood.ts, the autopurge re-arm line's 100% coverage): 6 of 32 calibration runs and 9 of 41
+# fresh-corpus dry-run attempts on 2026-09-29/30, concentrated on J2's reference (4 of 8 attempts). Eight attempts
+# keep that span's four rounds' chance of exhausting them near 2%; exhaustion stops prepare.
+MECHANICAL_ATTEMPTS = 8
 
 
 def set_root(root):
-    global ROOT, PRIVATE, SHARED, VERIFY_BODY, CLAUDE, DEV
+    global ROOT, PRIVATE, SHARED, VERIFY_BODY, CLAUDE, DEV, REPOS
     ROOT = root
     DEV = root != SCREEN_ROOT  # development gates: no freeze commit, no witness
+    REPOS = DEV_REPOS if DEV else SCREEN_REPOS
     PRIVATE = ROOT / 'private'
     SHARED = ROOT / 'product/config/skills/_shared'
     VERIFY_BODY = ROOT / 'product/config/skills/devlyn:resolve/references/phases/verify.md'
@@ -301,10 +310,11 @@ def node_bin(repo=None):
     repo = repo or next(name for name, tool in TOOLCHAINS.items() if tool['kind'] == 'node' and name in REPOS.values())
     path = ROOT / 'toolchains' / repo / 'node-bin'
     node = path / 'node'
-    require(node.is_file() and os.access(node, os.X_OK), f'Node 22 missing: {node}')
+    wanted = TOOLCHAINS[repo]['node']
+    require(node.is_file() and os.access(node, os.X_OK), f'Node {wanted}x missing: {node}')
     version = subprocess.run([str(node), '--version'], capture_output=True, text=True)
-    require(version.returncode == 0 and re.fullmatch(r'v22\.\d+\.\d+', version.stdout.strip()),
-            f'Node 22 required at {node}')
+    require(version.returncode == 0 and re.fullmatch(re.escape(wanted) + r'\d+\.\d+', version.stdout.strip()),
+            f'Node {wanted}x required at {node}')
     return path
 
 
@@ -405,7 +415,7 @@ def rewrite_spec(raw, name):
     require(len(matches) == 1 and lines[0].strip() == b'---' and closing is not None
             and 0 < matches[0] < closing,
             'spec.md requires a unique frontmatter id line')
-    require(re.search(rb'(?<![A-Za-z0-9_])(?:C[1-4]|J[1-4])(?![A-Za-z0-9_])',
+    require(re.search(rb'(?<![A-Za-z0-9_])[' + ''.join(REPOS).encode() + rb'][1-4](?![A-Za-z0-9_])',
                       b''.join(lines[closing + 1:])) is None,
             'spec.md body still contains a task id')
     lines[matches[0]] = f'id: {name}\n'.encode()
@@ -426,6 +436,8 @@ def materialize(tok, task, variant, orientation, task_slug, work, *, apparatus=T
     spec = rewrite_spec((corpus / 'spec.md').read_bytes(), task_slug)
     (spec_dir / 'spec.md').write_bytes(spec)
     shutil.copyfile(corpus / 'spec.expected.json', spec_dir / 'spec.expected.json')
+    # The base commit carries the spec even where the repository ignores docs/ (node-lru-cache's `/docs`).
+    git_raw(work, 'add', '--force', '--', str(spec_dir.relative_to(work)))
     base = commit(work, 'base')
     if variant != 'base':
         git_raw(work, 'apply', '--index', str(corpus / (variant + '.patch')))
@@ -488,6 +500,14 @@ def materialize(tok, task, variant, orientation, task_slug, work, *, apparatus=T
     shutil.rmtree(pristine_devlyn.parent)
     require(proc.returncode == 0, f'{tok}: MECHANICAL failed ({proc.returncode}) in {attempt} attempts: '
                                   f'{proc.stderr}\n{proc.stdout}')
+    # A fix-mode public check (node-lru-cache's `npm run lint` runs `prettier --write .`) must not change the
+    # reviewed tree, including the committed spec; build outputs are ignored files.
+    require(not git(work, 'status', '--porcelain', '--untracked-files=no'), f'{tok}: MECHANICAL modified tracked files')
+    # tap's ignored run output (coverage, process info: ~170 MB per run) would be copied into the pristine tar and
+    # the dry copy of every round; the MECHANICAL evidence the judges read is in .devlyn.
+    for name in TOOLCHAINS[info['repo']].get('scratch', ()):
+        if (work / name).exists():
+            shutil.rmtree(work / name)
     with environment(round_env(tok, work, info['repo']), work):
         findings, verdict = product_code['merge']['mechanical_source'](devlyn)
     require(verdict == 'PASS' and not findings, f'{tok}: MECHANICAL {verdict}: {findings}')
@@ -777,7 +797,7 @@ def frozen(*, calls=True):
           'product-drift', 'candidate product changed after freeze')
     if calls:
         guard(str(observed('node-drift', node_bin)) == manifest['node_bin'], 'node-drift',
-              'Node 22 directory changed after freeze')
+              'Node directory changed after freeze')
         for repo in REPOS.values():
             guard(observed('runtime-drift', lambda: runtime(repo)) == manifest['runtime'][repo], 'runtime-drift',
                   f'{repo} judge runtime changed after freeze')
@@ -1445,22 +1465,30 @@ def codex_exec_paths(stderr, prompt=None):
     lines = [line for line in (stream if separator else stderr).splitlines() if not HEARTBEAT.match(line)]
     paths, ambiguous = [], []
     index = 0
-    status = re.compile(r'^ (?:succeeded in|exited -?\d+ in|failed in|declined)')
     while index < len(lines):
         if lines[index] != 'exec':
             index += 1
             continue
         start = index + 1
-        # A block ends before the next exec: an unparsed block must not absorb the following command.
+        # A command ends at its first ` in /cwd` line with balanced quotes, never past the next exec: Codex may print
+        # several parallel exec records before their status lines, and an unparsed block must not absorb another.
         following = next((pos for pos in range(start + 1, len(lines)) if lines[pos] == 'exec'), len(lines))
-        end = next((pos for pos in range(start + 1, following) if status.match(lines[pos])
-                    and re.search(r' in /\S+$', lines[pos - 1])), None)
+        end = None
+        for pos in range(start, following):
+            match = re.fullmatch(r'(?s)(.*) in (/\S+)', '\n'.join(lines[start:pos + 1]))
+            if match:
+                try:
+                    shlex.split(match[1])
+                except ValueError:
+                    continue  # a quote is still open: the command continues on the next line
+                end = pos + 1
+                break
         if end is None:
             ambiguous.append('\n'.join(lines[start:following]))
             index = following
             continue
         raw = '\n'.join(lines[start:end])
-        index = end + 1
+        index = end
         try:
             match = re.fullmatch(r'(?s)(.*) in (/\S+)', raw)
             if not match:
@@ -1970,7 +1998,7 @@ def dev_stage(root, overrides=None):
     root.mkdir(mode=0o700)
     root.chmod(0o700)
     shutil.copytree(source / 'corpus', root / 'private/corpus', symlinks=True)
-    for repo in REPOS.values():
+    for repo in DEV_REPOS.values():
         shutil.copytree(DEV_SOURCE / 'private/repos' / repo, root / 'private/repos' / repo, symlinks=True)
         shutil.copytree(DEV_SOURCE / 'toolchains' / repo, root / 'toolchains' / repo, symlinks=True)
         old, new = str(DEV_SOURCE / 'toolchains' / repo).encode(), str(root / 'toolchains' / repo).encode()
@@ -2291,6 +2319,12 @@ def self_test():
     require(len(unparsed) == 1 and 'AGENTS.md' not in unparsed[0]
             and any(path == str(REPO / 'AGENTS.md') for path, *_ in paths),
             'an unparsed block swallowed the following exec block')
+    parallel = (header + 'user\nprompt\ncodex\nexec\n' + f'/bin/zsh -lc "cat {REPO}/AGENTS.md" in {ROOT}/rounds/tok/work\n'
+                'exec\n' + f'/bin/zsh -lc "cat {REPO}/CLAUDE.md" in {ROOT}/rounds/tok/work\n succeeded in 0ms:\nx\n'
+                ' succeeded in 1ms:\ny\n')
+    paths, unparsed = codex_exec_paths(parallel)
+    require(not unparsed and {str(REPO / 'AGENTS.md'), str(REPO / 'CLAUDE.md')} <= {path for path, *_ in paths},
+            'parallel Codex exec records lost or blurred a command')
     words = fixture.replace(f'cat {REPO}/AGENTS.md', "rg -n 'sorter|Topo|value\\[key\\]' -g '*results.json' lib/types/keys.js")
     paths, unparsed = codex_exec_paths(words)
     require(not unparsed and all('/' in path or path in ('.', '..') for path, *_ in paths)
@@ -2676,6 +2710,8 @@ def main(argv):
         self_test()
     elif argv == ['prepare']:
         prepare()
+    elif argv == ['dry']:
+        prepare(probe=False)
     elif len(argv) == 3 and argv[:2] == ['run', '--pr']:
         run(int(argv[2]))
     elif (len(argv) >= 7 and argv[:2] == ['redispatch', '--cause'] and argv[3] == '--audit'
