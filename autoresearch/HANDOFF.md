@@ -22,7 +22,7 @@
 | 3 | Driver copy with the registered changes and development mode, stub dry run, Astra SHIP; addendum B1 (F, driver, G2 spec copies, author/implementer templates) | done: B1 (driver Astra SHIP after two REVISE; 64-span dry run and G2 rehearsal passed) |
 | 4 | G2 (6 live Claude calls), then G3 (64 exposed 0226 spans in a development root); Astra reviews | done: G2 PASS, G3 PASS (Astra audits; [GATES](experiments/0227/gates/GATES.md)) |
 | 5 | Corpus: two fresh repositories, isolated blind author, Sol, calibration, calibration review | done: attrs `8f767776` (P1–P4) and node-lru-cache `7e71a1f3` (J1–J4; adm-zip dropped after Astra found the node-lru-cache exclusion misapplied the rule); Astra + Claude checkers SHIP after repairs (Addendum B2) |
-| 6 | Fresh-corpus driver bindings, Astra SHIP; freeze, 64 rounds, masked scoring with Astra audit, join, RESULT | bindings + B2 merged (driver Astra SHIP after one REVISE; final-bytes 64-span dry run passed); next: `prepare` (64 Claude probes), classify its failed MECHANICAL attempts (B2), freeze PR, `run --pr N` |
+| 6 | Fresh-corpus driver bindings, Astra SHIP; freeze, 64 rounds, masked scoring with Astra audit, join, RESULT | bindings + B2 merged (PR #136); first prepare not frozen (B3: V8 code-cache crash, cache disabled, dry run passed, Astra SHIP); next: second `prepare`, classify its failed MECHANICAL attempts (B2), freeze PR, `run --pr N` |
 
 0226 in one line: 32/32 hits and 0 false alarms, NOT PASS on condition 5 because 5 reference rounds ended BLOCKED (3 Claude prose preambles the parser rejected; 3 Codex BLOCKEDs on an unevidenced "offline, with Node 22" condition). 
 ## 0225 (steps 2–5 held)

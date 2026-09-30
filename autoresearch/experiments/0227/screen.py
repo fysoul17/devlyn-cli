@@ -59,7 +59,10 @@ SCREEN_REPOS = {'P': 'attrs', 'J': 'node-lru-cache'}
 DEV_REPOS = {'C': 'cachetools', 'J': 'joi'}
 TOOLCHAINS = {'attrs': {'kind': 'python', 'python': 'Python 3.14.', 'pythonpath': 'src',
                         'tools': ('pytest', 'ruff', 'pyright', 'mypy'), 'modules': ('hypothesis',)},
-              'node-lru-cache': {'kind': 'node', 'node': 'v25.', 'scratch': ('.tap',)},
+              # tap's TypeScript loader keeps a shared V8 code cache (v8-compile-cache-lib: blob and map written
+              # separately, read without its lock); V8 faulted deserializing it in the first prepare's J3 round.
+              'node-lru-cache': {'kind': 'node', 'node': 'v25.', 'scratch': ('.tap',),
+                                 'env': {'DISABLE_V8_COMPILE_CACHE': '1'}},
               'cachetools': {'kind': 'python', 'python': 'Python 3.13.', 'pythonpath': 'src',
                              'tools': ('pytest', 'ruff', 'pyright'), 'modules': ('pytest_cov',)},
               'joi': {'kind': 'node', 'node': 'v22.'}}
@@ -328,6 +331,7 @@ def round_env(tok, work, repo, *, stub=False):
     if TOOLCHAINS[repo]['kind'] == 'python':
         env['PYTHONPATH'] = str(work / TOOLCHAINS[repo]['pythonpath'])
         env['PYRIGHT_PYTHON_CACHE_DIR'] = str(tool / 'pyright-cache')
+    env.update(TOOLCHAINS[repo].get('env', {}))
     return env
 
 
