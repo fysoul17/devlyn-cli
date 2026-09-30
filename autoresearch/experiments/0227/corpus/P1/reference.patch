@@ -1,0 +1,265 @@
+diff --git a/src/attr/validators.py b/src/attr/validators.py
+index d6fb2a4..dfbdb36 100644
+--- a/src/attr/validators.py
++++ b/src/attr/validators.py
+@@ -18,6 +18,7 @@ from .exceptions import NotCallableError
+ 
+ __all__ = [
+     "and_",
++    "between",
+     "deep_iterable",
+     "deep_mapping",
+     "disabled",
+@@ -476,6 +477,62 @@ class _NumberValidator:
+         return f"<Validator for x {self.compare_op} {self.bound}>"
+ 
+ 
++@attrs(repr=False, frozen=True, slots=True)
++class _BetweenValidator:
++    lower = attrib()
++    upper = attrib()
++    lower_inclusive = attrib()
++    upper_inclusive = attrib()
++
++    def _interval(self):
++        left = "[" if self.lower_inclusive else "("
++        right = "]" if self.upper_inclusive else ")"
++        return f"{left}{self.lower!r}, {self.upper!r}{right}"
++
++    def __call__(self, inst, attr, value):
++        if not (
++            (
++                value >= self.lower
++                if self.lower_inclusive
++                else value > self.lower
++            )
++            and (
++                value <= self.upper
++                if self.upper_inclusive
++                else value < self.upper
++            )
++        ):
++            msg = f"'{attr.name}' must be in {self._interval()}: {value!r}"
++            raise ValueError(msg)
++
++    def __repr__(self):
++        return f"<between validator for {self._interval()}>"
++
++
++def between(lower, upper, *, lower_inclusive=True, upper_inclusive=True):
++    """
++    A validator that raises `ValueError` if a value is outside an interval.
++
++    Comparisons use the value's ordering operators without conversion.
++
++    Args:
++        lower: Lower bound for values.
++        upper: Upper bound for values.
++        lower_inclusive (bool): Whether to accept the lower bound itself.
++        upper_inclusive (bool): Whether to accept the upper bound itself.
++
++    Raises:
++        ValueError: If *lower* is greater than *upper* when constructed, or a
++            value is outside the interval when validated.
++        TypeError: If the bounds or value cannot be compared.
++    """
++    if not lower <= upper:
++        msg = f"Lower bound {lower!r} must be <= upper bound {upper!r}"
++        raise ValueError(msg)
++
++    return _BetweenValidator(lower, upper, lower_inclusive, upper_inclusive)
++
++
+ def lt(val):
+     """
+     A validator that raises `ValueError` if the initializer is called with a
+diff --git a/src/attr/validators.pyi b/src/attr/validators.pyi
+index 3841592..a5cdf91 100644
+--- a/src/attr/validators.pyi
++++ b/src/attr/validators.pyi
+@@ -81,6 +81,13 @@ def deep_mapping(
+     mapping_validator: _ValidatorArgType[_M] | None = ...,
+ ) -> _ValidatorType[_M]: ...
+ def is_callable() -> _ValidatorType[_T]: ...
++def between(
++    lower: _T,
++    upper: _T,
++    *,
++    lower_inclusive: bool = ...,
++    upper_inclusive: bool = ...,
++) -> _ValidatorType[_T]: ...
+ def lt(val: _T) -> _ValidatorType[_T]: ...
+ def le(val: _T) -> _ValidatorType[_T]: ...
+ def ge(val: _T) -> _ValidatorType[_T]: ...
+diff --git a/tests/test_validators.py b/tests/test_validators.py
+index cbd087d..654f057 100644
+--- a/tests/test_validators.py
++++ b/tests/test_validators.py
+@@ -10,12 +10,14 @@ import sys
+ import pytest
+ 
+ import attr
++import attrs
+ 
+ from attr import _config, fields, has
+ from attr import validators as validator_module
+ from attr.validators import (
+     _subclass_of,
+     and_,
++    between,
+     deep_iterable,
+     deep_mapping,
+     ge,
+@@ -956,6 +958,136 @@ class TestLtLeGeGtNe:
+         assert repr(nv) == f"<Validator for x {nv.compare_op} {23}>"
+ 
+ 
++class TestBetween:
++    def test_exports(self):
++        assert "between" in validator_module.__all__
++        assert attr.validators.between is between
++        assert attrs.validators.between is between
++
++    @pytest.mark.parametrize(
++        ("lower_inclusive", "upper_inclusive", "interval"),
++        [
++            (True, True, "[2, 7]"),
++            (True, False, "[2, 7)"),
++            (False, True, "(2, 7]"),
++            (False, False, "(2, 7)"),
++        ],
++    )
++    def test_endpoints(self, lower_inclusive, upper_inclusive, interval):
++        v = between(
++            2,
++            7,
++            lower_inclusive=lower_inclusive,
++            upper_inclusive=upper_inclusive,
++        )
++        field = simple_attr("value")
++
++        assert repr(v) == f"<between validator for {interval}>"
++        for value, accepted in (
++            (1, False),
++            (2, lower_inclusive),
++            (4, True),
++            (7, upper_inclusive),
++            (8, False),
++        ):
++            if accepted:
++                assert v(None, field, value) is None
++            else:
++                with pytest.raises(ValueError) as exc:
++                    v(None, field, value)
++                assert "value" in str(exc.value)
++                assert interval in str(exc.value)
++                assert repr(value) in str(exc.value)
++
++    @pytest.mark.parametrize(
++        ("lower_inclusive", "upper_inclusive"),
++        [(True, True), (True, False), (False, True), (False, False)],
++    )
++    def test_equal_bounds(self, lower_inclusive, upper_inclusive):
++        v = between(
++            5,
++            5,
++            lower_inclusive=lower_inclusive,
++            upper_inclusive=upper_inclusive,
++        )
++        field = simple_attr("value")
++
++        for value in (4, 5, 6):
++            if value == 5 and lower_inclusive and upper_inclusive:
++                assert v(None, field, value) is None
++            else:
++                with pytest.raises(ValueError):
++                    v(None, field, value)
++
++    def test_reversed_bounds(self):
++        with pytest.raises(ValueError):
++            between(7, 2)
++
++    def test_infinite_bounds(self):
++        lower = -float("inf")
++        upper = float("inf")
++        field = simple_attr("value")
++        closed = between(lower, upper)
++        opened = between(
++            lower, upper, lower_inclusive=False, upper_inclusive=False
++        )
++
++        for value in (lower, 0, upper):
++            assert closed(None, field, value) is None
++
++        assert opened(None, field, 0) is None
++        for value in (lower, upper):
++            with pytest.raises(ValueError):
++                opened(None, field, value)
++
++    def test_comparison_error_propagates(self):
++        with pytest.raises(TypeError):
++            between(2, 7)(None, simple_attr("value"), 1j)
++
++    def test_equality_and_hash(self):
++        first = between(2, 7)
++        second = between(2, 7)
++
++        assert first == second
++        assert hash(first) == hash(second)
++        assert first != between(2, 7, upper_inclusive=False)
++
++    def test_field_validation(self):
++        @attrs.define
++        class Sample:
++            value: int = attrs.field(validator=between(2, 7))
++
++        with pytest.raises(ValueError):
++            Sample(8)
++
++        sample = Sample(4)
++        with pytest.raises(ValueError):
++            sample.value = 8
++        assert sample.value == 4
++
++        sample.value = 7
++        assert sample.value == 7
++
++    def test_optional_and_disabled(self):
++        @attrs.define
++        class Sample:
++            value: int = attrs.field(validator=between(2, 7))
++
++        @attrs.define
++        class OptionalSample:
++            value: int | None = attrs.field(validator=optional(between(2, 7)))
++
++        assert OptionalSample(None).value is None
++        assert OptionalSample(4).value == 4
++        with pytest.raises(ValueError):
++            OptionalSample(8)
++
++        with attrs.validators.disabled():
++            sample = Sample(8)
++        with pytest.raises(ValueError):
++            attrs.validate(sample)
++
++
+ class TestMaxLen:
+     """
+     Tests for `max_len`.
+diff --git a/typing_tests/baseline.py b/typing_tests/baseline.py
+index 35604dc..c9b2e55 100644
+--- a/typing_tests/baseline.py
++++ b/typing_tests/baseline.py
+@@ -97,6 +97,11 @@ class Validated:
+     num: int = attrs.field(validator=attrs.validators.ge(0))
+ 
+ 
++@attrs.define
++class ValidatedBetween:
++    num: int = attrs.field(validator=attrs.validators.between(0, 10))
++
++
+ @attrs.define
+ class ValidatedOptionalOverTuple:
+     num: int | None = attrs.field(

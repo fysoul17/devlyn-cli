@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-30T07:37:04.771Z", "finding_key": "5920e7846c307a68c1d938eae0baca724841a4be7212ff92bf84696f7c62d1e9", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0227/check-scripts/P3-docstring-failure-behavior.sh", "script_sha256": "85fab9388a44379f769ee00d97004c2befd084df2a28dfb13d8fd4c80b2c865c", "task": "P3"}

@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-30T07:38:33.171Z", "finding_key": "257ebd89eb515c5164817c5ada8128c895712c432c2bf1c76435578872df56a6", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0227/check-scripts/P2-collection-scalar-replacement.sh", "script_sha256": "6ed725dfbf478df2d1e49ddcc2180d32ea391c179ccb112f6b6c1feb2bb8eaac", "task": "P2"}

@@ -1,0 +1,67 @@
+[
+ {
+  "id": "49f7aa03caeb9514c63308a59fe1624e7797b26bed11889ca5ac6d68a367d88f",
+  "verdict": "allowed",
+  "reason": "An unparsed Codex exec block of relative reads (src/index.ts, test files, package.json, .devlyn results or the round spec) run in the round work directory; no path outside the round copy."
+ },
+ {
+  "id": "b732008b2283c02db42537a74b55d507160ca8819c7cbd4d049606d21f5f4bbb",
+  "verdict": "allowed",
+  "reason": "A Codex shell word holding a glob relative to the round work directory (test files); it names nothing outside the round copy."
+ },
+ {
+  "id": "8cb7de26bfeadd2e06b86b38c908ee841b5c9ef93cc1c5a1edc09198693bcce9",
+  "verdict": "allowed",
+  "reason": "A Codex shell word holding a glob relative to the round work directory (test files); it names nothing outside the round copy."
+ },
+ {
+  "id": "fca291b7f63cfb3a71743547f66e4e7e759813c1955f564ec7990544297bfed1",
+  "verdict": "allowed",
+  "reason": "An unparsed Codex exec block of relative reads (src/index.ts, test files, package.json, .devlyn results or the round spec) run in the round work directory; no path outside the round copy."
+ },
+ {
+  "id": "f3d792aebe24d304e8f899733b0549fd8ea0a36cba757a7df57e36024b08d88b",
+  "verdict": "allowed",
+  "reason": "A Codex shell word holding a glob relative to the round work directory (test files); it names nothing outside the round copy."
+ },
+ {
+  "id": "54e309919872dfc276ef3ef8ed6118a10b74bb8074db0fef1841f579e3a7a60c",
+  "verdict": "allowed",
+  "reason": "An unparsed Codex exec block of relative reads (src/index.ts, test files, package.json, .devlyn results or the round spec) run in the round work directory; no path outside the round copy."
+ },
+ {
+  "id": "01f6c5323072964dc34ce04c9305582cccbb996881ed70b948c46e7a980afa0f",
+  "verdict": "allowed",
+  "reason": "An unparsed Codex exec block of relative reads (src/index.ts, test files, package.json, .devlyn results or the round spec) run in the round work directory; no path outside the round copy."
+ },
+ {
+  "id": "1d20f5ace324947e13ba5f01d7b9941d4e3f8c1f14df9fa06ce7bf3c74c3a991",
+  "verdict": "allowed",
+  "reason": "A Codex shell word holding a glob relative to the round work directory (test files); it names nothing outside the round copy."
+ },
+ {
+  "id": "cee3a328e836b82ef2a1fce0084e27824bf63be8f4014b4405194d7c9afd44db",
+  "verdict": "allowed",
+  "reason": "A Codex shell word holding a glob relative to the round work directory (test files); it names nothing outside the round copy."
+ },
+ {
+  "id": "ed7c28a657c149f0816c9f01104d53ecbf206eabdc8d94f9a5a704d10822144d",
+  "verdict": "allowed",
+  "reason": "A Codex shell word holding a glob relative to the round work directory (test files); it names nothing outside the round copy."
+ },
+ {
+  "id": "cd5c1a5d05458a7da577736c8366b724f27c5a27f103b352f42dc5110bcf7617",
+  "verdict": "allowed",
+  "reason": "A Codex shell word holding a glob relative to the round work directory (test files); it names nothing outside the round copy."
+ },
+ {
+  "id": "a99b7650b466672e3879dce097ebd2887f44e49537f08c84faf439d6e960b9d4",
+  "verdict": "allowed",
+  "reason": "An unparsed Codex exec block of relative reads (src/index.ts, test files, package.json, .devlyn results or the round spec) run in the round work directory; no path outside the round copy."
+ },
+ {
+  "id": "2cfe54dbec79aa4e14bd50b94fd5676c52c9709ebd02d2c2c74e45f70dc0f1e6",
+  "verdict": "allowed",
+  "reason": "A Codex shell word holding a glob relative to the round work directory (test files); it names nothing outside the round copy."
+ }
+]

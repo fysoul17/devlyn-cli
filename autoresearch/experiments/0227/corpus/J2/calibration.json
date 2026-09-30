@@ -1,0 +1,86 @@
+{
+  "task": "J2",
+  "files": {
+    "reference": [
+      "src/index.ts",
+      "test/find-options.ts"
+    ],
+    "twin": [
+      "src/index.ts",
+      "test/find-options.ts"
+    ]
+  },
+  "base": {
+    "oracle": {
+      "J2-W1": false,
+      "J2-H2": false,
+      "J2-H3": true,
+      "J2-H4": false,
+      "J2-H5": true,
+      "J2-H6": true,
+      "J2-H7": true
+    },
+    "oracle_exit": 0
+  },
+  "reference": {
+    "public": [
+      {
+        "cmd": "PATH=/Users/Shared/devlyn-vr-0227/toolchains/node-lru-cache/node-bin:$PATH npm test -- -c -t0",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "9m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19084 of 19084 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m29 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m29 of 30 complete\u001b[22m\n\n\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[G\n\u001b[1m\u001b[43m\u001b[30m RUNS \u001b[39m\u001b[49m\u001b[22m test/ttl-autopurge-flood.ts \u001b[1m0\u001b[22m \u001b[32mOK\u001b[39m \u001b[2m5.744s\u001b[22m\n\n\u001b[1mAsserts:\u001b[22m  \u001b[32m19285 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19285 of 19285 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m29 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m29 of 30 complete\u001b[22m\n\n\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[G\u001b[1m\u001b[42m\u001b[30m PASS \u001b[39m\u001b[49m\u001b[22m test/ttl-autopurge-flood.ts \u001b[1m1\u001b[22m \u001b[32mOK\u001b[39m \u001b[2m9.449s\u001b[22m\n\n\u001b[1m\u001b[43m\u001b[30m RUNS \u001b[39m\u001b[49m\u001b[22m test/ttl-autopurge-flood.ts \u001b[1m1\u001b[22m \u001b[32mOK\u001b[39m \u001b[2m9.497s\u001b[22m\n\n\u001b[1mAsserts:\u001b[22m  \u001b[32m19363 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19363 of 19363 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m29 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m29 of 30 complete\u001b[22m\n\n\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[G\n\u001b[1mAsserts:\u001b[22m  \u001b[32m19478 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19478 of 19478 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m30 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m30 of 30 complete\u001b[22m\n\n\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[G\n\u001b[1mAsserts:\u001b[22m  \u001b[32m19682 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19682 of 19682 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m30 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m30 of 30 complete\u001b[22m\n\n\u001b[2m# { total: 19682, pass: 19682 }\u001b[22m\n\n\u001b[?25h\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[G\n\u001b[107m                       \u001b[49m\n\u001b[1m\u001b[107m\u001b[30m  \ud83c\udf08 TEST COMPLETE \ud83c\udf08  \u001b[39m\u001b[49m\u001b[22m\n\u001b[107m                       \u001b[49m\n\n\u001b[1mAsserts:\u001b[22m  \u001b[32m19682 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19682 of 19682 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m30 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m30 of 30 complete\u001b[22m\n\n\u001b[2m# { total: 19682, pass: 19682 }\u001b[22m\n\u001b[2m# time=20719.918ms\u001b[22m\n\n",
+        "stderr_tail": "index.min.js       19.0kb\n  dist/commonjs/node/index.min.js.map  132.3kb\n\n\u26a1 Done in 9ms\n\n  dist/commonjs/browser/index.min.js       18.9kb\n  dist/commonjs/browser/index.min.js.map  132.2kb\n\n\u26a1 Done in 7ms\n\n  dist/commonjs/index.min.js       18.9kb\n  dist/commonjs/index.min.js.map  132.2kb\n\n\u26a1 Done in 8ms\n\n  dist/esm/index.min.js       18.4kb\n  dist/esm/index.min.js.map  132.9kb\n\n\u26a1 Done in 8ms\n\n  dist/esm/browser/index.min.js       18.3kb\n  dist/esm/browser/index.min.js.map  132.0kb\n\n\u26a1 Done in 9ms\n\n  dist/esm/node/index.min.js       18.4kb\n  dist/esm/node/index.min.js.map  132.1kb\n\n\u26a1 Done in 9ms\n"
+      }
+    ],
+    "rewritten_by_public": [],
+    "oracle": {
+      "J2-W1": true,
+      "J2-H2": true,
+      "J2-H3": true,
+      "J2-H4": true,
+      "J2-H5": true,
+      "J2-H6": true,
+      "J2-H7": true
+    },
+    "oracle_exit": 0
+  },
+  "twin": {
+    "public": [
+      {
+        "cmd": "PATH=/Users/Shared/devlyn-vr-0227/toolchains/node-lru-cache/node-bin:$PATH npm test -- -c -t0",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "[39m\u001b[49m\u001b[22m test/ttl-autopurge-flood.ts \u001b[1m0\u001b[22m \u001b[32mOK\u001b[39m \u001b[2m3.927s\u001b[22m\n\n\u001b[1mAsserts:\u001b[22m  \u001b[32m19377 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19377 of 19377 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m29 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m29 of 30 complete\u001b[22m\n\n\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[G\u001b[1m\u001b[42m\u001b[30m PASS \u001b[39m\u001b[49m\u001b[22m test/ttl-autopurge-flood.ts \u001b[1m1\u001b[22m \u001b[32mOK\u001b[39m \u001b[2m7.646s\u001b[22m\n\n\u001b[1m\u001b[43m\u001b[30m RUNS \u001b[39m\u001b[49m\u001b[22m test/ttl-autopurge-flood.ts \u001b[1m1\u001b[22m \u001b[32mOK\u001b[39m \u001b[2m7.635s\u001b[22m\n\n\u001b[1mAsserts:\u001b[22m  \u001b[32m19382 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19382 of 19382 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m29 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m29 of 30 complete\u001b[22m\n\n\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[G\n\u001b[1mAsserts:\u001b[22m  \u001b[32m19482 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19482 of 19482 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m30 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m30 of 30 complete\u001b[22m\n\n\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[G\n\u001b[1mAsserts:\u001b[22m  \u001b[32m19698 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19698 of 19698 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m30 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m30 of 30 complete\u001b[22m\n\n\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[G\n\u001b[1mAsserts:\u001b[22m  \u001b[32m19701 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19701 of 19701 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m30 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m30 of 30 complete\u001b[22m\n\n\u001b[2m# { total: 19701, pass: 19701 }\u001b[22m\n\n\u001b[?25h\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[G\n\u001b[107m                       \u001b[49m\n\u001b[1m\u001b[107m\u001b[30m  \ud83c\udf08 TEST COMPLETE \ud83c\udf08  \u001b[39m\u001b[49m\u001b[22m\n\u001b[107m                       \u001b[49m\n\n\u001b[1mAsserts:\u001b[22m  \u001b[32m19701 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m  \u001b[2m19701 of 19701 complete\u001b[22m\n\u001b[1mSuites:\u001b[22m      \u001b[32m30 pass\u001b[39m  \u001b[31m\u001b[2m0 fail\u001b[22m\u001b[39m        \u001b[2m30 of 30 complete\u001b[22m\n\n\u001b[2m# { total: 19701, pass: 19701 }\u001b[22m\n\u001b[2m# time=18080.044ms\u001b[22m\n\n",
+        "stderr_tail": "index.min.js       19.0kb\n  dist/commonjs/node/index.min.js.map  132.3kb\n\n\u26a1 Done in 6ms\n\n  dist/commonjs/browser/index.min.js       18.9kb\n  dist/commonjs/browser/index.min.js.map  132.2kb\n\n\u26a1 Done in 6ms\n\n  dist/commonjs/index.min.js       18.9kb\n  dist/commonjs/index.min.js.map  132.2kb\n\n\u26a1 Done in 7ms\n\n  dist/esm/index.min.js       18.4kb\n  dist/esm/index.min.js.map  132.9kb\n\n\u26a1 Done in 6ms\n\n  dist/esm/browser/index.min.js       18.3kb\n  dist/esm/browser/index.min.js.map  132.0kb\n\n\u26a1 Done in 6ms\n\n  dist/esm/node/index.min.js       18.4kb\n  dist/esm/node/index.min.js.map  132.1kb\n\n\u26a1 Done in 6ms\n"
+      }
+    ],
+    "rewritten_by_public": [],
+    "oracle": {
+      "J2-W1": false,
+      "J2-H2": true,
+      "J2-H3": true,
+      "J2-H4": true,
+      "J2-H5": true,
+      "J2-H6": true,
+      "J2-H7": true
+    },
+    "oracle_exit": 0
+  },
+  "verdict": {
+    "same_files": true,
+    "reference_public_pass": true,
+    "twin_public_pass": true,
+    "public_rewrote_nothing": true,
+    "reference_oracle_all_true": true,
+    "twin_oracle_failed_rows": [
+      "J2-W1"
+    ],
+    "base_oracle_failed_rows": [
+      "J2-H2",
+      "J2-H4",
+      "J2-W1"
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-30T07:37:17.427Z", "finding_key": "c584ebde1fe343d702abe7593b64153cc953d98074a2e7f734a52a5926a8a14a", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0227/check-scripts/P3-forced-failure-no-new-marker.sh", "script_sha256": "63ad7b399b86876ec77d04eb124280bfacf4a0c620d43a8d28d76129c1c411c4", "task": "P3"}

@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-30T07:34:39.496Z", "finding_key": "32f43958895de1ae7d0412e86599ae522ae06bbc8e8e170c27ef517c49b67484", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0227/check-scripts/J4-same-value-growth-evicts.sh", "script_sha256": "bb8d5409f50255a5abae02d7b52423273cd47b9f18b0a711eadba1e03b509aa2", "task": "J4"}

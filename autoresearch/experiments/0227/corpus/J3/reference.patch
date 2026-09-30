@@ -1,0 +1,491 @@
+diff --git a/src/index.ts b/src/index.ts
+index 3cc1ab8..a2ff4a5 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -581,9 +581,9 @@ export namespace LRUCache {
+    * {@link MemoOptions.context}
+    *
+    * Any of these may be modified in the {@link OptionsBase.memoMethod}
+-   * function, but the {@link GetOptions} fields will of course have no
+-   * effect, as the {@link LRUCache#get} call already happened by the time
+-   * the memoMethod is called.
++   * function. The {@link GetOptions} fields are resolved when memo() is
++   * called, so changes to them in memoMethod do not affect this lookup.
++   * Changes to set options are used when the result is stored.
+    */
+   export interface MemoizerMemoOptions<K, V, FC = unknown> extends Pick<
+     OptionsBase<K, V, FC>,
+@@ -2942,6 +2942,9 @@ export class LRUCache<K extends {}, V extends {}, FC = unknown> {
+    * The `context` param allows you to provide arbitrary data that might be
+    * relevant in the course of fetching the data. It is only relevant for the
+    * course of a single `memo()` operation, and discarded afterwards.
++   *
++   * If memoMethod throws, its thrown value is propagated and memo() does not
++   * change the cache. Mutations made by memoMethod itself are not reverted.
+    */
+   memo(
+     k: K,
+@@ -2982,17 +2985,45 @@ export class LRUCache<K extends {}, V extends {}, FC = unknown> {
+     }
+     const { context, status, forceRefresh, ...options } = memoOptions
+     if (status && forceRefresh) status.forceRefresh = true
+-    const v = this.#get(k, options)
++    const {
++      allowStale = this.allowStale,
++      updateAgeOnGet = this.updateAgeOnGet,
++      noDeleteOnStaleGet = this.noDeleteOnStaleGet,
++    } = options
++    const lookupOptions = {
++      allowStale,
++      updateAgeOnGet,
++      noDeleteOnStaleGet,
++    }
++    const index = this.#keyMap.get(k)
++    const fetching =
++      index !== undefined && this.#isBackgroundFetch(this.#valList[index])
++    const stale = index !== undefined && this.#isStale(index)
++    const candidate = this.#peek(k, { allowStale: true })
++    const v = stale && !allowStale ? undefined : candidate
+     const refresh = forceRefresh || v === undefined
+     if (status) {
+       status.memo = refresh ? 'miss' : 'hit'
+       if (!refresh) status.value = v
+     }
+-    if (!refresh) return v
++    if (!refresh) {
++      if (stale) {
++        if (!fetching && !noDeleteOnStaleGet) {
++          this.#delete(k, 'expire')
++        }
++      } else if (index !== undefined) {
++        this.#moveToTail(index)
++        if (updateAgeOnGet) {
++          this.#updateItemAge(index)
++        }
++      }
++      return v
++    }
+     const vv = memoMethod(k, v, {
+       options,
+       context,
+     } as LRUCache.MemoizerOptions<K, V, FC>)
++    this.#get(k, lookupOptions)
+     if (status) status.value = vv
+     this.#set(k, vv, options)
+     return vv
+diff --git a/test/memo-failure.ts b/test/memo-failure.ts
+new file mode 100644
+index 0000000..d8abe57
+--- /dev/null
++++ b/test/memo-failure.ts
+@@ -0,0 +1,410 @@
++import t from 'tap'
++import { LRUCache } from '../src/index.js'
++
++type Hook = [string, string, string, string]
++
++const entryState = (cache: LRUCache<string, string>, key: string) => {
++  const internals = LRUCache.unsafeExposeInternals(cache)
++  const index = internals.keyMap.get(key)
++  return index === undefined ? undefined : (
++      [
++        internals.starts?.[index],
++        internals.ttls?.[index],
++        internals.sizes?.[index],
++        cache.getRemainingTTL(key),
++      ]
++    )
++}
++
++const noPrivateStatus = (
++  t: { notOk: (value: boolean) => unknown },
++  status: LRUCache.Status<string, string>,
++) => {
++  t.notOk('get' in status)
++  t.notOk('peek' in status)
++  t.notOk('set' in status)
++}
++
++t.test(
++  'failed forced calculation preserves state; retry and eviction',
++  t => {
++    let now = 100
++    const hooks: Hook[] = []
++    const calls: [string, string | undefined, unknown][] = []
++    const failure = { failed: true }
++    let fail = true
++    const context = { request: 1 }
++    const cache = new LRUCache<string, string>({
++      max: 2,
++      maxSize: 20,
++      sizeCalculation: value => value.length,
++      ttl: 100,
++      ttlResolution: 0,
++      ttlAutopurge: false,
++      updateAgeOnGet: false,
++      perf: { now: () => now },
++      dispose: (value, key, reason) =>
++        hooks.push(['dispose', value, key, reason]),
++      disposeAfter: (value, key, reason) =>
++        hooks.push(['disposeAfter', value, key, reason]),
++      onInsert: (value, key, reason) =>
++        hooks.push(['onInsert', value, key, reason]),
++      memoMethod: (key, oldValue, { options, context }) => {
++        calls.push([key, oldValue, context])
++        if (fail) throw failure
++        if (key === 'b') {
++          options.ttl = 40
++          options.noDisposeOnSet = true
++          return 'BBBB'
++        }
++        return 'CCC'
++      },
++    })
++    cache.set('a', 'AA')
++    cache.set('b', 'BBB')
++    hooks.length = 0
++    now = 125
++    const before = ['a', 'b'].map(key => entryState(cache, key))
++    const failedStatus: LRUCache.Status<string, string> = {}
++    let caught: unknown
++    try {
++      cache.memo('b', {
++        forceRefresh: true,
++        context,
++        status: failedStatus,
++      })
++    } catch (error) {
++      caught = error
++    }
++    t.equal(caught, failure)
++    t.strictSame(calls, [['b', 'BBB', context]])
++    t.strictSame(
++      [...cache.entries()],
++      [
++        ['b', 'BBB'],
++        ['a', 'AA'],
++      ],
++    )
++    t.equal(cache.size, 2)
++    t.equal(cache.calculatedSize, 5)
++    t.strictSame(
++      ['a', 'b'].map(key => entryState(cache, key)),
++      before,
++    )
++    t.strictSame(before, [
++      [100, 100, 2, 75],
++      [100, 100, 3, 75],
++    ])
++    t.strictSame(hooks, [])
++    t.equal(failedStatus.memo, 'miss')
++    t.notOk('value' in failedStatus)
++
++    fail = false
++    const status: LRUCache.Status<string, string> = {}
++    t.equal(
++      cache.memo('b', { forceRefresh: true, context, status }),
++      'BBBB',
++    )
++    t.strictSame(calls, [
++      ['b', 'BBB', context],
++      ['b', 'BBB', context],
++    ])
++    t.strictSame(
++      [...cache.entries()],
++      [
++        ['b', 'BBBB'],
++        ['a', 'AA'],
++      ],
++    )
++    t.equal(cache.calculatedSize, 6)
++    t.strictSame(entryState(cache, 'b'), [125, 40, 4, 40])
++    t.strictSame(hooks, [['onInsert', 'BBBB', 'b', 'replace']])
++    t.equal(status.op, 'memo')
++    t.equal(status.key, 'b')
++    t.equal(status.memo, 'miss')
++    t.equal(status.forceRefresh, true)
++    t.equal(status.context, context)
++    t.equal(status.cache, cache)
++    t.equal(status.value, 'BBBB')
++    noPrivateStatus(t, status)
++
++    const hitStatus: LRUCache.Status<string, string> = {}
++    t.equal(cache.memo('b', { status: hitStatus }), 'BBBB')
++    t.equal(calls.length, 2)
++    t.equal(hitStatus.memo, 'hit')
++    t.equal(hitStatus.value, 'BBBB')
++    noPrivateStatus(t, hitStatus)
++
++    hooks.length = 0
++    t.equal(cache.memo('c'), 'CCC')
++    t.strictSame(
++      [...cache.entries()],
++      [
++        ['c', 'CCC'],
++        ['b', 'BBBB'],
++      ],
++    )
++    t.equal(cache.size, 2)
++    t.equal(cache.calculatedSize, 7)
++    t.strictSame(hooks, [
++      ['dispose', 'AA', 'a', 'evict'],
++      ['onInsert', 'CCC', 'c', 'add'],
++      ['disposeAfter', 'AA', 'a', 'evict'],
++    ])
++    t.end()
++  },
++)
++
++t.test('missing-key throw leaves other entries intact', t => {
++  let now = 100
++  const hooks: Hook[] = []
++  const failure = { code: 42 }
++  const context = { request: 2 }
++  const calls: [string, string | undefined, unknown][] = []
++  const cache = new LRUCache<string, string>({
++    max: 2,
++    maxSize: 20,
++    sizeCalculation: value => value.length,
++    ttl: 100,
++    ttlResolution: 0,
++    ttlAutopurge: false,
++    perf: { now: () => now },
++    dispose: (value, key, reason) =>
++      hooks.push(['dispose', value, key, reason]),
++    disposeAfter: (value, key, reason) =>
++      hooks.push(['disposeAfter', value, key, reason]),
++    onInsert: (value, key, reason) =>
++      hooks.push(['onInsert', value, key, reason]),
++    memoMethod: (key, oldValue, { context }) => {
++      calls.push([key, oldValue, context])
++      throw failure
++    },
++  })
++  cache.set('kept', 'AA')
++  hooks.length = 0
++  now = 125
++  const before = entryState(cache, 'kept')
++  const status: LRUCache.Status<string, string> = {}
++  let caught: unknown
++  try {
++    cache.memo('missing', { context, status })
++  } catch (error) {
++    caught = error
++  }
++  t.equal(caught, failure)
++  t.strictSame(calls, [['missing', undefined, context]])
++  t.strictSame([...cache.entries()], [['kept', 'AA']])
++  t.equal(cache.size, 1)
++  t.equal(cache.calculatedSize, 2)
++  t.strictSame(entryState(cache, 'kept'), before)
++  t.equal(entryState(cache, 'missing'), undefined)
++  t.strictSame(hooks, [])
++  t.equal(status.memo, 'miss')
++  t.notOk('value' in status)
++  noPrivateStatus(t, status)
++  t.end()
++})
++
++t.test(
++  'fresh refresh applies resolved age policy before set policy',
++  t => {
++    for (const updateAgeOnGet of [true, false]) {
++      let now = 100
++      const hooks: Hook[] = []
++      let calls = 0
++      const cache = new LRUCache<string, string>({
++        max: 2,
++        ttl: 100,
++        ttlResolution: 0,
++        ttlAutopurge: false,
++        updateAgeOnGet,
++        perf: { now: () => now },
++        dispose: (value, key, reason) =>
++          hooks.push(['dispose', value, key, reason]),
++        disposeAfter: (value, key, reason) =>
++          hooks.push(['disposeAfter', value, key, reason]),
++        onInsert: (value, key, reason) =>
++          hooks.push(['onInsert', value, key, reason]),
++        memoMethod: (key, oldValue, { options }) => {
++          calls++
++          t.equal(key, 'a')
++          t.equal(oldValue, 'AA')
++          options.updateAgeOnGet = false
++          options.noDisposeOnSet = true
++          return 'NEW'
++        },
++      })
++      cache.set('a', 'AA')
++      cache.set('b', 'BBB')
++      hooks.length = 0
++      now = 125
++      t.equal(
++        cache.memo('a', { forceRefresh: true, noUpdateTTL: true }),
++        'NEW',
++      )
++      t.strictSame(
++        [...cache.entries()],
++        [
++          ['a', 'NEW'],
++          ['b', 'BBB'],
++        ],
++      )
++      t.strictSame(entryState(cache, 'a'), [
++        updateAgeOnGet ? 125 : 100,
++        100,
++        undefined,
++        updateAgeOnGet ? 100 : 75,
++      ])
++      t.strictSame(hooks, [['onInsert', 'NEW', 'a', 'replace']])
++      t.equal(cache.memo('a'), 'NEW')
++      t.equal(calls, 1)
++    }
++    t.end()
++  },
++)
++
++t.test(
++  'stale recomputation uses saved get options and mutable set options',
++  t => {
++    for (const noDeleteOnStaleGet of [false, true]) {
++      let now = 100
++      const hooks: Hook[] = []
++      const oldValues: (string | undefined)[] = []
++      const cache = new LRUCache<string, string>({
++        max: 2,
++        ttl: 10,
++        ttlResolution: 0,
++        ttlAutopurge: false,
++        perf: { now: () => now },
++        dispose: (value, key, reason) =>
++          hooks.push(['dispose', value, key, reason]),
++        disposeAfter: (value, key, reason) =>
++          hooks.push(['disposeAfter', value, key, reason]),
++        onInsert: (value, key, reason) =>
++          hooks.push(['onInsert', value, key, reason]),
++        memoMethod: (_key, oldValue, { options }) => {
++          oldValues.push(oldValue)
++          options.allowStale = true
++          options.noDeleteOnStaleGet = !noDeleteOnStaleGet
++          options.ttl = 40
++          return 'NEW'
++        },
++      })
++      cache.set('a', 'OLD')
++      hooks.length = 0
++      now = 111
++      t.equal(
++        cache.memo('a', {
++          forceRefresh: noDeleteOnStaleGet,
++          allowStale: noDeleteOnStaleGet,
++          noDeleteOnStaleGet,
++          noUpdateTTL: true,
++        }),
++        'NEW',
++      )
++      t.strictSame(oldValues, [noDeleteOnStaleGet ? 'OLD' : undefined])
++      t.equal(cache.peek('a', { allowStale: true }), 'NEW')
++      t.strictSame(
++        entryState(cache, 'a'),
++        noDeleteOnStaleGet ?
++          [100, 10, undefined, -1]
++        : [111, 40, undefined, 40],
++      )
++      t.strictSame(
++        hooks,
++        noDeleteOnStaleGet ?
++          [
++            ['dispose', 'OLD', 'a', 'set'],
++            ['onInsert', 'NEW', 'a', 'replace'],
++            ['disposeAfter', 'OLD', 'a', 'set'],
++          ]
++        : [
++            ['dispose', 'OLD', 'a', 'expire'],
++            ['disposeAfter', 'OLD', 'a', 'expire'],
++            ['onInsert', 'NEW', 'a', 'add'],
++          ],
++      )
++    }
++    t.end()
++  },
++)
++
++t.test('stale hit returns selected value and applies deletion', t => {
++  let now = 100
++  const hooks: Hook[] = []
++  const cache = new LRUCache<string, string>({
++    max: 2,
++    ttl: 10,
++    ttlResolution: 0,
++    ttlAutopurge: false,
++    perf: { now: () => now },
++    dispose: (value, key, reason) =>
++      hooks.push(['dispose', value, key, reason]),
++    disposeAfter: (value, key, reason) =>
++      hooks.push(['disposeAfter', value, key, reason]),
++    onInsert: (value, key, reason) =>
++      hooks.push(['onInsert', value, key, reason]),
++    memoMethod: () => {
++      throw new Error('unexpected memo callback')
++    },
++  })
++  cache.set('a', 'OLD')
++  hooks.length = 0
++  now = 111
++  const status: LRUCache.Status<string, string> = {}
++  t.equal(cache.memo('a', { allowStale: true, status }), 'OLD')
++  t.equal(cache.size, 0)
++  t.equal(cache.peek('a', { allowStale: true }), undefined)
++  t.equal(cache.getRemainingTTL('a'), 0)
++  t.strictSame(hooks, [
++    ['dispose', 'OLD', 'a', 'expire'],
++    ['disposeAfter', 'OLD', 'a', 'expire'],
++  ])
++  t.equal(status.memo, 'hit')
++  t.equal(status.value, 'OLD')
++  noPrivateStatus(t, status)
++  t.end()
++})
++
++t.test('memo callback can change explicit and calculated sizes', t => {
++  for (const useCalculation of [false, true]) {
++    let now = 100
++    const context = { request: 3 }
++    const status: LRUCache.Status<string, string> = {}
++    const cache = new LRUCache<string, string>({
++      max: 2,
++      maxSize: 20,
++      sizeCalculation: value => value.length,
++      ttl: 100,
++      ttlResolution: 0,
++      ttlAutopurge: false,
++      perf: { now: () => now },
++      memoMethod: (key, oldValue, { options, context: received }) => {
++        t.equal(key, 'new')
++        t.equal(oldValue, undefined)
++        t.equal(received, context)
++        options.ttl = 40
++        if (useCalculation) options.sizeCalculation = () => 7
++        else options.size = 5
++        return 'ABC'
++      },
++    })
++    now = 125
++    t.equal(cache.memo('new', { context, status }), 'ABC')
++    t.equal(cache.peek('new'), 'ABC')
++    t.strictSame(entryState(cache, 'new'), [
++      125,
++      40,
++      useCalculation ? 7 : 5,
++      40,
++    ])
++    t.equal(cache.calculatedSize, useCalculation ? 7 : 5)
++    t.equal(status.op, 'memo')
++    t.equal(status.memo, 'miss')
++    t.equal(status.context, context)
++    t.equal(status.cache, cache)
++    t.equal(status.value, 'ABC')
++    noPrivateStatus(t, status)
++  }
++  t.end()
++})

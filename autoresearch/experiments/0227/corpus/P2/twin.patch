@@ -1,0 +1,245 @@
+diff --git a/src/attr/_funcs.py b/src/attr/_funcs.py
+index d213efc..e2adf78 100644
+--- a/src/attr/_funcs.py
++++ b/src/attr/_funcs.py
+@@ -57,10 +57,14 @@ def asdict(
+             is `tuple` or `set`.  Only meaningful if *recurse* is `True`.
+ 
+         value_serializer (typing.Callable | None):
+-            A hook that is called for every attribute or dict key/value.  It
+-            receives the current instance, field and value and must return the
+-            (updated) value.  The hook is run *after* the optional *filter* has
+-            been applied.
++            A hook called for each included attribute and, when recursing,
++            each collection element and dict key/value before traversing it.
++            It receives the current instance and field for attributes, or
++            ``None`` for both when called on a collection element or dict
++            key/value, along with the value.  It must return the (updated)
++            value.  The hook is run *after* the optional *filter* for
++            attributes.  Its return value determines further recursion and is
++            not passed to the hook again at the same position.
+ 
+     Returns:
+         Return type of *dict_factory*.
+@@ -161,10 +165,11 @@ def _asdict_anything(
+     ``asdict`` only works on attrs instances, this works on anything.
+     """
+     val_type = type(val)
++    if value_serializer is not None:
++        val = value_serializer(None, None, val)
++
+     if val_type in _ATOMIC_TYPES:
+         rv = val
+-        if value_serializer is not None:
+-            rv = value_serializer(None, None, rv)
+     elif getattr(val_type, "__attrs_attrs__", None) is not None:
+         # Attrs class.
+         rv = asdict(
+@@ -221,8 +226,6 @@ def _asdict_anything(
+         )
+     else:
+         rv = val
+-        if value_serializer is not None:
+-            rv = value_serializer(None, None, rv)
+ 
+     return rv
+ 
+diff --git a/tests/test_hooks.py b/tests/test_hooks.py
+index 81f131c..817c6cc 100644
+--- a/tests/test_hooks.py
++++ b/tests/test_hooks.py
+@@ -2,11 +2,13 @@
+ 
+ from __future__ import annotations
+ 
++from collections import OrderedDict
+ from datetime import datetime
+ 
+ import pytest
+ 
+ import attr
++import attrs
+ 
+ 
+ class TestTransformHook:
+@@ -446,8 +448,180 @@ class TestAsDictHook:
+             (inst, "a", inst.a),
+             (inst.a, "x", inst.a.x),
+             (inst, "b", inst.b),
++            (None, None, inst.b[0]),
+             (inst.b[0], "x", inst.b[0].x),
+             (inst, "c", inst.c),
+             (None, None, "spam"),
++            (None, None, inst.c["spam"]),
+             (inst.c["spam"], "x", inst.c["spam"].x),
+         ] == calls
++
++    def test_nested_identity_calls_and_filter(self):
++        @attr.define
++        class Child:
++            keep: int
++            secret: list[int]
++
++        @attr.define
++        class Root:
++            payload: list
++
++        child = Child(1, [9])
++        numbers = [2]
++        entry = {"child": child, "numbers": numbers}
++        root = Root([entry])
++        calls = []
++
++        def hook(inst, attribute, value):
++            calls.append((inst, attribute, value))
++            return value
++
++        def include(attribute, value):
++            return attribute.name != "secret"
++
++        assert attr.asdict(root, filter=include, value_serializer=hook) == {
++            "payload": [{"child": {"keep": 1}, "numbers": [2]}]
++        }
++        assert calls == [
++            (root, attr.fields(Root).payload, root.payload),
++            (None, None, entry),
++            (None, None, "child"),
++            (None, None, child),
++            (child, attr.fields(Child).keep, 1),
++            (None, None, "numbers"),
++            (None, None, numbers),
++            (None, None, 2),
++        ]
++        assert calls[1][2] is entry
++        assert calls[3][2] is child
++        assert calls[6][2] is numbers
++
++    def test_nested_replacements_and_filter(self):
++        @attr.define
++        class Root:
++            payload: list
++            secret: list
++
++        original_list = [2, 3]
++        original_dict = {"drop": 1, "keep": original_list}
++        root = Root([original_dict], [4])
++        calls = []
++
++        def hook(inst, attribute, value):
++            calls.append((inst, attribute, value))
++            if value is original_dict and inst is None:
++                return {"keep": original_list}
++            if value is original_list and inst is None:
++                return [3]
++            if inst is None and value == 3:
++                return 30
++            return value
++
++        def include(attribute, value):
++            return attribute.name != "secret"
++
++        assert attr.asdict(root, filter=include, value_serializer=hook) == {
++            "payload": [{"keep": [30]}]
++        }
++        assert calls == [
++            (root, attr.fields(Root).payload, root.payload),
++            (None, None, original_dict),
++            (None, None, "keep"),
++            (None, None, original_list),
++            (None, None, 3),
++        ]
++        assert calls[1][2] is original_dict
++        assert calls[3][2] is original_list
++
++    def test_collection_policies_and_repeated_occurrences(self):
++        @attr.define
++        class Root:
++            payload: list
++
++        shared = (1, 2)
++        root = Root([shared, shared])
++        calls = []
++
++        def hook(inst, attribute, value):
++            calls.append((inst, attribute, value))
++            return value
++
++        for asdict, options, collection_type in (
++            (attr.asdict, {}, list),
++            (attr.asdict, {"retain_collection_types": True}, tuple),
++            (attrs.asdict, {}, tuple),
++        ):
++            result = asdict(root, value_serializer=hook, **options)
++            assert [list(item) for item in result["payload"]] == [
++                [1, 2],
++                [1, 2],
++            ]
++            assert all(
++                type(item) is collection_type for item in result["payload"]
++            )
++            assert calls == [
++                (root, attr.fields(Root).payload, root.payload),
++                (None, None, shared),
++                (None, None, 1),
++                (None, None, 2),
++                (None, None, shared),
++                (None, None, 1),
++                (None, None, 2),
++            ]
++            assert calls[1][2] is shared
++            assert calls[4][2] is shared
++            assert asdict(root, **options) == result
++            calls.clear()
++
++        result = attr.asdict(root, dict_factory=OrderedDict)
++        assert type(result) is OrderedDict
++        assert result == {"payload": [[1, 2], [1, 2]]}
++
++    def test_recurse_false_only_serializes_fields(self):
++        @attr.define
++        class Child:
++            value: int
++
++        @attr.define
++        class Root:
++            payload: list
++
++        child = Child(1)
++        root = Root([child])
++        replacement = [child]
++        calls = []
++
++        def hook(inst, attribute, value):
++            calls.append((inst, attribute, value))
++            return replacement
++
++        result = attr.asdict(root, recurse=False, value_serializer=hook)
++        assert result["payload"] is replacement
++        assert len(calls) == 1
++        assert calls[0][0] is root
++        assert calls[0][1] is attr.fields(Root).payload
++        assert calls[0][2] is root.payload
++
++    def test_nested_callback_exception_propagates(self):
++        @attr.define
++        class Root:
++            payload: list
++
++        entry = {"key": 1}
++        root = Root([entry])
++        error = RuntimeError("serializer failed")
++        calls = []
++
++        def hook(inst, attribute, value):
++            calls.append(value)
++            if value is entry:
++                raise error
++            return value
++
++        with pytest.raises(RuntimeError) as raised:
++            attr.asdict(root, value_serializer=hook)
++
++        assert raised.value is error
++        assert calls[0] is root.payload
++        assert calls[1] is entry
++        assert len(calls) == 2

@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-30T07:37:26.279Z", "finding_key": "2f2b0f4f48530031e99c02450f4c31a9d6f3da5520075332b73d0a4bec1acf0c", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0227/check-scripts/P4-combined-rename-reset.sh", "script_sha256": "227d6e742f932fd1423a7b12ca733e28357539f7fe6beb223c4e936be3db311f", "task": "P4"}

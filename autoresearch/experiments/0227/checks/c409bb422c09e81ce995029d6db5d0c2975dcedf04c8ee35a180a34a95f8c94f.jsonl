@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-30T07:38:42.113Z", "finding_key": "c409bb422c09e81ce995029d6db5d0c2975dcedf04c8ee35a180a34a95f8c94f", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0227/check-scripts/P2-replacement-type-dispatch.sh", "script_sha256": "54ac93ece7c483393a1317a0e99ecfaaf1072c17472170b27bc50c4757c9dd8d", "task": "P2"}

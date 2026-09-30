@@ -1,0 +1,278 @@
+diff --git a/src/index.ts b/src/index.ts
+index 3cc1ab8..32ea94c 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1962,7 +1962,9 @@ export class LRUCache<K extends {}, V extends {}, FC = unknown> {
+     fn: (v: V, k: K, self: LRUCache<K, V, FC>) => boolean,
+     getOptions: LRUCache.GetOptions<K, V, FC> = {},
+   ) {
+-    for (const i of this.#indexes()) {
++    for (const i of this.#indexes({
++      allowStale: getOptions.allowStale || this.allowStale,
++    })) {
+       const v = this.#valList[i]
+       const value = this.#isBackgroundFetch(v) ? v.__staleWhileFetching : v
+       if (value === undefined) continue
+diff --git a/test/find-options.ts b/test/find-options.ts
+new file mode 100644
+index 0000000..470f44a
+--- /dev/null
++++ b/test/find-options.ts
+@@ -0,0 +1,257 @@
++import type { Test } from 'tap'
++import t from 'tap'
++import { LRUCache as LRU } from '../dist/esm/node/index.js'
++
++type Cache = LRU<string, string>
++type Pair = [string, string]
++
++const makeCache = (
++  now: () => number,
++  allowStale = false,
++  noDeleteOnStaleGet = false,
++): Cache =>
++  new LRU({
++    max: 5,
++    allowStale,
++    noDeleteOnStaleGet,
++    ttlResolution: 0,
++    ttlAutopurge: false,
++    perf: { now },
++  })
++
++const order = (c: Cache) => {
++  const e = LRU.unsafeExposeInternals(c)
++  return [...e.indexes({ allowStale: true })].map(i => e.keyList[i])
++}
++
++const recording =
++  (t: Test, c: Cache, calls: Pair[], accept: (key: string) => boolean) =>
++  (value: string, key: string, self: Cache) => {
++    t.equal(self, c, 'predicate receives the cache')
++    calls.push([key, value])
++    return accept(key)
++  }
++
++t.test('per-call true includes an expired MRU and retrieves it', t => {
++  let now = 100
++  const c = makeCache(() => now)
++  c.set('fresh', 'F', { ttl: 100 })
++  c.set('stale', 'S', { ttl: 10 })
++  now = 120
++
++  const calls: Pair[] = []
++  t.equal(
++    c.find(
++      recording(t, c, calls, () => true),
++      {
++        allowStale: true,
++      },
++    ),
++    'S',
++  )
++  t.same(calls, [['stale', 'S']])
++  t.equal(c.size, 1, 'the ordinary stale get deletes its match')
++  t.same(order(c), ['fresh'])
++  t.equal(c.getRemainingTTL('fresh'), 80)
++  t.end()
++})
++
++t.test('omitted and undefined options inherit the current default', t => {
++  for (const allowStale of [false, true]) {
++    for (const option of [undefined, {}, { allowStale: undefined }]) {
++      let now = 100
++      const c = makeCache(() => now, allowStale, true)
++      c.set('fresh', 'F', { ttl: 100 })
++      c.set('stale', 'S', { ttl: 10 })
++      now = 120
++      const calls: Pair[] = []
++      const fn = recording(t, c, calls, () => true)
++      const result = option === undefined ? c.find(fn) : c.find(fn, option)
++      t.equal(result, allowStale ? 'S' : 'F')
++      t.same(calls, allowStale ? [['stale', 'S']] : [['fresh', 'F']])
++      t.same(
++        order(c),
++        allowStale ? ['stale', 'fresh'] : ['fresh', 'stale'],
++      )
++      t.equal(c.size, 2)
++      t.equal(c.getRemainingTTL('fresh'), 80)
++      t.equal(c.getRemainingTTL('stale'), -10)
++    }
++  }
++
++  let now = 100
++  const c = makeCache(() => now, false, true)
++  c.set('fresh', 'F', { ttl: 100 })
++  c.set('stale', 'S', { ttl: 10 })
++  now = 120
++  c.allowStale = true
++  const calls: Pair[] = []
++  t.equal(
++    c.find(
++      recording(t, c, calls, () => true),
++      {
++        allowStale: undefined,
++      },
++    ),
++    'S',
++  )
++  t.same(calls, [['stale', 'S']])
++  t.same(order(c), ['stale', 'fresh'])
++  t.equal(c.size, 2)
++  t.end()
++})
++
++t.test(
++  'explicit false excludes stale candidates without changing them',
++  t => {
++    let now = 100
++    const c = makeCache(() => now)
++    c.set('fresh', 'F', { ttl: 100 })
++    c.set('stale', 'S', { ttl: 10 })
++    now = 120
++    const calls: Pair[] = []
++    t.equal(
++      c.find(
++        recording(t, c, calls, () => true),
++        {
++          allowStale: false,
++        },
++      ),
++      'F',
++    )
++    t.same(calls, [['fresh', 'F']])
++    t.same(order(c), ['fresh', 'stale'])
++    t.equal(c.size, 2)
++    t.equal(c.getRemainingTTL('fresh'), 80)
++    t.equal(c.getRemainingTTL('stale'), -10)
++
++    let otherNow = 100
++    const other = makeCache(() => otherNow)
++    other.set('fresh', 'F', { ttl: 100 })
++    other.set('stale', 'S', { ttl: 10 })
++    otherNow = 120
++    const noMatchCalls: Pair[] = []
++    t.equal(
++      other.find(
++        recording(t, other, noMatchCalls, () => false),
++        {
++          allowStale: false,
++          updateAgeOnGet: true,
++        },
++      ),
++      undefined,
++    )
++    t.same(noMatchCalls, [['fresh', 'F']])
++    t.same(order(other), ['stale', 'fresh'])
++    t.equal(other.size, 2)
++    t.equal(other.getRemainingTTL('fresh'), 80)
++    t.equal(other.getRemainingTTL('stale'), -10)
++    t.end()
++  },
++)
++
++t.test('stale retention, predicate order, and fresh age refresh', t => {
++  let now = 100
++  const c = makeCache(() => now)
++  c.set('old-stale', 'O', { ttl: 10 })
++  c.set('fresh', 'F', { ttl: 100 })
++  c.set('new-stale', 'N', { ttl: 10 })
++  now = 120
++
++  const staleCalls: Pair[] = []
++  t.equal(
++    c.find(
++      recording(t, c, staleCalls, key => key === 'old-stale'),
++      {
++        allowStale: true,
++        noDeleteOnStaleGet: true,
++      },
++    ),
++    'O',
++  )
++  t.same(staleCalls, [
++    ['new-stale', 'N'],
++    ['fresh', 'F'],
++    ['old-stale', 'O'],
++  ])
++  t.same(order(c), ['new-stale', 'fresh', 'old-stale'])
++  t.equal(c.size, 3)
++  t.equal(c.getRemainingTTL('old-stale'), -10)
++  t.equal(c.getRemainingTTL('fresh'), 80)
++  t.equal(c.getRemainingTTL('new-stale'), -10)
++
++  const freshCalls: Pair[] = []
++  t.equal(
++    c.find(
++      recording(t, c, freshCalls, key => key === 'fresh'),
++      {
++        allowStale: true,
++        updateAgeOnGet: true,
++      },
++    ),
++    'F',
++  )
++  t.same(freshCalls, [
++    ['new-stale', 'N'],
++    ['fresh', 'F'],
++  ])
++  t.same(order(c), ['fresh', 'new-stale', 'old-stale'])
++  t.equal(c.size, 3)
++  t.equal(c.getRemainingTTL('old-stale'), -10)
++  t.equal(c.getRemainingTTL('fresh'), 100)
++  t.equal(c.getRemainingTTL('new-stale'), -10)
++  t.end()
++})
++
++t.test('fresh matches promote and only requested matches refresh', t => {
++  for (const updateAgeOnGet of [false, true]) {
++    let now = 100
++    const c = makeCache(() => now)
++    c.set('older', 'A', { ttl: 100 })
++    c.set('newer', 'B', { ttl: 100 })
++    now = 120
++
++    const calls: Pair[] = []
++    t.equal(
++      c.find(
++        recording(t, c, calls, key => key === 'older'),
++        {
++          updateAgeOnGet,
++        },
++      ),
++      'A',
++    )
++    t.same(calls, [
++      ['newer', 'B'],
++      ['older', 'A'],
++    ])
++    t.same(order(c), ['older', 'newer'])
++    t.equal(c.getRemainingTTL('older'), updateAgeOnGet ? 100 : 80)
++    t.equal(c.getRemainingTTL('newer'), 80)
++  }
++
++  let now = 100
++  const c = makeCache(() => now)
++  c.set('older', 'A', { ttl: 100 })
++  c.set('newer', 'B', { ttl: 100 })
++  now = 120
++  const calls: Pair[] = []
++  t.equal(
++    c.find(
++      recording(t, c, calls, () => false),
++      {
++        updateAgeOnGet: true,
++      },
++    ),
++    undefined,
++  )
++  t.same(calls, [
++    ['newer', 'B'],
++    ['older', 'A'],
++  ])
++  t.same(order(c), ['newer', 'older'])
++  t.equal(c.size, 2)
++  t.equal(c.getRemainingTTL('older'), 80)
++  t.equal(c.getRemainingTTL('newer'), 80)
++  t.end()
++})
