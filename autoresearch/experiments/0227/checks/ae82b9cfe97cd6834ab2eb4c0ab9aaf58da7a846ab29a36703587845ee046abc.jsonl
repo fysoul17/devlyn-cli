@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-30T07:37:15.315Z", "finding_key": "ae82b9cfe97cd6834ab2eb4c0ab9aaf58da7a846ab29a36703587845ee046abc", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0227/check-scripts/P3-forced-failure-cache-hit.sh", "script_sha256": "8d26c341f178b8d9d62c3df58054ddc7a88c4be2ed208dfdb791a1a614e18699", "task": "P3"}

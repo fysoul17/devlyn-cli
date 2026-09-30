@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-30T07:37:35.070Z", "finding_key": "a5fb6d6b2199fb17c1724c52e72095cd691a3c5b088f23915db1f70ec7b3a495", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0227/check-scripts/P4-docstring-reset-accuracy.sh", "script_sha256": "8c3066f9565f19de928ec40b78b292af5f96975d37918066cdccbf765ce2a0be", "task": "P4"}

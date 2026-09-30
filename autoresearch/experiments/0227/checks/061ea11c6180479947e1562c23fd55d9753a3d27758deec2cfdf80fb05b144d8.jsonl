@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-30T07:31:54.712Z", "finding_key": "061ea11c6180479947e1562c23fd55d9753a3d27758deec2cfdf80fb05b144d8", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0227/check-scripts/J3-failure-preserves-state.sh", "script_sha256": "e1762b686555e3b26e88cd992f9ea1d27c9979310a813ea944873f0915376676", "task": "J3"}

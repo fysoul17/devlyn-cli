@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-30T07:27:51.638Z", "finding_key": "2ce7cbcb53c3d05f229e07b9b37d70e08c3f496ece2fa866b925c602909a52f4", "results": {"base": true, "reference": true, "twin": false}, "script": "autoresearch/experiments/0227/check-scripts/J1-min-ttl-equality-hit.sh", "script_sha256": "c63965649232e60423b8f4205ec67ed2093df09e19f325d20e069260183620da", "task": "J1"}
