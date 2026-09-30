@@ -43,7 +43,8 @@ Registered consequence: steps 2–5 stay held. No automatic fix-and-rescreen: an
 
 ## What changed from 0226
 
-- Both registered causes are gone: 0 rejected Claude outputs (0226: 3), 0 BLOCKED rounds (0226: 5; the Codex BLOCKEDs on an unevidenced "offline, with Node 22" condition), and the fresh specs state no unevidenced execution condition.
+- Neither registered failure recurred: 0 rejected Claude outputs (0226: 3) and 0 BLOCKED rounds (0226: 5; the Codex BLOCKEDs on an unevidenced "offline, with Node 22" condition). No seat raised an execution-condition finding.
+- One unevidenced execution condition remains in the corpus: P1–P4 `spec.md:44` say "Run from the repository root". Their commands use repository-relative paths (`typing_tests`, `.`, `src/attr/*.pyi`), but no command asserts or records the working directory, although B2 removed the equivalent J wording. The calibration reviews did not flag it; Astra's record check did.
 - The new failure is of a different kind: one Codex primary read "existing eviction disposal behavior" as immediate delivery and blocked a correct reference. Two further Codex NEEDS_WORK verdicts on reference rounds rested on coverage findings only.
 
 ## Predictions (registered before the fix and any probe)
