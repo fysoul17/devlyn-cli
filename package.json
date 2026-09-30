@@ -48,5 +48,17 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fysoul17/devlyn-cli.git"
+  },
+  "dependencies": {
+    "@inquirer/checkbox": "4.3.2"
+  },
+  "devDependencies": {
+    "@xterm/headless": "6.0.0"
+  },
+  "engines": {
+    "node": "^18.17.0 || >=20.5.0"
+  },
+  "scripts": {
+    "test": "node --test scripts/test-installer-menu.cjs"
   }
 }
