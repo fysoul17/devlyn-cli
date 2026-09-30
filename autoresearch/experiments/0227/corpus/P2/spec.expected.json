@@ -1,0 +1,64 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "PATH=\"/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin:$PATH\" PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 HYPOTHESIS_STORAGE_DIRECTORY=\"$TMPDIR/hypothesis\" PYRIGHT_PYTHON_CACHE_DIR=/Users/Shared/devlyn-vr-0227/toolchains/attrs/pyright-cache /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/python -m pytest -q -p no:cacheprovider",
+      "exit_code": 0,
+      "timeout_sec": 600,
+      "stdout_contains": [
+        "passed"
+      ]
+    },
+    {
+      "cmd": "/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/ruff check --no-cache .",
+      "exit_code": 0,
+      "timeout_sec": 120,
+      "stdout_contains": [
+        "All checks passed!"
+      ]
+    },
+    {
+      "cmd": "/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/ruff format --check --no-cache .",
+      "exit_code": 0,
+      "timeout_sec": 120
+    },
+    {
+      "cmd": "PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/mypy --cache-dir=/private/tmp/attrs-author-mypy typing_tests",
+      "exit_code": 0,
+      "timeout_sec": 180,
+      "stdout_contains": [
+        "Success: no issues found"
+      ]
+    },
+    {
+      "cmd": "PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/mypy --cache-dir=/private/tmp/attrs-author-mypy src/attrs/__init__.pyi src/attr/__init__.pyi src/attr/_typing_compat.pyi src/attr/_version_info.pyi src/attr/converters.pyi src/attr/exceptions.pyi src/attr/filters.pyi src/attr/setters.pyi src/attr/validators.pyi",
+      "exit_code": 0,
+      "timeout_sec": 180,
+      "stdout_contains": [
+        "Success: no issues found"
+      ]
+    },
+    {
+      "cmd": "PATH=\"/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin:$PATH\" PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 PYRIGHT_PYTHON_CACHE_DIR=/Users/Shared/devlyn-vr-0227/toolchains/attrs/pyright-cache /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/pyright",
+      "exit_code": 0,
+      "timeout_sec": 180,
+      "stdout_contains": [
+        "0 errors, 0 warnings"
+      ]
+    }
+  ],
+  "required_files": [
+    "src/attr/_funcs.py",
+    "tests/test_hooks.py"
+  ],
+  "forbidden_files": [
+    "pyproject.toml",
+    "tox.ini",
+    ".pre-commit-config.yaml",
+    ".github/workflows/ci.yml"
+  ],
+  "spec_output_files": [
+    "src/attr/_funcs.py",
+    "tests/test_hooks.py"
+  ],
+  "max_deps_added": 0
+}

@@ -1,0 +1,290 @@
+diff --git a/src/index.ts b/src/index.ts
+index 3cc1ab8..c5220bc 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -331,8 +331,9 @@ export namespace LRUCache {
+      * - hit: the item was found in the cache
+      * - stale: the item was found in the cache, but is stale
+      * - miss: the item was not found in the cache
++     * - ttl: the item is fresh, but has less than the requested minimum TTL
+      */
+-    has?: 'hit' | 'stale' | 'miss'
++    has?: 'hit' | 'stale' | 'miss' | 'ttl'
+ 
+     /**
+      * The status of a {@link LRUCache#fetch} operation.
+@@ -608,6 +609,11 @@ export namespace LRUCache {
+     'updateAgeOnHas'
+   > {
+     status?: Status<K, V, FC>
++    /**
++     * Minimum remaining TTL, in milliseconds, required for a hit.
++     * Defaults to 0. Must be a finite, nonnegative number.
++     */
++    minTTL?: Milliseconds
+   }
+ 
+   /**
+@@ -2400,6 +2406,9 @@ export class LRUCache<K extends {}, V extends {}, FC = unknown> {
+    * Will return `false` if the item is stale, even though it is technically in
+    * the cache. The difference can be determined (if it matters) by using a
+    * `status` argument, and inspecting the `has` field.
++   * A positive `minTTL` option requires at least that many milliseconds of
++   * remaining TTL. A fresh item with too little time left reports `ttl` in
++   * `status.has`. Items without an expiration satisfy any valid minimum.
+    *
+    * Will not update item age unless
+    * {@link LRUCache.OptionsBase.updateAgeOnHas} is set.
+@@ -2417,7 +2426,14 @@ export class LRUCache<K extends {}, V extends {}, FC = unknown> {
+     return result
+   }
+   #has(k: K, hasOptions: LRUCache.HasOptions<K, V, FC> = {}) {
+-    const { updateAgeOnHas = this.updateAgeOnHas, status } = hasOptions
++    const {
++      updateAgeOnHas = this.updateAgeOnHas,
++      minTTL = 0,
++      status,
++    } = hasOptions
++    if (!Number.isFinite(minTTL) || minTTL < 0) {
++      throw new RangeError('minTTL must be a finite nonnegative number')
++    }
+     const index = this.#keyMap.get(k)
+     if (index !== undefined) {
+       const v = this.#valList[index]
+@@ -2428,6 +2444,13 @@ export class LRUCache<K extends {}, V extends {}, FC = unknown> {
+         return false
+       }
+       if (!this.#isStale(index)) {
++        if (minTTL > 0 && this.getRemainingTTL(k) < minTTL) {
++          if (status) {
++            status.has = 'ttl'
++            this.#statusTTL(status, index)
++          }
++          return false
++        }
+         if (updateAgeOnHas) {
+           this.#updateItemAge(index)
+         }
+diff --git a/test/has-min-ttl.ts b/test/has-min-ttl.ts
+new file mode 100644
+index 0000000..f40820c
+--- /dev/null
++++ b/test/has-min-ttl.ts
+@@ -0,0 +1,217 @@
++import t from 'tap'
++import { LRUCache } from '../dist/esm/node/index.js'
++
++t.test('minTTL validates present and missing keys', t => {
++  let now = 100
++  const cache = new LRUCache<string, string>({
++    max: 4,
++    ttl: 100,
++    ttlResolution: 0,
++    perf: { now: () => now },
++  })
++  cache.set('a', 'A')
++  now = 175
++
++  for (const minTTL of [-1, NaN, Infinity, -Infinity]) {
++    for (const key of ['a', 'missing']) {
++      t.throws(() => cache.has(key, { minTTL }), RangeError)
++    }
++  }
++  t.equal(cache.has('a'), true)
++  t.equal(cache.has('a', { minTTL: undefined }), true)
++  t.equal(cache.has('a', { minTTL: 0 }), true)
++  t.equal(cache.has('a', { minTTL: 20.5 }), true)
++  t.equal(cache.has('a', { minTTL: 30.5 }), false)
++  t.equal(cache.getRemainingTTL('a'), 25)
++  t.equal(cache.size, 1)
++  t.end()
++})
++
++t.test('minimum checks leave values, order, and callbacks alone', t => {
++  let now = 100
++  const inserted: unknown[] = []
++  const disposed: unknown[] = []
++  const cache = new LRUCache<string, string>({
++    max: 4,
++    ttl: 100,
++    ttlResolution: 0,
++    perf: { now: () => now },
++    onInsert: (...args) => inserted.push(args),
++    dispose: (...args) => disposed.push(args),
++  })
++  cache.set('a', 'A')
++  cache.set('b', 'B')
++  inserted.length = 0
++  now = 175
++
++  const accepted: LRUCache.Status<string, string> = {}
++  t.equal(cache.has('a', { minTTL: 20, status: accepted }), true)
++  t.equal(accepted.has, 'hit')
++  const rejected: LRUCache.Status<string, string> = {}
++  t.equal(cache.has('a', { minTTL: 30, status: rejected }), false)
++  t.equal(rejected.has, 'ttl')
++  t.equal(rejected.ttl, 100)
++  t.equal(rejected.start, 100)
++  t.equal(rejected.now, 175)
++  t.equal(rejected.remainingTTL, 25)
++  t.equal(cache.has('a', { minTTL: 30 }), false)
++  t.same([...cache.keys()], ['b', 'a'])
++  t.equal(cache.peek('a'), 'A')
++  t.equal(cache.size, 2)
++  t.same(inserted, [])
++  t.same(disposed, [])
++  t.end()
++})
++
++t.test('rejection precedes age refresh and never changes recency', t => {
++  let now = 100
++  const inserted: unknown[] = []
++  const disposed: unknown[] = []
++  const cache = new LRUCache<string, string>({
++    max: 4,
++    ttl: 100,
++    ttlResolution: 0,
++    updateAgeOnHas: true,
++    perf: { now: () => now },
++    onInsert: (...args) => inserted.push(args),
++    dispose: (...args) => disposed.push(args),
++  })
++  cache.set('a', 'A')
++  cache.set('b', 'B')
++  inserted.length = 0
++  now = 175
++
++  const rejected: LRUCache.Status<string, string> = {}
++  t.equal(cache.has('a', { minTTL: 30, status: rejected }), false)
++  t.equal(rejected.has, 'ttl')
++  t.equal(rejected.remainingTTL, 25)
++  t.equal(cache.getRemainingTTL('a'), 25)
++  t.same([...cache.keys()], ['b', 'a'])
++
++  const accepted: LRUCache.Status<string, string> = {}
++  t.equal(cache.has('a', { minTTL: 20, status: accepted }), true)
++  t.equal(accepted.has, 'hit')
++  t.equal(accepted.start, 175)
++  t.equal(accepted.remainingTTL, 100)
++  t.equal(cache.getRemainingTTL('a'), 100)
++  t.same([...cache.keys()], ['b', 'a'])
++  t.equal(cache.size, 2)
++  t.same(inserted, [])
++  t.same(disposed, [])
++  t.end()
++})
++
++t.test('per-call age overrides preserve size and order', t => {
++  let now = 100
++  const options = {
++    maxSize: 20,
++    ttl: 100,
++    ttlResolution: 0,
++    perf: { now: () => now },
++  }
++  const ageByDefault = new LRUCache<string, string>({
++    ...options,
++    updateAgeOnHas: true,
++  })
++  const noAgeByDefault = new LRUCache<string, string>({
++    ...options,
++    updateAgeOnHas: false,
++  })
++  for (const cache of [ageByDefault, noAgeByDefault]) {
++    cache.set('a', 'A', { size: 3 })
++    cache.set('b', 'B', { size: 4 })
++  }
++  now = 175
++  t.equal(
++    ageByDefault.has('a', { minTTL: 20, updateAgeOnHas: false }),
++    true,
++  )
++  t.equal(ageByDefault.getRemainingTTL('a'), 25)
++  t.equal(
++    noAgeByDefault.has('a', { minTTL: 20, updateAgeOnHas: true }),
++    true,
++  )
++  t.equal(noAgeByDefault.getRemainingTTL('a'), 100)
++  for (const cache of [ageByDefault, noAgeByDefault]) {
++    t.equal(cache.size, 2)
++    t.equal(cache.calculatedSize, 7)
++    t.same([...cache.keys()], ['b', 'a'])
++  }
++  t.end()
++})
++
++t.test('unbounded lifetimes, misses, and the stale boundary', t => {
++  let now = 100
++  const untracked = new LRUCache<string, string>({ max: 4 })
++  const tracked = new LRUCache<string, string>({
++    max: 4,
++    ttl: 100,
++    ttlResolution: 0,
++    ttlAutopurge: false,
++    perf: { now: () => now },
++  })
++  untracked.set('a', 'A')
++  tracked.set('a', 'A', { ttl: 0 })
++  for (const cache of [untracked, tracked]) {
++    t.equal(cache.has('a', { minTTL: 1000000 }), true)
++    t.equal(cache.getRemainingTTL('a'), Infinity)
++    const status: LRUCache.Status<string, string> = {}
++    t.equal(cache.has('missing', { minTTL: 1000000, status }), false)
++    t.equal(status.has, 'miss')
++    t.equal(cache.size, 1)
++  }
++
++  tracked.set('expiring', 'E')
++  now = 200
++  t.equal(tracked.has('expiring', { minTTL: 0 }), true)
++  now = 201
++  const stale: LRUCache.Status<string, string> = {}
++  t.equal(tracked.has('expiring', { minTTL: 20, status: stale }), false)
++  t.equal(stale.has, 'stale')
++  t.equal(tracked.peek('expiring', { allowStale: true }), 'E')
++  t.equal(tracked.size, 2)
++  t.end()
++})
++
++t.test(
++  'pending fetches retain their previous value and complete',
++  async t => {
++    let now = 100
++    const resolvers = new Map<string, (value: string) => void>()
++    const signals = new Map<string, AbortSignal>()
++    const cache = new LRUCache<string, string>({
++      max: 4,
++      ttl: 100,
++      ttlResolution: 0,
++      ttlAutopurge: false,
++      perf: { now: () => now },
++      fetchMethod: (key, _, { signal }) => {
++        signals.set(key, signal)
++        return new Promise<string>(resolve => resolvers.set(key, resolve))
++      },
++    })
++    const pendingMiss = cache.fetch('m')
++    cache.set('a', 'A')
++    const pendingRefresh = cache.fetch('a', { forceRefresh: true })
++    now = 175
++
++    t.equal(cache.has('m', { minTTL: 20 }), false)
++    const accepted: LRUCache.Status<string, string> = {}
++    t.equal(cache.has('a', { minTTL: 20, status: accepted }), true)
++    t.equal(accepted.has, 'hit')
++    t.equal(cache.has('a', { minTTL: 20 }), true)
++    const rejected: LRUCache.Status<string, string> = {}
++    t.equal(cache.has('a', { minTTL: 30, status: rejected }), false)
++    t.equal(rejected.has, 'ttl')
++    t.equal(cache.peek('a'), 'A')
++    t.equal(signals.get('m')?.aborted, false)
++    t.equal(signals.get('a')?.aborted, false)
++
++    resolvers.get('m')?.('M')
++    resolvers.get('a')?.('new A')
++    t.equal(await pendingMiss, 'M')
++    t.equal(await pendingRefresh, 'new A')
++    t.equal(cache.peek('m'), 'M')
++    t.equal(cache.peek('a'), 'new A')
++  },
++)

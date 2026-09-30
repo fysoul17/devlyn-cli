@@ -1,0 +1,153 @@
+{
+  "task": "P2",
+  "files": {
+    "reference": [
+      "src/attr/_funcs.py",
+      "tests/test_hooks.py"
+    ],
+    "twin": [
+      "src/attr/_funcs.py",
+      "tests/test_hooks.py"
+    ]
+  },
+  "base": {
+    "oracle": {
+      "P2-O1": false,
+      "P2-O2": false,
+      "P2-O3": false,
+      "P2-O4": false,
+      "P2-O5": true,
+      "P2-O6": false
+    },
+    "oracle_exit": 0
+  },
+  "reference": {
+    "public": [
+      {
+        "cmd": "PATH=\"/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin:$PATH\" PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 HYPOTHESIS_STORAGE_DIRECTORY=\"$TMPDIR/hypothesis\" PYRIGHT_PYTHON_CACHE_DIR=/Users/Shared/devlyn-vr-0227/toolchains/attrs/pyright-cache /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/python -m pytest -q -p no:cacheprovider",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "................................................ [ 90%]\n........................................................................ [ 95%]\n.................................................................        [100%]\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_slots.py:517: slots without weakref_slot should only work on PyPy\nXFAIL tests/test_setattr.py::TestSetAttr::test_slotted_confused\nXFAIL tests/test_slots.py::test_slots_cached_property_infers_type - 3.14 does not infer the type anymore.\n1502 passed, 1 skipped, 2 xfailed in 34.10s\n"
+      },
+      {
+        "cmd": "/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/ruff check --no-cache .",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "All checks passed!\n"
+      },
+      {
+        "cmd": "/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/ruff format --check --no-cache .",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "96 files already formatted\n"
+      },
+      {
+        "cmd": "PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/mypy --cache-dir=/private/tmp/attrs-author-mypy typing_tests",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "Success: no issues found in 3 source files\n"
+      },
+      {
+        "cmd": "PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/mypy --cache-dir=/private/tmp/attrs-author-mypy src/attrs/__init__.pyi src/attr/__init__.pyi src/attr/_typing_compat.pyi src/attr/_version_info.pyi src/attr/converters.pyi src/attr/exceptions.pyi src/attr/filters.pyi src/attr/setters.pyi src/attr/validators.pyi",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "Success: no issues found in 9 source files\n"
+      },
+      {
+        "cmd": "PATH=\"/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin:$PATH\" PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 PYRIGHT_PYTHON_CACHE_DIR=/Users/Shared/devlyn-vr-0227/toolchains/attrs/pyright-cache /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/pyright",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "0 errors, 0 warnings, 0 informations\n"
+      }
+    ],
+    "rewritten_by_public": [],
+    "oracle": {
+      "P2-O1": true,
+      "P2-O2": true,
+      "P2-O3": true,
+      "P2-O4": true,
+      "P2-O5": true,
+      "P2-O6": true
+    },
+    "oracle_exit": 0
+  },
+  "twin": {
+    "public": [
+      {
+        "cmd": "PATH=\"/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin:$PATH\" PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 HYPOTHESIS_STORAGE_DIRECTORY=\"$TMPDIR/hypothesis\" PYRIGHT_PYTHON_CACHE_DIR=/Users/Shared/devlyn-vr-0227/toolchains/attrs/pyright-cache /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/python -m pytest -q -p no:cacheprovider",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "...................................... [ 90%]\n........................................................................ [ 95%]\n.................................................................        [100%]\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_slots.py:517: slots without weakref_slot should only work on PyPy\nXFAIL tests/test_setattr.py::TestSetAttr::test_slotted_confused\nXFAIL tests/test_slots.py::test_slots_cached_property_infers_type - 3.14 does not infer the type anymore.\n1502 passed, 1 skipped, 2 xfailed in 88.20s (0:01:28)\n"
+      },
+      {
+        "cmd": "/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/ruff check --no-cache .",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "All checks passed!\n"
+      },
+      {
+        "cmd": "/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/ruff format --check --no-cache .",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "96 files already formatted\n"
+      },
+      {
+        "cmd": "PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/mypy --cache-dir=/private/tmp/attrs-author-mypy typing_tests",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "Success: no issues found in 3 source files\n"
+      },
+      {
+        "cmd": "PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/mypy --cache-dir=/private/tmp/attrs-author-mypy src/attrs/__init__.pyi src/attr/__init__.pyi src/attr/_typing_compat.pyi src/attr/_version_info.pyi src/attr/converters.pyi src/attr/exceptions.pyi src/attr/filters.pyi src/attr/setters.pyi src/attr/validators.pyi",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "Success: no issues found in 9 source files\n"
+      },
+      {
+        "cmd": "PATH=\"/Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin:$PATH\" PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 PYRIGHT_PYTHON_CACHE_DIR=/Users/Shared/devlyn-vr-0227/toolchains/attrs/pyright-cache /Users/Shared/devlyn-vr-0227/toolchains/attrs/venv/bin/pyright",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "tail": "0 errors, 0 warnings, 0 informations\n"
+      }
+    ],
+    "rewritten_by_public": [],
+    "oracle": {
+      "P2-O1": true,
+      "P2-O2": true,
+      "P2-O3": false,
+      "P2-O4": true,
+      "P2-O5": true,
+      "P2-O6": true
+    },
+    "oracle_exit": 0
+  },
+  "verdict": {
+    "same_files": true,
+    "reference_public_pass": true,
+    "twin_public_pass": true,
+    "public_rewrote_nothing": true,
+    "reference_oracle_all_true": true,
+    "twin_oracle_failed_rows": [
+      "P2-O3"
+    ],
+    "base_oracle_failed_rows": [
+      "P2-O1",
+      "P2-O2",
+      "P2-O3",
+      "P2-O4",
+      "P2-O6"
+    ]
+  }
+}

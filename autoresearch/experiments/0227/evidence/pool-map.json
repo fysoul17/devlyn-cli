@@ -1,0 +1,732 @@
+{
+  "024280286cfa5b5dfbb85013f30df84642efbcd335335dd9a51b61d43c9d352b": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "20c41ad6bd67"
+  },
+  "03634d076c055c830ad3104b74823f7a4a6b4d00012f44e9db7135c9befa7758": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "8547831edfa9"
+  },
+  "0376c0e4d22772e479cd05d3a19a11a9f7c6d44e3aa71057a202ab8062c3b629": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "b26f932d4fb2"
+  },
+  "03b82f2ab8ad06fd10ddcebaf0584ea818a8bb0ed6531b84465464b54fb127c8": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "6ae5fd64c95a"
+  },
+  "04af2c9a7a00af2ce10c0532db4fe3f0dd5c2d3ff8cea851d3c01de731c68a96": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "ded821ed66e6"
+  },
+  "050fdfdd09e65dab752572bdc16b22f4ce1f4691c31e287efa1246cb5b97d773": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "989daf7aa627"
+  },
+  "061ea11c6180479947e1562c23fd55d9753a3d27758deec2cfdf80fb05b144d8": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "05f4b0744c2a"
+  },
+  "06ecca0ec4f4ebd82e4702812ea965886546ef0ea54055e07f24726b34453f4a": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "21033c62caf9"
+  },
+  "07dddf1e3766bfe395f9441ed66ab299ff283a8d09acec0b800c28c19f4ea171": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "4416f495c506"
+  },
+  "0b07080b13e7150d339ed08bd9d96302353e1aa0bcdf844563507d821677f7a0": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "4416f495c506"
+  },
+  "0b900a0d36a588d5ea6bb19d208bc65a784191ba5922a8abe0345edbd9146d37": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "845bfe405bae"
+  },
+  "0cbf5c452000d0354c96d29f2f221b3bf13f4be5aab051f584d8559ea2350362": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "c7adffe31dbe"
+  },
+  "0f26bb175d84ce538ab63360b066020c652e5d5c51b004d651f0415ae508fb15": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "7048b34e724e"
+  },
+  "12a094208813e689d5cd0cd776888752b8d8b589638af5d50941ff3b02a49cbe": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "f6634cfb3793"
+  },
+  "156637e54676cb18e357f3c65a1c123998a6e910ad08777be7ef1d44b2082813": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "069274fdf9cf"
+  },
+  "15fc4db04129822aa4ab03b3e419df9d333c472a663d4bec9e3bcf0a95292857": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "8a968917d027"
+  },
+  "16a4fa207bd19c03455f1397dcf233176f309332679c0baee50ffdc612c2e165": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "52a829b020a9"
+  },
+  "18462957b162fd5dc77dd16660b7f83dfb1ad8490929a0a8cf30fb58b1fcbb3c": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "257a946a7d54"
+  },
+  "1acb7fba7e3bbdd93965de10b612c20f1354034ba644e77a83758a98079b8266": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "659ff8c51d2a"
+  },
+  "1d616b3129b19f06447519dda61c1d53669dfb07bf07930800f26441866d2eeb": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "257736e728f9"
+  },
+  "1f3ab2bd2b87277856dc31d3dc23366e8011b088bdb8161b8f61307f818f7d06": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "ded821ed66e6"
+  },
+  "231c54bfdddfd351cad99b598ab0014a43ddde183ac1cc94fc89a77788973203": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "21033c62caf9"
+  },
+  "23fac7c78760ea9630ea67f7363f13431a9ad7416688d1984af445e1d02b4f3e": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "a15b39bba851"
+  },
+  "257ebd89eb515c5164817c5ada8128c895712c432c2bf1c76435578872df56a6": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "05ae486fac3d"
+  },
+  "2a4e90c26c16debd3c9da40a1deda45f52c70736276a69916f2002bd36bf00e8": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "80cf506f32be"
+  },
+  "2afc6de2fc85461d8215f42483cc8c64d040b4356215da92f40719ffcdc923aa": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "e4e7043df4dc"
+  },
+  "2c14ecaf820be8eab114e616259e4100d0c6e3aa61548529b17bc9a5c16acde9": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "488c710e81a1"
+  },
+  "2c64c00ffea170e474f177eb747439d4b47d72bbbdfa6de1f1164123be0135d1": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "069274fdf9cf"
+  },
+  "2ce7cbcb53c3d05f229e07b9b37d70e08c3f496ece2fa866b925c602909a52f4": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "20c7b7182813"
+  },
+  "2e0d7f1cd17dd9c79be52d2a7c2390935d63d335c555f9d31e1fa4ba86b7761f": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "b72b0fef173a"
+  },
+  "2e9aae88d84d189c230a0a2e2c4f663c1e46cb7ee2036d3962da08e6a48a9df3": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "e044bbb86d67"
+  },
+  "2ef15cc33ddac23cf86fa039b6af91e19466b883e0a1430274269456ff37a061": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "9fd187a2694d"
+  },
+  "2f2b0f4f48530031e99c02450f4c31a9d6f3da5520075332b73d0a4bec1acf0c": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "ea5c4901aec8"
+  },
+  "30021ae9625dc2e6450cc176fdb4e1414bdf90416382cb8eab9814d6f49e2247": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "3de03b6cf16e"
+  },
+  "32f43958895de1ae7d0412e86599ae522ae06bbc8e8e170c27ef517c49b67484": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "3a1ebc525b07"
+  },
+  "33cdf2272e10619e967a8820f07cde1c95705ff522923d7a3847f55d9cb3293e": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "67229b90182a"
+  },
+  "386ffd40e815241faac257d9ff29507ebb7c1df4c206de3445e9a311b268a4bd": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "c7adffe31dbe"
+  },
+  "389ea1f4aa9e4a13337c6d7695693c33ca1055c4e1b73a011c0cf641f54f688d": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "b9cb78971f07"
+  },
+  "39185d0528b7939ca06591972a08a2d90142373c6f3e8df3da8a014c1b3b396f": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "7048b34e724e"
+  },
+  "39def3aa5037742d707ee432dbae4e2f9a647ecd9b916d5d24238e60a4306ac8": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "b26f932d4fb2"
+  },
+  "3d9f90ed353fecb7c24a458961828144fd506292fd5e34c8789a87916e3de25d": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "3a1ebc525b07"
+  },
+  "3f38a557fb4dd05b4eb07f304c555f9ed5cfb67ab7221e451d9afa1cc04f9640": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "b1d685df922b"
+  },
+  "3f4bb08bc9ca3c12e942e635010aa6187e9f6049f6f0eda8eb7cea069021f0b6": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "2386eb38082c"
+  },
+  "3fadafad85c6b48a18a0026158de6b3339b40cc9f78db0b7ae71b8778a1c220c": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "20c41ad6bd67"
+  },
+  "474da4ceca1857d85203305c2bf4471c0eb863d8541c64eab60afb51133585b7": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "ded821ed66e6"
+  },
+  "47788d635edfe694bdca6879524d7ef918374f3795998e91b53e96400de41e3b": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "3fc0ce83c110"
+  },
+  "47b0b6805d26410ea4ffb39e680fde423964fe20a2b65754956d948cb4f5ffe5": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "727f655fdbe3"
+  },
+  "4de03fe3c3079ad1c29f9bc47489f858bf70be108281054fd05dfa5a1a41259b": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "e044bbb86d67"
+  },
+  "4f160373b8ef86398017dc6a943c7350156c9e5623ba99f513a5130845509b8d": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "1801a5478ae8"
+  },
+  "52121c7a1ab36f929b907afacd75f6eea8e4bb89aebae34063d9ae5f3bb874e6": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "4f3a6e35496f"
+  },
+  "5217eb0d3ff83c563daad526a18961616e876c2cd0c3b363cff729b76d18ad7b": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "2539f7525fdd"
+  },
+  "54b315a7c0c5ac2229e15e13c3f16dc73a76562f5f8a0a5e4e770af4d3b5389f": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "bf57594baa50"
+  },
+  "5920e7846c307a68c1d938eae0baca724841a4be7212ff92bf84696f7c62d1e9": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "3de03b6cf16e"
+  },
+  "592bb824b6b1d4f3d881e89cd2150745e0560e49220ce9118fb419919e773043": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "ded821ed66e6"
+  },
+  "5a59579874e6cc9335b68acc0920bbe33cb3feb974e350e37b9eb3d8b170d5cc": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "a15b39bba851"
+  },
+  "5a76dcf603ed2562db0a71c3b44f38661ea6417619130d75c1edc61e1c3fe904": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "996256572a81"
+  },
+  "5c1ab23d284b952a66dee7936ab1e1bd7fa7ec4de010cdb3a3942de50cbeec2d": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "6ae5fd64c95a"
+  },
+  "5d83bcdf1781e1f4196b26656f3fb09ce8b3aebefe5edb20238843d1b2b2dea9": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "2539f7525fdd"
+  },
+  "5f0e7b07b048bdd009be68f4829afc5cabcf526443ff3378a774dc41e48eaf76": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "2386eb38082c"
+  },
+  "5fff53f71a6abb2f23544d67b81ff0031254f284023c3f934d4bd7524b350cba": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "966cb04be78d"
+  },
+  "6084c94f3456725c5aec3a8bd53d939997e3a7390ec91c31cdad2e5a4169ef5d": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "8941d61182a2"
+  },
+  "60979836444bfb8f53d2498d1b6c4edbca64d6c715851d60dca4daf8465b8079": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "e4e7043df4dc"
+  },
+  "60f24c6c4b568ab3a51410fb43daac7ff5072480b12a2b39c128f22d90514fcf": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "855bfdec332a"
+  },
+  "61b4768c2adc7ea891b2633311c684743bd5d203c811ce4ede8f10909b819b75": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "1801a5478ae8"
+  },
+  "6205c5b4f3632a01ff5f20a0f6c453140867cfe1719b05e7424f2167f6c13817": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "948534cf9d91"
+  },
+  "64af477bcf2717ee7c94d479010586a8d05d0e0841d1bb0da5b02147f0725e3c": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "5e381d4dbe46"
+  },
+  "64ecba04c2e14a0afa31cb5d23a92964853e1feac8e01897db981f73d03c3bad": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "ee021bc1e49c"
+  },
+  "6ab6b91d09c4fc8046659428950ccdc60a7cac9d29c0a89d9f4aedde81c75c42": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "727f655fdbe3"
+  },
+  "6ac6f0b895d34510c1be31243523bdc3f90a7dac9cdca0d23ea52179afc7a05f": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "410c17d3bb24"
+  },
+  "6c43f1986a2c3adeda3fee0b841b53a2831285314f3b6d98a3c6760fb5dd0347": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "257736e728f9"
+  },
+  "6c8e47b9c749577d95ef453213570020e3c87434c0cb139e5b33197ca281c485": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "069274fdf9cf"
+  },
+  "6d25ae9403f08f16a9feccf5cc8eae9657add429be59e3c30626af261ca45af7": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "20c41ad6bd67"
+  },
+  "6e3751e9d68e165259c9b5c1a573b4a24a2f5b17e46868b826f3e6ece8c6fbda": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "8705d1d83285"
+  },
+  "7336ec9195408d787d988c5c2a9a9203905475ccf36fdfb2e3ec0090133ad2e5": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "52a829b020a9"
+  },
+  "76c5215f72ef25185b8f1822c0de6e365e8834e25c97b3ec4b8350544db1fcc0": {
+    "index": 2,
+    "seat": "pair_judge",
+    "token": "659ff8c51d2a"
+  },
+  "7856d5e4d40eee7f22f9c15408f9facb9b2e05da233de46bf364de468f53162e": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "20c7b7182813"
+  },
+  "7c25953f68a8b7500d41a446e2b7f1a164e248d9324f4bce52dc38d1e44a6145": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "bf57594baa50"
+  },
+  "7c9f203283fff21847214eebf9e0462503421b0c714550a3d645414d14081338": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "384dbfe260f0"
+  },
+  "7f95bfbed8062a45ef3bbded9f863faa34432579f63cd79a1e234ca02a1fb680": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "996256572a81"
+  },
+  "8261e10ebe6ea4e812ec8a3efa8cf959676f507c34aa6763d32d291e1bb13b6d": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "966cb04be78d"
+  },
+  "82b31ebbf5c17ac7aff5157a984dd18913827725edeb6b7325c18d782035b02d": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "2539f7525fdd"
+  },
+  "8631c21362b386d874b3768cb2b4da92c74ef3a59f377602c7ee79dfaf1e41e1": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "a15b39bba851"
+  },
+  "880af6a38996ec6b1ecb58006e2c3ff4163c6e92d523985b15edd6dc67e1c831": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "04b4743ed989"
+  },
+  "88711ff49d4964196c3c01afb4fb3a52e2623bd31243be4c2915a39d8947c1f3": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "04b4743ed989"
+  },
+  "8e4a971279a922d1df7239e81165d2c81573bb33abe88ae19d438f3a707bab20": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "04b4743ed989"
+  },
+  "8f491f885dccc67331f4a59537b5582a7b4573cfe694c36e220d0cf77a6f6ad6": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "05f4b0744c2a"
+  },
+  "903c8815ff631352cc44d06a3d66dc3fcbb2aa387eec44f3e3be5eab09ab4e49": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "05f4b0744c2a"
+  },
+  "929895a13e2ce04c667ef62113648b5e309ce44a045d28773743d0eb3a31703d": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "c7adffe31dbe"
+  },
+  "93a0f875cec61d5e2d65f25e426b317d75c3c11385c7297009d8fae458380349": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "3fc0ce83c110"
+  },
+  "9a269ce9be94801933389da5f0d1880efaceffe26cba5306d541d51f54f838eb": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "21033c62caf9"
+  },
+  "a5b7f19117a17ce45aaccbb8e31723b8688fe5f2a2339cf9fdd268e157491df1": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "a15b39bba851"
+  },
+  "a5fb6d6b2199fb17c1724c52e72095cd691a3c5b088f23915db1f70ec7b3a495": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "ea5c4901aec8"
+  },
+  "a62cabd4444fb86aca302b9ee50e63dfa4e277a3952fdcb9c770d172b234d177": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "e044bbb86d67"
+  },
+  "a7a15e56a49f99d2824194f221c8cb38f7fa398de84c0ecb8b3f8cd4925db6f8": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "b26f932d4fb2"
+  },
+  "aa9d36451382d8b867325156cf8a65d0b320cbb52811c907d11829c34daeba13": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "5e381d4dbe46"
+  },
+  "ac6992b0b0d5b4ba217f535a5ae03f9260ca980593576eacfafc76c240f359e0": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "989daf7aa627"
+  },
+  "ae82b9cfe97cd6834ab2eb4c0ab9aaf58da7a846ab29a36703587845ee046abc": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "257736e728f9"
+  },
+  "b193a0349813bc5a2fac0d5f122fe3471789f4cab54916af60555b32a33b065f": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "4f3a6e35496f"
+  },
+  "b48d417fc9ed1dd55328b60a59bbac5c6ce4d219eecfd579f355af959fe6638e": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "4f3a6e35496f"
+  },
+  "b60df3b84a209ed06604c42d875b4f6530c25b6ac69c39f9e9ace311ec20e2b2": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "05ae486fac3d"
+  },
+  "b93ac196262fbb3efc0fcd32d153bdff8ef90aba56ad7b60f468c598b86dc8cf": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "5e381d4dbe46"
+  },
+  "b9e38c545c290513c513bb471eacd02ba4c6bff5bfeca9dcb5324aecea61fa9b": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "384dbfe260f0"
+  },
+  "baaa613e1c1121c199422d7e90fc567bf54d532121691aa04a5386ae72b3cd19": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "e4e7043df4dc"
+  },
+  "bba3726f8504eee12888847f383b0ace00db2120f0025e5f2de542784adea679": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "ea5c4901aec8"
+  },
+  "bc385df918ef5f273187d6d990552eeba8172e438192a370a562026f5e07f66a": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "2c8e19c3e7af"
+  },
+  "bcdc34a7f14b0ebc241a4e1ef1c3857a156c88a5676ce566e1ea94912b12bb60": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "b72b0fef173a"
+  },
+  "bddd0d06a2d59b39f92ed2fb65273f4c95946436bd6d1835fc9bd3ee296c91ea": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "a27481bc7cc8"
+  },
+  "c051e9e35116b162b0edeebe5335924e7e667a2b5f9f020428083336ceb85e4d": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "bf57594baa50"
+  },
+  "c28bede2fee9cb31fdb11052ad151b914158374a61bc53bf8131c587b7188e92": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "410c17d3bb24"
+  },
+  "c2d386d5d05722e3cd4764cba07bb7e5188b2e45d4a341ebf334afc15a7b71b9": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "6f89d26e0ccb"
+  },
+  "c409bb422c09e81ce995029d6db5d0c2975dcedf04c8ee35a180a34a95f8c94f": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "989daf7aa627"
+  },
+  "c56d254afcc3b96f8537c4197697246a8628fb1fc6e13f0ac1c2bb7abe80d16a": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "3fc0ce83c110"
+  },
+  "c584ebde1fe343d702abe7593b64153cc953d98074a2e7f734a52a5926a8a14a": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "3de03b6cf16e"
+  },
+  "c5913e072e6bd55503c412b0fb495363696e6156614c4878aa9b22d9cd57a1b7": {
+    "index": 3,
+    "seat": "primary_judge",
+    "token": "ded821ed66e6"
+  },
+  "c7fa68fba4651f274f567edcd2c26ae850519ba504e09d4f7fe728f98b52b7a3": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "8941d61182a2"
+  },
+  "c8d4b553f6f5589193a6784dd9f494b6f061e24dccf459a28b23dcce01a074a2": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "948534cf9d91"
+  },
+  "c9fbe12abfe782d9f9f8a2605f45ce31c906297cfe4c6465024fc7dca2442d8a": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "384dbfe260f0"
+  },
+  "ca3cf60500faa105575801410eb21bcfc21a8422f1b66479323f426b437a9274": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "e044bbb86d67"
+  },
+  "caffd8b1b7bdc5ef98939eb002241f3d9ee62d3bd3a92253ba8d36633854617a": {
+    "index": 3,
+    "seat": "primary_judge",
+    "token": "3de03b6cf16e"
+  },
+  "cb16c9bdf18b86e1ca6d7193a287b534c098ae35741a75974a97e1931cbafc14": {
+    "index": 3,
+    "seat": "primary_judge",
+    "token": "2539f7525fdd"
+  },
+  "cce192866548ed7f0a20cf00fb79d9feab5afc3ee7db7354e4d0cc805239a65c": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "ea5c4901aec8"
+  },
+  "ccf95a8cdfe201cb12e9726a9db059dcb0bb9d73b94e9681cdf168fb075bce8f": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "6ae5fd64c95a"
+  },
+  "cee03e98d40f48a2289080b4986fa98299f29ca6dc177b31a7f51358e86f6806": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "20c7b7182813"
+  },
+  "cfe5a6c7beb1ac2d432f11e2294f4386ff214c92481435f41c54c7507b8873b1": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "2539f7525fdd"
+  },
+  "d087d7ce01fe42d6d79aaad735089ac6caf3bd97e3e65c1faa57fb0b3e311d94": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "659ff8c51d2a"
+  },
+  "d27bb0869f2f2a7e6ef86257b63eb1ec42112f6ecd9ee8011e7ff07bf27c540c": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "b9cb78971f07"
+  },
+  "d3c0afcb66882b031daa3f466c021436e338ac75468f5ae888b83c5d0d455224": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "aeb1f8d1a7ae"
+  },
+  "d6f8b6ff2536be024eee29535c80245d357c6f7c1c95dc08458bd504c21c0c3d": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "8705d1d83285"
+  },
+  "d94993d3fad8eedeb771edda81d8958788f7759df44f67ee1d8b9f75e7b6f271": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "2c8e19c3e7af"
+  },
+  "df4745e96d24a8986eb3a6be25e5f67345c36457ecb160354dca3032193bf248": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "5e381d4dbe46"
+  },
+  "e09c68101b94ce2f90185afe8299e038137f953c5c1b80c450c666f684f1fa96": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "04b4743ed989"
+  },
+  "e0d7c777d89317b3fe460e4f3b97b19bc2ce9e908241ba17da4762682175df03": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "845bfe405bae"
+  },
+  "e1168797d4e7f9e82f2b6db19f34d465f8a40599af0abb7c24a58bf0ec623595": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "2386eb38082c"
+  },
+  "e30561844c9b107e915293087032b2f4ea0815018afecba31774121c8d7c694a": {
+    "index": 1,
+    "seat": "pair_judge",
+    "token": "e03b56cd2b47"
+  },
+  "e5a5fdeb923ac8866c1c85c527e2d5538a7243a89ec6b207a54ad0dcf093ec84": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "727f655fdbe3"
+  },
+  "eac739fd1159eab6bb3ab48ec316b27bbdae22e82a957668e4626fb478130fb5": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "20c7b7182813"
+  },
+  "ed6b2663155e9f7736497dee41f47feaa728f44ebe979d3e064c395d3af58c90": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "3de03b6cf16e"
+  },
+  "f0e98480c1f956ca6ec2ca81b81294526fcd2f59f183f077f78d870877324f2a": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "8705d1d83285"
+  },
+  "f2de1e8861dd646a85700a99ec6ec3c74fb98398ae267e732cc71ad7459b0815": {
+    "index": 2,
+    "seat": "primary_judge",
+    "token": "3fc0ce83c110"
+  },
+  "f35d6878bf43981aec0abf20444cac5a67c85bf01bec79f5f79dc257a5fa3807": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "e03b56cd2b47"
+  },
+  "f61cc285da09f7d66713e15c115bea144bdf664ee22c509178107135d9fa73c8": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "966cb04be78d"
+  },
+  "f691fd4e165ab90653a731f196b19efe63c3ecaa79ef5352bc8e226f33005d2e": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "3a1ebc525b07"
+  },
+  "f8cc2b1ff3b9c1e68bda8504ed50047b357f9fe26dd7c6de7f4812eff6d33ccd": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "52a829b020a9"
+  },
+  "fb9a7a6aa5191d33c80e7d2b4c1e5583fe38c7058d49f622cab82e5e47a03239": {
+    "index": 1,
+    "seat": "primary_judge",
+    "token": "e4e7043df4dc"
+  },
+  "fdfbbadc6e0944f48e2bce9cf11a5ff5e164aa3227daf2b11d856e5c01e8ef47": {
+    "index": 0,
+    "seat": "pair_judge",
+    "token": "80cf506f32be"
+  },
+  "fffc64d8f7e848715fb6f3e4bc2af51416b84dc5c647d05fa410020eeacc28f8": {
+    "index": 0,
+    "seat": "primary_judge",
+    "token": "074aef80b7c3"
+  }
+}

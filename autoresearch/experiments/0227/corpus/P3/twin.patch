@@ -1,0 +1,218 @@
+diff --git a/src/attr/__init__.pyi b/src/attr/__init__.pyi
+index 6ccc008..8c15f84 100644
+--- a/src/attr/__init__.pyi
++++ b/src/attr/__init__.pyi
+@@ -320,6 +320,8 @@ def resolve_types(
+     localns: dict[str, Any] | None = ...,
+     attribs: list[Attribute[Any]] | None = ...,
+     include_extras: bool = ...,
++    *,
++    force: bool = ...,
+ ) -> _A: ...
+ 
+ # TODO: add support for returning a proper attrs class from the mypy plugin
+diff --git a/src/attr/_funcs.py b/src/attr/_funcs.py
+index d213efc..e3e7363 100644
+--- a/src/attr/_funcs.py
++++ b/src/attr/_funcs.py
+@@ -423,7 +423,13 @@ def assoc(inst, **changes):
+ 
+ 
+ def resolve_types(
+-    cls, globalns=None, localns=None, attribs=None, include_extras=True
++    cls,
++    globalns=None,
++    localns=None,
++    attribs=None,
++    include_extras=True,
++    *,
++    force=False,
+ ):
+     """
+     Resolve any strings and forward annotations in type annotations.
+@@ -454,6 +460,12 @@ def resolve_types(
+             Resolve more accurately by passing ``include_extras=True`` to
+             `typing.get_type_hints`.
+ 
++        force (bool):
++            Re-evaluate annotations even if this class was already resolved.
++            A successful resolution is cached for subsequent calls without
++            *force*. If evaluation fails, existing field types and the
++            resolution cache are left unchanged.
++
+     Raises:
+         TypeError: If *cls* is not a class.
+ 
+@@ -473,7 +485,7 @@ def resolve_types(
+     """
+     # Since calling get_type_hints is expensive we cache whether we've
+     # done it already.
+-    if getattr(cls, "__attrs_types_resolved__", None) != cls:
++    if force or getattr(cls, "__attrs_types_resolved__", None) != cls:
+         import typing
+ 
+         kwargs = {
+@@ -482,6 +494,8 @@ def resolve_types(
+             "include_extras": include_extras,
+         }
+ 
++        if force:
++            cls.__attrs_types_resolved__ = None
+         hints = typing.get_type_hints(cls, **kwargs)
+         for field in fields(cls) if attribs is None else attribs:
+             if field.name in hints:
+diff --git a/tests/test_annotations.py b/tests/test_annotations.py
+index de3d105..1669b9d 100644
+--- a/tests/test_annotations.py
++++ b/tests/test_annotations.py
+@@ -682,6 +682,141 @@ class TestAnnotations:
+         assert int is attr.fields(A).n.type
+         assert int is attr.fields(B).n.type
+ 
++    def test_force_refresh_and_cache(self):
++        """
++        A forced resolution refreshes types and replaces the cached result.
++        """
++
++        @attrs.define
++        class C:
++            value: "Token"  # noqa: F821
++
++        assert C is attrs.resolve_types(C, localns={"Token": int})
++        assert int is attrs.fields(C).value.type
++
++        assert C is attrs.resolve_types(C, localns={"Token": str})
++        assert int is attrs.fields(C).value.type
++
++        assert C is attrs.resolve_types(C, localns={"Token": str}, force=True)
++        assert str is attrs.fields(C).value.type
++        assert C is C.__dict__["__attrs_types_resolved__"]
++
++        assert C is attrs.resolve_types(C, localns={"Token": float})
++        assert str is attrs.fields(C).value.type
++
++        assert C is attrs.resolve_types(
++            C, localns={"Token": float}, force=True
++        )
++        assert float is attrs.fields(C).value.type
++        assert C is C.__dict__["__attrs_types_resolved__"]
++
++    def test_force_refresh_extras_and_unannotated_field(self):
++        """
++        Refreshing can change extras without changing unannotated fields.
++        """
++
++        @attr.s
++        class C:
++            value: "Annotated[int, 'tag']" = attr.ib()  # noqa: F821
++            other = attr.ib(type=str)
++
++        namespace = {"Annotated": typing.Annotated}
++        value, other = attr.fields(C)
++
++        assert C is attr.resolve_types(C, globalns=namespace)
++        assert typing.Annotated[int, "tag"] == value.type
++        assert str is other.type
++
++        assert C is attr.resolve_types(
++            C, globalns=namespace, include_extras=False, force=True
++        )
++        assert int is value.type
++        assert str is other.type
++
++        assert C is attr.resolve_types(
++            C, globalns=namespace, include_extras=True, force=True
++        )
++        assert typing.Annotated[int, "tag"] == value.type
++        assert str is other.type
++
++    def test_force_refresh_inherited_fields(self):
++        """
++        A resolved base does not mark its subclass as resolved.
++        """
++
++        @attrs.define
++        class Base:
++            value: "Token"  # noqa: F821
++
++        assert Base is attr.resolve_types(Base, localns={"Token": int})
++
++        @attrs.define
++        class Child(Base):
++            extra: "Token"  # noqa: F821
++
++        assert Child is attr.resolve_types(Child, localns={"Token": str})
++        assert str is attr.fields(Child).value.type
++        assert str is attr.fields(Child).extra.type
++
++        assert Child is attr.resolve_types(
++            Child, localns={"Token": float}, force=True
++        )
++        assert float is attr.fields(Child).value.type
++        assert float is attr.fields(Child).extra.type
++        assert Child is Child.__dict__["__attrs_types_resolved__"]
++        assert int is attr.fields(Base).value.type
++        assert Base is Base.__dict__["__attrs_types_resolved__"]
++
++    def test_force_refresh_in_field_transformer(self):
++        """
++        Explicit attributes can be refreshed before decoration completes.
++        """
++
++        def transform(cls, attribs):
++            assert not attr.has(cls)
++            assert cls is attr.resolve_types(
++                cls, localns={"Token": int}, attribs=attribs
++            )
++            assert cls is attr.resolve_types(
++                cls, localns={"Token": float}, attribs=attribs, force=True
++            )
++            return attribs
++
++        @attr.s(field_transformer=transform)
++        class C:
++            value: "Token" = attr.ib()  # noqa: F821
++            other = attr.ib(type=str)
++
++        assert float is attr.fields(C).value.type
++        assert str is attr.fields(C).other.type
++        instance = C(2.5, "x")
++        assert (2.5, "x") == (instance.value, instance.other)
++
++    def test_resolve_after_initial_failure(self):
++        """
++        A failed initial evaluation leaves fields ready for a later retry.
++        """
++
++        @attr.s
++        class C:
++            known: "int" = attr.ib()
++            unknown: "Missing" = attr.ib()  # noqa: F821
++
++        fields = attr.fields(C)
++        original_types = tuple(field.type for field in fields)
++        had_marker = "__attrs_types_resolved__" in C.__dict__
++
++        with pytest.raises(NameError):
++            attr.resolve_types(C, localns={})
++
++        assert original_types == tuple(field.type for field in fields)
++        assert had_marker == ("__attrs_types_resolved__" in C.__dict__)
++
++        assert C is attr.resolve_types(C, localns={"Missing": str})
++        assert int is fields.known.type
++        assert str is fields.unknown.type
++        assert C is C.__dict__["__attrs_types_resolved__"]
++
+     def test_resolve_twice(self):
+         """
+         You can call resolve_types as many times as you like.
+diff --git a/typing_tests/baseline.py b/typing_tests/baseline.py
+index 35604dc..890f61c 100644
+--- a/typing_tests/baseline.py
++++ b/typing_tests/baseline.py
+@@ -225,3 +225,4 @@ if cp.hashability is attrs.ClassProps.Hashability.UNHASHABLE:
+ def test(cls: type) -> None:
+     if attrs.has(cls):
+         attrs.resolve_types(cls)
++        attrs.resolve_types(cls, force=True)

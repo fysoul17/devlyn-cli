@@ -1,0 +1,12 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "PATH=/Users/Shared/devlyn-vr-0227/toolchains/node-lru-cache/node-bin:$PATH npm test -- -c -t0",
+      "exit_code": 0,
+      "timeout_sec": 600
+    }
+  ],
+  "required_files": ["src/index.ts", "test/has-min-ttl.ts"],
+  "spec_output_files": ["src/index.ts", "test/has-min-ttl.ts"],
+  "max_deps_added": 0
+}

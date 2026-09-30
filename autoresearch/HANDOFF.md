@@ -1,4 +1,4 @@
-# Continue 0227 — fix the two 0226 BLOCKED causes, then re-screen on fresh tasks
+# 0227 closed NOT PASS — next step is the user's decision
 
 2026-09-29 KST. Root direct, no resolve. The contract is [0227](iterations/0227-verify-rescreen.md), designed with Astra (gpt-6-astra, ultra) and registered before the fix commit, any probe call and any corpus authoring. The raw record is `.devlyn/0227/`. 0226 closed NOT PASS ([RESULT](experiments/0226/RESULT.md)); its handoff is in git history (last version at `f72f74f4`).
 
@@ -22,7 +22,9 @@
 | 3 | Driver copy with the registered changes and development mode, stub dry run, Astra SHIP; addendum B1 (F, driver, G2 spec copies, author/implementer templates) | done: B1 (driver Astra SHIP after two REVISE; 64-span dry run and G2 rehearsal passed) |
 | 4 | G2 (6 live Claude calls), then G3 (64 exposed 0226 spans in a development root); Astra reviews | done: G2 PASS, G3 PASS (Astra audits; [GATES](experiments/0227/gates/GATES.md)) |
 | 5 | Corpus: two fresh repositories, isolated blind author, Sol, calibration, calibration review | done: attrs `8f767776` (P1–P4) and node-lru-cache `7e71a1f3` (J1–J4; adm-zip dropped after Astra found the node-lru-cache exclusion misapplied the rule); Astra + Claude checkers SHIP after repairs (Addendum B2) |
-| 6 | Fresh-corpus driver bindings, Astra SHIP; freeze, 64 rounds, masked scoring with Astra audit, join, RESULT | bindings + B2 merged (PR #136); first prepare not frozen (B3: V8 code-cache crash, cache disabled, dry run passed, Astra SHIP); next: second `prepare`, classify its failed MECHANICAL attempts (B2), freeze PR, `run --pr N` |
+| 6 | Fresh-corpus driver bindings, Astra SHIP; freeze, 64 rounds, masked scoring with Astra audit, join, RESULT | done: **NOT PASS on condition 2 only** ([RESULT](experiments/0227/RESULT.md)): 32/32 hits, condition 5 now holds, 1 reference false alarm (J4, Codex primary); freeze PR #138, score/result PR |
+
+0227 in one line: the fix worked for 0226's causes (0 rejected Claude outputs, 0 BLOCKED, 128/128 seats accepted, 32/32 hits), but one Codex primary blocked a correct J4 reference by reading "existing eviction disposal behavior" as immediate delivery; two more Codex seats returned NEEDS_WORK on J2 reference rounds from coverage findings only. **Next: the user's decision** — steps 2–5 stay held; any new registration needs a materially new diagnosis (0227 "Registered outcome").
 
 0226 in one line: 32/32 hits and 0 false alarms, NOT PASS on condition 5 because 5 reference rounds ended BLOCKED (3 Claude prose preambles the parser rejected; 3 Codex BLOCKEDs on an unevidenced "offline, with Node 22" condition). 
 ## 0225 (steps 2–5 held)

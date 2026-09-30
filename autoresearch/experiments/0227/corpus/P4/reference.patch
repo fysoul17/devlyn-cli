@@ -1,0 +1,175 @@
+diff --git a/src/attr/_make.py b/src/attr/_make.py
+index afbca46..cb8e661 100644
+--- a/src/attr/_make.py
++++ b/src/attr/_make.py
+@@ -2635,6 +2635,10 @@ class Attribute:
+ 
+         It is mainly meant to be used for `transform-fields`.
+ 
++        Passing ``alias=None`` resets the alias to the default generated from
++        the resulting name. Omitting ``alias`` preserves an explicit alias, or
++        updates a default alias when the name changes.
++
+         .. versionadded:: 20.3.0
+         """
+         import copy
+@@ -2643,7 +2647,16 @@ class Attribute:
+ 
+         new._setattrs(changes.items())
+ 
+-        if "alias" in changes and "alias_is_default" not in changes:
++        if "alias" in changes and changes["alias"] is None:
++            if changes.get("alias_is_default") is False:
++                msg = "A default alias cannot have alias_is_default=False."
++                raise ValueError(msg)
++
++            _OBJ_SETATTR.__get__(new)(
++                "alias", _default_init_alias_for(new.name)
++            )
++            _OBJ_SETATTR.__get__(new)("alias_is_default", True)
++        elif "alias" in changes and "alias_is_default" not in changes:
+             # Explicit alias provided -- no longer the default.
+             _OBJ_SETATTR.__get__(new)("alias_is_default", False)
+         elif (
+diff --git a/tests/test_hooks.py b/tests/test_hooks.py
+index 81f131c..85c0f36 100644
+--- a/tests/test_hooks.py
++++ b/tests/test_hooks.py
+@@ -379,6 +379,137 @@ class TestTransformHook:
+         assert "custom" == f.alias
+         assert f.alias_is_default is False
+ 
++    def test_hook_evolve_alias_reset(self):
++        """
++        Resetting an alias returns complete metadata without changing its source.
++        """
++
++        @attr.s(auto_attribs=True)
++        class C:
++            _private: int = attr.ib(alias="external", metadata={"tag": 1})
++            _default: int
++
++        original = attr.fields(C)._private
++        reset = original.evolve(alias=None, repr=False)
++
++        assert ("_private", "private", True) == (
++            reset.name,
++            reset.alias,
++            reset.alias_is_default,
++        )
++        assert reset.repr is False
++        assert {"tag": 1} == reset.metadata
++        assert ("external", False, True) == (
++            original.alias,
++            original.alias_is_default,
++            original.repr,
++        )
++        assert {"tag": 1} == original.metadata
++
++        already_default = attr.fields(C)._default.evolve(alias=None)
++        assert ("_default", "default", True) == (
++            already_default.name,
++            already_default.alias,
++            already_default.alias_is_default,
++        )
++
++        changed_metadata = original.evolve(alias=None, metadata={"after": 2})
++        assert "private" == changed_metadata.alias
++        assert changed_metadata.alias_is_default is True
++        assert {"after": 2} == changed_metadata.metadata
++        assert {"tag": 1} == original.metadata
++
++    def test_hook_evolve_alias_reset_rejects_explicit_flag(self):
++        @attr.s(auto_attribs=True)
++        class C:
++            _private: int = attr.ib(alias="external")
++
++        original = attr.fields(C)._private
++
++        with pytest.raises(ValueError):
++            original.evolve(alias=None, alias_is_default=False)
++
++        assert ("external", False) == (
++            original.alias,
++            original.alias_is_default,
++        )
++        reset = original.evolve(alias=None, alias_is_default=True)
++        assert ("private", True) == (reset.alias, reset.alias_is_default)
++
++    def test_hook_evolve_explicit_alias_overrides(self):
++        @attr.s(auto_attribs=True)
++        class C:
++            _default: int
++            _explicit: int = attr.ib(alias="external")
++
++        default = attr.fields(C)._default
++        explicit = attr.fields(C)._explicit
++        chosen = default.evolve(name="_next", alias="chosen")
++        retained = explicit.evolve(name="_next")
++        overridden = explicit.evolve(alias="chosen", alias_is_default=True)
++
++        assert ("_next", "chosen", False) == (
++            chosen.name,
++            chosen.alias,
++            chosen.alias_is_default,
++        )
++        assert ("_next", "external", False) == (
++            retained.name,
++            retained.alias,
++            retained.alias_is_default,
++        )
++        assert ("chosen", True) == (
++            overridden.alias,
++            overridden.alias_is_default,
++        )
++        assert ("_default", "default", True) == (
++            default.name,
++            default.alias,
++            default.alias_is_default,
++        )
++        assert ("_explicit", "external", False) == (
++            explicit.name,
++            explicit.alias,
++            explicit.alias_is_default,
++        )
++
++    @pytest.mark.parametrize("slots", [False, True])
++    def test_hook_evolve_alias_reset_then_rename(self, slots):
++        """
++        A reset alias follows a later rename through class generation.
++        """
++        originals = []
++
++        def hook(cls, attribs):
++            original = attribs[0]
++            originals.append(original)
++            reset = original.evolve(alias=None)
++            assert ("_private", "private", True) == (
++                reset.name,
++                reset.alias,
++                reset.alias_is_default,
++            )
++            return [reset.evolve(name="_next")]
++
++        @attr.s(auto_attribs=True, slots=slots, field_transformer=hook)
++        class C:
++            _private: int = attr.ib(alias="external")
++
++        field = attr.fields(C)._next
++        assert ("_next", "next", True) == (
++            field.name,
++            field.alias,
++            field.alias_is_default,
++        )
++        instance = C(next=3)
++        assert 3 == instance._next
++        assert 4 == attr.evolve(instance, next=4)._next
++        assert ("_private", "external", False) == (
++            originals[0].name,
++            originals[0].alias,
++            originals[0].alias_is_default,
++        )
++
+ 
+ class TestAsDictHook:
+     def test_asdict(self):

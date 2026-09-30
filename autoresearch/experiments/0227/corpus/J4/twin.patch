@@ -1,0 +1,308 @@
+diff --git a/src/index.ts b/src/index.ts
+index 3cc1ab8..366ac02 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -2152,6 +2152,10 @@ export class LRUCache<K extends {}, V extends {}, FC = unknown> {
+    * entry is greater than `maxEntrySize`, then the item will not be
+    * added to the cache.
+    *
++   * Setting an existing value again remeasures its size when size tracking
++   * is enabled and the computed size fits `maxSize`, if set. This lets
++   * changes to a mutable value update the cache's size accounting.
++   *
+    * Will update the recency of the entry.
+    *
+    * If the value is `undefined`, then this is an alias for
+@@ -2291,6 +2295,18 @@ export class LRUCache<K extends {}, V extends {}, FC = unknown> {
+           }
+         }
+       } else if (!isBF) {
++        if (
++          this.#sizes &&
++          size !== this.#sizes[index] &&
++          (this.#maxSize === 0 || size <= this.#maxSize)
++        ) {
++          this.#calculatedSize += size - (this.#sizes[index] as number)
++          this.#sizes[index] = size
++          if (status) {
++            status.entrySize = size
++            status.totalCalculatedSize = this.#calculatedSize
++          }
++        }
+         if (status) {
+           status.set = 'update'
+         }
+diff --git a/test/set-size-update.ts b/test/set-size-update.ts
+new file mode 100644
+index 0000000..7a3f13c
+--- /dev/null
++++ b/test/set-size-update.ts
+@@ -0,0 +1,268 @@
++import t from 'tap'
++import { LRUCache } from '../dist/esm/node/index.js'
++
++t.test('remeasure a mutable value on identical-value updates', t => {
++  const a = { bytes: 3 }
++  const b = { bytes: 4 }
++  const c = new LRUCache<string, typeof a>({
++    maxSize: 100,
++    sizeCalculation: value => value.bytes,
++  })
++  c.set('a', a)
++  c.set('b', b)
++
++  a.bytes = 9
++  const grown: LRUCache.Status<string, typeof a> = {}
++  t.equal(c.set('a', a, { status: grown }), c)
++  t.equal(c.peek('a'), a)
++  t.equal(c.info('a')?.size, 9)
++  t.strictSame(
++    c.dump().map(([key, entry]) => [key, entry.size]),
++    [
++      ['b', 4],
++      ['a', 9],
++    ],
++  )
++  t.strictSame([...c.keys()], ['a', 'b'])
++  t.equal(c.calculatedSize, 13)
++  t.equal(
++    c.dump().reduce((sum, [, entry]) => sum + (entry.size ?? 0), 0),
++    c.calculatedSize,
++  )
++  t.equal(grown.set, 'update')
++  t.equal(grown.entrySize, 9)
++  t.equal(grown.totalCalculatedSize, 13)
++
++  a.bytes = 2
++  const shrunk: LRUCache.Status<string, typeof a> = {}
++  c.set('a', a, { status: shrunk })
++  t.equal(c.peek('a'), a)
++  t.equal(c.info('a')?.size, 2)
++  t.equal(c.dump().find(([key]) => key === 'a')?.[1].size, 2)
++  t.equal(c.calculatedSize, 6)
++  t.equal(
++    c.dump().reduce((sum, [, entry]) => sum + (entry.size ?? 0), 0),
++    c.calculatedSize,
++  )
++  t.equal(shrunk.set, 'update')
++  t.equal(shrunk.entrySize, 2)
++  t.equal(shrunk.totalCalculatedSize, 6)
++  c.delete('a')
++  t.equal(c.calculatedSize, 4)
++  t.end()
++})
++
++t.test('size source precedence and a repeated primitive', t => {
++  let defaults = 0
++  let overrides = 0
++  const c = new LRUCache<string, string>({
++    maxSize: 50,
++    sizeCalculation: () => {
++      defaults++
++      return 3
++    },
++  })
++  c.set('a', 'same')
++  t.equal(defaults, 1)
++  c.set('a', 'same', {
++    sizeCalculation: () => {
++      overrides++
++      return 7
++    },
++  })
++  t.equal(c.info('a')?.size, 7)
++  t.equal(c.calculatedSize, 7)
++  t.equal(defaults, 1)
++  t.equal(overrides, 1)
++
++  const status: LRUCache.Status<string, string> = {}
++  c.set('a', 'same', {
++    size: 5,
++    sizeCalculation: () => {
++      overrides++
++      return 9
++    },
++    status,
++  })
++  t.equal(defaults, 1)
++  t.equal(overrides, 1)
++  t.equal(c.peek('a'), 'same')
++  t.equal(c.info('a')?.size, 5)
++  t.equal(c.dump()[0]?.[1].size, 5)
++  t.equal(c.calculatedSize, 5)
++  t.equal(status.set, 'update')
++  t.equal(status.entrySize, 5)
++  t.equal(status.totalCalculatedSize, 5)
++  t.end()
++})
++
++t.test(
++  'tracked size changes with optional status and unchanged-size compatibility',
++  t => {
++    const a = {}
++    const c = new LRUCache<string, object>({ max: 3, maxEntrySize: 20 })
++    c.set('a', a, { size: 3 })
++    c.set('b', {}, { size: 4 })
++    const unchanged: LRUCache.Status<string, object> = {}
++    c.set('a', a, { size: 3, status: unchanged })
++    t.equal(unchanged.set, 'update')
++    t.equal(Object.hasOwn(unchanged, 'entrySize'), false)
++    t.equal(Object.hasOwn(unchanged, 'totalCalculatedSize'), false)
++    t.strictSame([...c.keys()], ['a', 'b'])
++
++    c.set('a', a, { size: 10 })
++    t.equal(c.info('a')?.size, 10)
++    t.equal(c.calculatedSize, 14)
++    const changed: LRUCache.Status<string, object> = {}
++    c.set('a', a, { size: 2, status: changed })
++    t.equal(changed.entrySize, 2)
++    t.equal(changed.totalCalculatedSize, 6)
++    t.equal(c.calculatedSize, 6)
++    t.equal(
++      c.dump().reduce((sum, [, entry]) => sum + (entry.size ?? 0), 0),
++      6,
++    )
++
++    const plain = new LRUCache<string, object>({ max: 2 })
++    plain.set('a', a)
++    plain.set('b', {})
++    const plainStatus: LRUCache.Status<string, object> = {}
++    plain.set('a', a, { status: plainStatus })
++    t.equal(plainStatus.set, 'update')
++    t.equal(plain.calculatedSize, 0)
++    t.strictSame([...plain.keys()], ['a', 'b'])
++    t.strictSame(plain.info('a'), { value: a })
++    t.end()
++  },
++)
++
++t.test('resizing keeps update callbacks and TTL rules', t => {
++  let now = 100
++  const inserted: [object, string, LRUCache.InsertReason][] = []
++  const disposed: [object, string, LRUCache.DisposeReason][] = []
++  const after: [object, string, LRUCache.DisposeReason][] = []
++  const a = {}
++  const b = {}
++  const c = new LRUCache<string, object>({
++    maxSize: 100,
++    ttl: 20,
++    ttlResolution: 0,
++    perf: { now: () => now },
++    onInsert: (value, key, reason) => inserted.push([value, key, reason]),
++    dispose: (value, key, reason) => disposed.push([value, key, reason]),
++    disposeAfter: (value, key, reason) => after.push([value, key, reason]),
++  })
++  c.set('a', a, { size: 3 })
++  c.set('b', b, { size: 4 })
++  inserted.length = 0
++
++  now = 105
++  const grown: LRUCache.Status<string, object> = {}
++  c.set('a', a, { size: 8, ttl: 30, status: grown })
++  t.equal(c.getRemainingTTL('a'), 30)
++  t.equal(grown.ttl, 30)
++  t.equal(grown.start, 105)
++  t.equal(grown.entrySize, 8)
++  t.equal(grown.totalCalculatedSize, 12)
++
++  now = 110
++  const shrunk: LRUCache.Status<string, object> = {}
++  c.set('a', a, { size: 2, ttl: 99, noUpdateTTL: true, status: shrunk })
++  t.equal(c.getRemainingTTL('a'), 25)
++  t.equal(shrunk.ttl, 30)
++  t.equal(shrunk.start, 105)
++  t.equal(shrunk.entrySize, 2)
++  t.equal(shrunk.totalCalculatedSize, 6)
++  t.equal(c.peek('a'), a)
++  t.strictSame([...c.keys()], ['a', 'b'])
++  t.strictSame(inserted, [
++    [a, 'a', 'update'],
++    [a, 'a', 'update'],
++  ])
++  t.equal(inserted[0]?.[0], a)
++  t.equal(inserted[1]?.[0], a)
++  t.strictSame(disposed, [])
++  t.strictSame(after, [])
++
++  const withoutCallbacks = new LRUCache<string, object>({
++    maxSize: 100,
++    ttl: 20,
++    ttlResolution: 0,
++    perf: { now: () => now },
++  })
++  withoutCallbacks.set('a', a, { size: 3 })
++  now = 115
++  withoutCallbacks.set('a', a, { size: 5, ttl: 30 })
++  t.equal(withoutCallbacks.info('a')?.size, 5)
++  t.equal(withoutCallbacks.getRemainingTTL('a'), 30)
++  t.equal(withoutCallbacks.peek('a'), a)
++  t.end()
++})
++
++t.test('validation, entry admission, and exact total limit', t => {
++  const a = {}
++  const b = {}
++  const c = new LRUCache<string, object>({ maxSize: 10, maxEntrySize: 6 })
++  c.set('a', a, { size: 3 })
++  c.set('b', b, { size: 4 })
++  t.throws(() => c.set('a', a, { sizeCalculation: () => -1 }), TypeError)
++  t.equal(c.peek('a'), a)
++  t.equal(c.info('a')?.size, 3)
++  t.equal(c.calculatedSize, 7)
++  t.strictSame([...c.keys()], ['b', 'a'])
++
++  c.set('a', a, { size: 6 })
++  t.equal(c.calculatedSize, 10)
++  t.equal(c.size, 2)
++  t.strictSame([...c.keys()], ['a', 'b'])
++  const oversized: LRUCache.Status<string, object> = {}
++  c.set('a', a, { size: 7, status: oversized })
++  t.equal(oversized.set, 'miss')
++  t.equal(oversized.maxEntrySizeExceeded, true)
++  t.equal(c.has('a'), false)
++  t.equal(c.peek('b'), b)
++  t.equal(c.calculatedSize, 4)
++  t.end()
++})
++
++t.test('same-value size above maxSize keeps prior accounting', t => {
++  const a = {}
++  const b = {}
++  const inserted: [object, string, LRUCache.InsertReason][] = []
++  const disposed: [object, string, LRUCache.DisposeReason][] = []
++  const after: [object, string, LRUCache.DisposeReason][] = []
++  const c = new LRUCache<string, object>({
++    maxSize: 10,
++    maxEntrySize: 20,
++    onInsert: (value, key, reason) => inserted.push([value, key, reason]),
++    dispose: (value, key, reason) => disposed.push([value, key, reason]),
++    disposeAfter: (value, key, reason) => after.push([value, key, reason]),
++  })
++  c.set('a', a, { size: 3 })
++  inserted.length = 0
++
++  const status: LRUCache.Status<string, object> = {}
++  t.equal(c.set('a', a, { size: 12, status }), c)
++  t.equal(c.peek('a'), a)
++  t.equal(c.info('a')?.size, 3)
++  t.equal(c.dump()[0]?.[1].size, 3)
++  t.equal(c.calculatedSize, 3)
++  t.equal(c.size, 1)
++  t.equal(status.set, 'update')
++  t.equal(Object.hasOwn(status, 'entrySize'), false)
++  t.equal(Object.hasOwn(status, 'totalCalculatedSize'), false)
++  t.strictSame(inserted, [[a, 'a', 'update']])
++  t.equal(inserted[0]?.[0], a)
++  t.strictSame(disposed, [])
++  t.strictSame(after, [])
++
++  c.set('b', b, { size: 7 })
++  t.equal(c.size, 2)
++  t.equal(c.calculatedSize, 10)
++  t.equal(c.info('a')?.size, 3)
++  t.equal(c.peek('b'), b)
++  t.strictSame([...c.keys()], ['b', 'a'])
++  t.strictSame(disposed, [])
++  t.strictSame(after, [])
++  t.end()
++})
