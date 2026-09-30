@@ -22,13 +22,17 @@
   "script_sha256": null
  },
  "0376c0e4d22772e479cd05d3a19a11a9f7c6d44e3aa71057a202ab8062c3b629": {
-  "check": null,
-  "clause_source": null,
+  "check": "autoresearch/experiments/0227/check-scripts/J2-explicit-false-skips-and-retains-stale.sh",
+  "clause_source": "task",
   "disputed": false,
-  "kind": "coverage",
+  "kind": "behavioral",
   "match": false,
-  "results": null,
-  "script_sha256": null
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "f563279ab2b4a6533704af332363edba0408d41c1c8f6ad7e7b2337f3ed4b7d2"
  },
  "03b82f2ab8ad06fd10ddcebaf0584ea818a8bb0ed6531b84465464b54fb127c8": {
   "check": "autoresearch/experiments/0227/check-scripts/J2-explicit-false-skips-and-retains-stale.sh",
@@ -118,7 +122,7 @@
   "clause_source": "task",
   "disputed": false,
   "kind": "behavioral",
-  "match": true,
+  "match": false,
   "results": {
    "base": false,
    "reference": true,
@@ -242,20 +246,24 @@
   "script_sha256": null
  },
  "23fac7c78760ea9630ea67f7363f13431a9ad7416688d1984af445e1d02b4f3e": {
-  "check": null,
-  "clause_source": null,
+  "check": "autoresearch/experiments/0227/check-scripts/P1-nan-positive-comparisons.sh",
+  "clause_source": "task",
   "disputed": false,
-  "kind": "coverage",
+  "kind": "behavioral",
   "match": false,
-  "results": null,
-  "script_sha256": null
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "5d064889269266d19452a30647d13683d88daa42d42a08f93f8cbd227d78557d"
  },
  "257ebd89eb515c5164817c5ada8128c895712c432c2bf1c76435578872df56a6": {
   "check": "autoresearch/experiments/0227/check-scripts/P2-collection-scalar-replacement.sh",
   "clause_source": "task",
   "disputed": false,
   "kind": "behavioral",
-  "match": true,
+  "match": false,
   "results": {
    "base": false,
    "reference": true,
@@ -484,13 +492,17 @@
   "script_sha256": null
  },
  "474da4ceca1857d85203305c2bf4471c0eb863d8541c64eab60afb51133585b7": {
-  "check": null,
-  "clause_source": null,
+  "check": "autoresearch/experiments/0227/check-scripts/J3-failure-preserves-state.sh",
+  "clause_source": "task",
   "disputed": false,
-  "kind": "coverage",
-  "match": false,
-  "results": null,
-  "script_sha256": null
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "e1762b686555e3b26e88cd992f9ea1d27c9979310a813ea944873f0915376676"
  },
  "47788d635edfe694bdca6879524d7ef918374f3795998e91b53e96400de41e3b": {
   "check": "autoresearch/experiments/0227/check-scripts/J3-failure-preserves-state.sh",
@@ -689,7 +701,7 @@
   "clause_source": null,
   "disputed": false,
   "kind": "behavioral",
-  "match": false,
+  "match": true,
   "results": null,
   "script_sha256": null
  },
@@ -1042,7 +1054,7 @@
   "clause_source": null,
   "disputed": false,
   "kind": "behavioral",
-  "match": false,
+  "match": true,
   "results": null,
   "script_sha256": null
  },
@@ -1051,7 +1063,7 @@
   "clause_source": "task",
   "disputed": false,
   "kind": "behavioral",
-  "match": true,
+  "match": false,
   "results": {
    "base": false,
    "reference": true,
@@ -1355,13 +1367,17 @@
   "script_sha256": "282e3ecbb4f4e9ff159104d1b0bd32dc364472cc557e0d929e08993a9d674e2d"
  },
  "cfe5a6c7beb1ac2d432f11e2294f4386ff214c92481435f41c54c7507b8873b1": {
-  "check": null,
-  "clause_source": null,
+  "check": "autoresearch/experiments/0227/check-scripts/P3-forced-failure-cache-hit.sh",
+  "clause_source": "task",
   "disputed": false,
-  "kind": "coverage",
+  "kind": "behavioral",
   "match": false,
-  "results": null,
-  "script_sha256": null
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "8d26c341f178b8d9d62c3df58054ddc7a88c4be2ed208dfdb791a1a614e18699"
  },
  "d087d7ce01fe42d6d79aaad735089ac6caf3bd97e3e65c1faa57fb0b3e311d94": {
   "check": null,
@@ -1478,7 +1494,7 @@
   "clause_source": "task",
   "disputed": false,
   "kind": "behavioral",
-  "match": true,
+  "match": false,
   "results": {
    "base": false,
    "reference": true,

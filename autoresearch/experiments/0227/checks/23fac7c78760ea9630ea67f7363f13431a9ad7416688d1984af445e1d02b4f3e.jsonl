@@ -1,0 +1,1 @@
+{"checked_at": "2026-09-30T07:57:51.444Z", "finding_key": "23fac7c78760ea9630ea67f7363f13431a9ad7416688d1984af445e1d02b4f3e", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0227/check-scripts/P1-nan-positive-comparisons.sh", "script_sha256": "5d064889269266d19452a30647d13683d88daa42d42a08f93f8cbd227d78557d", "task": "P1"}
