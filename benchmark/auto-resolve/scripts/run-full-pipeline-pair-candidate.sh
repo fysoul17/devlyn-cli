@@ -334,7 +334,7 @@ mirror_skills() {
     [ -d "$src_dir" ] || continue
     name=$(basename "$src_dir")
     case "$name" in
-      devlyn:auto-resolve-workspace|devlyn:ideate-workspace|preflight-workspace|roadmap-archival-workspace)
+      devlyn:auto-resolve-workspace|devlyn:ideate-workspace|devlyn-ideate-workspace|preflight-workspace|roadmap-archival-workspace)
         continue ;;
     esac
     staging="$dst_skills/.${name}.staging"

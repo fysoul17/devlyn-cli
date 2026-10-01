@@ -57,12 +57,13 @@ const RETIRED_SKILL_MD_SHA256 = {
   ]),
 };
 
-// Whether `dir` is a real folder holding exactly one SKILL.md whose LF-normalized SHA-256 is in
-// `hashes`: an unedited copy devlyn-cli shipped, not something the user added to or wrote.
+// Whether `dir` is a real folder whose only file (dotfiles such as .DS_Store aside) is a SKILL.md
+// with an LF-normalized SHA-256 in `hashes`: an unedited copy devlyn-cli shipped, not something
+// the user added to or wrote.
 function isShippedCopy(dir, hashes) {
   const skill = path.join(dir, 'SKILL.md');
   return fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory() === true
-    && fs.readdirSync(dir).length === 1
+    && fs.readdirSync(dir).filter((name) => !name.startsWith('.')).length === 1
     && fs.lstatSync(skill, { throwIfNoEntry: false })?.isFile() === true
     && hashes.has(crypto.createHash('sha256')
       .update(fs.readFileSync(skill, 'utf8').replace(/\r\n/g, '\n')).digest('hex'));

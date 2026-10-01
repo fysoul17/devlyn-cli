@@ -12,7 +12,7 @@ from pathlib import Path
 QUEUE_PATH = Path("docs/specs/queue.md")
 LOCK_PATH = Path(".devlyn/queue.lock")
 # Each `add` writes its own handoff file, so two adds never consume each other's intent.
-HANDOFF = re.compile(r"\.devlyn/queue-intent(-[A-Za-z0-9._-]+)?\.txt")
+HANDOFF = re.compile(r"\.devlyn/queue-intent-[A-Za-z0-9._-]+\.txt")
 MINIMAL_HEADER = b"# Intent Queue\n\n"
 
 
@@ -25,6 +25,10 @@ def queue_lock():
         if os.name == "nt":
             import msvcrt
 
+            # The CRT locks bytes that exist; give a new lock file its one byte.
+            if os.fstat(fd).st_size == 0:
+                os.write(fd, b"\0")
+            os.lseek(fd, 0, os.SEEK_SET)
             msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
             try:
                 yield

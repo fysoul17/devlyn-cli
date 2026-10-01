@@ -165,7 +165,7 @@ if [ $JUDGE_ONLY -eq 0 ]; then
     [ -d "$src_dir" ] || continue
     name=$(basename "$src_dir")
     case "$name" in
-      devlyn:auto-resolve-workspace|devlyn:ideate-workspace|preflight-workspace|roadmap-archival-workspace)
+      devlyn:auto-resolve-workspace|devlyn:ideate-workspace|devlyn-ideate-workspace|preflight-workspace|roadmap-archival-workspace)
         continue ;;
     esac
     staging="$DST_SKILLS/.${name}.staging"

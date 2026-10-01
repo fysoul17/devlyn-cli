@@ -702,8 +702,8 @@ installClaudeCore();
     def test_queue_add_helper_appends_one_literal_line_at_the_end(self):
         helper = self.package / 'config/skills/devlyn-queue/scripts/append.py'
         queue = self.project / 'docs/specs/queue.md'
-        handoff = self.project / '.devlyn/queue-intent.txt'
-        add = lambda code=0: run([sys.executable, helper, '.devlyn/queue-intent.txt'], cwd=self.project, code=code)
+        handoff = self.project / '.devlyn/queue-intent-a1.txt'
+        add = lambda code=0: run([sys.executable, helper, '.devlyn/queue-intent-a1.txt'], cwd=self.project, code=code)
         handoff.parent.mkdir(); handoff.write_text('Keep "quotes", $HOME and `ticks`\n  on two lines\n', encoding='utf-8')
         add()
         self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [ ] Keep "quotes", $HOME and `ticks` on two lines\n')
@@ -722,6 +722,7 @@ installClaudeCore();
         try:
             if os.name == 'nt':
                 import msvcrt
+                os.write(lock, b'\0'); os.lseek(lock, 0, os.SEEK_SET)
                 msvcrt.locking(lock, msvcrt.LK_NBLCK, 1)
             else:
                 import fcntl
@@ -737,7 +738,8 @@ installClaudeCore();
             os.close(lock)
         self.assertEqual(proc.wait(timeout=20), 0)
         self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [ ] waits for the lock\n')
-        self.assertIn(b'handoff must be', run([sys.executable, helper, 'notes.txt'], cwd=self.project, code=2).stderr)
+        for name in ('notes.txt', '.devlyn/queue-intent.txt'):
+            self.assertIn(b'handoff must be', run([sys.executable, helper, name], cwd=self.project, code=2).stderr)
 
     def test_retired_skill_name_is_removed_only_as_shipped(self):
         # 0.2.0-1.15.0 shipped workflow-routing; a folder of that name the user wrote stays.
@@ -745,6 +747,12 @@ installClaudeCore();
         mine.mkdir(parents=True); (mine / 'SKILL.md').write_text('---\nname: workflow-routing\n---\nmine\n', encoding='utf-8')
         self.invoke("installClaudeCore();")
         self.assertEqual((mine / 'SKILL.md').read_text(encoding='utf-8'), '---\nname: workflow-routing\n---\nmine\n')
+        # A shipped copy (here: the hash of this text, CRLF on disk, beside a .DS_Store) goes.
+        shipped = b'---\nname: workflow-routing\n---\nshipped\n'
+        (mine / 'SKILL.md').write_bytes(shipped.replace(b'\n', b'\r\n')); (mine / '.DS_Store').write_bytes(b'x')
+        self.invoke("RETIRED_SKILL_MD_SHA256['workflow-routing'] = new Set(["
+                    f"'{hashlib.sha256(shipped).hexdigest()}']); installClaudeCore();")
+        self.assertFalse(mine.exists())
 
     def test_incomplete_source_has_no_marker(self):
         copy = self.case / 'broken'; shutil.copytree(self.package, copy)
