@@ -135,8 +135,28 @@ m._compile(source + '\\n' + process.argv[3], filename);
         return run(['node', '--require', self.preload, self.invoker,
                     (package or self.package) / 'bin/devlyn.js', body], cwd=self.project, env=self.env, code=code)
 
+    def cli(self, *args, code=0):
+        return run(['node', '--require', self.preload, self.package / 'bin/devlyn.js', *args],
+                   cwd=self.project, env=self.env, code=code)
+
+    def interact(self, prompts, options='{}', code=0):
+        # A terminal that types one list of keys into each prompt as it opens.
+        return self.invoke(f"""
+const stdin = Object.assign(new (require('events'))(), {{ isTTY: true, setRawMode() {{}}, resume() {{}}, pause() {{}}, setEncoding() {{}} }});
+Object.defineProperty(process, 'stdin', {{ value: stdin }});
+const prompts = {json.dumps(prompts)};
+stdin.on('newListener', (event) => {{
+  if (event === 'data') setImmediate(() => prompts.shift().forEach((key) => stdin.emit('data', key)));
+}});
+init({options});
+""", code=code)
+
     def roots(self):
-        return [self.project / '.claude/skills', self.home / '.codex/skills', self.home / '.agents/skills', self.home / '.grok/skills']
+        return [self.project / '.agents/skills', self.project / '.claude/skills',
+                self.home / '.agents/skills', self.home / '.codex/skills', self.home / '.claude/skills']
+
+    def markers(self, base):
+        return {p.parent.parent.name for p in base.glob('.*/skills/.devlyn-install.json')}
 
     def test_terminal_claim_invalid_verdicts(self):
         checker = self.package / 'config/skills/_shared/terminal-claim-check.py'
@@ -189,132 +209,242 @@ m._compile(source + '\\n' + process.argv[3], filename);
                     archive.unlink()
                     archive.parent.rmdir()
 
-    def test_global_claude_settings_invalid_input_preserves_installation(self):
-        dest = self.home / '.claude/settings.json'; dest.parent.mkdir()
-        local = self.project / '.claude/skills/user-skill/keep'
-        local.parent.mkdir(parents=True); local.write_bytes(b'user skill')
-        instructions = self.project / 'CLAUDE.md'; instructions.write_bytes(b'# User rules\r\n')
-        cases = [b'{"keep": true, broken JSON', b'SECRET-not-json', b'null', b'[]', b'42', b'"text"']
-        cases += [json.dumps({'keep': True, 'env': value}).encode()
-                  for value in (None, [], False, 0, 'text')]
-        for before in cases:
-            with self.subTest(before=before):
-                dest.write_bytes(before)
-                result = run(['node', '--require', self.preload, self.package / 'bin/devlyn.js', '-y'],
-                             cwd=self.project, env=self.env, code=None)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertIn(str(dest).encode(), result.stderr)
-                self.assertIn(b'Cannot merge', result.stderr)
-                self.assertNotIn(b'SECRET', result.stderr)
-                self.assertEqual(dest.read_bytes(), before)
-                self.assertEqual(instructions.read_bytes(), b'# User rules\r\n')
-                self.assertEqual(local.read_bytes(), b'user skill')
-                self.assertFalse((self.project / '.claude/skills/.devlyn-install.json').exists())
-                self.assertFalse((self.project / '.devlyn').exists())
+    def test_claude_target_leaves_user_claude_files_alone(self):
+        # 4.1.0 sets prompt caching in the project settings; ~/.claude/settings.json is the user's.
+        # A global install writes skills only, so the user's ~/.claude/commands stay too.
+        dest = self.home / '.claude/settings.json'
+        command = self.home / '.claude/commands/devlyn.resolve.md'
+        command.parent.mkdir(parents=True); command.write_bytes(b'my command\r\n')
+        for before in (None, b'SECRET-not-json', b'{"env": {"ENABLE_PROMPT_CACHING_1H": "false"}}\r\n'):
+            for args in (['-y', '--claude'], ['-y', '--global', '--claude']):
+                with self.subTest(before=before, args=args):
+                    if before is not None:
+                        dest.write_bytes(before)
+                    result = self.cli(*args)
+                    self.assertNotIn(b'SECRET', result.stdout + result.stderr)
+                    self.assertEqual(dest.read_bytes() if dest.exists() else None, before)
+                    self.assertEqual(command.read_bytes(), b'my command\r\n')
+        settings = json.loads((self.project / '.claude/settings.json').read_bytes())
+        self.assertEqual(settings['env']['ENABLE_PROMPT_CACHING_1H'], 'true')
 
-    def test_global_claude_settings_read_errors_preserve_installation(self):
-        dest = self.home / '.claude/settings.json'; dest.parent.mkdir()
-        before = b'{"keep": "original"}\r\n'; dest.write_bytes(before)
-        for code in ('EACCES', 'EIO'):
-            with self.subTest(code=code):
-                result = self.invoke(f"""
-const read = fs.readFileSync;
-fs.readFileSync = function(file, ...options) {{
-  if (String(file) === {json.dumps(str(dest))}) {{
-    throw Object.assign(new Error('injected {code}'), {{ code: '{code}' }});
-  }}
-  return read.call(this, file, ...options);
-}};
-installClaudeCore();
-""", code=None)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertIn(str(dest).encode(), result.stderr)
-                self.assertIn(code.encode(), result.stderr)
-                self.assertEqual(dest.read_bytes(), before)
-                self.assertFalse((self.project / 'CLAUDE.md').exists())
-                self.assertFalse((self.project / '.claude').exists())
+    def test_project_install_refuses_the_home_folder(self):
+        # There CLAUDE.md, AGENTS.md and .claude/settings.json would apply to every project.
+        link = self.case / 'home-link'
+        if os.name == 'nt':
+            run(['cmd.exe', '/d', '/c', 'mklink', '/J', link, self.project])
+        else:
+            link.symlink_to(self.project, target_is_directory=True)
+        for home in (self.project, link):
+            for args in (['-y'], ['-y', '--claude']):
+                with self.subTest(home=home, args=args):
+                    self.env['DEVLYN_TEST_HOME'] = str(home)
+                    result = self.cli(*args, code=1)
+                    self.assertIn(b'This project is your home folder, so its CLAUDE.md, AGENTS.md', result.stderr)
+                    self.assertNotIn(b'    at ', result.stderr)
+                    self.assertEqual(list(self.project.iterdir()), [])
 
-    def test_global_claude_settings_valid_merge_and_reinstall(self):
-        dest = self.home / '.claude/settings.json'; dest.parent.mkdir()
+    def test_claude_project_settings_merge_and_reinstall(self):
+        dest = self.project / '.claude/settings.json'; dest.parent.mkdir()
         for value in ({'custom': {'keep': [1, 2]}},
-                      {'custom': True, 'env': {'TEAM_VAR': 'keep',
-                       'CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING': '0', 'ENABLE_PROMPT_CACHING_1H': 'false'}}):
+                      {'custom': True, 'env': {'TEAM_VAR': 'keep', 'ENABLE_PROMPT_CACHING_1H': 'false',
+                                               'BASH_MAX_TIMEOUT_MS': '7200000'}}):
             with self.subTest(value=value):
                 dest.write_text(json.dumps(value), encoding='utf-8')
                 self.invoke('installClaudeCore();')
-                expected = {**value, 'env': {'ENABLE_PROMPT_CACHING_1H': 'true', **value.get('env', {})}}
-                self.assertEqual(json.loads(dest.read_bytes()), expected)
+                settings = json.loads(dest.read_bytes())
+                self.assertEqual(settings['custom'], value['custom'])
+                self.assertEqual(settings['env'], {'ENABLE_PROMPT_CACHING_1H': 'true', 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
+                                                   'BASH_MAX_TIMEOUT_MS': '3600000', **value.get('env', {})})
+                self.assertIn('Write(.devlyn/**)', settings['permissions']['allow'])
+                self.assertTrue(any('resolve-stop-hook.py' in hook['command']
+                                    for entry in settings['hooks']['Stop'] for hook in entry['hooks']))
                 first = dest.read_bytes()
                 self.invoke('installClaudeCore();')
                 self.assertEqual(dest.read_bytes(), first)
+        self.assertFalse((self.home / '.claude').exists())
 
-    def test_global_claude_settings_shared_with_project(self):
-        self.env['DEVLYN_TEST_HOME'] = str(self.project)
-        dest = self.project / '.claude/settings.json'; dest.parent.mkdir()
-        dest.write_text('{"custom": 1}', encoding='utf-8')
-        self.invoke('installClaudeCore();')
-        settings = json.loads(dest.read_bytes())
-        self.assertEqual(settings['custom'], 1)
-        for key, value in {'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
-                           'BASH_MAX_TIMEOUT_MS': '3600000',
-                           'ENABLE_PROMPT_CACHING_1H': 'true'}.items():
-            self.assertEqual(settings['env'].get(key), value)
-        self.assertIn('Write(.devlyn/**)', settings['permissions']['allow'])
-        self.assertTrue(any('resolve-stop-hook.py' in hook['command']
-                            for entry in settings['hooks']['Stop'] for hook in entry['hooks']))
-        first = dest.read_bytes()
-        self.invoke('installClaudeCore();')
-        self.assertEqual(dest.read_bytes(), first)
+    def test_agents_command_is_removed_with_replacement(self):
+        (self.project / 'keep.txt').write_bytes(b'project user bytes\r\n')
+        keep = self.home / '.codex/skills/user-skill/keep'
+        keep.parent.mkdir(parents=True); keep.write_bytes(b'user bytes\x00')
+        before = {p: p.read_bytes() if p.is_file() else None for p in self.case.rglob('*')}
+        for args in (['agents'], ['agents', 'codex'], ['agents', 'all']):
+            with self.subTest(args=args):
+                result = self.cli(*args, code=1)
+                self.assertIn(b'npx devlyn-cli -y [--claude] [--global]', result.stderr)
+                self.assertEqual({p: p.read_bytes() if p.is_file() else None for p in self.case.rglob('*')}, before)
 
-    def test_agents_invalid_target_preserves_files(self):
-        def snapshot(root):
-            return {str(p.relative_to(root)): (p.stat().st_mode, p.read_bytes() if p.is_file() else None)
-                    for p in root.rglob('*')}
+    def test_noninteractive_targets_and_scopes(self):
+        project_files = {'AGENTS.md', '.agents', '.gitignore'}
+        cases = [(['-y'], project_files, set()), ([], project_files, set()), (['--yes'], project_files, set()),
+                 (['-y', '--claude'], project_files | {'CLAUDE.md', '.claude'}, set()),
+                 (['-y', '--global'], set(), {'.agents', '.codex'}),
+                 (['init', '-y', '--global', '--claude'], set(), {'.agents', '.codex', '.claude'})]
+        for index, (args, files, home) in enumerate(cases):
+            with self.subTest(args=args):
+                self.project = self.case / f'project-{index}'; self.project.mkdir()
+                self.home = self.case / f'home-{index}'; self.home.mkdir()
+                self.env['DEVLYN_TEST_HOME'] = str(self.home)
+                result = self.cli(*args)
+                if '--claude' not in args:
+                    where = '~/.claude/skills' if '--global' in args else 'CLAUDE.md + .claude/'
+                    self.assertIn(f'{where} for Claude Code: add --claude'.encode(), result.stdout)
+                self.assertEqual({p.name for p in self.project.iterdir()}, files)
+                self.assertEqual(self.markers(self.project), files & {'.agents', '.claude'})
+                self.assertEqual({p.name for p in self.home.iterdir()}, home)
+                self.assertEqual(self.markers(self.home), home)
+                if files:
+                    ignored = (self.project / '.gitignore').read_text(encoding='utf-8').splitlines()
+                    self.assertEqual(ignored[1:], ['.devlyn/', '.agents/skills/.devlyn-install.json']
+                                     + ['.claude/skills/.devlyn-install.json'] * ('CLAUDE.md' in files))
+        self.cli('-y', '--bogus', code=1)
+        self.cli('agents-all', code=1)
 
-        for detected in (False, True):
-            for index, target in enumerate(('cdoex', '', 'constructor', '__proto__', 'toString')):
-                with self.subTest(detected=detected, target=target):
-                    case = self.case / f'invalid-{detected}-{index}'; case.mkdir()
-                    project = case / 'project'; project.mkdir()
-                    home = case / 'agent-home'; home.mkdir()
-                    if detected:
-                        (project / '.codex').mkdir(); (project / '.agents').mkdir()
-                    (project / 'keep.txt').write_bytes(b'project user bytes\r\n')
-                    for agent in ('.codex', '.agents', '.grok'):
-                        keep = home / agent / 'skills/user-skill/keep'
-                        keep.parent.mkdir(parents=True); keep.write_bytes(b'user bytes\x00')
-                    before = snapshot(case)
-                    env = {**self.env, 'DEVLYN_TEST_HOME': str(home)}
-                    result = run(['node', '--require', self.preload, self.package / 'bin/devlyn.js',
-                                  'agents', target], cwd=project, env=env, code=None)
-                    self.assertNotEqual(result.returncode, 0, result.stdout)
-                    output = (result.stdout + result.stderr).decode('utf-8')
-                    self.assertIn(json.dumps(target), output)
-                    for supported in ('codex', 'omp', 'pi', 'grok', 'all'):
-                        self.assertIn(supported, output)
-                    self.assertEqual(snapshot(case), before)
+    def test_yes_keeps_claude_where_this_project_has_it(self):
+        colon = '' if os.name == 'nt' else ':'
+        body = 'Project-specific instructions outside this managed block take precedence over these defaults.\n\n# Old\n'
+        block = (f'<!-- devlyn:instructions:begin sha256={hashlib.sha256(body.encode()).hexdigest()} -->\n'
+                 f'{body}<!-- devlyn:instructions:end -->\n').encode()
+        version = json.loads((self.package / 'package.json').read_bytes())['version']
+        legacy = (Path(__file__).resolve().parent / 'fixtures/instructions/legacy-claude.md').read_bytes()
+        # A team may commit CLAUDE.md and ignore .claude/: a fresh clone has only the block, or
+        # the template a release before managed blocks copied in whole.
+        stale = {'4.x': {'.claude/skills/devlyn-resolve/stale': block}, '3.x': {f'.claude/skills/devlyn{colon}resolve/SKILL.md': block},
+                 '0.x': {'.claude/commands/devlyn.resolve.md': block}, 'clone': {'CLAUDE.md': block},
+                 'template-clone': {'CLAUDE.md': legacy}, 'none': {'.claude/skills/my-skill/SKILL.md': block},
+                 # 4.0.1 put optional skills into .claude/skills without the Claude target.
+                 'addons': {f'.claude/skills/{name}/SKILL.md': block for name in
+                            ['devlyn-reap', 'devlyn-pencil-pull', *(f'devlyn{c}reap' for c in ('\uf03a', colon))]}}
+        for case, planted in stale.items():
+            with self.subTest(case=case):
+                self.project = self.case / f'project-{case}'
+                for path, data in planted.items():
+                    (self.project / path).parent.mkdir(parents=True, exist_ok=True); (self.project / path).write_bytes(data)
+                if case == '4.x':
+                    (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+                self.cli('-y')
+                claude = case not in ('none', 'addons')
+                self.assertEqual(self.markers(self.project), {'.agents', '.claude'} if claude else {'.agents'})
+                self.assertEqual((self.project / 'CLAUDE.md').exists(), claude)
+                self.assertTrue((self.project / 'AGENTS.md').is_file())
+                # Removed or refreshed by the Claude update; a user's own skill stays as it was.
+                for path, data in planted.items():
+                    self.assertEqual((self.project / path).exists() and (self.project / path).read_bytes() == data, not claude)
+                if claude:
+                    marker = json.loads((self.project / '.claude/skills/.devlyn-install.json').read_bytes())
+                    self.assertEqual(marker['version'], version)
+                    self.assertTrue((self.project / '.claude/skills/devlyn-resolve/SKILL.md').is_file())
+        if os.name != 'nt':
+            # A CLAUDE.md linked to AGENTS.md is AGENTS.md's; the Claude target refuses links.
+            self.project = self.case / 'linked'; self.project.mkdir()
+            (self.project / 'AGENTS.md').write_bytes(block); (self.project / 'CLAUDE.md').symlink_to('AGENTS.md')
+            self.cli('-y')
+            self.assertEqual(self.markers(self.project), {'.agents'})
+            self.assertTrue((self.project / 'CLAUDE.md').is_symlink())
+            # An AGENTS.md linked to CLAUDE.md gets its block there when the Claude target runs too.
+            self.project = self.case / 'agents-linked'; (self.project / '.claude/skills').mkdir(parents=True)
+            (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+            (self.project / 'CLAUDE.md').write_bytes(block); (self.project / 'AGENTS.md').symlink_to('CLAUDE.md')
+            self.cli('-y')
+            self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
+            self.assertEqual(json.loads((self.project / '.claude/skills/.devlyn-install.json').read_bytes())['version'], version)
+            self.assertEqual(os.readlink(self.project / 'AGENTS.md'), 'CLAUDE.md')
+            self.assertIn(b'Default to direct execution when inspection makes', (self.project / 'CLAUDE.md').read_bytes())
+            # Without the Claude target the user is told to add it.
+            result = self.invoke('installAgentsProject();', code=None)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b'--claude', result.stdout + result.stderr)
+            # Linked elsewhere, even to another hard link of CLAUDE.md, AGENTS.md is still refused.
+            for name in ('shared.md', 'hardlink.md'):
+                shared = self.case / name
+                os.link(self.project / 'CLAUDE.md', shared) if name == 'hardlink.md' else shared.write_bytes(block)
+                (self.project / 'AGENTS.md').unlink(); (self.project / 'AGENTS.md').symlink_to(shared)
+                before = shared.read_bytes()
+                self.cli('-y', code=1)
+                self.assertEqual(shared.read_bytes(), before)
+        # Git for Windows without symlinks checks the link out as a file holding its target.
+        self.project = self.case / 'agents-placeholder'; (self.project / '.claude/skills').mkdir(parents=True)
+        (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+        (self.project / 'CLAUDE.md').write_bytes(block); (self.project / 'AGENTS.md').write_bytes(b'CLAUDE.md')
+        self.cli('-y')
+        self.assertEqual((self.project / 'AGENTS.md').read_bytes(), b'CLAUDE.md')
+        self.assertIn(b'Default to direct execution when inspection makes', (self.project / 'CLAUDE.md').read_bytes())
+        self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
+        self.assertEqual(self.markers(self.home), set())
 
-    def test_agents_supported_and_automatic_targets(self):
-        cases = [([], False, set()), ([], True, {'.codex'}),
-                 (['all'], False, {'.codex', '.agents', '.grok'})]
-        cases += [([target], True, {directory}) for target, directory in
-                  (('codex', '.codex'), ('omp', '.agents'), ('pi', '.agents'), ('grok', '.grok'))]
-        for index, (arguments, detected, expected) in enumerate(cases):
-            with self.subTest(arguments=arguments, detected=detected):
-                case = self.case / f'valid-{index}'; case.mkdir()
-                project = case / 'project'; project.mkdir()
-                home = case / 'agent-home'; home.mkdir()
-                if detected:
-                    (project / '.codex').mkdir()
-                env = {**self.env, 'DEVLYN_TEST_HOME': str(home)}
-                run(['node', '--require', self.preload, self.package / 'bin/devlyn.js',
-                     'agents', *arguments], cwd=project, env=env)
-                installed = {p.name for p in home.iterdir() if (p / 'skills/.devlyn-install.json').is_file()}
-                self.assertEqual(installed, expected)
-                self.assertEqual((project / 'AGENTS.md').is_file(), bool(expected))
+    def test_interactive_what_and_where(self):
+        down, enter, space = '\x1b[B', '\r', ' '
+        mcp = b'Playwright MCP for browser testing'
+        # Defaults on an empty project: AGENTS.md only, this project; MCP servers are Claude's.
+        result = self.interact([[enter], [enter], [enter]])
+        self.assertNotIn(mcp, result.stdout)
+        self.assertEqual({p.name for p in self.project.iterdir()}, {'AGENTS.md', '.agents', '.gitignore'})
+        self.assertEqual(self.markers(self.project), {'.agents'})
+        # A project with devlyn Claude skills preselects CLAUDE.md; an optional skill goes to both roots.
+        (self.project / '.claude/skills').mkdir(parents=True)
+        (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+        result = self.interact([[enter], [enter], [space, enter]])
+        self.assertIn(mcp, result.stdout)
+        self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
+        self.assertTrue((self.project / 'CLAUDE.md').is_file())
+        for root in ('.agents', '.claude'):
+            self.assertTrue((self.project / root / 'skills/asset-creator/SKILL.md').is_file())
+        self.assertEqual(self.markers(self.home), set())
+        # Space toggles, arrows move: CLAUDE.md only, globally — skills only, no settings.
+        self.project = self.case / 'claude-global'; self.project.mkdir()
+        self.interact([[space, down, space, enter], [down, enter], [enter]])
+        self.assertEqual(list(self.project.iterdir()), [])
+        self.assertEqual({p.name for p in self.home.iterdir()}, {'.claude'})
+        self.assertEqual({p.name for p in (self.home / '.claude').iterdir()}, {'skills'})
+        self.assertEqual(self.markers(self.home), {'.claude'})
+        # Nothing selected installs nothing.
+        self.project = self.case / 'nothing'; self.project.mkdir()
+        result = self.interact([[space, enter]])
+        self.assertIn(b'Nothing selected', result.stdout)
+        self.assertEqual(list(self.project.iterdir()), [])
+        # --claude and --global preselect both steps.
+        self.interact([[enter], [enter], [enter]], '{ claude: true, global: true }')
+        self.assertEqual(list(self.project.iterdir()), [])
+        self.assertEqual(self.markers(self.home), {'.agents', '.codex', '.claude'})
+        # --global alone preselects CLAUDE.md where ~/.claude/skills has devlyn, as -y --global does.
+        marker = self.home / '.claude/skills/.devlyn-install.json'
+        marker.write_text('{"version": "4.0.1"}', encoding='utf-8')
+        self.interact([[enter], [enter], [enter]], '{ global: true }')
+        self.assertEqual(list(self.project.iterdir()), [])
+        self.assertEqual(json.loads(marker.read_bytes())['version'], json.loads((self.package / 'package.json').read_bytes())['version'])
+
+    def test_global_drift_notice_names_roots_it_does_not_install(self):
+        roots = {'.agents': '4.0.1', '.codex': '3.3.1', '.claude': '4.1.0', '.grok': '4.0.0'}
+        for root, version in roots.items():
+            (self.home / root / 'skills/user-skill').mkdir(parents=True)
+            (self.home / root / 'skills/user-skill/keep').write_bytes(b'mine')
+            (self.home / root / 'skills/.devlyn-install.json').write_text(json.dumps({'version': version}), encoding='utf-8')
+        before = {p: p.read_bytes() if p.is_file() else None for p in self.home.rglob('*')}
+
+        def notices(result):
+            return [line for line in result.stdout.decode('utf-8').splitlines() if 'Global devlyn' in line]
+
+        def line(root, advice='refresh it with --global, or delete it'):
+            return f"Global devlyn {roots[root]} in {Path('~', root, 'skills')} — {advice}."
+
+        result = self.cli('-y')
+        self.assertEqual(notices(result), [f'\x1b[33m{line(root)}\x1b[0m' for root in ('.agents', '.codex', '.claude')]
+                         + [f"\x1b[33m{line('.grok', 'delete it')}\x1b[0m"])
+        self.assertEqual({p: p.read_bytes() if p.is_file() else None for p in self.home.rglob('*')}, before)
+        # --global refreshes every user root it installs, Claude's too once it has a marker there.
+        result = self.cli('-y', '--global')
+        self.assertEqual(notices(result), [f"\x1b[33m{line('.grok', 'delete it')}\x1b[0m"])
+        version = json.loads((self.package / 'package.json').read_bytes())['version']
+        for root in ('.agents', '.codex', '.claude'):
+            self.assertEqual(json.loads((self.home / root / 'skills/.devlyn-install.json').read_bytes())['version'], version)
+            self.assertEqual((self.home / root / 'skills/user-skill/keep').read_bytes(), b'mine')
+        grok = self.home / '.grok'
+        self.assertEqual({p: p.read_bytes() if p.is_file() else None for p in grok.rglob('*')},
+                         {p: data for p, data in before.items() if grok in p.parents})
 
     def test_pack_install_reinstall_optional_is_byte_identical(self):
-        install = "installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']); installLocalSkill('devlyn-reap');"
+        install = ("const roots = [...install(['agents', 'claude'], false), ...install(['agents', 'claude'], true)];"
+                   " installLocalSkill('devlyn-reap', roots);")
         name, optional = 'devlyn-resolve', 'devlyn-reap'
         core = self.package / 'config/skills'
         sources = {skill.name: core for skill in core.iterdir() if skill.is_dir()}
@@ -332,8 +462,10 @@ installClaudeCore();
 
         self.invoke(install)
         assert_package_bytes()
+        # Every target in both scopes writes exactly these roots.
+        self.assertEqual({p.parent for base in (self.project, self.home)
+                          for p in base.glob('.*/skills/.devlyn-install.json')}, set(self.roots()))
         for root in self.roots():
-            self.assertTrue((root / '.devlyn-install.json').is_file())
             (root / name / 'stale').write_bytes(b'old')
             (root / optional / 'stale').write_bytes(b'old')
             (root / 'user-skill').mkdir(); (root / 'user-skill/keep').write_bytes(b'user')
@@ -351,7 +483,7 @@ installClaudeCore();
         custom = b'\xef\xbb\xbf# Team rules\r\nKeep our Korean labels and formatting.\r\n'
         for name in ('AGENTS.md', 'CLAUDE.md'):
             (self.project / name).write_bytes(custom)
-        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']);")
+        self.invoke("installClaudeCore(); installAgentsProject();")
         installed = {}
         for name in ('AGENTS.md', 'CLAUDE.md'):
             data = (self.project / name).read_bytes()
@@ -360,7 +492,7 @@ installClaudeCore();
             self.assertIn(b'Default to direct execution when inspection makes', data)
             self.assertIn(custom, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
             installed[name] = data
-        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']);")
+        self.invoke("installClaudeCore(); installAgentsProject();")
         for name, data in installed.items():
             self.assertEqual((self.project / name).read_bytes(), data)
 
@@ -368,18 +500,18 @@ installClaudeCore();
         copy = self.case / 'next-version'; shutil.copytree(self.package, copy)
         prefix = b'\xef\xbb\xbf'
         suffix = b'\r\n# Local additions\r\nDo not remove these.\r\n'
-        self.invoke("installInstructionsForCLI('grok');")
+        self.invoke("updateInstructions('AGENTS.md');")
         dest = self.project / 'AGENTS.md'
         before = prefix + dest.read_bytes().replace(b'\n', b'\r\n') + suffix
         dest.write_bytes(before)
         source = copy / 'AGENTS.md'
         source.write_bytes(source.read_bytes() + b'\nA new managed default for this regression.\n')
-        self.invoke("installInstructionsForCLI('grok');", package=copy)
+        self.invoke("updateInstructions('AGENTS.md');", package=copy)
         after = dest.read_bytes()
         self.assertTrue(after.startswith(prefix)); self.assertTrue(after.endswith(suffix))
         self.assertIn(b'A new managed default for this regression.', after)
         self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob('AGENTS.md*.backup')])
-        self.invoke("installInstructionsForCLI('grok');", package=copy)
+        self.invoke("updateInstructions('AGENTS.md');", package=copy)
         self.assertEqual(dest.read_bytes(), after)
 
     def test_instruction_legacy_hash_migration_preserves_prefix_suffix(self):
@@ -395,13 +527,13 @@ installClaudeCore();
                 prefix, suffix = '\ufeff# My project\n\n', '\n# Keep\ncustom rule\n'
                 before = (prefix + old + suffix).replace('\n', eol).encode()
                 dest = self.project / 'AGENTS.md'; dest.write_bytes(before)
-                self.invoke("installInstructionsForCLI('grok');", package=copy)
+                self.invoke("updateInstructions('AGENTS.md');", package=copy)
                 after = dest.read_bytes()
                 self.assertTrue(after.startswith(prefix.replace('\n', eol).encode()))
                 self.assertTrue(after.endswith(suffix.replace('\n', eol).encode()))
                 self.assertNotIn(b'installs old defaults', after)
                 self.assertIn(b'Default to direct execution when inspection makes', after)
-                self.invoke("installInstructionsForCLI('grok');", package=copy)
+                self.invoke("updateInstructions('AGENTS.md');", package=copy)
                 self.assertEqual(dest.read_bytes(), after)
 
     def test_instruction_legacy_preamble_edits_migrate_with_exact_body(self):
@@ -454,7 +586,7 @@ installClaudeCore();
             self.assertEqual(dest.read_bytes(), after)
 
     def test_instruction_cli_conflict_guides_merge_and_retry_without_stack(self):
-        for name, args in [('CLAUDE.md', ['-y']), ('AGENTS.md', ['agents', 'grok'])]:
+        for name, args in [('CLAUDE.md', ['-y', '--claude']), ('AGENTS.md', ['-y'])]:
             with self.subTest(name=name):
                 dest = self.project / name
                 original = (b'<!-- devlyn:instructions:begin sha256=' + b'0' * 64 + b' -->\n'
@@ -487,17 +619,17 @@ installClaudeCore();
                 self.assertTrue(dest.read_bytes().startswith(custom))
 
     def test_instruction_conflicts_preserve_original_and_fail_visibly(self):
-        self.invoke("installInstructionsForCLI('codex');")
+        self.invoke("updateInstructions('AGENTS.md');")
         dest = self.project / 'AGENTS.md'; good = dest.read_bytes()
         cases = [good.replace(b'devlyn:instructions:end', b'broken:end'), good + good,
                  b'\xffinvalid utf8']
         for before in cases:
             with self.subTest(before=before[:70]):
                 dest.write_bytes(before)
-                result = self.invoke("installAgentsForCLI('grok');", code=None)
+                result = self.invoke("installAgentsProject();", code=None)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(dest.read_bytes(), before)
-                self.assertFalse((self.home / '.grok/skills').exists())
+                self.assertFalse((self.project / '.agents').exists())
         self.assertTrue(list((self.project / '.devlyn/instructions').glob('AGENTS.md*.incoming')))
         claude = self.project / 'CLAUDE.md'; claude.write_bytes(good.replace(b'devlyn:instructions:end', b'broken:end'))
         before = claude.read_bytes()
@@ -510,7 +642,7 @@ installClaudeCore();
         run(['git', 'init', '-q', self.project])
         before = b'# Custom project rules\r\nKeep exact bytes.\r\n'
         dest = self.project / 'AGENTS.md'; dest.write_bytes(before)
-        result = self.invoke("fs.renameSync = () => { throw new Error('injected rename failure'); }; installInstructionsForCLI('grok');", code=None)
+        result = self.invoke("fs.renameSync = () => { throw new Error('injected rename failure'); }; updateInstructions('AGENTS.md');", code=None)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'injected rename failure', result.stderr)
         self.assertEqual(dest.read_bytes(), before)
@@ -519,7 +651,7 @@ installClaudeCore();
         self.assertEqual(backup.read_bytes(), before)
         run(['git', 'check-ignore', str(backup)], cwd=self.project)
         backup.write_bytes(b'different recovery data')
-        result = self.invoke("installInstructionsForCLI('grok');", code=None)
+        result = self.invoke("updateInstructions('AGENTS.md');", code=None)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'Instruction recovery file differs', result.stderr)
         self.assertEqual(dest.read_bytes(), before)
@@ -531,16 +663,16 @@ installClaudeCore();
         alias = self.case / 'source-alias'
         run(['node', '-e', "require('fs').symlinkSync(process.argv[1], process.argv[2], 'junction')", copy, alias])
         run(['node', '--preserve-symlinks', '--require', self.preload, self.invoker, alias / 'bin/devlyn.js',
-             "installInstructionsForCLI('grok');"], cwd=copy, env=self.env)
+             "updateInstructions('AGENTS.md');"], cwd=copy, env=self.env)
         run(['node', '--require', self.preload, self.invoker, copy / 'bin/devlyn.js',
-             "installClaudeCore(); installSelectedCLITargets(['grok']);"], cwd=copy, env=self.env)
+             "installClaudeCore(); installAgentsProject();"], cwd=copy, env=self.env)
         for name, data in originals.items():
             self.assertEqual((copy / name).read_bytes(), data)
-        self.invoke("installClaudeCore(); installAgentsForCLI('grok');", package=copy)
-        self.invoke("installClaudeCore(); installAgentsForCLI('grok');", package=copy)
+        self.invoke("installClaudeCore(); installAgentsProject();", package=copy)
+        self.invoke("installClaudeCore(); installAgentsProject();", package=copy)
         (copy / 'AGENTS.md').write_bytes((self.project / 'AGENTS.md').read_bytes())
         before = (self.project / 'AGENTS.md').read_bytes()
-        result = self.invoke("installAgentsForCLI('grok');", package=copy, code=None)
+        result = self.invoke("installAgentsProject();", package=copy, code=None)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'Packaged instruction template contains managed markers', result.stderr)
         self.assertEqual((self.project / 'AGENTS.md').read_bytes(), before)
@@ -549,11 +681,11 @@ installClaudeCore();
     def test_instruction_preserves_permissions_despite_umask(self):
         dest = self.project / 'AGENTS.md'; dest.write_bytes(b'# Shared project rules\n')
         dest.chmod(0o664)
-        self.invoke("process.umask(0o022); installInstructionsForCLI('grok');")
+        self.invoke("process.umask(0o022); updateInstructions('AGENTS.md');")
         self.assertEqual(dest.stat().st_mode & 0o777, 0o664)
 
     def test_instruction_edited_unmarked_templates_preserve_edits_and_install(self):
-        for name, command in [('AGENTS.md', "installAgentsForCLI('grok');"), ('CLAUDE.md', 'installClaudeCore();')]:
+        for name, command in [('AGENTS.md', "installAgentsProject();"), ('CLAUDE.md', 'installClaudeCore();')]:
             with self.subTest(name=name):
                 dest = self.project / name
                 before = (self.package / name).read_bytes().replace(b'This contract serves one goal:', b'Team changed this body sentence:', 1)
@@ -572,8 +704,8 @@ installClaudeCore();
         # Historical e2e720573 template + two later stock entry-policy paragraphs:
         # the real combination that failed whole-template signature matching.
         for name, command, fixture in [
-                ('AGENTS.md', "installInstructionsForCLI('grok');", 'mixed-legacy-agents.md'),
-                ('AGENTS.md', "installInstructionsForCLI('grok');", 'legacy-july-agents.md'),
+                ('AGENTS.md', "updateInstructions('AGENTS.md');", 'mixed-legacy-agents.md'),
+                ('AGENTS.md', "updateInstructions('AGENTS.md');", 'legacy-july-agents.md'),
                 ('CLAUDE.md', 'installClaudeCore();', 'legacy-claude.md')]:
             original = (Path(__file__).resolve().parent / 'fixtures/instructions' / fixture).read_bytes()
             for eol in (b'\n', b'\r\n'):
@@ -593,8 +725,35 @@ installClaudeCore();
                     self.invoke(command)
                     self.assertEqual(dest.read_bytes(), after)
 
+    def test_instruction_4_0_1_agents_block_is_replaced_in_place(self):
+        # 4.1.0 renamed the AGENTS.md title and intro. A 4.0.1 block is replaced, never stacked,
+        # and an edited one keeps only the edits: its stock paragraphs sit under the old title.
+        block = (Path(__file__).resolve().parent / 'fixtures/instructions/agents-4.0.1.md').read_bytes()
+        prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
+        dest = self.project / 'AGENTS.md'
+        for edited in (False, True):
+            for eol in (b'\n', b'\r\n'):
+                with self.subTest(edited=edited, eol=eol):
+                    old = block.replace(b'This contract serves one goal:', b'Team changed this body sentence:') if edited else block
+                    dest.write_bytes((prefix + old + suffix).replace(b'\n', eol))
+                    self.invoke("updateInstructions('AGENTS.md');")
+                    after = dest.read_bytes()
+                    custom, managed = after.split(b'<!-- devlyn:instructions:begin', 1)
+                    self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
+                    self.assertTrue(after.endswith(suffix.replace(b'\n', eol)))
+                    self.assertIn(b'# Project Instructions' + eol, managed)
+                    self.assertNotIn(b'Codex CLI reads this file', after)
+                    if edited:
+                        self.assertTrue(custom.startswith(prefix.replace(b'\n', eol)))
+                        self.assertIn(b'Team changed this body sentence:', custom)
+                        self.assertNotIn(b'unstructured idea', custom)
+                    else:
+                        self.assertEqual(custom, prefix.replace(b'\n', eol))
+                    self.invoke("updateInstructions('AGENTS.md');")
+                    self.assertEqual(dest.read_bytes(), after)
+
     def test_instruction_custom_content_survives_legacy_and_edited_managed_blocks(self):
-        for name, command in [('AGENTS.md', "installInstructionsForCLI('grok');"), ('CLAUDE.md', 'installClaudeCore();')]:
+        for name, command in [('AGENTS.md', "updateInstructions('AGENTS.md');"), ('CLAUDE.md', 'installClaudeCore();')]:
             for managed in (False, True):
                 with self.subTest(name=name, managed=managed):
                     dest = self.project / name
@@ -645,17 +804,17 @@ installClaudeCore();
         for before in examples:
             with self.subTest(before=before):
                 dest.write_bytes(before)
-                self.invoke("installInstructionsForCLI('grok');")
+                self.invoke("updateInstructions('AGENTS.md');")
                 after = dest.read_bytes()
                 self.assertTrue(after.startswith(before))
-                self.invoke("installInstructionsForCLI('grok');")
+                self.invoke("updateInstructions('AGENTS.md');")
                 self.assertEqual(dest.read_bytes(), after)
 
     @unittest.skipIf(os.name == 'nt', 'symlink creation requires native Windows privileges')
     def test_instruction_symlink_is_preserved(self):
         shared = self.case / 'shared.md'; shared.write_bytes(b'shared custom rules')
         dest = self.project / 'AGENTS.md'; dest.symlink_to(shared)
-        result = self.invoke("installAgentsForCLI('grok');", code=None)
+        result = self.invoke("installAgentsProject();", code=None)
         self.assertNotEqual(result.returncode, 0)
         self.assertTrue(dest.is_symlink())
         self.assertEqual(shared.read_bytes(), b'shared custom rules')
@@ -665,7 +824,7 @@ installClaudeCore();
         for component in ('.devlyn', '.devlyn/instructions'):
             for kind in ('outside', 'inside', 'dangling'):
                 for conflict in (False, True):
-                    for name, command in [('AGENTS.md', "installAgentsForCLI('grok');"), ('CLAUDE.md', 'installClaudeCore();')]:
+                    for name, command in [('AGENTS.md', "installAgentsProject();"), ('CLAUDE.md', 'installClaudeCore();')]:
                         with self.subTest(component=component, kind=kind, conflict=conflict, name=name):
                             with tempfile.TemporaryDirectory(dir=self.case) as temp:
                                 base = Path(temp); project = base / 'project'; project.mkdir()
@@ -689,7 +848,7 @@ installClaudeCore();
                                     self.assertEqual(list(target.iterdir()), [target / 'keep'])
                                     self.assertEqual((target / 'keep').read_bytes(), b'untouched target')
                                 self.assertFalse((project / '.claude').exists())
-                                self.assertFalse((self.home / '.grok').exists())
+                                self.assertFalse((project / '.agents').exists())
 
     def test_instruction_recovery_non_directory_and_unused_path(self):
         for component in ('.devlyn', '.devlyn/instructions'):
@@ -699,7 +858,7 @@ installClaudeCore();
                     entry = project / component; entry.parent.mkdir(exist_ok=True)
                     entry.write_bytes(b'keep obstruction')
                     dest = project / 'AGENTS.md'; dest.write_bytes(b'# Custom rules\n')
-                    body = f'process.chdir({json.dumps(str(project))}); installInstructionsForCLI("grok");'
+                    body = f'process.chdir({json.dumps(str(project))}); updateInstructions("AGENTS.md");'
                     result = self.invoke(body, code=None)
                     self.assertNotEqual(result.returncode, 0)
                     self.assertIn(str(entry).encode('utf-8'), result.stderr)
@@ -766,20 +925,36 @@ installClaudeCore();
                     f"'{hashlib.sha256(shipped).hexdigest()}']); installClaudeCore();")
         self.assertFalse(mine.exists())
 
+    def test_opted_in_and_own_standards_skills_survive_updates(self):
+        # 3.3.0 made the standards skills optional addons; only an unedited default copy goes.
+        optional = (self.package / 'optional-skills/root-cause-analysis/SKILL.md').read_bytes()
+        mine = b'---\nname: code-review-standards\ndescription: mine\n---\n'
+        roots = [self.project / '.agents/skills', self.project / '.claude/skills', self.home / '.claude/skills']
+        for root in roots:
+            for name, data in (('root-cause-analysis', optional), ('code-review-standards', mine)):
+                (root / name).mkdir(parents=True); (root / name / 'SKILL.md').write_bytes(data)
+        self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
+        for root in roots:
+            self.assertEqual((root / 'root-cause-analysis/SKILL.md').read_bytes(), optional)
+            self.assertEqual((root / 'code-review-standards/SKILL.md').read_bytes(), mine)
+
     def test_incomplete_source_has_no_marker(self):
         copy = self.case / 'broken'; shutil.copytree(self.package, copy)
         skill = next((copy / 'config/skills').glob('devlyn*resolve'))
         (skill / 'SKILL.md').unlink()
-        result = self.invoke("installSkillsForCLI('codex');", package=copy, code=None)
+        stale = self.home / '.agents/skills/.devlyn-install.json'
+        stale.parent.mkdir(parents=True); stale.write_text('{"version": "stale"}', encoding='utf-8')
+        result = self.invoke("install(['agents'], true);", package=copy, code=None)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'Incomplete devlyn skill install', result.stderr)
-        self.assertFalse((self.home / '.codex/skills/.devlyn-install.json').exists())
+        self.assertEqual(self.markers(self.home), set())
 
     def test_upgrade_retires_pre_4_names_only_where_it_installs(self):
         # Before 4.0.0 each skill was `devlyn:<name>`; npm extracts ':' as U+F03A on Windows.
         spellings = ['\uf03a'] if os.name == 'nt' else [':', '\uf03a']
         core = ['resolve', 'ideate', 'design-ui', 'engines', 'queue']
-        claude, codex, agents, grok = self.roots()
+        claude = self.project / '.claude/skills'
+        agents, codex, grok = (self.home / name / 'skills' for name in ('.agents', '.codex', '.grok'))
         planted = {claude: core + ['pencil-pull', 'pencil-push', 'reap'], codex: core + ['pencil-pull'],
                    agents: core, grok: ['resolve', 'reap']}
         for root, names in planted.items():
@@ -793,7 +968,7 @@ installClaudeCore();
         legacy = (self.package / 'optional-skills/devlyn-pencil-push/SKILL.md').read_bytes().split(b'\n', 5)[5]
         (agents / 'devlyn-pencil-push').mkdir(); (agents / 'devlyn-pencil-push/SKILL.md').write_bytes(legacy)
         (codex / 'devlyn-pencil-push').mkdir(); (codex / 'devlyn-pencil-push/SKILL.md').write_bytes(b'mine\n')
-        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi']);")
+        self.invoke("installClaudeCore(); install(['agents'], true);")
         for root, optional in ((claude, {'pencil-pull', 'pencil-push', 'reap'}), (codex, {'pencil-pull'}), (agents, {'pencil-push'})):
             entries = {p.name for p in root.iterdir()}
             self.assertEqual({n for n in entries if n.startswith(('devlyn:', 'devlyn\uf03a'))}, set(), root)

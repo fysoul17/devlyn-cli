@@ -188,13 +188,13 @@ jobs:
           preload = root / 'homedir.cjs'
           preload.write_text("require('os').homedir = () => process.env.DEVLYN_TEST_HOME;\n", encoding='utf-8')
           child_env = dict(os.environ, DEVLYN_TEST_HOME=str(agent_home))
-          checked('cli-entrypoint', ['node', '--require', str(preload), str(package / 'bin/devlyn.js'), '-y'],
+          checked('cli-entrypoint', ['node', '--require', str(preload), str(package / 'bin/devlyn.js'), '-y', '--claude'],
                   cwd=project, env=child_env)
-          skills = project / '.claude/skills'
-          marker = json.loads((skills / '.devlyn-install.json').read_text(encoding='utf-8'))
-          assert marker['package'] == 'devlyn-cli', marker
-          resolve = skills / 'devlyn-resolve'
-          assert resolve.is_dir() and 'name: devlyn-resolve' in (resolve / 'SKILL.md').read_text(encoding='utf-8')
+          for skills in (project / '.agents/skills', project / '.claude/skills'):
+              marker = json.loads((skills / '.devlyn-install.json').read_text(encoding='utf-8'))
+              assert marker['package'] == 'devlyn-cli', marker
+              resolve = skills / 'devlyn-resolve'
+              assert resolve.is_dir() and 'name: devlyn-resolve' in (resolve / 'SKILL.md').read_text(encoding='utf-8')
           print('Real CLI complete-install marker and resolve directory passed', flush=True)
 
           failed = []

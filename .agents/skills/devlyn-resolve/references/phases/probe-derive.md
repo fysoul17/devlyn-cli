@@ -24,7 +24,7 @@ second planner, critic essay, or debate participant. Your output is JSONL only.
 <forbidden_input>
 Do not read `spec.expected.json`, `.devlyn/spec-verify.json`,
 `BENCH_FIXTURE_DIR`, benchmark fixture/verifier paths, `.devlyn/*.findings.jsonl`,
-`.claude/skills`, `.codex/skills`, `CLAUDE.md`, `AGENTS.md`, or other harness
+`.claude/skills`, `.codex/skills`, `.agents/skills`, `CLAUDE.md`, `AGENTS.md`, or other harness
 docs unless the orchestrator pasted a specific excerpt into the prompt.
 </forbidden_input>
 

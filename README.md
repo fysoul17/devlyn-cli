@@ -27,7 +27,14 @@ If devlyn-cli saved you time, [give it a star](https://github.com/fysoul17/devly
 npx devlyn-cli
 ```
 
-That's it. The installer opens with a single **agent selector** — pick any combination of **Claude Code**, **Codex CLI**, **oh-my-pi (omp)**, **Pi**, or **Grok Build CLI**, and devlyn installs into every one you choose in a single pass. Claude Code and any agent already present on your machine are pre-checked, so the common case is just Enter. Skill-capable agents receive the `devlyn-resolve`, `devlyn-ideate`, and `devlyn-design-ui` skills — plus the `devlyn-engines` and `devlyn-queue` utilities — in the directory each one loads from: Codex → `~/.codex/skills/`, Grok → `~/.grok/skills/`, while **omp and Pi share `~/.agents/skills/`** — the cross-agent standard both read — so the bundle is written there once, not duplicated per agent. In Codex / omp / Pi, invoke them as skills (`$devlyn-resolve`, `$devlyn-ideate`, `$devlyn-design-ui`); in Claude Code and Grok Build CLI they're slash commands (`/devlyn-resolve`). Rerunning refreshes skills and the managed instruction block for selected agents while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery. (`npx devlyn-cli -y` installs the Claude core non-interactively; `npx devlyn-cli agents <cli>` adds one agent later.)
+That's it. The installer asks two things:
+
+1. **What** — `AGENTS.md — Codex · omp · Pi · Grok` (checked) and `CLAUDE.md — Claude Code` (checked when this project already has a devlyn Claude install). Space toggles, Enter confirms.
+2. **Where** — `This project` (default) or `Global — every project on this machine`.
+
+In a project, AGENTS.md readers load the skills from `.agents/skills/`; Claude Code loads only `.claude/skills/` and reads AGENTS.md when the project has no CLAUDE.md. Global installs skills only: `~/.agents/skills/` (omp, Pi, Grok) and `~/.codex/skills/` (Codex), plus `~/.claude/skills/` for Claude Code. Every target gets the `devlyn-resolve`, `devlyn-ideate`, and `devlyn-design-ui` skills plus the `devlyn-engines` and `devlyn-queue` utilities. In Codex / omp / Pi, invoke them as skills (`$devlyn-resolve`, `$devlyn-ideate`, `$devlyn-design-ui`); in Claude Code and Grok they're slash commands (`/devlyn-resolve`). Rerunning refreshes skills and the managed instruction block while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery.
+
+Without prompts, `npx devlyn-cli -y` installs AGENTS.md + `.agents/skills/` plus every target this project already has; add `--claude` for Claude Code. With `--global` it installs for every project on this machine, plus `~/.claude/skills/` with `--claude` or when it already has a devlyn install.
 
 ---
 
@@ -39,7 +46,7 @@ devlyn-cli supports direct execution for clear, low-risk work with decisive chec
 inspect intent  →  direct work or full resolve  →  ship
 ```
 
-Non-Claude agents (Codex / omp / Pi / Grok): when one of these is selected, the workflows install as that agent's skills. In Codex / omp / Pi, use `$devlyn-ideate`, `$devlyn-resolve`, or `$devlyn-design-ui`; in Grok, use `/devlyn-ideate`, `/devlyn-resolve`, or `/devlyn-design-ui`, the same slash-command form as Claude Code.
+Non-Claude agents (Codex / omp / Pi / Grok): the AGENTS.md choice installs the workflows as their skills. In Codex / omp / Pi, use `$devlyn-ideate`, `$devlyn-resolve`, or `$devlyn-design-ui`; in Grok, use `/devlyn-ideate`, `/devlyn-resolve`, or `/devlyn-design-ui`, the same slash-command form as Claude Code.
 
 ### Step 1 (optional) — Plan with `/devlyn-ideate`
 
@@ -147,7 +154,7 @@ If an engine is absent when explicitly selected by flag, pin, or role profile, o
 ### Migration from earlier versions
 
 Reinstall with the new version to refresh instructions and skills for the selected
-CLIs. Claude uses `CLAUDE.md`; Codex, Grok, omp and Pi share `AGENTS.md`.
+targets. Claude uses `CLAUDE.md`; Codex, Grok, omp and Pi share `AGENTS.md`.
 Devlyn updates its checksum-marked instruction block and preserves project-specific
 rules outside it. Keep custom rules outside the block; they take precedence over
 its defaults. Exact pre-update backups are saved in `.devlyn/instructions/`.
@@ -166,11 +173,18 @@ Release packaging refreshes the offline fingerprints from Git history using
 `node scripts/update-instruction-templates.js`; installation needs no Git or network.
 Use 3.1.3 or newer consistently: older installers still overwrite `CLAUDE.md`.
 
+Upgrading to 4.1.0: `npx devlyn-cli -y` in a 4.x project keeps its Claude Code install
+current and adds `AGENTS.md` + `.agents/skills/`. Earlier releases put the Codex, omp, Pi
+and Grok skills in `~/.codex/skills`, `~/.agents/skills` and `~/.grok/skills`; a project
+install no longer refreshes them and names each one it finds. Refresh them with `--global`
+or delete them; delete `~/.grok/skills`, since Grok now reads `~/.agents/skills`.
+`npx devlyn-cli agents` was removed.
+
 <!-- legacy-surface-map:begin — retired command names below are documented as OLD, not current; lint Check 10c skips this block -->
 Upgrading to 4.0.0: every devlyn skill is renamed to the Agent Skills standard
 (`/devlyn:resolve` → `/devlyn-resolve`; the full list is in the table below). Run the
-installer for each agent you use, in each project that has devlyn (`npx devlyn-cli` and
-select them, or `-y` plus `npx devlyn-cli agents <cli>`): each run removes the old folders
+installer in each project that has devlyn (`npx devlyn-cli`, or `-y` with `--claude` and
+`--global` as needed): each run removes the old folders
 where it installs and keeps an optional skill you had under its new name. A 3.x installer run
 afterwards brings the old `devlyn:*` folders back beside some new ones and drops opted-in
 pencil skills; run the 4.x installer again to repair it, and re-add those pencil skills from
@@ -197,7 +211,7 @@ Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4
 Selected during install. Run `npx devlyn-cli` again to add more.
 
 <details>
-<summary><strong>Skills</strong> — copied to <code>.claude/skills/</code></summary>
+<summary><strong>Skills</strong> — copied into every skill root the install writes</summary>
 
 | Skill | Description |
 |---|---|
@@ -232,7 +246,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 </details>
 
 <details>
-<summary><strong>MCP Servers</strong> — installed via <code>claude mcp add</code></summary>
+<summary><strong>MCP Servers</strong> — installed via <code>claude mcp add</code>, offered with the CLAUDE.md choice</summary>
 
 | Server | Description |
 |---|---|
@@ -250,9 +264,9 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 - **Node.js 18+** and npm
 - **Python 3.11+** available as `python3`, and Git for the resolve harness
-- **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** installed and configured
+- **An agent CLI** installed and configured: Codex, omp, Pi or Grok (AGENTS.md), or [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLAUDE.md)
 
-On native Windows, use native Node/npm and Python plus Git for Windows Bash for the shipped shell wrapper. Run `npx devlyn-cli -y` in the project; add Codex with `npx devlyn-cli agents codex`. Skill folders follow the Agent Skills naming standard (for example `devlyn-resolve`), so a project that commits them checks out on Windows. Harness text is UTF-8 without requiring `PYTHONUTF8`.
+On native Windows, use native Node/npm and Python plus Git for Windows Bash for the shipped shell wrapper. Run `npx devlyn-cli -y` in the project (add `--claude` for Claude Code). Skill folders follow the Agent Skills naming standard (for example `devlyn-resolve`), so a project that commits them checks out on Windows. Harness text is UTF-8 without requiring `PYTHONUTF8`.
 
 Windows completion preserves the workspace, owned refs and recovery receipt when writer cessation cannot be proved, even after merge; resume guidance and delivery status remain separate from product verification. The portability workflow checks out the repository on native Windows and tests the POSIX-packed npm artifact there. A POSIX pass alone does not establish Windows support: acceptance requires the passing Windows job for the exact source SHA/artifact hashes.
 

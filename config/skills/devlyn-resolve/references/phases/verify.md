@@ -187,7 +187,7 @@ When eligible and the orchestrator spawns a second VERIFY agent with the OTHER e
   state mutation, all-or-nothing rollback, ordering, idempotency, auth, or
   error-priority clauses. The primary judge owns broad coverage; the pair judge
   is a bounded adversarial complement. Do not read `.claude/skills`,
-  `.codex/skills`, `CLAUDE.md`, `AGENTS.md`, or other harness docs unless the
+  `.codex/skills`, `.agents/skills`, `CLAUDE.md`, `AGENTS.md`, or other harness docs unless the
   orchestrator pasted a specific excerpt into the prompt. Use only the spec,
   diff, implementation files, tests, and sealed MECHANICAL evidence. Complete at
   most two targeted reviews before first output; inspection remains read-only.

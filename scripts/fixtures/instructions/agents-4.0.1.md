@@ -1,6 +1,9 @@
-# Project Instructions
+<!-- devlyn:instructions:begin sha256=f722ef6ea7be929df5c1b0414a372e3c6bd5dac87a2ca0e70dd2e591499d7d1e -->
+Project-specific instructions outside this managed block take precedence over these defaults.
 
-devlyn-cli installs planning and full-pipeline skills alongside the execution contract below. Codex, omp, Pi and Grok read this file, and so does Claude Code when the project has no CLAUDE.md. The principles are non-negotiable on every change.
+# Codex Project Instructions
+
+devlyn-cli installs planning and full-pipeline skills alongside the execution contract below. Codex CLI reads this file when invoked inside a project that has it. The principles are non-negotiable on every change.
 
 ## North Star
 
@@ -115,3 +118,4 @@ Exclude vague claims. They produce vague fixes.
 - Be concise and specific.
 - State blockers plainly.
 - Separate completed work, verification, and remaining risks.
+<!-- devlyn:instructions:end -->
