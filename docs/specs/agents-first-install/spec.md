@@ -23,11 +23,11 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
 ## Contract
 
 ### Interactive (`npx devlyn-cli`)
-1. What (multi-select; Space toggles, Enter confirms):
-   - `AGENTS.md + .agents/skills` — Codex · omp · Pi · Grok; Claude Code reads AGENTS.md
-     when the project has no CLAUDE.md. Checked by default.
-   - `Claude Code skills (.claude/)` — to run devlyn skills (`/devlyn-resolve`, …) inside
-     Claude Code. Checked when this project already has devlyn Claude skills.
+1. What — two choices named by their instruction file (owner 2026-10-01: "everything except
+   CLAUDE.md is AGENTS.md"; multi-select, Space toggles, Enter confirms):
+   - `AGENTS.md — Codex · omp · Pi · Grok` (AGENTS.md + `.agents/skills`). Checked by default.
+   - `CLAUDE.md — Claude Code` (CLAUDE.md + `.claude/`). Checked when this project already has
+     devlyn Claude skills.
    Selecting nothing installs nothing (exit 0 with a hint), as today.
 2. Where (single select; Enter confirms): `This project` (default) or
    `Global — every project on this machine`.
@@ -48,11 +48,10 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
 - AGENTS, project: the `AGENTS.md` managed block; `.agents/skills/<core skills>` with
   `.agents/skills/.devlyn-install.json`; `.gitignore` gains `.devlyn/` and
   `.agents/skills/.devlyn-install.json`.
-- Claude, project: as 4.0.1 (`.claude/skills` + marker, `.claude/templates`,
-  `.claude/commit-conventions.md`, `.claude/settings.json` permissions/env/Stop hook,
-  `.gitignore`), except: a CLAUDE.md is managed only when it already exists (none is
-  created — Claude Code reads AGENTS.md), and `ENABLE_PROMPT_CACHING_1H` is set in the
-  project `.claude/settings.json` env instead of `~/.claude/settings.json`.
+- Claude, project: as 4.0.1 (CLAUDE.md managed block, `.claude/skills` + marker,
+  `.claude/templates`, `.claude/commit-conventions.md`, `.claude/settings.json`
+  permissions/env/Stop hook, `.gitignore`), except that `ENABLE_PROMPT_CACHING_1H` is set in
+  the project `.claude/settings.json` env instead of `~/.claude/settings.json`.
 - Global: skills only. AGENTS → `~/.agents/skills` (omp, Pi, Grok) and `~/.codex/skills`
   (Codex); Claude → `~/.claude/skills`. No project file and no `~/.claude/settings.json`.
 - Old names, retired skills and refresh rules of 4.0.1 apply only to the roots this run
@@ -83,7 +82,7 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
 - `scripts/test-windows-portability.py`: interactive picker defaults and Space/Enter
   handling; every target × scope; `-y` on an empty project, on a 4.0.1 Claude project and on
   a 3.x project; `--claude`; `--global`; `agents` exits 1 with the replacement; no
-  CLAUDE.md created; prompt-caching env in the project settings and none in
+  CLAUDE.md created unless the Claude choice is selected; prompt-caching env in the project settings and none in
   `~/.claude/settings.json`; drift notice; installed bytes = package bytes in every root
   written, before and after reinstall.
 - `scripts/lint-skills.sh` passes (update its expectations where the contract changed).
