@@ -13,7 +13,7 @@
 5. **Deliver as a PR.** Commit in the task worktree, write `<worktree>/.devlyn/acceptance.json` (kind `direct`), then from a cwd outside the checkout `task-complete.py complete --receipt <receipt> --acceptance <file> --mode pr --writers-stopped`. Root merges research PRs once Astra verification is SHIP and CI is green where it runs, with `--mode auto --writers-stopped`. H is a pushed branch with no PR, not merged during 0229.
 6. **Hand off** in the same PR: update the table below.
 
-**Replay batches (steps 3–4):** judges run as `_devlynjudge` (Addendum C2); the runner changes nothing outside `/Users/Shared/devlyn-vr-0227*` and `/Users/Shared/devlyn-vr-0228-dev`. After R3, or if the owner stops, tell the owner: the devlyn-os-v1 session removes the judge account and token.
+**Replays and the screen (steps 4–5):** judges run as `_devlynjudge` (0228 Addendum C2); nothing changes outside `/Users/Shared/devlyn-vr-0227*` and `/Users/Shared/devlyn-vr-0228-dev` (the screen root is `screen-0229` inside it). After the screen ends, or when the work stops, tell the owner: the devlyn-os-v1 session removes the judge account and token.
 
 ## Steps (0229 "Work order")
 
