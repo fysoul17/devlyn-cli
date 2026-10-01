@@ -268,4 +268,4 @@ function updateInstructions(name) {
   return true;
 }
 
-module.exports = { updateInstructions, InstructionError, instructionParagraphs };
+module.exports = { updateInstructions, InstructionError, instructionParagraphs, BEGIN };

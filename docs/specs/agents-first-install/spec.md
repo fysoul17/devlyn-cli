@@ -27,7 +27,7 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
    CLAUDE.md is AGENTS.md"; multi-select, Space toggles, Enter confirms):
    - `AGENTS.md — Codex · omp · Pi · Grok` (AGENTS.md + `.agents/skills`). Checked by default.
    - `CLAUDE.md — Claude Code` (CLAUDE.md + `.claude/`). Checked when this project already has
-     devlyn Claude skills.
+     a devlyn Claude install (skills, commands or a CLAUDE.md managed block).
    Selecting nothing installs nothing (exit 0 with a hint), as today.
 2. Where (single select; Enter confirms): `This project` (default) or
    `Global — every project on this machine`.
@@ -40,7 +40,8 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
   project, project scope. A 4.x project with `.claude/skills` keeps its Claude update and
   gains AGENTS.md + `.agents/skills`.
 - `--claude` adds the Claude target; `--global` selects global scope (with `-y` or
-  interactively it preselects step 2). No other flags.
+  interactively it preselects step 2). With `-y --global`, Claude counts as installed when
+  `~/.claude/skills` has a devlyn install marker. No other flags.
 - `npx devlyn-cli agents …` is removed: it prints the replacement (`npx devlyn-cli` /
   `-y [--claude] [--global]`) and exits 1.
 
@@ -51,11 +52,13 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
 - Claude, project: as 4.0.1 (CLAUDE.md managed block, `.claude/skills` + marker,
   `.claude/templates`, `.claude/commit-conventions.md`, `.claude/settings.json`
   permissions/env/Stop hook, `.gitignore`), except that `ENABLE_PROMPT_CACHING_1H` is set in
-  the project `.claude/settings.json` env instead of `~/.claude/settings.json`.
+  the project `.claude/settings.json` env instead of `~/.claude/settings.json`. Refused before any
+  write when the project is the home folder, whose CLAUDE.md and settings apply to every project.
 - Global: skills only. AGENTS → `~/.agents/skills` (omp, Pi, Grok) and `~/.codex/skills`
   (Codex); Claude → `~/.claude/skills`. No project file and no `~/.claude/settings.json`.
 - Old names, retired skills and refresh rules of 4.0.1 apply only to the roots this run
-  installs into.
+  installs into. A retired skill that is now an optional addon goes only as an unedited default
+  copy, never as an opted-in or user-written folder.
 
 ### Instruction template
 - `AGENTS.md` (the package template) becomes engine-neutral in its title and intro only:
@@ -72,6 +75,7 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
 ### Global drift notice
 - When a devlyn install marker exists in a user root that this run does not install into,
   print one line: `Global devlyn <version> in <root> — refresh it with --global, or delete it.`
+  `~/.grok/skills` (4.0's Grok root, which no target writes now) gets `— delete it.`
   Nothing else changes there.
 
 ## Out of scope

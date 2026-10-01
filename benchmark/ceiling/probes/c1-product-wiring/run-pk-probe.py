@@ -101,7 +101,7 @@ def tree_digest(root: pathlib.Path) -> str:
 
 def install_product(scratch: pathlib.Path) -> None:
     result = subprocess.run(
-        ["node", str(REPO_ROOT / "bin/devlyn.js"), "init"],
+        ["node", str(REPO_ROOT / "bin/devlyn.js"), "init", "--claude"],
         cwd=scratch,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,

@@ -308,12 +308,9 @@ fi
 #     every later install.
 # ---------------------------------------------------------------------------
 section "Check 5d: DEPRECATED_DIRS never names a shipped skill"
-# Moved to optional-skills in 0221 and removed from every install by design.
-removed_optional=' code-health-standards code-review-standards root-cause-analysis ui-implementation-standards '
 offenders=$(
   sed -n '/^const DEPRECATED_DIRS = \[/,/^\];/p' bin/devlyn.js | grep -oE "'skills/[^']+'" | tr -d "'" | sed 's#^skills/##' |
     while IFS= read -r name; do
-      case "$removed_optional" in (*" $name "*) continue ;; esac
       if [ -f "config/skills/$name/SKILL.md" ] || [ -f "optional-skills/$name/SKILL.md" ]; then
         echo "DEPRECATED_DIRS names shipped skill $name"
       fi
@@ -340,10 +337,10 @@ else
   bad "devlyn-design-ui must not be installed as an optional addon"
 fi
 if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn-resolve', 'devlyn-ideate', 'devlyn-design-ui', 'devlyn-engines', 'devlyn-queue', '_shared'];" bin/devlyn.js \
-   && grep -Fq "skillsToInstall: DEVLYN_CORE_SKILLS" bin/devlyn.js; then
-  ok "Codex install includes devlyn-design-ui (via shared DEVLYN_CORE_SKILLS bundle)"
+   && grep -Fq "for (const skillName of DEVLYN_CORE_SKILLS) {" bin/devlyn.js; then
+  ok "every skill root install includes devlyn-design-ui (via shared DEVLYN_CORE_SKILLS bundle)"
 else
-  bad "Codex skillsToInstall must include devlyn-design-ui (shared DEVLYN_CORE_SKILLS bundle)"
+  bad "every skill root install must include devlyn-design-ui (shared DEVLYN_CORE_SKILLS bundle)"
 fi
 if ! grep -F "name: 'devlyn-design-ui'" bin/devlyn.js >/dev/null 2>&1; then
   ok "devlyn-design-ui is absent from OPTIONAL_ADDONS"
@@ -366,13 +363,13 @@ if make_temp_dir tmp_install_marker /tmp/devlyn-install-marker.XXXXXX; then
   printf '{"env":{"BASH_MAX_TIMEOUT_MS":"7200000"}}\n' > "$timeout_high/.claude/settings.json"
 
   if (cd "$marker_project" \
-      && HOME="$marker_home" node "$installer" -y >"$tmp_install_marker/claude.log" 2>&1 \
-      && HOME="$marker_home" node "$installer" agents all >"$tmp_install_marker/agents.log" 2>&1) \
-      && (cd "$timeout_low" && HOME="$marker_home" node "$installer" -y >"$tmp_install_marker/timeout-low.log" 2>&1) \
+      && HOME="$marker_home" node "$installer" -y --claude >"$tmp_install_marker/project.log" 2>&1 \
+      && HOME="$marker_home" node "$installer" -y --global --claude >"$tmp_install_marker/global.log" 2>&1) \
+      && (cd "$timeout_low" && HOME="$marker_home" node "$installer" -y --claude >"$tmp_install_marker/timeout-low.log" 2>&1) \
       && cp "$timeout_low/.claude/settings.json" "$tmp_install_marker/timeout-low-first.json" \
       && (cd "$timeout_low" && HOME="$marker_home" node "$installer" -y >"$tmp_install_marker/timeout-low-second.log" 2>&1) \
       && cmp -s "$timeout_low/.claude/settings.json" "$tmp_install_marker/timeout-low-first.json" \
-      && (cd "$timeout_high" && HOME="$marker_home" node "$installer" -y >"$tmp_install_marker/timeout-high.log" 2>&1); then
+      && (cd "$timeout_high" && HOME="$marker_home" node "$installer" -y --claude >"$tmp_install_marker/timeout-high.log" 2>&1); then
     if python3 - "$installer" "$marker_home" "$marker_project" "$timeout_low" "$timeout_high" <<'PY'
 import json
 import pathlib
@@ -387,10 +384,11 @@ timeout_high = pathlib.Path(sys.argv[5])
 package = json.loads((installer.parent.parent / "package.json").read_text())
 expected = {"schemaVersion": 1, "package": package["name"], "version": package["version"]}
 roots = [
+    project / ".agents" / "skills",
     project / ".claude" / "skills",
-    home / ".codex" / "skills",
     home / ".agents" / "skills",
-    home / ".grok" / "skills",
+    home / ".codex" / "skills",
+    home / ".claude" / "skills",
 ]
 for root in roots:
     marker = root / ".devlyn-install.json"
@@ -413,10 +411,11 @@ for target, expected_timeout in (
         raise SystemExit(f"{target}: BASH_DEFAULT_TIMEOUT_MS must not be installed")
 PY
     then
-      if grep -Fxq '.claude/skills/.devlyn-install.json' "$marker_project/.gitignore"; then
+      if grep -Fxq '.claude/skills/.devlyn-install.json' "$marker_project/.gitignore" \
+         && grep -Fxq '.agents/skills/.devlyn-install.json' "$marker_project/.gitignore"; then
         ok "managed roots have exact 0600 markers; Bash max is installed, raised, preserved, and idempotent"
       else
-        bad "Claude project install must ignore its local marker"
+        bad "project installs must ignore their local markers"
       fi
     else
       bad "completed installs must write the exact per-root marker"
@@ -426,24 +425,24 @@ PY
   fi
 
   incomplete="$tmp_install_marker/incomplete"
-  mkdir -p "$incomplete/package" "$incomplete/home/.codex/skills" "$incomplete/claude/.claude/skills" "$incomplete/codex"
+  mkdir -p "$incomplete/package" "$incomplete/home/.agents/skills" "$incomplete/project/.agents/skills"
   cp -R bin config package.json AGENTS.md CLAUDE.md "$incomplete/package/"
   rm -rf "$incomplete/package/config/skills/devlyn-queue"
-  printf '{"version":"stale"}\n' > "$incomplete/home/.codex/skills/.devlyn-install.json"
-  printf '{"version":"stale"}\n' > "$incomplete/claude/.claude/skills/.devlyn-install.json"
-  if ! (cd "$incomplete/claude" \
-      && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y >"$incomplete/claude.log" 2>&1) \
-      && ! (cd "$incomplete/codex" \
-      && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" agents codex >"$incomplete/codex.log" 2>&1) \
-      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-queue' "$incomplete/claude.log" \
-      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-queue' "$incomplete/codex.log" \
-      && [ -d "$incomplete/claude/.claude/skills/devlyn-resolve" ] \
-      && [ -d "$incomplete/home/.codex/skills/devlyn-resolve" ] \
-      && [ ! -e "$incomplete/claude/.claude/skills/.devlyn-install.json" ] \
-      && [ ! -e "$incomplete/home/.codex/skills/.devlyn-install.json" ]; then
-    ok "incomplete Claude and Codex copies fail visibly without stale or replacement markers"
+  printf '{"version":"stale"}\n' > "$incomplete/home/.agents/skills/.devlyn-install.json"
+  printf '{"version":"stale"}\n' > "$incomplete/project/.agents/skills/.devlyn-install.json"
+  if ! (cd "$incomplete/project" \
+      && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y >"$incomplete/project.log" 2>&1) \
+      && ! (cd "$incomplete/project" \
+      && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y --global >"$incomplete/global.log" 2>&1) \
+      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-queue' "$incomplete/project.log" \
+      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-queue' "$incomplete/global.log" \
+      && [ -d "$incomplete/project/.agents/skills/devlyn-resolve" ] \
+      && [ -d "$incomplete/home/.agents/skills/devlyn-resolve" ] \
+      && [ ! -e "$incomplete/project/.agents/skills/.devlyn-install.json" ] \
+      && [ ! -e "$incomplete/home/.agents/skills/.devlyn-install.json" ]; then
+    ok "incomplete project and global copies fail visibly without stale or replacement markers"
   else
-    bad "incomplete Claude and Codex copies must fail visibly without an install marker"
+    bad "incomplete project and global copies must fail visibly without an install marker"
   fi
   rm -rf "$tmp_install_marker"
 else

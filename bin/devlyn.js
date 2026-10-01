@@ -10,7 +10,7 @@ const { execSync } = require('child_process');
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
-const { updateInstructions, InstructionError } = require('./instructions');
+const { updateInstructions, InstructionError, BEGIN } = require('./instructions');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
@@ -46,13 +46,37 @@ const PRE_STANDARD_SKILL_MD_SHA256 = new Set([
   '5f2e8b29609cbb2af72941579823bec598265ebf29cd3a375d6aa47d95b74354', // devlyn-pencil-push
 ]);
 
-// Skills devlyn-cli shipped and later deleted without listing them, by SHA-256 of their only
-// file, SKILL.md (LF endings): a user's own folder of the same name is never removed.
+// Skills devlyn-cli installed by default and later deleted or made opt-in, by SHA-256 of their
+// only file, SKILL.md (LF endings): an opted-in copy or a user's own folder of the same name is
+// never removed.
 const RETIRED_SKILL_MD_SHA256 = {
   // 0.2.0-1.15.0; deleted in iter-0034, it still routes agents to retired commands.
   'workflow-routing': new Set([
     '7fec2bb20d808a873a975d64a6223e404bc5b328c800760bb77257ae6b2f467a',
     '8bfdaeff2ce48d5a79b5653de3bbe0d56a61a7fd750ed3ad11149fec5a502ecf',
+  ]),
+  // The standards skills, 0.1.0-3.2.1; 3.3.0 (0221) made them optional addons.
+  'code-health-standards': new Set([
+    'df2838904c938aa0306ed333cc460cfc5c2cf0ffa20bb5ade57067c6e0acf9be',
+    '962a82b5ebeafac515f81f5c68494c67dbf31c3e3e453f23c4452d4725e21355',
+  ]),
+  'code-review-standards': new Set([
+    '9c906f2b2a88c2d0aaeec9714405945da5177de6ec433f1acf520c6c4385b875',
+    '3bc8587a9143487328be2470dec8df17a19cb14f94e6ec916ed58de660d0e1c4',
+    '56abe5736f505c53ca9ce14087a9891cc8661be783abaec7b5b924e3f339cc2a',
+    '586dde5014f9ac2f9a13d43fa1c8c257a3ae998a3fc1b867b23b3b2e44f77eca',
+  ]),
+  'root-cause-analysis': new Set([
+    'e200ddd04196435af3162a9e13595f8eb5ac68b06465026e0155e453b1bd1c93',
+    '1793dcb0f72621c78cc20c905fe5dd7a0af3115e904bf737a6a983a7b9d2c2b6',
+    'aab22d1bddc66c6a798f08cdf7be9b45fbe80ccfc928b068ef5d9e2ad951bdda',
+    '0eac104bfcde8bdf14d4c284be6f3f4cb243219a679bf569433c2465df84c6c3',
+    'e66d15a9585c07e819acfd89c1f6d030517130f6d8f8924bda3120307949fb2e',
+  ]),
+  'ui-implementation-standards': new Set([
+    'e2473e35474e78f2b581e225cb33a1e711bb79519a02e9780fc9606e582b878f',
+    '1ff64816454171b3f879e9e5cf3c15e3d9c5f2ffc81b73262155f6bc93a1b054',
+    '13c709c0e2b01ae94997c271043a685200e969192d2056534bd787c5682874e8',
   ]),
 };
 
@@ -68,61 +92,28 @@ function isShippedCopy(dir, hashes) {
       .update(fs.readFileSync(skill, 'utf8').replace(/\r\n/g, '\n')).digest('hex'));
 }
 
-// Cross-agent shared skills directory read by BOTH oh-my-pi and Pi. Verified
-// from the omp binary's skill-provider strings ("skills from .agents/skills —
-// project walk-up + user home") and Pi's docs ("~/.agents/skills/"). Installing
-// the bundle here once covers both agents — the de-dup driver writes it a single
-// time even when both are selected.
-const SHARED_AGENTS_SKILLS_DIR = path.join(os.homedir(), '.agents', 'skills');
+// Skill roots of each target. In a project, `.agents/skills` serves Codex, omp, Pi and Grok,
+// and Claude Code loads only `.claude/skills`. Globally Codex reads ~/.codex/skills and omp,
+// Pi and Grok read ~/.agents/skills.
+function skillRoots(target, global) {
+  const dirs = target === 'claude' ? ['.claude'] : global ? ['.agents', '.codex'] : ['.agents'];
+  return dirs.map((dir) => path.join(global ? os.homedir() : projectDir(), dir, 'skills'));
+}
 
-// Cross-CLI agent installation targets
-// Each entry maps a CLI tool to where its agent instructions should be placed
-const CLI_TARGETS = {
-  codex: {
-    name: 'Codex CLI (OpenAI)',
-    instructionsFile: 'AGENTS.md',
-    baseInstructionsFile: 'AGENTS.md',
-    // Codex auto-loads skills from ~/.codex/skills/ (user-global). Same
-    // SKILL.md format as Claude Code; descriptions must stay ≤1024 chars.
-    skillsDir: path.join(os.homedir(), '.codex', 'skills'),
-    skillsToInstall: DEVLYN_CORE_SKILLS,
-    detect: () => fs.existsSync(path.join(process.cwd(), 'AGENTS.md')) || fs.existsSync(path.join(process.cwd(), '.codex')),
-  },
-  omp: {
-    name: 'oh-my-pi (omp)',
-    instructionsFile: 'AGENTS.md',
-    baseInstructionsFile: 'AGENTS.md',
-    // omp loads skills from ~/.agents/skills (user home) — shared with Pi.
-    skillsDir: SHARED_AGENTS_SKILLS_DIR,
-    skillsToInstall: DEVLYN_CORE_SKILLS,
-    // Project-scoped only: machine-level ~/.omp must not auto-trigger a project
-    // AGENTS.md write via `npx devlyn-cli agents` in an unrelated repo.
-    detect: () => fs.existsSync(path.join(process.cwd(), '.omp')) || fs.existsSync(path.join(process.cwd(), '.agents')),
-  },
-  pi: {
-    name: 'Pi (earendil-works)',
-    instructionsFile: 'AGENTS.md',
-    baseInstructionsFile: 'AGENTS.md',
-    // Pi loads skills from ~/.agents/skills — shared with oh-my-pi.
-    skillsDir: SHARED_AGENTS_SKILLS_DIR,
-    skillsToInstall: DEVLYN_CORE_SKILLS,
-    // Project-scoped only (see omp): machine-level ~/.pi must not auto-trigger.
-    detect: () => fs.existsSync(path.join(process.cwd(), '.pi')) || fs.existsSync(path.join(process.cwd(), '.agents')),
-  },
-  grok: {
-    name: 'Grok Build CLI (xAI)',
-    instructionsFile: 'AGENTS.md',
-    baseInstructionsFile: 'AGENTS.md',
-    // Grok discovers same-format SKILL.md skills from ./.grok/skills >
-    // <repo_root>/.grok/skills > ~/.grok/skills > ~/.claude/skills
-    // (Claude-compatible); skills are slash-invocable in the Grok TUI.
-    skillsDir: path.join(os.homedir(), '.grok', 'skills'),
-    skillsToInstall: DEVLYN_CORE_SKILLS,
-    // Project-scoped only: machine-level ~/.grok must not auto-trigger a project
-    // AGENTS.md write via `npx devlyn-cli agents` in an unrelated repo.
-    detect: () => fs.existsSync(path.join(process.cwd(), '.grok')),
-  },
-};
+// A devlyn Claude install in this scope. Globally only the marker a `--global --claude` run
+// writes counts; in a project also a devlyn skill (0.6.0 and later), command (0.2-0.5) or
+// CLAUDE.md managed block, which a team may commit while ignoring .claude/. A CLAUDE.md link
+// (often to AGENTS.md) is not the Claude target's file: updateInstructions refuses links.
+function hasDevlynClaude(global) {
+  const claudeDir = path.dirname(skillRoots('claude', global)[0]);
+  if (global) return fs.existsSync(path.join(claudeDir, 'skills', DEVLYN_INSTALL_MARKER));
+  const names = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir) : []);
+  const instructions = path.join(path.dirname(claudeDir), 'CLAUDE.md');
+  return names(path.join(claudeDir, 'skills')).some((name) => name === DEVLYN_INSTALL_MARKER || name.startsWith('devlyn'))
+    || names(path.join(claudeDir, 'commands')).some((name) => name.startsWith('devlyn.'))
+    || (fs.lstatSync(instructions, { throwIfNoEntry: false })?.isFile() === true
+      && fs.readFileSync(instructions, 'utf8').includes(BEGIN));
+}
 
 // Files removed in previous versions that should be cleaned up on upgrade
 const DEPRECATED_FILES = [
@@ -150,9 +141,9 @@ const DEPRECATED_FILES = [
 // iter-0034 Phase 4 cutover (2026-05-03): 15 user skills deleted and 3 moved
 // to optional-skills/. Listed here so post-cutover `npx devlyn-cli` upgrades
 // force-remove stale legacy skill dirs from downstream `~/.claude/skills/`
-// even though the source dirs no longer exist (cleanManagedSkillDirs only
-// removes target dirs that still exist in source — without this list,
-// deleted-from-source skills persist in user installs forever).
+// even though the source dirs no longer exist (the installer replaces only
+// the skills it ships — without this list, deleted-from-source skills persist
+// in user installs forever).
 const DEPRECATED_DIRS = [
   // v0.7.x rename: devlyn-* → devlyn:*
   'skills/devlyn-clean',
@@ -183,11 +174,6 @@ const DEPRECATED_DIRS = [
   'skills/devlyn:team-resolve',
   'skills/devlyn:team-review',
   'skills/devlyn:update-docs',
-  // 0221 Session 1: standards skills moved to optional-skills/ (opt-in).
-  'skills/code-health-standards',
-  'skills/code-review-standards',
-  'skills/root-cause-analysis',
-  'skills/ui-implementation-standards',
   // Deleted entirely on 2026-05-14 (devlyn:team-design-ui merged into
   // devlyn:design-ui; devlyn:design-system removed outright). Entries kept
   // so users who previously opted in get their stale copies purged on upgrade.
@@ -195,9 +181,9 @@ const DEPRECATED_DIRS = [
   'skills/devlyn:design-system',
 ];
 
-function getTargetDir() {
+function projectDir() {
   try {
-    return path.join(process.cwd(), '.claude');
+    return process.cwd();
   } catch {
     console.error('\n\x1b[33m❌ Current directory no longer exists.\x1b[0m');
     console.error('\x1b[2m   Please cd into a valid directory and try again.\x1b[0m\n');
@@ -237,14 +223,14 @@ ${v}     ██║  ██║${p}██╔══╝  ${k}╚██╗ ██╔�
 ${v}     ██████╔╝${p}███████╗${k} ╚████╔╝ ${v}███████╗   ${p}██║   ${k}██║ ╚████║${r}
 ${g}     ╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝   ╚═╝   ╚═╝  ╚═══╝${r}
 
-${COLORS.dim}            Claude Code Config Toolkit${r}
+${COLORS.dim}            AI Agent Config Toolkit${r}
 ${g}                v${PKG.version} ${COLORS.dim}· ${k}🍩 by Nocodecat @ Donut Studio${r}
 `;
   console.log(logo);
 }
 
 const OPTIONAL_ADDONS = [
-  // Local optional skills (copied to .claude/skills/)
+  // Local optional skills (copied into every selected skill root)
   { name: 'asset-creator', desc: 'AI pixel art game asset pipeline — generate, chroma-key, catalog', type: 'local' },
   { name: 'cloudflare-nextjs-setup', desc: 'Cloudflare Workers + Next.js deployment with OpenNext', type: 'local' },
   { name: 'generate-skill', desc: 'Create well-structured Claude Code skills following Anthropic best practices', type: 'local' },
@@ -413,8 +399,6 @@ function copyRecursive(src, dest, baseDir) {
   const stats = fs.statSync(src);
 
   if (stats.isDirectory()) {
-    // Never install dev workspaces, even when running from source repo.
-    if (UNSHIPPED_SKILL_DIRS.has(path.basename(src))) return;
     if (!fs.existsSync(dest)) {
       fs.mkdirSync(dest, { recursive: true });
     }
@@ -475,38 +459,6 @@ function writeInstallMarker(skillsDir) {
   }
 }
 
-// Dev artifacts that live under config/skills/ but must never ship or install.
-// Mirrors the `!` exclusions in package.json files[].
-const UNSHIPPED_SKILL_DIRS = new Set([
-  'devlyn:auto-resolve-workspace',
-  'devlyn:ideate-workspace',
-  'devlyn-ideate-workspace',
-  'preflight-workspace',
-  'roadmap-archival-workspace',
-]);
-
-// Clean managed skill directories before copy to prevent stale-file drift.
-// copyRecursive is a pure overlay: if a file was removed or renamed in source,
-// the installed mirror keeps the old copy. For each top-level dir under
-// config/skills/, remove its counterpart in target/skills/ before the copy so
-// each managed skill is fully replaced on every sync. User-installed skills
-// (e.g. skill-creator from optional addons) are left alone because they have
-// no counterpart in source. Dev workspaces are skipped entirely.
-function cleanManagedSkillDirs(sourceSkillsDir, targetSkillsDir) {
-  if (!fs.existsSync(sourceSkillsDir) || !fs.existsSync(targetSkillsDir)) return 0;
-  let cleaned = 0;
-  for (const entry of fs.readdirSync(sourceSkillsDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    if (UNSHIPPED_SKILL_DIRS.has(entry.name)) continue;
-    const targetPath = path.join(targetSkillsDir, entry.name);
-    if (fs.existsSync(targetPath)) {
-      fs.rmSync(targetPath, { recursive: true, force: true });
-      cleaned++;
-    }
-  }
-  return cleaned;
-}
-
 function multiSelect(items, preselectedIndices = []) {
   return new Promise((resolve) => {
     const selected = new Set(preselectedIndices.filter((i) => i >= 0 && i < items.length));
@@ -527,10 +479,10 @@ function multiSelect(items, preselectedIndices = []) {
         const checkbox = selected.has(i) ? `${COLORS.green}◉${COLORS.reset}` : `${COLORS.dim}○${COLORS.reset}`;
         const pointer = i === cursor ? `${COLORS.cyan}❯${COLORS.reset}` : ' ';
         const name = i === cursor ? `${COLORS.cyan}${item.name}${COLORS.reset}` : item.name;
-        const tagLabel = item.type === 'mcp' ? 'mcp' : item.type === 'local' ? 'skill' : item.type === 'cli' ? 'cli' : 'pack';
-        const tagColor = item.type === 'mcp' ? COLORS.green : item.type === 'local' ? COLORS.magenta : item.type === 'cli' ? COLORS.blue : COLORS.cyan;
+        const tagLabel = item.type === 'mcp' ? 'mcp' : item.type === 'local' ? 'skill' : 'pack';
+        const tagColor = item.type === 'mcp' ? COLORS.green : item.type === 'local' ? COLORS.magenta : COLORS.cyan;
         const tag = `${tagColor}${tagLabel}${COLORS.reset}`;
-        console.log(`${pointer} ${checkbox} ${name} ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}`);
+        console.log(`${pointer} ${checkbox} ${name}${item.type ? ` ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}` : ''}`);
         console.log(`    ${COLORS.dim}${item.desc}${COLORS.reset}`);
       });
     };
@@ -600,26 +552,48 @@ function multiSelect(items, preselectedIndices = []) {
   });
 }
 
-function installLocalSkill(skillName) {
-  const src = path.join(OPTIONAL_SKILLS_SOURCE, skillName);
-  const targetDir = getTargetDir();
-  const targets = new Set([path.join(targetDir, 'skills'), ...Object.values(CLI_TARGETS)
-    .map((cli) => cli.skillsDir).filter((dir) => dir && fs.existsSync(dir))]);
+// One of `items` (↑↓ move, Enter confirms); resolves to the chosen index.
+function singleSelect(items, initial) {
+  return new Promise((resolve) => {
+    let cursor = initial;
+    let drawn = false;
+    const render = () => {
+      if (drawn) process.stdout.write(`\x1b[${items.length + 2}A\x1b[0J`);
+      drawn = true;
+      console.log(`${COLORS.dim}(↑↓ navigate, enter confirm)${COLORS.reset}\n`);
+      items.forEach((item, i) => console.log(i === cursor ? `${COLORS.cyan}❯ ${item}${COLORS.reset}` : `  ${item}`));
+    };
+    render();
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.setEncoding('utf8');
+    const onKeypress = (key) => {
+      if (key === '\u0003') {
+        process.stdin.setRawMode(false);
+        process.exit();
+      }
+      if (key === '\r' || key === '\n') {
+        process.stdin.setRawMode(false);
+        process.stdin.removeListener('data', onKeypress);
+        process.stdin.pause();
+        console.log('');
+        resolve(cursor);
+      } else if (['\x1b[A', 'k', '\x1b[B', 'j'].includes(key)) {
+        cursor = (cursor + (key === '\x1b[A' || key === 'k' ? items.length - 1 : 1)) % items.length;
+        render();
+      }
+    };
+    process.stdin.on('data', onKeypress);
+  });
+}
 
-  if (!fs.existsSync(src)) {
+function installLocalSkill(skillName, roots) {
+  if (!fs.existsSync(path.join(OPTIONAL_SKILLS_SOURCE, skillName))) {
     log(`   ⚠️  Skill "${skillName}" not found`, 'yellow');
     return false;
   }
-
   log(`\n🛠️  Installing ${skillName}...`, 'cyan');
-
-  // Mirror to every CLI skill-loader directory that already exists so optional
-  // skills are picked up by Codex/omp/Pi (and any future CLI with a skillsDir)
-  // the same way required skills are. Existing dir, not new dir — we don't
-  // create an agent install just because someone opted into a Claude-side skill.
-  // De-dup by directory: omp and Pi share ~/.agents/skills, so the mirror runs
-  // once per unique destination.
-  for (const target of targets) installOptionalSkillInto(target, skillName);
+  for (const root of roots) installOptionalSkillInto(root, skillName);
   return true;
 }
 
@@ -673,9 +647,9 @@ function installSkillPack(packName) {
   }
 }
 
-function installAddon(addon) {
+function installAddon(addon, roots) {
   if (addon.type === 'local') {
-    return installLocalSkill(addon.name);
+    return installLocalSkill(addon.name, roots);
   }
   if (addon.type === 'mcp') {
     return installMcpServer(addon.name, addon.command);
@@ -683,168 +657,33 @@ function installAddon(addon) {
   return installSkillPack(addon.name);
 }
 
-function detectOtherCLIs() {
-  const detected = [];
-  for (const [key, cli] of Object.entries(CLI_TARGETS)) {
-    if (cli.detect()) {
-      detected.push(key);
-    }
-  }
-  return detected;
-}
-
-// Install DEVLYN_CORE_SKILLS into a CLI's
-// global skills directory (e.g. ~/.codex/skills/). Returns count of skills
-// copied. Skipped silently for CLIs without a skillsDir (e.g. cursor, copilot
-// at the time of writing — they don't have an analogous skill-loader).
-function installSkillsForCLI(cliKey) {
-  const cli = CLI_TARGETS[cliKey];
-  if (!cli || !cli.skillsDir || !cli.skillsToInstall) return 0;
-
+// The core skills into one skill root, replacing older copies and retired skills, then the
+// marker that records a complete install.
+function installCoreSkills(skillsDir) {
   const sourceSkillsDir = path.join(CONFIG_SOURCE, 'skills');
-  if (!fs.existsSync(cli.skillsDir)) {
-    fs.mkdirSync(cli.skillsDir, { recursive: true });
-  }
-  clearInstallMarker(cli.skillsDir);
-
-  const removed = cleanupDeprecated(path.dirname(cli.skillsDir));
-  if (removed > 0) {
-    log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
-  }
-
-  let copied = 0;
-  for (const skillName of cli.skillsToInstall) {
-    const src = path.join(sourceSkillsDir, skillName);
-    const dest = path.join(cli.skillsDir, skillName);
-    if (!fs.existsSync(src)) continue;
-    // Full replace per cleanManagedSkillDirs semantics: stale files in the
-    // installed mirror would otherwise persist forever.
-    if (fs.existsSync(dest)) {
-      fs.rmSync(dest, { recursive: true, force: true });
-    }
-    copyRecursive(src, dest, cli.skillsDir);
-    copied++;
-    log(`  → ${cli.skillsDir.replace(os.homedir(), '~')}/${skillName}`, 'dim');
-  }
-  assertCompleteSkillInstall(sourceSkillsDir, cli.skillsDir, cli.skillsToInstall);
-  retireRenamedSkills(cli.skillsDir);
-  writeInstallMarker(cli.skillsDir);
-  return copied;
-}
-
-// One-line description of exactly what selecting a CLI target installs, so the
-// unified selector stays honest.
-function targetDesc(cli) {
-  if (cli.skillsDir) {
-    return `${cli.instructionsFile} + devlyn skills → ${cli.skillsDir.replace(os.homedir(), '~')}`;
-  }
-  return `${cli.instructionsFile} instructions only`;
-}
-
-// Shared instruction ownership and preservation rules apply to every CLI.
-function installInstructionsForCLI(cliKey) {
-  const cli = CLI_TARGETS[cliKey];
-  return cli?.baseInstructionsFile ? updateInstructions(cli.baseInstructionsFile) : false;
-}
-
-// Install both instructions and skills for a single CLI. Used by the
-// `agents <cli>` command; multi-target paths use installSelectedCLITargets.
-function installAgentsForCLI(cliKey) {
-  const instr = installInstructionsForCLI(cliKey);
-  const skillsCopied = installSkillsForCLI(cliKey);
-  if (skillsCopied > 0) {
-    log(`  → ${skillsCopied} skill${skillsCopied > 1 ? 's' : ''} installed (${DEVLYN_CORE_SKILLS.join(' / ')})`, 'dim');
-  }
-  return instr || skillsCopied > 0;
-}
-
-// Install instructions + skills for a set of selected CLI targets, writing each
-// unique destination exactly once. omp and Pi share project AGENTS.md and the
-// ~/.agents/skills dir, so selecting both does not duplicate writes — this is
-// the researched "group the common" model: targets are the user's selection,
-// destinations are the unit of work.
-function installSelectedCLITargets(cliKeys) {
-  const instrDone = new Set();
-  const skillsDone = new Set();
-  let count = 0;
-  for (const cliKey of cliKeys) {
-    const cli = CLI_TARGETS[cliKey];
-    if (!cli) continue;
-    const instrKey = cli.instructionsFile;
-    if (!instrDone.has(instrKey)) {
-      installInstructionsForCLI(cliKey);
-      instrDone.add(instrKey);
-    }
-    if (cli.skillsDir && !skillsDone.has(cli.skillsDir)) {
-      const copied = installSkillsForCLI(cliKey);
-      if (copied > 0) {
-        log(`  → ${copied} skill${copied > 1 ? 's' : ''} → ${cli.skillsDir.replace(os.homedir(), '~')}`, 'dim');
-      }
-      skillsDone.add(cli.skillsDir);
-    }
-    count++;
-  }
-  return count;
-}
-
-function installAgentsForAllDetected() {
-  const detected = detectOtherCLIs();
-  if (detected.length === 0) return 0;
-  return installSelectedCLITargets(detected);
-}
-
-// Install the Claude Code core config: project .claude/ (skills, templates,
-// settings, CLAUDE.md, .gitignore) plus global ~/.claude/settings.json tweaks.
-// Extracted so the unified target selector installs it only when "Claude Code"
-// is chosen. Check global settings and instruction conflicts before writes.
-function installClaudeCore() {
-  const globalClaudeDir = path.join(os.homedir(), '.claude');
-  const globalSettingsPath = path.join(globalClaudeDir, 'settings.json');
-  function readGlobalSettings() {
-    let settings = {};
-    try {
-      if (fs.lstatSync(globalSettingsPath, { throwIfNoEntry: false })) {
-        settings = JSON.parse(fs.readFileSync(globalSettingsPath, 'utf8'));
-      }
-    } catch (error) {
-      const reason = error instanceof SyntaxError ? 'invalid JSON' : error.message;
-      throw new Error(`Cannot merge ${globalSettingsPath}: ${reason}. Original preserved; correct the file or its access and rerun installation.`);
-    }
-    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
-      throw new Error(`Cannot merge ${globalSettingsPath}: root must be a JSON object. Original preserved; correct it and rerun installation.`);
-    }
-    if (!Object.prototype.hasOwnProperty.call(settings, 'env')) settings.env = {};
-    if (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env)) {
-      throw new Error(`Cannot merge ${globalSettingsPath}: env must be a JSON object. Original preserved; correct it and rerun installation.`);
-    }
-    return settings;
-  }
-  readGlobalSettings();
-  updateInstructions('CLAUDE.md');
-  const targetDir = getTargetDir();
-  const skillsDir = path.join(targetDir, 'skills');
-  log('\n📁 Installing Claude Code config to .claude/', 'green');
-  if (!fs.existsSync(skillsDir)) fs.mkdirSync(skillsDir, { recursive: true });
+  log(`\n📁 Installing devlyn skills to ${skillsDir.replace(os.homedir(), '~')}`, 'green');
+  fs.mkdirSync(skillsDir, { recursive: true });
   clearInstallMarker(skillsDir);
-  const removed = cleanupDeprecated(targetDir);
+  const removed = cleanupDeprecated(path.dirname(skillsDir));
   if (removed > 0) {
     log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
   }
-  const refreshed = cleanManagedSkillDirs(
-    path.join(CONFIG_SOURCE, 'skills'),
-    skillsDir,
-  );
-  if (refreshed > 0) {
-    log(`  🔄 Refreshing ${refreshed} managed skill director${refreshed === 1 ? 'y' : 'ies'}`, 'dim');
+  for (const skillName of DEVLYN_CORE_SKILLS) {
+    const src = path.join(sourceSkillsDir, skillName);
+    const dest = path.join(skillsDir, skillName);
+    if (!fs.existsSync(src)) continue;
+    // Full replace: copyRecursive is an overlay, so stale files would otherwise persist.
+    fs.rmSync(dest, { recursive: true, force: true });
+    copyRecursive(src, dest, skillsDir);
   }
-  copyRecursive(CONFIG_SOURCE, targetDir, targetDir);
-  assertCompleteSkillInstall(path.join(CONFIG_SOURCE, 'skills'), skillsDir, DEVLYN_CORE_SKILLS);
+  assertCompleteSkillInstall(sourceSkillsDir, skillsDir, DEVLYN_CORE_SKILLS);
   retireRenamedSkills(skillsDir);
   writeInstallMarker(skillsDir);
+}
 
-  // Keep installer-managed pipeline state and install metadata out of git.
-  const gitignorePath = path.join(process.cwd(), '.gitignore');
-  const gitignoreEntries = ['.devlyn/', '.claude/skills/.devlyn-install.json'];
+// Keep installer-managed pipeline state and install metadata out of git.
+function ignoreInGit(gitignoreEntries) {
+  const gitignorePath = path.join(projectDir(), '.gitignore');
   let gitignoreContent = fs.existsSync(gitignorePath)
     ? fs.readFileSync(gitignorePath, 'utf8')
     : '';
@@ -858,6 +697,24 @@ function installClaudeCore() {
     fs.writeFileSync(gitignorePath, gitignoreContent + prefix + header + missingGitignoreEntries.join('\n') + '\n');
     log(`  → .gitignore (added ${missingGitignoreEntries.join(', ')})`, 'dim');
   }
+}
+
+function installAgentsProject() {
+  updateInstructions('AGENTS.md');
+  installCoreSkills(skillRoots('agents', false)[0]);
+  ignoreInGit(['.devlyn/', '.agents/skills/.devlyn-install.json']);
+}
+
+// Project CLAUDE.md and .claude/: skills, templates, commit conventions and settings.
+function installClaudeCore() {
+  updateInstructions('CLAUDE.md');
+  const skillsDir = skillRoots('claude', false)[0];
+  const targetDir = path.dirname(skillsDir);
+  for (const entry of fs.readdirSync(CONFIG_SOURCE)) {
+    if (entry !== 'skills') copyRecursive(path.join(CONFIG_SOURCE, entry), path.join(targetDir, entry), targetDir);
+  }
+  installCoreSkills(skillsDir);
+  ignoreInGit(['.devlyn/', '.claude/skills/.devlyn-install.json']);
 
   // Enable agent teams in project settings
   const settingsPath = path.join(targetDir, 'settings.json');
@@ -911,6 +768,10 @@ function installClaudeCore() {
       settingsChanged = true;
     }
   }
+  if (!settings.env.ENABLE_PROMPT_CACHING_1H) {
+    settings.env.ENABLE_PROMPT_CACHING_1H = 'true';
+    settingsChanged = true;
+  }
   if (!settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) {
     settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1';
     settingsChanged = true;
@@ -948,23 +809,52 @@ function installClaudeCore() {
   }
   if (settingsChanged) {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-    log('  → settings.json (agent teams + one-hour Bash max + pipeline permissions + Stop hook)', 'dim');
+    log('  → settings.json (agent teams + one-hour Bash max + 1h prompt caching + pipeline permissions + Stop hook)', 'dim');
   }
-
-  // Configure global Claude Code settings (~/.claude/settings.json)
-  // Project settings may refer to this same file; merge the latest bytes.
-  const globalSettings = readGlobalSettings();
-  if (!globalSettings.env.ENABLE_PROMPT_CACHING_1H) {
-    globalSettings.env.ENABLE_PROMPT_CACHING_1H = 'true';
-    if (!fs.existsSync(globalClaudeDir)) fs.mkdirSync(globalClaudeDir, { recursive: true });
-    fs.writeFileSync(globalSettingsPath, JSON.stringify(globalSettings, null, 2) + '\n');
-    log('  → ~/.claude/settings.json (enabled 1h prompt caching)', 'dim');
-  }
-
-  log('\n✅ Claude Code config installed!', 'green');
 }
 
-async function init(skipPrompts = false) {
+// Installs the targets in one scope; returns the skill roots written.
+function install(targets, global) {
+  // In the home folder the project's CLAUDE.md and .claude/settings.json (permissions, Stop
+  // hook) are the user's own and would apply to every project. Same folder by identity, so a
+  // link or another spelling of the path is caught too.
+  const home = fs.statSync(os.homedir(), { bigint: true, throwIfNoEntry: false });
+  const here = fs.statSync(projectDir(), { bigint: true });
+  if (!global && targets.includes('claude') && home?.dev === here.dev && home?.ino === here.ino) {
+    throw new Error('This project is your home folder, so its CLAUDE.md and .claude/settings.json would apply to every project. '
+      + 'Run from a project folder, or use --global for skills only.');
+  }
+  const roots = targets.flatMap((target) => skillRoots(target, global));
+  for (const target of targets) {
+    if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));
+    else if (target === 'agents') installAgentsProject();
+    else installClaudeCore();
+  }
+  log(`\n✅ devlyn ${PKG.version} installed`, 'green');
+  noticeGlobalDrift(roots);
+  return roots;
+}
+
+// A devlyn install in a user root this run does not refresh drifts and can shadow the
+// project's copy; name it without touching it.
+function noticeGlobalDrift(installed) {
+  for (const dir of ['.agents', '.codex', '.claude', '.grok']) {
+    const root = path.join(os.homedir(), dir, 'skills');
+    const marker = path.join(root, DEVLYN_INSTALL_MARKER);
+    if (installed.includes(root) || !fs.existsSync(marker)) continue;
+    let version;
+    try {
+      version = JSON.parse(fs.readFileSync(marker, 'utf8')).version;
+    } catch (error) {
+      version = `(unreadable marker: ${error.message})`;
+    }
+    // 4.0's Grok root; Grok now reads ~/.agents/skills, so --global never refreshes it.
+    const advice = dir === '.grok' ? 'delete it' : 'refresh it with --global, or delete it';
+    log(`Global devlyn ${version} in ${root.replace(os.homedir(), '~')} — ${advice}.`, 'yellow');
+  }
+}
+
+async function init({ yes, claude, global }) {
   showLogo();
   log('─'.repeat(44), 'dim');
 
@@ -973,53 +863,47 @@ async function init(skipPrompts = false) {
     process.exit(1);
   }
 
-  // Non-interactive / -y: preserve historical behavior — install Claude core
-  // only. Multi-target selection needs a TTY; scripted runs add other agents
-  // via `npx devlyn-cli agents <cli>`.
-  if (skipPrompts || !process.stdin.isTTY) {
-    installClaudeCore();
+  // Without prompts: AGENTS plus every target already installed in the chosen scope.
+  if (yes || !process.stdin.isTTY) {
+    const targets = ['agents', ...(claude || hasDevlynClaude(global) ? ['claude'] : [])];
+    install(targets, global);
     log('\n💡 Add optional addons later: run `npx devlyn-cli` without -y', 'dim');
-    log('   Add another agent (Codex / omp / Pi / …) later: `npx devlyn-cli agents <cli>`', 'dim');
+    const hints = [
+      ...(targets.includes('claude') ? [] : ['CLAUDE.md + .claude/ for Claude Code: add --claude']),
+      ...(global ? [] : ['every project on this machine: add --global']),
+    ];
+    if (hints.length > 0) log(`   ${hints.join(' · ')}`, 'dim');
     log(`\n${COLORS.dim}   Enjoying devlyn? Star it on GitHub — it helps others find it:${COLORS.reset}`);
     log(`   ${COLORS.purple}→ https://github.com/fysoul17/devlyn-cli${COLORS.reset}\n`);
     return;
   }
 
-  // Pick every agent to install devlyn into, up front. Claude Code is
-  // pre-checked (the happy path); every other agent is an explicit opt-in so a
-  // bare Enter never mutates a project's AGENTS.md or a shared skills dir for an
-  // agent the user didn't choose.
-  log('\n🎯 Select the agents to install devlyn into:\n', 'blue');
+  log('\n🎯 What to install:\n', 'blue');
   const targetOptions = [
-    { key: 'claude', name: 'Claude Code', desc: '.claude/ config — skills, templates, settings, CLAUDE.md', type: 'cli' },
-    ...Object.entries(CLI_TARGETS).map(([key, cli]) => ({ key, name: cli.name, desc: targetDesc(cli), type: 'cli' })),
+    { key: 'agents', name: 'AGENTS.md — Codex · omp · Pi · Grok', desc: 'AGENTS.md + .agents/skills' },
+    { key: 'claude', name: 'CLAUDE.md — Claude Code', desc: 'CLAUDE.md + .claude/ (skills, templates, settings)' },
   ];
-  const preselected = [targetOptions.findIndex((o) => o.key === 'claude')];
-  const selectedKeys = (await multiSelect(targetOptions, preselected)).map((t) => t.key);
+  const preselected = claude || hasDevlynClaude(false) ? [0, 1] : [0];
+  const targets = (await multiSelect(targetOptions, preselected)).map((option) => option.key);
 
-  if (selectedKeys.length === 0) {
-    log('\n💡 No agents selected — nothing installed.', 'yellow');
-    log('   Run `npx devlyn-cli` again and pick at least one agent.\n', 'dim');
+  if (targets.length === 0) {
+    log('\n💡 Nothing selected — nothing installed.', 'yellow');
+    log('   Run `npx devlyn-cli` again and pick at least one.\n', 'dim');
     return;
   }
 
-  if (selectedKeys.includes('claude')) {
-    installClaudeCore();
-  }
-  const cliKeys = selectedKeys.filter((k) => k !== 'claude');
-  if (cliKeys.length > 0) {
-    const installed = installSelectedCLITargets(cliKeys);
-    log(`\n  ✅ Installed devlyn into ${installed} agent${installed !== 1 ? 's' : ''}`, 'green');
-  }
+  log('📍 Where:\n', 'blue');
+  const scope = await singleSelect(['This project', 'Global — every project on this machine'], global ? 1 : 0);
+  const roots = install(targets, scope === 1);
 
-  // Ask about optional addons (local skills + external packs)
+  // Ask about optional addons (local skills + external packs; MCP servers belong to Claude Code)
   log('\n📚 Optional skills & packs:\n', 'blue');
 
-  const selectedAddons = await multiSelect(OPTIONAL_ADDONS);
+  const selectedAddons = await multiSelect(OPTIONAL_ADDONS.filter((addon) => addon.type !== 'mcp' || targets.includes('claude')));
 
   if (selectedAddons.length > 0) {
     for (const addon of selectedAddons) {
-      installAddon(addon);
+      installAddon(addon, roots);
     }
   } else {
     log('💡 No optional addons selected', 'dim');
@@ -1035,12 +919,12 @@ async function init(skipPrompts = false) {
 function showHelp() {
   showLogo();
   log('Usage:', 'green');
-  log('  npx devlyn-cli              Install/update devlyn (pick agents: Claude / Codex / omp / Pi / …)');
-  log('  npx devlyn-cli list         List available skills & templates');
-  log('  npx devlyn-cli -y           Install Claude core without prompts');
-  log('  npx devlyn-cli agents       Install agents for detected CLIs');
-  log('  npx devlyn-cli agents all   Install agents for all supported CLIs');
-  log('  npx devlyn-cli --help       Show this help\n');
+  log('  npx devlyn-cli               Install/update devlyn: choose what (AGENTS.md, CLAUDE.md) and where (this project or global)');
+  log('  npx devlyn-cli -y            Without prompts: AGENTS.md + .agents/skills, plus CLAUDE.md + .claude/ if this project has them');
+  log('  npx devlyn-cli -y --claude   Also install CLAUDE.md + .claude/ for Claude Code');
+  log('  npx devlyn-cli -y --global   Skills only, for every project on this machine (~/.agents/skills, ~/.codex/skills; ~/.claude/skills with --claude, or when it already has a devlyn install)');
+  log('  npx devlyn-cli list          List available skills & templates');
+  log('  npx devlyn-cli --help        Show this help\n');
   log('Optional skills (select during install):', 'green');
   OPTIONAL_ADDONS.filter((a) => a.type === 'local').forEach((skill) => {
     log(`  ${skill.name}  ${COLORS.dim}${skill.desc}${COLORS.reset}`);
@@ -1053,15 +937,13 @@ function showHelp() {
   OPTIONAL_ADDONS.filter((a) => a.type === 'mcp').forEach((mcp) => {
     log(`  claude mcp add ${mcp.name} -- ${mcp.command}  ${COLORS.dim}${mcp.desc}${COLORS.reset}`);
   });
-  log('\nSupported CLIs for agent installation:', 'green');
-  for (const [key, cli] of Object.entries(CLI_TARGETS)) {
-    log(`  ${key.padEnd(10)} ${cli.name}`);
-  }
   log('');
 }
 
 // Main
 const args = process.argv.slice(2);
+
+const INSTALL_FLAGS = ['-y', '--yes', '--claude', '--global'];
 
 async function main() {
 const command = args[0];
@@ -1071,56 +953,25 @@ switch (command) {
   case '-h':
     showHelp();
     break;
-  case '-y':
-  case '--yes':
-    await init(true);
-    break;
   case 'list':
   case 'ls':
     listContents();
     break;
-  case 'agents': {
-    showLogo();
-    log('─'.repeat(44), 'dim');
-    const subArg = args[1];
-    if (subArg === 'all') {
-      // Install for all supported CLIs regardless of detection. De-duped so the
-      // shared ~/.agents/skills dir (omp + Pi) and shared AGENTS.md write once.
-      log('\n🤖 Installing agents for all supported CLIs...', 'blue');
-      const count = installSelectedCLITargets(Object.keys(CLI_TARGETS));
-      log(`\n✅ Agents installed for ${count} CLI${count !== 1 ? 's' : ''}`, 'green');
-    } else if (Object.keys(CLI_TARGETS).includes(subArg)) {
-      // Install for a specific CLI
-      installAgentsForCLI(subArg);
-      log('\n✅ Done!', 'green');
-    } else if (subArg !== undefined) {
-      log(`Unknown CLI target: ${JSON.stringify(subArg)}`, 'yellow');
-      log(`Supported: ${Object.keys(CLI_TARGETS).join(', ')}, all`, 'dim');
+  case 'agents':
+    console.error('`npx devlyn-cli agents` was removed in 4.1.0. Run `npx devlyn-cli` to choose what and where,');
+    console.error('or `npx devlyn-cli -y [--claude] [--global]` without prompts.');
+    process.exitCode = 1;
+    break;
+  default: {
+    const flags = command === 'init' ? args.slice(1) : args;
+    const unknown = flags.find((flag) => !INSTALL_FLAGS.includes(flag));
+    if (unknown !== undefined) {
+      log(`Unknown command: ${unknown}`, 'yellow');
+      showHelp();
       process.exit(1);
-    } else {
-      // Auto-detect and install
-      const detected = detectOtherCLIs();
-      if (detected.length === 0) {
-        log('\n🔍 No other AI CLIs detected in this project.', 'yellow');
-        log('   Use `npx devlyn-cli agents all` to install for all supported CLIs', 'dim');
-        log(`   Supported: ${Object.keys(CLI_TARGETS).join(', ')}`, 'dim');
-      } else {
-        log(`\n🔍 Detected: ${detected.map((k) => CLI_TARGETS[k].name).join(', ')}`, 'blue');
-        const count = installAgentsForAllDetected();
-        log(`\n✅ Agents installed for ${count} CLI${count !== 1 ? 's' : ''}`, 'green');
-      }
     }
-    log('');
-    break;
+    await init({ yes: flags.includes('-y') || flags.includes('--yes'), claude: flags.includes('--claude'), global: flags.includes('--global') });
   }
-  case 'init':
-  case undefined:
-    await init(false);
-    break;
-  default:
-    log(`Unknown command: ${command}`, 'yellow');
-    showHelp();
-    process.exit(1);
 }
 }
 
