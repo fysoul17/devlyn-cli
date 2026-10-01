@@ -1515,7 +1515,8 @@ def call(tok, entry):
             safe_write(base / f'{tok}.driver.stderr', stderr)
             safe_write(base / f'{tok}.driver.json', (json.dumps(
                 {'exit_code': code, 'started_at': started, 'ended_at': now(),
-                 'wall_ms': round((time.monotonic() - clock) * 1000), 'stop_signals': list(STOP)},
+                 'wall_ms': round((time.monotonic() - clock) * 1000), 'stop_signals': list(STOP),
+                 'post_run_check': closed},
                 indent=2, sort_keys=True) + '\n').encode())
         except (Exception, SystemExit) as exc:
             error = error or exc
@@ -1991,6 +1992,10 @@ def facts(entry):
     tok = entry['token']
     work = Path(entry['work'])
     devlyn = work / '.devlyn'
+    driver_path = work.parent / f'{tok}.driver.json'
+    driver = load(driver_path) if driver_path.is_file() else {}
+    if not driver.get('post_run_check'):
+        return unread_facts(entry, driver)
     try:
         state = load(devlyn / 'pipeline.state.json')
     except (OSError, ValueError):
@@ -2043,8 +2048,6 @@ def facts(entry):
                        'effort_observed': ((verify.get('role_evidence') or {}).get(role) or {}).get('effort_observed'),
                        'requested_effort': seat['requested_effort'], 'dispatched_effort': seat['effort']}
     harness = [row for row in merged if canon(row) not in seat_rows]
-    driver_path = work.parent / f'{tok}.driver.json'
-    driver = load(driver_path) if driver_path.is_file() else {}
     stops = [line for name in (f'{tok}.driver.stdout', f'{tok}.driver.stderr')
              if (work.parent / name).is_file()
              for line in (work.parent / name).read_text(errors='replace').splitlines() if 'BLOCKED' in line]
@@ -2090,6 +2093,22 @@ def facts(entry):
             'instructions': instruction, 'outside_paths': outside_paths,
             'ambiguous_reads': ambiguous_reads, 'classes': classifications, 'usage': usage,
             'claude_reasks': claude_reasks(tok)}
+
+
+def unread_facts(entry, driver):
+    """A round whose post-run check did not pass (or never ran): none of its judge-written files is read. Its seats
+    count as neither completed nor authenticated, so the round still fails the strict bar."""
+    marker = Path(entry['work']).parent / f"{entry['token']}.classified.json"
+    seat = {'carrier': {}, 'completed': False, 'authenticated': False, 'accepted_by_merge': False, 'verdict': None}
+    return {'token': entry['token'], 'exit_code': driver.get('exit_code'), 'wall_ms': driver.get('wall_ms'),
+            'verdict': None, 'sub_verdicts': None, 'snapshot_matches': False, 'resolution_matches': False,
+            'argv_matches': {role: False for role in entry['seats']}, 'decisions': {}, 'pair_trigger': None,
+            'seats': {role: dict(seat) for role in entry['seats']}, 'overlap': False, 'findings': [],
+            'harness_rows': [], 'stops': [], 'input_flags': [], 'instructions': {'files': None, 'transcript': None},
+            'outside_paths': [], 'ambiguous_reads': [],
+            'classes': load(marker).get('classes', []) if marker.is_file() else ['unclassified'],
+            'usage': {'claude': {'status': 'UNKNOWN'}, 'codex': {'status': 'UNKNOWN'}}, 'claude_reasks': 'UNKNOWN',
+            'post_run_check': False}
 
 
 def claude_transcript_events(tok):
@@ -2990,6 +3009,10 @@ def self_test():
         finally:
             TOKEN_FILE = saved_token
             os.environ['HOME'] = saved_home
+    unread = unread_facts({'token': 'T', 'work': '/nonexistent/T/work', 'seats': {'primary_judge': {}, 'pair_judge': {}}},
+                          {'exit_code': 0})
+    require(not any(seat['completed'] or seat['authenticated'] for seat in unread['seats'].values())
+            and unread['findings'] == [], 'a round without a passed post-run check was scored from its files')
     print('SELFTEST PASS: conditions 1-6, reads, audits, intent, drift, stops, post-join order, 0227 additions, 0229 D2')
 
 
