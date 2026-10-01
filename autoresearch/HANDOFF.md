@@ -1,4 +1,4 @@
-# 0228 closed at R2 FAIL — next step is the user's decision
+# 0228 closed at R2 FAIL; 0229 registered (rubric fix H + re-run of the gates and the fresh screen) — runs after the owner approves
 
 2026-10-01 KST. Root direct, no resolve. The contract is [0228](iterations/0228-verify-rubric-rescreen.md) (amends [0227](iterations/0227-verify-rescreen.md) by reference), designed with Astra (gpt-6-astra, ultra) and registered before the G commit, any replay call and any corpus authoring. The raw record is `.devlyn/0228/`. 0227 closed NOT PASS ([RESULT](experiments/0227/RESULT.md), [DIAGNOSIS](experiments/0227/diagnosis/DIAGNOSIS.md)); its handoff is in git history (last version at `f3835c04`). User decision 2026-09-30 ("1"): fix the rubric where the diagnosis points, test by replay on 0227 material, then re-screen on fresh tasks.
 
