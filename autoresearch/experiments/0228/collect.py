@@ -2,11 +2,11 @@
 """Read-only collection of 0228 replay outcomes for scoring (registration "Predicates"; 0227 facts() logic).
 
   collect.py facts <out.json> <attempt>...    per attempt: merged verdict, seats (authenticated, accepted, verdict),
-                                              every finding of rank >= 1 with its merge acceptance
-  collect.py pool <facts.json> <pool.json> <map.json> [--twins-lower]
-                                              a pool of rank-2 findings masked of arm, token and attempt (random ids);
-                                              with --twins-lower also every finding of any rank by a twin seat that
-                                              has no rank-2 finding (labeling decides which of those are targets)
+                                              every finding of any rank, INFO included, with its merge acceptance
+  collect.py pool <facts.json> <pool.json> <map.json>
+                                              a pool masked of arm, token and attempt (random ids): every rank-2
+                                              finding, and every finding of any rank on a twin replay (labeling
+                                              decides which are targets; the per-seat demotion check needs them all)
 
 Nothing here writes outside the given output paths; attempt files are only read, after every judge process ended."""
 import hashlib
@@ -69,12 +69,10 @@ def facts(attempt, rows, mapping):
                 and (devlyn / ('verify.findings.jsonl' if source == 'judge' else 'verify.pair.findings.jsonl')).is_file() \
                 and (verify.get('sub_verdicts') or {}).get(source) is not None
             for index, finding in enumerate(parsed):
-                rank = code['parser']['finding_rank'](finding)
-                if rank >= 1:
-                    findings.append({'seat': role, 'engine': seat['engine'], 'index': index, 'rank': rank,
-                                     'accepted_by_merge': accepted,
-                                     **{k: finding.get(k) for k in ('severity', 'verdict_binding', 'rule_id', 'file',
-                                                                    'line', 'message', 'id')}})
+                findings.append({'seat': role, 'engine': seat['engine'], 'index': index,
+                                 'rank': code['parser']['finding_rank'](finding), 'accepted_by_merge': accepted,
+                                 **{k: finding.get(k) for k in ('severity', 'verdict_binding', 'rule_id', 'file',
+                                                                'line', 'message', 'id')}})
             seats[role] = {'engine': seat['engine'], 'completed': carrier.get('outcome') == 'exited'
                            and carrier.get('exit_code') == 0, 'authenticated': authenticated,
                            'accepted_by_merge': accepted, 'verdict': summary.get('verdict')}
@@ -96,14 +94,10 @@ def main(argv):
         print(json.dumps({'attempts': len(result), 'findings': sum(len(r['findings']) for r in result)}))
     elif argv[0] == 'pool':
         records = json.loads(Path(argv[1]).read_text())
-        twins_lower = '--twins-lower' in argv
         pool, key = [], {}
         for record in records:
-            rank2_seats = {f['seat'] for f in record['findings'] if f['rank'] == 2}
             for finding in record['findings']:
-                lower = twins_lower and record['variant'] == 'twin' and finding['rank'] < 2 \
-                    and finding['seat'] not in rank2_seats
-                if finding['rank'] == 2 or lower:
+                if finding['rank'] == 2 or record['variant'] == 'twin':
                     fid = secrets.token_hex(6)
                     key[fid] = {'attempt': record['attempt'], 'seat': finding['seat'], 'index': finding['index']}
                     pool.append({'id': fid, 'task': record['task'], 'variant': record['variant'],
