@@ -1,0 +1,62 @@
+[
+  {
+    "id": "fea5b423ea4f",
+    "task": "J4",
+    "variant": "reference",
+    "rank": 2,
+    "severity": "HIGH",
+    "verdict_binding": null,
+    "rule_id": "spec-compliance.eviction-disposal",
+    "file": "src/index.ts",
+    "line": 2304,
+    "message": "Same-value growth can evict an entry without delivering its disposeAfter callback when noDisposeOnSet is true. With maxSize: 10, store a and b at size 4 each, then set the identical a to size 8 with noDisposeOnSet: true. The new call at src/index.ts:2304, \"this.#addItemSize(index, size, status)\", evicts b and src/index.ts:2378 queues \"this.#disposed?.push([oldValue, k, 'evict'])\", but src/index.ts:2323 guards callback delivery with \"if (!noDisposeOnSet && this.#hasDisposeAfter && this.#disposed)\". The callback remains pending until an unrelated operation drains it, potentially forever. This violates the new requirement \"Each evicted entry must receive the existing eviction disposal behavior.\" Ensure eviction callbacks from remeasurement are drained even when replacement disposal is disabled."
+  },
+  {
+    "id": "e35c4c0e2051",
+    "task": "J4",
+    "variant": "reference",
+    "rank": 2,
+    "severity": "HIGH",
+    "verdict_binding": null,
+    "rule_id": "spec.eviction-disposal",
+    "file": "src/index.ts",
+    "line": 2323,
+    "message": "Same-value growth can skip eviction disposeAfter callbacks when noDisposeOnSet is true. With maxSize: 10, store a at size 3 and b at size 4, then set the identical a to size 8 with noDisposeOnSet: true. The new call at src/index.ts:2304, \"this.#addItemSize(index, size, status)\", evicts b and queues its callback at src/index.ts:2378, \"this.#disposed?.push([oldValue, k, 'evict'])\". However, src/index.ts:2323 guards queue draining with \"if (!noDisposeOnSet && this.#hasDisposeAfter && this.#disposed)\", so the callback remains pending indefinitely without another qualifying operation. This violates \"Each evicted entry must receive the existing eviction disposal behavior.\" The public option contract at src/index.ts:884-886 limits suppression to \"if the entry key is still accessible within the cache\"; b has been removed. Drain eviction callbacks for this update even when replacement disposal is suppressed."
+  },
+  {
+    "id": "4481c12987ef",
+    "task": "J4",
+    "variant": "reference",
+    "rank": 2,
+    "severity": "HIGH",
+    "verdict_binding": null,
+    "rule_id": "spec-compliance.eviction-disposal",
+    "file": "src/index.ts",
+    "line": 2323,
+    "message": "Same-value resizing can leave eviction disposal callbacks pending indefinitely. With maxSize: 10, disposeAfter configured, and entries a(size 3) and b(size 4), set('a', a, {size: 8, noDisposeOnSet: true}) evicts b. The new path calls \"this.#addItemSize(index, size, status)\" (src/index.ts:2304), and eviction queues \"this.#disposed?.push([oldValue, k, 'evict'])\" (src/index.ts:2378), but \"if (!noDisposeOnSet && this.#hasDisposeAfter && this.#disposed)\" (src/index.ts:2323) prevents delivery before returning. Without another operation, b never receives disposeAfter. Requirement 3 states: \"Each evicted entry must receive the existing eviction disposal behavior.\" The documented noDisposeOnSet scope is \"in the case of overwrites\" (src/index.ts:2149). Drain eviction callbacks even when replacement disposal is disabled, and cover this resize/eviction interaction."
+  },
+  {
+    "id": "2d3799fe6d36",
+    "task": "J4",
+    "variant": "reference",
+    "rank": 2,
+    "severity": "HIGH",
+    "verdict_binding": null,
+    "rule_id": "spec.eviction-disposal",
+    "file": "src/index.ts",
+    "line": 2323,
+    "message": "Same-value growth can leave eviction disposeAfter callbacks undelivered when noDisposeOnSet is true. With maxSize: 10, insert a at size 3 and b at size 4, then set the identical a to size 8 with noDisposeOnSet: true. The new call at src/index.ts:2304, \"this.#addItemSize(index, size, status)\", evicts b and queues its callback at src/index.ts:2378, \"this.#disposed?.push([oldValue, k, 'evict'])\", but src/index.ts:2323 gates delivery on \"if (!noDisposeOnSet && this.#hasDisposeAfter && this.#disposed)\". The callback remains queued after set returns and may never run. The applicable requirement states, \"Each evicted entry must receive the existing eviction disposal behavior.\" Public documentation also limits noDisposeOnSet suppression to when \"the entry key is still accessible within the cache\" (src/index.ts:885\u2013886); b has been removed. Drain eviction callbacks independently of replacement-disposal suppression and cover this combined resize/eviction case."
+  },
+  {
+    "id": "20e0ec827d26",
+    "task": "J4",
+    "variant": "reference",
+    "rank": 2,
+    "severity": "HIGH",
+    "verdict_binding": null,
+    "rule_id": "spec-compliance.eviction-disposal",
+    "file": "src/index.ts",
+    "line": 2323,
+    "message": "Same-value growth can evict entries without delivering their disposeAfter callbacks. With maxSize: 10 and a disposeAfter recorder, insert a at size 3 and b at size 4, then set a to the identical value with size: 8 and noDisposeOnSet: true. The new branch invokes \"this.#addItemSize(index, size, status)\" (src/index.ts:2304), evicting b and queuing \"this.#disposed?.push([oldValue, k, 'evict'])\" (2378). However, \"if (!noDisposeOnSet && this.#hasDisposeAfter && this.#disposed)\" (2323) skips delivery, leaving b's callback pending after set returns. This violates \"Each evicted entry must receive the existing eviction disposal behavior\" (spec.md:20); the documented suppression applies when \"the entry key is still accessible within the cache\" (src/index.ts:885\u2013886), whereas b has been removed. Drain eviction callbacks independently of replacement-disposal suppression and cover this combination."
+  }
+]

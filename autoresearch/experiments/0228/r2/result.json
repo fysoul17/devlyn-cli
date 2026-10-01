@@ -1,0 +1,15 @@
+{
+  "verdict": "FAIL",
+  "g_replays": 40,
+  "g_not_clean_or_blocked": [
+    "G/6f89d26e0ccb/rep-6"
+  ],
+  "f_replays": 16,
+  "f_blocked": [
+    "F/1801a5478ae8/rep-2",
+    "F/6f89d26e0ccb/rep-2",
+    "F/6f89d26e0ccb/rep-3",
+    "F/1801a5478ae8/rep-8"
+  ],
+  "labels": "root and Astra agree: 5/5 behavioral, diagnosed J4 block"
+}
