@@ -19,10 +19,10 @@
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Registration: Astra FREEZE, PR, merge | this PR (Astra R4 FREEZE) |
-| 2 | G on `f40da73b` (`candidate/0228-fix`, pushed, no PR): implement, lint, portability suite, identifier grep, Astra SHIP | next |
-| 3 | Replay copy, inventory and isolation, R1, Astra SHIP; Addendum C1 (G, replay commit, inventory, replay order) | |
-| 4 | R2 (J4 references, G vs F) and R3 (recall and breadth), Astra reviews; replay root deleted after its record is committed | |
+| 1 | Registration: Astra FREEZE, PR, merge | merged (PR #141) |
+| 2 | G on `f40da73b` (`candidate/0228-fix`, pushed, no PR): implement, lint, portability suite, identifier grep, Astra SHIP | done: G = `607c3cf7`, Astra SHIP |
+| 3 | Replay copy, inventory and isolation, R1, Astra SHIP; Addendum C1 (G, replay commit, inventory, replay order) | done: C1; R1 product, stub 64/64, isolation probe PASS (this PR) |
+| 4 | R2 (J4 references, G vs F) and R3 (recall and breadth), Astra reviews; replay root deleted after its record is committed | next: `replay.py inventory <label>` → `preflight` → ask the user → `batch plan-r2.json <root-pid> <label> <ack>` |
 | 5 | Corpus: selection, blind authoring, implementation, calibration, calibration review | |
 | 6 | Driver copy, stub dry run, Astra SHIP; freeze and witness, 64 rounds, masked scoring with Astra audit, join, RESULT | |
 
