@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -36,6 +37,20 @@ const DEVLYN_INSTALL_MARKER = '.devlyn-install.json';
 // Every spelling a colon name can have on disk: its own and npm's U+F03A extraction alias.
 function legacySkillPaths(root, name) {
   return [...new Set([name, name.replace(/:/g, '\uF03A')])].map((spelling) => path.join(root, spelling));
+}
+
+// SKILL.md of the pencil skills 0.6.0-0.7.1 installed under today's names, without the
+// frontmatter the standard requires. 3.x deleted these copies; 4.0 replaces them.
+const PRE_STANDARD_SKILL_MD_SHA256 = new Set([
+  'dfdd3d19ca676558bfa2bb3ce398181b0a081ab88d1feaf69c54c706a9671631', // devlyn-pencil-pull
+  '5f2e8b29609cbb2af72941579823bec598265ebf29cd3a375d6aa47d95b74354', // devlyn-pencil-push
+]);
+
+function isPreStandardCopy(dir) {
+  const skill = path.join(dir, 'SKILL.md');
+  return fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory() === true
+    && fs.lstatSync(skill, { throwIfNoEntry: false })?.isFile() === true
+    && PRE_STANDARD_SKILL_MD_SHA256.has(crypto.createHash('sha256').update(fs.readFileSync(skill)).digest('hex'));
 }
 
 // Cross-agent shared skills directory read by BOTH oh-my-pi and Pi. Verified
@@ -356,14 +371,13 @@ function cleanupDeprecated(targetDir) {
 
 // Remove every old spelling of the renamed skills in `skillsDir`, after the new core skills
 // are in place. An optional skill found under an old spelling is installed under its new name
-// first, so an interrupted run never loses it. One already under its new name is refreshed only
-// in a root without an install marker (written since 2.10.1): there it is a 0.6.x copy, which
-// used today's names. Elsewhere it is the user's opted-in copy, which `-y` leaves alone.
-function retireRenamedSkills(skillsDir, unmarked) {
+// before the old copy goes, so an interrupted migration never loses it; an unedited 0.6.x copy
+// is replaced. Any other folder under a 4.0 name is the user's own, which `-y` leaves alone.
+function retireRenamedSkills(skillsDir) {
   const optional = new Set(OPTIONAL_ADDONS.filter((addon) => addon.type === 'local').map((addon) => addon.name));
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
-    const installed = found.length > 0 || (unmarked && fs.existsSync(path.join(skillsDir, newName)));
+    const installed = found.length > 0 || isPreStandardCopy(path.join(skillsDir, newName));
     if (installed && optional.has(newName)) installOptionalSkillInto(skillsDir, newName);
     for (const fullPath of found) {
       fs.rmSync(fullPath, { recursive: true, force: true });
@@ -622,16 +636,9 @@ function installLocalSkill(skillName) {
 
 // One optional skill into one skill-loader directory, replacing any older copy of it. A
 // copy under its name before the 4.0.0 rename goes only once the new one is complete.
-// A real `dest` folder is emptied, not removed: in an unmarked root it is the only record
-// that the skill is installed, so a run interrupted before the copy leaves it for the retry.
-// A link is removed itself, never followed, and replaced by a real folder.
 function installOptionalSkillInto(target, skillName) {
   const dest = path.join(target, skillName);
-  if (fs.lstatSync(dest, { throwIfNoEntry: false })?.isDirectory()) {
-    for (const entry of fs.readdirSync(dest)) fs.rmSync(path.join(dest, entry), { recursive: true, force: true });
-  } else {
-    fs.rmSync(dest, { recursive: true, force: true });
-  }
+  fs.rmSync(dest, { recursive: true, force: true });
   copyRecursive(path.join(OPTIONAL_SKILLS_SOURCE, skillName), dest, target);
   stampInstalledSkillDir(dest, dest);
   assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, target, [skillName]);
@@ -696,7 +703,6 @@ function installSkillsForCLI(cliKey) {
   if (!fs.existsSync(cli.skillsDir)) {
     fs.mkdirSync(cli.skillsDir, { recursive: true });
   }
-  const unmarked = !fs.existsSync(path.join(cli.skillsDir, DEVLYN_INSTALL_MARKER));
   clearInstallMarker(cli.skillsDir);
 
   const removed = cleanupDeprecated(path.dirname(cli.skillsDir));
@@ -720,7 +726,7 @@ function installSkillsForCLI(cliKey) {
     log(`  → ${cli.skillsDir.replace(os.homedir(), '~')}/${skillName}`, 'dim');
   }
   assertCompleteSkillInstall(sourceSkillsDir, cli.skillsDir, cli.skillsToInstall);
-  retireRenamedSkills(cli.skillsDir, unmarked);
+  retireRenamedSkills(cli.skillsDir);
   writeInstallMarker(cli.skillsDir);
   return copied;
 }
@@ -818,7 +824,6 @@ function installClaudeCore() {
   const skillsDir = path.join(targetDir, 'skills');
   log('\n📁 Installing Claude Code config to .claude/', 'green');
   if (!fs.existsSync(skillsDir)) fs.mkdirSync(skillsDir, { recursive: true });
-  const unmarked = !fs.existsSync(path.join(skillsDir, DEVLYN_INSTALL_MARKER));
   clearInstallMarker(skillsDir);
   const removed = cleanupDeprecated(targetDir);
   if (removed > 0) {
@@ -837,7 +842,7 @@ function installClaudeCore() {
     const dest = path.join(skillsDir, name);
     stampInstalledSkillDir(dest, dest);
   }
-  retireRenamedSkills(skillsDir, unmarked);
+  retireRenamedSkills(skillsDir);
   writeInstallMarker(skillsDir);
 
   // Keep installer-managed pipeline state and install metadata out of git.

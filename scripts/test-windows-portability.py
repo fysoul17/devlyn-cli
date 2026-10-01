@@ -721,17 +721,22 @@ installClaudeCore();
                 for colon in spellings:
                     old = root / f'devlyn{colon}{name}'; old.mkdir()
                     (old / 'SKILL.md').write_text(f'---\nname: devlyn:{name}\n---\n', encoding='utf-8')
-        # 0.6.x installed optional skills under today's names.
-        (agents / 'devlyn-pencil-push').mkdir(); (agents / 'devlyn-pencil-push/SKILL.md').write_text('0.6.x copy\n', encoding='utf-8')
+        # 0.6.x installed the pencil skills under today's names, as today's SKILL.md minus its
+        # 5-line frontmatter; an edited or newer copy under a 4.0 name is the user's own.
+        legacy = (self.package / 'optional-skills/devlyn-pencil-push/SKILL.md').read_bytes().split(b'\n', 5)[5]
+        (agents / 'devlyn-pencil-push').mkdir(); (agents / 'devlyn-pencil-push/SKILL.md').write_bytes(legacy)
+        (codex / 'devlyn-pencil-push').mkdir(); (codex / 'devlyn-pencil-push/SKILL.md').write_bytes(b'mine\n')
         self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi']);")
         for root, optional in ((claude, {'pencil-pull', 'pencil-push', 'reap'}), (codex, {'pencil-pull'}), (agents, {'pencil-push'})):
             entries = {p.name for p in root.iterdir()}
             self.assertEqual({n for n in entries if n.startswith(('devlyn:', 'devlyn\uf03a'))}, set(), root)
-            self.assertEqual({n for n in entries if n.startswith('devlyn-')}, {f'devlyn-{n}' for n in core} | {f'devlyn-{n}' for n in optional}, root)
+            mine = {'devlyn-pencil-push'} if root == codex else set()
+            self.assertEqual({n for n in entries if n.startswith('devlyn-')}, {f'devlyn-{n}' for n in core} | {f'devlyn-{n}' for n in optional} | mine, root)
             for name in core + sorted(optional):
                 self.assertIn(f'name: devlyn-{name}\n', (root / f'devlyn-{name}/SKILL.md').read_text(encoding='utf-8'))
             self.assertEqual((root / 'my-skill/keep').read_bytes(), b'mine')
             self.assertTrue((root / '.devlyn-install.json').is_file())
+        self.assertEqual((codex / 'devlyn-pencil-push/SKILL.md').read_bytes(), b'mine\n')
         # A root this run does not install into keeps its old skills untouched.
         self.assertEqual({p.name for p in grok.iterdir()}, {'my-skill'} | {f'devlyn{c}{n}' for c in spellings for n in ('resolve', 'reap')})
         # A 4.x reinstall leaves an opted-in optional skill as the user has it, as 3.x did.
@@ -741,15 +746,15 @@ installClaudeCore();
         self.assertTrue(edited.read_text(encoding='utf-8').endswith('my rule\n'))
 
     @unittest.skipIf(os.name == 'nt', 'creating a symlink needs a privilege on native Windows')
-    def test_upgrade_replaces_a_linked_optional_skill_without_following_it(self):
+    def test_upgrade_leaves_a_linked_optional_skill_alone(self):
         root = self.project / '.claude/skills'; root.mkdir(parents=True)
         mine = self.case / 'dotfiles/pencil'; mine.mkdir(parents=True)
-        (mine / 'SKILL.md').write_bytes(b'mine'); (mine / 'notes.md').write_bytes(b'notes')
+        legacy = (self.package / 'optional-skills/devlyn-pencil-pull/SKILL.md').read_bytes().split(b'\n', 5)[5]
+        (mine / 'SKILL.md').write_bytes(legacy); (mine / 'notes.md').write_bytes(b'notes')
         (root / 'devlyn-pencil-pull').symlink_to(mine, target_is_directory=True)
         self.invoke("installClaudeCore();")
-        self.assertEqual({p.name: p.read_bytes() for p in mine.iterdir()}, {'SKILL.md': b'mine', 'notes.md': b'notes'})
-        self.assertFalse((root / 'devlyn-pencil-pull').is_symlink())
-        self.assertIn('name: devlyn-pencil-pull', (root / 'devlyn-pencil-pull/SKILL.md').read_text(encoding='utf-8'))
+        self.assertTrue((root / 'devlyn-pencil-pull').is_symlink())
+        self.assertEqual({p.name: p.read_bytes() for p in mine.iterdir()}, {'SKILL.md': legacy, 'notes.md': b'notes'})
 
     def test_interrupted_upgrade_keeps_optional_skill_without_marker(self):
         copy = self.case / 'broken'; shutil.copytree(self.package, copy)
@@ -770,16 +775,6 @@ installClaudeCore();
         self.assertFalse(old.exists() or old_core.exists())
         self.assertTrue((root / 'devlyn-pencil-pull/SKILL.md').is_file())
         self.assertTrue((root / '.devlyn-install.json').is_file())
-        # In an unmarked (0.6.x) root the 4.0-named folder is the only record of the install: a
-        # refresh that fails keeps it, so the retry still refreshes it.
-        (root / '.devlyn-install.json').unlink()
-        shutil.rmtree(copy / 'optional-skills/devlyn-pencil-pull')
-        result = self.invoke("installClaudeCore();", package=copy, code=None)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertTrue((root / 'devlyn-pencil-pull').is_dir())
-        self.assertFalse((root / '.devlyn-install.json').exists())
-        self.invoke("installClaudeCore();")
-        self.assertTrue((root / 'devlyn-pencil-pull/SKILL.md').is_file())
 
     def test_role_configuration_filesystem_errors(self):
         import errno
