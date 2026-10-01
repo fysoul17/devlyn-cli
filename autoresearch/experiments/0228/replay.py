@@ -2,16 +2,16 @@
 """0228 replay runner: development evidence, never a 0227 regrade (autoresearch/iterations/0228-verify-rubric-rescreen.md).
 
 A replay reruns one 0227 round's VERIFY from its sealed pristine tars with one product arm (F = 0227's product,
-G = the candidate's skills archive). Isolation is by identity (Addendum C2): every judge process runs as the dedicated
+H = 0229's candidate skills archive). Isolation is by identity (Addendum C2): every judge process runs as the dedicated
 account _devlynjudge, which cannot read the owner's files. The runner changes modes and ACLs only inside the three
 experiment-owned roots (the 0227 root, the other devlyn-vr-0227-* roots and the 0228 root), and every mutation goes
 through a helper that refuses, before acting, any target outside them. `stage` copies this runner to
 /Users/Shared/devlyn-vr-0228-dev/runner/; every command except `plan`, `classify` and `scan` runs from that copy.
 
-  stage <G commit>              (research checkout) G's skills archive, this runner, 0227's stubs
+  stage <H commit>              (research checkout) H's skills archive and this runner
   plan                          (research checkout) print the fixed R2 and R3 replay orders
-  product                       R1: G's product differs from 0227's only in verify.md
-  stub                          R1: stub replay of all 64 rounds under G, run as the judge
+  product                       R1: H's product differs from 0227's only in verify.md
+  stub                          R1: stub replay of all 64 rounds under H, run as the judge
   inventory <label>             every owner path holding 0227 hidden material (read-only)
   check <label>                 as the judge, open every inventoried path; any success fails closed
   probe <label> <transcript>    R1 isolation probe, run as the judge
@@ -46,11 +46,11 @@ SRC = SHARED / 'devlyn-vr-0227'
 DEV = SHARED / 'devlyn-vr-0228-dev'
 RESEARCH = HOME / '.local/share/nx01/core-continuation-20260912'
 EVIDENCE = RESEARCH / 'autoresearch/experiments/0227'
-PRODUCT = {'F': SRC / 'product', 'G': DEV / 'product-G'}
+PRODUCT = {'F': SRC / 'product', 'H': DEV / 'product-H'}
 RECORDS = DEV / 'records.jsonl'
 RESULTS = DEV / 'results'  # runner records written after a judge ran never go inside the attempt
 SCRATCH = DEV / 'scratch'
-KINDS = ('F', 'G', 'stub-G', 'probe')
+KINDS = ('F', 'G', 'H', 'stub-G', 'stub-H', 'probe')  # G, stub-G: 0228's attempts, still closed and checked
 CORPUS_COMMIT = '8c589f2ec82a4ada4bf99cd6e60c38615a036055'
 CLAUDE_SHA256 = 'a922981f6f3b55a251ef9f9dbaa0621a5f99cbcb5ca67f8a797476ccfc83f626'  # 0227's pinned bin/claude
 VERIFY_MD = 'config/skills/devlyn:resolve/references/phases/verify.md'
@@ -287,22 +287,20 @@ def staged():
 # ---------------------------------------------------------------- staging and fixed orders (research checkout)
 
 def stage(commit):
-    """Create the replay root once; on later calls verify G's archive and refresh only the runner copy."""
+    """Create H's product once; on later calls verify H's archive and refresh only the runner copy."""
     raw = git(RESEARCH, 'archive', '--format=tar', commit, 'config/skills').stdout
     check_dir = SCRATCH / f'stage-{os.getpid()}'
     remove_tree(check_dir)
     extract(raw, check_dir, trusted=False)
     expected = files(check_dir)
     remove_tree(check_dir)
-    if not PRODUCT['G'].exists():
-        extract(raw, PRODUCT['G'], trusted=False)
-        copy_tree(SRC / 'dry/bin', DEV / 'stub/bin')
-        copy_tree(SRC / 'dry/codex-home', DEV / 'stub/codex-home')
-    require(files(PRODUCT['G']) == expected, f'{PRODUCT["G"]} differs from the archive of {commit}')
+    if not PRODUCT['H'].exists():
+        extract(raw, PRODUCT['H'], trusted=False)
+    require(files(PRODUCT['H']) == expected, f'{PRODUCT["H"]} differs from the archive of {commit}')
     make_dir(DEV / 'runner')
     write_bytes(DEV / 'runner/replay.py', Path(__file__).read_bytes(), mode=0o700)
-    entry = {'G': git(RESEARCH, 'rev-parse', commit).stdout.decode().strip(), 'staged_at': time.time(),
-             'product_G_sha256': sha256(json.dumps(expected, sort_keys=True).encode()),
+    entry = {'H': git(RESEARCH, 'rev-parse', commit).stdout.decode().strip(), 'staged_at': time.time(),
+             'product_H_sha256': sha256(json.dumps(expected, sort_keys=True).encode()),
              'runner_sha256': sha256(Path(__file__).read_bytes())}
     append_line(DEV / 'stage.jsonl', json.dumps(entry))
     print(json.dumps(entry))
@@ -315,16 +313,19 @@ def plan():
     j4_references = [tok for tok in order if key[tok][:2] == ('J4', 'reference')]
     codex_j4 = [tok for tok in j4_references if key[tok][2] == 'codex']
     require(len(j4_references) == 4 and len(codex_j4) == 2, 'J4 reference rounds')
+    claude_j4 = [tok for tok in j4_references if tok not in codex_j4]
     r2 = []
-    for cycle in range(10):  # G and F interleaved in one session; F stops after its eighth cycle
-        r2 += [{'arm': 'G', 'token': tok} for tok in j4_references]
-        if cycle < 8:
+    for cycle in range(15):  # one session: H on the codex rounds every cycle, on the claude rounds every third, F every second
+        r2 += [{'arm': 'H', 'token': tok} for tok in codex_j4]
+        if cycle % 3 == 0:
+            r2 += [{'arm': 'H', 'token': tok} for tok in claude_j4]
+        if cycle % 2 == 0:
             r2 += [{'arm': 'F', 'token': tok} for tok in codex_j4]
-    extra = [tok for tok in order if key[tok][0] in ('J3', 'J4', 'P2', 'P3') and key[tok][1] == 'twin']
-    require(len(extra) == 16, 'twin rounds for the extra replays')
-    r3 = ([{'arm': 'G', 'token': tok} for tok in order if tok not in j4_references]
-          + [{'arm': 'G', 'token': tok} for _ in range(2) for tok in extra])
-    require(len(r2) == 56 and len(r3) == 92, 'replay counts')
+    extra = [tok for tok in order if key[tok][0] in ('J2', 'J3', 'J4', 'P2', 'P3') and key[tok][1] == 'twin']
+    require(len(extra) == 20, 'twin rounds for the extra replays')
+    r3 = ([{'arm': 'H', 'token': tok} for tok in order if tok not in j4_references]
+          + [{'arm': 'H', 'token': tok} for _ in range(2) for tok in extra])
+    require(len(r2) == 56 and len(r3) == 100, 'replay counts')
     return {'r2': r2, 'r3': r3}
 
 
@@ -412,10 +413,10 @@ def prepare(base, tok, arm, *, stub=False):
     work = base / 'work'
     if row['repo'] == 'node-lru-cache':
         make_symlink(work / 'node_modules', SRC / 'toolchains/node-lru-cache/node_modules')
-    copy_tree(PRODUCT[arm], base / 'product')  # F and G alike: the judge never reads either original
+    copy_tree(PRODUCT[arm], base / 'product')  # F and H alike: the judge never reads either original
     make_dir(base / 'judge-home')
     make_dir(base / 'judge-tmp')
-    # F and G get the same environment: the round's, with the work path relocated, the judge's own HOME and TMPDIR,
+    # F and H get the same environment: the round's, with the work path relocated, the judge's own HOME and TMPDIR,
     # and Git trust for exactly this work tree (it is owned by the owner, the judge is another uid). USER and LOGNAME
     # are left to sudo (the judge's); SHELL is passed (sudo would set the judge's /usr/bin/false).
     env = {name: value.replace(row['work'], str(work)) for name, value in row['env'].items()
@@ -424,8 +425,8 @@ def prepare(base, tok, arm, *, stub=False):
                CODEX_HOME=str(base / 'homes' / tok / '.codex'),
                GIT_CONFIG_PARAMETERS=f"'safe.directory'='{work}'")  # Git requires both parts single-quoted
     if stub:
-        copy_tree(DEV / 'stub/bin', base / 'stub-bin')
-        copy_tree(DEV / 'stub/codex-home', base / 'stub-codex-home')
+        copy_tree(SRC / 'dry/bin', base / 'stub-bin')
+        copy_tree(SRC / 'dry/codex-home', base / 'stub-codex-home')
         make_dir(base / 'stubs/barrier')
         env['PATH'] = env['PATH'].replace(str(SRC / 'bin'), str(base / 'stub-bin'), 1)
         env.update(CODEX_HOME=str(base / 'stub-codex-home'), STUB_DIR=str(base / 'stubs'), STUB_BARRIER='1')
@@ -645,16 +646,16 @@ def claude_sessions(base):
 # ---------------------------------------------------------------- R1 product and stub replays
 
 def product_check():
-    f, g = files(PRODUCT['F']), files(PRODUCT['G'])
-    require(set(f) == set(g), f'product file sets differ: {sorted(set(f) ^ set(g))}')
-    differ = sorted(path for path in f if f[path] != g[path])
-    require(differ == [VERIFY_MD], f'G differs from 0227 product in {differ}')
+    f, h = files(PRODUCT['F']), files(PRODUCT['H'])
+    require(set(f) == set(h), f'product file sets differ: {sorted(set(f) ^ set(h))}')
+    differ = sorted(path for path in f if f[path] != h[path])
+    require(differ == [VERIFY_MD], f'H differs from 0227 product in {differ}')
     print(json.dumps({'files': len(f), 'differ': differ}))
 
 
 def frames(prompt, render={}):
     if not render:
-        render.update(runpy.run_path(str(PRODUCT['G'] / 'config/skills/_shared/phase-prompt-render.py')))
+        render.update(runpy.run_path(str(PRODUCT['H'] / 'config/skills/_shared/phase-prompt-render.py')))
     return render['prompt_frames'](prompt)
 
 
@@ -675,14 +676,14 @@ def stub():
     handle_signals()
     isolate()
     rows = manifest()['rounds']
-    rubric = (PRODUCT['G'] / VERIFY_MD).read_bytes()
-    code = {name: runpy.run_path(str(PRODUCT['G'] / 'config/skills/_shared' / file)) for name, file in (
+    rubric = (PRODUCT['H'] / VERIFY_MD).read_bytes()
+    code = {name: runpy.run_path(str(PRODUCT['H'] / 'config/skills/_shared' / file)) for name, file in (
         ('role', 'role-config.py'), ('auth', 'judge-role-evidence.py'), ('judges', 'verify-judges.py'),
         ('parser', 'judge-output-parser.py'))}
     results = []
     for row in rows:
         tok = row['token']
-        with attempt('stub-G', tok, 'G', stub=True) as (base, _row, work, env):
+        with attempt('stub-H', tok, 'H', stub=True) as (base, _row, work, env):
             code_, error = judge(work, env, base)
         require(not PENDING, 'stub replay stopped by a signal')
         require(code_ == 0, f"{tok}: stub replay rc={code_} {error}\n{(base / 'judges.stderr').read_text()[-3000:]}")
@@ -711,7 +712,7 @@ def stub():
         for seat in row['seats'].values():
             new = frames((devlyn / f"{seat['stem']}.prompt").read_bytes())
             old = frames((Path(row['work']) / '.devlyn' / f"{seat['stem']}.prompt").read_bytes())
-            require(new['rubric'] == rubric, f"{tok} {seat['stem']}: rubric frame is not G's verify.md")
+            require(new['rubric'] == rubric, f"{tok} {seat['stem']}: rubric frame is not H's verify.md")
             require(new['adapter'] == relocate(old['adapter']) and new['role'] == relocate(old['role']),
                     f"{tok} {seat['stem']}: adapter or role frame differs beyond the relocated work path")
             # The snapshot is length-prefixed sub-frames; relocation changes lengths, so compare payloads.
@@ -719,7 +720,7 @@ def stub():
                     f"{tok} {seat['stem']}: snapshot differs beyond the relocated work path")
         results.append({'token': tok, 'attempt': str(base.relative_to(DEV)), 'verdict': summary['verdict'],
                         'carriers': carriers})
-    dump(DEV / 'stub-G/result.json', {'rounds': len(results), 'results': results})
+    dump(DEV / 'stub-H/result.json', {'rounds': len(results), 'results': results})
     print(json.dumps({'rounds': len(results), 'all_pass': True}))
 
 
