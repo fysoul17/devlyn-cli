@@ -1,6 +1,6 @@
-"""0229 frozen VERIFY re-screen (0227's driver; Addendum D2). Commands: dry (model-free), prepare,
-inventory LABEL, run --pr N --inventory LABEL, redispatch --inventory LABEL --cause FILE --audit FILE --tokens TOKEN...,
-score, pool, check, join, self-test.
+"""0229 frozen VERIFY re-screen (0227's driver; Addendum D2). Commands: dry (model-free), inventory LABEL,
+prepare --inventory LABEL, run --pr N --inventory LABEL,
+redispatch --inventory LABEL --cause FILE --audit FILE --tokens TOKEN..., score, pool, check, join, self-test.
 
 Every judge process (the seats, prepare's Claude instruction probe and the stub dry run) runs as the dedicated account
 _devlynjudge (0228 Addendum C2): the root is owner-only, and a judge is granted only its round, its round's Codex home,
@@ -21,6 +21,7 @@ candidate is always the archived config/skills tree of CANDIDATE (22616b57 plus 
 """
 from __future__ import annotations
 
+import ast
 import ctypes
 import hashlib
 from functools import cache
@@ -59,6 +60,7 @@ CLAUDE_SHA256 = 'a922981f6f3b55a251ef9f9dbaa0621a5f99cbcb5ca67f8a797476ccfc83f62
 MODELS_CACHE = PINS / 'models_cache.json'
 MODELS_CACHE_SHA256 = 'b7105827bb13220acb9149b80c746be4a92f0b856b6383e580883e3b000717d7'
 CODEX = Path('/Users/Shared/devlyn-0225-codex-0.156.1/node_modules/.bin/codex')
+CODEX_NATIVE = Path('/Users/Shared/devlyn-0225-codex-0.156.1/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex')
 # Task-id letter -> repository for the fresh corpus.
 SCREEN_REPOS = {'P': 'dateutil', 'J': 'markdown-it'}
 # `links`: provisioned files symlinked into each round copy from the toolchain and excluded from Git, as
@@ -592,6 +594,7 @@ def dry_run(tok, work, repo, reasons):
     code, stdout, stderr = judged([dry, run / 'stub-bin', run / 'codex-home', run / 'stubs'], run, repo,
                                   links_of(dry, repo), [sys.executable, SHARED / 'verify-judges.py', '--devlyn-dir',
                                                         dry / '.devlyn'], dry, judge_env(env, run, dry))
+    require(not STOP, f'operator signal {STOP[:1]} stopped prepare')
     require(code == 0, f'{tok}: dry run failed rc={code}\n{stdout.decode(errors="replace")}\n'
                        f'{stderr.decode(errors="replace")[-4000:]}')
     summary = json.loads(stdout)
@@ -646,11 +649,10 @@ def instructions(tok, repo):
     argv[0] = shutil.which(argv[0], path=env['PATH'])  # sudo resolves nothing for the judge
     destination = ROOT / 'transcripts' / tok / 'probe'
     run = ROOT / 'dry' / f'{tok}.probe'
-    try:
-        code, stdout, stderr = judged([dry], run, repo, links_of(dry, repo), argv, dry,
-                                      with_token(judge_env(env, run, dry)), stdin=b'Reply with exactly: OK', timeout=300)
-    finally:
-        copy_transcripts(run / 'judge-home/.claude/projects', destination)
+    code, stdout, stderr = judged([dry], run, repo, links_of(dry, repo), argv, dry,
+                                  with_token(judge_env(env, run, dry)), stdin=b'Reply with exactly: OK', timeout=300)
+    require(not STOP, f'operator signal {STOP[:1]} stopped prepare')
+    copy_transcripts(run / 'judge-home/.claude/projects', destination)
     require(code == 0, f'{tok}: Claude instruction probe failed: {stderr.decode(errors="replace")}')
     session = json.loads(stdout)['session_id']
     found = list(destination.glob(f'*/{session}.jsonl'))
@@ -673,8 +675,12 @@ def pristine(tok, work, repo):
             'home_inventory': digest_inventory(ROOT / 'homes' / tok)}
 
 
-def prepare(probe=True):
-    """Build every round. probe=False is the model-free stub dry run (no instruction probe, manifest.dry.json)."""
+def prepare(probe=True, label=None):
+    """Build every round. probe=False is the model-free stub dry run (no instruction probe, manifest.dry.json); a
+    prepare with probes needs a fresh inventory, and the judge must fail to open every hidden path first."""
+    require(not probe or label, 'prepare with probes needs --inventory LABEL')
+    for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        signal.signal(signum, forward)
     require(ROOT.is_dir() and stat.S_IMODE(ROOT.stat().st_mode) == 0o700,
             f'{ROOT} must exist with mode 0700 and a staged private corpus')
     require((PRIVATE / 'workspaces').is_dir(), 'private/workspaces is missing')
@@ -740,7 +746,7 @@ def prepare(probe=True):
         {'slug': 'gpt-6-astra', 'supported_reasoning_levels': [{'effort': 'medium'}, {'effort': 'high'}]}]})
     for name in ('rounds', 'homes', 'transcripts'):
         (ROOT / name).mkdir()
-    isolate()  # from here every round, home and dry entry is owner-only until a judge run grants it
+    open_check(label) if probe else isolate()  # from here every round, home and dry entry is owner-only until a grant
     rounds = []
     changed_by_task = {}
     for tok in order:
@@ -988,6 +994,8 @@ def isolate():
                 acl_ensure(entry, DENY_DIR_ACE)
             else:
                 close_entry(entry)
+                require(not (child.name == 'homes' and os.path.lexists(entry / '.codex/auth.json')),
+                        f'a Codex login copy is left in {entry}')
     for binary in (CLAUDE, ROOT / 'bin/codex'):
         if binary.exists():
             acl_ensure(binary, EXEC_ACE)
@@ -1007,12 +1015,15 @@ def close_run(folders, repo, links, auth=None):
     """After a run: no judge process; the toolchain denied and the folders closed first, so nothing below can skip it;
     the Codex login copy deleted; then every entry must be a folder, a regular file the owner can read that holds no
     judge token, or an expected provisioned link."""
-    judge_quiesce()
-    acl_ensure(ROOT / 'toolchains' / repo, DENY_DIR_ACE)
-    for folder in folders:
-        if os.path.lexists(folder):
-            close_entry(folder)
-    if auth is not None and os.path.lexists(auth):
+    try:
+        judge_quiesce()
+    finally:
+        acl_ensure(ROOT / 'toolchains' / repo, DENY_DIR_ACE)
+        for folder in folders:
+            if os.path.lexists(folder):
+                close_entry(folder)
+    if auth is not None:
+        auth = owned(auth)  # a parent symlink planted to leave the owned root is refused before anything is deleted
         require(auth.is_file() and not auth.is_symlink(), f'the Codex login copy {auth} moved or changed')
         auth.unlink()
     token = TOKEN_FILE.read_bytes().strip()
@@ -1031,7 +1042,13 @@ def unsafe_entries(folders, links, token):
             if stat.S_ISDIR(kind):
                 continue
             if stat.S_ISLNK(kind):
-                if links.get(path) != os.readlink(path):
+                target = os.readlink(path)
+                # A terminated Codex leaves its arg0 dispatch links (0228's cancelled G round): exact names, the
+                # pinned native binary as target, inside its home's tmp/arg0.
+                arg0 = (path.parent.parent.name == 'arg0' and path.parent.parent.parent.name == 'tmp'
+                        and path.parent.name.startswith('codex-arg0') and target == str(CODEX_NATIVE)
+                        and path.name in ('apply_patch', 'applypatch', 'codex-execve-wrapper'))
+                if links.get(path) != target and not arg0:
                     found.append(f'{path}: unexpected symlink')
                 continue
             if not stat.S_ISREG(kind):  # a FIFO or device would block or mislead every later read
@@ -1156,7 +1173,11 @@ def judge_process(argv, cwd, env, *, stdin=None, timeout=None):
             stdout, stderr = child.communicate(stdin, timeout=timeout)
         except subprocess.TimeoutExpired:
             judge_signal('TERM')
-            stdout, stderr = child.communicate()
+            try:
+                stdout, stderr = child.communicate(timeout=120)
+            except subprocess.TimeoutExpired:
+                judge_signal('KILL')
+                stdout, stderr = child.communicate(timeout=60)  # the judge processes holding the pipes are gone
     finally:
         CHILD.clear()
         if child.poll() is None:
@@ -1210,7 +1231,7 @@ def markers():
     return lines
 
 
-def inventory(label):
+def hidden_inventory(label):
     """Read-only: files outside the research repository and the C2-owned root that name the screen root or hold a
     hidden mechanism's marker line. Nothing found is changed; open_check() then shows the judge cannot open any of it."""
     started = time.time()
@@ -1276,7 +1297,9 @@ def safe_write(path, raw):
 
 
 def copy_transcripts(source, destination):
-    """Copy a judge HOME's Claude projects (checked by close_run: folders and regular files only) to an owner folder."""
+    """Copy a judge HOME's Claude projects to an owner folder; only after close_run passed (folders and regular files
+    only), and never through a link."""
+    require(not any(p.is_symlink() for p in (source, source.parent, source.parent.parent)), f'{source}: link in path')
     if source.is_dir():
         require(not destination.exists(), f'{destination} already exists')
         shutil.copytree(source, destination, symlinks=True)
@@ -1462,12 +1485,12 @@ def call(tok, entry):
     auth = home / '.codex/auth.json'
     folders = [work, base / 'judge-home', base / 'judge-tmp', home]
     links = links_of(work, entry['repo'])
+    guard(not any(os.path.lexists(base / name) for name in ('judge-home', 'judge-tmp')), 'home-drift',
+          f'{tok}: judge HOME already present')
     started, clock, code = now(), time.monotonic(), None
     stdout = stderr = b''
-    error = None
+    error, closed = None, False
     try:
-        guard(not any(os.path.lexists(base / name) for name in ('judge-home', 'judge-tmp')), 'home-drift',
-              f'{tok}: judge HOME already present')
         for name in ('judge-home', 'judge-tmp'):
             (base / name).mkdir(mode=0o700)
         set_mode(base, 0o700)
@@ -1483,6 +1506,7 @@ def call(tok, entry):
     finally:
         try:
             close_run(folders, entry['repo'], links, auth)
+            closed = True
         except (Exception, SystemExit) as exc:
             error = error or exc
         try:
@@ -1495,12 +1519,14 @@ def call(tok, entry):
                 indent=2, sort_keys=True) + '\n').encode())
         except (Exception, SystemExit) as exc:
             error = error or exc
-        try:
-            copy_transcripts(base / 'judge-home/.claude/projects', transcript_attempt(tok))
-        except (Exception, SystemExit) as exc:
-            error = error or exc
+        if closed:
+            try:
+                copy_transcripts(base / 'judge-home/.claude/projects', transcript_attempt(tok))
+            except (Exception, SystemExit) as exc:
+                error = error or exc
     classes = []
     try:
+        require(closed, f'{tok}: the post-run check failed; no judge output is read')
         seats = []
         for engine in ('claude', 'codex'):
             carrier = devlyn / f'{engine}-judge.r0.prompt.transport.json'
@@ -2915,6 +2941,17 @@ def self_test():
         else:
             fail(f'owned() accepted {outside}')
     owned(ROOT / 'rounds/x')
+    with tempfile.TemporaryDirectory(dir=OWNED) as raw:  # a planted parent link that leaves the owned root
+        (Path(raw) / 'home').symlink_to(Path.home())
+        try:
+            owned(Path(raw) / 'home/.codex/auth.json')
+        except SystemExit:
+            pass
+        else:
+            fail('owned() followed a parent link out of the owned root')
+    # Two shadowing redefinitions (check, inventory) were caught in review; a later def silently replaces an earlier.
+    defined = [node.name for node in ast.parse(Path(__file__).read_text()).body if isinstance(node, ast.FunctionDef)]
+    require(len(defined) == len(set(defined)), f'redefined functions: {sorted({n for n in defined if defined.count(n) > 1})}')
     with tempfile.TemporaryDirectory() as raw:
         folder = Path(raw) / 'run'
         (folder / 'work/.devlyn').mkdir(parents=True)
@@ -2931,6 +2968,13 @@ def self_test():
         require(all(word in found for word in ('leak.txt: holds the judge token', 'planted: unexpected symlink',
                                                'pipe: not a regular file', 'auth.json: Codex login copy')),
                 f'post-run check missed a planted entry: {found}')
+        arg0 = folder / 'home/.codex/tmp/arg0/codex-arg0Ab12'
+        arg0.mkdir(parents=True)
+        (arg0 / 'apply_patch').symlink_to(CODEX_NATIVE)
+        (arg0 / 'other').symlink_to(CODEX_NATIVE)
+        found = ' '.join(unsafe_entries([folder / 'home/.codex/tmp'], {}, b'TOKEN-123'))
+        require('apply_patch' not in found and 'other: unexpected symlink' in found,
+                f'Codex arg0 links were misjudged: {found}')
         global TOKEN_FILE
         saved_token, TOKEN_FILE = TOKEN_FILE, Path(raw) / 'token'
         saved_home = os.environ.get('HOME')
@@ -2953,12 +2997,12 @@ def main(argv):
     os.umask(0o077)  # everything the driver creates is owner-only until a judge run grants it (0229 D2)
     if argv == ['self-test']:
         self_test()
-    elif argv == ['prepare']:
-        prepare()
+    elif len(argv) == 3 and argv[:2] == ['prepare', '--inventory']:
+        prepare(label=argv[2])
     elif argv == ['dry']:
         prepare(probe=False)
     elif len(argv) == 2 and argv[0] == 'inventory':
-        inventory(argv[1])
+        hidden_inventory(argv[1])
     elif len(argv) == 5 and argv[:2] == ['run', '--pr'] and argv[3] == '--inventory':
         run(int(argv[2]), argv[4])
     elif (len(argv) >= 9 and argv[:2] == ['redispatch', '--inventory'] and argv[3] == '--cause'

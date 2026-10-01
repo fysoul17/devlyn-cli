@@ -37,15 +37,25 @@ def files(patch):
     return sorted(set(re.findall(r'^diff --git a/(\S+) b/', patch.read_text(), re.M)))
 
 
+GIT = ['git', '-c', 'user.name=dev', '-c', 'user.email=dev@example.invalid', '-c', 'core.logAllRefUpdates=false']
+
+
 def tree(task, variant, scratch):
+    """As the screen materializes a round: a Git checkout whose `base` commit is the pinned tree and whose HEAD commits
+    the variant's patch, with the provisioned links excluded from Git (public checks may compare against HEAD)."""
     repo = REPOS[task[0]]
     work = Path(scratch) / variant
     work.mkdir()
+    subprocess.run(GIT + ['init', '-q', '-b', 'main'], cwd=work, check=True)
     subprocess.run(f'git -C {BASE.parent}/repos/{repo} archive HEAD | tar -x -C {work}', shell=True, check=True)
+    (work / '.git/info/exclude').write_text(''.join(f'/{name}\n' for name in LINKS[repo]))
+    subprocess.run(GIT + ['add', '-A'], cwd=work, check=True)
+    subprocess.run(GIT + ['commit', '-qm', 'base'], cwd=work, check=True)
+    if variant != 'base':
+        subprocess.run(GIT + ['apply', '--index', str(BASE / 'impl' / task / f'{variant}.patch')], cwd=work, check=True)
+        subprocess.run(GIT + ['commit', '-qm', 'change'], cwd=work, check=True)
     for name, target in LINKS[repo].items():
         (work / name).symlink_to(TOOLS / repo / target)
-    if variant != 'base':
-        subprocess.run(['git', 'apply', str(BASE / 'impl' / task / f'{variant}.patch')], cwd=work, check=True)
     return work, repo
 
 
@@ -55,7 +65,7 @@ def snapshot(work):
     import hashlib
     return {str(path.relative_to(work)): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in work.rglob('*') if path.is_file() and not path.is_symlink()
-            and 'node_modules' not in path.relative_to(work).parts}
+            and not {'node_modules', '.git'} & set(path.relative_to(work).parts)}
 
 
 def check(task):
