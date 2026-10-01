@@ -1,0 +1,36 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "PYTHONPATH=src COVERAGE_FILE=.tox/.coverage /Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/dateutil/venv/bin/python -m pytest tests docs --cov-config=tox.ini --cov=dateutil --cov-fail-under=80",
+      "exit_code": 0,
+      "timeout_sec": 600,
+      "stdout_contains": [
+        "passed"
+      ]
+    },
+    {
+      "cmd": "XDG_CACHE_HOME=.cache BLACK_CACHE_DIR=.cache/black /Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/dateutil/venv/bin/python -m darker --check --diff --color --isort --revision \"$(git rev-list --max-parents=0 HEAD)\" .",
+      "exit_code": 0,
+      "timeout_sec": 120
+    },
+    {
+      "cmd": "/Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/dateutil/venv/bin/python -m pre_commit_hooks.debug_statement_hook src/dateutil/parser/_parser.py tests/test_parser.py",
+      "exit_code": 0,
+      "timeout_sec": 60
+    },
+    {
+      "cmd": "git diff --check \"$(git rev-list --max-parents=0 HEAD)\" -- src/dateutil/parser/_parser.py tests/test_parser.py",
+      "exit_code": 0,
+      "timeout_sec": 60
+    }
+  ],
+  "required_files": [
+    "src/dateutil/parser/_parser.py",
+    "tests/test_parser.py"
+  ],
+  "spec_output_files": [
+    "src/dateutil/parser/_parser.py",
+    "tests/test_parser.py"
+  ],
+  "max_deps_added": 0
+}

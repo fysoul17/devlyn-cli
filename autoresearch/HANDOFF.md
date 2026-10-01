@@ -1,4 +1,4 @@
-# 0229 gates R1–R3 PASS; corpus and driver D2 ready (Astra SHIP) — next: freeze, witness PR, 64-round screen
+# 0229 PASS (gates R1–R3 and the 64-round screen) — bundle development (steps 2–5) readmitted; next: owner decision
 
 2026-10-01 KST. Root direct, no resolve. The contract is [0229](iterations/0229-verify-existing-behavior-rescreen.md), which amends [0228](iterations/0228-verify-rubric-rescreen.md) (itself amending [0227](iterations/0227-verify-rescreen.md)) by reference; registered with Astra (gpt-6-astra, ultra) before the H commit and any call. The raw record is `.devlyn/0229/` and `.devlyn/0228/`. 0228 closed at R2 FAIL (Addendum C3, [DIAGNOSIS](experiments/0228/diagnosis/DIAGNOSIS.md)); the owner chose to fix and re-screen (2026-10-01). 0227 closed NOT PASS ([RESULT](experiments/0227/RESULT.md), [DIAGNOSIS](experiments/0227/diagnosis/DIAGNOSIS.md)); its handoff is in git history (last version at `f3835c04`). User decision 2026-09-30 ("1"): fix the rubric where the diagnosis points, test by replay on 0227 material, then re-screen on fresh tasks.
 
@@ -13,7 +13,7 @@
 5. **Deliver as a PR.** Commit in the task worktree, write `<worktree>/.devlyn/acceptance.json` (kind `direct`), then from a cwd outside the checkout `task-complete.py complete --receipt <receipt> --acceptance <file> --mode pr --writers-stopped`. Root merges research PRs once Astra verification is SHIP and CI is green where it runs, with `--mode auto --writers-stopped`. H is a pushed branch with no PR, not merged during 0229.
 6. **Hand off** in the same PR: update the table below.
 
-**Replays and the screen (steps 4–5):** judges run as `_devlynjudge` (0228 Addendum C2); nothing changes outside `/Users/Shared/devlyn-vr-0227*` and `/Users/Shared/devlyn-vr-0228-dev` (the screen root is `screen-0229` inside it). After the screen ends, or when the work stops, tell the owner: the devlyn-os-v1 session removes the judge account and token.
+**Replays and the screen (steps 4–5) are finished.** Judges ran as `_devlynjudge` (0228 Addendum C2, 0229 D2), and nothing changed outside `/Users/Shared/devlyn-vr-0227*` and `/Users/Shared/devlyn-vr-0228-dev`. The owner has been told the screen ended, so the devlyn-os-v1 session can remove the judge account and token. The raw replay and screen outputs stay in `/Users/Shared/devlyn-vr-0228-dev` until the owner decides.
 
 ## Steps (0229 "Work order")
 
@@ -23,7 +23,7 @@
 | 2 | H on G (`candidate/0229-fix`, pushed, no PR), runner change, Astra SHIP each; Addendum D1 | done: H = `3afbb18e`, runner `17c8b7b8`, D1 |
 | 3 | **Owner approval** of 0229 — nothing runs before it | approved 2026-10-01 23:44 (relayed by devlyn-os-v1) |
 | 4 | R1 (stage H, product, stub 64/64, inventory, open check, probe, owner compare), R2, R3 with Astra reviews and the owner's compares | **PASS** (0229 "Gate results"): R2 H 40/40 clean vs F 5/16 blocked; R3 72/72 twin hits, 28/28 references clean, 0 demotions |
-| 5 | Corpus, screen driver D2 (judge account), screen, scoring, RESULT | corpus (markdown-it, dateutil; repair 1, calibration SHIP) and D2 (Astra SHIP, stub dry run 64/64 twice) done — **next: `prepare --inventory`, freeze commit + witness PR, `run --pr N --inventory`, scoring** (Addendum D2) |
+| 5 | Corpus, screen driver D2 (judge account), screen, scoring, RESULT | **PASS** ([RESULT](experiments/0229/RESULT.md)): 32/32 hits, 0 false alarms, 0 unsupported extras, 0 invalid references, 128/128 seats accepted, no dispute after Astra's audit |
 
 0228 in one line: under G, the correct J4 reference was blocked in 1 of 40 replays (a Codex primary binding the base's own eviction deferral as a violation of "the existing … behavior"), F in 4 of 16; R3 not run. Isolation by the judge account held (owner compare changed 0; both tokens absent from all files).
 

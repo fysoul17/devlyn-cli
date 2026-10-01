@@ -1,0 +1,132 @@
+{
+  "task": "P3",
+  "files": {
+    "reference": [
+      "src/dateutil/tz/tz.py",
+      "tests/test_tz.py"
+    ],
+    "twin": [
+      "src/dateutil/tz/tz.py",
+      "tests/test_tz.py"
+    ]
+  },
+  "base": {
+    "oracle": {
+      "P3-I": false,
+      "P3-W": false,
+      "P3-F": false,
+      "P3-S": false,
+      "P3-Z": true,
+      "P3-C": true
+    },
+    "oracle_exit": 0
+  },
+  "reference": {
+    "public": [
+      {
+        "cmd": "PYTHONPATH=src COVERAGE_FILE=.tox/.coverage /Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/dateutil/venv/bin/python -m pytest tests docs --cov-config=tox.ini --cov=dateutil --cov-fail-under=80",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "======= tests coverage ================================\n_______________ coverage: platform darwin, python 3.14.7-final-0 _______________\n\nName                                Stmts   Miss  Cover   Missing\n-----------------------------------------------------------------\nsrc/dateutil/_common.py                25      1    96%   28\nsrc/dateutil/parser/_parser.py        812     35    96%   197, 376, 445, 449, 453, 499, 503, 511, 515-520, 527, 533, 544, 776, 803-808, 825-830, 842-843, 867, 966, 1117-1118, 1383, 1455, 1483, 1564, 1600-1601\nsrc/dateutil/rrule.py                 979     58    94%   26-27, 134, 151, 165-166, 179-180, 196, 217, 228, 250, 277, 440, 493, 536, 633, 653, 673, 724, 861-862, 871-872, 915-916, 918-919, 1027-1028, 1066, 1332-1333, 1341, 1344, 1498, 1517-1519, 1545, 1558, 1577-1578, 1587-1589, 1597, 1600-1601, 1635, 1642, 1662, 1670, 1675, 1679-1680, 1684, 1700, 1704\nsrc/dateutil/tz/_common.py            161     44    73%   20-28, 58-129, 140, 142, 224, 232, 240, 290, 306, 322, 325, 367, 383, 409, 417\nsrc/dateutil/tz/tz.py                 803     92    89%   304, 343-348, 352, 365, 657, 664, 770, 773, 832, 841, 874, 1128-1129, 1185, 1211-1216, 1223-1224, 1238, 1254, 1275-1277, 1313, 1323, 1328, 1331-1334, 1348-1349, 1359, 1363, 1372, 1382, 1384, 1386, 1393, 1395, 1398, 1413, 1429, 1434, 1439, 1442-1445, 1449, 1455, 1472-1473, 1479, 1619-1625, 1630-1633, 1643, 1648, 1659-1660, 1664-1668, 1683-1684, 1688, 1690, 1838-1845, 1851-1864\nsrc/dateutil/tz/win.py                152    149     2%   14-370\nsrc/dateutil/zoneinfo/__init__.py      54      9    83%   19, 25-27, 47-52, 166\nsrc/dateutil/zoneinfo/rebuild.py       39     28    28%   18-38, 51-62, 71-72\n-----------------------------------------------------------------\nTOTAL                                3589    416    88%\n\n9 files skipped due to complete coverage.\nRequired test coverage of 80% reached. Total coverage: 88.41%\n================= 2049 passed, 47 skipped, 17 xfailed in 2.90s =================\n",
+        "stderr_tail": ""
+      },
+      {
+        "cmd": "XDG_CACHE_HOME=.cache BLACK_CACHE_DIR=.cache/black /Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/dateutil/venv/bin/python -m darker --check --diff --color --isort --revision \"$(git rev-list --max-parents=0 HEAD)\" .",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "",
+        "stderr_tail": ""
+      },
+      {
+        "cmd": "/Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/dateutil/venv/bin/python -m pre_commit_hooks.debug_statement_hook src/dateutil/tz/tz.py tests/test_tz.py",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "",
+        "stderr_tail": ""
+      },
+      {
+        "cmd": "git diff --check \"$(git rev-list --max-parents=0 HEAD)\" -- src/dateutil/tz/tz.py tests/test_tz.py",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "",
+        "stderr_tail": ""
+      }
+    ],
+    "rewritten_by_public": [],
+    "oracle": {
+      "P3-I": true,
+      "P3-W": true,
+      "P3-F": true,
+      "P3-S": true,
+      "P3-Z": true,
+      "P3-C": true
+    },
+    "oracle_exit": 0
+  },
+  "twin": {
+    "public": [
+      {
+        "cmd": "PYTHONPATH=src COVERAGE_FILE=.tox/.coverage /Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/dateutil/venv/bin/python -m pytest tests docs --cov-config=tox.ini --cov=dateutil --cov-fail-under=80",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "======= tests coverage ================================\n_______________ coverage: platform darwin, python 3.14.7-final-0 _______________\n\nName                                Stmts   Miss  Cover   Missing\n-----------------------------------------------------------------\nsrc/dateutil/_common.py                25      1    96%   28\nsrc/dateutil/parser/_parser.py        812     35    96%   197, 376, 445, 449, 453, 499, 503, 511, 515-520, 527, 533, 544, 776, 803-808, 825-830, 842-843, 867, 966, 1117-1118, 1383, 1455, 1483, 1564, 1600-1601\nsrc/dateutil/rrule.py                 979     58    94%   26-27, 134, 151, 165-166, 179-180, 196, 217, 228, 250, 277, 440, 493, 536, 633, 653, 673, 724, 861-862, 871-872, 915-916, 918-919, 1027-1028, 1066, 1332-1333, 1341, 1344, 1498, 1517-1519, 1545, 1558, 1577-1578, 1587-1589, 1597, 1600-1601, 1635, 1642, 1662, 1670, 1675, 1679-1680, 1684, 1700, 1704\nsrc/dateutil/tz/_common.py            161     44    73%   20-28, 58-129, 140, 142, 224, 232, 240, 290, 306, 322, 325, 367, 383, 409, 417\nsrc/dateutil/tz/tz.py                 803     92    89%   304, 343-348, 352, 365, 657, 664, 770, 773, 832, 841, 874, 1128-1129, 1185, 1211-1216, 1223-1224, 1238, 1254, 1275-1277, 1313, 1323, 1328, 1331-1334, 1348-1349, 1359, 1363, 1372, 1382, 1384, 1386, 1393, 1395, 1398, 1413, 1429, 1434, 1439, 1442-1445, 1449, 1455, 1472-1473, 1479, 1618-1624, 1629-1632, 1642, 1647, 1658-1659, 1663-1667, 1682-1683, 1687, 1689, 1837-1844, 1850-1863\nsrc/dateutil/tz/win.py                152    149     2%   14-370\nsrc/dateutil/zoneinfo/__init__.py      54      9    83%   19, 25-27, 47-52, 166\nsrc/dateutil/zoneinfo/rebuild.py       39     28    28%   18-38, 51-62, 71-72\n-----------------------------------------------------------------\nTOTAL                                3589    416    88%\n\n9 files skipped due to complete coverage.\nRequired test coverage of 80% reached. Total coverage: 88.41%\n================= 2049 passed, 47 skipped, 17 xfailed in 2.96s =================\n",
+        "stderr_tail": ""
+      },
+      {
+        "cmd": "XDG_CACHE_HOME=.cache BLACK_CACHE_DIR=.cache/black /Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/dateutil/venv/bin/python -m darker --check --diff --color --isort --revision \"$(git rev-list --max-parents=0 HEAD)\" .",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "",
+        "stderr_tail": ""
+      },
+      {
+        "cmd": "/Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/dateutil/venv/bin/python -m pre_commit_hooks.debug_statement_hook src/dateutil/tz/tz.py tests/test_tz.py",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "",
+        "stderr_tail": ""
+      },
+      {
+        "cmd": "git diff --check \"$(git rev-list --max-parents=0 HEAD)\" -- src/dateutil/tz/tz.py tests/test_tz.py",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "",
+        "stderr_tail": ""
+      }
+    ],
+    "rewritten_by_public": [],
+    "oracle": {
+      "P3-I": true,
+      "P3-W": false,
+      "P3-F": true,
+      "P3-S": true,
+      "P3-Z": true,
+      "P3-C": true
+    },
+    "oracle_exit": 0
+  },
+  "verdict": {
+    "same_files": true,
+    "reference_public_pass": true,
+    "twin_public_pass": true,
+    "public_rewrote_nothing": true,
+    "reference_oracle_all_true": true,
+    "twin_oracle_failed_rows": [
+      "P3-W"
+    ],
+    "base_oracle_failed_rows": [
+      "P3-F",
+      "P3-I",
+      "P3-S",
+      "P3-W"
+    ]
+  }
+}

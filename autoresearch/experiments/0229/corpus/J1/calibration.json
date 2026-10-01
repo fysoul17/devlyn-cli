@@ -1,0 +1,82 @@
+{
+  "task": "J1",
+  "files": {
+    "reference": [
+      "src/parser_inline.ts",
+      "src/rules_inline/state_inline.ts",
+      "test/markdown-it/inline-cache.test.mjs"
+    ],
+    "twin": [
+      "src/parser_inline.ts",
+      "src/rules_inline/state_inline.ts",
+      "test/markdown-it/inline-cache.test.mjs"
+    ]
+  },
+  "base": {
+    "oracle": {
+      "J1-O1": false,
+      "J1-O2": true,
+      "J1-O3": false,
+      "J1-O4": false,
+      "J1-O5": true
+    },
+    "oracle_exit": 0
+  },
+  "reference": {
+    "public": [
+      {
+        "cmd": "PATH=/Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/markdown-it/node-bin:$PATH npm test",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "s (66.249667ms)\n    \u2714 U+0000 in input (89.570958ms)\n    \u2714 backticks (94.475708ms)\n    \u2714 unclosed links A (91.578167ms)\n    \u2714 unclosed links B (93.596167ms)\n    \u2714 unclosed <!-- (112.429292ms)\n    \u2714 empty lines in deeply nested lists (95.530041ms)\n    \u2714 empty lines in deeply nested lists in blockquote (81.9155ms)\n    \u2714 emph in deep blockquote (82.338917ms)\n  \u2714 Cmark (2171.01375ms)\n  \u25b6 Markdown-it\n    \u2714 emphasis **_* pattern (151.123834ms)\n    \u2714 backtick ``\\``\\`` pattern (86.574042ms)\n    \u2714 autolinks <<<<...<<> pattern (113.726125ms)\n    \u2714 hardbreak whitespaces pattern (68.441ms)\n    \u2714 linkify-it wrapper trailing asterisks pattern (82.173459ms)\n    \u2714 linkify emails separated by softbreaks (219.637292ms)\n    \u2714 linkify unregistered schemes (109.984583ms)\n    \u2714 a lot of smartquotes (95.257417ms)\n    \u2714 smartquotes with mismatched opener and closer types (181.46325ms)\n  \u2714 Markdown-it (1108.930084ms)\n\u2714 Pathological sequences speed (3409.320208ms)\n\u25b6 Ruler\n  \u2714 should replace rule (.at) (0.425ms)\n  \u2714 should inject before/after rule (0.266042ms)\n  \u2714 should enable/disable rule (0.3335ms)\n  \u2714 should enable/disable multiple rule (0.210791ms)\n  \u2714 should enable rules by whitelist (0.257458ms)\n  \u2714 should support multiple chains (0.22075ms)\n  \u2714 should fail on invalid rule name (0.341875ms)\n  \u2714 should not fail on invalid rule name in silent mode (0.223375ms)\n\u2714 Ruler (3.190416ms)\n\u25b6 Token\n  \u2714 attr (0.294167ms)\n\u2714 Token (0.646875ms)\n\u25b6 Utils\n  \u2714 fromCodePoint (0.930417ms)\n  \u2714 isValidEntityCode (0.207166ms)\n  \u2714 escapeRE (0.181875ms)\n  \u2714 isWhiteSpace (0.127334ms)\n  \u2714 isMdAsciiPunct (0.261167ms)\n  \u2714 isPunctCharCode (0.571667ms)\n  \u2714 unescapeMd (0.319875ms)\n\u2714 Utils (3.900125ms)\n\u2139 tests 311\n\u2139 suites 28\n\u2139 pass 311\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 3521.228208\n\n> markdown-it@15.0.2 test:build\n> node --test test/build/**/*.test.mjs\n\n\u25b6 CJS\n  \u2714 require (1.628209ms)\n\u2714 CJS (2.083708ms)\n\u2139 tests 1\n\u2139 suites 1\n\u2139 pass 1\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 55.9715\n",
+        "stderr_tail": ""
+      }
+    ],
+    "rewritten_by_public": [],
+    "oracle": {
+      "J1-O1": true,
+      "J1-O2": true,
+      "J1-O3": true,
+      "J1-O4": true,
+      "J1-O5": true
+    },
+    "oracle_exit": 0
+  },
+  "twin": {
+    "public": [
+      {
+        "cmd": "PATH=/Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/markdown-it/node-bin:$PATH npm test",
+        "exit": 0,
+        "expected": 0,
+        "ok": true,
+        "stdout_tail": "037792ms)\n    \u2714 U+0000 in input (94.599166ms)\n    \u2714 backticks (94.037958ms)\n    \u2714 unclosed links A (86.814916ms)\n    \u2714 unclosed links B (90.177875ms)\n    \u2714 unclosed <!-- (117.659459ms)\n    \u2714 empty lines in deeply nested lists (82.157416ms)\n    \u2714 empty lines in deeply nested lists in blockquote (79.3025ms)\n    \u2714 emph in deep blockquote (72.271917ms)\n  \u2714 Cmark (2249.518417ms)\n  \u25b6 Markdown-it\n    \u2714 emphasis **_* pattern (140.007042ms)\n    \u2714 backtick ``\\``\\`` pattern (87.031083ms)\n    \u2714 autolinks <<<<...<<> pattern (115.114125ms)\n    \u2714 hardbreak whitespaces pattern (68.78075ms)\n    \u2714 linkify-it wrapper trailing asterisks pattern (88.76475ms)\n    \u2714 linkify emails separated by softbreaks (194.675625ms)\n    \u2714 linkify unregistered schemes (98.05275ms)\n    \u2714 a lot of smartquotes (91.004375ms)\n    \u2714 smartquotes with mismatched opener and closer types (166.081042ms)\n  \u2714 Markdown-it (1050.008791ms)\n\u2714 Pathological sequences speed (3437.178208ms)\n\u25b6 Ruler\n  \u2714 should replace rule (.at) (1.351541ms)\n  \u2714 should inject before/after rule (0.343875ms)\n  \u2714 should enable/disable rule (0.292958ms)\n  \u2714 should enable/disable multiple rule (0.165708ms)\n  \u2714 should enable rules by whitelist (0.19375ms)\n  \u2714 should support multiple chains (0.198542ms)\n  \u2714 should fail on invalid rule name (0.412125ms)\n  \u2714 should not fail on invalid rule name in silent mode (0.292958ms)\n\u2714 Ruler (4.719375ms)\n\u25b6 Token\n  \u2714 attr (0.305542ms)\n\u2714 Token (0.6535ms)\n\u25b6 Utils\n  \u2714 fromCodePoint (0.389167ms)\n  \u2714 isValidEntityCode (0.079583ms)\n  \u2714 escapeRE (0.101958ms)\n  \u2714 isWhiteSpace (0.063208ms)\n  \u2714 isMdAsciiPunct (0.084416ms)\n  \u2714 isPunctCharCode (0.276083ms)\n  \u2714 unescapeMd (0.091375ms)\n\u2714 Utils (1.564375ms)\n\u2139 tests 311\n\u2139 suites 28\n\u2139 pass 311\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 3530.081334\n\n> markdown-it@15.0.2 test:build\n> node --test test/build/**/*.test.mjs\n\n\u25b6 CJS\n  \u2714 require (1.473625ms)\n\u2714 CJS (1.834958ms)\n\u2139 tests 1\n\u2139 suites 1\n\u2139 pass 1\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 52.421875\n",
+        "stderr_tail": ""
+      }
+    ],
+    "rewritten_by_public": [],
+    "oracle": {
+      "J1-O1": true,
+      "J1-O2": true,
+      "J1-O3": false,
+      "J1-O4": true,
+      "J1-O5": true
+    },
+    "oracle_exit": 0
+  },
+  "verdict": {
+    "same_files": true,
+    "reference_public_pass": true,
+    "twin_public_pass": true,
+    "public_rewrote_nothing": true,
+    "reference_oracle_all_true": true,
+    "twin_oracle_failed_rows": [
+      "J1-O3"
+    ],
+    "base_oracle_failed_rows": [
+      "J1-O1",
+      "J1-O3",
+      "J1-O4"
+    ]
+  }
+}

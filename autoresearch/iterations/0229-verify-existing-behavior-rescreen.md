@@ -237,3 +237,20 @@ As 0228, whose corpus was never run.
     - **Fix** (`020cf79b`): `acl_tree` skips entries the judge created, which inherited the run grant at creation. A real-`sudo` re-grant test passed.
     - The stub dry run was rerun on the fixed bytes: 64/64, no MECHANICAL retry, driver `1a09a520…`, `manifest.dry.json` `c49f017b…`.
     - Astra SHIP (`.devlyn/0229/d2fix-r0-astra.out.md`). Prepare then restarts from the beginning.
+
+## Screen result (2026-10-02): PASS
+
+The one-shot join reads PASS ([RESULT](../experiments/0229/RESULT.md)).
+
+| Condition | Result |
+|---|---|
+| Target hits | 32/32 |
+| Reference false alarms | 0 |
+| Unsupported extras | 0 |
+| Invalid references | 0 |
+| Seats accepted | 128/128, with 0 BLOCKED and 0 re-asks |
+| Isolation, overlap, reads, witness | hold |
+
+- Astra's label audit ended with no dispute, after root adopted its 5 stage-A differences.
+- Judges ran as `_devlynjudge` throughout. The owner's compare showed changed 0 after prepare and after the run, and the judge token appears in 0 files.
+- **Registered consequence:** bundle development of 22616b57 + F + G + H (steps 2–5) is readmitted. Nothing ships.

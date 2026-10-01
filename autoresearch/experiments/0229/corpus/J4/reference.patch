@@ -1,0 +1,119 @@
+diff --git a/src/rules_block/reference.ts b/src/rules_block/reference.ts
+index 5cbb289..1a9665f 100644
+--- a/src/rules_block/reference.ts
++++ b/src/rules_block/reference.ts
+@@ -208,14 +208,16 @@ export default function reference (state: StateBlock, startLine: number, _endLin
+     state.env.references[label] = { title, href }
+   }
+ 
+-  // Marks the place definition took in the source. Renders to nothing,
+-  // href/title stay in `env.references`.
++  // Marks the place definition took in the source. Renders to nothing;
++  // the token snapshots this definition's values alongside the lookup entry.
+   const token = state.push('reference_definition', '', 0)
+   token.map = [startLine, nextLine]
+   token.hidden = true
+ 
+   const meta: Record<string, unknown> = Object.create(null)
+   meta.label = label
++  meta.href = href
++  meta.title = title
+   token.meta = meta
+ 
+   state.line = nextLine
+diff --git a/test/markdown-it/misc.test.mjs b/test/markdown-it/misc.test.mjs
+index 5b2ca86..a319d75 100644
+--- a/test/markdown-it/misc.test.mjs
++++ b/test/markdown-it/misc.test.mjs
+@@ -223,12 +223,91 @@ describe('Misc', function () {
+     const tokens = md.parse(src, {}).filter(t => t.type === 'reference_definition')
+     const expectedMeta = Object.create(null)
+     expectedMeta.label = 'FOO'
++    expectedMeta.href = '/url'
++    expectedMeta.title = ''
+ 
+     assert.strictEqual(tokens.length, 1)
+     assert.deepEqual(tokens[0].map, [0, 1])
+     assert.deepEqual(tokens[0].meta, expectedMeta)
+   })
+ 
++  it('Should snapshot normalized definition values without changing rendering', function () {
++    const md = markdownit()
++    md.core.ruler.disable('strip_references')
++    const src = '[Foo  Bar]: </a b> "A &amp; B"\n\n[go][foo bar]\n'
++    const env = {}
++    const tokens = md.parse(src, env)
++    const definitions = tokens.filter(t => t.type === 'reference_definition')
++    const expectedMeta = Object.create(null)
++    expectedMeta.label = 'FOO BAR'
++    expectedMeta.href = '/a%20b'
++    expectedMeta.title = 'A & B'
++
++    assert.strictEqual(definitions.length, 1)
++    assert.deepEqual(definitions[0].meta, expectedMeta)
++    assert.deepEqual(definitions[0].map, [0, 1])
++    assert.deepEqual(env.references['FOO BAR'], { href: '/a%20b', title: 'A & B' })
++    assert.strictEqual(md.renderer.render(tokens, md.options, env),
++      '<p><a href="/a%20b" title="A &amp; B">go</a></p>\n')
++    assert.strictEqual(md.render(src), markdownit().render(src))
++  })
++
++  it('Should snapshot decoded multiline definition titles', function () {
++    const md = markdownit()
++    md.core.ruler.disable('strip_references')
++    const src = '[x]: /u "one\ntwo &amp; three"\n\n[x]\n'
++    const env = {}
++    const tokens = md.parse(src, env)
++    const definitions = tokens.filter(t => t.type === 'reference_definition')
++    const expectedMeta = Object.create(null)
++    expectedMeta.label = 'X'
++    expectedMeta.href = '/u'
++    expectedMeta.title = 'one\ntwo & three'
++
++    assert.strictEqual(definitions.length, 1)
++    assert.deepEqual(definitions[0].meta, expectedMeta)
++    assert.deepEqual(definitions[0].map, [0, 2])
++    assert.deepEqual(env.references.X, { href: '/u', title: 'one\ntwo & three' })
++    assert.strictEqual(md.renderer.render(tokens, md.options, env),
++      '<p><a href="/u" title="one\ntwo &amp; three">x</a></p>\n')
++  })
++
++  it('Should leave rejected title continuations outside definition metadata', function () {
++    const md = markdownit()
++    md.core.ruler.disable('strip_references')
++    const src = '[x]: /u\n"bad" trailing\n\n[x]\n'
++    const env = {}
++    const tokens = md.parse(src, env)
++    const definitions = tokens.filter(t => t.type === 'reference_definition')
++    const expectedMeta = Object.create(null)
++    expectedMeta.label = 'X'
++    expectedMeta.href = '/u'
++    expectedMeta.title = ''
++
++    assert.strictEqual(definitions.length, 1)
++    assert.deepEqual(definitions[0].meta, expectedMeta)
++    assert.deepEqual(definitions[0].map, [0, 1])
++    assert.deepEqual(env.references.X, { href: '/u', title: '' })
++    assert.strictEqual(md.renderer.render(tokens, md.options, env),
++      '<p>&quot;bad&quot; trailing</p>\n<p><a href="/u">x</a></p>\n')
++  })
++
++  it('Should keep retained definition metadata separate from lookup records', function () {
++    const md = markdownit()
++    md.core.ruler.disable('strip_references')
++    const env = {}
++    const tokens = md.parse('[x]: /original "Original"\n', env)
++    const definitions = tokens.filter(t => t.type === 'reference_definition')
++
++    assert.strictEqual(definitions.length, 1)
++    assert.strictEqual(definitions[0].hidden, true)
++    assert.notStrictEqual(definitions[0].meta, env.references.X)
++    definitions[0].meta.href = '/edited'
++    definitions[0].meta.title = 'Edited'
++    assert.deepEqual(env.references.X, { href: '/original', title: 'Original' })
++    assert.strictEqual(md.renderer.render(tokens, md.options, env), '')
++  })
++
+   it('Should not affect line breaks with reference definition tokens', function () {
+     const md = markdownit()
+     md.core.ruler.disable('strip_references')
