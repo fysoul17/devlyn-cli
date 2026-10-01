@@ -15,10 +15,10 @@
 
 **Replays and the screen (steps 4–5) are finished.** Judges ran as `_devlynjudge` (0228 Addendum C2, 0229 D2), and nothing changed outside `/Users/Shared/devlyn-vr-0227*` and `/Users/Shared/devlyn-vr-0228-dev`.
 
-**Judge cleanup (2026-10-02, done by the devlyn-os-v1 session):**
-- A search of HOME, `/Users/Shared`, `/private/tmp` and `/private/var/folders` found no copy of the token. The token file and `~/.config/devlyn-vr` were then deleted.
+**Judge cleanup (2026-10-02, done and reported by the devlyn-os-v1 session):**
+- That session's search of HOME, `/Users/Shared`, `/private/tmp` and `/private/var/folders` found no copy of the token. The token file and `~/.config/devlyn-vr` were then deleted.
 - Also removed: the sudoers rule, the `_devlynjudge` group, `/private/tmp/claude-450` and `cc-socks-450`, and every uid-450 process.
-- **Still present:** the `_devlynjudge` user record (uid 450). macOS refused its deletion without Full Disk Access. It has no password, sudo rule or process, so it is unusable; removing it is the user's call.
+- **Still present:** the `_devlynjudge` user record: UniqueID 450, shell `/usr/bin/false`, home `/var/empty`. As the devlyn-os-v1 session reported, macOS refused its deletion without Full Disk Access (TCC). Root checked on 2026-10-02: no uid-450 process, the `_devlynjudge` group record is gone, and `/etc/sudoers.d` holds no rule. Removing the user record is the user's call.
 - **Raw outputs** of the replays and the screen remain in `/Users/Shared/devlyn-vr-0228-dev` (owner-only, mode 0700, including files the judge owns) until the user decides.
 
 ## Steps (0229 "Work order")
