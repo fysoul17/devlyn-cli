@@ -74,7 +74,7 @@
   "check": null,
   "clause_source": null,
   "disputed": false,
-  "kind": "coverage",
+  "kind": "behavioral",
   "match": false,
   "results": null,
   "script_sha256": null
@@ -181,13 +181,17 @@
   "script_sha256": null
  },
  "2c0cde905ab3a7e8456484f49cd0fb2301b3dd8df0a5d0d44ce8786381ac41c6": {
-  "check": null,
-  "clause_source": null,
+  "check": "autoresearch/experiments/0229/check-scripts/P4-week53-leap-52-week-rejected.sh",
+  "clause_source": "task",
   "disputed": false,
-  "kind": "coverage",
+  "kind": "behavioral",
   "match": false,
-  "results": null,
-  "script_sha256": null
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "3f7da049e867698dfa11d599c6061e29a795719879ffe4d09e9ad0505d5e9fce"
  },
  "2cd829918c709727d4fe672d2dba39cf3452882c775a36cf21dac3c40709904d": {
   "check": "autoresearch/experiments/0229/check-scripts/J1-widen-bound-reexamines-code-span.sh",
@@ -456,7 +460,7 @@
   "clause_source": "task",
   "disputed": false,
   "kind": "behavioral",
-  "match": true,
+  "match": false,
   "results": {
    "base": false,
    "reference": true,
@@ -636,7 +640,7 @@
   "check": null,
   "clause_source": null,
   "disputed": false,
-  "kind": "coverage",
+  "kind": "behavioral",
   "match": false,
   "results": null,
   "script_sha256": null
@@ -1170,7 +1174,7 @@
   "check": null,
   "clause_source": null,
   "disputed": false,
-  "kind": "coverage",
+  "kind": "behavioral",
   "match": false,
   "results": null,
   "script_sha256": null
