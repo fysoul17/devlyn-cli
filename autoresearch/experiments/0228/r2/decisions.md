@@ -1,6 +1,6 @@
 # 0228 R2 — decision and check record (2026-10-01 KST)
 
-- 21:12 first R2 batch stopped by the OS-agent quiesce after one completed replay (`batch-r2-stopped-1.log`; C2); runner fixed (PR #147, Astra SHIP) and R2 restarted from item 0 (`batch-r2.log`, batch `1790858329`, inventory `r2c`).
+- 21:19 (observed; launched 21:18) first R2 batch stopped by the OS-agent quiesce after one completed replay (`batch-r2-stopped-1.log`; C2); runner fixed (PR #147, Astra SHIP) and R2 restarted from item 0 (`batch-r2.log`, batch `1790858329`, inventory `r2c`).
 - 21:42:26 judge token swapped itclab.dev26 → onedatatech.dev by the devlyn-os-v1 session between items 5 and 6 (`~/.config/devlyn-vr/token-swap.txt`).
 - 22:14:36 root decided, before reading any judge output, to re-dispatch items 0–5 under the new account (inherited account-drift rule); first judge output read at 22:24:33 (collection). Rerun batch: `batch-r2-rerun.log` (inventory `r2d`, `plan-r2-rerun.json`).
 - Transport classification: all 56 effective replays and the 6 reruns exited 0 on both seats; the usage-limit watcher recorded no event.
