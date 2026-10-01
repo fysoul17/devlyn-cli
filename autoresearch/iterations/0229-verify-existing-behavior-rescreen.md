@@ -112,3 +112,18 @@ As 0228, whose corpus was never run.
 3. **Owner approval** of this plan. No replay, corpus or screen work before it.
 4. R1, R2, R3, with Astra reviews and the owner's baseline compares.
 5. Corpus. Driver (judge account, D2). Screen, scoring, RESULT.
+
+## Addendum D1 (2026-10-01, before any 0229 replay call)
+
+- **H** = `3afbb18e` on `candidate/0229-fix` (pushed, no PR): one commit on G changing only `verify.md` and its `.agents` mirror. Astra SHIP (`.devlyn/0229/h-r0-astra.out.md`); lint, the portability suite (63 tests, 17 platform skips) and the identifier grep pass (`.devlyn/0229/h-checks.log`).
+- **Runner** = [`replay.py`](../experiments/0228/replay.py) and [`collect.py`](../experiments/0228/collect.py) at `17c8b7b8`:
+  - arms F and H. `stage <H>` extracts `git archive H config/skills` untrusted into `product-H`; attempts go to `DEV/H/<token>/rep-N` and `DEV/stub-H/…`;
+  - G and stub-G stay among the attempt kinds, so 0228's attempts remain closed and inside the judge open check;
+  - stub binaries are copied straight from 0227's `dry/` folder. 0228's staged copy in `DEV/stub` was byte-identical and is no longer read;
+  - the collector keeps every finding of any rank, INFO included. Its pool holds every rank-2 finding plus every finding on a twin replay; labeling then applies 0228's rule, so the per-seat demotion check sees lower-rank target findings;
+  - the guard test is GREEN on this runner (root's run; its fixture setup writes only inside `DEV/scratch`) and RED with the guard disabled (root and Astra). Astra SHIP (`.devlyn/0229/run-r0-astra.out.md`); two Claude reviewers, one on isolation and one on registration fidelity, found no defects.
+- **Replay orders** (`replay.py plan`, committed as [`plan-r2.json`](../experiments/0229/plan-r2.json) and [`plan-r3.json`](../experiments/0229/plan-r3.json)):
+  - R2, 56 replays in 15 cycles: H on both codex-orientation J4 reference rounds in every cycle (30); H on both claude-orientation rounds in cycles 1, 4, 7, 10 and 13 (10); F on both codex-orientation rounds in cycles 1, 3, …, 15 (16).
+  - R3, 100 replays: the other 60 rounds once, then the 20 J2/J3/J4/P2/P3 twin rounds twice.
+  - Infra reruns as C1.
+- **Nothing of 0229 has run.** R1 starts only after the owner approves.

@@ -1,30 +1,31 @@
-# 0228 closed at R2 FAIL; 0229 registered (rubric fix H + re-run of the gates and the fresh screen) — runs after the owner approves
+# 0229 prepared (H, runner, Addendum D1) — waiting for the owner's approval before any run
 
-2026-10-01 KST. Root direct, no resolve. The contract is [0228](iterations/0228-verify-rubric-rescreen.md) (amends [0227](iterations/0227-verify-rescreen.md) by reference), designed with Astra (gpt-6-astra, ultra) and registered before the G commit, any replay call and any corpus authoring. The raw record is `.devlyn/0228/`. 0227 closed NOT PASS ([RESULT](experiments/0227/RESULT.md), [DIAGNOSIS](experiments/0227/diagnosis/DIAGNOSIS.md)); its handoff is in git history (last version at `f3835c04`). User decision 2026-09-30 ("1"): fix the rubric where the diagnosis points, test by replay on 0227 material, then re-screen on fresh tasks.
+2026-10-01 KST. Root direct, no resolve. The contract is [0229](iterations/0229-verify-existing-behavior-rescreen.md), which amends [0228](iterations/0228-verify-rubric-rescreen.md) (itself amending [0227](iterations/0227-verify-rescreen.md)) by reference; registered with Astra (gpt-6-astra, ultra) before the H commit and any call. The raw record is `.devlyn/0229/` and `.devlyn/0228/`. 0228 closed at R2 FAIL (Addendum C3, [DIAGNOSIS](experiments/0228/diagnosis/DIAGNOSIS.md)); the owner chose to fix and re-screen (2026-10-01). 0227 closed NOT PASS ([RESULT](experiments/0227/RESULT.md), [DIAGNOSIS](experiments/0227/diagnosis/DIAGNOSIS.md)); its handoff is in git history (last version at `f3835c04`). User decision 2026-09-30 ("1"): fix the rubric where the diagnosis points, test by replay on 0227 material, then re-screen on fresh tasks.
 
 ## Start here (every new session)
 
 1. **Confirm the previous PR is merged, then start from updated `main`** (checkout `~/.local/share/nx01/core-continuation-20260912`):
    - `gh pr list --repo fysoul17/devlyn-cli --state all --head <previous branch> --json number,state,mergedAt,url` must show `MERGED`; otherwise stop and report.
    - `git status --porcelain` must be empty apart from files you can prove you own; then `git switch main && git pull --ff-only origin main`.
-2. **Read 0228** end to end (and 0227, which it amends by reference), then the step's row below.
+2. **Read 0229** end to end (and 0228 and 0227, which it amends by reference), then the step's row below.
 3. **Allocate a task branch:** `python3 config/skills/_shared/task-complete.py allocate --repo . --task '<id>' --branch 'candidate/<id>' --worktree '<absent path>' --repository fysoul17/devlyn-cli --remote origin --base main`.
 4. **Work and verify.** Root works directly. Astra reviews read-only and isolated (`CODEX_MONITORED_ISOLATED=1 DEVLYN_CODEX_PROMPT_FILE=<prompt> config/skills/_shared/codex-monitored.sh -C <repo> -s read-only -m gpt-6-astra -c model_reasoning_effort=ultra -`, stdout to a file, never a pipe; wait on `^\[codex-monitored\] codex exited` in stderr) until SHIP. `gpt-6-sol` implements where 0227 says so (`-s workspace-write`; it cannot write `.agents/`).
-5. **Deliver as a PR.** Commit in the task worktree, write `<worktree>/.devlyn/acceptance.json` (kind `direct`), then from a cwd outside the checkout `task-complete.py complete --receipt <receipt> --acceptance <file> --mode pr --writers-stopped`. Root merges research PRs once Astra verification is SHIP and CI is green where it runs, with `--mode auto --writers-stopped`. G is a pushed branch with no PR, not merged during 0228.
+5. **Deliver as a PR.** Commit in the task worktree, write `<worktree>/.devlyn/acceptance.json` (kind `direct`), then from a cwd outside the checkout `task-complete.py complete --receipt <receipt> --acceptance <file> --mode pr --writers-stopped`. Root merges research PRs once Astra verification is SHIP and CI is green where it runs, with `--mode auto --writers-stopped`. H is a pushed branch with no PR, not merged during 0229.
 6. **Hand off** in the same PR: update the table below.
 
 **Replay batches (steps 3–4):** judges run as `_devlynjudge` (Addendum C2); the runner changes nothing outside `/Users/Shared/devlyn-vr-0227*` and `/Users/Shared/devlyn-vr-0228-dev`. After R3, or if the owner stops, tell the owner: the devlyn-os-v1 session removes the judge account and token.
 
-## Steps (0228 "Work order")
+## Steps (0229 "Work order")
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Registration: Astra FREEZE, PR, merge | merged (PR #141) |
-| 2 | G on `f40da73b` (`candidate/0228-fix`, pushed, no PR): implement, lint, portability suite, identifier grep, Astra SHIP | done: G = `607c3cf7`, Astra SHIP |
-| 3 | Replay copy, inventory and isolation, R1, Astra SHIP; Addendum C1 (G, replay commit, inventory, replay order) | done: C1; the C1 seals touched owner files (incident) → C2: isolation by the judge account `_devlynjudge` (Astra SHIP); R1 re-run passed (stub 64/64, probe, owner baseline compare changed 0) |
-| 4 | R2 (J4 references, G vs F) and R3 (recall and breadth), Astra reviews; replay root deleted after its record is committed | **R2 FAIL** (C3): G blocked the correct J4 reference in 1/40 replays (Codex primary), F in 4/16; R3 not run |
-| 5 | Corpus: selection, blind authoring, implementation, calibration, calibration review | not run (R2 FAIL) |
-| 6 | Driver copy, stub dry run, Astra SHIP; freeze and witness, 64 rounds, masked scoring with Astra audit, join, RESULT | not run (R2 FAIL) |
+| 1 | Diagnosis and registration: Astra FREEZE, PR, merge | merged (PR #149) |
+| 2 | H on G (`candidate/0229-fix`, pushed, no PR), runner change, Astra SHIP each; Addendum D1 | done: H = `3afbb18e`, runner `17c8b7b8`, D1 |
+| 3 | **Owner approval** of 0229 — nothing runs before it | **waiting** |
+| 4 | R1 (stage H, product, stub 64/64, inventory, open check, probe, owner compare), R2, R3 with Astra reviews and the owner's compares | not run |
+| 5 | Corpus, screen driver D2 (judge account), screen, scoring, RESULT | not run |
+
+0228 in one line: under G, the correct J4 reference was blocked in 1 of 40 replays (a Codex primary binding the base's own eviction deferral as a violation of "the existing … behavior"), F in 4 of 16; R3 not run. Isolation by the judge account held (owner compare changed 0; both tokens absent from all files).
 
 0227 in one line: 0226's failures did not recur (0 rejected Claude outputs, 0 BLOCKED, 128/128 seats accepted, 32/32 hits; the P specs still carry an unevidenced "Run from the repository root"), but one Codex primary blocked a correct J4 reference by reading "existing eviction disposal behavior" as immediate delivery; two more Codex seats returned NEEDS_WORK on J2 reference rounds from coverage findings only. **Diagnosis (2026-09-30, user chose "diagnose first"; Astra SHIP):** [DIAGNOSIS](experiments/0227/diagnosis/DIAGNOSIS.md) — replays of the four J4 reference rounds from their pristine inputs show recurrent Codex blocks on the keep-existing clause (Codex primary 7/17, pair 1/12, Claude 0/29); all 8 binding claims on reference rounds across 0226, G3 and 0227 came from Codex seats; the rubric has no explicit preservation-comparison step (text predates the candidate); the J2 coverage blocks come from a coverage vs source-review rule conflict. Astra: materially new diagnostic evidence, not proof of rubric causation. The user chose to register 0228 (above); steps 2–5 stay held until 0228's outcome.
 
