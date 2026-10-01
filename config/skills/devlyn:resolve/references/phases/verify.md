@@ -72,9 +72,10 @@ emit a HIGH finding tied to all relevant spec clauses.
 JUDGE does not execute literal verification, lint, test, build, risk-probe, or
 newly invented interaction commands. For high-complexity behavior, executable
 coverage must already be declared in sibling `spec.expected.json` or derived
-risk probes and present in the sealed MECHANICAL evidence. Missing coverage is
-a verdict-binding finding; review the implementation's clause and code order
-without inventing a replacement command.
+risk probes and present in the sealed MECHANICAL evidence, except for explicitly
+retained source-review obligations that do not also require executable checks.
+Missing required coverage is a verdict-binding finding; review the
+implementation's clause and code order without inventing a replacement command.
 
 **Coverage check**: account for every applicable Requirement and Constraint using sealed MECHANICAL evidence for required executable checks and cited source/design evidence for pure-design clauses or explicitly retained source-review obligations. Inspect applicable unchanged code and documentation; absence of a code change alone is not missing coverage. Source review never substitutes for required executable coverage. For any unsupported clause, emit a verdict-binding coverage finding identifying the missing evidence. JUDGE does not run checks or edit state.
 
@@ -83,7 +84,15 @@ task, public, or existing test contract is binding, including unmet new
 requirements and incorrect customer documentation. Quote the exact applicable
 clause and concrete file:line evidence. Small impact, rare inputs, or a
 pre-existing defect do not excuse that violation. A changed line or requirement
-reference alone does not establish applicability.
+reference alone does not establish applicability. For a clause that requires an
+existing path's current behavior, establish that behavior from `base_sha` (the
+snapshot diff's base side) for the same operation, or from unchanged code on the
+path the clause names, and bind only a demonstrated departure from it. A public
+contract that this behavior already contradicts binds separately only if the
+task independently requires conformance or the diff introduces or changes that
+promise; otherwise report the conflict as advisory. This does not excuse unmet
+new requirements, including state that a new or failing operation must leave
+unchanged.
 
 Emit HIGH/CRITICAL as appropriate, or MEDIUM with literal `verdict_binding: true`.
 Do not label a binding finding LOW/INFO: the merge honors HIGH/CRITICAL and
@@ -100,8 +109,7 @@ Advisory MEDIUM findings remain non-binding and produce `PASS_WITH_ISSUES`.
 When the role frame is `pair_judge`, both judgments are merged:
 - Any HIGH/CRITICAL finding either model surfaces is verdict-binding.
 - Any MEDIUM finding with literal `verdict_binding: true` is also binding.
-  Apply the same mandatory-clause, applicability and evidence check above;
-  neither impact nor pre-existing origin makes an applicable violation advisory.
+  Apply the same mandatory-clause, applicability and evidence check above.
 - Other lower-severity disagreements are logged but do not change the verdict.
 - The harness handles merge; you only emit your own findings.
 - The second judge's job is adversarial complement, not a duplicate summary:
