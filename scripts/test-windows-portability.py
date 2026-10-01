@@ -788,6 +788,16 @@ installClaudeCore();
         self.assertEqual((push / 'SKILL.md').read_bytes(), legacy)
         self.invoke("installClaudeCore();")
         self.assertIn(b'name: devlyn-pencil-push', (push / 'SKILL.md').read_bytes())
+        # A Windows checkout with core.autocrlf holds the same copy with CRLF; a failed swap
+        # leaves no staged file behind.
+        (push / 'SKILL.md').write_bytes(legacy.replace(b'\n', b'\r\n'))
+        result = self.invoke("const rename = fs.renameSync; fs.renameSync = (from, to) => { "
+                             "if (String(to).endsWith('SKILL.md')) throw new Error('injected'); return rename(from, to); }; "
+                             "installClaudeCore();", code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(sorted(p.name for p in push.iterdir()), ['SKILL.md'])
+        self.invoke("installClaudeCore();")
+        self.assertIn(b'name: devlyn-pencil-push', (push / 'SKILL.md').read_bytes())
 
     def test_role_configuration_filesystem_errors(self):
         import errno

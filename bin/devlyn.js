@@ -40,7 +40,8 @@ function legacySkillPaths(root, name) {
 }
 
 // SKILL.md of the pencil skills 0.6.0-0.7.1 installed under today's names, without the
-// frontmatter the standard requires. 3.x deleted these copies; 4.0 replaces them.
+// frontmatter the standard requires, hashed with LF line endings (a Windows checkout may hold
+// CRLF). 3.x deleted these copies; 4.0 replaces them.
 const PRE_STANDARD_SKILL_MD_SHA256 = new Set([
   'dfdd3d19ca676558bfa2bb3ce398181b0a081ab88d1feaf69c54c706a9671631', // devlyn-pencil-pull
   '5f2e8b29609cbb2af72941579823bec598265ebf29cd3a375d6aa47d95b74354', // devlyn-pencil-push
@@ -50,7 +51,8 @@ function isPreStandardCopy(dir) {
   const skill = path.join(dir, 'SKILL.md');
   return fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory() === true
     && fs.lstatSync(skill, { throwIfNoEntry: false })?.isFile() === true
-    && PRE_STANDARD_SKILL_MD_SHA256.has(crypto.createHash('sha256').update(fs.readFileSync(skill)).digest('hex'));
+    && PRE_STANDARD_SKILL_MD_SHA256.has(crypto.createHash('sha256')
+      .update(fs.readFileSync(skill, 'utf8').replace(/\r\n/g, '\n')).digest('hex'));
 }
 
 // Cross-agent shared skills directory read by BOTH oh-my-pi and Pi. Verified
@@ -653,8 +655,12 @@ function installOptionalSkillInto(target, skillName) {
 function refreshPreStandardCopy(target, skillName) {
   const skill = path.join(target, skillName, 'SKILL.md');
   const staged = `${skill}.${process.pid}.tmp`;
-  fs.copyFileSync(path.join(OPTIONAL_SKILLS_SOURCE, skillName, 'SKILL.md'), staged);
-  fs.renameSync(staged, skill);
+  try {
+    fs.copyFileSync(path.join(OPTIONAL_SKILLS_SOURCE, skillName, 'SKILL.md'), staged);
+    fs.renameSync(staged, skill);
+  } finally {
+    fs.rmSync(staged, { force: true });
+  }
   assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, target, [skillName]);
 }
 
