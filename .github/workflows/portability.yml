@@ -109,11 +109,11 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 15
     steps:
-      # A plain Git checkout proves every tracked path is legal on Windows. It stays in
-      # its own folder: the tests below run the tested npm artifact, outside any repository.
-      - uses: actions/checkout@v4
-        with:
-          path: source
+      # The checkout is the test: Git for Windows refuses any tracked path Windows cannot
+      # hold. The workspace root keeps the longest tracked path under MAX_PATH; the steps
+      # below test the npm artifact from RUNNER_TEMP, outside the repository.
+      - name: Check out every tracked path natively (fails on a Windows-illegal path)
+        uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -130,6 +130,7 @@ jobs:
           path: ${{ runner.temp }}/portability/driver
       - name: Native install, real CLI smoke and full harness regressions
         shell: python
+        working-directory: ${{ runner.temp }}
         env:
           PYTHONUTF8: '0'
         run: |

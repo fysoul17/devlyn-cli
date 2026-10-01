@@ -354,14 +354,16 @@ function cleanupDeprecated(targetDir) {
   return removed;
 }
 
-// Remove every old spelling of the renamed skills in `skillsDir`. An optional skill found
-// there under any of its names (0.6.x already used the new one) is installed fresh first, so
-// an interrupted run never loses it.
-function retireRenamedSkills(skillsDir) {
+// Remove every old spelling of the renamed skills in `skillsDir`, after the new core skills
+// are in place. An optional skill found under an old spelling is installed under its new name
+// first, so an interrupted run never loses it. One already under its new name is refreshed only
+// in a root without an install marker (written since 2.10.1): there it is a 0.6.x copy, which
+// used today's names. Elsewhere it is the user's opted-in copy, which `-y` leaves alone.
+function retireRenamedSkills(skillsDir, unmarked) {
   const optional = new Set(OPTIONAL_ADDONS.filter((addon) => addon.type === 'local').map((addon) => addon.name));
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
-    const installed = found.length > 0 || fs.existsSync(path.join(skillsDir, newName));
+    const installed = found.length > 0 || (unmarked && fs.existsSync(path.join(skillsDir, newName)));
     if (installed && optional.has(newName)) installOptionalSkillInto(skillsDir, newName);
     for (const fullPath of found) {
       fs.rmSync(fullPath, { recursive: true, force: true });
@@ -620,9 +622,16 @@ function installLocalSkill(skillName) {
 
 // One optional skill into one skill-loader directory, replacing any older copy of it. A
 // copy under its name before the 4.0.0 rename goes only once the new one is complete.
+// A real `dest` folder is emptied, not removed: in an unmarked root it is the only record
+// that the skill is installed, so a run interrupted before the copy leaves it for the retry.
+// A link is removed itself, never followed, and replaced by a real folder.
 function installOptionalSkillInto(target, skillName) {
   const dest = path.join(target, skillName);
-  fs.rmSync(dest, { recursive: true, force: true });
+  if (fs.lstatSync(dest, { throwIfNoEntry: false })?.isDirectory()) {
+    for (const entry of fs.readdirSync(dest)) fs.rmSync(path.join(dest, entry), { recursive: true, force: true });
+  } else {
+    fs.rmSync(dest, { recursive: true, force: true });
+  }
   copyRecursive(path.join(OPTIONAL_SKILLS_SOURCE, skillName), dest, target);
   stampInstalledSkillDir(dest, dest);
   assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, target, [skillName]);
@@ -687,13 +696,13 @@ function installSkillsForCLI(cliKey) {
   if (!fs.existsSync(cli.skillsDir)) {
     fs.mkdirSync(cli.skillsDir, { recursive: true });
   }
+  const unmarked = !fs.existsSync(path.join(cli.skillsDir, DEVLYN_INSTALL_MARKER));
   clearInstallMarker(cli.skillsDir);
 
   const removed = cleanupDeprecated(path.dirname(cli.skillsDir));
   if (removed > 0) {
     log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
   }
-  retireRenamedSkills(cli.skillsDir);
 
   let copied = 0;
   for (const skillName of cli.skillsToInstall) {
@@ -711,6 +720,7 @@ function installSkillsForCLI(cliKey) {
     log(`  → ${cli.skillsDir.replace(os.homedir(), '~')}/${skillName}`, 'dim');
   }
   assertCompleteSkillInstall(sourceSkillsDir, cli.skillsDir, cli.skillsToInstall);
+  retireRenamedSkills(cli.skillsDir, unmarked);
   writeInstallMarker(cli.skillsDir);
   return copied;
 }
@@ -808,13 +818,12 @@ function installClaudeCore() {
   const skillsDir = path.join(targetDir, 'skills');
   log('\n📁 Installing Claude Code config to .claude/', 'green');
   if (!fs.existsSync(skillsDir)) fs.mkdirSync(skillsDir, { recursive: true });
+  const unmarked = !fs.existsSync(path.join(skillsDir, DEVLYN_INSTALL_MARKER));
   clearInstallMarker(skillsDir);
-  // Removals come before the copy, so the completeness check below sees the final tree.
   const removed = cleanupDeprecated(targetDir);
   if (removed > 0) {
     log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
   }
-  retireRenamedSkills(skillsDir);
   const refreshed = cleanManagedSkillDirs(
     path.join(CONFIG_SOURCE, 'skills'),
     skillsDir,
@@ -828,6 +837,7 @@ function installClaudeCore() {
     const dest = path.join(skillsDir, name);
     stampInstalledSkillDir(dest, dest);
   }
+  retireRenamedSkills(skillsDir, unmarked);
   writeInstallMarker(skillsDir);
 
   // Keep installer-managed pipeline state and install metadata out of git.

@@ -169,11 +169,14 @@ Use 3.1.3 or newer consistently: older installers still overwrite `CLAUDE.md`.
 <!-- legacy-surface-map:begin — retired command names below are documented as OLD, not current; lint Check 10c skips this block -->
 Upgrading to 4.0.0: every devlyn skill is renamed to the Agent Skills standard
 (`/devlyn:resolve` → `/devlyn-resolve`; the full list is in the table below). Run the
-installer for each agent you use (`npx devlyn-cli` and select them, or `-y` plus
-`npx devlyn-cli agents <cli>`): each run removes the old folders where it installs and keeps
-an optional skill you had under its new name. Do not run a 3.x installer afterwards; it
-deletes the renamed skills. A project that committed the old `devlyn:*` folders checks out on
-Windows once that re-sync is committed.
+installer for each agent you use, in each project that has devlyn (`npx devlyn-cli` and
+select them, or `-y` plus `npx devlyn-cli agents <cli>`): each run removes the old folders
+where it installs and keeps an optional skill you had under its new name. A 3.x installer run
+afterwards brings the old `devlyn:*` folders back beside some new ones and drops opted-in
+pencil skills; run the 4.x installer again to repair it. An agent setting that disables a
+devlyn skill by its old name or path (for example Codex `[[skills.config]]` or omp
+`disabledExtensions`) needs the new name. A project that committed the old `devlyn:*`
+folders checks out on Windows once that re-sync is committed.
 
 Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4 cutover (2026-05-04) and the 2026-05-14 follow-up consolidated them down to the three current commands, and 4.0.0 renamed every devlyn skill to the Agent Skills naming standard (`devlyn-<name>`: lowercase, digits and hyphens, the same as its folder). Upgrades automatically purge the legacy skill directories.
 
