@@ -230,3 +230,10 @@ As 0228, whose corpus was never run.
   - **Self-test:** 0227's cases plus the D2 cases, among them a check that no top-level function is defined twice. Review caught two such redefinitions, `check` and `inventory`.
   - **Smoke test:** with real `sudo`, a judge run in a grant could write its outputs and HOME. It could not open a sibling round, the private corpus or `~/.zshrc`, and nothing remained afterwards.
   - **Review** (`.devlyn/0229/d2-r*`): Astra R0 REVISE (5) and two Claude reviewers (1 critical, plus HIGH/MEDIUM/LOW findings), all adopted; R1 REVISE (1); R2 SHIP.
+  - **First live prepare stopped** (`.devlyn/0229/prepare-1.log`, inventory `f1`).
+    - Its open check had passed: 211 hidden paths, none opened.
+    - It stopped at the first instruction probe. Re-granting the stub run's dry copy tried to change the ACL of files the judge had created there, and macOS lets only a file's owner do that.
+    - The failure path closed everything, and no judge process remained.
+    - **Fix** (`020cf79b`): `acl_tree` skips entries the judge created, which inherited the run grant at creation. A real-`sudo` re-grant test passed.
+    - The stub dry run was rerun on the fixed bytes: 64/64, no MECHANICAL retry, driver `1a09a520…`, `manifest.dry.json` `c49f017b…`.
+    - Astra SHIP (`.devlyn/0229/d2fix-r0-astra.out.md`). Prepare then restarts from the beginning.

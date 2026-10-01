@@ -930,10 +930,13 @@ def set_mode(path, mode):
 
 
 def acl_tree(root, entries):
-    """Add ACL entries to root and everything under it, never following a symlink."""
+    """Add ACL entries to root and everything under it, never following a symlink. Entries the judge created in an
+    earlier run of the same folder (prepare's probe reuses the stub run's dry copy) belong to the judge, which only
+    their owner may re-ACL; they inherited these entries when the judge created them."""
     paths = [owned(root)]
     for folder, directories, names in os.walk(root, followlinks=False):
         paths += [Path(folder) / name for name in directories + names]
+    paths = [path for path in paths if path.lstat().st_uid == os.getuid()]
     for entry in entries:
         chmod_acl(['+a', entry], paths)
 
