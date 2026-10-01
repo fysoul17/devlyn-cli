@@ -57,7 +57,7 @@ FROZEN_ENV_KEYS = tuple(
 FROZEN_ENV_KEYS_SHA256 = hashlib.sha256("\n".join(FROZEN_ENV_KEYS).encode()).hexdigest()
 BARE_CONTEXT_LITERALS = (
     ("global-skills-path", ("/.agents/skills/", "/.codex/skills/")),
-    ("devlyn-skill-identity", ("devlyn:resolve", "devlyn:auto-resolve")),
+    ("devlyn-skill-identity", ("devlyn:resolve", "devlyn-resolve", "devlyn:auto-resolve")),
     (
         "devlyn-runtime",
         ("DEVLYN_SKILL_DIR", "DEVLYN_SHARED_DIR", ".devlyn/pipeline.state.json"),

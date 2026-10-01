@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# engine-doctor.sh — read-only detection for /devlyn:engines' no-arg output.
+# engine-doctor.sh — read-only detection for /devlyn-engines' no-arg output.
 #
 # WHY (iter-0050): users need to see what's actually on the machine, not
 # just what's pinned. This script never writes .devlyn/engines.json, never

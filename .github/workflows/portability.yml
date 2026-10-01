@@ -109,7 +109,11 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 15
     steps:
-      # Artifact-only: a full Git checkout contains illegal Windows colon paths.
+      # The checkout is the test: Git for Windows refuses any tracked path Windows cannot
+      # hold. The workspace root keeps the longest tracked path under MAX_PATH; the steps
+      # below test the npm artifact from RUNNER_TEMP, outside the repository.
+      - name: Check out every tracked path natively (fails on a Windows-illegal path)
+        uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -126,6 +130,7 @@ jobs:
           path: ${{ runner.temp }}/portability/driver
       - name: Native install, real CLI smoke and full harness regressions
         shell: python
+        working-directory: ${{ runner.temp }}
         env:
           PYTHONUTF8: '0'
         run: |
@@ -188,9 +193,9 @@ jobs:
           skills = project / '.claude/skills'
           marker = json.loads((skills / '.devlyn-install.json').read_text(encoding='utf-8'))
           assert marker['package'] == 'devlyn-cli', marker
-          resolve = skills / 'devlyn\uf03aresolve'
-          assert resolve.is_dir() and 'name: devlyn:resolve' in (resolve / 'SKILL.md').read_text(encoding='utf-8')
-          print('Real CLI complete-install marker and legal resolve directory passed', flush=True)
+          resolve = skills / 'devlyn-resolve'
+          assert resolve.is_dir() and 'name: devlyn-resolve' in (resolve / 'SKILL.md').read_text(encoding='utf-8')
+          print('Real CLI complete-install marker and resolve directory passed', flush=True)
 
           failed = []
           for label, command in (

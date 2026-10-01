@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Archive devlyn:resolve run artifacts per references/pipeline-state.md#archive-contract.
+"""Archive devlyn-resolve run artifacts per references/pipeline-state.md#archive-contract.
 
 Usage:
     python3 scripts/archive_run.py [--devlyn-dir .devlyn]
@@ -67,7 +67,7 @@ PER_RUN_PATTERNS = (
     "verify.primary.timeout.json",
     "verify.pair.timeout.json",
     "finish-gate.summary.json",
-    # iter-0033a/2026-04-30 archive-fix iter: NEW /devlyn:resolve emits
+    # iter-0033a/2026-04-30 archive-fix iter: NEW /devlyn-resolve emits
     # plan.md (PLAN output) + final-report.md (PHASE 6 render) +
     # cumulative.patch (cumulative diff). Smoke 2's archive listing
     # captured all three; archive_run.py was missing them because the

@@ -1,6 +1,6 @@
 # Runtime principles — sub-agent contract
 
-The runtime contract every sub-agent inside `/devlyn:resolve` (PLAN / IMPLEMENT / BUILD_GATE / CLEANUP / VERIFY) and `/devlyn:ideate` must satisfy. Source of truth for sub-agent behavior on user tasks. NOT for autoresearch-loop / harness-developer concerns (see `autoresearch/PRINCIPLES.md`).
+The runtime contract every sub-agent inside `/devlyn-resolve` (PLAN / IMPLEMENT / BUILD_GATE / CLEANUP / VERIFY) and `/devlyn-ideate` must satisfy. Source of truth for sub-agent behavior on user tasks. NOT for autoresearch-loop / harness-developer concerns (see `autoresearch/PRINCIPLES.md`).
 
 The three sections below mirror the corresponding CLAUDE.md sections (Subtractive-first editing, Goal-locked execution, Evidence over claim). No-workaround discipline lives in CLAUDE.md Core Principle #1 only — it does not have a runtime-mirror block. Each mirrored section is wrapped in `<!-- runtime-principles:section=NAME:begin -->` / `:end -->` markers in BOTH this file and CLAUDE.md; lint Check 12 extracts each named block from both files and diffs to detect drift.
 
@@ -58,7 +58,7 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 
 **The single drift test before any deviation from the stated goal:** *"Did the user ask for this, OR does the user's stated goal strictly require it?"* If the answer to both is no, do not do it. Surface it as a note (commit message, end-of-turn summary, finding) and continue on the original path.
 
-**Creative-mode is the narrow exception, not the default.** Creative-mode applies only when (a) the user explicitly invoked an ideation/exploration surface (`/devlyn:ideate`, `/devlyn:design-ui`, "let's brainstorm", "explore options for"), OR (b) the goal is genuinely under-specified and a clarifying question is impossible (extremely rare — usually you should ask). For everything else — bug fixes, feature work, refactors, doc updates, pipeline runs, code review, debugging — execution-mode is the default and drift is a defect, not a feature.
+**Creative-mode is the narrow exception, not the default.** Creative-mode applies only when (a) the user explicitly invoked an ideation/exploration surface (`/devlyn-ideate`, `/devlyn-design-ui`, "let's brainstorm", "explore options for"), OR (b) the goal is genuinely under-specified and a clarifying question is impossible (extremely rare — usually you should ask). For everything else — bug fixes, feature work, refactors, doc updates, pipeline runs, code review, debugging — execution-mode is the default and drift is a defect, not a feature.
 
 **Anti-rationalization clause** — explicitly guarding against LLM hedging:
 
@@ -67,7 +67,7 @@ This rule exists because LLMs (including you) are trained to be helpful, compreh
 - "It would be incomplete without this" is **not** a justification. The user defines completeness, not your sense of it.
 - "I'm being thorough" is **not** a justification. Thoroughness on the requested goal is required; thoroughness extending past the goal is drift.
 
-**When in doubt, ask — outside hands-free pipelines.** In interactive sessions a short clarification ("the requested fix touches the X code path; I notice Y also looks broken — should I fix it in this change or surface it as a follow-up?") is always cheaper than a wrong-scope diff. Asking is not a weakness; silently expanding scope is. **Inside hands-free pipelines** (`/devlyn:resolve`, scheduled remote agents, autonomous skill runs) the contract forbids mid-pipeline prompts — there asking is unsafe because there is no user to answer. The substitute is: stay strictly on the requested goal, do not expand scope, and log the question/assumption explicitly in the final report (or `.devlyn/runs/<run_id>/` artifacts) so the user can adjudicate after the run completes. Choosing scope creep over logging-and-staying-on-path is always wrong.
+**When in doubt, ask — outside hands-free pipelines.** In interactive sessions a short clarification ("the requested fix touches the X code path; I notice Y also looks broken — should I fix it in this change or surface it as a follow-up?") is always cheaper than a wrong-scope diff. Asking is not a weakness; silently expanding scope is. **Inside hands-free pipelines** (`/devlyn-resolve`, scheduled remote agents, autonomous skill runs) the contract forbids mid-pipeline prompts — there asking is unsafe because there is no user to answer. The substitute is: stay strictly on the requested goal, do not expand scope, and log the question/assumption explicitly in the final report (or `.devlyn/runs/<run_id>/` artifacts) so the user can adjudicate after the run completes. Choosing scope creep over logging-and-staying-on-path is always wrong.
 
 **Stopping rule.** A task is done when the user's stated goal is closed AND no off-path work was added. If you find yourself hesitating because "I should also do Z" — Z is drift. Note it for follow-up, do not execute.
 <!-- runtime-principles:section=goal-locked:end -->
@@ -82,7 +82,7 @@ Every finding cites concrete evidence. Vague claims are speculation; exclude the
 - **Doc findings**: quote of the stale text + section/line reference.
 - **Browser findings**: screenshot reference + URL/route.
 
-**Negative existence claims** ("X lacks Y", "X cannot Z", "X is Y-specific") are the highest-risk shape — they feel like recall but fail to any single counter-example. They require active search at write time, not absence-of-memory. This rule applies to conversational answers and comparison-table cells, not only `/devlyn:resolve` findings — every cell of a trade-off table is a falsifiable claim.
+**Negative existence claims** ("X lacks Y", "X cannot Z", "X is Y-specific") are the highest-risk shape — they feel like recall but fail to any single counter-example. They require active search at write time, not absence-of-memory. This rule applies to conversational answers and comparison-table cells, not only `/devlyn-resolve` findings — every cell of a trade-off table is a falsifiable claim.
 
 **A position reversal is itself a claim.** In an oracle-less debate — design, strategy, trade-off, any decision with no spec or verifier to check against — changing your mind after a critique requires a NAMED DELTA: cite the specific prior claim, evidence, or criterion that changed, not a post-hoc rationale invented to justify a flip you were already going to make. Before reversing or choosing between contested positions, state each side's strongest form and the decisive criterion; the chosen outcome may adopt one side wholesale — synthesis means the best decision, not a forced blend. Flipping to whoever spoke last without a cited delta is capitulation, not reasoning; genuinely unresolved disagreement is escalated to the user, never closed by deferring to the last speaker. When you commission an adversarial review, require the critic to return the strongest counter, the strongest form of your own position, AND a synthesis — a refute-only mandate produces debate, not better decisions.
 
@@ -94,8 +94,8 @@ A finding without one of these forms is excluded. Vague findings produce vague f
 ## Consumption
 
 **Consumers**:
-- `devlyn:resolve/SKILL.md` `<harness_principles>` points here as the contract source. Phase prompt bodies inline the operational excerpt needed for each phase.
-- `devlyn:ideate/SKILL.md` consumes this file for spec-shaping and conversation discipline through its own `<harness_principles>` block.
+- `devlyn-resolve/SKILL.md` `<harness_principles>` points here as the contract source. Phase prompt bodies inline the operational excerpt needed for each phase.
+- `devlyn-ideate/SKILL.md` consumes this file for spec-shaping and conversation discipline through its own `<harness_principles>` block.
 
 **Codex routing**: Codex-routed phases must inline the contract excerpt directly into the prompt body. Bounded read-only Codex critique, probe, or judge calls must also follow `_shared/codex-config.md` isolation rules.
 <!-- runtime-principles:consumption:end -->

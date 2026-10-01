@@ -48,7 +48,7 @@ Check mode (`--check <markdown_path>`):
   its own inline validation and must not use this sibling-precedence route.
 
 Expected-contract check mode (`--check-expected <json_path>`):
-- Used by /devlyn:ideate after writing sibling `spec.expected.json`.
+- Used by /devlyn-ideate after writing sibling `spec.expected.json`.
 - Exits 0 if the file is valid JSON and matches `_shared/expected.schema.json`
   shape, and if sibling `spec.md` has supported `complexity` frontmatter.
   Exits 2 on unreadable, malformed, unsupported fields, or unsupported sibling
@@ -605,7 +605,7 @@ def validate_expected_shape(data) -> str | None:
     """Return None if shape matches the sibling spec.expected.json schema.
 
     Keep this dependency-free: it mirrors `_shared/expected.schema.json` enough
-    to catch malformed ideate output before /devlyn:resolve consumes it.
+    to catch malformed ideate output before /devlyn-resolve consumes it.
     """
     if not isinstance(data, dict):
         return "top-level must be a JSON object"
@@ -4667,7 +4667,7 @@ def main() -> int:
             external_diff,
             fix_hint=(
                 "Remove `.devlyn/external-diff.patch` for ordinary runs, or use "
-                "`/devlyn:resolve --verify-only <diff-or-PR-ref> --spec <path>` only when "
+                "`/devlyn-resolve --verify-only <diff-or-PR-ref> --spec <path>` only when "
                 "intentionally verifying an external patch."
             ),
         )

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic PHASE 6 final-diff gate for /devlyn:resolve."""
+"""Deterministic PHASE 6 final-diff gate for /devlyn-resolve."""
 from __future__ import annotations
 
 import runpy

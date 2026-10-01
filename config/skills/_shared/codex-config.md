@@ -22,7 +22,7 @@ if [ ! -f "$CODEX_MONITORED_PATH" ]; then
 fi
 ```
 
-**Read-only critique / adversarial review / debate** (`/devlyn:resolve` VERIFY pair-mode, plus any future ideate read-only critique). Codex returns findings on stdout; the orchestrator writes files.
+**Read-only critique / adversarial review / debate** (`/devlyn-resolve` VERIFY pair-mode, plus any future ideate read-only critique). Codex returns findings on stdout; the orchestrator writes files.
 
 ```bash
 DEVLYN_CODEX_PROMPT_FILE="<prompt-file>" CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" \
@@ -32,7 +32,7 @@ DEVLYN_CODEX_PROMPT_FILE="<prompt-file>" CODEX_MONITORED_ISOLATED=1 CODEX_MONITO
   -
 ```
 
-**Workspace-write implementation** (`/devlyn:resolve` IMPLEMENT phase when `--engine codex` or `--engine auto` routes to Codex, plus codex-routed `/devlyn:ideate` phases):
+**Workspace-write implementation** (`/devlyn-resolve` IMPLEMENT phase when `--engine codex` or `--engine auto` routes to Codex, plus codex-routed `/devlyn-ideate` phases):
 
 ```bash
 DEVLYN_CODEX_PROMPT_FILE="<prompt-file>" bash "$CODEX_MONITORED_PATH" \
@@ -76,6 +76,6 @@ The local Codex CLI, fronted by `codex-monitored.sh`, is the integration boundar
 
 ## Invocation from inside a skill prompt
 
-Skills write the invocation as a Bash command the runtime executes. Example shape from `/devlyn:resolve` PHASE 2 IMPLEMENT when routed to Codex:
+Skills write the invocation as a Bash command the runtime executes. Example shape from `/devlyn-resolve` PHASE 2 IMPLEMENT when routed to Codex:
 
 > Run `DEVLYN_CODEX_PROMPT_FILE="<IMPLEMENT-prompt-file>" bash "$CODEX_MONITORED_PATH" --json -C <state.base_ref.repo_root> -s workspace-write -m <model_requested> -c sandbox_workspace_write.network_access=false -c model_reasoning_effort=xhigh -`. Capture stdout as the IMPLEMENT reply; non-zero exit → treat as subagent failure. The wrapper emits `[codex-monitored]` heartbeat and lifecycle lines on **stderr** — stdout stays clean for Codex output, so the orchestrator can parse the reply without filtering. Heartbeat-on-stderr keeps the orchestrator's combined-output stream non-silent (defeats the iter-0008 byte-watchdog kill) without polluting the codex-reply view of stdout. Do not pipe the wrapper; direct capture or file redirection preserves streaming and avoids the pipe-refusal exit.
