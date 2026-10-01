@@ -715,6 +715,36 @@ installClaudeCore();
         handoff.write_text(' \n', encoding='utf-8')
         self.assertIn(b'queue add failed', add(code=1).stderr)
         self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [x] done\n- [ ] (spec: docs/specs/a/spec.md) next\n')
+        # The helper writes only while it holds .devlyn/queue.lock, so concurrent adds serialize.
+        queue.unlink()
+        (self.project / '.devlyn/queue-intent-held.txt').write_text('waits for the lock', encoding='utf-8')
+        lock = os.open(self.project / '.devlyn/queue.lock', os.O_RDWR | os.O_CREAT)
+        try:
+            if os.name == 'nt':
+                import msvcrt
+                msvcrt.locking(lock, msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(lock, fcntl.LOCK_EX)
+            proc = subprocess.Popen([sys.executable, str(helper), '.devlyn/queue-intent-held.txt'], cwd=self.project)
+            time.sleep(1.5)
+            self.assertIsNone(proc.poll())
+            self.assertFalse(queue.exists())
+            if os.name == 'nt':
+                os.lseek(lock, 0, os.SEEK_SET)
+                msvcrt.locking(lock, msvcrt.LK_UNLCK, 1)
+        finally:
+            os.close(lock)
+        self.assertEqual(proc.wait(timeout=20), 0)
+        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [ ] waits for the lock\n')
+        self.assertIn(b'handoff must be', run([sys.executable, helper, 'notes.txt'], cwd=self.project, code=2).stderr)
+
+    def test_retired_skill_name_is_removed_only_as_shipped(self):
+        # 0.2.0-1.15.0 shipped workflow-routing; a folder of that name the user wrote stays.
+        mine = self.project / '.claude/skills/workflow-routing'
+        mine.mkdir(parents=True); (mine / 'SKILL.md').write_text('---\nname: workflow-routing\n---\nmine\n', encoding='utf-8')
+        self.invoke("installClaudeCore();")
+        self.assertEqual((mine / 'SKILL.md').read_text(encoding='utf-8'), '---\nname: workflow-routing\n---\nmine\n')
 
     def test_incomplete_source_has_no_marker(self):
         copy = self.case / 'broken'; shutil.copytree(self.package, copy)

@@ -47,11 +47,24 @@ const PRE_STANDARD_SKILL_MD_SHA256 = new Set([
   '5f2e8b29609cbb2af72941579823bec598265ebf29cd3a375d6aa47d95b74354', // devlyn-pencil-push
 ]);
 
-function isPreStandardCopy(dir) {
+// Skills devlyn-cli shipped and later deleted without listing them, by SHA-256 of their only
+// file, SKILL.md (LF endings): a user's own folder of the same name is never removed.
+const RETIRED_SKILL_MD_SHA256 = {
+  // 0.2.0-1.15.0; deleted in iter-0034, it still routes agents to retired commands.
+  'workflow-routing': new Set([
+    '7fec2bb20d808a873a975d64a6223e404bc5b328c800760bb77257ae6b2f467a',
+    '8bfdaeff2ce48d5a79b5653de3bbe0d56a61a7fd750ed3ad11149fec5a502ecf',
+  ]),
+};
+
+// Whether `dir` is a real folder holding exactly one SKILL.md whose LF-normalized SHA-256 is in
+// `hashes`: an unedited copy devlyn-cli shipped, not something the user added to or wrote.
+function isShippedCopy(dir, hashes) {
   const skill = path.join(dir, 'SKILL.md');
   return fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory() === true
+    && fs.readdirSync(dir).length === 1
     && fs.lstatSync(skill, { throwIfNoEntry: false })?.isFile() === true
-    && PRE_STANDARD_SKILL_MD_SHA256.has(crypto.createHash('sha256')
+    && hashes.has(crypto.createHash('sha256')
       .update(fs.readFileSync(skill, 'utf8').replace(/\r\n/g, '\n')).digest('hex'));
 }
 
@@ -170,8 +183,6 @@ const DEPRECATED_DIRS = [
   'skills/devlyn:team-resolve',
   'skills/devlyn:team-review',
   'skills/devlyn:update-docs',
-  // Deleted in the same cutover but never listed, so installs kept it pointing at retired skills.
-  'skills/workflow-routing',
   // 0221 Session 1: standards skills moved to optional-skills/ (opt-in).
   'skills/code-health-standards',
   'skills/code-review-standards',
@@ -370,6 +381,14 @@ function cleanupDeprecated(targetDir) {
       removed++;
     }
   }
+  for (const [name, hashes] of Object.entries(RETIRED_SKILL_MD_SHA256)) {
+    const fullPath = path.join(targetDir, 'skills', name);
+    if (isShippedCopy(fullPath, hashes)) {
+      fs.rmSync(fullPath, { recursive: true });
+      log(`  ✕ skills/${name}/ (removed)`, 'dim');
+      removed++;
+    }
+  }
   return removed;
 }
 
@@ -382,7 +401,7 @@ function retireRenamedSkills(skillsDir) {
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
     if (found.length > 0 && optional.has(newName)) installOptionalSkillInto(skillsDir, newName);
-    else if (isPreStandardCopy(path.join(skillsDir, newName))) refreshPreStandardCopy(skillsDir, newName);
+    else if (isShippedCopy(path.join(skillsDir, newName), PRE_STANDARD_SKILL_MD_SHA256)) refreshPreStandardCopy(skillsDir, newName);
     for (const fullPath of found) {
       fs.rmSync(fullPath, { recursive: true, force: true });
       log(`  ✕ ${path.basename(fullPath)}/ (renamed to ${newName})`, 'dim');
