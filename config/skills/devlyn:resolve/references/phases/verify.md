@@ -84,15 +84,20 @@ task, public, or existing test contract is binding, including unmet new
 requirements and incorrect customer documentation. Quote the exact applicable
 clause and concrete file:line evidence. Small impact, rare inputs, or a
 pre-existing defect do not excuse that violation. A changed line or requirement
-reference alone does not establish applicability. For a clause that requires an
-existing path's current behavior, establish that behavior from `base_sha` (the
-snapshot diff's base side) for the same operation, or from unchanged code on the
-path the clause names, and bind only a demonstrated departure from it. A public
-contract that this behavior already contradicts binds separately only if the
-task independently requires conformance or the diff introduces or changes that
-promise; otherwise report the conflict as advisory. This does not excuse unmet
-new requirements, including state that a new or failing operation must leave
-unchanged.
+reference alone does not establish applicability. For the part of a clause that
+requires existing behavior — an existing path's current behavior, or "the
+existing …" behavior a new path must receive — establish that behavior from
+`base_sha` (the snapshot diff's base side): for an existing path, the same
+operation, or unchanged code on the path the clause names; for a new path, the
+existing operation that performs the named behavior under the same options. That
+part is met by matching it: bind only a demonstrated departure, and do not treat
+the existing behavior itself as a defect under that part. A public contract that
+this behavior already contradicts binds separately only if the task
+independently requires conformance or the diff introduces or changes that
+promise; otherwise report the conflict as advisory. Agreement with `base_sha`
+never excuses a requirement the base does not already meet: the rest of such a
+clause, every other new requirement, and any state a new or failing operation
+must leave unchanged stay binding.
 
 Emit HIGH/CRITICAL as appropriate, or MEDIUM with literal `verdict_binding: true`.
 Do not label a binding finding LOW/INFO: the merge honors HIGH/CRITICAL and
