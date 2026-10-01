@@ -1,0 +1,1 @@
+{"checked_at": "2026-10-01T21:36:39.464Z", "finding_key": "c360d6d91bd9b3863b02fc43692e690c5218d8338103b2df4826adbfa608ae70", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0229/check-scripts/P4-week53-leap-52-week-rejected.sh", "script_sha256": "3f7da049e867698dfa11d599c6061e29a795719879ffe4d09e9ad0505d5e9fce", "task": "P4"}

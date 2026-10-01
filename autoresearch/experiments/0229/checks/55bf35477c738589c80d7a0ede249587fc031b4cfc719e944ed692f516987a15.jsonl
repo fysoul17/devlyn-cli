@@ -1,0 +1,1 @@
+{"checked_at": "2026-10-01T21:36:34.440Z", "finding_key": "55bf35477c738589c80d7a0ede249587fc031b4cfc719e944ed692f516987a15", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0229/check-scripts/P2-tuple-none-precedence-naive.sh", "script_sha256": "850d7ec1f8936f9a63e765b5a677736b1f43aaed760e9ed7ec6772d353f0dbac", "task": "P2"}

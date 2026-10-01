@@ -1,0 +1,1 @@
+{"checked_at": "2026-10-01T21:36:12.913Z", "finding_key": "9851f7c7199d99d6513259e9a05a78e8d66c94779b109b5f3e07ca2399eb8c91", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0229/check-scripts/J1-widen-bound-reexamines-text-run.sh", "script_sha256": "34a57d1d16d27c40cb955e5c39ac14d7302a0ee1dec1e587560e0101c3216f3c", "task": "J1"}

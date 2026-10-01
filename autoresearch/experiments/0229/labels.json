@@ -1,0 +1,1293 @@
+{
+ "01399174415218e019c8b5c37c5829cd449703daee48ebf9d611f2f671ff9bf5": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "029550a3f40d7adab7755332e7d006f1a32e0bcd1bce1b779e8187594ef101ca": {
+  "check": "autoresearch/experiments/0229/check-scripts/J1-widen-bound-reexamines-code-span-trailing-x.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "17da9ef0eba6f5aa3cff5d47588ea0040709f80af4155526028bba4c530334bd"
+ },
+ "072f3a9131e3dcd9db3c1aae2b6ea87c6707450130fb450a5a703eb99fc615cf": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "08db97ee062f19ef4e14c3cab555bdc62acca7a8409dd225d97121758bb1bf77": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "0c74dcfc2e15b2aa5e957a5494c7ccd5a8dc1c5ebdabd0c79c37983c96b27f6d": {
+  "check": "autoresearch/experiments/0229/check-scripts/P1-explicit-zero-stop-empty.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "e908f1dee7ad9dfa7c8e0f6a3d479cc13290e8f84fb95b9a77ea62fa67a2802c"
+ },
+ "0f4d048259a1b1eab553319f6e9b214fdacb9d646e8d1ac1298c278ab35ac20a": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "10b23ba83bf92db2335292a5f86c75cadb9d605841a2b7f09373d7f6e2c6eb1f": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "1424dd701499f084bbcd3cc2f87c1fae7ad02891edd25cdd1af3adab08163c85": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "14b2f87efddcde6864f03b9674328722a7e1488723af505ca3c0b0418176f81b": {
+  "check": "autoresearch/experiments/0229/check-scripts/P3-negative-reject-hit-newest.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "5e0b27b0ba5d46d509cee70cb460112997e64c840e5f0af3f1a238407cefb139"
+ },
+ "19dbea9594177fc1f3f0a304d43ed330853c6dc254b571972b68f6ca2d4427bc": {
+  "check": "autoresearch/experiments/0229/check-scripts/J3-rejected-disable-emphasis-preserves-state.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "fec16cf1625637eff3320769dbdd7af580c7373b4981b9c42d79d211a9a858a5"
+ },
+ "1bbce46d1e745dc48351ceeeb54bff774c48fab6db606a41ec7811130e90ccdb": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "21b066d62009ce4c8cc5a6d48bbd69670cdd21619bd91c82da33f9d051037939": {
+  "check": "autoresearch/experiments/0229/check-scripts/P2-tuple-none-precedence-naive-no-typeerror.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "0632e293aaf9d0d47fcc5b71927361d4c0c1b17095fcac495e823cb1906a2485"
+ },
+ "25ec6256c396bc62853a80fd86e96a8eb4e0b409a9a1d8b30409fe57a14b482e": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "27129c05d8479c076dde952da8afe2901982b91b8fd690437479c279819c351b": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "27f97dac3ee8a03a92313a197b99c044a873b3d44f5d453500d3960fa5f2b9a9": {
+  "check": "autoresearch/experiments/0229/check-scripts/P3-negative-reject-hit-newest.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "5e0b27b0ba5d46d509cee70cb460112997e64c840e5f0af3f1a238407cefb139"
+ },
+ "29069a749d8dbe648c42a2dd39d9d68268642cb1bae678797e456bb334649156": {
+  "check": "autoresearch/experiments/0229/check-scripts/J1-widen-bound-reexamines-code-span.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "9f428581abe6f389d9c880d5ee1f5908cbedc1d40aa7bb011fc84e92edecd865"
+ },
+ "2a930ea91e0378ca61c01409e13b5706d7f260dcf1638fa08ae0acf24926d404": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "2c0cde905ab3a7e8456484f49cd0fb2301b3dd8df0a5d0d44ce8786381ac41c6": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "2cd829918c709727d4fe672d2dba39cf3452882c775a36cf21dac3c40709904d": {
+  "check": "autoresearch/experiments/0229/check-scripts/J1-widen-bound-reexamines-code-span.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "9f428581abe6f389d9c880d5ee1f5908cbedc1d40aa7bb011fc84e92edecd865"
+ },
+ "2ddf40612bc21ded5d6335d3c3dd9c0b459ee5e514194bc4d41d58b0363a8fb2": {
+  "check": "autoresearch/experiments/0229/check-scripts/J2-earlier-to-later-before-anchor.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "664c2b38a9b48b6ecc2bf97e4fee941651d815a964a775d9c05f66474b2be158"
+ },
+ "321437f3e9e1113b0b1c64fe39ba516250e212c8f7525dec69b6e799a947a1f9": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "33b7e997251589bb6f928fa8304817db59c9127cb617e230c4b63f26f07ff0e4": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "34a095fa3459e5f028980f1fc1cc5df6957160e447cdf940a8da1a068dfbdb0c": {
+  "check": "autoresearch/experiments/0229/check-scripts/P2-tuple-none-precedence-naive.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "850d7ec1f8936f9a63e765b5a677736b1f43aaed760e9ed7ec6772d353f0dbac"
+ },
+ "34aa34e8c5b72ca411269f2a28ab1c90cbeff54e0a42695c09158badde1445a7": {
+  "check": "autoresearch/experiments/0229/check-scripts/J4-occurrence-metadata.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "742997006424fb41ec888312fd52e61bfc0368affd88ba7d8a3f0c4b53847fc2"
+ },
+ "353494c594c7d9a06a91ce03d65a413c8d13ff20cef1914ac5d5a211e7b043c0": {
+  "check": "autoresearch/experiments/0229/check-scripts/P3-negative-reject-later-lookups.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "6f9bcf20cb6f157dbb8f23eaa313980dffbe4ac6215e881a9e493ef07b56b67b"
+ },
+ "383ef1bea8397cff225c3626992ebe7617ae240a8db8c5bb532f4b02d05151a7": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "3948cb92182badaaee1698f7f70244422009c5006943ec0935de5ed3756c5c7d": {
+  "check": "autoresearch/experiments/0229/check-scripts/J1-narrow-then-restore-reexamines-code-span.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "6181e8da9b85708b1027d10a61ec271157920701e5f5dce92706aabde9591301"
+ },
+ "3db8bc403051625bf7017f1f1081a83d044dfe4a55325d325d096208da3e4f11": {
+  "check": "autoresearch/experiments/0229/check-scripts/P4-week53-leap-docstring-rule.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "280b2ce0629bf15e579f0e9e7ee2a944b9434ce7573ecfcfdf37cd4b741c4417"
+ },
+ "406a66a366264a78d98d639b71f872dadd0f7a7a575881fa495901d35994016d": {
+  "check": "autoresearch/experiments/0229/check-scripts/J4-occurrence-metadata.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "742997006424fb41ec888312fd52e61bfc0368affd88ba7d8a3f0c4b53847fc2"
+ },
+ "43ebe1fef699543852cc27dc25c751277609053d8d16a19ec59b1ffb292b2f4f": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "46922df254c3bf77b3d27aef88b69f182d7369731dc711c7dfe8ac5125046c5d": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "4b27cc139166367bb66bd27e11031dedaf3432f15f9f02054f5d2a7a46c19cca": {
+  "check": "autoresearch/experiments/0229/check-scripts/J4-occurrence-metadata.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "742997006424fb41ec888312fd52e61bfc0368affd88ba7d8a3f0c4b53847fc2"
+ },
+ "4f6b48577fd34d2706d2e9c02061717dff085e11eac49ea683c2f19d3adae1e7": {
+  "check": "autoresearch/experiments/0229/check-scripts/P4-week53-leap-52-week-rejected.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "3f7da049e867698dfa11d599c6061e29a795719879ffe4d09e9ad0505d5e9fce"
+ },
+ "5295a1fe2aa4314bd5a40c0e077d02ec7070fc2c780e69db6f4b566fa82e6fd6": {
+  "check": "autoresearch/experiments/0229/check-scripts/P1-explicit-zero-stop-empty.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "e908f1dee7ad9dfa7c8e0f6a3d479cc13290e8f84fb95b9a77ea62fa67a2802c"
+ },
+ "55bf35477c738589c80d7a0ede249587fc031b4cfc719e944ed692f516987a15": {
+  "check": "autoresearch/experiments/0229/check-scripts/P2-tuple-none-precedence-naive.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "850d7ec1f8936f9a63e765b5a677736b1f43aaed760e9ed7ec6772d353f0dbac"
+ },
+ "584d6101d067dd4229933e6210ebdb4dceccf577992e4daf4dfcd83f3abd1ddd": {
+  "check": "autoresearch/experiments/0229/check-scripts/J2-earlier-to-later-disabled-reenable.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "bdf5d8b0e659fa4062bb027c0983b0fd1522f78277b3d505b9876f10095fb103"
+ },
+ "587b9a4ee0ad85c5a7c337a115e7c16bde65666361fba27ee87c9e59a323bed2": {
+  "check": "autoresearch/experiments/0229/check-scripts/P1-explicit-zero-stop-empty.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "e908f1dee7ad9dfa7c8e0f6a3d479cc13290e8f84fb95b9a77ea62fa67a2802c"
+ },
+ "5b6d054543b863b43881420b60607202e00cd43b3a58e895254e501fa1f92763": {
+  "check": "autoresearch/experiments/0229/check-scripts/P2-tuple-none-precedence-naive.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "850d7ec1f8936f9a63e765b5a677736b1f43aaed760e9ed7ec6772d353f0dbac"
+ },
+ "5c844ee994ae569f377fa5825e7b68779c0f0597c151575e3619deb16d7e983a": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "5e631247c47f9d5f9d3e25e7e51ecdaf086b1b555be7cb1ed30e1ec6bac45701": {
+  "check": "autoresearch/experiments/0229/check-scripts/J2-earlier-to-later-before-anchor.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "664c2b38a9b48b6ecc2bf97e4fee941651d815a964a775d9c05f66474b2be158"
+ },
+ "604c4054e41ba1e154574488ff05f2cd9e541a458e00cc927d08a821fb749c1f": {
+  "check": "autoresearch/experiments/0229/check-scripts/P3-negative-reject-miss.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "3b25d16c6dd7a9d2af57854e656533b44627fa7202f53b2ee99c615fe5ea7039"
+ },
+ "62246f665221a8d61f8502b15c68a4273c87b639c72040ecac8de2b4c84179bf": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "64f99589dd24bddb977cf844675600eb02087113bbe8292b7640df91edd0bf4c": {
+  "check": "autoresearch/experiments/0229/check-scripts/J4-occurrence-metadata.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "742997006424fb41ec888312fd52e61bfc0368affd88ba7d8a3f0c4b53847fc2"
+ },
+ "67044155831a80eb457d634860a1fd16bb4b5d86313339591868972baa347e34": {
+  "check": "autoresearch/experiments/0229/check-scripts/J4-occurrence-metadata-string-fields.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "ff79a9fb10ba623d809ccde1b9971bf77b63e093549dca353d71ee98ad97c366"
+ },
+ "69fdc4f9647e7a76c5f3903bf012c5246a9c6781866c7991a34e743f6efe1ded": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "6e00dc167065220882f55f3a1809179c27c84e6926e1ab02646ffddb7cbe94c3": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "6fb0daa003952e4b66205ffa6c09f6beee16080dbeb5a083308f1029a707a114": {
+  "check": "autoresearch/experiments/0229/check-scripts/J1-widen-bound-reexamines-code-span.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "9f428581abe6f389d9c880d5ee1f5908cbedc1d40aa7bb011fc84e92edecd865"
+ },
+ "72293be4b3f24e1234ab90fcd806094939e9b6c927b3e91ef98677bdb23db959": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "78ec6970edfccb7e9c9622a4ec986323643d687634111c0e0aedafb7919a5e36": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "7983be70a7b834c455bba37499ad5bd7ad55b7bf3bf95b2a95b57ad9f7a1ce96": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "799a0e7bceabd9ad03cfb6307381ddeefc51ebd9e36acf9b67e64a82131dde67": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "7a6f1ec7abdb307a8d6424325951790b0e623ef97ed8737f6f08ba2cf1829e4a": {
+  "check": "autoresearch/experiments/0229/check-scripts/J3-rejected-ruler2-names-preserves-state.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "a0e4b7bb6ec7a11b9c7e339f4452fb6439efa9a90ed946ba12e53cb07a77bddd"
+ },
+ "814d523072bfa696f3cae532d20d996ec5b91c79f168b86980cad0b3aa41cfac": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "83407d5ecc3206e5ea279ff9dbf72f1eb451898c50e3230f6865c1f24bb92875": {
+  "check": "autoresearch/experiments/0229/check-scripts/P3-negative-reject-hit-newest.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "5e0b27b0ba5d46d509cee70cb460112997e64c840e5f0af3f1a238407cefb139"
+ },
+ "8441a97a9e13bfbdc84516c010a95f3eec88efe2bfbfaea7f8c8e6ccbe59e782": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "856566c513f6119f2cd980d08c9206c7a7324ed9ff0e176f31a257e88dc1c235": {
+  "check": "autoresearch/experiments/0229/check-scripts/J2-earlier-to-later-before-anchor.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "664c2b38a9b48b6ecc2bf97e4fee941651d815a964a775d9c05f66474b2be158"
+ },
+ "865adfaa87f841953793161da502a7b9fd0e414e6defc8a70312b4098389d80f": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "8aff9942d4d8121b93cae61278b35f8b4ef96a955fc6d91ee5de488a96cb2d9e": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "8c8ea7198ee6bdfea119a6abf2df15adc970d7806946783bf7081ef7c64956c8": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "8ca9e954795e12a72de3b5d80d67e8c331abcf1143deb3fc76aa7e7974376494": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "8d7f26ec47e88402dbc3d625aeafab8b626e9a3742e24d36c91531bcb57a8993": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "92f7c65a2d002d5eb7e63ce45226c6c890859adb41506a576013396833249f62": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "954d8bde7e6ebca511fbd9f9277527c0d7336e277f23c5834e6b8eecf03d3400": {
+  "check": "autoresearch/experiments/0229/check-scripts/P4-week53-leap-docstring-rule.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "280b2ce0629bf15e579f0e9e7ee2a944b9434ce7573ecfcfdf37cd4b741c4417"
+ },
+ "95833c97c136d11a8dbc294d9ba78c928d107df98f013cb03e6f738ff6e86f0b": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "966fe67b18181ce049dd09a5c0765c43847f88a4e6acd4eed0505f0642b87b5b": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "96d601c9a2907ff6c305e28adc3bfc81f7a00746631497bc3021e4d6e563621c": {
+  "check": "autoresearch/experiments/0229/check-scripts/P4-week53-leap-52-week-rejected.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "3f7da049e867698dfa11d599c6061e29a795719879ffe4d09e9ad0505d5e9fce"
+ },
+ "973175be35337cca553e48fbd5da23425548d40bebc80049a268c2ce99c2ef11": {
+  "check": "autoresearch/experiments/0229/check-scripts/J2-earlier-to-later-before-anchor.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "664c2b38a9b48b6ecc2bf97e4fee941651d815a964a775d9c05f66474b2be158"
+ },
+ "9851f7c7199d99d6513259e9a05a78e8d66c94779b109b5f3e07ca2399eb8c91": {
+  "check": "autoresearch/experiments/0229/check-scripts/J1-widen-bound-reexamines-text-run.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "34a57d1d16d27c40cb955e5c39ac14d7302a0ee1dec1e587560e0101c3216f3c"
+ },
+ "995757317c9d054e960538788a00536402c4221a8282bf02ee578cd6be19b4e1": {
+  "check": "autoresearch/experiments/0229/check-scripts/J3-rejected-enable-any-ruler2-rule-preserves-state.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "60b74bb50f5c44e5aa3f0879e37c651ade5bcbbe80b3fe0f52eea04ab896ca90"
+ },
+ "997584841919519616d6c5381028d32e94edf0e38d0c716ecdd6380ff5522c99": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "9ac689758058e816c7c56184a2298e56081e41015c4e89991b8db28e8648eede": {
+  "check": "autoresearch/experiments/0229/check-scripts/J3-rejected-enable-any-ruler2-rule-preserves-state.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "60b74bb50f5c44e5aa3f0879e37c651ade5bcbbe80b3fe0f52eea04ab896ca90"
+ },
+ "9f801fa5f5317217dc1dd640ba05f803d57b0215a40c28e46dbbec2d82c7eabd": {
+  "check": "autoresearch/experiments/0229/check-scripts/P4-week53-leap-52-week-rejected.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "3f7da049e867698dfa11d599c6061e29a795719879ffe4d09e9ad0505d5e9fce"
+ },
+ "a2d0071ad9f9358921d57c14edbcf07b4ab98accbdd8043a03992f13687cc915": {
+  "check": "autoresearch/experiments/0229/check-scripts/P2-tuple-none-precedence-naive-no-typeerror.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "0632e293aaf9d0d47fcc5b71927361d4c0c1b17095fcac495e823cb1906a2485"
+ },
+ "a51538565634289561407cefc170d02e4b4c9a7273de1b7280c6461b33f36873": {
+  "check": "autoresearch/experiments/0229/check-scripts/J1-widen-bound-reexamines-code-span.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "9f428581abe6f389d9c880d5ee1f5908cbedc1d40aa7bb011fc84e92edecd865"
+ },
+ "a898338723a928807cf7831cf00b3e577f67fbfe2c1a33b504d758371d386d37": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "ae022b5f3a4ef51d5b29fd1d47b78d02cb9faf83f98b2b36ff42ba86b3ff24f6": {
+  "check": "autoresearch/experiments/0229/check-scripts/P1-explicit-zero-stop-empty.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "e908f1dee7ad9dfa7c8e0f6a3d479cc13290e8f84fb95b9a77ea62fa67a2802c"
+ },
+ "afa941107abe916ac1ec5219a3de8b2f0e5e05f1b7b5eb0ce84eb0c5a3fcb0df": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "b1382820305b5a2b06bb5569308d2967d5dd47c889cf7abe97e94312cae02712": {
+  "check": "autoresearch/experiments/0229/check-scripts/P4-week53-leap-docstring-rule.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "280b2ce0629bf15e579f0e9e7ee2a944b9434ce7573ecfcfdf37cd4b741c4417"
+ },
+ "b55c5ec833e39bdd08841c141c7f1ed3b8410c78f63bec5a1703d7dc9d4353fd": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "b73805dcce5965efc1ab46c49d2715977ad3aeac983f62f7207db83d6dd0d769": {
+  "check": "autoresearch/experiments/0229/check-scripts/J2-earlier-to-later-disabled-reenable.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "bdf5d8b0e659fa4062bb027c0983b0fd1522f78277b3d505b9876f10095fb103"
+ },
+ "b8364b77938deb6ddec7b5350e12a0d4300a8f36c13fddb592d9c7a31a54b8a8": {
+  "check": "autoresearch/experiments/0229/check-scripts/J3-rejected-disable-emphasis-preserves-state.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "fec16cf1625637eff3320769dbdd7af580c7373b4981b9c42d79d211a9a858a5"
+ },
+ "bb52cf55de2631fbd14660a9e03636f92c422f1584bfc9464fe87fc0a788e1d6": {
+  "check": "autoresearch/experiments/0229/check-scripts/P2-tuple-none-precedence-naive.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "850d7ec1f8936f9a63e765b5a677736b1f43aaed760e9ed7ec6772d353f0dbac"
+ },
+ "bb84641ebd0a328f8ab06b08b62fa5819bef7791a06493859761cef67ef8307e": {
+  "check": "autoresearch/experiments/0229/check-scripts/J4-occurrence-metadata.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "742997006424fb41ec888312fd52e61bfc0368affd88ba7d8a3f0c4b53847fc2"
+ },
+ "bb9a594dc414371187a0e9eec96caa979695a24c0b809bdc79e7131b25719ec7": {
+  "check": "autoresearch/experiments/0229/check-scripts/J2-earlier-to-later-before-anchor.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "664c2b38a9b48b6ecc2bf97e4fee941651d815a964a775d9c05f66474b2be158"
+ },
+ "bcad57e8c8437cbeb3122698bcca157d3e56e61e67e28550d8e0213aa332d497": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "c276b0d35dad239b4dbdab3a02467dccb0fa1cf0dbb88b89f3e0013f4ac93109": {
+  "check": "autoresearch/experiments/0229/check-scripts/J3-rejected-enable-disable-emphasis-preserves-state.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "463fd8365ca02e33ced742b6c44caad6071f8f3c1685e4726935e8885c5bba9a"
+ },
+ "c360d6d91bd9b3863b02fc43692e690c5218d8338103b2df4826adbfa608ae70": {
+  "check": "autoresearch/experiments/0229/check-scripts/P4-week53-leap-52-week-rejected.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "3f7da049e867698dfa11d599c6061e29a795719879ffe4d09e9ad0505d5e9fce"
+ },
+ "c50abb5c2fa27d3e523ff5b2708720e147726552c0855d2b33b0a36dd0166b59": {
+  "check": "autoresearch/experiments/0229/check-scripts/P1-explicit-zero-stop-empty.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "e908f1dee7ad9dfa7c8e0f6a3d479cc13290e8f84fb95b9a77ea62fa67a2802c"
+ },
+ "c5c54de846fe30a2b8ffe59c4458b45e9a0107979bdd9faa6472fd4b4e593d22": {
+  "check": "autoresearch/experiments/0229/check-scripts/P1-explicit-zero-stop-empty.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "e908f1dee7ad9dfa7c8e0f6a3d479cc13290e8f84fb95b9a77ea62fa67a2802c"
+ },
+ "ca089b132efed818a3a8c222c57cb0e5a99eeaa13a3973f5d04794253a65e53c": {
+  "check": "autoresearch/experiments/0229/check-scripts/P2-tuple-none-precedence-naive.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "850d7ec1f8936f9a63e765b5a677736b1f43aaed760e9ed7ec6772d353f0dbac"
+ },
+ "ca1a81ce318cac957ad7650d6b222e7c9b96edbfe85c588a3a0667de4e086cd0": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "cf5480ad2d3c489166dd09523a9a75acd09021ea1ef1f186f12d8c67062db3a3": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "cf61f7645947db8e8fc9b974d0291f82beb46e1a6683723ddcecc87d6f82e2bc": {
+  "check": "autoresearch/experiments/0229/check-scripts/J2-earlier-to-later-before-anchor.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "664c2b38a9b48b6ecc2bf97e4fee941651d815a964a775d9c05f66474b2be158"
+ },
+ "cff6a30c1d0454c3fe6c2e0739b398f045306d49fb622100d7f4c44bf486b7c1": {
+  "check": "autoresearch/experiments/0229/check-scripts/P1-explicit-zero-stop-empty.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "e908f1dee7ad9dfa7c8e0f6a3d479cc13290e8f84fb95b9a77ea62fa67a2802c"
+ },
+ "d24d347cea197ea29be3a37977647217e885d19f6e029fcc68a847e61ad2f6b7": {
+  "check": "autoresearch/experiments/0229/check-scripts/P3-negative-reject-hit-oldest.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "89a5fbdd9d5287a8ece4239daa4d03b045608f5126090d5218c993fe42dff468"
+ },
+ "d48fb50959474f9d4a8bd0b254046b56b800dc8a512ecbbe6ef384a43a2dea9c": {
+  "check": "autoresearch/experiments/0229/check-scripts/J4-occurrence-metadata.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "742997006424fb41ec888312fd52e61bfc0368affd88ba7d8a3f0c4b53847fc2"
+ },
+ "d5c8aa958bbd915fc9efccb0545902df6c7d5ab2d31533809377ba645310b5f2": {
+  "check": "autoresearch/experiments/0229/check-scripts/P1-explicit-zero-stop-empty.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "e908f1dee7ad9dfa7c8e0f6a3d479cc13290e8f84fb95b9a77ea62fa67a2802c"
+ },
+ "dfdc0983e1e13673c2022bf59a0a413ba8c7f5040cc560a4ae9e5e1990d14c20": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "dffde6249db08a048aa4cbf81ca8b93add90daa67ec780c44c06b0867d9d044d": {
+  "check": "autoresearch/experiments/0229/check-scripts/P3-negative-reject-later-lookups.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "6f9bcf20cb6f157dbb8f23eaa313980dffbe4ac6215e881a9e493ef07b56b67b"
+ },
+ "e2d47aa2a3af204a680fa99941aa1066c3dbdc2adfdf98a9316ecd535582296e": {
+  "check": "autoresearch/experiments/0229/check-scripts/P2-tuple-none-precedence-naive.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "850d7ec1f8936f9a63e765b5a677736b1f43aaed760e9ed7ec6772d353f0dbac"
+ },
+ "e2d71b0953e5de7d226166920a20495324e492dbc0c756ed7f59c1a4e2a4879d": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "e3231167f77ac2ec29f10a11db1639e7a2b6896fa8d34a07dda38ed4d2e0e414": {
+  "check": "autoresearch/experiments/0229/check-scripts/J4-occurrence-metadata-string-fields.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "ff79a9fb10ba623d809ccde1b9971bf77b63e093549dca353d71ee98ad97c366"
+ },
+ "e3f09b10bae72c171dcdfc23b3ad4317453b7ee1288235f03df771d61d89e45b": {
+  "check": "autoresearch/experiments/0229/check-scripts/J1-widen-bound-reexamines-code-span-trailing-xx.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "0ab2d55890305c5bca7f137ef3ea35fe79638a9804c4aec152a2f5aac7587188"
+ },
+ "e5a800aed7f185f5d9ace32f0657b42d633a368ab593b57c75a62019f96e60e8": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "eb9d78cdd3b721219feda6342e5d224723b2d43ee5baa3b17b801f961159c325": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "ee4c4a19179813a8ab9dd7732e9735ed979199e0f5a4a617ee957ad9be53db3f": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "efdc2ee88ed2146dd38ef7e716a8a7900e73d3eca337ec4fb6acac6c4f161140": {
+  "check": "autoresearch/experiments/0229/check-scripts/P3-negative-reject-hit-newest.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "5e0b27b0ba5d46d509cee70cb460112997e64c840e5f0af3f1a238407cefb139"
+ },
+ "f3577cc473bab284174b36d4eec7de31a09061270f24318da51fe002573d2478": {
+  "check": "autoresearch/experiments/0229/check-scripts/J3-rejected-disable-emphasis-preserves-state.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "fec16cf1625637eff3320769dbdd7af580c7373b4981b9c42d79d211a9a858a5"
+ },
+ "f3a8ae7bda55f34ff2f5e312b5e04013d30cf0ca69de4edd5de722a675ff2fc3": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "f5eec3573d21198ec5608d39c3048d92e283544c6e3b85129188a03aeec9aa55": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "f72b4a9557248ddde4437bdc6d3b72d95e3d6b4185b9d9daf6f4eb9d78557e1b": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "coverage",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "f795011085a5bedf068d534f849400d16aa836a391ded3b6b28ec38215c366fd": {
+  "check": "autoresearch/experiments/0229/check-scripts/P4-week53-leap-docstring-rule.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "280b2ce0629bf15e579f0e9e7ee2a944b9434ce7573ecfcfdf37cd4b741c4417"
+ },
+ "fa776ac342a9c0f78781fbdf1bfbf4f08e58b44f92c02070512b7e7804289cec": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ },
+ "fcc1d9f3a170e90632655f7884d51d293b75258820fc604e133abef859982513": {
+  "check": "autoresearch/experiments/0229/check-scripts/J3-rejected-disable-emphasis-preserves-state.sh",
+  "clause_source": "task",
+  "disputed": false,
+  "kind": "behavioral",
+  "match": true,
+  "results": {
+   "base": false,
+   "reference": true,
+   "twin": false
+  },
+  "script_sha256": "fec16cf1625637eff3320769dbdd7af580c7373b4981b9c42d79d211a9a858a5"
+ },
+ "fe8d97c542f98b32cb0596e0eefcd9cb906619c22a1cb38083091d77cb5c22d9": {
+  "check": null,
+  "clause_source": null,
+  "disputed": false,
+  "kind": "behavioral",
+  "match": false,
+  "results": null,
+  "script_sha256": null
+ }
+}

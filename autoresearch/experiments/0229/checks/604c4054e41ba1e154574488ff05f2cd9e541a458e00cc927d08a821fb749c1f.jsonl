@@ -1,0 +1,1 @@
+{"checked_at": "2026-10-01T21:36:50.317Z", "finding_key": "604c4054e41ba1e154574488ff05f2cd9e541a458e00cc927d08a821fb749c1f", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0229/check-scripts/P3-negative-reject-miss.sh", "script_sha256": "3b25d16c6dd7a9d2af57854e656533b44627fa7202f53b2ee99c615fe5ea7039", "task": "P3"}

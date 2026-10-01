@@ -1,0 +1,1 @@
+{"checked_at": "2026-10-01T21:36:24.622Z", "finding_key": "406a66a366264a78d98d639b71f872dadd0f7a7a575881fa495901d35994016d", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0229/check-scripts/J4-occurrence-metadata.sh", "script_sha256": "742997006424fb41ec888312fd52e61bfc0368affd88ba7d8a3f0c4b53847fc2", "task": "J4"}

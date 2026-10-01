@@ -1,0 +1,4 @@
+[
+  {"id": "c78494e92dbb8e4f70cb8af28d6efc90d25e79e4cc05ab5847fbe936eff948d5", "verdict": "allowed", "reason": "An unparsed Codex exec block of relative reads (the round's .devlyn MECHANICAL results, one added test file, and a brace-expanded set of src/rules_inline/*.ts source files) run in the round work directory; no path outside the round copy."},
+  {"id": "dc7aad5748b7c6529f535c851c58bcebfcc975563442586474fd403cb6335ad2", "verdict": "allowed", "reason": "The brace-expanded shell word src/rules_inline/{text,...,image}.ts from that same block, relative to the round work directory; every expansion names a source file in the round copy."}
+]

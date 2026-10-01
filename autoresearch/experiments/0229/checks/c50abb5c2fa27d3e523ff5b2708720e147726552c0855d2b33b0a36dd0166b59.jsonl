@@ -1,0 +1,1 @@
+{"checked_at": "2026-10-01T21:36:27.103Z", "finding_key": "c50abb5c2fa27d3e523ff5b2708720e147726552c0855d2b33b0a36dd0166b59", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0229/check-scripts/P1-explicit-zero-stop-empty.sh", "script_sha256": "e908f1dee7ad9dfa7c8e0f6a3d479cc13290e8f84fb95b9a77ea62fa67a2802c", "task": "P1"}
