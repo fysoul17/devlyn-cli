@@ -109,7 +109,11 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 15
     steps:
-      # Artifact-only: a full Git checkout contains illegal Windows colon paths.
+      # A plain Git checkout proves every tracked path is legal on Windows. It stays in
+      # its own folder: the tests below run the tested npm artifact, outside any repository.
+      - uses: actions/checkout@v4
+        with:
+          path: source
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -188,9 +192,9 @@ jobs:
           skills = project / '.claude/skills'
           marker = json.loads((skills / '.devlyn-install.json').read_text(encoding='utf-8'))
           assert marker['package'] == 'devlyn-cli', marker
-          resolve = skills / 'devlyn\uf03aresolve'
-          assert resolve.is_dir() and 'name: devlyn:resolve' in (resolve / 'SKILL.md').read_text(encoding='utf-8')
-          print('Real CLI complete-install marker and legal resolve directory passed', flush=True)
+          resolve = skills / 'devlyn-resolve'
+          assert resolve.is_dir() and 'name: devlyn-resolve' in (resolve / 'SKILL.md').read_text(encoding='utf-8')
+          print('Real CLI complete-install marker and resolve directory passed', flush=True)
 
           failed = []
           for label, command in (

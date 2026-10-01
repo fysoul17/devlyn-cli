@@ -14,35 +14,28 @@ const { updateInstructions, InstructionError } = require('./instructions');
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
 // skill here installs it everywhere.
-const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];
+const DEVLYN_CORE_SKILLS = ['devlyn-resolve', 'devlyn-ideate', 'devlyn-design-ui', 'devlyn-engines', 'devlyn-queue', '_shared'];
+// 4.0.0 renamed the colon-named skills to the Agent Skills standard (`[a-z0-9-]`, name ==
+// folder): Git for Windows cannot check out a folder with ':' in its name. Installs from 3.x
+// and earlier keep the old folder under either spelling (':' or npm's U+F03A extraction
+// alias). Both are removed, and an optional skill that was installed is installed again
+// under its new name in the same place.
+const RENAMED_SKILLS = {
+  'devlyn:resolve': 'devlyn-resolve',
+  'devlyn:ideate': 'devlyn-ideate',
+  'devlyn:design-ui': 'devlyn-design-ui',
+  'devlyn:engines': 'devlyn-engines',
+  'devlyn:queue': 'devlyn-queue',
+  'devlyn:pencil-pull': 'devlyn-pencil-pull',
+  'devlyn:pencil-push': 'devlyn-pencil-push',
+  'devlyn:reap': 'devlyn-reap',
+};
 const DEVLYN_SKILL_DIR_STAMP = '__DEVLYN_SKILL_DIR__';
 const DEVLYN_INSTALL_MARKER = '.devlyn-install.json';
 
-function logicalSkillName(name) {
-  return name.replace(/\uF03A/g, ':');
-}
-
-function physicalSkillName(name) {
-  return process.platform === 'win32' ? name.replace(/:/g, '\uF03A') : name;
-}
-
-function skillPath(root, name) {
-  name = logicalSkillName(name);
-  const aliases = [...new Set([name, name.replace(/:/g, '\uF03A')])];
-  const entries = fs.existsSync(root) ? fs.readdirSync(root) : [];
-  const found = aliases.filter((alias) => entries.includes(alias));
-  if (found.length > 1) throw new Error(`Ambiguous skill aliases in ${root}: ${found.join(', ')}`);
-  return path.join(root, found[0] || physicalSkillName(name));
-}
-
-function preflightSkillDirs(source, target, names) {
-  for (const name of names) {
-    skillPath(source, name);
-    skillPath(target, name);
-  }
-  for (const relative of DEPRECATED_DIRS) {
-    skillPath(target, path.basename(relative));
-  }
+// Every spelling a colon name can have on disk: its own and npm's U+F03A extraction alias.
+function legacySkillPaths(root, name) {
+  return [...new Set([name, name.replace(/:/g, '\uF03A')])].map((spelling) => path.join(root, spelling));
 }
 
 // Cross-agent shared skills directory read by BOTH oh-my-pi and Pi. Verified
@@ -134,21 +127,17 @@ const DEPRECATED_DIRS = [
   // v0.7.x rename: devlyn-* → devlyn:*
   'skills/devlyn-clean',
   'skills/devlyn-design-system',
-  'skills/devlyn-design-ui',
   'skills/devlyn-discover-product',
   'skills/devlyn-evaluate',
   'skills/devlyn-feature-spec',
   'skills/devlyn-implement-ui',
   'skills/devlyn-product-spec',
   'skills/devlyn-recommend-features',
-  'skills/devlyn-resolve',
   'skills/devlyn-review',
   'skills/devlyn-team-design-ui',
   'skills/devlyn-team-resolve',
   'skills/devlyn-team-review',
   'skills/devlyn-update-docs',
-  'skills/devlyn-pencil-pull',
-  'skills/devlyn-pencil-push',
   // iter-0034 Phase 4 cutover: deleted user skills
   'skills/devlyn:auto-resolve',
   'skills/devlyn:browser-validate',
@@ -164,10 +153,6 @@ const DEPRECATED_DIRS = [
   'skills/devlyn:team-resolve',
   'skills/devlyn:team-review',
   'skills/devlyn:update-docs',
-  // iter-0034 Phase 4 cutover: moved to optional-skills/. Force-removed on
-  // upgrade so users only have them if they opt in via the interactive
-  // installer (matches the pencil-pull / pencil-push pattern).
-  'skills/devlyn:reap',
   // 0221 Session 1: standards skills moved to optional-skills/ (opt-in).
   'skills/code-health-standards',
   'skills/code-review-standards',
@@ -238,9 +223,9 @@ const OPTIONAL_ADDONS = [
   { name: 'polar-billing-setup', desc: 'Polar usage-based / metered billing — correct setup + diagnose silent $0-billing failures', type: 'local' },
   { name: 'pyx-scan', desc: 'Check whether an AI agent skill is safe before installing', type: 'local' },
   { name: 'dokkit', desc: 'Document template filling for DOCX/HWPX — ingest, fill, review, export', type: 'local' },
-  { name: 'devlyn:pencil-pull', desc: 'Pull Pencil designs into code with exact visual fidelity', type: 'local' },
-  { name: 'devlyn:pencil-push', desc: 'Push codebase UI to Pencil canvas for design sync', type: 'local' },
-  { name: 'devlyn:reap', desc: 'Safely reap orphaned MCP / codex / Superset child processes left behind by long Claude sessions', type: 'local' },
+  { name: 'devlyn-pencil-pull', desc: 'Pull Pencil designs into code with exact visual fidelity', type: 'local' },
+  { name: 'devlyn-pencil-push', desc: 'Push codebase UI to Pencil canvas for design sync', type: 'local' },
+  { name: 'devlyn-reap', desc: 'Safely reap orphaned MCP / codex / Superset child processes left behind by long Claude sessions', type: 'local' },
   { name: 'code-health-standards', desc: 'Maintainability standards — dead code, dependencies, complexity, naming, hygiene', type: 'local' },
   { name: 'code-review-standards', desc: 'Severity framework and approval criteria for reviewing a change', type: 'local' },
   { name: 'root-cause-analysis', desc: 'Evidence-first why-chain debugging to the actionable root cause', type: 'local' },
@@ -255,7 +240,7 @@ const OPTIONAL_ADDONS = [
   // Note: the Codex integration uses the local `codex` CLI binary (not MCP).
   // Install the CLI separately per https://platform.openai.com/docs/codex — the
   // pair/risk-probe routes fail closed when Codex is required but unavailable.
-  { name: 'playwright', desc: 'Playwright MCP for browser testing — powers /devlyn:resolve BUILD_GATE browser tier', type: 'mcp', command: 'npx -y @playwright/mcp@latest' },
+  { name: 'playwright', desc: 'Playwright MCP for browser testing — powers /devlyn-resolve BUILD_GATE browser tier', type: 'mcp', command: 'npx -y @playwright/mcp@latest' },
 ];
 
 function log(msg, color = 'reset') {
@@ -349,8 +334,8 @@ function listContents() {
 
 function cleanupDeprecated(targetDir) {
   let removed = 0;
-  const deprecated = DEPRECATED_DIRS.map((relPath) =>
-    [relPath, skillPath(path.join(targetDir, 'skills'), path.basename(relPath))]);
+  const deprecated = DEPRECATED_DIRS.flatMap((relPath) =>
+    legacySkillPaths(path.join(targetDir, 'skills'), path.basename(relPath)).map((fullPath) => [relPath, fullPath]));
   for (const relPath of DEPRECATED_FILES) {
     const fullPath = path.join(targetDir, relPath);
     if (fs.existsSync(fullPath)) {
@@ -369,19 +354,32 @@ function cleanupDeprecated(targetDir) {
   return removed;
 }
 
+// Remove every old spelling of the renamed skills in `skillsDir`. An optional skill found
+// there is installed under its new name first, so an interrupted run never loses it.
+function retireRenamedSkills(skillsDir) {
+  const optional = new Set(OPTIONAL_ADDONS.filter((addon) => addon.type === 'local').map((addon) => addon.name));
+  for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
+    const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
+    if (found.length > 0 && optional.has(newName)) installOptionalSkillInto(skillsDir, newName);
+    for (const fullPath of found) {
+      fs.rmSync(fullPath, { recursive: true, force: true });
+      log(`  ✕ ${path.basename(fullPath)}/ (renamed to ${newName})`, 'dim');
+    }
+  }
+}
+
 function copyRecursive(src, dest, baseDir) {
   const stats = fs.statSync(src);
 
   if (stats.isDirectory()) {
     // Never install dev workspaces, even when running from source repo.
-    if (UNSHIPPED_SKILL_DIRS.has(logicalSkillName(path.basename(src)))) return;
+    if (UNSHIPPED_SKILL_DIRS.has(path.basename(src))) return;
     if (!fs.existsSync(dest)) {
       fs.mkdirSync(dest, { recursive: true });
     }
 
     for (const item of fs.readdirSync(src)) {
-      const name = src === path.join(CONFIG_SOURCE, 'skills') ? physicalSkillName(logicalSkillName(item)) : item;
-      copyRecursive(path.join(src, item), path.join(dest, name), baseDir);
+      copyRecursive(path.join(src, item), path.join(dest, item), baseDir);
     }
   } else {
     const destDir = path.dirname(dest);
@@ -407,8 +405,8 @@ function assertCompleteSkillInstall(sourceSkillsDir, skillsDir, skillNames) {
     return fs.statSync(dest).isFile();
   }
   const missing = skillNames.filter((name) => {
-    const src = skillPath(sourceSkillsDir, name);
-    const dest = skillPath(skillsDir, name);
+    const src = path.join(sourceSkillsDir, name);
+    const dest = path.join(skillsDir, name);
     return !complete(src, dest) || (name !== '_shared' && !fs.existsSync(path.join(src, 'SKILL.md')));
   });
   if (missing.length > 0) {
@@ -475,6 +473,7 @@ function stampInstalledSkillDir(rootDir, skillDir) {
 const UNSHIPPED_SKILL_DIRS = new Set([
   'devlyn:auto-resolve-workspace',
   'devlyn:ideate-workspace',
+  'devlyn-ideate-workspace',
   'preflight-workspace',
   'roadmap-archival-workspace',
 ]);
@@ -488,12 +487,11 @@ const UNSHIPPED_SKILL_DIRS = new Set([
 // no counterpart in source. Dev workspaces are skipped entirely.
 function cleanManagedSkillDirs(sourceSkillsDir, targetSkillsDir) {
   if (!fs.existsSync(sourceSkillsDir) || !fs.existsSync(targetSkillsDir)) return 0;
-  preflightSkillDirs(sourceSkillsDir, targetSkillsDir, fs.readdirSync(sourceSkillsDir));
   let cleaned = 0;
   for (const entry of fs.readdirSync(sourceSkillsDir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    if (UNSHIPPED_SKILL_DIRS.has(logicalSkillName(entry.name))) continue;
-    const targetPath = skillPath(targetSkillsDir, entry.name);
+    if (UNSHIPPED_SKILL_DIRS.has(entry.name)) continue;
+    const targetPath = path.join(targetSkillsDir, entry.name);
     if (fs.existsSync(targetPath)) {
       fs.rmSync(targetPath, { recursive: true, force: true });
       cleaned++;
@@ -596,11 +594,10 @@ function multiSelect(items, preselectedIndices = []) {
 }
 
 function installLocalSkill(skillName) {
-  const src = skillPath(OPTIONAL_SKILLS_SOURCE, skillName);
+  const src = path.join(OPTIONAL_SKILLS_SOURCE, skillName);
   const targetDir = getTargetDir();
   const targets = new Set([path.join(targetDir, 'skills'), ...Object.values(CLI_TARGETS)
     .map((cli) => cli.skillsDir).filter((dir) => dir && fs.existsSync(dir))]);
-  for (const target of targets) skillPath(target, skillName);
 
   if (!fs.existsSync(src)) {
     log(`   ⚠️  Skill "${skillName}" not found`, 'yellow');
@@ -615,14 +612,22 @@ function installLocalSkill(skillName) {
   // create an agent install just because someone opted into a Claude-side skill.
   // De-dup by directory: omp and Pi share ~/.agents/skills, so the mirror runs
   // once per unique destination.
-  for (const target of targets) {
-    fs.rmSync(skillPath(target, skillName), { recursive: true, force: true });
-    const dest = path.join(target, physicalSkillName(skillName));
-    copyRecursive(src, dest, target);
-    stampInstalledSkillDir(dest, dest);
-    assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, target, [skillName]);
-  }
+  for (const target of targets) installOptionalSkillInto(target, skillName);
   return true;
+}
+
+// One optional skill into one skill-loader directory, replacing any older copy of it. A
+// copy under its name before the 4.0.0 rename goes only once the new one is complete.
+function installOptionalSkillInto(target, skillName) {
+  const dest = path.join(target, skillName);
+  fs.rmSync(dest, { recursive: true, force: true });
+  copyRecursive(path.join(OPTIONAL_SKILLS_SOURCE, skillName), dest, target);
+  stampInstalledSkillDir(dest, dest);
+  assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, target, [skillName]);
+  const oldName = Object.keys(RENAMED_SKILLS).find((name) => RENAMED_SKILLS[name] === skillName);
+  for (const fullPath of oldName ? legacySkillPaths(target, oldName) : []) {
+    fs.rmSync(fullPath, { recursive: true, force: true });
+  }
 }
 
 function installMcpServer(name, command) {
@@ -681,23 +686,22 @@ function installSkillsForCLI(cliKey) {
     fs.mkdirSync(cli.skillsDir, { recursive: true });
   }
   clearInstallMarker(cli.skillsDir);
-  preflightSkillDirs(sourceSkillsDir, cli.skillsDir, cli.skillsToInstall);
 
   const removed = cleanupDeprecated(path.dirname(cli.skillsDir));
   if (removed > 0) {
     log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
   }
+  retireRenamedSkills(cli.skillsDir);
 
   let copied = 0;
   for (const skillName of cli.skillsToInstall) {
-    const src = skillPath(sourceSkillsDir, skillName);
-    const previous = skillPath(cli.skillsDir, skillName);
-    const dest = path.join(cli.skillsDir, physicalSkillName(skillName));
+    const src = path.join(sourceSkillsDir, skillName);
+    const dest = path.join(cli.skillsDir, skillName);
     if (!fs.existsSync(src)) continue;
     // Full replace per cleanManagedSkillDirs semantics: stale files in the
     // installed mirror would otherwise persist forever.
-    if (fs.existsSync(previous)) {
-      fs.rmSync(previous, { recursive: true, force: true });
+    if (fs.existsSync(dest)) {
+      fs.rmSync(dest, { recursive: true, force: true });
     }
     copyRecursive(src, dest, cli.skillsDir);
     stampInstalledSkillDir(dest, dest);
@@ -803,6 +807,12 @@ function installClaudeCore() {
   log('\n📁 Installing Claude Code config to .claude/', 'green');
   if (!fs.existsSync(skillsDir)) fs.mkdirSync(skillsDir, { recursive: true });
   clearInstallMarker(skillsDir);
+  // Removals come before the copy, so the completeness check below sees the final tree.
+  const removed = cleanupDeprecated(targetDir);
+  if (removed > 0) {
+    log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
+  }
+  retireRenamedSkills(skillsDir);
   const refreshed = cleanManagedSkillDirs(
     path.join(CONFIG_SOURCE, 'skills'),
     skillsDir,
@@ -813,16 +823,10 @@ function installClaudeCore() {
   copyRecursive(CONFIG_SOURCE, targetDir, targetDir);
   assertCompleteSkillInstall(path.join(CONFIG_SOURCE, 'skills'), skillsDir, DEVLYN_CORE_SKILLS);
   for (const name of DEVLYN_CORE_SKILLS) {
-    const dest = skillPath(skillsDir, name);
+    const dest = path.join(skillsDir, name);
     stampInstalledSkillDir(dest, dest);
   }
   writeInstallMarker(skillsDir);
-
-  // Remove deprecated files from previous versions
-  const removed = cleanupDeprecated(targetDir);
-  if (removed > 0) {
-    log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
-  }
 
   // Keep installer-managed pipeline state and install metadata out of git.
   const gitignorePath = path.join(process.cwd(), '.gitignore');

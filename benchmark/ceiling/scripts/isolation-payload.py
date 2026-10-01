@@ -665,7 +665,7 @@ transcript_bytes = Path(transcript_path).read_bytes()
 transcript = transcript_bytes.decode("utf-8", errors="replace")
 literal_families = {
     "global-skills-path": ("/.agents/skills/", "/.codex/skills/"),
-    "devlyn-skill-identity": ("devlyn:resolve", "devlyn:auto-resolve"),
+    "devlyn-skill-identity": ("devlyn:resolve", "devlyn-resolve", "devlyn:auto-resolve"),
     "devlyn-runtime": (
         "DEVLYN_SKILL_DIR",
         "DEVLYN_SHARED_DIR",

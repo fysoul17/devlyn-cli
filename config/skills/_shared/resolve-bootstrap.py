@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic PHASE-0 bootstrap for /devlyn:resolve."""
+"""Deterministic PHASE-0 bootstrap for /devlyn-resolve."""
 from __future__ import annotations
 
 import contextlib
@@ -1027,7 +1027,7 @@ def self_test() -> int:
             "phases": {name: None for name in PHASE_NAMES},
             "verify": {"coverage_failed": False, "pair_trigger": None},
         }
-        schema_dirs = [script_shared.parent / name for name in ("devlyn:resolve", "devlyn\uF03Aresolve")
+        schema_dirs = [script_shared.parent / name for name in ("devlyn-resolve",)
                        if (script_shared.parent / name).is_dir()]
         assert len(schema_dirs) == 1, schema_dirs
         schema = (schema_dirs[0] / "references" / "state-schema.md").read_text(encoding="utf-8")

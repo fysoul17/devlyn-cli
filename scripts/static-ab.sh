@@ -2,12 +2,12 @@
 # static-ab.sh — Measure prompt-size delta between baseline HEAD and working tree.
 #
 # Answers: "did our harness changes shrink or grow the cold-start prompt budget
-# that a typical /devlyn:resolve run actually loads?"
+# that a typical /devlyn-resolve run actually loads?"
 #
 # Files measured (current two-skill resolve load set):
-#   - devlyn:resolve/SKILL.md
-#   - devlyn:resolve/references/{state-schema.md, free-form-mode.md}
-#   - devlyn:resolve/references/phases/{plan,probe-derive,implement,build-gate,cleanup,verify}.md
+#   - devlyn-resolve/SKILL.md
+#   - devlyn-resolve/references/{state-schema.md, free-form-mode.md}
+#   - devlyn-resolve/references/phases/{plan,probe-derive,implement,build-gate,cleanup,verify}.md
 #   - _shared/codex-config.md
 #   - _shared/engine-preflight.md
 #   - _shared/runtime-principles.md
@@ -25,15 +25,15 @@ FILES=(
   config/skills/_shared/codex-config.md
   config/skills/_shared/engine-preflight.md
   config/skills/_shared/runtime-principles.md
-  config/skills/devlyn:resolve/SKILL.md
-  config/skills/devlyn:resolve/references/state-schema.md
-  config/skills/devlyn:resolve/references/free-form-mode.md
-  config/skills/devlyn:resolve/references/phases/plan.md
-  config/skills/devlyn:resolve/references/phases/probe-derive.md
-  config/skills/devlyn:resolve/references/phases/implement.md
-  config/skills/devlyn:resolve/references/phases/build-gate.md
-  config/skills/devlyn:resolve/references/phases/cleanup.md
-  config/skills/devlyn:resolve/references/phases/verify.md
+  config/skills/devlyn-resolve/SKILL.md
+  config/skills/devlyn-resolve/references/state-schema.md
+  config/skills/devlyn-resolve/references/free-form-mode.md
+  config/skills/devlyn-resolve/references/phases/plan.md
+  config/skills/devlyn-resolve/references/phases/probe-derive.md
+  config/skills/devlyn-resolve/references/phases/implement.md
+  config/skills/devlyn-resolve/references/phases/build-gate.md
+  config/skills/devlyn-resolve/references/phases/cleanup.md
+  config/skills/devlyn-resolve/references/phases/verify.md
 )
 
 WORDS_A=0

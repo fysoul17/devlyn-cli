@@ -31,5 +31,13 @@ jobs:
       - name: Dry-run pack
         run: npm pack --dry-run
 
+      # A new major waits under `next` until a person runs
+      # `npm dist-tag add devlyn-cli@<version> latest`: apps install `devlyn-cli@latest`.
       - name: Publish to npm
-        run: npm publish --access public
+        run: |
+          latest="$(npm view devlyn-cli dist-tags.latest)"
+          version="$(node -p "require('./package.json').version")"
+          test -n "$latest" && test -n "$version"
+          dist_tag=latest
+          if [ "${version%%.*}" -gt "${latest%%.*}" ]; then dist_tag=next; fi
+          npm publish --access public --tag "$dist_tag"

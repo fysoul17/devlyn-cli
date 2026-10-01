@@ -2,7 +2,7 @@
 """Outer-owner delivery and recoverable cleanup (task-completion spec, R1–7).
 
 No phase/state writer, staging, scheduler, or implicit adoption. See
-devlyn:resolve/references/task-completion.md for the owner acceptance contract.
+devlyn-resolve/references/task-completion.md for the owner acceptance contract.
 """
 from __future__ import annotations
 

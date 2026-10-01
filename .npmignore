@@ -4,8 +4,10 @@
 # iteration but noise (and sometimes sensitive) for downstream users.
 config/skills/preflight-workspace
 config/skills/devlyn:ideate-workspace
+config/skills/devlyn-ideate-workspace
 config/skills/preflight-workspace/**
 config/skills/devlyn:ideate-workspace/**
+config/skills/devlyn-ideate-workspace/**
 
 # Nested test-project sandboxes that sometimes sit under workspaces
 config/skills/preflight-workspace/test-project

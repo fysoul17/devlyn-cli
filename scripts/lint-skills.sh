@@ -52,7 +52,7 @@ else
 fi
 
 # iter-0034 Phase 4 cutover (2026-05-03): legacy skill paths dropped.
-# Surface is the 2-skill product (`/devlyn:resolve` + `/devlyn:ideate`)
+# Surface is the 2-skill product (`/devlyn-resolve` + `/devlyn-ideate`)
 # plus the `_shared/` kernel. Keep this list single-source so all installed
 # mirror parity checks cover the same files.
 critical_path_files=$(cat <<'EOF'
@@ -72,25 +72,25 @@ _shared/state-phase-write.py
 _shared/terminal-claim-check.py
 _shared/resolve-stop-hook.py
 _shared/resolve-bootstrap.py
-devlyn:ideate/SKILL.md
-devlyn:ideate/references/spec-template.md
-devlyn:ideate/references/elicitation.md
-devlyn:ideate/references/project-mode.md
-devlyn:ideate/references/from-spec-mode.md
-devlyn:resolve/SKILL.md
-devlyn:queue/SKILL.md
-devlyn:engines/SKILL.md
-devlyn:resolve/references/state-schema.md
-devlyn:resolve/references/task-completion.md
-devlyn:resolve/references/outer-loop.md
-devlyn:resolve/references/free-form-mode.md
-devlyn:resolve/references/phases/plan.md
-devlyn:resolve/references/phases/probe-derive.md
-devlyn:resolve/references/phases/implement.md
-devlyn:resolve/references/phases/surface-close.md
-devlyn:resolve/references/phases/build-gate.md
-devlyn:resolve/references/phases/cleanup.md
-devlyn:resolve/references/phases/verify.md
+devlyn-ideate/SKILL.md
+devlyn-ideate/references/spec-template.md
+devlyn-ideate/references/elicitation.md
+devlyn-ideate/references/project-mode.md
+devlyn-ideate/references/from-spec-mode.md
+devlyn-resolve/SKILL.md
+devlyn-queue/SKILL.md
+devlyn-engines/SKILL.md
+devlyn-resolve/references/state-schema.md
+devlyn-resolve/references/task-completion.md
+devlyn-resolve/references/outer-loop.md
+devlyn-resolve/references/free-form-mode.md
+devlyn-resolve/references/phases/plan.md
+devlyn-resolve/references/phases/probe-derive.md
+devlyn-resolve/references/phases/implement.md
+devlyn-resolve/references/phases/surface-close.md
+devlyn-resolve/references/phases/build-gate.md
+devlyn-resolve/references/phases/cleanup.md
+devlyn-resolve/references/phases/verify.md
 _shared/expected.schema.json
 _shared/adapters/README.md
 _shared/adapters/claude.md
@@ -238,45 +238,117 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 5. Every shipped skill has `---` frontmatter with `name:` and `description:`.
+# 5. Every shipped skill's frontmatter follows the Agent Skills standard: a
+#    `name` of 1-64 lowercase letters, digits and single hyphens that equals its
+#    folder, plus a `description`. ':' in a folder name cannot be checked out by
+#    Git for Windows (the 4.0.0 rename from `devlyn:<x>`).
 # ---------------------------------------------------------------------------
-section "Check 5: shipped SKILL.md has name: and description:"
-missing=0
-for skill in config/skills/*/SKILL.md optional-skills/*/SKILL.md; do
-  [ -f "$skill" ] || continue
-  if ! head -1 "$skill" | grep -qx -- '---' || ! head -20 "$skill" | grep -q '^name:' || ! head -20 "$skill" | grep -q '^description:'; then
-    bad "$skill — missing '---' frontmatter with 'name:' and 'description:'"
-    missing=1
-  fi
-done
-if [ $missing -eq 0 ]; then
-  ok "all shipped skills have name: and description:"
+section "Check 5: shipped SKILL.md frontmatter follows the Agent Skills standard"
+if make_temp_file name_offenders_file /tmp/devlyn-lint-name.XXXXXX; then
+python3 - >"$name_offenders_file" 2>&1 <<'PY'
+import pathlib, re
+standard = re.compile(r'^[a-z0-9]+(-[a-z0-9]+)*$')
+skills = sorted([*pathlib.Path('config/skills').glob('*/SKILL.md'), *pathlib.Path('optional-skills').glob('*/SKILL.md')])
+if not skills:
+    print('no shipped SKILL.md found')
+for skill in skills:
+    lines = skill.read_text(encoding='utf-8').split('\n')
+    if lines[0] != '---' or '---' not in lines[1:]:
+        print(f"{skill} — missing '---' frontmatter")
+        continue
+    front = lines[1:lines.index('---', 1)]
+    names = [line[len('name:'):].strip().strip('\'"') for line in front if line.startswith('name:')]
+    if len(names) != 1 or not any(line.startswith('description:') for line in front):
+        print(f"{skill} — frontmatter needs exactly one name: and a description:")
+        continue
+    name, folder = names[0], skill.parent.name
+    if not (1 <= len(name) <= 64 and standard.match(name)):
+        print(f"{skill} — name {name!r} breaks the Agent Skills rule (1-64 of a-z, 0-9, single hyphens)")
+    elif name != folder:
+        print(f"{skill} — name {name!r} must equal its folder {folder!r}")
+PY
+  name_offenders=$(cat "$name_offenders_file"); rm -f "$name_offenders_file"
+else
+  name_offenders="could not allocate a temp file for this check"
+fi
+if [ -z "$name_offenders" ]; then
+  ok "every shipped skill name follows the Agent Skills standard and equals its folder"
+else
+  while IFS= read -r f; do bad "$f"; done <<< "$name_offenders"
 fi
 
 # ---------------------------------------------------------------------------
-# 5a. devlyn:design-ui is a required skill, not an optional addon.
+# 5c. Live text does not use a pre-4.0.0 skill name. History (benchmark/,
+#     autoresearch/, docs/), the legacy instruction fixtures and fingerprints,
+#     the README legacy map, the installer's rename table and comments, and the
+#     tests that plant old installs keep them.
 # ---------------------------------------------------------------------------
-section "Check 5a: devlyn:design-ui is required"
-if [ -f "config/skills/devlyn:design-ui/SKILL.md" ]; then
-  ok "devlyn:design-ui source lives in config/skills"
+section "Check 5c: no pre-4.0.0 skill names in live text"
+old_names='devlyn:(pencil-pull|pencil-push|design-ui|resolve|ideate|engines|queue|reap)([^a-z0-9-]|$)'
+offenders=$(
+  {
+    git grep -nIE "$old_names" -- . ':!benchmark' ':!autoresearch' ':!docs' ':!scripts/fixtures/instructions' \
+      ':!bin/instruction-templates.json' ':!bin/devlyn.js' ':!README.md' ':!scripts/lint-skills.sh' \
+      ':!scripts/test-windows-portability.py' || true
+    sed '/<!-- legacy-surface-map:begin/,/<!-- legacy-surface-map:end/s/.*//' README.md \
+      | grep -nE "$old_names" | sed 's#^#README.md:#' || true
+    sed 's#//.*##' bin/devlyn.js | grep -nE "$old_names" \
+      | grep -vE "^[0-9]+: *'devlyn:[a-z-]+': 'devlyn-[a-z-]+',$" | sed 's#^#bin/devlyn.js:#' || true
+  } | sed -E 's#$# — pre-4.0.0 skill name in live text#'
+)
+if [ -z "$offenders" ]; then
+  ok "pre-4.0.0 skill names appear only in history and the rename table"
 else
-  bad "devlyn:design-ui must be a required skill under config/skills"
+  while IFS= read -r f; do bad "$f"; done <<< "$offenders"
 fi
-if [ ! -e "optional-skills/devlyn:design-ui" ]; then
-  ok "devlyn:design-ui is not in optional-skills"
+
+# ---------------------------------------------------------------------------
+# 5d. DEPRECATED_DIRS never names a shipped skill: hyphen-era entries matched
+#     the 4.0.0 names and would have removed an opted-in optional skill on
+#     every later install.
+# ---------------------------------------------------------------------------
+section "Check 5d: DEPRECATED_DIRS never names a shipped skill"
+# Moved to optional-skills in 0221 and removed from every install by design.
+removed_optional=' code-health-standards code-review-standards root-cause-analysis ui-implementation-standards '
+offenders=$(
+  sed -n '/^const DEPRECATED_DIRS = \[/,/^\];/p' bin/devlyn.js | grep -oE "'skills/[^']+'" | tr -d "'" | sed 's#^skills/##' |
+    while IFS= read -r name; do
+      case "$removed_optional" in (*" $name "*) continue ;; esac
+      if [ -f "config/skills/$name/SKILL.md" ] || [ -f "optional-skills/$name/SKILL.md" ]; then
+        echo "DEPRECATED_DIRS names shipped skill $name"
+      fi
+    done
+)
+if [ -z "$offenders" ]; then
+  ok "DEPRECATED_DIRS removes only retired skills"
 else
-  bad "devlyn:design-ui must not be installed as an optional addon"
+  while IFS= read -r f; do bad "$f"; done <<< "$offenders"
 fi
-if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn:resolve', 'devlyn:ideate', 'devlyn:design-ui', 'devlyn:engines', 'devlyn:queue', '_shared'];" bin/devlyn.js \
+
+# ---------------------------------------------------------------------------
+# 5a. devlyn-design-ui is a required skill, not an optional addon.
+# ---------------------------------------------------------------------------
+section "Check 5a: devlyn-design-ui is required"
+if [ -f "config/skills/devlyn-design-ui/SKILL.md" ]; then
+  ok "devlyn-design-ui source lives in config/skills"
+else
+  bad "devlyn-design-ui must be a required skill under config/skills"
+fi
+if [ ! -e "optional-skills/devlyn-design-ui" ]; then
+  ok "devlyn-design-ui is not in optional-skills"
+else
+  bad "devlyn-design-ui must not be installed as an optional addon"
+fi
+if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn-resolve', 'devlyn-ideate', 'devlyn-design-ui', 'devlyn-engines', 'devlyn-queue', '_shared'];" bin/devlyn.js \
    && grep -Fq "skillsToInstall: DEVLYN_CORE_SKILLS" bin/devlyn.js; then
-  ok "Codex install includes devlyn:design-ui (via shared DEVLYN_CORE_SKILLS bundle)"
+  ok "Codex install includes devlyn-design-ui (via shared DEVLYN_CORE_SKILLS bundle)"
 else
-  bad "Codex skillsToInstall must include devlyn:design-ui (shared DEVLYN_CORE_SKILLS bundle)"
+  bad "Codex skillsToInstall must include devlyn-design-ui (shared DEVLYN_CORE_SKILLS bundle)"
 fi
-if ! grep -F "name: 'devlyn:design-ui'" bin/devlyn.js >/dev/null 2>&1; then
-  ok "devlyn:design-ui is absent from OPTIONAL_ADDONS"
+if ! grep -F "name: 'devlyn-design-ui'" bin/devlyn.js >/dev/null 2>&1; then
+  ok "devlyn-design-ui is absent from OPTIONAL_ADDONS"
 else
-  bad "devlyn:design-ui must not be listed in OPTIONAL_ADDONS"
+  bad "devlyn-design-ui must not be listed in OPTIONAL_ADDONS"
 fi
 
 # ---------------------------------------------------------------------------
@@ -356,17 +428,17 @@ PY
   incomplete="$tmp_install_marker/incomplete"
   mkdir -p "$incomplete/package" "$incomplete/home/.codex/skills" "$incomplete/claude/.claude/skills" "$incomplete/codex"
   cp -R bin config package.json AGENTS.md CLAUDE.md "$incomplete/package/"
-  rm -rf "$incomplete/package/config/skills/devlyn:queue"
+  rm -rf "$incomplete/package/config/skills/devlyn-queue"
   printf '{"version":"stale"}\n' > "$incomplete/home/.codex/skills/.devlyn-install.json"
   printf '{"version":"stale"}\n' > "$incomplete/claude/.claude/skills/.devlyn-install.json"
   if ! (cd "$incomplete/claude" \
       && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y >"$incomplete/claude.log" 2>&1) \
       && ! (cd "$incomplete/codex" \
       && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" agents codex >"$incomplete/codex.log" 2>&1) \
-      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn:queue' "$incomplete/claude.log" \
-      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn:queue' "$incomplete/codex.log" \
-      && [ -d "$incomplete/claude/.claude/skills/devlyn:resolve" ] \
-      && [ -d "$incomplete/home/.codex/skills/devlyn:resolve" ] \
+      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-queue' "$incomplete/claude.log" \
+      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-queue' "$incomplete/codex.log" \
+      && [ -d "$incomplete/claude/.claude/skills/devlyn-resolve" ] \
+      && [ -d "$incomplete/home/.codex/skills/devlyn-resolve" ] \
       && [ ! -e "$incomplete/claude/.claude/skills/.devlyn-install.json" ] \
       && [ ! -e "$incomplete/home/.codex/skills/.devlyn-install.json" ]; then
     ok "incomplete Claude and Codex copies fail visibly without stale or replacement markers"
@@ -462,24 +534,24 @@ if ! grep -Fq 'def pair_trigger_skip_contract_violation' config/skills/_shared/v
   || ! grep -Fq 'verify-pair-trigger-skipped-reason-unsupported' config/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq 'verify-pair-trigger-mechanical-blocker-unsupported' config/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq 'verify-pair-trigger-primary-judge-blocker-unsupported' config/skills/_shared/verify-merge-findings.py \
-  || ! grep -Fq 'Missing, contradictory, incomplete, or unknown trigger state BLOCKs VERIFY' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Canonical reasons are `pair.default`, `mode.verify-only`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq '`mode.pair-verify`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Eligible schema-v3 state must contain `pair.default` and every other applicable canonical' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'with `pair.default` plus every applicable outcome-independent canonical reason' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq '`mode.pair-verify`' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq '"pair_verify": false' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Schema v3.0 eligible state requires `pair.default` plus every applicable telemetry reason' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Ineligible new-run state has empty reasons and only' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'True only for `--pair-verify`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'pair_verify: true` only when `--pair-verify` was passed' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'persist `pair_trigger` before spawn with `pair.default` plus every applicable outcome-independent reason' config/skills/devlyn:resolve/SKILL.md \
+  || ! grep -Fq 'Missing, contradictory, incomplete, or unknown trigger state BLOCKs VERIFY' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq 'Canonical reasons are `pair.default`, `mode.verify-only`' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq '`mode.pair-verify`' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq 'Eligible schema-v3 state must contain `pair.default` and every other applicable canonical' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq 'with `pair.default` plus every applicable outcome-independent canonical reason' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq '`mode.pair-verify`' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq '"pair_verify": false' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq 'Schema v3.0 eligible state requires `pair.default` plus every applicable telemetry reason' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq 'Ineligible new-run state has empty reasons and only' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq 'True only for `--pair-verify`' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq 'pair_verify: true` only when `--pair-verify` was passed' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'persist `pair_trigger` before spawn with `pair.default` plus every applicable outcome-independent reason' config/skills/devlyn-resolve/SKILL.md \
   || ! grep -Fq -- '`--pair-verify` and `--no-pair` are mutually exclusive' README.md \
-  || ! grep -Fq '`--pair-verify` and `--no-pair` are mutually exclusive' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'mutually exclusive with `risk_profile.pair_default_enabled == false`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'if both are present, stop with `BLOCKED:invalid-flags`' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'Malformed risk or trigger state BLOCKs VERIFY' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'pair_default_enabled` is false only for explicit `--no-pair`' config/skills/devlyn:resolve/references/state-schema.md \
+  || ! grep -Fq '`--pair-verify` and `--no-pair` are mutually exclusive' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'mutually exclusive with `risk_profile.pair_default_enabled == false`' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq 'if both are present, stop with `BLOCKED:invalid-flags`' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq 'Malformed risk or trigger state BLOCKs VERIFY' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'pair_default_enabled` is false only for explicit `--no-pair`' config/skills/devlyn-resolve/references/state-schema.md \
   || ! grep -Fq 'def reject_json_constant' config/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq 'loads_strict_json(raw)' config/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq 'invalid JSON numeric constant: NaN' config/skills/_shared/verify-merge-findings.py; then
@@ -558,7 +630,7 @@ else
 fi
 if ! grep -Fq 'SAFE_RUN_ID_RE' config/skills/_shared/archive_run.py \
   || ! grep -Fq 'run_id must match [A-Za-z0-9_.-]+' config/skills/_shared/archive_run.py \
-  || ! grep -Fq 'Archive devlyn:resolve run artifacts' config/skills/_shared/archive_run.py \
+  || ! grep -Fq 'Archive devlyn-resolve run artifacts' config/skills/_shared/archive_run.py \
   || grep -Fq 'Archive auto-resolve run artifacts' config/skills/_shared/archive_run.py \
   || ! grep -Fq 'invalid JSON numeric constant: NaN' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"verify.pair.findings.jsonl"' config/skills/_shared/archive_run.py \
@@ -627,8 +699,8 @@ if ! grep -Fq 'rollback_surface_delta' config/skills/_shared/state-phase-write.p
   bad "state-phase-write.py must mechanically adjudicate, audit, guard, and roll back SURFACE_CLOSE"
 fi
 for tree in config/skills .agents/skills; do
-  skill="$tree/devlyn:resolve/SKILL.md"
-  phase="$tree/devlyn:resolve/references/phases/surface-close.md"
+  skill="$tree/devlyn-resolve/SKILL.md"
+  phase="$tree/devlyn-resolve/references/phases/surface-close.md"
   if ! grep -Fq '## PHASE 2.5: SURFACE_CLOSE' "$skill" \
     || ! grep -Fq '`state.source.type == "generated"` and complexity is trivial/medium' "$skill" \
     || ! grep -Fq 'Engine is Claude always' "$skill" \
@@ -709,16 +781,16 @@ if ! grep -Fq 'def state_requires_risk_probes' config/skills/_shared/spec-verify
 else
   ok "spec-verify-check.py validates enabled risk-probe state"
 fi
-if ! grep -Fq 'requires `.devlyn/risk-probes.jsonl`' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'requires `.devlyn/risk-probes.jsonl`' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'missing `.devlyn/risk-probes.jsonl` is a CRITICAL mechanical blocker' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'missing `.devlyn/risk-probes.jsonl` is a CRITICAL mechanical blocker' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'requires that file when `state.risk_profile.risk_probes_enabled == true`' config/skills/devlyn:resolve/references/phases/build-gate.md \
-  || ! grep -Fq 'requires that file when `state.risk_profile.risk_probes_enabled == true`' .agents/skills/devlyn:resolve/references/phases/build-gate.md \
-  || ! grep -Fq 'Malformed `state.risk_profile` is also CRITICAL because it can hide enabled risk probes' config/skills/devlyn:resolve/references/phases/build-gate.md \
-  || ! grep -Fq 'Malformed `state.risk_profile` is also CRITICAL because it can hide enabled risk probes' .agents/skills/devlyn:resolve/references/phases/build-gate.md \
-  || ! grep -Fq 'When `state.risk_profile.risk_probes_enabled == true`, missing `.devlyn/risk-probes.jsonl` is also CRITICAL' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'When `state.risk_profile.risk_probes_enabled == true`, missing `.devlyn/risk-probes.jsonl` is also CRITICAL' .agents/skills/devlyn:resolve/references/phases/verify.md; then
+if ! grep -Fq 'requires `.devlyn/risk-probes.jsonl`' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'requires `.devlyn/risk-probes.jsonl`' .agents/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'missing `.devlyn/risk-probes.jsonl` is a CRITICAL mechanical blocker' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'missing `.devlyn/risk-probes.jsonl` is a CRITICAL mechanical blocker' .agents/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'requires that file when `state.risk_profile.risk_probes_enabled == true`' config/skills/devlyn-resolve/references/phases/build-gate.md \
+  || ! grep -Fq 'requires that file when `state.risk_profile.risk_probes_enabled == true`' .agents/skills/devlyn-resolve/references/phases/build-gate.md \
+  || ! grep -Fq 'Malformed `state.risk_profile` is also CRITICAL because it can hide enabled risk probes' config/skills/devlyn-resolve/references/phases/build-gate.md \
+  || ! grep -Fq 'Malformed `state.risk_profile` is also CRITICAL because it can hide enabled risk probes' .agents/skills/devlyn-resolve/references/phases/build-gate.md \
+  || ! grep -Fq 'When `state.risk_profile.risk_probes_enabled == true`, missing `.devlyn/risk-probes.jsonl` is also CRITICAL' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq 'When `state.risk_profile.risk_probes_enabled == true`, missing `.devlyn/risk-probes.jsonl` is also CRITICAL' .agents/skills/devlyn-resolve/references/phases/verify.md; then
   bad "BUILD_GATE and VERIFY must fail closed when enabled risk probes are missing"
 else
   ok "BUILD_GATE and VERIFY require enabled risk probes"
@@ -785,7 +857,7 @@ if ! grep -Fq 'def resolve_required_risk_probe_requirements' config/skills/_shar
   || ! grep -Fq 'required_risk_probe_requirements with an unknown tag was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'required_risk_probe_requirements.derived_from not present in the' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'required_risk_probe_requirements' config/skills/_shared/expected.schema.json \
-  || ! grep -Fq 'required_risk_probe_requirements' config/skills/devlyn:ideate/references/spec-template.md; then
+  || ! grep -Fq 'required_risk_probe_requirements' config/skills/devlyn-ideate/references/spec-template.md; then
   bad "spec-verify-check.py must enforce declared required_risk_probe_requirements (iter-0049 language-neutral F3 replacement)"
 fi
 if ! grep -Fq 'spec.expected.json top-level array produced a traceback' config/skills/_shared/spec-verify-check.py \
@@ -804,9 +876,9 @@ if ! grep -Fq '"asserts_named_stream_output"' config/skills/_shared/spec-verify-
   || ! grep -Fq '"asserts_nonzero_or_exit_2"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'error_contract without exit-code evidence was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'stdout_stderr_contract without stream evidence was accepted' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq '`stdout_stderr_contract`: `asserts_named_stream_output`' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`error_contract`: `asserts_error_payload_or_stderr`' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`asserts_nonzero_or_exit_2`' config/skills/devlyn:resolve/SKILL.md; then
+  || ! grep -Fq '`stdout_stderr_contract`: `asserts_named_stream_output`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
+  || ! grep -Fq '`error_contract`: `asserts_error_payload_or_stderr`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
+  || ! grep -Fq '`asserts_nonzero_or_exit_2`' config/skills/devlyn-resolve/SKILL.md; then
   bad "risk-probe error/stdout-stderr tags must require concrete tag_evidence markers in validator and prompt contract"
 fi
 if ! grep -Fq '"http_error_contract"' config/skills/_shared/spec-verify-check.py \
@@ -814,8 +886,8 @@ if ! grep -Fq '"http_error_contract"' config/skills/_shared/spec-verify-check.py
   || ! grep -Fq 'http_error_contract without payload evidence was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'exact error body shape_contract without exact object evidence was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'exact error body shape_contract with exact object evidence was rejected' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq '`http_error_contract`: `asserts_http_error_status`' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`http_error_contract` must include `asserts_http_error_status`' config/skills/devlyn:resolve/SKILL.md; then
+  || ! grep -Fq '`http_error_contract`: `asserts_http_error_status`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
+  || ! grep -Fq '`http_error_contract` must include `asserts_http_error_status`' config/skills/devlyn-resolve/SKILL.md; then
   bad "risk-probe HTTP error contracts must require concrete status and payload markers"
 fi
 if ! grep -Fq '"uses_visible_input_key_names"' config/skills/_shared/spec-verify-check.py \
@@ -826,43 +898,43 @@ if ! grep -Fq '"uses_visible_input_key_names"' config/skills/_shared/spec-verify
   || ! grep -Fq 'JSON error object shape_contract with exact object evidence was rejected' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'shape_contract without any evidence was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'shape_contract with exact key evidence was rejected' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq '`shape_contract` when the visible text names exact keys' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq 'visible_text_names_exact_json_error_object' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`shape_contract` must' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'visible_text_names_exact_json_error_object' config/skills/devlyn:resolve/SKILL.md; then
+  || ! grep -Fq '`shape_contract` when the visible text names exact keys' config/skills/devlyn-resolve/references/phases/probe-derive.md \
+  || ! grep -Fq 'visible_text_names_exact_json_error_object' config/skills/devlyn-resolve/references/phases/probe-derive.md \
+  || ! grep -Fq '`shape_contract` must' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'visible_text_names_exact_json_error_object' config/skills/devlyn-resolve/SKILL.md; then
   bad "risk-probe shape contracts must require exact visible input/output key evidence unconditionally, and asserts_exact_error_object when the probe claims the visible text names an exact JSON error object"
 fi
 if ! grep -Fq '"auth_signature_contract"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '"idempotency_replay"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'asserts_signature_over_exact_bytes' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'duplicate_id_rejected_regardless_of_body' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq '`auth_signature_contract`: `asserts_signature_over_exact_bytes`' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`idempotency_replay`: `first_delivery_then_duplicate`' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`auth_signature_contract` must include `asserts_signature_over_exact_bytes`' config/skills/devlyn:resolve/SKILL.md; then
+  || ! grep -Fq '`auth_signature_contract`: `asserts_signature_over_exact_bytes`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
+  || ! grep -Fq '`idempotency_replay`: `first_delivery_then_duplicate`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
+  || ! grep -Fq '`auth_signature_contract` must include `asserts_signature_over_exact_bytes`' config/skills/devlyn-resolve/SKILL.md; then
   bad "risk-probe webhook/signature/replay contracts must require concrete auth_signature_contract and idempotency_replay tags"
 fi
 if ! grep -Fq '"concurrent_state_consistency"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'overlapping_mutations_exercised' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq '`concurrent_state_consistency`: `overlapping_mutations_exercised`' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`concurrent_state_consistency` must' config/skills/devlyn:resolve/SKILL.md; then
+  || ! grep -Fq '`concurrent_state_consistency`: `overlapping_mutations_exercised`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
+  || ! grep -Fq '`concurrent_state_consistency` must' config/skills/devlyn-resolve/SKILL.md; then
   bad "risk-probe concurrent state contracts must require concrete concurrent_state_consistency markers"
 fi
 if ! grep -Fq '"atomic_batch_state"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'mixed_valid_invalid_batch' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'atomic_batch_state without success-order evidence was accepted' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq '`atomic_batch_state`: `mixed_valid_invalid_batch`' config/skills/devlyn:resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`atomic_batch_state` must include `mixed_valid_invalid_batch`' config/skills/devlyn:resolve/SKILL.md; then
+  || ! grep -Fq '`atomic_batch_state`: `mixed_valid_invalid_batch`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
+  || ! grep -Fq '`atomic_batch_state` must include `mixed_valid_invalid_batch`' config/skills/devlyn-resolve/SKILL.md; then
   bad "risk-probe atomic batch contracts must require concrete mixed-failure and success-order markers"
 fi
 
 section "Check 6f: ideate validates sibling spec.expected.json"
 expected_check_missing=0
 for file in \
-  config/skills/devlyn:ideate/SKILL.md \
-  config/skills/devlyn:ideate/references/elicitation.md \
-  config/skills/devlyn:ideate/references/from-spec-mode.md \
-  config/skills/devlyn:ideate/references/project-mode.md \
-  config/skills/devlyn:ideate/references/spec-template.md
+  config/skills/devlyn-ideate/SKILL.md \
+  config/skills/devlyn-ideate/references/elicitation.md \
+  config/skills/devlyn-ideate/references/from-spec-mode.md \
+  config/skills/devlyn-ideate/references/project-mode.md \
+  config/skills/devlyn-ideate/references/spec-template.md
 do
   if ! grep -Fq -- '--check-expected <expected-path>' "$file"; then
     bad "$file — missing spec.expected.json mechanical validation command"
@@ -872,10 +944,10 @@ done
 if [ $expected_check_missing -eq 0 ]; then
   ok "ideate docs require --check-expected for sibling expected contracts"
 fi
-if ! grep -Fq "legacy inline \`## Verification\` JSON carrier" config/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" .agents/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" config/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" .agents/skills/devlyn:ideate/references/from-spec-mode.md; then
+if ! grep -Fq "legacy inline \`## Verification\` JSON carrier" config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" .agents/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" config/skills/devlyn-ideate/references/from-spec-mode.md \
+  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" .agents/skills/devlyn-ideate/references/from-spec-mode.md; then
   bad "ideate docs must keep sibling spec.expected.json precedence over the legacy inline carrier"
 else
   ok "ideate docs keep sibling spec.expected.json precedence over the legacy inline carrier"
@@ -886,81 +958,81 @@ if ! grep -Fq 'def validate_expected_against_sibling_spec' config/skills/_shared
   bad "spec-verify-check.py must reject empty expected runtime contracts and preserve pure-design escape"
 fi
 if ! grep -Fq 'Verification includes at least one compound scenario that exercises the interaction end-to-end' \
-  config/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'Verification includes at least one compound scenario that exercises the interaction end-to-end' .agents/skills/devlyn:ideate/references/spec-template.md; then
+  config/skills/devlyn-ideate/references/spec-template.md \
+  || ! grep -Fq 'Verification includes at least one compound scenario that exercises the interaction end-to-end' .agents/skills/devlyn-ideate/references/spec-template.md; then
   bad "ideate spec template must require compound interaction verification for pair-relevant high-risk specs"
 else
   ok "ideate spec template requires compound interaction verification for pair-relevant specs"
 fi
-if ! grep -Fq 'ask for one concrete compound' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'ask for one concrete compound' .agents/skills/devlyn:ideate/references/elicitation.md; then
+if ! grep -Fq 'ask for one concrete compound' config/skills/devlyn-ideate/references/elicitation.md \
+  || ! grep -Fq 'ask for one concrete compound' .agents/skills/devlyn-ideate/references/elicitation.md; then
   bad "ideate elicitation must ask for compound interaction scenarios when pair-relevant risks appear"
 else
   ok "ideate elicitation asks for compound interaction scenarios when pair-relevant risks appear"
 fi
-if ! grep -Fq 'complexity: medium' config/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'complexity: medium' .agents/skills/devlyn:ideate/references/spec-template.md \
-  || ! grep -Fq 'Complexity signal' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'Complexity signal' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'downstream VERIFY pair-trigger signal' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'downstream VERIFY pair-trigger signal' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'complexity=medium default' config/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'complexity=medium default' .agents/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'supported `complexity` frontmatter' config/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'supported `complexity` frontmatter' .agents/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'supported `complexity` frontmatter' config/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'supported `complexity` frontmatter' .agents/skills/devlyn:ideate/references/elicitation.md \
-  || ! grep -Fq 'supported `complexity` frontmatter' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'supported `complexity` frontmatter' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'sibling spec `complexity` frontmatter' config/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'sibling spec `complexity` frontmatter' .agents/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'sibling spec `complexity` frontmatter' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'sibling spec `complexity` frontmatter' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'Frontmatter has `id`, `title`, `kind`, `status: planned`, `complexity`' config/skills/devlyn:ideate/SKILL.md \
-  || ! grep -Fq 'Frontmatter has `id`, `title`, `kind`, `status: planned`, `complexity`' .agents/skills/devlyn:ideate/SKILL.md; then
+if ! grep -Fq 'complexity: medium' config/skills/devlyn-ideate/references/spec-template.md \
+  || ! grep -Fq 'complexity: medium' .agents/skills/devlyn-ideate/references/spec-template.md \
+  || ! grep -Fq 'Complexity signal' config/skills/devlyn-ideate/references/elicitation.md \
+  || ! grep -Fq 'Complexity signal' .agents/skills/devlyn-ideate/references/elicitation.md \
+  || ! grep -Fq 'downstream VERIFY pair-trigger signal' config/skills/devlyn-ideate/references/elicitation.md \
+  || ! grep -Fq 'downstream VERIFY pair-trigger signal' .agents/skills/devlyn-ideate/references/elicitation.md \
+  || ! grep -Fq 'complexity=medium default' config/skills/devlyn-ideate/references/from-spec-mode.md \
+  || ! grep -Fq 'complexity=medium default' .agents/skills/devlyn-ideate/references/from-spec-mode.md \
+  || ! grep -Fq 'supported `complexity` frontmatter' config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq 'supported `complexity` frontmatter' .agents/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq 'supported `complexity` frontmatter' config/skills/devlyn-ideate/references/elicitation.md \
+  || ! grep -Fq 'supported `complexity` frontmatter' .agents/skills/devlyn-ideate/references/elicitation.md \
+  || ! grep -Fq 'supported `complexity` frontmatter' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'supported `complexity` frontmatter' .agents/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'sibling spec `complexity` frontmatter' config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq 'sibling spec `complexity` frontmatter' .agents/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq 'sibling spec `complexity` frontmatter' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'sibling spec `complexity` frontmatter' .agents/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'Frontmatter has `id`, `title`, `kind`, `status: planned`, `complexity`' config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq 'Frontmatter has `id`, `title`, `kind`, `status: planned`, `complexity`' .agents/skills/devlyn-ideate/SKILL.md; then
   bad "ideate specs must emit complexity frontmatter for resolve pair triggers"
 else
   ok "ideate specs emit complexity frontmatter for resolve pair triggers"
 fi
 if ! grep -Fq 'warning: Verification may need one compound end-to-end scenario before pair-relevant risks are measurable' \
-  config/skills/devlyn:ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'warning: Verification may need one compound end-to-end scenario before pair-relevant risks are measurable' .agents/skills/devlyn:ideate/references/from-spec-mode.md; then
+  config/skills/devlyn-ideate/references/from-spec-mode.md \
+  || ! grep -Fq 'warning: Verification may need one compound end-to-end scenario before pair-relevant risks are measurable' .agents/skills/devlyn-ideate/references/from-spec-mode.md; then
   bad "ideate from-spec mode must warn when preserved high-risk specs lack compound verification"
 else
   ok "ideate from-spec mode warns on pair-relevant specs with weak verification"
 fi
-if ! grep -Fq 'per-feature Verification must' config/skills/devlyn:ideate/references/project-mode.md \
-  || ! grep -Fq 'per-feature Verification must' .agents/skills/devlyn:ideate/references/project-mode.md; then
+if ! grep -Fq 'per-feature Verification must' config/skills/devlyn-ideate/references/project-mode.md \
+  || ! grep -Fq 'per-feature Verification must' .agents/skills/devlyn-ideate/references/project-mode.md; then
   bad "ideate project mode must require compound verification inside each pair-relevant feature spec"
 else
   ok "ideate project mode keeps compound verification inside pair-relevant feature specs"
 fi
 
-if ! grep -Fq 'The `--engine` flag does not disable default pairing' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'The `--engine` flag does not disable default pairing' .agents/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'the second judge uses the OTHER engine by default when available' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'the second judge uses the OTHER engine by default when available' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq '_shared/adapters/<name>.md' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq '`## Invocation`' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq '_shared/adapters/<name>.md` `## Invocation' config/skills/devlyn:resolve/SKILL.md \
+if ! grep -Fq 'The `--engine` flag does not disable default pairing' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq 'The `--engine` flag does not disable default pairing' .agents/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq 'the second judge uses the OTHER engine by default when available' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'the second judge uses the OTHER engine by default when available' .agents/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq '_shared/adapters/<name>.md' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq '`## Invocation`' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq '_shared/adapters/<name>.md` `## Invocation' config/skills/devlyn-resolve/SKILL.md \
   || ! grep -Fq '## Invocation' config/skills/_shared/adapters/claude.md \
   || ! grep -Fq '.devlyn/claude-judge.stdout' config/skills/_shared/adapters/claude.md; then
   bad "engine-neutral pair-judge dual declaration (iter-0060) out of sync"
 else
   ok "engine-neutral pair-judge dual declaration (iter-0060) in sync"
 fi
-if ! grep -Fq '`complexity.high`, `complexity.large`' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq '`complexity.high`, `complexity.large`' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq '`spec.complexity.high`, `spec.complexity.large`' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq '`spec.complexity.high`, `spec.complexity.large`' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'Legacy complexity values remain accepted only for archived compatibility' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Legacy complexity values remain accepted only for archived compatibility' .agents/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq '`complexity.high`, `complexity.large`, `spec.complexity.high`, `spec.complexity.large`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq '`complexity.high`, `complexity.large`, `spec.complexity.high`, `spec.complexity.large`' .agents/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq '`complexity.large`, `spec.complexity.high`, `spec.complexity.large`,' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq '`complexity.large`, `spec.complexity.high`, `spec.complexity.large`,' .agents/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq '`spec.solo_headroom_hypothesis`, `risk.high`, `risk_probes.enabled`,' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq '`spec.solo_headroom_hypothesis`, `risk.high`, `risk_probes.enabled`,' .agents/skills/devlyn:resolve/references/phases/verify.md; then
+if ! grep -Fq '`complexity.high`, `complexity.large`' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq '`complexity.high`, `complexity.large`' .agents/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq '`spec.complexity.high`, `spec.complexity.large`' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq '`spec.complexity.high`, `spec.complexity.large`' .agents/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'Legacy complexity values remain accepted only for archived compatibility' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq 'Legacy complexity values remain accepted only for archived compatibility' .agents/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq '`complexity.high`, `complexity.large`, `spec.complexity.high`, `spec.complexity.large`' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq '`complexity.high`, `complexity.large`, `spec.complexity.high`, `spec.complexity.large`' .agents/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq '`complexity.large`, `spec.complexity.high`, `spec.complexity.large`,' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq '`complexity.large`, `spec.complexity.high`, `spec.complexity.large`,' .agents/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`, `risk.high`, `risk_probes.enabled`,' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`, `risk.high`, `risk_probes.enabled`,' .agents/skills/devlyn-resolve/references/phases/verify.md; then
   bad "resolve VERIFY docs must distinguish current large complexity, legacy high state, and legacy large spec compatibility"
 else
   ok "resolve VERIFY docs distinguish current large complexity, legacy high state, and legacy large spec compatibility"
@@ -999,24 +1071,24 @@ if ! grep -Fq 'def spec_has_solo_headroom_hypothesis' config/skills/_shared/veri
   || ! grep -Fq 'spec_has_solo_headroom_hypothesis(' .agents/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq ') is False' .agents/skills/_shared/verify-merge-findings.py \
   || ! grep -Fq ') is True' .agents/skills/_shared/verify-merge-findings.py \
-  || ! grep -Fq '`spec.solo_headroom_hypothesis`' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq '`spec.solo_headroom_hypothesis`' .agents/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq '`spec.solo_headroom_hypothesis`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq '`spec.solo_headroom_hypothesis`' .agents/skills/devlyn:resolve/references/state-schema.md; then
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`' .agents/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq '`spec.solo_headroom_hypothesis`' .agents/skills/devlyn-resolve/references/state-schema.md; then
   bad "resolve VERIFY pair trigger must include actionable solo-headroom hypothesis specs"
 else
   ok "resolve VERIFY pair trigger includes actionable solo-headroom hypothesis specs"
 fi
-if ! grep -Fq 'state.source.type = "generated"' config/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'state.source.type = "generated"' .agents/skills/devlyn:resolve/SKILL.md \
-  || ! grep -Fq 'state.source.criteria_path = ".devlyn/criteria.generated.md"' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'state.source.criteria_path = ".devlyn/criteria.generated.md"' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'state.source.criteria_sha256' config/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'state.source.criteria_sha256' .agents/skills/devlyn:resolve/references/free-form-mode.md \
-  || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' config/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' .agents/skills/devlyn:resolve/references/phases/verify.md \
-  || ! grep -Fq 'Free-form sets `type: "generated"`' config/skills/devlyn:resolve/references/state-schema.md \
-  || ! grep -Fq 'Free-form sets `type: "generated"`' .agents/skills/devlyn:resolve/references/state-schema.md; then
+if ! grep -Fq 'state.source.type = "generated"' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'state.source.type = "generated"' .agents/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'state.source.criteria_path = ".devlyn/criteria.generated.md"' config/skills/devlyn-resolve/references/free-form-mode.md \
+  || ! grep -Fq 'state.source.criteria_path = ".devlyn/criteria.generated.md"' .agents/skills/devlyn-resolve/references/free-form-mode.md \
+  || ! grep -Fq 'state.source.criteria_sha256' config/skills/devlyn-resolve/references/free-form-mode.md \
+  || ! grep -Fq 'state.source.criteria_sha256' .agents/skills/devlyn-resolve/references/free-form-mode.md \
+  || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' config/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq 'state.source.criteria_sha256` for generated free-form mode' .agents/skills/devlyn-resolve/references/phases/verify.md \
+  || ! grep -Fq 'Free-form sets `type: "generated"`' config/skills/devlyn-resolve/references/state-schema.md \
+  || ! grep -Fq 'Free-form sets `type: "generated"`' .agents/skills/devlyn-resolve/references/state-schema.md; then
   bad "resolve free-form mode must record the generated criteria source"
 else
   ok "resolve free-form mode records the generated criteria source"
@@ -1025,9 +1097,9 @@ fi
 section "Check 6g: resolve consumes sibling spec.expected.json"
 sibling_consume_missing=0
 for file in \
-  config/skills/devlyn:resolve/SKILL.md \
-  config/skills/devlyn:resolve/references/phases/build-gate.md \
-  config/skills/devlyn:resolve/references/phases/verify.md
+  config/skills/devlyn-resolve/SKILL.md \
+  config/skills/devlyn-resolve/references/phases/build-gate.md \
+  config/skills/devlyn-resolve/references/phases/verify.md
 do
   if ! grep -Fq 'sibling `spec.expected.json`' "$file"; then
     bad "$file — missing sibling spec.expected.json consumption contract"
@@ -1059,8 +1131,8 @@ for pattern in \
   'SPEC_VERIFY_FINDINGS_FILE=verify-mechanical.findings.jsonl' \
   'SPEC_VERIFY_FINDING_PREFIX=VERIFY-MECH'
 do
-  if ! grep -Fq "$pattern" config/skills/devlyn:resolve/SKILL.md \
-     || ! grep -Fq "$pattern" config/skills/devlyn:resolve/references/phases/verify.md \
+  if ! grep -Fq "$pattern" config/skills/devlyn-resolve/SKILL.md \
+     || ! grep -Fq "$pattern" config/skills/devlyn-resolve/references/phases/verify.md \
      || ! grep -Fq "$pattern" config/skills/_shared/spec-verify-check.py; then
     bad "VERIFY mechanical output contract missing: $pattern"
     verify_mech_missing=1
@@ -1082,8 +1154,8 @@ fi
 section "Check 6i1: Verification provenance contract is wired"
 verification_provenance_missing=0
 for file in \
-  config/skills/devlyn:resolve/SKILL.md \
-  .agents/skills/devlyn:resolve/SKILL.md
+  config/skills/devlyn-resolve/SKILL.md \
+  .agents/skills/devlyn-resolve/SKILL.md
 do
   if ! grep -Fq 'orchestrator commands with no separate model' "$file" \
     || ! grep -Fq 'execution_kind: "orchestrator_commands"' "$file" \
@@ -1098,8 +1170,8 @@ do
   fi
 done
 for file in \
-  config/skills/devlyn:resolve/references/phases/verify.md \
-  .agents/skills/devlyn:resolve/references/phases/verify.md
+  config/skills/devlyn-resolve/references/phases/verify.md \
+  .agents/skills/devlyn-resolve/references/phases/verify.md
 do
   if ! grep -Fq 'executable verification belongs exclusively to MECHANICAL' "$file" \
     || ! grep -Fq 'native read/search tools or non-mutating shell commands' "$file" \
@@ -1119,10 +1191,10 @@ do
   fi
 done
 for file in \
-  config/skills/devlyn:resolve/SKILL.md \
-  .agents/skills/devlyn:resolve/SKILL.md \
-  config/skills/devlyn:resolve/references/phases/verify.md \
-  .agents/skills/devlyn:resolve/references/phases/verify.md
+  config/skills/devlyn-resolve/SKILL.md \
+  .agents/skills/devlyn-resolve/SKILL.md \
+  config/skills/devlyn-resolve/references/phases/verify.md \
+  .agents/skills/devlyn-resolve/references/phases/verify.md
 do
   if grep -Eiq 'executes? no commands|no code-mutation or command-execution tools|do not receive command-execution tools' "$file"; then
     bad "$file — blanket JUDGE inspection prohibition remains"
@@ -1136,8 +1208,8 @@ fi
 section "Check 6j: VERIFY default pair dispatches concurrently"
 pair_trigger_order_missing=0
 for file in \
-  config/skills/devlyn:resolve/SKILL.md \
-  .agents/skills/devlyn:resolve/SKILL.md
+  config/skills/devlyn-resolve/SKILL.md \
+  .agents/skills/devlyn-resolve/SKILL.md
 do
   if ! grep -Fq 'Verify dual-judge is default-when-available' "$file" \
     || ! grep -Fq 'persist `pair_trigger` before spawn with `pair.default`' "$file" \
@@ -1151,8 +1223,8 @@ do
   fi
 done
 for file in \
-  config/skills/devlyn:resolve/references/phases/verify.md \
-  .agents/skills/devlyn:resolve/references/phases/verify.md
+  config/skills/devlyn-resolve/references/phases/verify.md \
+  .agents/skills/devlyn-resolve/references/phases/verify.md
 do
   if ! grep -Fq 'Pair-mode (default when OTHER engine is available)' "$file" \
     || ! grep -Fq 'with `pair.default` plus every applicable' "$file" \
@@ -1166,8 +1238,8 @@ do
   fi
 done
 for file in \
-  config/skills/devlyn:resolve/references/state-schema.md \
-  .agents/skills/devlyn:resolve/references/state-schema.md
+  config/skills/devlyn-resolve/references/state-schema.md \
+  .agents/skills/devlyn-resolve/references/state-schema.md
 do
   if ! grep -Fq '"version": "3.0"' "$file" \
     || ! grep -Fq 'pair.default` dispatches both judges concurrently' "$file" \
@@ -1186,26 +1258,26 @@ fi
 
 section "Check 6k: PLAN route is orchestrator-fixed"
 plan_route_ok=1
-for plan_route_file in "config/skills/devlyn:resolve/SKILL.md" CLAUDE.md AGENTS.md \
-  "config/skills/devlyn:engines/SKILL.md" ".agents/skills/devlyn:resolve/SKILL.md" \
-  ".agents/skills/devlyn:engines/SKILL.md"; do
+for plan_route_file in "config/skills/devlyn-resolve/SKILL.md" CLAUDE.md AGENTS.md \
+  "config/skills/devlyn-engines/SKILL.md" ".agents/skills/devlyn-resolve/SKILL.md" \
+  ".agents/skills/devlyn-engines/SKILL.md"; do
   [ -f "$plan_route_file" ] || plan_route_ok=0
 done
-sed -n '/^<engine_routing>$/,/^<\/engine_routing>$/p' "config/skills/devlyn:resolve/SKILL.md" \
+sed -n '/^<engine_routing>$/,/^<\/engine_routing>$/p' "config/skills/devlyn-resolve/SKILL.md" \
   | grep -Fq 'PLAN is orchestrator-fixed and never inherits `--engine`, an executor pin, or `state.engine`' || plan_route_ok=0
-sed -n '/^## PHASE 1: PLAN$/,/^## PHASE 1.5/p' "config/skills/devlyn:resolve/SKILL.md" \
+sed -n '/^## PHASE 1: PLAN$/,/^## PHASE 1.5/p' "config/skills/devlyn-resolve/SKILL.md" \
   | grep -Fq 'PLAN is orchestrator-fixed and never inherits `--engine`, an executor pin, or `state.engine`' || plan_route_ok=0
 grep -Fq 'PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin' CLAUDE.md || plan_route_ok=0
 grep -Fq 'PLAN is orchestrator-fixed and never inherits `--engine` or the executor pin' AGENTS.md || plan_route_ok=0
-grep -Fq 'PLAN is orchestrator-fixed and never follows the pin' config/skills/devlyn:engines/SKILL.md || plan_route_ok=0
+grep -Fq 'PLAN is orchestrator-fixed and never follows the pin' config/skills/devlyn-engines/SKILL.md || plan_route_ok=0
 if grep -En '([Ee]xecutor|Default engine: Claude for)[^[:cntrl:]]{0,80}PLAN[[:space:]]*/[[:space:]]*IMPLEMENT([[:space:]]*/[[:space:]]*BUILD_GATE)?[[:space:]]*/[[:space:]]*CLEANUP' \
-    config/skills/devlyn:resolve/SKILL.md \
+    config/skills/devlyn-resolve/SKILL.md \
     CLAUDE.md \
     AGENTS.md \
     README.md \
-    config/skills/devlyn:engines/SKILL.md \
-    .agents/skills/devlyn:resolve/SKILL.md \
-    .agents/skills/devlyn:engines/SKILL.md \
+    config/skills/devlyn-engines/SKILL.md \
+    .agents/skills/devlyn-resolve/SKILL.md \
+    .agents/skills/devlyn-engines/SKILL.md \
     >/dev/null 2>&1; then
   plan_route_ok=0
 fi
@@ -1225,7 +1297,7 @@ else
 fi
 
 section "Check 6e: All-or-nothing probes prove mutable rollback"
-probe_doc="config/skills/devlyn:resolve/references/phases/probe-derive.md"
+probe_doc="config/skills/devlyn-resolve/references/phases/probe-derive.md"
 if grep -Fq "pre-rejected by a whole-order availability shortcut" "$probe_doc" \
    && grep -Fq "must allocate a scarce" "$probe_doc" \
    && grep -Fq "must request the same scarce first-line SKU" "$probe_doc"; then
@@ -1309,10 +1381,10 @@ section "Check 10a0: Codex primary VERIFY budget is bounded and mirrored"
 primary_verify_missing=0
 primary_verify_route='DEVLYN_CODEX_PROMPT_FILE="<primary-prompt-file>" CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s read-only -c model_reasoning_effort=high - >.devlyn/codex-judge.stdout 2>.devlyn/codex-judge.stderr'
 for file in \
-  config/skills/devlyn:resolve/SKILL.md \
-  .agents/skills/devlyn:resolve/SKILL.md \
-  config/skills/devlyn:resolve/references/phases/verify.md \
-  .agents/skills/devlyn:resolve/references/phases/verify.md
+  config/skills/devlyn-resolve/SKILL.md \
+  .agents/skills/devlyn-resolve/SKILL.md \
+  config/skills/devlyn-resolve/references/phases/verify.md \
+  .agents/skills/devlyn-resolve/references/phases/verify.md
 do
   if { ! grep -Fxq "$primary_verify_route" "$file" \
       && ! grep -Fq "\`$primary_verify_route\`" "$file"; } \
@@ -1323,8 +1395,8 @@ do
   fi
 done
 for file in \
-  config/skills/devlyn:resolve/references/phases/verify.md \
-  .agents/skills/devlyn:resolve/references/phases/verify.md
+  config/skills/devlyn-resolve/references/phases/verify.md \
+  .agents/skills/devlyn-resolve/references/phases/verify.md
 do
   for needle in \
     'one broad pass over the' \
@@ -1518,7 +1590,7 @@ section "Check 10b: Shared routing docs avoid retired skill surfaces"
 offenders=$(grep -RInE 'auto-resolve/SKILL\.md|preflight/SKILL\.md|challenge-rubric\.md|ideate CHALLENGE phase|does NOT consume this file|cross-model challenge phases when configured|phase-1-build\.md|phase-2-evaluate\.md|phase-3-critic\.md' \
   config/skills/_shared 2>/dev/null || true)
 if [ -z "$offenders" ]; then
-  ok "shared routing docs reference current devlyn:ideate/devlyn:resolve surface"
+  ok "shared routing docs reference current devlyn-ideate/devlyn-resolve surface"
 else
   while IFS= read -r f; do bad "$f"; done <<< "$offenders"
 fi
@@ -1575,7 +1647,7 @@ for pattern in 'high` or `xhigh` effort' 'report every issue you find' 'do not f
     adapter_missing=1
   fi
 done
-for file in config/skills/devlyn:resolve/SKILL.md config/skills/devlyn:ideate/SKILL.md; do
+for file in config/skills/devlyn-resolve/SKILL.md config/skills/devlyn-ideate/SKILL.md; do
   if ! grep -Fq '_shared/adapters/<engine>.md' "$file"; then
     bad "$file — missing per-engine adapter injection contract"
     adapter_missing=1
@@ -3588,7 +3660,7 @@ fi
 
 # ---------------------------------------------------------------------------
 # 14. F9 fixture id matches the shipped 2-skill contract (iter-0033a, 2026-04-30).
-#     `/devlyn:preflight` was folded into `/devlyn:resolve`'s VERIFY phase; the
+#     `/devlyn:preflight` was folded into `/devlyn-resolve`'s VERIFY phase; the
 #     legacy F9 dir name (`F9-e2e-ideate-to-preflight`) is misleading once
 #     preflight is gone. The retired copy lives under `fixtures/retired/` for
 #     replay; the live fixture must be `F9-e2e-ideate-to-resolve`. Any other
