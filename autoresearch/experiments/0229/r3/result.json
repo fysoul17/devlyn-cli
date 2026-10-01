@@ -1,0 +1,53 @@
+{
+  "verdict": "PASS",
+  "replays": 100,
+  "reference_replays": 28,
+  "twin_replays": 72,
+  "reference_not_clean": [],
+  "twin_not_hit": [],
+  "demotions": [],
+  "reported": {
+    "coverage_only_needs_work_references": [
+      [
+        "H/b1d685df922b/rep-1",
+        "J2",
+        "claude",
+        [
+          "pair_judge:codex"
+        ]
+      ],
+      [
+        "H/8547831edfa9/rep-1",
+        "J2",
+        "codex",
+        [
+          "primary_judge:codex"
+        ]
+      ]
+    ],
+    "seat_hits_per_task": {
+      "J1/claude": "4/4",
+      "J1/codex": "4/4",
+      "J2/claude": "12/12",
+      "J2/codex": "12/12",
+      "J3/claude": "12/12",
+      "J3/codex": "12/12",
+      "J4/claude": "12/12",
+      "J4/codex": "12/12",
+      "P1/claude": "4/4",
+      "P1/codex": "4/4",
+      "P2/claude": "12/12",
+      "P2/codex": "1/12",
+      "P3/claude": "12/12",
+      "P3/codex": "12/12",
+      "P4/claude": "4/4",
+      "P4/codex": "4/4"
+    },
+    "documentation_hit_findings": 15,
+    "documentation_hit_by_task": {
+      "J3": 7,
+      "P3": 8
+    }
+  },
+  "labels": "root (Claude-drafted per task, root-reviewed) and Astra blind audit agree on every rank-2 label; 7 rank-1 twin labels differed (no gate effect; Astra adopted); 0 demotions by either"
+}

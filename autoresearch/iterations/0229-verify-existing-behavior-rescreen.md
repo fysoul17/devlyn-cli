@@ -127,3 +127,27 @@ As 0228, whose corpus was never run.
   - R3, 100 replays: the other 60 rounds once, then the 20 J2/J3/J4/P2/P3 twin rounds twice.
   - Infra reruns as C1.
 - **Nothing of 0229 has run.** R1 starts only after the owner approves.
+
+## Gate results (2026-10-01/02): R1, R2 and R3 pass
+
+- **Owner approval:** relayed by the devlyn-os-v1 session, received 2026-10-01 23:44 KST ("지금 시작"). The judge token account was onedatatech.dev throughout; no swap, no usage-limit event.
+- **R1 PASS** (Astra SHIP, `.devlyn/0229/r1-r0-astra.out.md`; record in [`r2/decisions.md`](../experiments/0229/r2/decisions.md)):
+  - H staged from `3afbb18e`; its product differs from 0227's only in `verify.md` (55 files);
+  - stub 64/64 as the judge, with H's `verify.md` as every seat's rubric frame;
+  - probe `probe/05f4b0744c2a/rep-2` passed: the judge opened none of 1,317 hidden paths, and both seats were denied the live transcript, the J4 hidden mechanism and devlyn-cli `.git/HEAD` in their own records;
+  - owner compare: changed 0.
+- **R2 PASS** ([`r2/`](../experiments/0229/r2/), Astra SHIP `.devlyn/0229/r2-r0-astra.out.md`):
+  - 56 replays, 0 infra faults. All 40 H replays are clean references, with no rank-2 finding at all: the Codex primary passed all 30 codex-orientation replays, and the Claude primary returned PASS_WITH_ISSUES on all 10 claude-orientation replays, from rank-1 coverage notes.
+  - F carries the diagnosed J4 block in 5 of 16 replays, all from the Codex primary. Root and Astra's blind audit agree on all five labels, with no doubt.
+  - Within the session, 0 of 30 H replays versus 5 of 16 F replays on the same codex-orientation rounds (one-sided Fisher p ≈ 0.003). This is consistent with H removing the block, but the gates still cannot show causation (registration limit).
+- **R3 PASS** ([`r3/`](../experiments/0229/r3/), Astra review `.devlyn/0229/r3-r0-astra.out.md`):
+  - 100 replays, 0 infra faults, 0 excluded reads.
+  - All 72 twin replays are twin hits under the strict join: a merge-accepted rank-2 finding that both labelers call a behavioral target match without doubt.
+  - All 28 references are clean. Two J2 references ended NEEDS_WORK on Codex coverage findings only, the same missing `allowStale: false`-over-true regression 0227 reported. The predicate counts them clean, and they are reported.
+  - **No demotion.** Every seat holding a lower-rank twin finding also held a rank-2 target finding, and neither labeler marks any demotion.
+  - Labels: root's drafts (Claude subagents per task, masked inputs only), reviewed by root on every gate-relevant item, and Astra's blind audit agree on every rank-2 label. They differ on 7 rank-1 labels, none gate-relevant; root adopts Astra's.
+  - Reported per seat: hits per task are 100% for both engines, except P2 Codex at 1 of 12. Codex's P2 findings name the stale-type cause through collection-to-scalar or scalar-to-collection triggers rather than the recorded attrs-instance trigger, so by 0227's strict precedent they are not matches. Claude hit P2 12 of 12.
+  - Reported documentation hit findings: 15 (J3 7, P3 8).
+- **Isolation over the whole run:** the owner's baseline compare showed changed 0 after R1, R2 and R3; the same five baseline paths are gone, none removed by the experiment. The judge token appears in 0 of 228,988 files under the 0228 root, and no Codex login copy is left.
+- **Against the predictions:** root gave R2 0.5 and R3 0.7, gates ≈ 0.3; Astra gave R2 0.45 and R3 0.65, gates ≈ 0.26. All three gates passed.
+- **Next (work order step 5):** a fresh corpus, the screen driver change D2 (judge account), then the 64-round screen under 22616b57 + F + G + H.

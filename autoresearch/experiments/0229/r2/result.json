@@ -1,0 +1,14 @@
+{
+  "verdict": "PASS",
+  "h_replays": 40,
+  "h_not_clean_or_blocked": [],
+  "f_replays": 16,
+  "f_blocked": [
+    "F/1801a5478ae8/rep-13",
+    "F/1801a5478ae8/rep-16",
+    "F/1801a5478ae8/rep-17",
+    "F/6f89d26e0ccb/rep-11",
+    "F/6f89d26e0ccb/rep-14"
+  ],
+  "labels": "root and Astra agree: 5/5 behavioral, diagnosed J4 block, no doubt"
+}
