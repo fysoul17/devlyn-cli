@@ -7,8 +7,15 @@ authorized by the task scope; no additional approval ceremony is required.
 
 ## Allocate before work
 
-Use the installed `_shared/task-complete.py` from the anchor checkout,
-before committing owner inputs or starting direct/full work:
+Use the caller's DEVLYN_SHARED_DIR. When this reference is opened
+directly, derive that binding from ../../_shared relative to this
+reference's reader-supplied containing directory, resolving directory
+symlinks first. Missing source identity is
+BLOCKED:skill-source-unresolved; a missing task-complete.py is
+BLOCKED:shared-dir-unresolved. Never select another installation.
+
+Run the bound task-complete.py before committing owner inputs or
+starting direct/full work:
 
 ```sh
 python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \

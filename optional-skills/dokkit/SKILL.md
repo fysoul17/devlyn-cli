@@ -13,14 +13,41 @@ description: >
 user-invocable: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent
 argument-hint: "<template_path> <sources_folder> | improve [instruction]"
-context:
-  - type: file
-    path: ${CLAUDE_SKILL_DIR}/PIPELINE.md
 ---
 
 # Dokkit — One-Command Document Filling
 
 Source folder + template → finished document. Fully automatic, iterates until perfect.
+
+Resolve bundled resources from the SKILL.md loaded for this invocation.
+
+Reader-rendered directory hint:
+```text
+${CLAUDE_SKILL_DIR}
+```
+
+Treat the hint as literal path data, never shell code. If the reader
+replaced it with an absolute directory, use that directory. Otherwise
+use the filesystem path or base directory reported for this loaded
+SKILL.md. Resolve virtual URIs through the reader's native filesystem
+mapping. If available source locations disagree, stop.
+
+Bind DEVLYN_SKILL_DIR to that absolute directory. Do not obtain this
+binding from an environment variable, cwd, or another installation.
+Verify its SKILL.md before proceeding. Missing or conflicting source
+identity is BLOCKED:skill-source-unresolved; include the failed path
+when known.
+
+Resolve bundled references against this directory. These bindings are
+workflow values: establish them explicitly using each tool or shell's
+literal-path rules, and include their absolute values in every fresh
+worker's prompt. Do not rely on shell state surviving between calls.
+
+Read PIPELINE.md from this bound directory before executing the
+workflow. Bundled Markdown, references, and scripts use this same
+directory. Project data under .dokkit remains project-relative.
+Pass the absolute binding and required resource paths explicitly
+to every worker.
 
 ## Usage
 
@@ -113,7 +140,7 @@ These rules prevent the font corruption issues seen in previous versions:
 
 **Never write inline Gemini API calls for image generation.** Always use the provided script:
 ```bash
-python ${CLAUDE_SKILL_DIR}/scripts/source_images.py generate \
+python "$DEVLYN_SKILL_DIR/scripts/source_images.py" generate \
   --prompt "<prompt>" --preset <preset> --output-dir .dokkit/images/ \
   --project-dir . --lang ko
 ```
@@ -173,7 +200,7 @@ display_h = int(actual_h * scale)
 
 | File | Purpose | Used By |
 |------|---------|---------|
-| `PIPELINE.md` | Detailed pipeline steps (auto-loaded) | Orchestrator |
+| `PIPELINE.md` | Detailed pipeline steps (read before execution) | Orchestrator |
 | `STATE.md` | State schema and management | All agents |
 | `INGESTION.md` | Source file parsing | Ingestor |
 | `ANALYSIS.md` | Field detection, structure mapping | Analyzer |

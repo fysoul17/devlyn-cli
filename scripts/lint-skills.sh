@@ -1553,6 +1553,19 @@ else
   while IFS= read -r f; do bad "$f"; done <<< "$shared_path_offenders"
 fi
 
+section "Check 10a1b: Skill paths come from the loaded SKILL.md, not a substitution"
+# Only Claude Code and Grok render ${CLAUDE_SKILL_DIR}; any other use breaks the other readers.
+# The inert hint line and generate-skill's substitution table are the allowed occurrences.
+skill_dir_offenders=$(grep -RInE 'CLAUDE_SKILL_DIR|__DEVLYN_SKILL_DIR__' config/skills optional-skills bin 2>/dev/null \
+  | grep -vE '^[^:]+:[0-9]+:\$\{CLAUDE_SKILL_DIR\}$' \
+  | grep -vE '^optional-skills/generate-skill/REFERENCE\.md:[0-9]+:\| `\$\{CLAUDE_SKILL_DIR\}` \|' \
+  || true)
+if [ -z "$skill_dir_offenders" ]; then
+  ok "skill resources resolve from the loaded SKILL.md on every reader"
+else
+  while IFS= read -r f; do bad "$f"; done <<< "$skill_dir_offenders"
+fi
+
 section "Check 10a2: Bounded non-interactive calls discard inherited input"
 if python3 - <<'PY'
 import json, subprocess, sys

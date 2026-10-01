@@ -313,22 +313,34 @@ installClaudeCore();
                 self.assertEqual(installed, expected)
                 self.assertEqual((project / 'AGENTS.md').is_file(), bool(expected))
 
-    def test_pack_install_reinstall_optional_stamps(self):
-        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']); installLocalSkill('devlyn-reap');")
+    def test_pack_install_reinstall_optional_is_byte_identical(self):
+        install = "installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']); installLocalSkill('devlyn-reap');"
         name, optional = 'devlyn-resolve', 'devlyn-reap'
+        core = self.package / 'config/skills'
+        sources = {skill.name: core for skill in core.iterdir() if skill.is_dir()}
+        sources[optional] = self.package / 'optional-skills'
+
+        def assert_package_bytes():
+            # Installed skills are the package bytes: no install location is written into them,
+            # so a committed or copied skill tree works wherever it is checked out.
+            for root in self.roots():
+                for skill, source in sources.items():
+                    for file in (source / skill).rglob('*'):
+                        if file.is_file() and '__pycache__' not in file.parts:
+                            installed = root / skill / file.relative_to(source / skill)
+                            self.assertEqual(installed.read_bytes(), file.read_bytes(), installed)
+
+        self.invoke(install)
+        assert_package_bytes()
         for root in self.roots():
             self.assertTrue((root / '.devlyn-install.json').is_file())
-            text = (root / name / 'SKILL.md').read_text(encoding='utf-8')
-            self.assertIn('name: devlyn-resolve', text)
-            self.assertNotIn('${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}', text)
-            self.assertIn('__DEVLYN_SKILL_DIR__', text)  # Sentinel guard remains literal.
-            self.assertTrue((root / optional / 'SKILL.md').is_file())
             (root / name / 'stale').write_bytes(b'old')
             (root / optional / 'stale').write_bytes(b'old')
             (root / 'user-skill').mkdir(); (root / 'user-skill/keep').write_bytes(b'user')
             old = 'devlyn\uf03aauto-resolve' if os.name == 'nt' else 'devlyn:auto-resolve'
             (root / old).mkdir()
-        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']); installLocalSkill('devlyn-reap');")
+        self.invoke(install)
+        assert_package_bytes()
         for root in self.roots():
             self.assertFalse((root / name / 'stale').exists())
             self.assertFalse((root / optional / 'stale').exists())

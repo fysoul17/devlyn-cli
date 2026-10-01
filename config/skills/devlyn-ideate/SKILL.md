@@ -28,22 +28,37 @@ Read `_shared/runtime-principles.md` (Subtractive-first / Goal-locked / Evidence
 </harness_principles>
 
 <runtime_paths>
-Resolve shared scripts from this skill's installed directory, never from the project cwd:
+Resolve bundled resources from the SKILL.md loaded for this invocation.
 
-```bash
-DEVLYN_SKILL_DIR="${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}"
-if [ "$DEVLYN_SKILL_DIR" = "__DEVLYN_SKILL_DIR__" ] || [ ! -d "$DEVLYN_SKILL_DIR/../_shared" ]; then
-  echo "BLOCKED:shared-dir-unresolved: $DEVLYN_SKILL_DIR/../_shared" >&2
-  exit 1
-fi
-DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
-if [ ! -f "$DEVLYN_SHARED_DIR/spec-verify-check.py" ]; then
-  echo "BLOCKED:shared-dir-unresolved: $DEVLYN_SHARED_DIR/spec-verify-check.py" >&2
-  exit 1
-fi
+Reader-rendered directory hint:
+```text
+${CLAUDE_SKILL_DIR}
 ```
 
-Use `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py"` for all spec validation commands. Claude Code supplies `CLAUDE_SKILL_DIR` by native render substitution; Codex/oh-my-pi installs receive an absolute copy-time stamp in the default branch. If the resolved skill directory is still the placeholder or `../_shared` is absent, stop with `BLOCKED:shared-dir-unresolved`.
+Treat the hint as literal path data, never shell code. If the reader
+replaced it with an absolute directory, use that directory. Otherwise
+use the filesystem path or base directory reported for this loaded
+SKILL.md. Resolve virtual URIs through the reader's native filesystem
+mapping. If available source locations disagree, stop.
+
+Bind DEVLYN_SKILL_DIR to that absolute directory. Do not obtain this
+binding from an environment variable, cwd, or another installation.
+Verify its SKILL.md before proceeding. Missing or conflicting source
+identity is BLOCKED:skill-source-unresolved; include the failed path
+when known.
+
+Resolve bundled references against this directory. These bindings are
+workflow values: establish them explicitly using each tool or shell's
+literal-path rules, and include their absolute values in every fresh
+worker's prompt. Do not rely on shell state surviving between calls.
+
+Resolve directory symlinks on DEVLYN_SKILL_DIR before deriving its
+sibling _shared. Bind that directory as DEVLYN_SHARED_DIR. References
+written as _shared/... use this binding. Verify the directory and each
+required resource before use; failure is BLOCKED:shared-dir-unresolved
+with the failed path. Never search another installation.
+
+Verify DEVLYN_SHARED_DIR/spec-verify-check.py before validation. Use `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py"` for spec validation commands after binding the path in that shell. In omp, use `printf '%s\n' skill://devlyn-ideate`.
 </runtime_paths>
 
 <engine_routing>

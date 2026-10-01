@@ -41,8 +41,8 @@ def compile_hwpx(work_dir: str, output_path: str):
 
 ### Scripts
 ```bash
-python .claude/skills/dokkit/scripts/compile_hwpx.py <work_dir> <output.hwpx>
-python .claude/skills/dokkit/scripts/export_pdf.py <input> <output.pdf>
+python "$DEVLYN_SKILL_DIR/scripts/compile_hwpx.py" <work_dir> <output.hwpx>
+python "$DEVLYN_SKILL_DIR/scripts/export_pdf.py" <input> <output.pdf>
 ```
 
 ## PDF Conversion
@@ -54,7 +54,7 @@ soffice --headless --convert-to pdf --outdir <output_dir> <input_file>
 
 ### Using Python Script
 ```bash
-python .claude/skills/dokkit/scripts/export_pdf.py <input> <output.pdf>
+python "$DEVLYN_SKILL_DIR/scripts/export_pdf.py" <input> <output.pdf>
 ```
 
 ## Cross-Format Conversion

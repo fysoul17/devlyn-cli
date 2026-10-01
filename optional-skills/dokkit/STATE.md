@@ -33,7 +33,7 @@ After any mutation:
 1. Read current state.json (avoid overwriting concurrent changes)
 2. Update only the relevant fields
 3. Write the full state back
-4. Validate: `python .claude/skills/dokkit/scripts/validate_state.py .dokkit/state.json`
+4. Validate: `python "$DEVLYN_SKILL_DIR/scripts/validate_state.py" .dokkit/state.json`
 
 ## State Transitions
 

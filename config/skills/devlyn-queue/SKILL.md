@@ -9,19 +9,39 @@ Utility front-end for the intent-queue contract in the project instructions ("In
 $ARGUMENTS
 </args>
 
-For `add` and `drain`, resolve the installed skill directory first (`drain` also needs the shared scripts):
+Before `add` or `drain`, establish the bindings below.
 
-```bash
-DEVLYN_SKILL_DIR="${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}"
-if [ "$DEVLYN_SKILL_DIR" = "__DEVLYN_SKILL_DIR__" ] || [ ! -d "$DEVLYN_SKILL_DIR/../_shared" ]; then
-  echo "BLOCKED:shared-dir-unresolved: $DEVLYN_SKILL_DIR/../_shared" >&2
-  exit 1
-fi
-DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
+Resolve bundled resources from the SKILL.md loaded for this invocation.
+
+Reader-rendered directory hint:
+```text
+${CLAUDE_SKILL_DIR}
 ```
 
-Before processing the first item, read and obey
-`../devlyn-resolve/references/outer-loop.md`. Its scoped-commit order is binding.
+Treat the hint as literal path data, never shell code. If the reader
+replaced it with an absolute directory, use that directory. Otherwise
+use the filesystem path or base directory reported for this loaded
+SKILL.md. Resolve virtual URIs through the reader's native filesystem
+mapping. If available source locations disagree, stop.
+
+Bind DEVLYN_SKILL_DIR to that absolute directory. Do not obtain this
+binding from an environment variable, cwd, or another installation.
+Verify its SKILL.md before proceeding. Missing or conflicting source
+identity is BLOCKED:skill-source-unresolved; include the failed path
+when known.
+
+Resolve bundled references against this directory. These bindings are
+workflow values: establish them explicitly using each tool or shell's
+literal-path rules, and include their absolute values in every fresh
+worker's prompt. Do not rely on shell state surviving between calls.
+
+Resolve directory symlinks on DEVLYN_SKILL_DIR before deriving its
+sibling _shared. Bind that directory as DEVLYN_SHARED_DIR. References
+written as _shared/... use this binding. Verify the directory and each
+required resource before use; failure is BLOCKED:shared-dir-unresolved
+with the failed path. Never search another installation.
+
+For `add`, verify DEVLYN_SKILL_DIR/scripts/append.py before invoking it. For `drain`, before processing the first item, read and obey ../devlyn-resolve/references/outer-loop.md (its scoped-commit order is binding) and read ../devlyn-resolve/references/task-completion.md, both relative to this bound skill directory. Load the sibling devlyn-resolve/SKILL.md by its absolute path and preserve this bundle's DEVLYN_SHARED_DIR when handing off; do not rediscover resolve by its bare command name. In omp, use `printf '%s\n' skill://devlyn-queue`.
 
 Queue state is base's `docs/specs/queue.md` plus owned receipts: for each `$(git rev-parse --git-common-dir)/devlyn-completion/*/receipt.json`, read `git show <ref>:docs/specs/queue.md` from its `recovery_ref` if that ref exists (it is never deleted), else its `branch` if it still exists; an item unmarked on base but `[x]`/`[F]` there counts as that mark. Two different terminal marks for one item stop for inspection. Status and drain selection both use this view.
 
@@ -31,7 +51,7 @@ Read the queue state above (absent `docs/specs/queue.md` → report "queue empty
 
 ## Subcommands
 
-- `add <intent text>` — use the Write tool to place the exact full intent in a new file `.devlyn/queue-intent-<unique>.txt` (a name no other add uses, made of letters, digits, `.`, `_` and `-`, e.g. `queue-intent-20261001-1230-k3x9.txt`); do not create it with shell syntax. If the conversation already produced a spec, the file must start with `(spec: docs/specs/<id>/spec.md)`. Then, from the project root, run exactly once `python3 "$DEVLYN_SKILL_DIR/scripts/append.py" .devlyn/queue-intent-<unique>.txt` (resolve `DEVLYN_SKILL_DIR` as for `drain`). The helper consumes that file, appends one `- [ ] <intent>` line at the physical end of `docs/specs/queue.md` under a lock (creating it with its header if missing), and is the sole queue writer. Never edit `docs/specs/queue.md` directly for `add` and never use a direct-edit fallback; a nonzero helper exit is shown to the user and stops the `add`.
+- `add <intent text>` — use the Write tool to place the exact full intent in a new file `.devlyn/queue-intent-<unique>.txt` (a name no other add uses, made of letters, digits, `.`, `_` and `-`, e.g. `queue-intent-20261001-1230-k3x9.txt`); do not create it with shell syntax. If the conversation already produced a spec, the file must start with `(spec: docs/specs/<id>/spec.md)`. Then, from the project root, run exactly once `python3 "$DEVLYN_SKILL_DIR/scripts/append.py" .devlyn/queue-intent-<unique>.txt`. The helper consumes that file, appends one `- [ ] <intent>` line at the physical end of `docs/specs/queue.md` under a lock (creating it with its header if missing), and is the sole queue writer. Never edit `docs/specs/queue.md` directly for `add` and never use a direct-edit fallback; a nonzero helper exit is shown to the user and stops the `add`.
 - `drain` — serial drain per the project-instructions contract. For each pending item, in order:
   1. Allocate the owner's absent task branch with `--worktree <absent path>` per `../devlyn-resolve/references/task-completion.md`, and work in that worktree; then spec it if unspecced (the queue entry is the user's go-ahead). Unattended assumptions may only take scope-narrowing, reversible, non-user-visible defaults; material ambiguity (user-visible behavior, data/state semantics, new files/scripts/flags, implementation surface) → mark `[F] needs-review: <question>`, commit that queue transition, and continue.
   2. Bring only the current queue-item delta and linked spec bundle from the queue view into the task worktree, which starts from the fetched remote base with no other local commits, commit that scoped owner baseline, then run `/devlyn-resolve --spec <path>` hands-free.

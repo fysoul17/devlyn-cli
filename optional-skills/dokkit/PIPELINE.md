@@ -1,7 +1,8 @@
 # Dokkit Pipeline Reference
 
 Detailed step-by-step procedure for the one-command document filling pipeline.
-Auto-loaded when `/dokkit` is invoked.
+Read by the invoking skill before execution; bundled paths use the
+DEVLYN_SKILL_DIR binding it passes.
 
 ## Table of Contents
 
@@ -119,7 +120,7 @@ Report: `Phase 3/6: Generated content for N fields`
 Run the python-docx assembly script (NOT raw XML surgery):
 
 ```bash
-python .claude/skills/dokkit/scripts/fill_docx.py \
+python "$DEVLYN_SKILL_DIR/scripts/fill_docx.py" \
   <template.docx> \
   .dokkit/analysis.json \
   .dokkit/fill_content.json \
@@ -150,7 +151,7 @@ For each image field and image opportunity in `analysis.json`, run in parallel.
 **CRITICAL: Always pass `--field-id` and `--purpose`** so the image manifest tracks which image was generated for which slot. Without this, images get randomly assigned to the wrong slots.
 
 ```bash
-python .claude/skills/dokkit/scripts/source_images.py generate \
+python "$DEVLYN_SKILL_DIR/scripts/source_images.py" generate \
   --prompt "<prompt>" \
   --preset <preset> \
   --output-dir .dokkit/images/ \
@@ -345,4 +346,4 @@ Phase 5 → quality_gates results, iterations_count
 Phase 6 → exports[] entry added
 ```
 
-Validate after every write: `python ${CLAUDE_SKILL_DIR}/scripts/validate_state.py .dokkit/state.json`
+Validate after every write: `python "$DEVLYN_SKILL_DIR/scripts/validate_state.py" .dokkit/state.json`
