@@ -19,6 +19,7 @@ through a helper that refuses, before acting, any target outside them. `stage` c
   classify <attempt>...         (research checkout) 0227's frozen infra classifier, per attempt
   scan <label> <attempt>...     (research checkout) read scan of each attempt's seat tool inputs
 """
+import ctypes
 import hashlib
 import io
 import json
@@ -515,33 +516,72 @@ def handle_signals():
         signal.signal(sig, record_signal)
 
 
+# macOS per-user agents launchd starts for any account that uses notifications or preferences (seen 2026-10-01):
+# command line -> the executable the kernel must report for it (on the read-only system volume).
+OS_AGENTS = {'/usr/sbin/distnoted agent': '/usr/sbin/distnoted', '/usr/sbin/cfprefsd agent': '/usr/sbin/cfprefsd'}
+
+
+def executable(pid):
+    """The kernel's executable path for a pid (proc_pidpath); unlike argv it cannot be set by the process."""
+    buffer = ctypes.create_string_buffer(4096)
+    length = ctypes.CDLL('/usr/lib/libproc.dylib', use_errno=True).proc_pidpath(int(pid), buffer, 4096)
+    return buffer.value.decode() if length > 0 else None
+
+
+def judge_rows(os_agents=False):
+    """Live processes of the judge uid (real or effective), as ps rows. A zombie has already exited (it runs nothing and
+    holds no files) and is left for its parent to reap. A macOS per-user agent that launchd itself starts for the
+    account is not a judge process: launchd restarts it after any signal. One counts as such only when its parent is
+    launchd, its command line is exactly one in OS_AGENTS and the kernel reports that agent's system executable; it is
+    reported and never signalled (Addendum C2). Anything else counts."""
+    proc = subprocess.run(['/bin/ps', '-axo', 'pid=,ppid=,ruid=,uid=,stat=,etime=,command='], capture_output=True,
+                          text=True)
+    require(proc.returncode == 0 and proc.stdout.strip(), f'ps failed: rc={proc.returncode} {proc.stderr[-200:]}')
+    judges, agents = [], []
+    for line in proc.stdout.splitlines():
+        fields = line.split(None, 6)  # pid ppid ruid uid stat etime [command]; the command may be empty or blank
+        require(len(fields) >= 6, f'unparsed ps row: {line!r}')
+        if str(JUDGE_UID) not in fields[2:4] or 'Z' in fields[4]:
+            continue
+        command = fields[6].strip() if len(fields) > 6 else ''
+        agent = fields[1] == '1' and command in OS_AGENTS and executable(fields[0]) == OS_AGENTS[command]
+        (agents if agent else judges).append(line.strip())
+    return agents if os_agents else judges
+
+
 def judge_pids():
-    proc = subprocess.run(['/usr/bin/pgrep', '-U', str(JUDGE_UID)], capture_output=True, text=True)
-    require(proc.returncode in (0, 1), f'pgrep failed: rc={proc.returncode} {proc.stderr[-200:]}')
-    return proc.stdout.split()
+    return [row.split()[0] for row in judge_rows()]
 
 
 def judge_signal(name):
-    """Signal every process of the judge uid, as the judge (pkill never matches itself); never any other uid. pkill's
-    exit 1 means none matched; sudo also exits 1 on its own errors, which print to stderr."""
-    proc = subprocess.run([SUDO, '-n', '-u', JUDGE, '/usr/bin/pkill', f'-{name}', '-U', str(JUDGE_UID)],
-                          capture_output=True, text=True)
-    require(proc.returncode == 0 or (proc.returncode == 1 and not proc.stderr.strip()),
-            f'pkill as the judge failed: rc={proc.returncode} {proc.stderr[-200:]}')
+    """Signal every judge process (not the OS agents), as the judge, by pid; never any other uid. kill exits non-zero
+    when a pid has already gone, so the outcome is judged by judge_rows() afterwards."""
+    pids = judge_pids()
+    if not pids:
+        return
+    proc = subprocess.run([SUDO, '-n', '-u', JUDGE, '/bin/kill', f'-{name}', *pids], capture_output=True, text=True)
+    errors = [line for line in proc.stderr.splitlines() if line.strip()]
+    gone = all(re.fullmatch(r'kill: \d+: No such process', line.strip()) for line in errors)
+    require(proc.returncode == 0 or (errors and gone),
+            f'kill as the judge failed: rc={proc.returncode} {proc.stderr[-200:]}')
 
 
 def judge_quiesce():
-    """No judge process may remain: TERM, a grace period, KILL, then pgrep must be empty."""
+    """No judge process may remain: TERM, a grace period, KILL, a longer grace (a process may need time to leave the
+    kernel), then none may be alive; the failure names each survivor."""
+    agents = judge_rows(os_agents=True)
+    if agents:
+        print(json.dumps({'os_agents_not_signalled': agents}), file=sys.stderr, flush=True)
     if not judge_pids():
         return
-    for name, grace in (('TERM', 30), ('KILL', 10)):
+    for name, grace in (('TERM', 30), ('KILL', 60)):
         judge_signal(name)
         deadline = time.time() + grace
         while judge_pids() and time.time() < deadline:
             time.sleep(0.5)
         if not judge_pids():
             return
-    fail(f'judge processes survive SIGKILL: {judge_pids()}')
+    fail(f'judge processes survive SIGKILL: {judge_rows()}')
 
 
 def run(argv, cwd, env, out, err, timeout, stdin_path=None):
@@ -874,7 +914,7 @@ def probe(label, transcript):
     envelope = load(io_dir / 'claude.stdout') if (io_dir / 'claude.stdout').read_text().strip().startswith('{') else {}
     result['claude_control_read'] = marker in str(envelope.get('result', ''))
     result['codex_control_read'] = bool(complete)
-    result.update(claude_session=bool(claude_sessions(base)), codex_session=bool(calls), judge_processes=judge_pids())
+    result.update(claude_session=bool(claude_sessions(base)), codex_session=bool(calls), judge_processes=judge_rows())
     checks = [not PENDING, result['opened'] == [], result['control_opened'], result['claude_rc'] == 0,
               result['codex_rc'] == 0, result['claude_control_read'], result['codex_control_read'],
               result['claude_session'], result['codex_session'], not result['judge_processes']]

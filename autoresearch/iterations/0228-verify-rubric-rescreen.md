@@ -270,3 +270,19 @@ exit=0
 
   Afterwards the owner compares the mode, owner and ACL of every non-owned path against `~/.config/devlyn-vr/baseline-modes.json`. The probe passes only if none changed.
 - **npm logs:** the read-only judge check over inventory `r2` found that the judge could open two of 578 paths. Both were world-readable npm debug logs in `/private/tmp/.npm/_logs`, from the 2026-09-29 toolchain installs, naming only `SRC/toolchains` paths. The runner fails closed on them and never changes owner paths. The owner deleted them (2026-10-01).
+- **R1 under the judge account (2026-10-01).** Runner as merged in PR #146, staged.
+  - **Stub:** 64/64 pass as `_devlynjudge`.
+  - **Probe** (`probe/05f4b0744c2a/rep-1`): pass.
+    - The judge opened none of the 903 hidden paths.
+    - The control file was readable.
+    - Claude and Codex were each denied, with EACCES in their own records, on the live transcript, the J4 hidden mechanism and `devlyn-cli/.git/HEAD`.
+    - No judge process remained afterwards.
+  - **Owner's baseline compare** (`mode-baseline.py compare`, both sessions): 643 paths compared, changed 0. Four were gone, removed by the owner or other sessions: two npm logs and two worktrees' `.git`.
+- **First R2 batch stopped after its first replay.** The replay itself completed: both seats exited 0, and `G/f6634cfb3793/rep-2` is kept but not scored.
+  - **Cause:** after the run, the quiesce found a uid-450 process that outlived KILL. It was `/usr/sbin/distnoted agent`, a macOS per-user agent that launchd starts for any account using notifications and restarts after any signal. "`pgrep -U 450` is empty" therefore cannot hold.
+  - **Fix:**
+    - Process control exempts a uid-450 process only when all three hold: launchd is its parent, its command line is exactly `/usr/sbin/distnoted agent` or `/usr/sbin/cfprefsd agent`, and the kernel (`proc_pidpath`) reports that agent's executable on the read-only system volume. An exempted process is logged and never signalled; any other uid-450 process still counts. A test orphan whose argv was forged to look like the agent was counted and killed.
+    - Judge processes are signalled by pid with `kill`, run as the judge, so no other uid can be signalled. The only tolerated `kill` error is "No such process" on every line.
+    - KILL gets a 60 s grace.
+    - Zombies count as ended.
+  - **Restart:** R2 restarts from its first item.
