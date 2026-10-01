@@ -30,13 +30,19 @@ The setup produces a dual-auth system: session cookies for browser users and API
 
 Read these when each step directs you to them:
 
-- `${CLAUDE_SKILL_DIR}/references/schema.md` — Complete Drizzle schema (auth, org, API key tables)
-- `${CLAUDE_SKILL_DIR}/references/middleware.md` — Auth middleware, tenant context, types, error handler
-- `${CLAUDE_SKILL_DIR}/references/api-keys.md` — Key generation, CRUD routes, security patterns
-- `${CLAUDE_SKILL_DIR}/references/config-and-entry.md` — Env config, error types, entry point wiring
-- `${CLAUDE_SKILL_DIR}/references/testing.md` — Test preload, seed factory, integration patterns
-- `${CLAUDE_SKILL_DIR}/references/proxy-setup.md` — Reverse proxy architecture, forwarding headers, OAuth callback routing
-- `${CLAUDE_SKILL_DIR}/references/proxy-gotchas.md` — Proxy-specific troubleshooting (redirect_uri_mismatch, state_mismatch, cookie prefix issues)
+Resolve the bundled references/... paths below against the directory
+containing the SKILL.md loaded for this invocation, using its opened
+path, reader-reported base directory, or native URI mapping. Never
+resolve them against cwd or another installation. Missing source
+identity is BLOCKED:skill-source-unresolved.
+
+- `references/schema.md` — Complete Drizzle schema (auth, org, API key tables)
+- `references/middleware.md` — Auth middleware, tenant context, types, error handler
+- `references/api-keys.md` — Key generation, CRUD routes, security patterns
+- `references/config-and-entry.md` — Env config, error types, entry point wiring
+- `references/testing.md` — Test preload, seed factory, integration patterns
+- `references/proxy-setup.md` — Reverse proxy architecture, forwarding headers, OAuth callback routing
+- `references/proxy-gotchas.md` — Proxy-specific troubleshooting (redirect_uri_mismatch, state_mismatch, cookie prefix issues)
 
 ## Handling Input
 
@@ -86,7 +92,7 @@ Generate the auth secret immediately (do not use a placeholder):
 bunx @better-auth/cli@latest secret
 ```
 
-Read `${CLAUDE_SKILL_DIR}/references/config-and-entry.md` for the complete Zod config implementation. Key env vars:
+Read `references/config-and-entry.md` for the complete Zod config implementation. Key env vars:
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
@@ -104,7 +110,7 @@ Read `${CLAUDE_SKILL_DIR}/references/config-and-entry.md` for the complete Zod c
 **Entry:** Config validated at startup.
 **Exit:** Migration applied, tables created in PostgreSQL.
 
-Read `${CLAUDE_SKILL_DIR}/references/schema.md` for the complete schema. Key decisions:
+Read `references/schema.md` for the complete schema. Key decisions:
 
 - Use **plural table names** (`users`, `sessions`) — mapped to Better Auth's singular models in Step 3
 - Use **UUIDs** for all primary keys
@@ -284,7 +290,7 @@ authRoutes.on(["POST", "GET"], "/*", (c) => auth.handler(c.req.raw));
 **Entry:** Auth routes mounted.
 **Exit:** `src/middleware/auth.ts` validates API keys and session cookies.
 
-Read `${CLAUDE_SKILL_DIR}/references/middleware.md` for the complete implementation. The middleware:
+Read `references/middleware.md` for the complete implementation. The middleware:
 - Detects API keys via `Authorization: Bearer pyx_...` prefix
 - Validates via SHA-256 hash lookup + revocation + expiration checks
 - Falls back to Better Auth session cookie validation
@@ -299,7 +305,7 @@ Read `${CLAUDE_SKILL_DIR}/references/middleware.md` for the complete implementat
 **Entry:** Auth middleware populates `AuthContext` on the request.
 **Exit:** `src/middleware/tenant-context.ts` resolves org and plan.
 
-Read `${CLAUDE_SKILL_DIR}/references/middleware.md` for the implementation. Key behaviors:
+Read `references/middleware.md` for the implementation. Key behaviors:
 - API key auth: org already resolved from the key's project, just fetches plan
 - Session auth: looks up user's most recent org membership
 - Uses distinct error code `no_organization` (not generic `forbidden`) so the frontend can show "Create your first organization" instead of "Access denied"
@@ -311,7 +317,7 @@ Read `${CLAUDE_SKILL_DIR}/references/middleware.md` for the implementation. Key 
 **Entry:** Middleware needs error classes to throw.
 **Exit:** `src/lib/errors.ts` with `AppError` hierarchy, `src/middleware/error-handler.ts`.
 
-Read `${CLAUDE_SKILL_DIR}/references/config-and-entry.md` for the complete error hierarchy and handler. Every error has a distinct `code` field for frontend differentiation:
+Read `references/config-and-entry.md` for the complete error hierarchy and handler. Every error has a distinct `code` field for frontend differentiation:
 
 | Error Class | Code | Status |
 |-------------|------|--------|
@@ -328,7 +334,7 @@ Read `${CLAUDE_SKILL_DIR}/references/config-and-entry.md` for the complete error
 **Entry:** All middleware and routes implemented.
 **Exit:** `src/index.ts` with correct middleware ordering.
 
-Read `${CLAUDE_SKILL_DIR}/references/config-and-entry.md` for the complete entry point. The middleware order is:
+Read `references/config-and-entry.md` for the complete entry point. The middleware order is:
 
 1. **Request ID** — first, so error handler can include it in responses
 2. **Security Headers** — HSTS (production), X-Frame-Options
@@ -348,7 +354,7 @@ CORS before auth routes is non-negotiable. If registered after, preflight OPTION
 **Entry:** Application fully functional.
 **Exit:** Test preload, seed factory, integration app, cleanup utilities.
 
-Read `${CLAUDE_SKILL_DIR}/references/testing.md` for the complete test setup. Essential components:
+Read `references/testing.md` for the complete test setup. Essential components:
 
 1. **Test preload** (`bunfig.toml` + `setup.ts`) — clears `RESEND_API_KEY`, bridges `TEST_DATABASE_URL`
 2. **Seed factory** (`seedTestData()`) — creates full tenant hierarchy with unique slugs
@@ -413,7 +419,7 @@ If any item fails, fix the root cause before proceeding.
 
 ## API Key System
 
-For the complete custom API key implementation (generation, validation, CRUD routes), read `${CLAUDE_SKILL_DIR}/references/api-keys.md`.
+For the complete custom API key implementation (generation, validation, CRUD routes), read `references/api-keys.md`.
 
 Summary:
 - **Format**: `pyx_` prefix + 32 random bytes base62-encoded (~50 chars)
@@ -447,7 +453,7 @@ Always append a unique suffix (UUID slice or timestamp) to prevent collisions.
 
 ## Proxy Architecture (Steps 12-14)
 
-These steps apply when the frontend is a separate application that proxies auth requests to the backend. Read `${CLAUDE_SKILL_DIR}/references/proxy-setup.md` for the complete guide with code examples.
+These steps apply when the frontend is a separate application that proxies auth requests to the backend. Read `references/proxy-setup.md` for the complete guide with code examples.
 
 ### Step 12: Configure Dynamic baseURL on Backend
 
@@ -499,7 +505,7 @@ socialProviders: {
 **Entry:** Backend uses `allowedHosts` with `trustedProxyHeaders`.
 **Exit:** Frontend proxies auth requests and OAuth callbacks correctly.
 
-The frontend proxy must do three things. Read `${CLAUDE_SKILL_DIR}/references/proxy-setup.md` for complete code.
+The frontend proxy must do three things. Read `references/proxy-setup.md` for complete code.
 
 #### 13a. Create two proxy routes
 
@@ -592,7 +598,7 @@ curl -s -X POST "https://your-frontend.com/api/auth/sign-in/social" \
 
 Expected: `redirect_uri: https://your-frontend.com/auth/callback/google`
 
-For detailed troubleshooting of proxy-specific failures, read `${CLAUDE_SKILL_DIR}/references/proxy-gotchas.md`.
+For detailed troubleshooting of proxy-specific failures, read `references/proxy-gotchas.md`.
 
 ---
 

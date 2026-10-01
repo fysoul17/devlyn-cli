@@ -412,8 +412,8 @@ def self_test() -> int:
         (codex_home / "config.toml").write_text('model = "selftest"\n', encoding="utf-8")
         (codex_home / "auth.json").write_bytes(b"synthetic")
         (codex_home / "auth.json").chmod(0o600)
-        (worktree / ".claude" / "skills" / "devlyn:resolve").mkdir(parents=True)
-        (worktree / ".claude" / "skills" / "devlyn:resolve" / "SKILL.md").write_text(
+        (worktree / ".claude" / "skills" / "devlyn-resolve").mkdir(parents=True)
+        (worktree / ".claude" / "skills" / "devlyn-resolve" / "SKILL.md").write_text(
             "synthetic\n", encoding="utf-8"
         )
         (worktree / "tracked.txt").write_text("synthetic\n", encoding="utf-8")
@@ -918,7 +918,7 @@ if arm == "A":
         or ".superset" in str(claude_metadata.get("frozen_path", ""))
         or not shim_valid
         or claude_metadata.get("credentials_seeded") is not True
-        or not (Path(worktree) / ".claude/skills/devlyn:resolve/SKILL.md").is_file()
+        or not (Path(worktree) / ".claude/skills/devlyn-resolve/SKILL.md").is_file()
         or any(marker in transcript.casefold() for marker in ("not logged in", "authentication_error"))
     )
     if claude_invalid:

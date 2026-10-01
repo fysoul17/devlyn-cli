@@ -3,7 +3,7 @@
 check-compliance-cell.py — mechanical, no-LLM-judge assertions on one
 compliance-probe cell's post-run artifacts.
 
-Checks (per config/skills/devlyn:resolve/references/state-schema.md and the
+Checks (per config/skills/devlyn-resolve/references/state-schema.md and the
 F6 failure mode documented in autoresearch/iterations/0040-cross-cli-smoke.md
 Round 2 addendum):
 

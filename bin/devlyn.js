@@ -31,7 +31,6 @@ const RENAMED_SKILLS = {
   'devlyn:pencil-push': 'devlyn-pencil-push',
   'devlyn:reap': 'devlyn-reap',
 };
-const DEVLYN_SKILL_DIR_STAMP = '__DEVLYN_SKILL_DIR__';
 const DEVLYN_INSTALL_MARKER = '.devlyn-install.json';
 
 // Every spelling a colon name can have on disk: its own and npm's U+F03A extraction alias.
@@ -47,11 +46,25 @@ const PRE_STANDARD_SKILL_MD_SHA256 = new Set([
   '5f2e8b29609cbb2af72941579823bec598265ebf29cd3a375d6aa47d95b74354', // devlyn-pencil-push
 ]);
 
-function isPreStandardCopy(dir) {
+// Skills devlyn-cli shipped and later deleted without listing them, by SHA-256 of their only
+// file, SKILL.md (LF endings): a user's own folder of the same name is never removed.
+const RETIRED_SKILL_MD_SHA256 = {
+  // 0.2.0-1.15.0; deleted in iter-0034, it still routes agents to retired commands.
+  'workflow-routing': new Set([
+    '7fec2bb20d808a873a975d64a6223e404bc5b328c800760bb77257ae6b2f467a',
+    '8bfdaeff2ce48d5a79b5653de3bbe0d56a61a7fd750ed3ad11149fec5a502ecf',
+  ]),
+};
+
+// Whether `dir` is a real folder whose only file (dotfiles such as .DS_Store aside) is a SKILL.md
+// with an LF-normalized SHA-256 in `hashes`: an unedited copy devlyn-cli shipped, not something
+// the user added to or wrote.
+function isShippedCopy(dir, hashes) {
   const skill = path.join(dir, 'SKILL.md');
   return fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory() === true
+    && fs.readdirSync(dir).filter((name) => !name.startsWith('.')).length === 1
     && fs.lstatSync(skill, { throwIfNoEntry: false })?.isFile() === true
-    && PRE_STANDARD_SKILL_MD_SHA256.has(crypto.createHash('sha256')
+    && hashes.has(crypto.createHash('sha256')
       .update(fs.readFileSync(skill, 'utf8').replace(/\r\n/g, '\n')).digest('hex'));
 }
 
@@ -368,6 +381,14 @@ function cleanupDeprecated(targetDir) {
       removed++;
     }
   }
+  for (const [name, hashes] of Object.entries(RETIRED_SKILL_MD_SHA256)) {
+    const fullPath = path.join(targetDir, 'skills', name);
+    if (isShippedCopy(fullPath, hashes)) {
+      fs.rmSync(fullPath, { recursive: true });
+      log(`  ✕ skills/${name}/ (removed)`, 'dim');
+      removed++;
+    }
+  }
   return removed;
 }
 
@@ -380,7 +401,7 @@ function retireRenamedSkills(skillsDir) {
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
     if (found.length > 0 && optional.has(newName)) installOptionalSkillInto(skillsDir, newName);
-    else if (isPreStandardCopy(path.join(skillsDir, newName))) refreshPreStandardCopy(skillsDir, newName);
+    else if (isShippedCopy(path.join(skillsDir, newName), PRE_STANDARD_SKILL_MD_SHA256)) refreshPreStandardCopy(skillsDir, newName);
     for (const fullPath of found) {
       fs.rmSync(fullPath, { recursive: true, force: true });
       log(`  ✕ ${path.basename(fullPath)}/ (renamed to ${newName})`, 'dim');
@@ -452,40 +473,6 @@ function writeInstallMarker(skillsDir) {
   } finally {
     fs.rmSync(tempPath, { force: true });
   }
-}
-
-function shellDoubleQuoteDefault(value) {
-  if (value.includes('\n')) {
-    throw new Error(`Cannot stamp skill path with newline: ${value}`);
-  }
-  return value.replace(/[\\$"`}]/g, '\\$&');
-}
-
-function stampInstalledSkillDir(rootDir, skillDir) {
-  // Stamp ONLY the assignment-default occurrence. The sentinel comparison
-  // literal on the guard line must stay intact: stamping it makes the guard
-  // compare the stamped default to itself and false-positive
-  // BLOCKED:shared-dir-unresolved on every codex/omp run that executes the
-  // block (CLAUDE_SKILL_DIR unset) — iter-0040 R3 latent finding.
-  const assignmentStamp = '${CLAUDE_SKILL_DIR:-' + DEVLYN_SKILL_DIR_STAMP + '}';
-  const stampedAssignment = '${CLAUDE_SKILL_DIR:-' + shellDoubleQuoteDefault(skillDir) + '}';
-
-  function visit(current) {
-    const stats = fs.statSync(current);
-    if (stats.isDirectory()) {
-      for (const item of fs.readdirSync(current)) {
-        visit(path.join(current, item));
-      }
-      return;
-    }
-    if (path.extname(current) !== '.md') return;
-
-    const content = fs.readFileSync(current, 'utf8');
-    if (!content.includes(assignmentStamp)) return;
-    fs.writeFileSync(current, content.split(assignmentStamp).join(stampedAssignment));
-  }
-
-  visit(rootDir);
 }
 
 // Dev artifacts that live under config/skills/ but must never ship or install.
@@ -642,7 +629,6 @@ function installOptionalSkillInto(target, skillName) {
   const dest = path.join(target, skillName);
   fs.rmSync(dest, { recursive: true, force: true });
   copyRecursive(path.join(OPTIONAL_SKILLS_SOURCE, skillName), dest, target);
-  stampInstalledSkillDir(dest, dest);
   assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, target, [skillName]);
   const oldName = Object.keys(RENAMED_SKILLS).find((name) => RENAMED_SKILLS[name] === skillName);
   for (const fullPath of oldName ? legacySkillPaths(target, oldName) : []) {
@@ -737,7 +723,6 @@ function installSkillsForCLI(cliKey) {
       fs.rmSync(dest, { recursive: true, force: true });
     }
     copyRecursive(src, dest, cli.skillsDir);
-    stampInstalledSkillDir(dest, dest);
     copied++;
     log(`  → ${cli.skillsDir.replace(os.homedir(), '~')}/${skillName}`, 'dim');
   }
@@ -854,10 +839,6 @@ function installClaudeCore() {
   }
   copyRecursive(CONFIG_SOURCE, targetDir, targetDir);
   assertCompleteSkillInstall(path.join(CONFIG_SOURCE, 'skills'), skillsDir, DEVLYN_CORE_SKILLS);
-  for (const name of DEVLYN_CORE_SKILLS) {
-    const dest = path.join(skillsDir, name);
-    stampInstalledSkillDir(dest, dest);
-  }
   retireRenamedSkills(skillsDir);
   writeInstallMarker(skillsDir);
 

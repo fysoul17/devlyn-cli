@@ -80,7 +80,7 @@ fi
 # iter-0019/0037: 3 smoke arms — variant (L2: Claude orchestrator + risk-probes pair path),
 # solo_claude (L1: Claude orchestrator, codex blocked by shim+wrapper enforcement),
 # bare (L0: direct claude -p, no skill, no codex).
-# iter-0033c (Codex R0-infra adoption, 2026-05-02): two L2 diagnostic arms for /devlyn:resolve —
+# iter-0033c (Codex R0-infra adoption, 2026-05-02): two L2 diagnostic arms for /devlyn-resolve —
 # l2_gated (--engine claude, no --pair-verify; pair fires only on natural triggers),
 # l2_risk_probes (--engine claude --risk-probes; pair converts visible Verification bullets to executable probes before IMPLEMENT),
 # l2_forced (--engine claude --pair-verify; retired because it leaks pair-awareness before IMPLEMENT).
@@ -88,7 +88,7 @@ fi
   || [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ] || \
   { echo "arm must be variant|solo_claude|bare|l2_gated|l2_risk_probes|l2_forced"; exit 1; }
 # iter-0033c (Codex R0-infra Q2): l2_* arms require NEW skill surface (only NEW
-# `/devlyn:resolve` honors --pair-verify; OLD `/devlyn:auto-resolve` would silently
+# `/devlyn-resolve` honors --pair-verify; OLD `/devlyn:auto-resolve` would silently
 # ignore the flag and produce mis-attributed L2 numbers).
 if { [ "$ARM" = "l2_gated" ] || [ "$ARM" = "l2_risk_probes" ] || [ "$ARM" = "l2_forced" ]; } && [ "$RESOLVE_SKILL" != "new" ]; then
   echo "l2_* arms require --resolve-skill new (got '$RESOLVE_SKILL')"; exit 1
@@ -98,7 +98,7 @@ if [ "$ARM" = "l2_forced" ]; then
   exit 1
 fi
 # iter-0034 Phase 4 cutover (2026-05-03): OLD `/devlyn:auto-resolve` was
-# deleted. Only `new` (= /devlyn:resolve --spec) is supported. The flag stays
+# deleted. Only `new` (= /devlyn-resolve --spec) is supported. The flag stays
 # an accepted no-op so historical runners (run-iter-0033c.sh:137) keep working
 # unchanged. `old` is hard-errored — silently downgrading to `new` would
 # produce mis-attributed results in any pre-cutover replay attempt.
@@ -350,7 +350,7 @@ fi
 #
 # Per-arm prompt selection is:
 #   1. Fixture-id-aware for F9 (end-to-end novice fixture, no pre-placed spec).
-#   2. Spec-mode `/devlyn:resolve --spec <path>` for the rest (post iter-0034
+#   2. Spec-mode `/devlyn-resolve --spec <path>` for the rest (post iter-0034
 #      Phase 4 cutover the OLD `/devlyn:auto-resolve` route was deleted).
 PROMPT_FILE="$RESULT_DIR/input.md"
 # Variant uses the current measured risk-probes pair path; solo_claude uses
@@ -376,7 +376,7 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
       ;;
     l2_gated)
       # NEW L2 with natural pair-mode triggers. Claude does IMPLEMENT;
-      # pair-JUDGE in VERIFY fires per /devlyn:resolve PHASE 5 policy
+      # pair-JUDGE in VERIFY fires per /devlyn-resolve PHASE 5 policy
       # (high complexity, coverage_failed, or warning-level mechanical
       # findings; never after HIGH/CRITICAL mechanical blockers). Codex
       # remains available as the OTHER-engine pair-JUDGE candidate.
@@ -399,7 +399,7 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
       ;;
   esac
   if [ "$FIXTURE" = "F9-e2e-ideate-to-resolve" ]; then
-    # F9 NEW chain (iter-0033a): /devlyn:ideate --quick → /devlyn:resolve
+    # F9 NEW chain (iter-0033a): /devlyn-ideate --quick → /devlyn-resolve
     # --spec <emitted-path>. No pre-placed spec; the variant arm generates it
     # via ideate. No preflight (folded into resolve's VERIFY phase).
     #
@@ -413,12 +413,12 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
     cat > "$PROMPT_FILE" <<EOF
 You are a first-time devlyn-cli user. You have a vague idea and want the 2-skill harness to take it from unstructured ask to shipped, verified feature. Run the chain:
 
-1. Invoke \`/devlyn:ideate --quick ${ENGINE_CLAUSE}\` to turn the idea into a verifiable spec. \`--quick\` is mandatory: this is an autonomous run with no human to answer interactive questions, so ideate must synthesize the spec single-turn from the goal text and emit assumptions explicitly. The skill announces \`spec ready — /devlyn:resolve --spec <emitted-path>\` when done. The emitted spec lives at \`docs/specs/<id>-<slug>/spec.md\` with a sibling \`spec.expected.json\`.
-2. Take the emitted spec path verbatim from the announce line and invoke \`/devlyn:resolve --spec <that-path> ${ENGINE_CLAUSE}\` to run PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (VERIFY is the fresh-subagent final phase — there is no separate preflight skill in the 2-skill design).
+1. Invoke \`/devlyn-ideate --quick ${ENGINE_CLAUSE}\` to turn the idea into a verifiable spec. \`--quick\` is mandatory: this is an autonomous run with no human to answer interactive questions, so ideate must synthesize the spec single-turn from the goal text and emit assumptions explicitly. The skill announces \`spec ready — /devlyn-resolve --spec <emitted-path>\` when done. The emitted spec lives at \`docs/specs/<id>-<slug>/spec.md\` with a sibling \`spec.expected.json\`.
+2. Take the emitted spec path verbatim from the announce line and invoke \`/devlyn-resolve --spec <that-path> ${ENGINE_CLAUSE}\` to run PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (VERIFY is the fresh-subagent final phase — there is no separate preflight skill in the 2-skill design).
 
 ${ENGINE_PROMPT_HINT}
 
-Follow the skills to completion. Do not short-circuit. Do not invoke \`/devlyn:auto-resolve\` or \`/devlyn:preflight\` — they are not part of the 2-skill chain. Do not stop after ideate; the chain only counts as complete after \`/devlyn:resolve\` returns a terminal verdict.
+Follow the skills to completion. Do not short-circuit. Do not invoke \`/devlyn:auto-resolve\` or \`/devlyn:preflight\` — they are not part of the 2-skill chain. Do not stop after ideate; the chain only counts as complete after \`/devlyn-resolve\` returns a terminal verdict.
 
 After the whole chain, briefly report: (a) the spec path ideate produced, (b) the resolve terminal verdict, (c) whether VERIFY surfaced any findings.
 
@@ -426,7 +426,7 @@ RAW IDEA:
 $(cat "$TASK")
 EOF
   else
-    # Spec-mode /devlyn:resolve: spec pre-placed at the canonical roadmap path
+    # Spec-mode /devlyn-resolve: spec pre-placed at the canonical roadmap path
     # the harness has used since iter-0019. Pre-Phase-4 this branch shared
     # staging with the OLD /devlyn:auto-resolve route; iter-0034 deleted the
     # OLD branch and this is now the only non-F9 path.
@@ -444,7 +444,7 @@ EOF
       rm -f "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md.bak"
     fi
     cat > "$PROMPT_FILE" <<EOF
-Use the \`/devlyn:resolve --spec docs/roadmap/phase-1/$FIXTURE.md ${ENGINE_CLAUSE}\` skill to implement the spec. ${ENGINE_PROMPT_HINT}
+Use the \`/devlyn-resolve --spec docs/roadmap/phase-1/$FIXTURE.md ${ENGINE_CLAUSE}\` skill to implement the spec. ${ENGINE_PROMPT_HINT}
 
 The 2-skill design folds verification into resolve's VERIFY phase — there is no separate \`/devlyn:preflight\`, \`/devlyn:auto-resolve\`, or other 3-skill orchestrator at HEAD.
 

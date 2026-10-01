@@ -22,7 +22,7 @@ write_run() {
   mkdir -p "$TMP_DIR/$run_id/pair"
   if [ -n "$fixture_id" ]; then
     cat > "$TMP_DIR/$run_id/pair/input.md" <<EOF
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/$fixture_id.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/$fixture_id.md.
 EOF
   fi
   cat > "$TMP_DIR/$run_id/compare.json" <<EOF
@@ -92,7 +92,7 @@ expect_fail_contains invalid-wall-ratio "value must be > 0" \
 
 mkdir -p "$TMP_DIR/summary-verdicts/pair"
 cat > "$TMP_DIR/summary-verdicts/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/F13-summary-verdict-fallback.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/F13-summary-verdict-fallback.md.
 EOF
 cat > "$TMP_DIR/summary-verdicts/compare.json" <<'EOF'
 {
@@ -116,7 +116,7 @@ grep -Fq '"verdict": "PASS"' "$TMP_DIR/summary-verdicts.out"
 
 mkdir -p "$TMP_DIR/string-pair-mode/pair"
 cat > "$TMP_DIR/string-pair-mode/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/F13-string-pair-mode.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/F13-string-pair-mode.md.
 EOF
 cat > "$TMP_DIR/string-pair-mode/compare.json" <<'EOF'
 {
@@ -292,7 +292,7 @@ expect_fail_contains slow-pair "pair/solo wall ratio 4.01 exceeds 3.00" \
 
 mkdir -p "$TMP_DIR/missing-elapsed/pair"
 cat > "$TMP_DIR/missing-elapsed/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/F16-missing-elapsed.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/F16-missing-elapsed.md.
 EOF
 cat > "$TMP_DIR/missing-elapsed/compare.json" <<'EOF'
 {
@@ -322,7 +322,7 @@ expect_fail_contains missing-elapsed "pair/solo wall ratio missing" \
 
 mkdir -p "$TMP_DIR/missing-compare/pair"
 cat > "$TMP_DIR/missing-compare/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/F17-missing-compare.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/F17-missing-compare.md.
 EOF
 mkdir -p "$FIXTURES_DIR/F17-missing-compare"
 expect_fail_contains missing-compare "missing compare.json for missing-compare" \
@@ -331,7 +331,7 @@ expect_fail_contains missing-compare "missing compare.json for missing-compare" 
 
 mkdir -p "$TMP_DIR/malformed-compare/pair"
 cat > "$TMP_DIR/malformed-compare/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/F17-malformed-compare.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/F17-malformed-compare.md.
 EOF
 printf '["not", "a", "dict"]\n' > "$TMP_DIR/malformed-compare/compare.json"
 mkdir -p "$FIXTURES_DIR/F17-malformed-compare"
@@ -341,7 +341,7 @@ expect_fail_contains malformed-compare "malformed compare.json for malformed-com
 
 mkdir -p "$TMP_DIR/nan-compare/pair"
 cat > "$TMP_DIR/nan-compare/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/F17-nan-compare.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/F17-nan-compare.md.
 EOF
 cat > "$TMP_DIR/nan-compare/compare.json" <<'EOF'
 {
@@ -364,7 +364,7 @@ expect_fail_contains nan-compare "malformed compare.json for nan-compare: invali
 
 mkdir -p "$TMP_DIR/malformed-compare-sections/pair"
 cat > "$TMP_DIR/malformed-compare-sections/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/F17-malformed-compare-sections.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/F17-malformed-compare-sections.md.
 EOF
 cat > "$TMP_DIR/malformed-compare-sections/compare.json" <<'EOF'
 {
@@ -380,7 +380,7 @@ expect_fail_contains malformed-compare-sections "pair_mode false" \
 
 mkdir -p "$TMP_DIR/malformed-verdict-fields/pair"
 cat > "$TMP_DIR/malformed-verdict-fields/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/F17-malformed-verdict-fields.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/F17-malformed-verdict-fields.md.
 EOF
 cat > "$TMP_DIR/malformed-verdict-fields/compare.json" <<'EOF'
 {
@@ -411,7 +411,7 @@ expect_fail_contains malformed-verdict-fields "pair verdict missing or malformed
 
 mkdir -p "$TMP_DIR/malformed-elapsed-fields/pair"
 cat > "$TMP_DIR/malformed-elapsed-fields/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/F17-malformed-elapsed-fields.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/F17-malformed-elapsed-fields.md.
 EOF
 cat > "$TMP_DIR/malformed-elapsed-fields/compare.json" <<'EOF'
 {
@@ -442,7 +442,7 @@ expect_fail_contains malformed-elapsed-fields "pair/solo wall ratio missing" \
 
 mkdir -p "$TMP_DIR/provider-limit/pair"
 cat > "$TMP_DIR/provider-limit/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/F18-provider-limit.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/F18-provider-limit.md.
 EOF
 cat > "$TMP_DIR/provider-limit/pair/transcript.txt" <<'EOF'
 You've hit your limit · resets 3am (Asia/Seoul)

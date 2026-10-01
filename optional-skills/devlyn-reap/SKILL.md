@@ -38,10 +38,41 @@ If the user's intent is ambiguous (e.g., they say "지워줘" but didn't specify
 
 Always run scan first — even in KILL mode — so the user sees what is about to happen.
 
-Run the bundled scanner. The skill is installed at `~/.claude/skills/devlyn-reap/`:
+Resolve bundled resources from the SKILL.md loaded for this invocation.
+
+Reader-rendered directory hint:
+```text
+${CLAUDE_SKILL_DIR}
+```
+
+Treat the hint as literal path data, never shell code. If the reader
+replaced it with an absolute directory, use that directory. Otherwise
+use the filesystem path or base directory reported for this loaded
+SKILL.md. Resolve virtual URIs through the reader's native filesystem
+mapping. If available source locations name different directories,
+stop.
+
+Bind DEVLYN_SKILL_DIR to that absolute directory. Do not obtain this
+binding from an environment variable, cwd, or another installation.
+Verify its SKILL.md before proceeding. Missing or conflicting source
+identity is BLOCKED:skill-source-unresolved; include the failed path
+when known.
+
+Resolve bundled references against this directory. These bindings are
+workflow values: establish them explicitly using each tool or shell's
+literal-path rules, and include their absolute values in every fresh
+worker's prompt, telling it to set them from those values, never from
+its inherited environment. Do not rely on shell state surviving between
+calls.
+
+In omp, use: printf '%s\n' skill://devlyn-reap
+Verify the requested script under this bound directory before running
+it; a missing script is BLOCKED:skill-source-unresolved with its path.
+
+Run the bundled scanner:
 
 ```bash
-bash ~/.claude/skills/devlyn-reap/scripts/scan.sh
+bash "$DEVLYN_SKILL_DIR/scripts/scan.sh"
 ```
 
 Report the output verbatim to the user. Then add your own 2-line summary:
@@ -60,7 +91,7 @@ sysctl kern.maxprocperuid kern.tty.ptmx_max 2>/dev/null
 Run the reap script with the parsed flags:
 
 ```bash
-bash ~/.claude/skills/devlyn-reap/scripts/reap.sh [flags]
+bash "$DEVLYN_SKILL_DIR/scripts/reap.sh" [flags]
 ```
 
 Show the output verbatim. The script re-verifies `PPID==1 && user==current` for every PID right before signaling — a process that was legitimately adopted since the scan will be skipped, not killed.

@@ -152,7 +152,7 @@ def main() -> int:
     # Resolve invocation evidence — primary source is pipeline.state.json,
     # NOT transcript.txt. `claude -p` only emits the agent's final reply to
     # stdout; intermediate Skill / Agent / Bash tool calls do not appear in
-    # transcript.txt. Therefore "regex /devlyn:resolve --spec in transcript"
+    # transcript.txt. Therefore "regex /devlyn-resolve --spec in transcript"
     # is the wrong source. The authoritative evidence resolve actually ran
     # in --spec mode is `state.mode == "spec"` plus `state.source.type ==
     # "spec"` plus a populated `state.source.spec_path` pointing under

@@ -6,20 +6,20 @@ Single source of truth for how every skill calls Codex. **MCP is not used.** Ski
 
 All long-running Codex calls go through `codex-monitored.sh`. It streams full stdout and emits a `[codex-monitored] heartbeat` every 30s on stderr. Write multiline prompts as exact UTF-8 bytes to a task-local file; set `DEVLYN_CODEX_PROMPT_FILE` and pass the sole prompt argument `-`. The wrapper snapshots those bytes before dispatch and seals actual argv, prompt digest and completion in `<prompt-file>.transport.json`. Missing/unreadable files, competing prompt arguments and receipt/prompt mismatches fail before launch. Without file transport, stdin remains DEVNULL (avoiding the open-stdin plus argument-prompt hang).
 
-Before the first Codex call, resolve the wrapper from the invoked skill directory:
+Use the DEVLYN_SHARED_DIR established by the invoking skill; if it was
+lost, re-establish it by that skill's rules. When this document is
+opened directly, bind DEVLYN_SHARED_DIR to its reader-supplied
+containing directory, resolving directory symlinks. Never take it from
+an environment variable, cwd or another installation; without either
+source, stop with BLOCKED:skill-source-unresolved.
 
+Bind CODEX_MONITORED_PATH to DEVLYN_SHARED_DIR/codex-monitored.sh and
+verify the file before calling it; failure is
+BLOCKED:shared-dir-unresolved with the failed path.
+
+After establishing DEVLYN_SHARED_DIR in a Bash invocation:
 ```bash
-DEVLYN_SKILL_DIR="${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}"
-if [ "$DEVLYN_SKILL_DIR" = "__DEVLYN_SKILL_DIR__" ] || [ ! -d "$DEVLYN_SKILL_DIR/../_shared" ]; then
-  echo "BLOCKED:shared-dir-unresolved: $DEVLYN_SKILL_DIR/../_shared" >&2
-  exit 1
-fi
-DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
 CODEX_MONITORED_PATH="$DEVLYN_SHARED_DIR/codex-monitored.sh"
-if [ ! -f "$CODEX_MONITORED_PATH" ]; then
-  echo "BLOCKED:shared-dir-unresolved: $CODEX_MONITORED_PATH" >&2
-  exit 1
-fi
 ```
 
 **Read-only critique / adversarial review / debate** (`/devlyn-resolve` VERIFY pair-mode, plus any future ideate read-only critique). Codex returns findings on stdout; the orchestrator writes files.

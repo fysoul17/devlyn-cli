@@ -653,7 +653,7 @@ grep -Fq '| unknown | PASS_WITH_ISSUES | PASS_WITH_ISSUES | false | malformed |'
 UNKNOWN_PAIR_TRIGGER_RUN_ID="swebench-unknown-pair-trigger-test-local__repo-1"
 mkdir -p "$RESULTS_DIR/$UNKNOWN_PAIR_TRIGGER_RUN_ID/pair"
 cat > "$RESULTS_DIR/$UNKNOWN_PAIR_TRIGGER_RUN_ID/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
 EOF
 cat > "$RESULTS_DIR/$UNKNOWN_PAIR_TRIGGER_RUN_ID/compare.json" <<'EOF'
 {
@@ -689,7 +689,7 @@ grep -Fq '| local__repo-1 | PASS_WITH_ISSUES | NEEDS_WORK | true | malformed |' 
 NORMALIZED_PAIR_TRIGGER_RUN_ID="swebench-normalized-pair-trigger-test-local__repo-1"
 mkdir -p "$RESULTS_DIR/$NORMALIZED_PAIR_TRIGGER_RUN_ID/pair"
 cat > "$RESULTS_DIR/$NORMALIZED_PAIR_TRIGGER_RUN_ID/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
 EOF
 cat > "$RESULTS_DIR/$NORMALIZED_PAIR_TRIGGER_RUN_ID/compare.json" <<'EOF'
 {
@@ -725,7 +725,7 @@ grep -Fq '| local__repo-1 | PASS_WITH_ISSUES | NEEDS_WORK | true | malformed |' 
 MIXED_UNKNOWN_PAIR_TRIGGER_RUN_ID="swebench-mixed-unknown-pair-trigger-test-local__repo-1"
 mkdir -p "$RESULTS_DIR/$MIXED_UNKNOWN_PAIR_TRIGGER_RUN_ID/pair"
 cat > "$RESULTS_DIR/$MIXED_UNKNOWN_PAIR_TRIGGER_RUN_ID/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
 EOF
 cat > "$RESULTS_DIR/$MIXED_UNKNOWN_PAIR_TRIGGER_RUN_ID/compare.json" <<'EOF'
 {
@@ -761,7 +761,7 @@ grep -Fq '| local__repo-1 | PASS_WITH_ISSUES | NEEDS_WORK | true | malformed |' 
 HISTORICAL_ONLY_TRIGGER_RUN_ID="swebench-historical-only-pair-trigger-test-local__repo-1"
 mkdir -p "$RESULTS_DIR/$HISTORICAL_ONLY_TRIGGER_RUN_ID/pair"
 cat > "$RESULTS_DIR/$HISTORICAL_ONLY_TRIGGER_RUN_ID/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
 EOF
 cat > "$RESULTS_DIR/$HISTORICAL_ONLY_TRIGGER_RUN_ID/compare.json" <<'EOF'
 {
@@ -802,7 +802,7 @@ cat > "$TMP/cases/local__repo-hypothesis/spec.md" <<'EOF'
 - Solo-headroom hypothesis: `solo_claude` is expected to miss the frozen review defect; observable miss command: `python -m pytest tests/test_review.py`.
 EOF
 cat > "$RESULTS_DIR/$HYPOTHESIS_TRIGGER_RUN_ID/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/local__repo-hypothesis.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/local__repo-hypothesis.md.
 EOF
 cat > "$RESULTS_DIR/$HYPOTHESIS_TRIGGER_RUN_ID/compare.json" <<'EOF'
 {
@@ -982,7 +982,7 @@ grep -Fq 'Yield verdict: **FAIL**' "$TMP/fail-yield-matrix.md"
 PROVIDER_LIMIT_RUN_ID="swebench-provider-limit-test-local__repo-1"
 mkdir -p "$RESULTS_DIR/$PROVIDER_LIMIT_RUN_ID/solo" "$RESULTS_DIR/$PROVIDER_LIMIT_RUN_ID/pair"
 cat > "$RESULTS_DIR/$PROVIDER_LIMIT_RUN_ID/solo/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
 EOF
 cat > "$RESULTS_DIR/$PROVIDER_LIMIT_RUN_ID/pair/transcript.txt" <<'EOF'
 You've hit your limit · resets 3am (Asia/Seoul)
@@ -1011,7 +1011,7 @@ grep -Fq 'failed attempt: provider limit' "$TMP/provider-limit-matrix.md"
 DIRTY_MATRIX_RUN_ID="swebench-dirty-matrix-test-local__repo-1"
 mkdir -p "$RESULTS_DIR/$DIRTY_MATRIX_RUN_ID/solo" "$RESULTS_DIR/$DIRTY_MATRIX_RUN_ID/pair"
 cat > "$RESULTS_DIR/$DIRTY_MATRIX_RUN_ID/solo/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
 EOF
 cat > "$RESULTS_DIR/$DIRTY_MATRIX_RUN_ID/compare.json" <<'EOF'
 {
@@ -1037,7 +1037,7 @@ grep -Fq 'failed attempt: environment contamination' "$TMP/dirty-matrix.md"
 MALFORMED_MATRIX_RUN_ID="swebench-malformed-matrix-test-local__repo-1"
 mkdir -p "$RESULTS_DIR/$MALFORMED_MATRIX_RUN_ID/solo" "$RESULTS_DIR/$MALFORMED_MATRIX_RUN_ID/pair"
 cat > "$RESULTS_DIR/$MALFORMED_MATRIX_RUN_ID/solo/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
 EOF
 cat > "$RESULTS_DIR/$MALFORMED_MATRIX_RUN_ID/compare.json" <<'EOF'
 {
@@ -1060,7 +1060,7 @@ grep -Fq 'failed attempt: malformed compare' "$TMP/malformed-matrix.md"
 NAN_MATRIX_RUN_ID="swebench-nan-matrix-test-local__repo-1"
 mkdir -p "$RESULTS_DIR/$NAN_MATRIX_RUN_ID/solo" "$RESULTS_DIR/$NAN_MATRIX_RUN_ID/pair"
 cat > "$RESULTS_DIR/$NAN_MATRIX_RUN_ID/solo/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
 EOF
 cat > "$RESULTS_DIR/$NAN_MATRIX_RUN_ID/compare.json" <<'EOF'
 {
@@ -1082,7 +1082,7 @@ grep -Fq 'failed attempt: malformed compare' "$TMP/nan-matrix.md"
 STRING_BOOL_MATRIX_RUN_ID="swebench-string-bool-matrix-test-local__repo-1"
 mkdir -p "$RESULTS_DIR/$STRING_BOOL_MATRIX_RUN_ID/solo" "$RESULTS_DIR/$STRING_BOOL_MATRIX_RUN_ID/pair"
 cat > "$RESULTS_DIR/$STRING_BOOL_MATRIX_RUN_ID/solo/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
 EOF
 cat > "$RESULTS_DIR/$STRING_BOOL_MATRIX_RUN_ID/compare.json" <<'EOF'
 {
@@ -1141,7 +1141,7 @@ grep -Fq 'run ids malformed: line 1 has unsafe run id' "$TMP/gate-unsafe-run-ids
 RUN_ID="swebench-gate-only-test-local__repo-1"
 mkdir -p "$RESULTS_DIR/$RUN_ID/pair"
 cat > "$RESULTS_DIR/$RUN_ID/pair/input.md" <<'EOF'
-Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
+Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/local__repo-1.md.
 EOF
 cat > "$RESULTS_DIR/$RUN_ID/compare.json" <<'EOF'
 {

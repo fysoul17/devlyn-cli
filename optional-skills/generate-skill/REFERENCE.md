@@ -46,7 +46,6 @@ Complete catalog of YAML frontmatter fields for Claude Code skill files (`SKILL.
 | `argument-hint` | string | none | Placeholder shown to user (e.g., `"[file path]"`) |
 | `user-invocable` | boolean | `true` | Whether users can trigger via `/skill-name` |
 | `disable-model-invocation` | boolean | `false` | If `true`, Claude cannot proactively trigger the skill |
-| `context` | list | none | Files to inject into context when skill activates |
 | `agent` | object | none | Run skill as a subagent with its own context |
 | `model` | string | inherited | Override model (`opus`, `sonnet`, `haiku`) |
 | `hooks` | object | none | Shell commands to run on skill lifecycle events |
@@ -62,19 +61,14 @@ allowed-tools: Read, Bash(npm test *), Bash(npx *)
 
 Wildcard `*` matches any arguments. Without a glob, Bash runs any command.
 
-### `context` Field
+### Supporting files
 
-Inject files into the skill's context automatically:
+Read supporting files explicitly from the skill body:
 
-```yaml
-context:
-  - type: file
-    path: ${CLAUDE_SKILL_DIR}/PATTERNS.md
-  - type: file
-    path: ./CLAUDE.md
+```text
+Before proceeding, read PATTERNS.md relative to the directory
+containing this loaded SKILL.md.
 ```
-
-Use `${CLAUDE_SKILL_DIR}` for paths relative to the skill directory.
 
 ### `agent` Field
 
@@ -102,7 +96,10 @@ hooks:
 
 ## String Substitutions
 
-These placeholders are replaced at runtime:
+Claude Code replaces these placeholders when rendering a skill.
+They are reader substitutions, not portable shell environment
+variables. Portable resource references use the selected skill
+directory and relative paths.
 
 | Placeholder | Replaced With |
 |---|---|
@@ -116,7 +113,7 @@ These placeholders are replaced at runtime:
 ```markdown
 Parse `$ARGUMENTS` for the file path.
 If `$1` is empty, ask the user for a target file.
-Read the config from `${CLAUDE_SKILL_DIR}/config.yaml`.
+Read config.yaml relative to this loaded skill's directory.
 ```
 
 ---

@@ -15,6 +15,13 @@ argument-hint: "[skill description or name]"
 Create production-quality Claude Code skills with correct frontmatter, structured workflows, and Claude 4.6 prompt patterns.
 
 Reference files in this skill directory:
+
+Resolve the bundled reference paths below against the directory
+containing the SKILL.md loaded for this invocation, using its opened
+path, reader-reported base directory, or native URI mapping. Never
+resolve them against cwd or another installation. Missing source
+identity is BLOCKED:skill-source-unresolved.
+
 - `REFERENCE.md` — Complete frontmatter field catalog and validation rules
 - `PROMPT-PATTERNS.md` — Claude 4.6 prompt engineering patterns for skill bodies
 - `CHECKLIST.md` — Quality verification checklist
@@ -50,11 +57,13 @@ Estimate the total line count for the skill content:
 Rules for reference files:
 - One level deep only (no nested references)
 - Add a table of contents if a reference file exceeds 100 lines
-- Reference files use `${CLAUDE_SKILL_DIR}/FILENAME.md` for paths
+- Reference files use paths relative to the generated SKILL.md, with
+  an explicit instruction to resolve them against the loaded skill
+  directory.
 
 ### Step 3: Write Frontmatter
 
-Read `${CLAUDE_SKILL_DIR}/REFERENCE.md` for the complete field catalog.
+Read `REFERENCE.md` for the complete field catalog.
 
 Apply these rules:
 - `name`: lowercase, hyphens only, max 64 chars, no "anthropic" or "claude"
@@ -64,7 +73,7 @@ Apply these rules:
 
 ### Step 4: Write Skill Body
 
-Read `${CLAUDE_SKILL_DIR}/PROMPT-PATTERNS.md` for Claude 4.6 patterns.
+Read `PROMPT-PATTERNS.md` for Claude 4.6 patterns.
 
 Structure the body in this order:
 1. **Title and purpose** — One-line summary of what the skill does and why
@@ -111,7 +120,7 @@ For multi-file skills, create reference files:
 
 ### Step 7: Validate
 
-Read `${CLAUDE_SKILL_DIR}/CHECKLIST.md` and verify the generated skill against every item.
+Read `CHECKLIST.md` and verify the generated skill against every item.
 
 Fix any issues before presenting the final output.
 
@@ -124,7 +133,6 @@ After generating the skill, present:
 3. **Test invocation** — Example command to test the skill
 
 Offer to:
-- Run `/devlyn:review` on the generated skill for quality assurance
 - Run `pyx-scan` if the skill will be published
 
 ---

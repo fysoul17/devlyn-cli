@@ -2,7 +2,7 @@
 # run-frozen-verify-pair.sh — compare solo VERIFY vs pair VERIFY on one frozen diff.
 #
 # This isolates VERIFY/JUDGE from IMPLEMENT: the implementation diff is applied
-# before /devlyn:resolve starts, then both arms run verify-only against the same
+# before /devlyn-resolve starts, then both arms run verify-only against the same
 # committed code and `.devlyn/external-diff.patch`.
 
 set -euo pipefail
@@ -14,9 +14,9 @@ usage: $0 --fixture <FID> --diff <path> [--run-id ID] [--pair-mode forced|gated]
           [--timeout-seconds N] [--prepare-only] [--resume-completed-arms]
 
 Runs two verify-only arms:
-  solo  = /devlyn:resolve --verify-only ... --engine claude
-  pair  = forced: /devlyn:resolve --verify-only ... --engine claude --pair-verify
-          gated:  /devlyn:resolve --verify-only ... --engine claude
+  solo  = /devlyn-resolve --verify-only ... --engine claude
+  pair  = forced: /devlyn-resolve --verify-only ... --engine claude --pair-verify
+          gated:  /devlyn-resolve --verify-only ... --engine claude
 
 By default fixtures come from benchmark/auto-resolve/fixtures and the base repo
 is fixtures/test-repo. External corpora such as SWE-bench can pass their own
@@ -162,7 +162,7 @@ mirror_skills() {
     local name
     name=$(basename "$src_dir")
     case "$name" in
-      devlyn:auto-resolve-workspace|devlyn:ideate-workspace|preflight-workspace|roadmap-archival-workspace)
+      devlyn:auto-resolve-workspace|devlyn:ideate-workspace|devlyn-ideate-workspace|preflight-workspace|roadmap-archival-workspace)
         continue ;;
     esac
     local staging="$dst_skills/.${name}.staging"
@@ -423,7 +423,7 @@ PY
   (cd "$work_dir" && git add -A && git -c user.email=b@b -c user.name=b commit -q -m external-implementation)
 
   cat > "$result_dir/input.md" <<EOF
-Use the \`/devlyn:resolve --verify-only .devlyn/external-diff.patch --spec docs/roadmap/phase-1/$FIXTURE.md --engine claude ${pair_flag}\` skill to run VERIFY-ONLY mode.
+Use the \`/devlyn-resolve --verify-only .devlyn/external-diff.patch --spec docs/roadmap/phase-1/$FIXTURE.md --engine claude ${pair_flag}\` skill to run VERIFY-ONLY mode.
 
 The diff at .devlyn/external-diff.patch represents an external implementation already applied to the work tree. Run PHASE 5 (VERIFY) only — skip PLAN, IMPLEMENT, BUILD_GATE, CLEANUP per the skill's verify-only mode contract.
 

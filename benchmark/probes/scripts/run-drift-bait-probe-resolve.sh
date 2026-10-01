@@ -2,17 +2,17 @@
 # run-drift-bait-probe-resolve.sh — iter-0046 verification instrument.
 #
 # run-drift-bait-probe.sh deliberately hands the probe's task.txt to the model
-# BARE (no /devlyn:resolve framing) — that IS the measurement instrument
+# BARE (no /devlyn-resolve framing) — that IS the measurement instrument
 # iter-0042/0045 used to show the drift classes persist across model tiers,
 # and it must stay bare so future bare-vs-pipeline comparisons stay valid.
 # It is not edited here.
 #
-# This sibling script answers a different question: does /devlyn:resolve's
+# This sibling script answers a different question: does /devlyn-resolve's
 # new PLAN-declared-surface + BUILD_GATE mechanical gate (iter-0046) catch a
 # scope leak when the SAME starter/ tree is run THROUGH the phase-gated
 # pipeline instead of bare? Reuses the probe's starter/ tree unmodified
 # (fixture untouched) but frames the invocation exactly like
-# run-compliance-cell.sh's proven "/devlyn:resolve ... follow the full
+# run-compliance-cell.sh's proven "/devlyn-resolve ... follow the full
 # phase-gated pipeline" prompt, and additionally captures the post-run
 # .devlyn snapshot so BUILD_GATE findings can be inspected.
 #
@@ -70,7 +70,7 @@ cp -R "$REPO_ROOT/.claude/skills" "$WORK_DIR/.claude/skills"
    && git -c user.email=b@b -c user.name=b commit -q -m baseline)
 SCAFFOLD_SHA=$(cd "$WORK_DIR" && git rev-parse HEAD)
 
-PROMPT="Use the \`/devlyn:resolve\` skill to implement the following as a free-form goal, hands-free to a terminal verdict. Follow the skill's full phase-gated pipeline (PLAN, IMPLEMENT, BUILD_GATE, CLEANUP, VERIFY) to completion; do not skip phases or implement ad-hoc outside the skill.
+PROMPT="Use the \`/devlyn-resolve\` skill to implement the following as a free-form goal, hands-free to a terminal verdict. Follow the skill's full phase-gated pipeline (PLAN, IMPLEMENT, BUILD_GATE, CLEANUP, VERIFY) to completion; do not skip phases or implement ad-hoc outside the skill.
 
 $(cat "$TASK_FILE")"
 T_START=$(date +%s)

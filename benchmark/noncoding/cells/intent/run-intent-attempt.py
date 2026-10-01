@@ -130,7 +130,7 @@ def opaque_id(prefix: str, value: str, length: int = 12) -> str:
 def prompt_for(arm: str, task_text: str) -> str:
     task = task_text.rstrip()
     if arm == "A":
-        return "/devlyn:resolve " + json.dumps(task) + " --pair-verify"
+        return "/devlyn-resolve " + json.dumps(task) + " --pair-verify"
     lead = "Fix or implement the following in this repository. Verify your work before finishing."
     if arm == "B":
         return f"{lead}\n\n{task}\n"

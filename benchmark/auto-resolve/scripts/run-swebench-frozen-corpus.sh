@@ -219,7 +219,7 @@ for arm in ("solo", "pair"):
     input_path = arm_root / "input.md"
     if not input_path.exists():
         input_path.write_text(
-            f"Use /devlyn:resolve --verify-only --spec docs/roadmap/phase-1/{instance_id}.md.\n",
+            f"Use /devlyn-resolve --verify-only --spec docs/roadmap/phase-1/{instance_id}.md.\n",
             encoding="utf8",
         )
 compare_path = run_root / "compare.json"

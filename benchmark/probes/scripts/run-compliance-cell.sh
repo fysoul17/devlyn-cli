@@ -47,7 +47,7 @@ sync_global_skills() {
     [ -d "$src_dir" ] || continue
     name=$(basename "$src_dir")
     case "$name" in
-      devlyn:auto-resolve-workspace|devlyn:ideate-workspace|preflight-workspace|roadmap-archival-workspace)
+      devlyn:auto-resolve-workspace|devlyn:ideate-workspace|devlyn-ideate-workspace|preflight-workspace|roadmap-archival-workspace)
         continue ;;
     esac
     staging="$dest_root/.${name}.staging"
@@ -105,13 +105,13 @@ fi
 (cd "$WORK_DIR" && git init -q && git add -A \
    && git -c user.email=b@b -c user.name=b commit -q -m baseline)
 
-# Explicitly invoke /devlyn:resolve free-form (iter-0040's confirmed method)
+# Explicitly invoke /devlyn-resolve free-form (iter-0040's confirmed method)
 # rather than handing over the raw task text. Without this framing, every CLI
 # just implements the task ad-hoc (bare-arm behavior) and .devlyn/ never
 # exists regardless of CLI — that isn't a compliance finding, it's an
 # unrelated probe-construction bug (caught in this iteration's own first
 # run: all 3 CLIs failed identically at state_found before this fix).
-PROMPT="Use the \`/devlyn:resolve\` skill to implement the following as a free-form goal, hands-free to a terminal verdict. Follow the skill's full phase-gated pipeline (PLAN, IMPLEMENT, BUILD_GATE, CLEANUP, VERIFY) to completion; do not skip phases or implement ad-hoc outside the skill.
+PROMPT="Use the \`/devlyn-resolve\` skill to implement the following as a free-form goal, hands-free to a terminal verdict. Follow the skill's full phase-gated pipeline (PLAN, IMPLEMENT, BUILD_GATE, CLEANUP, VERIFY) to completion; do not skip phases or implement ad-hoc outside the skill.
 
 $(cat "$TASK_FILE")"
 T_START=$(date +%s)

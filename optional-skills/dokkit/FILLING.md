@@ -15,24 +15,24 @@ Field detection, matching strategies, and surgical XML editing rules for the dok
 
 ### DOCX Field Detection
 ```bash
-python .claude/skills/dokkit/scripts/detect_fields.py <document.xml>
+python "$DEVLYN_SKILL_DIR/scripts/detect_fields.py" <document.xml>
 ```
 Outputs JSON array of detected fields with labels, types, and XML paths.
 
 ### HWPX Field Detection
 ```bash
-python .claude/skills/dokkit/scripts/detect_fields_hwpx.py <section.xml>
+python "$DEVLYN_SKILL_DIR/scripts/detect_fields_hwpx.py" <section.xml>
 ```
 Same output format, adapted for HWPX XML structure.
 
 ### DOCX Validation
 ```bash
-python .claude/skills/dokkit/scripts/validate_docx.py <work_dir>
+python "$DEVLYN_SKILL_DIR/scripts/validate_docx.py" <work_dir>
 ```
 
 ### HWPX Validation
 ```bash
-python .claude/skills/dokkit/scripts/validate_hwpx.py <work_dir>
+python "$DEVLYN_SKILL_DIR/scripts/validate_hwpx.py" <work_dir>
 ```
 
 ## Matching Strategy

@@ -12,11 +12,11 @@ Parsing strategies and format routing for converting source documents into the d
 | HTML | Docling | `python -m docling <file> --to md` |
 | CSV | Docling | `python -m docling <file> --to md` |
 | MD | Direct copy | Read and process as-is |
-| XLSX | Custom | `python .claude/skills/dokkit/scripts/parse_xlsx.py` |
-| HWPX | Custom | `python .claude/skills/dokkit/scripts/parse_hwpx.py` |
+| XLSX | Custom | `python "$DEVLYN_SKILL_DIR/scripts/parse_xlsx.py"` |
+| HWPX | Custom | `python "$DEVLYN_SKILL_DIR/scripts/parse_hwpx.py"` |
 | JSON | Custom | Read, format as structured markdown |
 | TXT | Custom | Read, wrap as markdown |
-| PNG/JPG | Gemini Vision | `python .claude/skills/dokkit/scripts/parse_image_with_gemini.py` |
+| PNG/JPG | Gemini Vision | `python "$DEVLYN_SKILL_DIR/scripts/parse_image_with_gemini.py"` |
 
 ## Docling Usage
 

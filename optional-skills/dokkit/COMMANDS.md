@@ -187,12 +187,12 @@ File path to the template document (DOCX or HWPX).
 
 **Phase 3 — Source Images**:
 7. **Cell-level images**: For each `field_type: "image"` with `image_file: null` and `image_type: "figure"`:
-   - Run: `python .claude/skills/dokkit/scripts/source_images.py generate --prompt "<prompt>" --preset technical_illustration --output-dir .dokkit/images/ --project-dir . --lang ko`
+   - Run: `python "$DEVLYN_SKILL_DIR/scripts/source_images.py" generate --prompt "<prompt>" --preset technical_illustration --output-dir .dokkit/images/ --project-dir . --lang ko`
    - Parse `__RESULT__` JSON, update `analysis.json`
    - Skip photo/signature types (require user-provided files)
    - Default `--lang ko` (Korean only). Override with user instruction if needed.
 8. **Section content images**: For each `image_opportunities` entry with `status: "pending"`:
-   - Run: `python .claude/skills/dokkit/scripts/source_images.py generate --prompt "<generation_prompt>" --preset <preset> --output-dir .dokkit/images/ --project-dir . --lang ko`
+   - Run: `python "$DEVLYN_SKILL_DIR/scripts/source_images.py" generate --prompt "<generation_prompt>" --preset <preset> --output-dir .dokkit/images/ --project-dir . --lang ko`
    - On failure: set `status: "skipped"`, log reason
    - Use `--lang ko+en` if the content contains technical terms that benefit from English (e.g., architecture diagrams with API names).
 9. Report: "Sourced X/Y images"
@@ -272,8 +272,8 @@ File path to the template document (DOCX or HWPX).
 > "Analyze the template at `<path>`. Detect all fillable fields INCLUDING image fields. Map to sources. Write `analysis.json`."
 
 **Image sourcing** (inline, between agents):
-- **Pass A — Cell-level**: For `field_type: "image"` with `image_file: null` and `image_type: "figure"`, run `python .claude/skills/dokkit/scripts/source_images.py generate --prompt "..." --preset ... --output-dir .dokkit/images/ --project-dir . --lang ko`
-- **Pass B — Section content**: For `image_opportunities` with `status: "pending"`, run `python .claude/skills/dokkit/scripts/source_images.py generate --prompt "..." --preset ... --output-dir .dokkit/images/ --project-dir . --lang ko`
+- **Pass A — Cell-level**: For `field_type: "image"` with `image_file: null` and `image_type: "figure"`, run `python "$DEVLYN_SKILL_DIR/scripts/source_images.py" generate --prompt "..." --preset ... --output-dir .dokkit/images/ --project-dir . --lang ko`
+- **Pass B — Section content**: For `image_opportunities` with `status: "pending"`, run `python "$DEVLYN_SKILL_DIR/scripts/source_images.py" generate --prompt "..." --preset ... --output-dir .dokkit/images/ --project-dir . --lang ko`
 - Default language is `ko` (Korean only). Use `--lang ko+en` for mixed content, or `--lang en` for English-only.
 
 **Then**: Spawn the dokkit-filler agent in fill mode:

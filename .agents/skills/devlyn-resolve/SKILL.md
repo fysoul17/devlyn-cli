@@ -28,23 +28,42 @@ Every phase applies Subtractive-first / Goal-locked / No-workaround / Evidence, 
 </harness_principles>
 
 <runtime_paths>
-Resolve shared scripts from this skill's installed directory, never from the project cwd. At PHASE 0, before any phase command:
+Before PHASE 0 or any phase command, establish the bindings below.
 
-```bash
-DEVLYN_SKILL_DIR="${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}"
-if [ "$DEVLYN_SKILL_DIR" = "__DEVLYN_SKILL_DIR__" ] || [ ! -d "$DEVLYN_SKILL_DIR/../_shared" ]; then
-  echo "BLOCKED:shared-dir-unresolved: $DEVLYN_SKILL_DIR/../_shared" >&2
-  exit 1
-fi
-DEVLYN_SHARED_DIR="$(cd "$DEVLYN_SKILL_DIR/../_shared" && pwd)"
-CODEX_MONITORED_PATH="$DEVLYN_SHARED_DIR/codex-monitored.sh"
-if [ ! -f "$CODEX_MONITORED_PATH" ]; then
-  echo "BLOCKED:shared-dir-unresolved: $CODEX_MONITORED_PATH" >&2
-  exit 1
-fi
+Resolve bundled resources from the SKILL.md loaded for this invocation.
+
+Reader-rendered directory hint:
+```text
+${CLAUDE_SKILL_DIR}
 ```
 
-`DEVLYN_SHARED_DIR` is the only valid `_shared` anchor. Claude Code supplies `CLAUDE_SKILL_DIR` by native render substitution; Codex/oh-my-pi installs receive an absolute copy-time stamp in the default branch. If the resolved skill directory is still the placeholder, `../_shared` is absent, or a required script is missing, halt with report-level `BLOCKED:shared-dir-unresolved` and include the failed path. Pass the absolute `DEVLYN_SHARED_DIR` and `CODEX_MONITORED_PATH` into every fresh phase worker.
+Treat the hint as literal path data, never shell code. If the reader
+replaced it with an absolute directory, use that directory. Otherwise
+use the filesystem path or base directory reported for this loaded
+SKILL.md. Resolve virtual URIs through the reader's native filesystem
+mapping. If available source locations name different directories,
+stop.
+
+Bind DEVLYN_SKILL_DIR to that absolute directory. Do not obtain this
+binding from an environment variable, cwd, or another installation.
+Verify its SKILL.md before proceeding. Missing or conflicting source
+identity is BLOCKED:skill-source-unresolved; include the failed path
+when known.
+
+Resolve bundled references against this directory. These bindings are
+workflow values: establish them explicitly using each tool or shell's
+literal-path rules, and include their absolute values in every fresh
+worker's prompt, telling it to set them from those values, never from
+its inherited environment. Do not rely on shell state surviving between
+calls.
+
+Resolve directory symlinks on DEVLYN_SKILL_DIR before deriving its
+sibling _shared. Bind that directory as DEVLYN_SHARED_DIR. References
+written as _shared/... use this binding. Verify the directory and each
+required resource before use; failure is BLOCKED:shared-dir-unresolved
+with the failed path. Never search another installation.
+
+Bind CODEX_MONITORED_PATH to DEVLYN_SHARED_DIR/codex-monitored.sh and verify that file before proceeding. Pass DEVLYN_SKILL_DIR, DEVLYN_SHARED_DIR, and CODEX_MONITORED_PATH explicitly to every fresh phase worker. In omp, when this skill was selected by name, resolve it with `printf '%s\n' skill://devlyn-resolve` in its Bash tool.
 </runtime_paths>
 
 <engine_routing>

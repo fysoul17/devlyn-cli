@@ -313,22 +313,34 @@ installClaudeCore();
                 self.assertEqual(installed, expected)
                 self.assertEqual((project / 'AGENTS.md').is_file(), bool(expected))
 
-    def test_pack_install_reinstall_optional_stamps(self):
-        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']); installLocalSkill('devlyn-reap');")
+    def test_pack_install_reinstall_optional_is_byte_identical(self):
+        install = "installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']); installLocalSkill('devlyn-reap');"
         name, optional = 'devlyn-resolve', 'devlyn-reap'
+        core = self.package / 'config/skills'
+        sources = {skill.name: core for skill in core.iterdir() if skill.is_dir()}
+        sources[optional] = self.package / 'optional-skills'
+
+        def assert_package_bytes():
+            # Installed skills are the package bytes: no install location is written into them,
+            # so a committed or copied skill tree works wherever it is checked out.
+            for root in self.roots():
+                for skill, source in sources.items():
+                    for file in (source / skill).rglob('*'):
+                        if file.is_file() and '__pycache__' not in file.parts:
+                            installed = root / skill / file.relative_to(source / skill)
+                            self.assertEqual(installed.read_bytes(), file.read_bytes(), installed)
+
+        self.invoke(install)
+        assert_package_bytes()
         for root in self.roots():
             self.assertTrue((root / '.devlyn-install.json').is_file())
-            text = (root / name / 'SKILL.md').read_text(encoding='utf-8')
-            self.assertIn('name: devlyn-resolve', text)
-            self.assertNotIn('${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}', text)
-            self.assertIn('__DEVLYN_SKILL_DIR__', text)  # Sentinel guard remains literal.
-            self.assertTrue((root / optional / 'SKILL.md').is_file())
             (root / name / 'stale').write_bytes(b'old')
             (root / optional / 'stale').write_bytes(b'old')
             (root / 'user-skill').mkdir(); (root / 'user-skill/keep').write_bytes(b'user')
             old = 'devlyn\uf03aauto-resolve' if os.name == 'nt' else 'devlyn:auto-resolve'
             (root / old).mkdir()
-        self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi', 'grok']); installLocalSkill('devlyn-reap');")
+        self.invoke(install)
+        assert_package_bytes()
         for root in self.roots():
             self.assertFalse((root / name / 'stale').exists())
             self.assertFalse((root / optional / 'stale').exists())
@@ -698,6 +710,61 @@ installClaudeCore();
                     self.invoke(body)
                     self.assertEqual(dest.read_bytes(), installed)
                     self.assertEqual(entry.read_bytes(), b'keep obstruction')
+
+    def test_queue_add_helper_appends_one_literal_line_at_the_end(self):
+        helper = self.package / 'config/skills/devlyn-queue/scripts/append.py'
+        queue = self.project / 'docs/specs/queue.md'
+        handoff = self.project / '.devlyn/queue-intent-a1.txt'
+        add = lambda code=0: run([sys.executable, helper, '.devlyn/queue-intent-a1.txt'], cwd=self.project, code=code)
+        handoff.parent.mkdir(); handoff.write_text('Keep "quotes", $HOME and `ticks`\n  on two lines\n', encoding='utf-8')
+        add()
+        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [ ] Keep "quotes", $HOME and `ticks` on two lines\n')
+        self.assertFalse(handoff.exists())
+        queue.write_bytes(b'# Intent Queue\n\n- [x] done')
+        handoff.write_text('(spec: docs/specs/a/spec.md) next', encoding='utf-8')
+        add()
+        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [x] done\n- [ ] (spec: docs/specs/a/spec.md) next\n')
+        handoff.write_text(' \n', encoding='utf-8')
+        self.assertIn(b'queue add failed', add(code=1).stderr)
+        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [x] done\n- [ ] (spec: docs/specs/a/spec.md) next\n')
+        # The helper writes only while it holds .devlyn/queue.lock, so concurrent adds serialize.
+        queue.unlink()
+        (self.project / '.devlyn/queue-intent-held.txt').write_text('waits for the lock', encoding='utf-8')
+        lock = os.open(self.project / '.devlyn/queue.lock', os.O_RDWR | os.O_CREAT)
+        try:
+            if os.name == 'nt':
+                import msvcrt
+                os.write(lock, b'\0'); os.lseek(lock, 0, os.SEEK_SET)
+                msvcrt.locking(lock, msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(lock, fcntl.LOCK_EX)
+            proc = subprocess.Popen([sys.executable, str(helper), '.devlyn/queue-intent-held.txt'], cwd=self.project)
+            time.sleep(1.5)
+            self.assertIsNone(proc.poll())
+            self.assertFalse(queue.exists())
+            if os.name == 'nt':
+                os.lseek(lock, 0, os.SEEK_SET)
+                msvcrt.locking(lock, msvcrt.LK_UNLCK, 1)
+        finally:
+            os.close(lock)
+        self.assertEqual(proc.wait(timeout=20), 0)
+        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [ ] waits for the lock\n')
+        for name in ('notes.txt', '.devlyn/queue-intent.txt'):
+            self.assertIn(b'handoff must be', run([sys.executable, helper, name], cwd=self.project, code=2).stderr)
+
+    def test_retired_skill_name_is_removed_only_as_shipped(self):
+        # 0.2.0-1.15.0 shipped workflow-routing; a folder of that name the user wrote stays.
+        mine = self.project / '.claude/skills/workflow-routing'
+        mine.mkdir(parents=True); (mine / 'SKILL.md').write_text('---\nname: workflow-routing\n---\nmine\n', encoding='utf-8')
+        self.invoke("installClaudeCore();")
+        self.assertEqual((mine / 'SKILL.md').read_text(encoding='utf-8'), '---\nname: workflow-routing\n---\nmine\n')
+        # A shipped copy (here: the hash of this text, CRLF on disk, beside a .DS_Store) goes.
+        shipped = b'---\nname: workflow-routing\n---\nshipped\n'
+        (mine / 'SKILL.md').write_bytes(shipped.replace(b'\n', b'\r\n')); (mine / '.DS_Store').write_bytes(b'x')
+        self.invoke("RETIRED_SKILL_MD_SHA256['workflow-routing'] = new Set(["
+                    f"'{hashlib.sha256(shipped).hexdigest()}']); installClaudeCore();")
+        self.assertFalse(mine.exists())
 
     def test_incomplete_source_has_no_marker(self):
         copy = self.case / 'broken'; shutil.copytree(self.package, copy)
