@@ -776,6 +776,19 @@ installClaudeCore();
         self.assertTrue((root / 'devlyn-pencil-pull/SKILL.md').is_file())
         self.assertTrue((root / '.devlyn-install.json').is_file())
 
+    def test_failed_refresh_keeps_a_0_6_copy(self):
+        # A 0.6.x copy is identified by its SKILL.md; a refresh that fails leaves it for the retry.
+        legacy = (self.package / 'optional-skills/devlyn-pencil-push/SKILL.md').read_bytes().split(b'\n', 5)[5]
+        copy = self.case / 'broken'; shutil.copytree(self.package, copy)
+        (copy / 'optional-skills/devlyn-pencil-push/SKILL.md').unlink()
+        push = self.project / '.claude/skills/devlyn-pencil-push'
+        push.mkdir(parents=True); (push / 'SKILL.md').write_bytes(legacy)
+        result = self.invoke("installClaudeCore();", package=copy, code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((push / 'SKILL.md').read_bytes(), legacy)
+        self.invoke("installClaudeCore();")
+        self.assertIn(b'name: devlyn-pencil-push', (push / 'SKILL.md').read_bytes())
+
     def test_role_configuration_filesystem_errors(self):
         import errno
         import io
