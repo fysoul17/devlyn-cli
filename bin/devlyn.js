@@ -371,8 +371,8 @@ function cleanupDeprecated(targetDir) {
 
 // Remove every old spelling of the renamed skills in `skillsDir`, after the new core skills
 // are in place. An optional skill found under an old spelling is installed under its new name
-// before the old copy goes, so an interrupted migration never loses it. An unedited 0.6.x copy
-// is refreshed in place. Any other folder under a 4.0 name is the user's own; `-y` leaves it.
+// before the old copy goes, so an interrupted migration never loses it. An unedited 0.6.0-0.7.1
+// copy is refreshed in place. Any other folder under a 4.0 name is the user's own; `-y` leaves it.
 function retireRenamedSkills(skillsDir) {
   const optional = new Set(OPTIONAL_ADDONS.filter((addon) => addon.type === 'local').map((addon) => addon.name));
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
@@ -648,7 +648,7 @@ function installOptionalSkillInto(target, skillName) {
   }
 }
 
-// A 0.6.x copy is one SKILL.md, the file that identifies it. Renaming the new one over it is
+// A 0.6.0-0.7.1 copy is one SKILL.md, the file that identifies it. Renaming the new one over it is
 // atomic, so an interrupted run leaves the old copy, which the retry finds again, or the new.
 function refreshPreStandardCopy(target, skillName) {
   const skill = path.join(target, skillName, 'SKILL.md');

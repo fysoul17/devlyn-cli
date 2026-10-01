@@ -173,7 +173,8 @@ installer for each agent you use, in each project that has devlyn (`npx devlyn-c
 select them, or `-y` plus `npx devlyn-cli agents <cli>`): each run removes the old folders
 where it installs and keeps an optional skill you had under its new name. A 3.x installer run
 afterwards brings the old `devlyn:*` folders back beside some new ones and drops opted-in
-pencil skills; run the 4.x installer again to repair it. An agent setting that disables a
+pencil skills; run the 4.x installer again to repair it, and re-add those pencil skills from
+its menu. An agent setting that disables a
 devlyn skill by its old name or path (for example Codex `[[skills.config]]` or omp
 `disabledExtensions`) needs the new name. A project that committed the old `devlyn:*`
 folders checks out on Windows once that re-sync is committed.
