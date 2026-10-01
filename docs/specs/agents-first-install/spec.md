@@ -27,7 +27,11 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
    CLAUDE.md is AGENTS.md"; multi-select, Space toggles, Enter confirms):
    - `AGENTS.md — Codex · omp · Pi · Grok` (AGENTS.md + `.agents/skills`). Checked by default.
    - `CLAUDE.md — Claude Code` (CLAUDE.md + `.claude/`). Checked when this project already has
-     a devlyn Claude install (skills, commands or a CLAUDE.md managed block).
+     a devlyn Claude install (a core skill or the marker in `.claude/skills`, a `devlyn.*`
+     command, or a CLAUDE.md with a managed block or with a template an earlier release copied
+     in whole), or, with `--global`, when `~/.claude/skills` has the marker. Optional addons
+     (`devlyn-reap`, `devlyn-pencil-*`, any spelling) do not count: 4.0.1 put them into
+     `.claude/skills` without the Claude target.
    Selecting nothing installs nothing (exit 0 with a hint), as today.
 2. Where (single select; Enter confirms): `This project` (default) or
    `Global — every project on this machine`.
@@ -38,7 +42,9 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
 ### Non-interactive
 - `npx devlyn-cli -y`: the AGENTS target plus every target already installed in this
   project, project scope. A 4.x project with `.claude/skills` keeps its Claude update and
-  gains AGENTS.md + `.agents/skills`.
+  gains AGENTS.md + `.agents/skills`. An `AGENTS.md` that links to this project's `CLAUDE.md`
+  (a common Claude-first setup) stays a link when the Claude target runs too: the CLAUDE.md block
+  reaches AGENTS.md readers through it. Every other instruction-file link is refused.
 - `--claude` adds the Claude target; `--global` selects global scope (with `-y` or
   interactively it preselects step 2). With `-y --global`, Claude counts as installed when
   `~/.claude/skills` has a devlyn install marker. No other flags.
@@ -52,13 +58,17 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
 - Claude, project: as 4.0.1 (CLAUDE.md managed block, `.claude/skills` + marker,
   `.claude/templates`, `.claude/commit-conventions.md`, `.claude/settings.json`
   permissions/env/Stop hook, `.gitignore`), except that `ENABLE_PROMPT_CACHING_1H` is set in
-  the project `.claude/settings.json` env instead of `~/.claude/settings.json`. Refused before any
-  write when the project is the home folder, whose CLAUDE.md and settings apply to every project.
+  the project `.claude/settings.json` env instead of `~/.claude/settings.json`.
+- A project install of either target is refused before any write when the project is the home
+  folder: CLAUDE.md, AGENTS.md (agents read a parent folder's too) and `.claude/settings.json`
+  there would apply to every project under it. The message points to `--global` (skills only).
 - Global: skills only. AGENTS → `~/.agents/skills` (omp, Pi, Grok) and `~/.codex/skills`
   (Codex); Claude → `~/.claude/skills`. No project file and no `~/.claude/settings.json`.
-- Old names, retired skills and refresh rules of 4.0.1 apply only to the roots this run
-  installs into. A retired skill that is now an optional addon goes only as an unedited default
-  copy, never as an opted-in or user-written folder.
+- Old names, retired skills and refresh rules of 4.0.1 apply only inside the skill roots this
+  run installs into; old `.claude/commands/devlyn.*.md` go only with the project Claude target,
+  so a global install never touches `~/.claude/commands`. A retired skill that is now an
+  optional addon goes only as an unedited default copy, never as an opted-in or user-written
+  folder.
 
 ### Instruction template
 - `AGENTS.md` (the package template) becomes engine-neutral in its title and intro only:
@@ -84,8 +94,10 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
 
 ## Verification
 - `scripts/test-windows-portability.py`: interactive picker defaults and Space/Enter
-  handling; every target × scope; `-y` on an empty project, on a 4.0.1 Claude project and on
-  a 3.x project; `--claude`; `--global`; `agents` exits 1 with the replacement; no
+  handling; every target × scope; `-y` on an empty project, on a 4.0.1 Claude project (also
+  with AGENTS.md linked to CLAUDE.md), on a 3.x project, on a clone with only a historical
+  CLAUDE.md template and on one with only optional addons in `.claude/skills`; refusal in the
+  home folder for both targets; `--claude`; `--global`; `agents` exits 1 with the replacement; no
   CLAUDE.md created unless the Claude choice is selected; prompt-caching env in the project settings and none in
   `~/.claude/settings.json`; drift notice; installed bytes = package bytes in every root
   written, before and after reinstall.

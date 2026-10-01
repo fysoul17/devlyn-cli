@@ -10,7 +10,7 @@ const { execSync } = require('child_process');
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
-const { updateInstructions, InstructionError, BEGIN } = require('./instructions');
+const { updateInstructions, InstructionError, holdsDevlynDefaults } = require('./instructions');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
@@ -102,20 +102,24 @@ function skillRoots(target, global) {
 
 // A devlyn Claude install in this scope. Globally only the marker a `--global --claude` run
 // writes counts; in a project also a devlyn skill (0.6.0 and later), command (0.2-0.5) or
-// CLAUDE.md managed block, which a team may commit while ignoring .claude/. A CLAUDE.md link
-// (often to AGENTS.md) is not the Claude target's file: updateInstructions refuses links.
+// CLAUDE.md with devlyn defaults, which a team may commit while ignoring .claude/. An optional
+// devlyn skill is not one: 4.0.1 put those into .claude/skills without the Claude target. A
+// CLAUDE.md link (often to AGENTS.md) is not the Claude target's file: updateInstructions
+// refuses links.
 function hasDevlynClaude(global) {
   const claudeDir = path.dirname(skillRoots('claude', global)[0]);
   if (global) return fs.existsSync(path.join(claudeDir, 'skills', DEVLYN_INSTALL_MARKER));
   const names = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir) : []);
+  const optional = new Set(OPTIONAL_ADDONS.map((addon) => addon.name));
   const instructions = path.join(path.dirname(claudeDir), 'CLAUDE.md');
-  return names(path.join(claudeDir, 'skills')).some((name) => name === DEVLYN_INSTALL_MARKER || name.startsWith('devlyn'))
+  return names(path.join(claudeDir, 'skills')).some((name) => name === DEVLYN_INSTALL_MARKER
+      || (name.startsWith('devlyn') && !optional.has(name.replace(/[:\uF03A]/g, '-'))))
     || names(path.join(claudeDir, 'commands')).some((name) => name.startsWith('devlyn.'))
     || (fs.lstatSync(instructions, { throwIfNoEntry: false })?.isFile() === true
-      && fs.readFileSync(instructions, 'utf8').includes(BEGIN));
+      && holdsDevlynDefaults('CLAUDE.md', fs.readFileSync(instructions, 'utf8')));
 }
 
-// Files removed in previous versions that should be cleaned up on upgrade
+// Commands removed in previous versions; the project Claude install deletes them from .claude/.
 const DEPRECATED_FILES = [
   'commands/devlyn.handoff.md', // removed in v0.2.0
   'commands/devlyn.clean.md', // migrated to skills in v0.6.0
@@ -348,18 +352,11 @@ function listContents() {
   log('');
 }
 
-function cleanupDeprecated(targetDir) {
+// Old and retired skills in one skill root; nothing outside it.
+function cleanupDeprecated(skillsDir) {
   let removed = 0;
   const deprecated = DEPRECATED_DIRS.flatMap((relPath) =>
-    legacySkillPaths(path.join(targetDir, 'skills'), path.basename(relPath)).map((fullPath) => [relPath, fullPath]));
-  for (const relPath of DEPRECATED_FILES) {
-    const fullPath = path.join(targetDir, relPath);
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-      log(`  ✕ ${relPath} (deprecated)`, 'dim');
-      removed++;
-    }
-  }
+    legacySkillPaths(skillsDir, path.basename(relPath)).map((fullPath) => [relPath, fullPath]));
   for (const [relPath, fullPath] of deprecated) {
     if (fs.existsSync(fullPath)) {
       fs.rmSync(fullPath, { recursive: true });
@@ -368,7 +365,7 @@ function cleanupDeprecated(targetDir) {
     }
   }
   for (const [name, hashes] of Object.entries(RETIRED_SKILL_MD_SHA256)) {
-    const fullPath = path.join(targetDir, 'skills', name);
+    const fullPath = path.join(skillsDir, name);
     if (isShippedCopy(fullPath, hashes)) {
       fs.rmSync(fullPath, { recursive: true });
       log(`  ✕ skills/${name}/ (removed)`, 'dim');
@@ -664,7 +661,7 @@ function installCoreSkills(skillsDir) {
   log(`\n📁 Installing devlyn skills to ${skillsDir.replace(os.homedir(), '~')}`, 'green');
   fs.mkdirSync(skillsDir, { recursive: true });
   clearInstallMarker(skillsDir);
-  const removed = cleanupDeprecated(path.dirname(skillsDir));
+  const removed = cleanupDeprecated(skillsDir);
   if (removed > 0) {
     log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
   }
@@ -699,8 +696,18 @@ function ignoreInGit(gitignoreEntries) {
   }
 }
 
-function installAgentsProject() {
-  updateInstructions('AGENTS.md');
+// With the Claude target in the same run, an AGENTS.md that links to this project's CLAUDE.md (a
+// common Claude-first setup) gets its devlyn block through CLAUDE.md. Any other link is refused.
+function installAgentsProject(withClaude) {
+  const agents = path.join(projectDir(), 'AGENTS.md');
+  const claude = fs.lstatSync(path.join(projectDir(), 'CLAUDE.md'), { bigint: true, throwIfNoEntry: false });
+  const linked = withClaude && claude?.isFile() && fs.lstatSync(agents, { throwIfNoEntry: false })?.isSymbolicLink()
+    && fs.statSync(agents, { bigint: true, throwIfNoEntry: false });
+  if (linked && linked.dev === claude.dev && linked.ino === claude.ino) {
+    log('  → AGENTS.md links to CLAUDE.md, so it gets the devlyn block written there', 'dim');
+  } else {
+    updateInstructions('AGENTS.md');
+  }
   installCoreSkills(skillRoots('agents', false)[0]);
   ignoreInGit(['.devlyn/', '.agents/skills/.devlyn-install.json']);
 }
@@ -712,6 +719,13 @@ function installClaudeCore() {
   const targetDir = path.dirname(skillsDir);
   for (const entry of fs.readdirSync(CONFIG_SOURCE)) {
     if (entry !== 'skills') copyRecursive(path.join(CONFIG_SOURCE, entry), path.join(targetDir, entry), targetDir);
+  }
+  for (const relPath of DEPRECATED_FILES) {
+    const fullPath = path.join(targetDir, relPath);
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+      log(`  ✕ ${relPath} (deprecated)`, 'dim');
+    }
   }
   installCoreSkills(skillsDir);
   ignoreInGit(['.devlyn/', '.claude/skills/.devlyn-install.json']);
@@ -815,19 +829,19 @@ function installClaudeCore() {
 
 // Installs the targets in one scope; returns the skill roots written.
 function install(targets, global) {
-  // In the home folder the project's CLAUDE.md and .claude/settings.json (permissions, Stop
-  // hook) are the user's own and would apply to every project. Same folder by identity, so a
-  // link or another spelling of the path is caught too.
+  // In the home folder CLAUDE.md, AGENTS.md (agents read a parent folder's too) and
+  // .claude/settings.json (permissions, Stop hook) would apply to every project. Same folder by
+  // identity, so a link or another spelling of the path is caught too.
   const home = fs.statSync(os.homedir(), { bigint: true, throwIfNoEntry: false });
   const here = fs.statSync(projectDir(), { bigint: true });
-  if (!global && targets.includes('claude') && home?.dev === here.dev && home?.ino === here.ino) {
-    throw new Error('This project is your home folder, so its CLAUDE.md and .claude/settings.json would apply to every project. '
-      + 'Run from a project folder, or use --global for skills only.');
+  if (!global && home?.dev === here.dev && home?.ino === here.ino) {
+    throw new InstructionError('This project is your home folder, so its CLAUDE.md, AGENTS.md and .claude/settings.json '
+      + 'would apply to every project. Run from a project folder, or use --global for skills only.');
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
   for (const target of targets) {
     if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));
-    else if (target === 'agents') installAgentsProject();
+    else if (target === 'agents') installAgentsProject(targets.includes('claude'));
     else installClaudeCore();
   }
   log(`\n✅ devlyn ${PKG.version} installed`, 'green');
@@ -869,7 +883,7 @@ async function init({ yes, claude, global }) {
     install(targets, global);
     log('\n💡 Add optional addons later: run `npx devlyn-cli` without -y', 'dim');
     const hints = [
-      ...(targets.includes('claude') ? [] : ['CLAUDE.md + .claude/ for Claude Code: add --claude']),
+      ...(targets.includes('claude') ? [] : [`${global ? '~/.claude/skills' : 'CLAUDE.md + .claude/'} for Claude Code: add --claude`]),
       ...(global ? [] : ['every project on this machine: add --global']),
     ];
     if (hints.length > 0) log(`   ${hints.join(' · ')}`, 'dim');
@@ -883,7 +897,7 @@ async function init({ yes, claude, global }) {
     { key: 'agents', name: 'AGENTS.md — Codex · omp · Pi · Grok', desc: 'AGENTS.md + .agents/skills' },
     { key: 'claude', name: 'CLAUDE.md — Claude Code', desc: 'CLAUDE.md + .claude/ (skills, templates, settings)' },
   ];
-  const preselected = claude || hasDevlynClaude(false) ? [0, 1] : [0];
+  const preselected = claude || hasDevlynClaude(false) || (global && hasDevlynClaude(true)) ? [0, 1] : [0];
   const targets = (await multiSelect(targetOptions, preselected)).map((option) => option.key);
 
   if (targets.length === 0) {

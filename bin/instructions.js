@@ -143,6 +143,12 @@ function customInstructions(text, name, template, managed = false) {
   return bom + paragraphs.filter((_, index) => keep.has(index)).map((p) => p.text).join('');
 }
 
+// Devlyn defaults in an instruction file: a managed block, or stock paragraphs of a template
+// that a release before managed blocks copied in whole (the evidence migration replaces).
+function holdsDevlynDefaults(name, text) {
+  return text.includes(BEGIN) || customInstructions(text, name, '') !== text;
+}
+
 function retainFile(file, bytes) {
   for (const directory of [path.dirname(path.dirname(file)), path.dirname(file)]) {
     const stat = fs.lstatSync(directory, { throwIfNoEntry: false });
@@ -268,4 +274,4 @@ function updateInstructions(name) {
   return true;
 }
 
-module.exports = { updateInstructions, InstructionError, instructionParagraphs, BEGIN };
+module.exports = { updateInstructions, InstructionError, instructionParagraphs, holdsDevlynDefaults };

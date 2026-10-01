@@ -209,33 +209,39 @@ init({options});
                     archive.unlink()
                     archive.parent.rmdir()
 
-    def test_claude_target_leaves_user_claude_settings_alone(self):
+    def test_claude_target_leaves_user_claude_files_alone(self):
         # 4.1.0 sets prompt caching in the project settings; ~/.claude/settings.json is the user's.
+        # A global install writes skills only, so the user's ~/.claude/commands stay too.
         dest = self.home / '.claude/settings.json'
+        command = self.home / '.claude/commands/devlyn.resolve.md'
+        command.parent.mkdir(parents=True); command.write_bytes(b'my command\r\n')
         for before in (None, b'SECRET-not-json', b'{"env": {"ENABLE_PROMPT_CACHING_1H": "false"}}\r\n'):
             for args in (['-y', '--claude'], ['-y', '--global', '--claude']):
                 with self.subTest(before=before, args=args):
                     if before is not None:
-                        dest.parent.mkdir(exist_ok=True); dest.write_bytes(before)
+                        dest.write_bytes(before)
                     result = self.cli(*args)
                     self.assertNotIn(b'SECRET', result.stdout + result.stderr)
                     self.assertEqual(dest.read_bytes() if dest.exists() else None, before)
+                    self.assertEqual(command.read_bytes(), b'my command\r\n')
         settings = json.loads((self.project / '.claude/settings.json').read_bytes())
         self.assertEqual(settings['env']['ENABLE_PROMPT_CACHING_1H'], 'true')
 
-    def test_claude_project_install_refuses_the_home_folder(self):
-        # There the project's CLAUDE.md and .claude/settings.json would apply to every project.
+    def test_project_install_refuses_the_home_folder(self):
+        # There CLAUDE.md, AGENTS.md and .claude/settings.json would apply to every project.
         link = self.case / 'home-link'
         if os.name == 'nt':
             run(['cmd.exe', '/d', '/c', 'mklink', '/J', link, self.project])
         else:
             link.symlink_to(self.project, target_is_directory=True)
         for home in (self.project, link):
-            with self.subTest(home=home):
-                self.env['DEVLYN_TEST_HOME'] = str(home)
-                result = self.cli('-y', '--claude', code=1)
-                self.assertIn(b'This project is your home folder', result.stderr)
-                self.assertEqual(list(self.project.iterdir()), [])
+            for args in (['-y'], ['-y', '--claude']):
+                with self.subTest(home=home, args=args):
+                    self.env['DEVLYN_TEST_HOME'] = str(home)
+                    result = self.cli(*args, code=1)
+                    self.assertIn(b'This project is your home folder, so its CLAUDE.md, AGENTS.md', result.stderr)
+                    self.assertNotIn(b'    at ', result.stderr)
+                    self.assertEqual(list(self.project.iterdir()), [])
 
     def test_claude_project_settings_merge_and_reinstall(self):
         dest = self.project / '.claude/settings.json'; dest.parent.mkdir()
@@ -279,7 +285,10 @@ init({options});
                 self.project = self.case / f'project-{index}'; self.project.mkdir()
                 self.home = self.case / f'home-{index}'; self.home.mkdir()
                 self.env['DEVLYN_TEST_HOME'] = str(self.home)
-                self.cli(*args)
+                result = self.cli(*args)
+                if '--claude' not in args:
+                    where = '~/.claude/skills' if '--global' in args else 'CLAUDE.md + .claude/'
+                    self.assertIn(f'{where} for Claude Code: add --claude'.encode(), result.stdout)
                 self.assertEqual({p.name for p in self.project.iterdir()}, files)
                 self.assertEqual(self.markers(self.project), files & {'.agents', '.claude'})
                 self.assertEqual({p.name for p in self.home.iterdir()}, home)
@@ -296,25 +305,34 @@ init({options});
         body = 'Project-specific instructions outside this managed block take precedence over these defaults.\n\n# Old\n'
         block = (f'<!-- devlyn:instructions:begin sha256={hashlib.sha256(body.encode()).hexdigest()} -->\n'
                  f'{body}<!-- devlyn:instructions:end -->\n').encode()
-        # A team may commit CLAUDE.md and ignore .claude/: a fresh clone has only the block.
-        stale = {'4.x': '.claude/skills/devlyn-resolve/stale', '3.x': f'.claude/skills/devlyn{colon}resolve/SKILL.md',
-                 '0.x': '.claude/commands/devlyn.resolve.md', 'clone': 'CLAUDE.md', 'none': '.claude/skills/my-skill/SKILL.md'}
-        for version, planted in stale.items():
-            with self.subTest(version=version):
-                self.project = self.case / f'project-{version}'
-                (self.project / planted).parent.mkdir(parents=True, exist_ok=True); (self.project / planted).write_bytes(block)
-                if version == '4.x':
+        version = json.loads((self.package / 'package.json').read_bytes())['version']
+        legacy = (Path(__file__).resolve().parent / 'fixtures/instructions/legacy-claude.md').read_bytes()
+        # A team may commit CLAUDE.md and ignore .claude/: a fresh clone has only the block, or
+        # the template a release before managed blocks copied in whole.
+        stale = {'4.x': {'.claude/skills/devlyn-resolve/stale': block}, '3.x': {f'.claude/skills/devlyn{colon}resolve/SKILL.md': block},
+                 '0.x': {'.claude/commands/devlyn.resolve.md': block}, 'clone': {'CLAUDE.md': block},
+                 'template-clone': {'CLAUDE.md': legacy}, 'none': {'.claude/skills/my-skill/SKILL.md': block},
+                 # 4.0.1 put optional skills into .claude/skills without the Claude target.
+                 'addons': {f'.claude/skills/{name}/SKILL.md': block for name in
+                            ['devlyn-reap', 'devlyn-pencil-pull', *(f'devlyn{c}reap' for c in ('\uf03a', colon))]}}
+        for case, planted in stale.items():
+            with self.subTest(case=case):
+                self.project = self.case / f'project-{case}'
+                for path, data in planted.items():
+                    (self.project / path).parent.mkdir(parents=True, exist_ok=True); (self.project / path).write_bytes(data)
+                if case == '4.x':
                     (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
                 self.cli('-y')
-                claude = version != 'none'
+                claude = case not in ('none', 'addons')
                 self.assertEqual(self.markers(self.project), {'.agents', '.claude'} if claude else {'.agents'})
                 self.assertEqual((self.project / 'CLAUDE.md').exists(), claude)
                 self.assertTrue((self.project / 'AGENTS.md').is_file())
                 # Removed or refreshed by the Claude update; a user's own skill stays as it was.
-                self.assertEqual((self.project / planted).exists() and (self.project / planted).read_bytes() == block, not claude)
+                for path, data in planted.items():
+                    self.assertEqual((self.project / path).exists() and (self.project / path).read_bytes() == data, not claude)
                 if claude:
                     marker = json.loads((self.project / '.claude/skills/.devlyn-install.json').read_bytes())
-                    self.assertEqual(marker['version'], json.loads((self.package / 'package.json').read_bytes())['version'])
+                    self.assertEqual(marker['version'], version)
                     self.assertTrue((self.project / '.claude/skills/devlyn-resolve/SKILL.md').is_file())
         if os.name != 'nt':
             # A CLAUDE.md linked to AGENTS.md is AGENTS.md's; the Claude target refuses links.
@@ -323,6 +341,21 @@ init({options});
             self.cli('-y')
             self.assertEqual(self.markers(self.project), {'.agents'})
             self.assertTrue((self.project / 'CLAUDE.md').is_symlink())
+            # An AGENTS.md linked to CLAUDE.md gets its block there when the Claude target runs too.
+            self.project = self.case / 'agents-linked'; (self.project / '.claude/skills').mkdir(parents=True)
+            (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+            (self.project / 'CLAUDE.md').write_bytes(block); (self.project / 'AGENTS.md').symlink_to('CLAUDE.md')
+            self.cli('-y')
+            self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
+            self.assertEqual(json.loads((self.project / '.claude/skills/.devlyn-install.json').read_bytes())['version'], version)
+            self.assertEqual(os.readlink(self.project / 'AGENTS.md'), 'CLAUDE.md')
+            self.assertIn(b'Default to direct execution when inspection makes', (self.project / 'CLAUDE.md').read_bytes())
+            # Without the Claude target, or linked elsewhere, AGENTS.md is still refused.
+            self.assertNotEqual(self.invoke('installAgentsProject();', code=None).returncode, 0)
+            shared = self.case / 'shared.md'; shared.write_bytes(block)
+            (self.project / 'AGENTS.md').unlink(); (self.project / 'AGENTS.md').symlink_to(shared)
+            self.cli('-y', code=1)
+            self.assertEqual(shared.read_bytes(), block)
         self.assertEqual(self.markers(self.home), set())
 
     def test_interactive_what_and_where(self):
@@ -359,6 +392,12 @@ init({options});
         self.interact([[enter], [enter], [enter]], '{ claude: true, global: true }')
         self.assertEqual(list(self.project.iterdir()), [])
         self.assertEqual(self.markers(self.home), {'.agents', '.codex', '.claude'})
+        # --global alone preselects CLAUDE.md where ~/.claude/skills has devlyn, as -y --global does.
+        marker = self.home / '.claude/skills/.devlyn-install.json'
+        marker.write_text('{"version": "4.0.1"}', encoding='utf-8')
+        self.interact([[enter], [enter], [enter]], '{ global: true }')
+        self.assertEqual(list(self.project.iterdir()), [])
+        self.assertEqual(json.loads(marker.read_bytes())['version'], json.loads((self.package / 'package.json').read_bytes())['version'])
 
     def test_global_drift_notice_names_roots_it_does_not_install(self):
         roots = {'.agents': '4.0.1', '.codex': '3.3.1', '.claude': '4.1.0', '.grok': '4.0.0'}
