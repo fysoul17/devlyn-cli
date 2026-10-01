@@ -1,4 +1,4 @@
-# 0228 registered — rubric fix G, replay gates, then a fresh re-screen
+# 0228 closed at R2 FAIL — next step is the user's decision
 
 2026-10-01 KST. Root direct, no resolve. The contract is [0228](iterations/0228-verify-rubric-rescreen.md) (amends [0227](iterations/0227-verify-rescreen.md) by reference), designed with Astra (gpt-6-astra, ultra) and registered before the G commit, any replay call and any corpus authoring. The raw record is `.devlyn/0228/`. 0227 closed NOT PASS ([RESULT](experiments/0227/RESULT.md), [DIAGNOSIS](experiments/0227/diagnosis/DIAGNOSIS.md)); its handoff is in git history (last version at `f3835c04`). User decision 2026-09-30 ("1"): fix the rubric where the diagnosis points, test by replay on 0227 material, then re-screen on fresh tasks.
 
@@ -22,9 +22,9 @@
 | 1 | Registration: Astra FREEZE, PR, merge | merged (PR #141) |
 | 2 | G on `f40da73b` (`candidate/0228-fix`, pushed, no PR): implement, lint, portability suite, identifier grep, Astra SHIP | done: G = `607c3cf7`, Astra SHIP |
 | 3 | Replay copy, inventory and isolation, R1, Astra SHIP; Addendum C1 (G, replay commit, inventory, replay order) | C1 done; the C1 seals touched owner files (incident) → C2: isolation by the judge account `_devlynjudge` (Astra SHIP); R1 re-run (stub, probe, owner baseline compare) next |
-| 4 | R2 (J4 references, G vs F) and R3 (recall and breadth), Astra reviews; replay root deleted after its record is committed | after R1: `replay.py inventory <label>` → `batch plan-r2.json <label>` (judge runs as `_devlynjudge`; the owner may swap the judge token first) |
-| 5 | Corpus: selection, blind authoring, implementation, calibration, calibration review | |
-| 6 | Driver copy, stub dry run, Astra SHIP; freeze and witness, 64 rounds, masked scoring with Astra audit, join, RESULT | |
+| 4 | R2 (J4 references, G vs F) and R3 (recall and breadth), Astra reviews; replay root deleted after its record is committed | **R2 FAIL** (C3): G blocked the correct J4 reference in 1/40 replays (Codex primary), F in 4/16; R3 not run |
+| 5 | Corpus: selection, blind authoring, implementation, calibration, calibration review | not run (R2 FAIL) |
+| 6 | Driver copy, stub dry run, Astra SHIP; freeze and witness, 64 rounds, masked scoring with Astra audit, join, RESULT | not run (R2 FAIL) |
 
 0227 in one line: 0226's failures did not recur (0 rejected Claude outputs, 0 BLOCKED, 128/128 seats accepted, 32/32 hits; the P specs still carry an unevidenced "Run from the repository root"), but one Codex primary blocked a correct J4 reference by reading "existing eviction disposal behavior" as immediate delivery; two more Codex seats returned NEEDS_WORK on J2 reference rounds from coverage findings only. **Diagnosis (2026-09-30, user chose "diagnose first"; Astra SHIP):** [DIAGNOSIS](experiments/0227/diagnosis/DIAGNOSIS.md) — replays of the four J4 reference rounds from their pristine inputs show recurrent Codex blocks on the keep-existing clause (Codex primary 7/17, pair 1/12, Claude 0/29); all 8 binding claims on reference rounds across 0226, G3 and 0227 came from Codex seats; the rubric has no explicit preservation-comparison step (text predates the candidate); the J2 coverage blocks come from a coverage vs source-review rule conflict. Astra: materially new diagnostic evidence, not proof of rubric causation. The user chose to register 0228 (above); steps 2–5 stay held until 0228's outcome.
 

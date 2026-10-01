@@ -286,3 +286,20 @@ exit=0
     - KILL gets a 60 s grace.
     - Zombies count as ended.
   - **Restart:** R2 restarts from its first item.
+
+## Addendum C3 (2026-10-01): R2 result — FAIL; the work stops
+
+- **Judge token swap.** At the owner's request, the devlyn-os-v1 session swapped the judge token from account itclab.dev26 to onedatatech.dev at 21:42:26 KST. The swap was atomic, between replays: batch `1790858329`, from item 6 on. Each replay ran and was leak-checked with one token. 0227's fault rule treats account drift as a stop (re-dispatch the affected bundle). So, before any judge output was read, root re-dispatched items 0–5 (four G, two F) under the new account ([`plan-r2-rerun.json`](../experiments/0228/plan-r2-rerun.json)). The six reruns replace the originals in R2. The originals are kept and not scored. The batch stopped earlier by the OS-agent quiesce (C2) is also kept and not scored (`r2/batch-r2-stopped-1.log`).
+- **R2 run** (records in [`r2/`](../experiments/0228/r2/)): 56 effective replays, 40 G and 16 F.
+  - Every seat completed, authenticated and was accepted by the merge.
+  - 0 BLOCKED, 0 infra faults (every transport exited 0), and no usage-limit stop (watcher events: none).
+- **Labels:** five rank-2 findings, scored from a pool masked of arm, token, attempt and seat. Root's labels and Astra's blind audit (`r2/audit-astra.md`) agree on all five, with no doubt: each is behavioral and is the diagnosed J4 block (same-value growth with `noDisposeOnSet` leaves the evicted entry's `disposeAfter` undelivered).
+- **Outcome:**
+  - **G:** 39 of 40 replays are clean references. `G/6f89d26e0ccb/rep-6` (codex orientation) ended NEEDS_WORK on a diagnosed J4 block from the Codex primary.
+  - **F:** 4 of 16 replays carry a diagnosed J4 block, all from the Codex primary on codex-orientation rounds, so the recurrence condition holds.
+  - **R2: FAIL.** R2 requires every G replay to be clean with no diagnosed J4 block.
+- **Read scan:** 56 attempts, 0 excluded reads. 80 ambiguous Codex leads: 49 shell words and 31 blocks, all relative globs or commands inside the attempt's work tree, such as `test/size*.ts` and `git show <base>:src/index.ts`. Root adjudicated them, and before the batch the judge could open none of the 915 hidden paths.
+- **Credentials:** neither judge token appears in any of 97,251 files under the 0228 root, and no Codex login copy is left.
+- **Owner baseline compare after R2** (and the reruns): changed 0.
+- **What it shows, within the registered limits:** concurrently, in codex orientation, the Codex primary blocked the correct J4 reference in 4 of 16 replays under F and 1 of 20 under G (1 of 40 G overall). The rate fell but did not reach the required zero. Cause is not established (DIAGNOSIS.md:34 limits).
+- **Consequence (registration):** FAIL stops the work. G is not tuned, no repetitions are added, no route is switched. R3, the fresh corpus and the screen do not run. Steps 2–5 stay held, with no automatic re-screen; a new registration needs a materially new diagnosis and the owner's decision. The judge account and token can now be removed (devlyn-os-v1's `cleanup-judge.sh`).
