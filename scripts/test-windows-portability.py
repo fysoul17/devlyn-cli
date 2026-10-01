@@ -350,12 +350,26 @@ init({options});
             self.assertEqual(json.loads((self.project / '.claude/skills/.devlyn-install.json').read_bytes())['version'], version)
             self.assertEqual(os.readlink(self.project / 'AGENTS.md'), 'CLAUDE.md')
             self.assertIn(b'Default to direct execution when inspection makes', (self.project / 'CLAUDE.md').read_bytes())
-            # Without the Claude target, or linked elsewhere, AGENTS.md is still refused.
-            self.assertNotEqual(self.invoke('installAgentsProject();', code=None).returncode, 0)
-            shared = self.case / 'shared.md'; shared.write_bytes(block)
-            (self.project / 'AGENTS.md').unlink(); (self.project / 'AGENTS.md').symlink_to(shared)
-            self.cli('-y', code=1)
-            self.assertEqual(shared.read_bytes(), block)
+            # Without the Claude target the user is told to add it.
+            result = self.invoke('installAgentsProject();', code=None)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b'--claude', result.stdout + result.stderr)
+            # Linked elsewhere, even to another hard link of CLAUDE.md, AGENTS.md is still refused.
+            for name in ('shared.md', 'hardlink.md'):
+                shared = self.case / name
+                os.link(self.project / 'CLAUDE.md', shared) if name == 'hardlink.md' else shared.write_bytes(block)
+                (self.project / 'AGENTS.md').unlink(); (self.project / 'AGENTS.md').symlink_to(shared)
+                before = shared.read_bytes()
+                self.cli('-y', code=1)
+                self.assertEqual(shared.read_bytes(), before)
+        # Git for Windows without symlinks checks the link out as a file holding its target.
+        self.project = self.case / 'agents-placeholder'; (self.project / '.claude/skills').mkdir(parents=True)
+        (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+        (self.project / 'CLAUDE.md').write_bytes(block); (self.project / 'AGENTS.md').write_bytes(b'CLAUDE.md')
+        self.cli('-y')
+        self.assertEqual((self.project / 'AGENTS.md').read_bytes(), b'CLAUDE.md')
+        self.assertIn(b'Default to direct execution when inspection makes', (self.project / 'CLAUDE.md').read_bytes())
+        self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
         self.assertEqual(self.markers(self.home), set())
 
     def test_interactive_what_and_where(self):

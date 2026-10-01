@@ -42,9 +42,12 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
 ### Non-interactive
 - `npx devlyn-cli -y`: the AGENTS target plus every target already installed in this
   project, project scope. A 4.x project with `.claude/skills` keeps its Claude update and
-  gains AGENTS.md + `.agents/skills`. An `AGENTS.md` that links to this project's `CLAUDE.md`
-  (a common Claude-first setup) stays a link when the Claude target runs too: the CLAUDE.md block
-  reaches AGENTS.md readers through it. Every other instruction-file link is refused.
+  gains AGENTS.md + `.agents/skills`. An `AGENTS.md` that is this project's `CLAUDE.md` under
+  another name — a link whose real path is CLAUDE.md, or the plain file Git for Windows checks
+  out in a link's place (its whole content resolves to CLAUDE.md) — is left as it is when the
+  Claude target runs too: the CLAUDE.md block reaches AGENTS.md readers through it. Without the
+  Claude target the run is refused with a message naming `--claude`. Every other
+  instruction-file link is refused.
 - `--claude` adds the Claude target; `--global` selects global scope (with `-y` or
   interactively it preselects step 2). With `-y --global`, Claude counts as installed when
   `~/.claude/skills` has a devlyn install marker. No other flags.

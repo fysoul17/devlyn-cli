@@ -698,15 +698,29 @@ function ignoreInGit(gitignoreEntries) {
 
 // With the Claude target in the same run, an AGENTS.md that links to this project's CLAUDE.md (a
 // common Claude-first setup) gets its devlyn block through CLAUDE.md. Any other link is refused.
-function installAgentsProject(withClaude) {
+// AGENTS.md that is this project's CLAUDE.md under another name: a symlink to it, or the plain
+// file Git for Windows checks out in a symlink's place when core.symlinks is off (its whole
+// content is the link target). Compared by real path: a link to another hard link of CLAUDE.md
+// would go stale once CLAUDE.md is replaced.
+function agentsMdIsClaudeMd() {
   const agents = path.join(projectDir(), 'AGENTS.md');
-  const claude = fs.lstatSync(path.join(projectDir(), 'CLAUDE.md'), { bigint: true, throwIfNoEntry: false });
-  const linked = withClaude && claude?.isFile() && fs.lstatSync(agents, { throwIfNoEntry: false })?.isSymbolicLink()
-    && fs.statSync(agents, { bigint: true, throwIfNoEntry: false });
-  if (linked && linked.dev === claude.dev && linked.ino === claude.ino) {
-    log('  → AGENTS.md links to CLAUDE.md, so it gets the devlyn block written there', 'dim');
-  } else {
+  const claude = path.join(projectDir(), 'CLAUDE.md');
+  const stat = fs.lstatSync(agents, { throwIfNoEntry: false });
+  if (!stat || !fs.lstatSync(claude, { throwIfNoEntry: false })?.isFile()) return false;
+  const target = stat.isSymbolicLink() ? agents
+    : stat.isFile() && stat.size < 256 ? path.resolve(projectDir(), fs.readFileSync(agents, 'utf8'))
+      : null;
+  return target !== null && fs.existsSync(target) && fs.realpathSync.native(target) === fs.realpathSync.native(claude);
+}
+
+function installAgentsProject(withClaude) {
+  if (!agentsMdIsClaudeMd()) {
     updateInstructions('AGENTS.md');
+  } else if (withClaude) {
+    log('  → AGENTS.md is CLAUDE.md here, so it gets the devlyn block written there', 'dim');
+  } else {
+    throw new InstructionError('AGENTS.md is CLAUDE.md under another name here. Choose CLAUDE.md as well '
+      + '(npx devlyn-cli -y --claude) so the devlyn block is written once, into CLAUDE.md.');
   }
   installCoreSkills(skillRoots('agents', false)[0]);
   ignoreInGit(['.devlyn/', '.agents/skills/.devlyn-install.json']);
