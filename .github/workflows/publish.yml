@@ -31,8 +31,8 @@ jobs:
       - name: Dry-run pack
         run: npm pack --dry-run
 
-      # A new major waits under `next` until a person runs
-      # `npm dist-tag add devlyn-cli@<version> latest`: apps install `devlyn-cli@latest`.
+      # The first release of a new major waits under `next`, because apps install
+      # `devlyn-cli@latest`; the major's next release (or `npm dist-tag add`) promotes it.
       # Only `next` is ever named: npm refuses to move an implicit `latest` backwards.
       - name: Publish to npm
         run: |
@@ -40,7 +40,8 @@ jobs:
           version="$(node -p "require('./package.json').version")"
           [[ $latest =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "npm latest is not a release version: '$latest'"; exit 1; }
           [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]] || { echo "package.json version is not semver: '$version'"; exit 1; }
-          if [ "${version%%.*}" -gt "${latest%%.*}" ]; then
+          major="${version%%.*}"
+          if [ "$major" -gt "${latest%%.*}" ] && [ -z "$(npm view "devlyn-cli@$major" version 2>/dev/null)" ]; then
             npm publish --access public --tag next
           else
             npm publish --access public
