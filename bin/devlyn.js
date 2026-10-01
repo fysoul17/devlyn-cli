@@ -355,12 +355,14 @@ function cleanupDeprecated(targetDir) {
 }
 
 // Remove every old spelling of the renamed skills in `skillsDir`. An optional skill found
-// there is installed under its new name first, so an interrupted run never loses it.
+// there under any of its names (0.6.x already used the new one) is installed fresh first, so
+// an interrupted run never loses it.
 function retireRenamedSkills(skillsDir) {
   const optional = new Set(OPTIONAL_ADDONS.filter((addon) => addon.type === 'local').map((addon) => addon.name));
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
-    if (found.length > 0 && optional.has(newName)) installOptionalSkillInto(skillsDir, newName);
+    const installed = found.length > 0 || fs.existsSync(path.join(skillsDir, newName));
+    if (installed && optional.has(newName)) installOptionalSkillInto(skillsDir, newName);
     for (const fullPath of found) {
       fs.rmSync(fullPath, { recursive: true, force: true });
       log(`  ✕ ${path.basename(fullPath)}/ (renamed to ${newName})`, 'dim');

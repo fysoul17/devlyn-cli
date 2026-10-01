@@ -721,8 +721,10 @@ installClaudeCore();
                 for colon in spellings:
                     old = root / f'devlyn{colon}{name}'; old.mkdir()
                     (old / 'SKILL.md').write_text(f'---\nname: devlyn:{name}\n---\n', encoding='utf-8')
+        # 0.6.x installed optional skills under today's names.
+        (agents / 'devlyn-pencil-push').mkdir(); (agents / 'devlyn-pencil-push/SKILL.md').write_text('0.6.x copy\n', encoding='utf-8')
         self.invoke("installClaudeCore(); installSelectedCLITargets(['codex', 'omp', 'pi']);")
-        for root, optional in ((claude, {'pencil-pull', 'pencil-push', 'reap'}), (codex, {'pencil-pull'}), (agents, set())):
+        for root, optional in ((claude, {'pencil-pull', 'pencil-push', 'reap'}), (codex, {'pencil-pull'}), (agents, {'pencil-push'})):
             entries = {p.name for p in root.iterdir()}
             self.assertEqual({n for n in entries if n.startswith(('devlyn:', 'devlyn\uf03a'))}, set(), root)
             self.assertEqual({n for n in entries if n.startswith('devlyn-')}, {f'devlyn-{n}' for n in core} | {f'devlyn-{n}' for n in optional}, root)
