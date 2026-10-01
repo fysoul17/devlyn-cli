@@ -1,0 +1,22 @@
+{"os_agents_not_signalled": ["85251     1   450   450 S          59:43 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S          59:45 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:00:18 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:00:18 /usr/sbin/distnoted agent"]}
+{"checked": 1085, "opened": []}
+{"index": 0, "arm": "G", "token": "f6634cfb3793", "attempt": "G/f6634cfb3793/rep-13", "rc": 0, "error": null, "elapsed_s": 32.5, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 22575}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 30469}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:00:47 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:00:47 /usr/sbin/distnoted agent"]}
+{"index": 1, "arm": "G", "token": "488c710e81a1", "attempt": "G/488c710e81a1/rep-11", "rc": 0, "error": null, "elapsed_s": 28.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17994}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 27476}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:01:28 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:01:29 /usr/sbin/distnoted agent"]}
+{"index": 2, "arm": "G", "token": "1801a5478ae8", "attempt": "G/1801a5478ae8/rep-11", "rc": 0, "error": null, "elapsed_s": 41.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 18703}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 40337}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:02:07 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:02:07 /usr/sbin/distnoted agent"]}
+{"index": 3, "arm": "G", "token": "6f89d26e0ccb", "attempt": "G/6f89d26e0ccb/rep-11", "rc": 0, "error": null, "elapsed_s": 38.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 18766}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 37236}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:02:46 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:02:46 /usr/sbin/distnoted agent"]}
+{"index": 4, "arm": "F", "token": "1801a5478ae8", "attempt": "F/1801a5478ae8/rep-9", "rc": 0, "error": null, "elapsed_s": 38.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15640}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 36626}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:03:31 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       01:03:31 /usr/sbin/distnoted agent"]}
+{"index": 5, "arm": "F", "token": "6f89d26e0ccb", "attempt": "F/6f89d26e0ccb/rep-9", "rc": 0, "error": null, "elapsed_s": 45.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 22893}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 43413}], "claude_sessions": 1}
+{"batch_done": 6, "elapsed_s": 225.5}

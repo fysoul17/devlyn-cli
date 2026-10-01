@@ -21,7 +21,7 @@
 |---|---|---|
 | 1 | Registration: Astra FREEZE, PR, merge | merged (PR #141) |
 | 2 | G on `f40da73b` (`candidate/0228-fix`, pushed, no PR): implement, lint, portability suite, identifier grep, Astra SHIP | done: G = `607c3cf7`, Astra SHIP |
-| 3 | Replay copy, inventory and isolation, R1, Astra SHIP; Addendum C1 (G, replay commit, inventory, replay order) | C1 done; the C1 seals touched owner files (incident) → C2: isolation by the judge account `_devlynjudge` (Astra SHIP); R1 re-run (stub, probe, owner baseline compare) next |
+| 3 | Replay copy, inventory and isolation, R1, Astra SHIP; Addendum C1 (G, replay commit, inventory, replay order) | done: C1; the C1 seals touched owner files (incident) → C2: isolation by the judge account `_devlynjudge` (Astra SHIP); R1 re-run passed (stub 64/64, probe, owner baseline compare changed 0) |
 | 4 | R2 (J4 references, G vs F) and R3 (recall and breadth), Astra reviews; replay root deleted after its record is committed | **R2 FAIL** (C3): G blocked the correct J4 reference in 1/40 replays (Codex primary), F in 4/16; R3 not run |
 | 5 | Corpus: selection, blind authoring, implementation, calibration, calibration review | not run (R2 FAIL) |
 | 6 | Driver copy, stub dry run, Astra SHIP; freeze and witness, 64 rounds, masked scoring with Astra audit, join, RESULT | not run (R2 FAIL) |
