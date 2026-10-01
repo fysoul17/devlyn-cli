@@ -515,33 +515,56 @@ def handle_signals():
         signal.signal(sig, record_signal)
 
 
+# macOS per-user agents launchd starts for any account that uses notifications or preferences (seen 2026-10-01).
+OS_AGENTS = ('/usr/sbin/distnoted agent', '/usr/sbin/cfprefsd agent')
+
+
+def judge_rows(os_agents=False):
+    """Live processes of the judge uid (real or effective), as ps rows. A zombie has already exited (it runs nothing and
+    holds no files) and is left for its parent to reap. A macOS per-user agent that launchd itself starts for the
+    account (exact command lines in OS_AGENTS, parent launchd) is not a judge process: launchd restarts it after any
+    signal, so it is reported separately and never signalled (Addendum C2). Anything else counts."""
+    proc = subprocess.run(['/bin/ps', '-axo', 'pid=,ppid=,ruid=,uid=,stat=,etime=,command='], capture_output=True,
+                          text=True)
+    require(proc.returncode == 0 and proc.stdout.strip(), f'ps failed: rc={proc.returncode} {proc.stderr[-200:]}')
+    judges, agents = [], []
+    for line in proc.stdout.splitlines():
+        fields = line.split(None, 6)
+        if len(fields) < 7 or str(JUDGE_UID) not in fields[2:4] or 'Z' in fields[4]:
+            continue
+        agent = fields[1] == '1' and fields[6].strip() in OS_AGENTS
+        (agents if agent else judges).append(line.strip())
+    return agents if os_agents else judges
+
+
 def judge_pids():
-    proc = subprocess.run(['/usr/bin/pgrep', '-U', str(JUDGE_UID)], capture_output=True, text=True)
-    require(proc.returncode in (0, 1), f'pgrep failed: rc={proc.returncode} {proc.stderr[-200:]}')
-    return proc.stdout.split()
+    return [row.split()[0] for row in judge_rows()]
 
 
 def judge_signal(name):
-    """Signal every process of the judge uid, as the judge (pkill never matches itself); never any other uid. pkill's
-    exit 1 means none matched; sudo also exits 1 on its own errors, which print to stderr."""
-    proc = subprocess.run([SUDO, '-n', '-u', JUDGE, '/usr/bin/pkill', f'-{name}', '-U', str(JUDGE_UID)],
-                          capture_output=True, text=True)
-    require(proc.returncode == 0 or (proc.returncode == 1 and not proc.stderr.strip()),
-            f'pkill as the judge failed: rc={proc.returncode} {proc.stderr[-200:]}')
+    """Signal every judge process (not the OS agents), as the judge, by pid; never any other uid. kill exits non-zero
+    when a pid has already gone, so the outcome is judged by judge_rows() afterwards."""
+    pids = judge_pids()
+    if not pids:
+        return
+    proc = subprocess.run([SUDO, '-n', '-u', JUDGE, '/bin/kill', f'-{name}', *pids], capture_output=True, text=True)
+    require(proc.returncode == 0 or 'No such process' in proc.stderr,
+            f'kill as the judge failed: rc={proc.returncode} {proc.stderr[-200:]}')
 
 
 def judge_quiesce():
-    """No judge process may remain: TERM, a grace period, KILL, then pgrep must be empty."""
+    """No judge process may remain: TERM, a grace period, KILL, a longer grace (a process may need time to leave the
+    kernel), then none may be alive; the failure names each survivor."""
     if not judge_pids():
         return
-    for name, grace in (('TERM', 30), ('KILL', 10)):
+    for name, grace in (('TERM', 30), ('KILL', 60)):
         judge_signal(name)
         deadline = time.time() + grace
         while judge_pids() and time.time() < deadline:
             time.sleep(0.5)
         if not judge_pids():
             return
-    fail(f'judge processes survive SIGKILL: {judge_pids()}')
+    fail(f'judge processes survive SIGKILL: {judge_rows()}')
 
 
 def run(argv, cwd, env, out, err, timeout, stdin_path=None):
@@ -874,7 +897,7 @@ def probe(label, transcript):
     envelope = load(io_dir / 'claude.stdout') if (io_dir / 'claude.stdout').read_text().strip().startswith('{') else {}
     result['claude_control_read'] = marker in str(envelope.get('result', ''))
     result['codex_control_read'] = bool(complete)
-    result.update(claude_session=bool(claude_sessions(base)), codex_session=bool(calls), judge_processes=judge_pids())
+    result.update(claude_session=bool(claude_sessions(base)), codex_session=bool(calls), judge_processes=judge_rows())
     checks = [not PENDING, result['opened'] == [], result['control_opened'], result['claude_rc'] == 0,
               result['codex_rc'] == 0, result['claude_control_read'], result['codex_control_read'],
               result['claude_session'], result['codex_session'], not result['judge_processes']]
