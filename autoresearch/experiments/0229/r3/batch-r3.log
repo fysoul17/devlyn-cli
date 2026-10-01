@@ -1,0 +1,304 @@
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:26:16 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:26:21 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:26:49 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:26:49 /usr/sbin/distnoted agent"]}
+{"checked": 1493, "opened": []}
+{"index": 0, "arm": "H", "token": "8941d61182a2", "attempt": "H/8941d61182a2/rep-1", "rc": 0, "error": null, "elapsed_s": 27.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 25205}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 23777}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:27:25 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:27:25 /usr/sbin/distnoted agent"]}
+{"index": 1, "arm": "H", "token": "a27481bc7cc8", "attempt": "H/a27481bc7cc8/rep-1", "rc": 0, "error": null, "elapsed_s": 35.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 34095}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 24447}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:27:53 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:27:53 /usr/sbin/distnoted agent"]}
+{"index": 2, "arm": "H", "token": "e03b56cd2b47", "attempt": "H/e03b56cd2b47/rep-1", "rc": 0, "error": null, "elapsed_s": 28.7, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14334}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 27096}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:28:26 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:28:26 /usr/sbin/distnoted agent"]}
+{"index": 3, "arm": "H", "token": "67229b90182a", "attempt": "H/67229b90182a/rep-1", "rc": 0, "error": null, "elapsed_s": 33.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 16656}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 30125}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:28:48 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:28:48 /usr/sbin/distnoted agent"]}
+{"index": 4, "arm": "H", "token": "20c7b7182813", "attempt": "H/20c7b7182813/rep-1", "rc": 0, "error": null, "elapsed_s": 22.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 18138}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 18594}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:29:07 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:29:07 /usr/sbin/distnoted agent"]}
+{"index": 5, "arm": "H", "token": "e044bbb86d67", "attempt": "H/e044bbb86d67/rep-1", "rc": 0, "error": null, "elapsed_s": 17.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15647}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15049}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:29:53 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:29:53 /usr/sbin/distnoted agent"]}
+{"index": 6, "arm": "H", "token": "948534cf9d91", "attempt": "H/948534cf9d91/rep-1", "rc": 0, "error": null, "elapsed_s": 46.4, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 44795}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 33225}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:30:25 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:30:25 /usr/sbin/distnoted agent"]}
+{"index": 7, "arm": "H", "token": "c7adffe31dbe", "attempt": "H/c7adffe31dbe/rep-1", "rc": 0, "error": null, "elapsed_s": 31.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 13211}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 30181}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:31:09 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:31:09 /usr/sbin/distnoted agent"]}
+{"index": 8, "arm": "H", "token": "b1d685df922b", "attempt": "H/b1d685df922b/rep-1", "rc": 0, "error": null, "elapsed_s": 44.0, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 21350}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 42529}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:31:37 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:31:37 /usr/sbin/distnoted agent"]}
+{"index": 9, "arm": "H", "token": "aeb1f8d1a7ae", "attempt": "H/aeb1f8d1a7ae/rep-1", "rc": 0, "error": null, "elapsed_s": 28.2, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15985}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 26247}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:32:19 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:32:19 /usr/sbin/distnoted agent"]}
+{"index": 10, "arm": "H", "token": "855bfdec332a", "attempt": "H/855bfdec332a/rep-1", "rc": 0, "error": null, "elapsed_s": 41.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 12654}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 39957}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:33:09 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:33:09 /usr/sbin/distnoted agent"]}
+{"index": 11, "arm": "H", "token": "8547831edfa9", "attempt": "H/8547831edfa9/rep-1", "rc": 0, "error": null, "elapsed_s": 49.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 10239}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 48079}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:33:26 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:33:26 /usr/sbin/distnoted agent"]}
+{"index": 12, "arm": "H", "token": "b26f932d4fb2", "attempt": "H/b26f932d4fb2/rep-1", "rc": 0, "error": null, "elapsed_s": 17.5, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 12654}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15945}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:33:51 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:33:51 /usr/sbin/distnoted agent"]}
+{"index": 13, "arm": "H", "token": "6ae5fd64c95a", "attempt": "H/6ae5fd64c95a/rep-1", "rc": 0, "error": null, "elapsed_s": 24.7, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 12424}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 22893}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:34:27 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:34:27 /usr/sbin/distnoted agent"]}
+{"index": 14, "arm": "H", "token": "80cf506f32be", "attempt": "H/80cf506f32be/rep-1", "rc": 0, "error": null, "elapsed_s": 36.4, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 11668}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 34138}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:35:21 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:35:22 /usr/sbin/distnoted agent"]}
+{"index": 15, "arm": "H", "token": "8705d1d83285", "attempt": "H/8705d1d83285/rep-1", "rc": 0, "error": null, "elapsed_s": 55.2, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 22006}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 52299}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:36:02 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:36:02 /usr/sbin/distnoted agent"]}
+{"index": 16, "arm": "H", "token": "21033c62caf9", "attempt": "H/21033c62caf9/rep-1", "rc": 0, "error": null, "elapsed_s": 39.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 36149}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 35389}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:36:41 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:36:41 /usr/sbin/distnoted agent"]}
+{"index": 17, "arm": "H", "token": "2c8e19c3e7af", "attempt": "H/2c8e19c3e7af/rep-1", "rc": 0, "error": null, "elapsed_s": 39.2, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 36719}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 33798}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:37:29 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:37:29 /usr/sbin/distnoted agent"]}
+{"index": 18, "arm": "H", "token": "8a968917d027", "attempt": "H/8a968917d027/rep-1", "rc": 0, "error": null, "elapsed_s": 47.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 32507}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 41969}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:38:08 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:38:09 /usr/sbin/distnoted agent"]}
+{"index": 19, "arm": "H", "token": "856ba0534e97", "attempt": "H/856ba0534e97/rep-1", "rc": 0, "error": null, "elapsed_s": 39.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 32014}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 34535}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:38:36 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:38:36 /usr/sbin/distnoted agent"]}
+{"index": 20, "arm": "H", "token": "ded821ed66e6", "attempt": "H/ded821ed66e6/rep-1", "rc": 0, "error": null, "elapsed_s": 27.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 21249}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 24351}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:39:07 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:39:07 /usr/sbin/distnoted agent"]}
+{"index": 21, "arm": "H", "token": "3fc0ce83c110", "attempt": "H/3fc0ce83c110/rep-1", "rc": 0, "error": null, "elapsed_s": 30.7, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 29029}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 23715}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:39:54 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:39:54 /usr/sbin/distnoted agent"]}
+{"index": 22, "arm": "H", "token": "2386eb38082c", "attempt": "H/2386eb38082c/rep-1", "rc": 0, "error": null, "elapsed_s": 47.4, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17687}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 45581}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:40:44 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:40:44 /usr/sbin/distnoted agent"]}
+{"index": 23, "arm": "H", "token": "05f4b0744c2a", "attempt": "H/05f4b0744c2a/rep-1", "rc": 0, "error": null, "elapsed_s": 49.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 19165}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 47977}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:41:36 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:41:36 /usr/sbin/distnoted agent"]}
+{"index": 24, "arm": "H", "token": "e4e7043df4dc", "attempt": "H/e4e7043df4dc/rep-1", "rc": 0, "error": null, "elapsed_s": 52.7, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15118}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 51207}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:42:00 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:42:00 /usr/sbin/distnoted agent"]}
+{"index": 25, "arm": "H", "token": "5e381d4dbe46", "attempt": "H/5e381d4dbe46/rep-1", "rc": 0, "error": null, "elapsed_s": 23.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15882}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 22201}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:42:38 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:42:38 /usr/sbin/distnoted agent"]}
+{"index": 26, "arm": "H", "token": "384dbfe260f0", "attempt": "H/384dbfe260f0/rep-1", "rc": 0, "error": null, "elapsed_s": 38.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15068}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 36008}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:43:23 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:43:23 /usr/sbin/distnoted agent"]}
+{"index": 27, "arm": "H", "token": "3a1ebc525b07", "attempt": "H/3a1ebc525b07/rep-1", "rc": 0, "error": null, "elapsed_s": 45.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15890}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 43153}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:43:45 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:43:45 /usr/sbin/distnoted agent"]}
+{"index": 28, "arm": "H", "token": "52a829b020a9", "attempt": "H/52a829b020a9/rep-1", "rc": 0, "error": null, "elapsed_s": 21.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 19442}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17190}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:44:18 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:44:18 /usr/sbin/distnoted agent"]}
+{"index": 29, "arm": "H", "token": "bf57594baa50", "attempt": "H/bf57594baa50/rep-1", "rc": 0, "error": null, "elapsed_s": 33.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 31482}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 18731}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:44:58 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:44:58 /usr/sbin/distnoted agent"]}
+{"index": 30, "arm": "H", "token": "410c17d3bb24", "attempt": "H/410c17d3bb24/rep-1", "rc": 0, "error": null, "elapsed_s": 40.0, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 18306}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 38327}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:45:39 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:45:39 /usr/sbin/distnoted agent"]}
+{"index": 31, "arm": "H", "token": "659ff8c51d2a", "attempt": "H/659ff8c51d2a/rep-1", "rc": 0, "error": null, "elapsed_s": 40.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 16176}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 38978}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:46:02 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:46:02 /usr/sbin/distnoted agent"]}
+{"index": 32, "arm": "H", "token": "a15b39bba851", "attempt": "H/a15b39bba851/rep-1", "rc": 0, "error": null, "elapsed_s": 22.7, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14944}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 20760}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:46:23 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:46:23 /usr/sbin/distnoted agent"]}
+{"index": 33, "arm": "H", "token": "966cb04be78d", "attempt": "H/966cb04be78d/rep-1", "rc": 0, "error": null, "elapsed_s": 21.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15332}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 19268}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:47:09 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:47:09 /usr/sbin/distnoted agent"]}
+{"index": 34, "arm": "H", "token": "7048b34e724e", "attempt": "H/7048b34e724e/rep-1", "rc": 0, "error": null, "elapsed_s": 46.2, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 12685}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 44513}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:47:56 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:47:56 /usr/sbin/distnoted agent"]}
+{"index": 35, "arm": "H", "token": "4416f495c506", "attempt": "H/4416f495c506/rep-1", "rc": 0, "error": null, "elapsed_s": 47.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 13711}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 44840}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:48:18 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:48:18 /usr/sbin/distnoted agent"]}
+{"index": 36, "arm": "H", "token": "257a946a7d54", "attempt": "H/257a946a7d54/rep-1", "rc": 0, "error": null, "elapsed_s": 22.7, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 16374}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 19388}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:48:57 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:48:57 /usr/sbin/distnoted agent"]}
+{"index": 37, "arm": "H", "token": "9fd187a2694d", "attempt": "H/9fd187a2694d/rep-1", "rc": 0, "error": null, "elapsed_s": 37.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 19202}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 32644}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:49:30 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:49:30 /usr/sbin/distnoted agent"]}
+{"index": 38, "arm": "H", "token": "6e96181c5337", "attempt": "H/6e96181c5337/rep-1", "rc": 0, "error": null, "elapsed_s": 33.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 9256}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 31109}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:50:06 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:50:06 /usr/sbin/distnoted agent"]}
+{"index": 39, "arm": "H", "token": "0d664358108e", "attempt": "H/0d664358108e/rep-1", "rc": 0, "error": null, "elapsed_s": 35.4, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 19120}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 33546}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:50:25 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:50:25 /usr/sbin/distnoted agent"]}
+{"index": 40, "arm": "H", "token": "989daf7aa627", "attempt": "H/989daf7aa627/rep-1", "rc": 0, "error": null, "elapsed_s": 19.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 16812}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17696}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:50:49 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:50:49 /usr/sbin/distnoted agent"]}
+{"index": 41, "arm": "H", "token": "727f655fdbe3", "attempt": "H/727f655fdbe3/rep-1", "rc": 0, "error": null, "elapsed_s": 23.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17140}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 21673}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:51:31 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:51:31 /usr/sbin/distnoted agent"]}
+{"index": 42, "arm": "H", "token": "845bfe405bae", "attempt": "H/845bfe405bae/rep-1", "rc": 0, "error": null, "elapsed_s": 42.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 13295}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 40132}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:52:18 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:52:19 /usr/sbin/distnoted agent"]}
+{"index": 43, "arm": "H", "token": "05ae486fac3d", "attempt": "H/05ae486fac3d/rep-1", "rc": 0, "error": null, "elapsed_s": 47.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14428}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 44670}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:52:56 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:52:56 /usr/sbin/distnoted agent"]}
+{"index": 44, "arm": "H", "token": "b72b0fef173a", "attempt": "H/b72b0fef173a/rep-1", "rc": 0, "error": null, "elapsed_s": 37.5, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14985}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 33200}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:53:20 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:53:20 /usr/sbin/distnoted agent"]}
+{"index": 45, "arm": "H", "token": "996256572a81", "attempt": "H/996256572a81/rep-1", "rc": 0, "error": null, "elapsed_s": 23.7, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14457}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 21530}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:53:52 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:53:52 /usr/sbin/distnoted agent"]}
+{"index": 46, "arm": "H", "token": "ee021bc1e49c", "attempt": "H/ee021bc1e49c/rep-1", "rc": 0, "error": null, "elapsed_s": 32.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 13788}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 29189}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:54:27 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:54:27 /usr/sbin/distnoted agent"]}
+{"index": 47, "arm": "H", "token": "b9cb78971f07", "attempt": "H/b9cb78971f07/rep-1", "rc": 0, "error": null, "elapsed_s": 35.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14833}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 29995}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:54:59 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:55:00 /usr/sbin/distnoted agent"]}
+{"index": 48, "arm": "H", "token": "3de03b6cf16e", "attempt": "H/3de03b6cf16e/rep-1", "rc": 0, "error": null, "elapsed_s": 32.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 19250}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 23250}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:55:37 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:55:37 /usr/sbin/distnoted agent"]}
+{"index": 49, "arm": "H", "token": "2539f7525fdd", "attempt": "H/2539f7525fdd/rep-1", "rc": 0, "error": null, "elapsed_s": 36.4, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 18411}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 25064}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:56:16 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:56:16 /usr/sbin/distnoted agent"]}
+{"index": 50, "arm": "H", "token": "20c41ad6bd67", "attempt": "H/20c41ad6bd67/rep-1", "rc": 0, "error": null, "elapsed_s": 39.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 16063}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 37468}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:56:59 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:56:59 /usr/sbin/distnoted agent"]}
+{"index": 51, "arm": "H", "token": "257736e728f9", "attempt": "H/257736e728f9/rep-1", "rc": 0, "error": null, "elapsed_s": 42.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15830}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 40712}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:57:29 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:57:29 /usr/sbin/distnoted agent"]}
+{"index": 52, "arm": "H", "token": "25a215293677", "attempt": "H/25a215293677/rep-1", "rc": 0, "error": null, "elapsed_s": 29.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 13077}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 27374}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:58:01 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       03:58:01 /usr/sbin/distnoted agent"]}
+{"index": 53, "arm": "H", "token": "074aef80b7c3", "attempt": "H/074aef80b7c3/rep-1", "rc": 0, "error": null, "elapsed_s": 32.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 12669}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 29789}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:01:16 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:01:17 /usr/sbin/distnoted agent"]}
+{"index": 54, "arm": "H", "token": "cf4726bca25d", "attempt": "H/cf4726bca25d/rep-1", "rc": 0, "error": null, "elapsed_s": 196.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 10465}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 192554}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:02:01 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:02:01 /usr/sbin/distnoted agent"]}
+{"index": 55, "arm": "H", "token": "206bff67d8a5", "attempt": "H/206bff67d8a5/rep-1", "rc": 0, "error": null, "elapsed_s": 43.4, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15970}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 38140}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:02:21 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:02:21 /usr/sbin/distnoted agent"]}
+{"index": 56, "arm": "H", "token": "ea5c4901aec8", "attempt": "H/ea5c4901aec8/rep-1", "rc": 0, "error": null, "elapsed_s": 20.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14119}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 18374}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:02:40 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:02:40 /usr/sbin/distnoted agent"]}
+{"index": 57, "arm": "H", "token": "04b4743ed989", "attempt": "H/04b4743ed989/rep-1", "rc": 0, "error": null, "elapsed_s": 19.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14225}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17219}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:03:19 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:03:19 /usr/sbin/distnoted agent"]}
+{"index": 58, "arm": "H", "token": "069274fdf9cf", "attempt": "H/069274fdf9cf/rep-1", "rc": 0, "error": null, "elapsed_s": 39.0, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 13207}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 37291}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:04:00 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:04:00 /usr/sbin/distnoted agent"]}
+{"index": 59, "arm": "H", "token": "4f3a6e35496f", "attempt": "H/4f3a6e35496f/rep-1", "rc": 0, "error": null, "elapsed_s": 40.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 10932}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 39051}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:04:24 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:04:24 /usr/sbin/distnoted agent"]}
+{"index": 60, "arm": "H", "token": "b26f932d4fb2", "attempt": "H/b26f932d4fb2/rep-2", "rc": 0, "error": null, "elapsed_s": 23.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 12915}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 21868}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:04:42 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:04:42 /usr/sbin/distnoted agent"]}
+{"index": 61, "arm": "H", "token": "6ae5fd64c95a", "attempt": "H/6ae5fd64c95a/rep-2", "rc": 0, "error": null, "elapsed_s": 18.0, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 12869}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 16460}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:05:22 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:05:22 /usr/sbin/distnoted agent"]}
+{"index": 62, "arm": "H", "token": "80cf506f32be", "attempt": "H/80cf506f32be/rep-2", "rc": 0, "error": null, "elapsed_s": 40.0, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 11309}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 38673}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:06:06 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:06:06 /usr/sbin/distnoted agent"]}
+{"index": 63, "arm": "H", "token": "8705d1d83285", "attempt": "H/8705d1d83285/rep-2", "rc": 0, "error": null, "elapsed_s": 44.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 11516}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 42499}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:06:33 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:06:33 /usr/sbin/distnoted agent"]}
+{"index": 64, "arm": "H", "token": "ded821ed66e6", "attempt": "H/ded821ed66e6/rep-2", "rc": 0, "error": null, "elapsed_s": 26.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 25523}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 23642}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:06:59 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:06:59 /usr/sbin/distnoted agent"]}
+{"index": 65, "arm": "H", "token": "3fc0ce83c110", "attempt": "H/3fc0ce83c110/rep-2", "rc": 0, "error": null, "elapsed_s": 26.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 24464}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 22469}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:07:38 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:07:38 /usr/sbin/distnoted agent"]}
+{"index": 66, "arm": "H", "token": "2386eb38082c", "attempt": "H/2386eb38082c/rep-2", "rc": 0, "error": null, "elapsed_s": 39.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15722}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 37423}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:08:25 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:08:25 /usr/sbin/distnoted agent"]}
+{"index": 67, "arm": "H", "token": "05f4b0744c2a", "attempt": "H/05f4b0744c2a/rep-2", "rc": 0, "error": null, "elapsed_s": 46.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 20233}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 45304}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:08:51 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:08:51 /usr/sbin/distnoted agent"]}
+{"index": 68, "arm": "H", "token": "e4e7043df4dc", "attempt": "H/e4e7043df4dc/rep-2", "rc": 0, "error": null, "elapsed_s": 25.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17969}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 24270}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:09:18 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:09:18 /usr/sbin/distnoted agent"]}
+{"index": 69, "arm": "H", "token": "5e381d4dbe46", "attempt": "H/5e381d4dbe46/rep-2", "rc": 0, "error": null, "elapsed_s": 27.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 19344}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 26300}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:09:56 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:09:56 /usr/sbin/distnoted agent"]}
+{"index": 70, "arm": "H", "token": "384dbfe260f0", "attempt": "H/384dbfe260f0/rep-2", "rc": 0, "error": null, "elapsed_s": 37.5, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 13517}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 35998}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:10:38 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:10:39 /usr/sbin/distnoted agent"]}
+{"index": 71, "arm": "H", "token": "3a1ebc525b07", "attempt": "H/3a1ebc525b07/rep-2", "rc": 0, "error": null, "elapsed_s": 42.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15482}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 41183}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:11:03 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:11:03 /usr/sbin/distnoted agent"]}
+{"index": 72, "arm": "H", "token": "989daf7aa627", "attempt": "H/989daf7aa627/rep-2", "rc": 0, "error": null, "elapsed_s": 24.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 23003}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 19320}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:11:32 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:11:32 /usr/sbin/distnoted agent"]}
+{"index": 73, "arm": "H", "token": "727f655fdbe3", "attempt": "H/727f655fdbe3/rep-2", "rc": 0, "error": null, "elapsed_s": 29.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 25440}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 21170}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:12:20 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:12:21 /usr/sbin/distnoted agent"]}
+{"index": 74, "arm": "H", "token": "845bfe405bae", "attempt": "H/845bfe405bae/rep-2", "rc": 0, "error": null, "elapsed_s": 48.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15547}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 39794}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:13:12 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:13:12 /usr/sbin/distnoted agent"]}
+{"index": 75, "arm": "H", "token": "05ae486fac3d", "attempt": "H/05ae486fac3d/rep-2", "rc": 0, "error": null, "elapsed_s": 51.2, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15758}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 45486}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:13:32 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:13:32 /usr/sbin/distnoted agent"]}
+{"index": 76, "arm": "H", "token": "3de03b6cf16e", "attempt": "H/3de03b6cf16e/rep-2", "rc": 0, "error": null, "elapsed_s": 19.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14434}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17605}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:13:50 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:13:50 /usr/sbin/distnoted agent"]}
+{"index": 77, "arm": "H", "token": "2539f7525fdd", "attempt": "H/2539f7525fdd/rep-2", "rc": 0, "error": null, "elapsed_s": 17.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14511}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 16075}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:14:32 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:14:33 /usr/sbin/distnoted agent"]}
+{"index": 78, "arm": "H", "token": "20c41ad6bd67", "attempt": "H/20c41ad6bd67/rep-2", "rc": 0, "error": null, "elapsed_s": 42.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14879}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 40865}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:15:01 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:15:01 /usr/sbin/distnoted agent"]}
+{"index": 79, "arm": "H", "token": "257736e728f9", "attempt": "H/257736e728f9/rep-2", "rc": 0, "error": null, "elapsed_s": 28.4, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 13563}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 26537}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:15:18 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:15:18 /usr/sbin/distnoted agent"]}
+{"index": 80, "arm": "H", "token": "b26f932d4fb2", "attempt": "H/b26f932d4fb2/rep-3", "rc": 0, "error": null, "elapsed_s": 16.7, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 13370}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14955}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:15:42 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:15:42 /usr/sbin/distnoted agent"]}
+{"index": 81, "arm": "H", "token": "6ae5fd64c95a", "attempt": "H/6ae5fd64c95a/rep-3", "rc": 0, "error": null, "elapsed_s": 24.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 12473}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 22913}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:16:28 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:16:28 /usr/sbin/distnoted agent"]}
+{"index": 82, "arm": "H", "token": "80cf506f32be", "attempt": "H/80cf506f32be/rep-3", "rc": 0, "error": null, "elapsed_s": 45.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 11121}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 44217}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:17:15 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:17:15 /usr/sbin/distnoted agent"]}
+{"index": 83, "arm": "H", "token": "8705d1d83285", "attempt": "H/8705d1d83285/rep-3", "rc": 0, "error": null, "elapsed_s": 46.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 12613}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 45342}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:17:43 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:17:43 /usr/sbin/distnoted agent"]}
+{"index": 84, "arm": "H", "token": "ded821ed66e6", "attempt": "H/ded821ed66e6/rep-3", "rc": 0, "error": null, "elapsed_s": 27.7, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 24526}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 26252}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:18:12 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:18:12 /usr/sbin/distnoted agent"]}
+{"index": 85, "arm": "H", "token": "3fc0ce83c110", "attempt": "H/3fc0ce83c110/rep-3", "rc": 0, "error": null, "elapsed_s": 29.2, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 24825}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 27626}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:19:01 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:19:01 /usr/sbin/distnoted agent"]}
+{"index": 86, "arm": "H", "token": "2386eb38082c", "attempt": "H/2386eb38082c/rep-3", "rc": 0, "error": null, "elapsed_s": 49.2, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14944}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 47292}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:19:46 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:19:46 /usr/sbin/distnoted agent"]}
+{"index": 87, "arm": "H", "token": "05f4b0744c2a", "attempt": "H/05f4b0744c2a/rep-3", "rc": 0, "error": null, "elapsed_s": 45.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17306}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 43351}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:20:12 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:20:12 /usr/sbin/distnoted agent"]}
+{"index": 88, "arm": "H", "token": "e4e7043df4dc", "attempt": "H/e4e7043df4dc/rep-3", "rc": 0, "error": null, "elapsed_s": 26.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 18472}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 24456}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:20:36 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:20:36 /usr/sbin/distnoted agent"]}
+{"index": 89, "arm": "H", "token": "5e381d4dbe46", "attempt": "H/5e381d4dbe46/rep-3", "rc": 0, "error": null, "elapsed_s": 23.9, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 16789}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 21816}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:21:18 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:21:18 /usr/sbin/distnoted agent"]}
+{"index": 90, "arm": "H", "token": "384dbfe260f0", "attempt": "H/384dbfe260f0/rep-3", "rc": 0, "error": null, "elapsed_s": 41.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15011}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 39513}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:21:55 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:21:55 /usr/sbin/distnoted agent"]}
+{"index": 91, "arm": "H", "token": "3a1ebc525b07", "attempt": "H/3a1ebc525b07/rep-3", "rc": 0, "error": null, "elapsed_s": 37.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 16338}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 36036}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:22:20 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:22:21 /usr/sbin/distnoted agent"]}
+{"index": 92, "arm": "H", "token": "989daf7aa627", "attempt": "H/989daf7aa627/rep-3", "rc": 0, "error": null, "elapsed_s": 25.0, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17114}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 22969}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:22:44 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:22:44 /usr/sbin/distnoted agent"]}
+{"index": 93, "arm": "H", "token": "727f655fdbe3", "attempt": "H/727f655fdbe3/rep-3", "rc": 0, "error": null, "elapsed_s": 23.3, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17456}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 21671}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:23:21 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:23:22 /usr/sbin/distnoted agent"]}
+{"index": 94, "arm": "H", "token": "845bfe405bae", "attempt": "H/845bfe405bae/rep-3", "rc": 0, "error": null, "elapsed_s": 38.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 13872}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 35396}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:24:08 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:24:08 /usr/sbin/distnoted agent"]}
+{"index": 95, "arm": "H", "token": "05ae486fac3d", "attempt": "H/05ae486fac3d/rep-3", "rc": 0, "error": null, "elapsed_s": 45.8, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 15172}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 41053}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:24:27 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:24:27 /usr/sbin/distnoted agent"]}
+{"index": 96, "arm": "H", "token": "3de03b6cf16e", "attempt": "H/3de03b6cf16e/rep-3", "rc": 0, "error": null, "elapsed_s": 19.1, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 16582}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17471}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:24:47 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:24:47 /usr/sbin/distnoted agent"]}
+{"index": 97, "arm": "H", "token": "2539f7525fdd", "attempt": "H/2539f7525fdd/rep-3", "rc": 0, "error": null, "elapsed_s": 20.5, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 19047}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 18678}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:25:22 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:25:22 /usr/sbin/distnoted agent"]}
+{"index": 98, "arm": "H", "token": "20c41ad6bd67", "attempt": "H/20c41ad6bd67/rep-3", "rc": 0, "error": null, "elapsed_s": 34.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 14555}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 32868}], "claude_sessions": 1}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:25:53 /usr/sbin/distnoted agent"]}
+{"os_agents_not_signalled": ["85251     1   450   450 S       04:25:54 /usr/sbin/distnoted agent"]}
+{"index": 99, "arm": "H", "token": "257736e728f9", "attempt": "H/257736e728f9/rep-3", "rc": 0, "error": null, "elapsed_s": 31.6, "carriers": [{"seat": "claude-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 17878}, {"seat": "codex-judge.r0", "outcome": "exited", "exit_code": 0, "elapsed_ms": 29824}], "claude_sessions": 1}
+{"batch_done": 100, "elapsed_s": 3571.7}

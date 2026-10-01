@@ -1,0 +1,1157 @@
+{
+  "cd73c07b3214": {
+    "attempt": "H/20c7b7182813/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "a74f0754f3eb": {
+    "attempt": "H/20c7b7182813/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "e52abfccbe26": {
+    "attempt": "H/20c7b7182813/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "4c8e8de297cf": {
+    "attempt": "H/e044bbb86d67/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "a6e3f682109b": {
+    "attempt": "H/e044bbb86d67/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "5911f8b2b328": {
+    "attempt": "H/e044bbb86d67/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "8c0660b3afbc": {
+    "attempt": "H/948534cf9d91/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "d8af9c135060": {
+    "attempt": "H/948534cf9d91/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "a27de644d542": {
+    "attempt": "H/c7adffe31dbe/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "08240ff63d2b": {
+    "attempt": "H/c7adffe31dbe/rep-1",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "ab158594a58f": {
+    "attempt": "H/c7adffe31dbe/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "0114740bb821": {
+    "attempt": "H/b1d685df922b/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "67b9e83a7157": {
+    "attempt": "H/8547831edfa9/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "65b67eadf08d": {
+    "attempt": "H/b26f932d4fb2/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "0ebfddb2a986": {
+    "attempt": "H/b26f932d4fb2/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "9a876b1e6bf9": {
+    "attempt": "H/b26f932d4fb2/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "925be238fa26": {
+    "attempt": "H/6ae5fd64c95a/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "498db68039c7": {
+    "attempt": "H/6ae5fd64c95a/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "f564699e3afd": {
+    "attempt": "H/6ae5fd64c95a/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "6a94a19752f7": {
+    "attempt": "H/80cf506f32be/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "7c34a915332e": {
+    "attempt": "H/80cf506f32be/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "6acb29ada8ed": {
+    "attempt": "H/8705d1d83285/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "29d14b12a463": {
+    "attempt": "H/8705d1d83285/rep-1",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "e00e0ec7f9ac": {
+    "attempt": "H/8705d1d83285/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "9a024071c557": {
+    "attempt": "H/ded821ed66e6/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "01f00f905fd4": {
+    "attempt": "H/ded821ed66e6/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "9dddc412ad1b": {
+    "attempt": "H/ded821ed66e6/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "89be044fd2bc": {
+    "attempt": "H/ded821ed66e6/rep-1",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "4f74b51e7b05": {
+    "attempt": "H/ded821ed66e6/rep-1",
+    "seat": "primary_judge",
+    "index": 3
+  },
+  "adf5af8cfbf0": {
+    "attempt": "H/3fc0ce83c110/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "65dfb36c11f3": {
+    "attempt": "H/3fc0ce83c110/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "2f4a9f21a004": {
+    "attempt": "H/3fc0ce83c110/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "d7ad9bff3f8a": {
+    "attempt": "H/3fc0ce83c110/rep-1",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "a66dde5e3b6c": {
+    "attempt": "H/3fc0ce83c110/rep-1",
+    "seat": "primary_judge",
+    "index": 3
+  },
+  "e6bcf6f06b00": {
+    "attempt": "H/2386eb38082c/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "607475a4a791": {
+    "attempt": "H/2386eb38082c/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "2b1e3ea64ce3": {
+    "attempt": "H/05f4b0744c2a/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "63fba3318a91": {
+    "attempt": "H/05f4b0744c2a/rep-1",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "071d1ab02427": {
+    "attempt": "H/05f4b0744c2a/rep-1",
+    "seat": "pair_judge",
+    "index": 2
+  },
+  "e1ea578fb157": {
+    "attempt": "H/05f4b0744c2a/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "bb9417cd9d50": {
+    "attempt": "H/e4e7043df4dc/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "e2e0ec87722b": {
+    "attempt": "H/e4e7043df4dc/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "e31703ea13c1": {
+    "attempt": "H/e4e7043df4dc/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "893a3487a257": {
+    "attempt": "H/5e381d4dbe46/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "7edcf91fa86f": {
+    "attempt": "H/5e381d4dbe46/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "6e35dab82b8a": {
+    "attempt": "H/5e381d4dbe46/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "45f9a01b33a0": {
+    "attempt": "H/384dbfe260f0/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "be3b07eae8eb": {
+    "attempt": "H/384dbfe260f0/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "31435fb42408": {
+    "attempt": "H/3a1ebc525b07/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "6ca79e4f495c": {
+    "attempt": "H/3a1ebc525b07/rep-1",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "0c0a037e847c": {
+    "attempt": "H/3a1ebc525b07/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "be0a4b3b427b": {
+    "attempt": "H/a15b39bba851/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "2ebcb4089819": {
+    "attempt": "H/a15b39bba851/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "0c634ff57254": {
+    "attempt": "H/a15b39bba851/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "1d2a9c6f4d56": {
+    "attempt": "H/a15b39bba851/rep-1",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "5c8c9d63abc2": {
+    "attempt": "H/966cb04be78d/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "a06eab8a0fd5": {
+    "attempt": "H/966cb04be78d/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "5966cd3753a1": {
+    "attempt": "H/966cb04be78d/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "ddd3a5215845": {
+    "attempt": "H/966cb04be78d/rep-1",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "0b1004b633fc": {
+    "attempt": "H/7048b34e724e/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "c46d0a5f56c0": {
+    "attempt": "H/7048b34e724e/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "670fc7dced42": {
+    "attempt": "H/4416f495c506/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "e7f09f475ab8": {
+    "attempt": "H/4416f495c506/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "e8706e1daaa8": {
+    "attempt": "H/989daf7aa627/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "3a8b340d1dd2": {
+    "attempt": "H/989daf7aa627/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "23f3b73abbf3": {
+    "attempt": "H/989daf7aa627/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "74a177cdf9bd": {
+    "attempt": "H/727f655fdbe3/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "6b2df24a6367": {
+    "attempt": "H/727f655fdbe3/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "32ab2b270cd9": {
+    "attempt": "H/727f655fdbe3/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "8863575d8777": {
+    "attempt": "H/845bfe405bae/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "cce9687e1191": {
+    "attempt": "H/845bfe405bae/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "f838c86c27de": {
+    "attempt": "H/05ae486fac3d/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "850413cbdca9": {
+    "attempt": "H/05ae486fac3d/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "68361c8bb1aa": {
+    "attempt": "H/3de03b6cf16e/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "66cdfd15e82c": {
+    "attempt": "H/3de03b6cf16e/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "758a81ad42d2": {
+    "attempt": "H/3de03b6cf16e/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "05fd60198f64": {
+    "attempt": "H/3de03b6cf16e/rep-1",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "d7d4f745be59": {
+    "attempt": "H/3de03b6cf16e/rep-1",
+    "seat": "primary_judge",
+    "index": 3
+  },
+  "7aa8184b1174": {
+    "attempt": "H/2539f7525fdd/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "d4eab0eb21ab": {
+    "attempt": "H/2539f7525fdd/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "348f8d9356f5": {
+    "attempt": "H/2539f7525fdd/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "c5bab08ac310": {
+    "attempt": "H/2539f7525fdd/rep-1",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "63a745c7f011": {
+    "attempt": "H/2539f7525fdd/rep-1",
+    "seat": "primary_judge",
+    "index": 3
+  },
+  "8055a6d0c0ba": {
+    "attempt": "H/20c41ad6bd67/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "60e374ea83f5": {
+    "attempt": "H/20c41ad6bd67/rep-1",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "7637e776ac03": {
+    "attempt": "H/20c41ad6bd67/rep-1",
+    "seat": "pair_judge",
+    "index": 2
+  },
+  "75e501332f8e": {
+    "attempt": "H/20c41ad6bd67/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "5dca199bd2a2": {
+    "attempt": "H/257736e728f9/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "86fc0a6986b8": {
+    "attempt": "H/257736e728f9/rep-1",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "2e2b4121c1e6": {
+    "attempt": "H/257736e728f9/rep-1",
+    "seat": "pair_judge",
+    "index": 2
+  },
+  "50e8c3cca551": {
+    "attempt": "H/257736e728f9/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "6124e24494be": {
+    "attempt": "H/ea5c4901aec8/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "c3d8eeb99a2e": {
+    "attempt": "H/ea5c4901aec8/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "7c3281ca9ed2": {
+    "attempt": "H/ea5c4901aec8/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "4ce05ca403c1": {
+    "attempt": "H/ea5c4901aec8/rep-1",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "54956036802b": {
+    "attempt": "H/04b4743ed989/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "e3c93ed556bd": {
+    "attempt": "H/04b4743ed989/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "9f7b83508a66": {
+    "attempt": "H/04b4743ed989/rep-1",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "303a4114bcbb": {
+    "attempt": "H/069274fdf9cf/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "6b1f796e8b42": {
+    "attempt": "H/069274fdf9cf/rep-1",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "47df7802a110": {
+    "attempt": "H/069274fdf9cf/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "bc9de412638e": {
+    "attempt": "H/4f3a6e35496f/rep-1",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "31179b41a616": {
+    "attempt": "H/4f3a6e35496f/rep-1",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "da39cffbebf2": {
+    "attempt": "H/b26f932d4fb2/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "f7f72952ca41": {
+    "attempt": "H/b26f932d4fb2/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "aa0491a45d16": {
+    "attempt": "H/b26f932d4fb2/rep-2",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "08ebd828816b": {
+    "attempt": "H/6ae5fd64c95a/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "e3908d74c334": {
+    "attempt": "H/6ae5fd64c95a/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "aa150831029a": {
+    "attempt": "H/6ae5fd64c95a/rep-2",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "791aa26d47a2": {
+    "attempt": "H/80cf506f32be/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "5b971c908262": {
+    "attempt": "H/80cf506f32be/rep-2",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "beca98babef4": {
+    "attempt": "H/80cf506f32be/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "ed636ce01450": {
+    "attempt": "H/8705d1d83285/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "8732ca7e594d": {
+    "attempt": "H/8705d1d83285/rep-2",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "b226b4473b99": {
+    "attempt": "H/8705d1d83285/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "dbb4e1a6dfbf": {
+    "attempt": "H/ded821ed66e6/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "2fd28d221b04": {
+    "attempt": "H/ded821ed66e6/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "c6de6eec1ae0": {
+    "attempt": "H/ded821ed66e6/rep-2",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "69f8ea0de2ff": {
+    "attempt": "H/ded821ed66e6/rep-2",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "2c2cfff9b274": {
+    "attempt": "H/3fc0ce83c110/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "fda84ea09967": {
+    "attempt": "H/3fc0ce83c110/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "eb05125555a6": {
+    "attempt": "H/3fc0ce83c110/rep-2",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "b821ce05f251": {
+    "attempt": "H/3fc0ce83c110/rep-2",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "e5e7c0f4d3cd": {
+    "attempt": "H/2386eb38082c/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "1259f31d23e9": {
+    "attempt": "H/2386eb38082c/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "f4c7b0392fc1": {
+    "attempt": "H/05f4b0744c2a/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "1dd13bb89475": {
+    "attempt": "H/05f4b0744c2a/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "597574874273": {
+    "attempt": "H/e4e7043df4dc/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "297e281f43b1": {
+    "attempt": "H/e4e7043df4dc/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "7cd371885d96": {
+    "attempt": "H/e4e7043df4dc/rep-2",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "5d1ed8f5bb83": {
+    "attempt": "H/e4e7043df4dc/rep-2",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "d549fc109cc3": {
+    "attempt": "H/5e381d4dbe46/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "708f36368d82": {
+    "attempt": "H/5e381d4dbe46/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "599d14704e6c": {
+    "attempt": "H/5e381d4dbe46/rep-2",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "f628b60561d3": {
+    "attempt": "H/384dbfe260f0/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "c66f904d0964": {
+    "attempt": "H/384dbfe260f0/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "2caae92f6d2b": {
+    "attempt": "H/3a1ebc525b07/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "39ceaf82928f": {
+    "attempt": "H/3a1ebc525b07/rep-2",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "133090e91066": {
+    "attempt": "H/3a1ebc525b07/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "c53fca82c4c3": {
+    "attempt": "H/989daf7aa627/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "58862af3c846": {
+    "attempt": "H/989daf7aa627/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "0775e5a5e4ef": {
+    "attempt": "H/989daf7aa627/rep-2",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "e40d25d9b750": {
+    "attempt": "H/989daf7aa627/rep-2",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "38567081fdc4": {
+    "attempt": "H/727f655fdbe3/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "0024d0c1120c": {
+    "attempt": "H/727f655fdbe3/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "579f517b2eec": {
+    "attempt": "H/727f655fdbe3/rep-2",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "bfe11708825e": {
+    "attempt": "H/727f655fdbe3/rep-2",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "5e6812f22dda": {
+    "attempt": "H/845bfe405bae/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "5ca5d0277c79": {
+    "attempt": "H/845bfe405bae/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "7bf6539a19ff": {
+    "attempt": "H/05ae486fac3d/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "d30552d8c0eb": {
+    "attempt": "H/05ae486fac3d/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "7518059c728b": {
+    "attempt": "H/3de03b6cf16e/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "cc2bc523d3b9": {
+    "attempt": "H/3de03b6cf16e/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "bc38431d6d4a": {
+    "attempt": "H/3de03b6cf16e/rep-2",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "3344b4489b84": {
+    "attempt": "H/2539f7525fdd/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "44561edeb9b1": {
+    "attempt": "H/2539f7525fdd/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "b95c463514e7": {
+    "attempt": "H/2539f7525fdd/rep-2",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "06969beada8e": {
+    "attempt": "H/2539f7525fdd/rep-2",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "ffe8c7264915": {
+    "attempt": "H/20c41ad6bd67/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "4aa1799e1e08": {
+    "attempt": "H/20c41ad6bd67/rep-2",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "16c71fa7cb2f": {
+    "attempt": "H/20c41ad6bd67/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "91d5af69e2bb": {
+    "attempt": "H/257736e728f9/rep-2",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "c9ce2946e676": {
+    "attempt": "H/257736e728f9/rep-2",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "613d5b893f1f": {
+    "attempt": "H/b26f932d4fb2/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "1cd4d926ab5d": {
+    "attempt": "H/b26f932d4fb2/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "9e3d1ad14c2f": {
+    "attempt": "H/b26f932d4fb2/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "ec1221ad4619": {
+    "attempt": "H/6ae5fd64c95a/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "b2c784e15c57": {
+    "attempt": "H/6ae5fd64c95a/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "c4430ae8a0d8": {
+    "attempt": "H/6ae5fd64c95a/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "80f749574e09": {
+    "attempt": "H/80cf506f32be/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "3f244aa3bbd1": {
+    "attempt": "H/80cf506f32be/rep-3",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "4827d6958630": {
+    "attempt": "H/80cf506f32be/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "1221e50ad9d4": {
+    "attempt": "H/80cf506f32be/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "addc7c8aa235": {
+    "attempt": "H/8705d1d83285/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "d9900f078088": {
+    "attempt": "H/8705d1d83285/rep-3",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "f4592b933466": {
+    "attempt": "H/8705d1d83285/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "63402a46eef9": {
+    "attempt": "H/8705d1d83285/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "4d17d75f7ef3": {
+    "attempt": "H/ded821ed66e6/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "61e06f24bc84": {
+    "attempt": "H/ded821ed66e6/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "e060378dc33d": {
+    "attempt": "H/ded821ed66e6/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "e5c02d2e1208": {
+    "attempt": "H/ded821ed66e6/rep-3",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "64bb9654477c": {
+    "attempt": "H/ded821ed66e6/rep-3",
+    "seat": "primary_judge",
+    "index": 3
+  },
+  "c2eb495cd2a4": {
+    "attempt": "H/3fc0ce83c110/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "478ef2b2b3c4": {
+    "attempt": "H/3fc0ce83c110/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "b2b4afa91043": {
+    "attempt": "H/3fc0ce83c110/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "2ed0407b52d8": {
+    "attempt": "H/3fc0ce83c110/rep-3",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "8ea97484709f": {
+    "attempt": "H/2386eb38082c/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "98e86358e436": {
+    "attempt": "H/2386eb38082c/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "27f0b69f24a7": {
+    "attempt": "H/05f4b0744c2a/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "3c1d90789f33": {
+    "attempt": "H/05f4b0744c2a/rep-3",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "807b3c3650e2": {
+    "attempt": "H/05f4b0744c2a/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "8130bd1ef937": {
+    "attempt": "H/e4e7043df4dc/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "fdec5d9fead1": {
+    "attempt": "H/e4e7043df4dc/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "54f3b751ed6b": {
+    "attempt": "H/e4e7043df4dc/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "0cd3935a7851": {
+    "attempt": "H/e4e7043df4dc/rep-3",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "c0db9653cd20": {
+    "attempt": "H/5e381d4dbe46/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "5f9668b4142a": {
+    "attempt": "H/5e381d4dbe46/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "5b03e37ccc8a": {
+    "attempt": "H/5e381d4dbe46/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "8ee3389e4e19": {
+    "attempt": "H/384dbfe260f0/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "f83d5b3ecb9c": {
+    "attempt": "H/384dbfe260f0/rep-3",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "04fd88fb3281": {
+    "attempt": "H/384dbfe260f0/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "d09a4a4fd121": {
+    "attempt": "H/3a1ebc525b07/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "c4115e793072": {
+    "attempt": "H/3a1ebc525b07/rep-3",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "3c34ee4de57c": {
+    "attempt": "H/3a1ebc525b07/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "66b36a1b0501": {
+    "attempt": "H/989daf7aa627/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "92b60337b4bc": {
+    "attempt": "H/989daf7aa627/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "9c4ad7d25433": {
+    "attempt": "H/989daf7aa627/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "71b48ae75b2b": {
+    "attempt": "H/727f655fdbe3/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "354be4bee435": {
+    "attempt": "H/727f655fdbe3/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "d3cec24a9ada": {
+    "attempt": "H/727f655fdbe3/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "6d643c46203d": {
+    "attempt": "H/845bfe405bae/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "124e87aa2701": {
+    "attempt": "H/845bfe405bae/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "fab6cddb4550": {
+    "attempt": "H/05ae486fac3d/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "d5c2f61c073b": {
+    "attempt": "H/05ae486fac3d/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "19895c3c3e2c": {
+    "attempt": "H/3de03b6cf16e/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "306920b27470": {
+    "attempt": "H/3de03b6cf16e/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "09ebfc3bd0ce": {
+    "attempt": "H/3de03b6cf16e/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "4101fd8db02b": {
+    "attempt": "H/3de03b6cf16e/rep-3",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "1e0b64126a2b": {
+    "attempt": "H/3de03b6cf16e/rep-3",
+    "seat": "primary_judge",
+    "index": 3
+  },
+  "1a8670a0fec2": {
+    "attempt": "H/2539f7525fdd/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "0a32c51bc814": {
+    "attempt": "H/2539f7525fdd/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "c7c396e18322": {
+    "attempt": "H/2539f7525fdd/rep-3",
+    "seat": "primary_judge",
+    "index": 1
+  },
+  "6060c8469987": {
+    "attempt": "H/2539f7525fdd/rep-3",
+    "seat": "primary_judge",
+    "index": 2
+  },
+  "b243249d321d": {
+    "attempt": "H/2539f7525fdd/rep-3",
+    "seat": "primary_judge",
+    "index": 3
+  },
+  "3397e459903f": {
+    "attempt": "H/20c41ad6bd67/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "06dac92afd90": {
+    "attempt": "H/20c41ad6bd67/rep-3",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "391db4ffe7eb": {
+    "attempt": "H/20c41ad6bd67/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  },
+  "d5883590e956": {
+    "attempt": "H/257736e728f9/rep-3",
+    "seat": "pair_judge",
+    "index": 0
+  },
+  "378fd7a6e93a": {
+    "attempt": "H/257736e728f9/rep-3",
+    "seat": "pair_judge",
+    "index": 1
+  },
+  "b06af42aabe3": {
+    "attempt": "H/257736e728f9/rep-3",
+    "seat": "pair_judge",
+    "index": 2
+  },
+  "db4dfaf2fc82": {
+    "attempt": "H/257736e728f9/rep-3",
+    "seat": "primary_judge",
+    "index": 0
+  }
+}

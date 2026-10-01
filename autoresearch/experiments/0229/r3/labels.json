@@ -1,0 +1,3929 @@
+{
+ "0024d0c1120c": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"A nested attrs instance replaced with a string goes to `asdict(val, ...)` (line 175) and fails in `fields`\". It has the same trigger and causal path, and fields() raising is NotAnAttrsClassError. Its headline counterexample is the list case."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "0114740bb821": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Reference round, coverage only: \"The required false-override regression is missing\" and the cases \"cannot detect ignoring an explicit false when the cache default is true\". It does not claim the code is broken."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "01f00f905fd4": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"the cache holds a then b, and `memo('a', {forceRefresh:true})` throws. The #get call has already moved 'a' to the most-recent position\" (also notes age update when updateAgeOnGet is set)."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "04fd88fb3281": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "The arithmetic runs \"without invoking eviction\"; maxSize 10, a=3, b=4, a to 8 means \"Both entries remain, calculatedSize and status.totalCalculatedSize become 12, and b receives no eviction disposal callbacks\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "05fd60198f64": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test covers a forced resolution that fails on a class that is already cached ... Requirement 5's cache-preservation clause has no executable evidence\"; it points to F1 for the defect rather than asserting it."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "06969beada8e": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Only says \"No test covers a forced resolution that fails after an earlier successful resolution\" and that \"a test for it would have caught F1\"; it is non-binding because \"The Verification section does not list this case as required\", not because of existing or base behavior."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "06dac92afd90": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No added test covers a forced resolution that fails after an earlier successful resolution ... the defect in F1 goes undetected\"; a coverage claim with no base-behavior reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "071d1ab02427": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": true,
+   "doubt_match": true,
+   "doubt_demotion": false,
+   "reason": "\"Under those conditions a pre-callback lookup cannot visibly change recency or age, so the test does not exercise the recency and TTL-start preservation\" reads as hypothetical (indefinite \"a pre-callback lookup\"); no base-behavior reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "0775e5a5e4ef": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "The opposite direction: \"a scalar element that the serializer replaces with a collection or attrs instance takes the `if val_type in _ATOMIC_TYPES: rv = val` branch ... its children are never visited\". The trigger and effect differ from the mechanism."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "08240ff63d2b": {
+  "root": {
+   "kind": "coverage",
+   "match": true,
+   "demotion": false,
+   "doubt_kind": true,
+   "doubt_match": true,
+   "doubt_demotion": false,
+   "reason": "\"The focused tests never check the case where remaining TTL equals minTTL ... Because of this gap, the off-by-one in F1 went undetected\": the equality trigger is named and the defect is described only as \"off-by-one\" through F1, with no existing or base behavior given as a reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "08ebd828816b": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"With cache.allowStale=true and getOptions.allowStale=false, candidate selection receives true, so an expired MRU entry reaches the predicate before an older fresh entry\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "09ebfc3bd0ce": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Line 498 (`cls.__attrs_types_resolved__ = None`) clears the cache before evaluation runs, so the documented failure behavior is wrong\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "0a32c51bc814": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"resolve_types(C, localns={}, force=True) raises NameError and leaves marker = None; a following resolve_types(C) is then a cache miss and calls get_type_hints again\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "0b1004b633fc": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Counterexample: between(2, 7)(None, attr, float('nan')). Both nan < 2 and nan > 7 are False, so the condition is False, nothing is raised and the call returns None\"; the note on missing NaN tests is additional to the behavioral claim."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "0c0a037e847c": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"src/index.ts:2303 directly executes `this.#calculatedSize += ...` without eviction\"; maxSize 10, a=3, b=4, a to 8 \"retains both entries, reports totalCalculatedSize=12, and invokes no eviction disposal callbacks\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "0c634ff57254": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test exercises the unordered-value clause... the sealed pytest pass does not cover the defect in F1\": a test-coverage claim that does not itself state the NaN-acceptance effect, and gives no existing/base-behavior reason for non-binding."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "0cd3935a7851": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": true,
+   "doubt_demotion": false,
+   "reason": "The branch \"hand-codes size accounting ... instead of reusing ... `#removeItemSize(index)` / `#addItemSize(index, size, status)`\", which \"already handles eviction\", and \"The duplication is the direct cause of the missing eviction in F1\". This is the recorded causal path, labeled a match as in 0227. It gives no existing or base behavior as its non-binding reason."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "0ebfddb2a986": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "With an allowStale:true cache and find(() => true, { allowStale: false }), \"The expired entry reaches the predicate\"; #get \"returns undefined instead of the older fresh match\" and \"also deletes the stale entry\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "1221e50ad9d4": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: \"The required focused regressions do not exercise explicit false overriding a true cache default\". It asserts no defect."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "124e87aa2701": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"replacing a nested attrs instance with a scalar incorrectly calls asdict on that scalar\". That is the mechanism's recorded causal path (the attrs branch calls asdict on the scalar), and the stale val_type is named as the cause."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "1259f31d23e9": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Preload fresh entries a then b, advance deterministic time, and force-refresh a with updateAgeOnGet:true and a throwing callback: a becomes most recent and its TTL start advances despite failure.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "133090e91066": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"src/index.ts:2303 directly executes ... without eviction\"; maxSize 10, a=3, b=4, a to 8 means \"Both entries remain and totalCalculatedSize becomes 12; b should be evicted with its disposal callbacks\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "16c71fa7cb2f": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The resulting NameError leaves the cache marker as None. A subsequent ordinary call reevaluates annotations instead of returning the cached resolution\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "19895c3c3e2c": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"evaluation raises after its cache marker has already been cleared. A subsequent unforced call evaluates annotations again and can raise instead of reusing the prior resolution\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "1a8670a0fec2": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"forcing resolution with Token unavailable raises NameError but leaves the cache marker as None. A subsequent unforced call therefore evaluates annotations again\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "1cd4d926ab5d": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "With cache.allowStale = true and find(fn, { allowStale: false }), \"false || true evaluates to true, so expired entries still reach the predicate\", and the stale match \"returns undefined and, by default, deletes the expired entry\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "1d2a9c6f4d56": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"the between docstring has none [versionadded]. Argument and exception documentation are present\": a missing version marker, unrelated to NaN acceptance, and no existing/base-behavior reason is given for non-binding (0227 labeled such findings behavioral, non-match)."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "1dd13bb89475": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"insert a then b, force-refresh a with a throwing callback, then insert c: the failed operation promotes a ... Enabling updateAgeOnGet also changes the failed entry's TTL start.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "1e0b64126a2b": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Says \"there is no matching versionadded note for the new *force* parameter\", a doc-style point unrelated to the target and not spec-required; it gives no existing-behavior reason for being non-binding."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "23f3b73abbf3": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test replaces a nested attrs instance or collection with a scalar ... As a result the passing sealed pytest run does not catch F1\". It is a test gap only, with no base or existing behavior given as the reason it does not bind."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "27f0b69f24a7": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"preload 'a' then 'b', and call `memo('a', {forceRefresh:true})` with a throwing memoMethod. The recency order flips ... With `updateAgeOnGet:true`, the start time of 'a' also changes.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "297e281f43b1": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"It has no eviction loop\"; maxSize 10, a=3, b=4, a reset to size 9 gives \"`calculatedSize` 13 > 10, and 'b' is neither evicted nor disposed\". The same trigger and effect at size 9 instead of 8; the stale final-total status is a consequence the mechanism record names."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "29d14b12a463": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": true,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: \"No regression covers an explicit allowStale: false overriding a cache default of true\". It names the defect only by pointer, \"the case where the `||` bug in F1 shows up\", and gives no stale-candidate effect."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "2b1e3ea64ce3": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"cache {a, b} with b most recent and updateAgeOnGet true. `memo('a', { forceRefresh: true })` throws. #get has already moved 'a' to the tail and reset its start time.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "2c2cfff9b274": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For a fresh non-MRU entry, a failed forced refresh executes `this.#moveToTail(index)` ... with updateAgeOnGet enabled, `this.#updateItemAge(index)` also changes its lifetime\" because #get runs before memoMethod."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "2caae92f6d2b": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The same-value resize never evicts ... It skips `#addItemSize`\"; maxSize 10, a=3, b=4, a to 8 \"leaves calculatedSize = 12 > maxSize 10. 'b' should be evicted ... but it is kept and no disposal runs\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "2e2b4121c1e6": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test covers a forced call that fails on a class that was already cached ... so the sealed pytest pass does not exercise the clause that F1 breaks\"; a coverage claim with no base-behavior reason."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "2ebcb4089819": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For value=float(\\\"nan\\\") with between(2, 7), all of these comparisons return False, so no ValueError is raised, the validator returns None, and NaN is accepted\", citing the NaN clause and the negated-comparison rejection."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "2ed0407b52d8": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": false,
+   "doubt_kind": true,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Coverage-ruled but asserts the defect, like 0227's 474da4: \"No failure test covers a non-tail entry, updateAgeOnGet=true, or a stale entry, which are the cases where the pre-callback `#get` changes state\"; no base-behavior reason."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "2f4a9f21a004": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Comment is false because \"`this.#get(k, lookupOptions)` mutates recency, age, and stale membership before `memoMethod` is invoked.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "2fd28d221b04": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"(1) a cache holding 'a', then 'b', with forceRefresh on 'a' and a throwing memoMethod. 'a' is moved to the tail ... (2) The same with updateAgeOnGet:true: the TTL start time of 'a' is reset.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "303a4114bcbb": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Rank 2 behavioral hit: \"The reset branch uses `_default_init_alias_for(self.name)`... `evolve(name=\"_next\", alias=None)` returns name `_next` with alias `private`\". That is the combined rename-and-reset trigger producing an alias built from the old name."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "306920b27470": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"NameError propagates, but the marker is now None. The next unforced call fails the check ... and re-evaluates instead of hitting the cache\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "31179b41a616": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"src/attr/_make.py:2656 uses _default_init_alias_for(self.name) after line 2648 applies new._setattrs... returns name='_next', alias='private'... instead of alias='next'\". This is the exact mechanism."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "31435fb42408": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"It never runs the eviction loop that `#addItemSize` uses\"; with maxSize 10, a=3, b=4, a to 8, \"calculatedSize becomes 12, which exceeds maxSize 10. 'b' is not evicted, eviction dispose never runs for it\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "32ab2b270cd9": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "It only says \"No test covers a serializer that replaces a nested attrs instance or collection with a scalar\" and that the \"pytest pass does not exercise the clause\". It claims no wrong behavior, and it gives no base or existing behavior as the reason it does not bind."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "3344b4489b84": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"evaluation raises after its cache marker has already been cleared. A subsequent ordinary call therefore reevaluates annotations and can raise instead of reusing the prior successful resolution\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "3397e459903f": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"get_type_hints raises NameError, but `C.__attrs_types_resolved__` is already None. The next unforced call ... re-evaluates instead of hitting the cache\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "348f8d9356f5": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Says the docstring's \"If evaluation fails, existing field types and the resolution cache are left unchanged\" \"is not true, because line 498 `cls.__attrs_types_resolved__ = None` runs before evaluation\" (0227 docstring precedent)."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "354be4bee435": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"a nested attrs instance replaced with a string goes to the attrs branch, and `asdict(val, ...)` raises NotAnAttrsClassError\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "378fd7a6e93a": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Lines 497-498 (`cls.__attrs_types_resolved__ = None`) clear the cache before evaluation\", which contradicts the docstring's promise that the cache is left unchanged on failure."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "38567081fdc4": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Collection trigger only: \"replacing the nested [1] with integer 0 therefore raises TypeError instead of producing [0]\", plus scalar to collection. It has no attrs-instance trigger and no NotAnAttrsClassError."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "391db4ffe7eb": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"NameError propagates after the cache marker has been erased. A subsequent ordinary call reevaluates annotations and can raise again instead of returning the cached class\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "39ceaf82928f": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test covers same-value growth that pushes the total over a nonzero maxSize ... and the defect in pair-1 slips through\"; the cross-reference to another finding does not itself state the wrong effect (0227 convention: an F1 reference does not independently specify incorrect behavior)."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "3a8b340d1dd2": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Root(payload=[Child(1)]) with a hook that returns 5 for the Child. val_type is Child, so the code calls `asdict(5, ...)` and raises NotAnAttrsClassError\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "3c1d90789f33": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "JSDoc is false \"because `this.#get(k, lookupOptions)` (3022) mutates recency, age, and stale membership before memoMethod runs.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "3c34ee4de57c": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"src/index.ts:2303 directly executes ... without eviction\"; maxSize 10, a=3, b=4, a to 8 \"retains both entries, reports totalCalculatedSize=12, and never disposes b\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "3f244aa3bbd1": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: \"an explicit { allowStale: false } override of a true cache default is never tested, and the defect in F1 goes undetected\". It only points to F1."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "4101fd8db02b": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test runs a forced resolution that fails on a class that was already cached, then checks for a cache hit\"; a coverage claim that defers to F1 for the defect, with no base-behavior reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "44561edeb9b1": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"the cache marker is cleared before evaluation ... get_type_hints raises NameError, but the marker is now None, so a later unforced call is no longer a cache hit and re-evaluates\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "45f9a01b33a0": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"It never runs the eviction loop that `#addItemSize` uses\"; maxSize 10, a=3, b=4, a to 8 makes \"calculatedSize becomes 12, which is more than maxSize 10. 'b' is not evicted and gets no dispose/disposeAfter\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "478ef2b2b3c4": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"cache holds 'a' (older) and 'b' (tail). `memo('a', {forceRefresh:true})` throws ... 'a' is now most recent, and with updateAgeOnGet ... resets the TTL start.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "47df7802a110": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"evolve(name='_next', alias=None) therefore returns name='_next', alias='private', alias_is_default=True instead of alias='next'\". This is the planted self.name defect on the combined call."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "4827d6958630": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"false cannot override a true cache default\"; with an expired MRU, \"the expired entry reaches the predicate\", and retrieval \"deletes the expired entry by default and returns undefined instead of continuing to the fresh entry\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "498db68039c7": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "An explicit false on an allowStale-true cache \"becomes true. Expired entries then reach the predicate\"; a matched stale entry then \"returns undefined and, by default, deletes the entry instead of continuing to older eligible entries\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "4aa1799e1e08": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test runs a forced resolution that fails on a previously cached class and then checks that field types and the cache marker are unchanged. That is why F1 passes\"; a coverage claim with no base-behavior reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "4c8e8de297cf": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Requirement \"greater than or equal to `minTTL`\" against `<= minTTL`: \"An entry with 25 ms remaining and minTTL: 25 therefore returns false with status.has = 'ttl'\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "4ce05ca403c1": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": true,
+   "doubt_demotion": false,
+   "reason": "Coverage only: \"No test passes `name` and `alias=None` in the same evolve call... the sealed pytest pass gives no evidence for Requirement 2, which is how the defect in F1 got past MECHANICAL\". It states no wrong effect itself."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "4d17d75f7ef3": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For two fresh entries inserted as a then b, forcing memo(a) with updateAgeOnGet:true and a throwing callback reaches ... moveToTail ... and ... updateItemAge ... before throwing.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "4f74b51e7b05": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Design claim \"The hit path re-implements the effects of #get inline ... so the two code paths can drift apart\"; not the failed-refresh mutation."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "50e8c3cca551": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"NameError propagates after the cache marker has been cleared. A subsequent ordinary call evaluates annotations again and can raise instead of reusing the prior resolution\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "54956036802b": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"line 2656 generates the reset alias with _default_init_alias_for(self.name)... evolve(name='_next', alias=None) therefore returns name='_next', alias='private'\". This is the exact mechanism."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "54f3b751ed6b": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test exercises a same-value growth whose total exceeds a nonzero maxSize ... which is why F1 went undetected\"; it claims only missing coverage, and the F1 cross-reference does not state the defect."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "579f517b2eec": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "A documentation-contract finding: \"The new docstring says 'Its return value determines further recursion...' That is not true ... `val_type`, which is captured before the hook runs\". It names the cause but neither the attrs-instance trigger nor the NotAnAttrsClassError effect."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "58862af3c846": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Root(payload=[Child(1)]) with a hook that returns 0 for `Child` ... calls `asdict(0, ...)` \u2192 `fields(int)` and raises NotAnAttrsClassError. It should return 0 and stop.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "5911f8b2b328": {
+  "root": {
+   "kind": "coverage",
+   "match": true,
+   "demotion": false,
+   "doubt_kind": true,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The tests never check remaining TTL exactly equal to minTTL ... the passing MECHANICAL run does not catch the off-by-equality defect in F1\": it names the equality trigger and an off-by-equality defect, and gives no existing or base behavior as a reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "5966cd3753a1": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"TestBetween has no case for an unordered value such as float(\\\"nan\\\")... That gap is why F1 passed MECHANICAL\": only a test gap, with no claim of its own about wrong behavior (0227 convention: an F1 reference does not specify the defect) and no base-behavior demotion reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "597574874273": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "The branch updates only the counters \"without eviction\"; maxSize 10, a=3, b=4, a to 8 means \"Both entries remain, calculatedSize and status.totalCalculatedSize become 12, and b receives no eviction disposal\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "599d14704e6c": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Required executable coverage is missing for the eviction case ... No test asserts LRU eviction, retention of the updated entry as most recently used, or 'evict' disposal\", missing coverage only."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "5b03e37ccc8a": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test exercises a same-value growth that pushes the total above a nonzero maxSize ... gives no evidence for the LRU-eviction and eviction-disposal clauses\", coverage only."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "5b971c908262": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": true,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Its claim is test-only (\"No test covers an explicit { allowStale: false } overriding a cache whose default is true\") and it mentions the defect only as a pointer: \"which is the case where the `||` bug shows up\". It gives no stale-candidate effect."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "5c8c9d63abc2": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For float(\\\"nan\\\"), both rejection comparisons are false under every endpoint configuration, so validation returns None\", contrary to \"An unordered value such as float(\\\"nan\\\") must raise ValueError\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "5ca5d0277c79": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"replacing the nested list with 0 enters the collection branch and fails at line 201, 'for i in val'\", plus scalar to collection. It has no attrs-instance trigger."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "5d1ed8f5bb83": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "A doc-completeness finding: the comment \"does not mention that a resulting total over `maxSize` should evict LRU entries ... If F1 is fixed, this comment should be updated\". The comment is identical in the reference and does not claim the missing eviction itself, and the non-binding reason is the F1 dependency, not existing or base behavior."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "5dca199bd2a2": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"If get_type_hints raises, the marker stays None. A later unforced call then ... re-evaluates, so the class is no longer a cache hit\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "5e6812f22dda": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"`Root(payload=[Child(1)])` with a hook that returns `0` for `Child` instances ... `asdict(0, ...)` is called and `fields(int)` raises NotAnAttrsClassError\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "5f9668b4142a": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"It never runs the eviction loop that `#addItemSize` uses\"; maxSize 10, a=3, b=4, a to 8 makes \"calculatedSize becomes 12 > 10. `b` is not evicted and gets no dispose 'evict' call\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "6060c8469987": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test covers a forced resolution that fails on a previously cached class ... Because of this gap, the defect in F1 passed MECHANICAL\"; a coverage claim with no base-behavior reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "607475a4a791": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For a fresh non-MRU entry, a throwing forced refresh changes eviction order through :3096 ... with updateAgeOnGet enabled, :3098 \\\"this.#updateItemAge(index)\\\" also refreshes its lifetime.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "60e374ea83f5": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The code at line 498 (`cls.__attrs_types_resolved__ = None`) clears the cache before evaluation, so this customer-facing documentation is wrong\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "6124e24494be": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Line 2656 instead uses _default_init_alias_for(self.name)... evolve(name='_next', alias=None) therefore returns name='_next', alias='private'\". Same trigger, same stale-alias effect."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "613d5b893f1f": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"With cache.allowStale=true and getOptions.allowStale=false, an expired MRU entry still reaches the predicate. If accepted, retrieval returns undefined and can delete that entry instead of continuing to an older fresh candidate.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "61e06f24bc84": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"preload a then b, call `memo('a', {forceRefresh:true})`, and have it throw. Afterwards 'a' is the most recent entry ... With updateAgeOnGet:true, the TTL start time has also changed.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "63402a46eef9": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: the tests \"Neither exercises false overriding a true cache default\". It refers to another finding (\"misses the demonstrated precedence failure\") without stating any incorrect behavior itself."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "63a745c7f011": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Says there is \"no matching version note for the new *force* keyword\", which is unrelated to the target mechanism; the spec does not require a version note, and \"advisory only\" does not cite existing behavior."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "63fba3318a91": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Comment is false because \"the code at 3022 runs `this.#get(k, lookupOptions)` before memoMethod, so recency, age and stale deletion can already have changed when the callback throws.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "64bb9654477c": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": false,
+   "doubt_kind": true,
+   "doubt_match": true,
+   "doubt_demotion": false,
+   "reason": "Coverage-ruled but asserts: \"No test fails the callback on a less recent entry, with updateAgeOnGet true, or on a stale entry. Those are the cases where the implementation mutates state\"; effect named only as generic \"mutates state\"; no base-behavior reason."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": true
+  }
+ },
+ "65b67eadf08d": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "With cache.allowStale true and getOptions.allowStale false, the \"||\" expression means \"expired entries remain eligible and reach the predicate, potentially selecting an expired MRU entry before an older fresh entry\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "65dfb36c11f3": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"set a, set b, then call memo('a', {forceRefresh:true}) and have memoMethod throw. 'a' has already moved to the tail ... With updateAgeOnGet:true its TTL start is also reset.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "66b36a1b0501": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For a nested list replaced with integer 0 ... line 201 attempts `for i in val`, raising TypeError\", plus scalar to collection. It has no attrs-instance trigger."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "66cdfd15e82c": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Line 498 has already set the marker to None, so line 506 never restores it. The class is no longer cached, and the next unforced call re-evaluates\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "670fc7dced42": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Counterexample: between(2, 7)(None, attr, float(\\\"nan\\\")): nan < 2 is False and nan > 7 is False, so no ValueError is raised and NaN is accepted (returns None)\"; the partially-ordered-sets remark and missing-test note are extras."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "67b9e83a7157": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Reference round, coverage only: \"The explicit-false cases never exercise overriding a true cache default\" and \"would still pass if false overrides were ignored\". This is a hypothetical about what the tests would miss, not a claim that the code is broken."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "68361c8bb1aa": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"forcing resolution with an empty namespace raises NameError and leaves the cache marker cleared. A subsequent ordinary call evaluates annotations again\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "69f8ea0de2ff": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": false,
+   "doubt_kind": true,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Coverage-ruled but asserts the defect: tests \"never fail a calculation on a non-tail entry, with updateAgeOnGet true ... Because of this the pre-callback lookup mutation in F1 is not detected\"; no base-behavior reason."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "6a94a19752f7": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Counterexample: with an allowStale:true cache, an expired MRU and find(() => true, { allowStale: false }), \"The stale entry reaches the predicate\", and retrieval \"returns undefined and, by default, deletes the stale entry\"; \"The correct behavior is to skip the stale entry and return the fresh value\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "6acb29ada8ed": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"false || true evaluates to true, so expired entries still reach the predicate\": with an allowStale=true cache and find(() => true, { allowStale: false }), \"The predicate receives the stale entry first\". Its side claim that the stale value \"is returned\" is wrong (the twin returns undefined), but the stale-candidate leak is the target."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "6b1f796e8b42": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": true,
+   "doubt_demotion": false,
+   "reason": "Coverage only: \"None of the new tests call `evolve(name=..., alias=None)` in a single call... the sealed pytest pass could not catch F1\". It names the trigger, but it leaves the wrong effect (alias from the old name) to an outside reference, F1."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "6b2df24a6367": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"If the hook replaces a nested attrs instance with a string, the code calls `asdict(\"str\", ...)` and raises NotAnAttrsClassError\", caused by the stale `val_type = type(val)`."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "6ca79e4f495c": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test exercises a same-value resize where the total exceeds a nonzero maxSize, so nothing checks LRU eviction, eviction disposal\", coverage only."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "6d643c46203d": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"a list element is an attrs instance `Child(1)` and the serializer returns the scalar `\"pruned\"` ... the code calls `asdict(\"pruned\", ...)`, and `fields(str)` raises NotAnAttrsClassError\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "6e35dab82b8a": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Only says \"No test in the new regression file covers a same-value growth that pushes the total past a nonzero `maxSize`\" so the pass \"gives no evidence for the eviction and disposal clauses\", without asserting the code fails to evict."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "708f36368d82": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "The branch \"never calls `this.#evict(true)`\"; maxSize 10, a=3, b=4, a to 8 makes \"calculatedSize becomes 12 > 10, 'b' is not evicted, and dispose/disposeAfter with reason 'evict' are never called\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "71b48ae75b2b": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For a nested list replaced with integer 0 ... line 201 executes `for i in val`, raising TypeError\", plus integer to list. It has no attrs-instance trigger."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "74a177cdf9bd": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"replacing the nested list with 0 reaches 'for i in val' ... and raises TypeError instead of returning [0]\", plus scalar to collection. It has no attrs-instance trigger."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "7518059c728b": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"forcing a refresh with an unresolved reference raises NameError and leaves the prior cache marker cleared. A subsequent ordinary call evaluates annotations again\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "758a81ad42d2": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Says the docstring's failure-preservation sentence \"is false, because line 498 (`cls.__attrs_types_resolved__ = None`) clears the cache before evaluation\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "75e501332f8e": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"NameError propagates with the cache marker cleared. A subsequent ordinary call with localns={} evaluates again and raises instead of returning the cached class\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "7637e776ac03": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test covers a forced resolution that fails after an earlier successful resolution\", so \"the sealed pytest pass never reaches the code path behind F1\"; a coverage claim with no base-behavior reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "791aa26d47a2": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "With a cache built with allowStale: true, find(fn, { allowStale: false }) \"evaluates false || true to true. Expired entries still reach the predicate\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "7aa8184b1174": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"forcing resolution with localns={} raises NameError and leaves the cache marker as None. The next unforced call re-evaluates annotations\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "7bf6539a19ff": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Counterexample 1: `Root(payload=[Child(1)])` with a hook that returns `0` for `(None, None, child)` ... calls `asdict(0, ...)`, and `fields(int)` raises `NotAnAttrsClassError` when it should produce `[0]`\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "7c3281ca9ed2": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": true,
+   "doubt_demotion": false,
+   "reason": "Framed as a documentation finding, but it asserts the code uses \"`_default_init_alias_for(self.name)`, which is the pre-change name. So the documented reset behavior is wrong whenever `name` and `alias=None` are passed in the same call\". Same trigger and effect, so it is a documentation hit."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "7c34a915332e": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"false cannot override a true cache default\"; find(() => true, { allowStale: false }) \"calls the predicate on the expired entry\", and retrieval \"deletes that entry by default and returns undefined instead of continuing to the fresh entry\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "7cd371885d96": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test covers a same-value resize whose new total exceeds a nonzero `maxSize` ... which is why F1 passed MECHANICAL\"; it claims only missing coverage, and the F1 cross-reference does not state the defect."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "7edcf91fa86f": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"It never evicts anything\"; with `{ maxSize: 10, maxEntrySize: 10 }`, a=3, b=4, a to 8, \"`calculatedSize` becomes 12, which is above `maxSize`. Entry `b` is not evicted and gets no `dispose`/`disposeAfter` 'evict' call\". The maxEntrySize setting does not change the trigger."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "8055a6d0c0ba": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"get_type_hints raises NameError, but the marker is already None. On the next unforced call ... this is a cache miss and the class re-evaluates\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "807b3c3650e2": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"A throwing forced refresh of an older fresh entry changes eviction order through line 3096's ... moveToTail and, with updateAgeOnGet, changes its TTL start through line 3098's ... updateItemAge.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "80f749574e09": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "With an allowStale:true cache and find(fn, { allowStale: false }), \"The selection passes allowStale: true to #indexes, so expired entries reach the predicate\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "8130bd1ef937": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "The update \"returns without eviction\"; maxSize 10, a=3, b=4, a to 8 leaves \"Both entries remain and calculatedSize becomes 12, although b must be evicted\", with eviction disposal omitted."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "850413cbdca9": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For a nested list replaced with 0 ... 'for i in val', raising TypeError\", plus integer to collection. It has no attrs-instance trigger."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "86fc0a6986b8": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Because of line 498 (`cls.__attrs_types_resolved__ = None`), the cache is not left unchanged, so this customer-facing documentation is wrong\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "8732ca7e594d": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: \"No test checks explicit allowStale: false overriding a cache constructed with allowStale: true\". It asserts no defect."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "8863575d8777": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"a list field holds a nested attrs instance `Child(1)` and the serializer returns `5` for it ... `fields(int)` raises NotAnAttrsClassError instead of returning 5\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "893a3487a257": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"the remaining update path returns without eviction\"; maxSize 10, a=3, b=4, a to 8 means \"Both entries remain and calculatedSize/status.totalCalculatedSize become 12\", where b must be evicted with disposal."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "89be044fd2bc": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Hypothetical only: \"Recency, age and stale-deletion changes during a failed recalculation would therefore go undetected ... the executable evidence does not establish the failure-preservation clauses\" (like 0227's f2de1e88)."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "8c0660b3afbc": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Quotes `if (minTTL > 0 && this.getRemainingTTL(k) <= minTTL)` and says at remaining 25 with `{ minTTL: 25 }` \"the call returns false and reports `status.has = 'ttl'` when it should return true with 'hit'\": same equality trigger and same wrong effect as the planted `<=` guard."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "8ea97484709f": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"the cache holds 'a' (least recent) and 'b'. Calling `memo('a', {forceRefresh: true})` with a throwing memoMethod lets #get move 'a' to the tail ... With updateAgeOnGet=true, #get also resets the TTL start of 'a'.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "8ee3389e4e19": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The same-value resize path never evicts entries\" because the `#addItemSize` loop \"is skipped\"; maxSize 10, a=3, b=4, a to 8 makes \"calculatedSize becomes 12 > 10 and b is not evicted or disposed\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "91d5af69e2bb": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"get_type_hints raises NameError, but the marker is already None. The next unforced call therefore treats C as uncached and evaluates annotations again\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "925be238fa26": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Says \"allowStale: getOptions.allowStale || this.allowStale\" means \"false cannot override a true cache default\", so with an expired MRU entry ahead of a fresh one, find(fn, { allowStale: false }) \"passes the expired entry to the predicate\", deletes it and \"returns undefined instead of continuing to the fresh entry\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "92b60337b4bc": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"(a) a nested attrs instance in a list replaced by `\"x\"` \u2192 takes the attrs branch and calls `asdict(\"x\", ...)`, raising NotAnAttrsClassError\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "98e86358e436": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"a failed forced refresh of the least-recent entry changes subsequent eviction, and updateAgeOnGet changes its TTL start\" via #get's moveToTail and updateItemAge before the callback."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "9a024071c557": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For a fresh least-recent entry, #get executes \\\"this.#moveToTail(index)\\\" and, with updateAgeOnGet, \\\"this.#updateItemAge(index)\\\". A thrown calculation therefore changes recency and TTL start.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "9a876b1e6bf9": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: \"No case passes { allowStale: false } to a cache whose allowStale is true\". The phrase \"even though F1 is a defect\" only points to another finding."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "9c4ad7d25433": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test replaces a nested attrs instance or collection with a scalar, so it does not cover the requirement ... and F1 goes undetected\". It is a test gap only, with no base or existing behavior reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "9dddc412ad1b": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Comment is false \"while `this.#get(k, lookupOptions)` (line 3022) runs before the callback and changes recency, age, or membership.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "9e3d1ad14c2f": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: \"No regression covers { allowStale: false } overriding a cache whose allowStale is true\". The phrase \"the reason defect F1 gets past\" only points to another finding."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "9f7b83508a66": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": true,
+   "doubt_demotion": false,
+   "reason": "Rank 1 coverage: \"No test covers a single `evolve(name=..., alias=None)` call... That gap let F1 slip past the passing suite\". It gives no existing-behavior or base-behavior reason for not binding, so it is not a demotion."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "a06eab8a0fd5": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"checks for rejection with negated comparisons... For float(\\\"nan\\\"), every comparison returns False, so neither rejection branch fires and between(2, 7)(None, attr, float(\\\"nan\\\")) returns None\" against the NaN-must-raise clause."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "a27de644d542": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The implementation rejects the equal case\"; `has('a', { minTTL: 25 })` at remaining 25 \"then returns false and reports `ttl`, but the spec requires true and `hit`. The comparison should be `< minTTL`.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "a66dde5e3b6c": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Design claim \"The hit path hand-duplicates `#get`'s stale-delete, moveToTail, and updateItemAge logic ... Two copies ... risk drifting apart\" (0227: design concern, not the failed-refresh mutation)."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "a6e3f682109b": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The implementation rejects the equal case: `... <= minTTL`\"; with remainingTTL 25 and `{ minTTL: 25 }` \"The code returns false and sets `status.has = 'ttl'`, but the spec requires true and `'hit'`\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "a74f0754f3eb": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "`<= minTTL` \"rejects the equality case\"; with remaining TTL 25 and { minTTL: 25 } \"has() should return true, but this code returns false and sets status.has = 'ttl'\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "aa0491a45d16": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": true,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: \"No test covers an explicit allowStale: false on a cache whose default is allowStale: true\". It names the defect only by pointer, \"why the `||` defect in F1 passes\", and gives no stale-candidate effect."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "aa150831029a": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: \"No test makes an explicit { allowStale: false } override a cache whose allowStale is true\". The phrase \"it would have caught F1\" only points to another finding."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "ab158594a58f": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Cites Requirement 2 \"greater than or equal to minTTL\" against `<= minTTL`: \"With start=100, ttl=100, now=175, and minTTL=25, this incorrectly returns false and reports \"ttl\"\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "addc7c8aa235": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"#indexes includes the expired entry. The predicate then receives 'stale'\", and get \"removes the expired entry and returns undefined. Searching never reaches 'fresh'\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "adf5af8cfbf0": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For a fresh, non-most-recent entry with updateAgeOnGet:true, #get executes \\\"this.#moveToTail(index)\\\" and \\\"this.#updateItemAge(index)\\\" (3096\u20133098) before a thrown calculation, changing recency and TTL start time.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "b06af42aabe3": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test covers a forced failure after a cached success followed by an unforced cache-hit check. That gap is how F1 passed\"; a coverage claim with no base-behavior reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "b226b4473b99": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "With an expired MRU and an older fresh entry, find(() => true, { allowStale: false }) \"calls the predicate on the expired entry\", and retrieval \"deletes that entry by default and returns undefined instead of continuing to the fresh match\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "b243249d321d": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Says there is \"no versionadded/versionchanged entry for the new *force* parameter\", which is unrelated to the target and not a spec-required clause; \"surrounding docstrings do add these entries\" is a style argument, not a demotion by base behavior."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "b2b4afa91043": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"`this.#get(k, lookupOptions)` (3022) runs before memoMethod and can change recency, age, or membership\" makes the doc wrong; non-binding reason is \"This will resolve once F1 is fixed\", not base behavior."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "b2c784e15c57": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "With cache.allowStale === true, find(fn, { allowStale: false }) \"still sends expired entries to the predicate\"; a stale match \"returns undefined and ... deletes the entry. The search stops there and never reaches older fresh entries\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "b821ce05f251": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": false,
+   "doubt_kind": true,
+   "doubt_match": true,
+   "doubt_demotion": false,
+   "reason": "Coverage-ruled but asserts the defect by reference: \"the early `#get` has no visible effect, so the test passes despite F1. No failure test covers a non-most-recent entry, `updateAgeOnGet: true`\"; no base-behavior reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "b95c463514e7": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Says the docstring's \"If evaluation fails, existing field types and the resolution cache are left unchanged\" is \"false given line 498 `cls.__attrs_types_resolved__ = None`, which runs before evaluation\" (0227 precedent: such a docstring contradiction by eager invalidation is a match)."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "bb9417cd9d50": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Lines 2303-2304 run the arithmetic \"without eviction\"; maxSize 10, a=3, b=4, a to 8 means \"Both entries remain, calculatedSize and status.totalCalculatedSize become 12, and b's eviction disposal callbacks never run\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "bc38431d6d4a": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test runs a forced resolution that fails. All six `force=True` calls ... succeed\"; a coverage claim that defers to F1 for the defect, with no base-behavior reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "bc9de412638e": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The alias reset derives the alias from the old name... `evolve(name=\"_next\", alias=None)` returns name `_next`, alias `private`... The expected alias is `next`\". This is the exact mechanism."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "be0a4b3b427b": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Lines 494-496 instead reject using \\\"value < self.lower ...\\\" and \\\"value > self.upper ...\\\". For between(2, 7) validating float(\\\"nan\\\"), both comparisons are false, so validation returns None\" against the NaN clause."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "be3b07eae8eb": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "The direct arithmetic runs \"without invoking the eviction loop\"; maxSize 10, a=3, b=4, a to 8 means \"Both entries remain, calculatedSize and status.totalCalculatedSize become 12, and b receives no eviction disposal\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "beca98babef4": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"false cannot override a true cache default\"; find(() => true, { allowStale: false }) \"invokes the predicate on the expired entry\", which is then deleted by default and returns \"undefined instead of continuing to the fresh entry\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "bfe11708825e": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": true,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test covers a nested replacement whose type differs from the original ... and that is the clause F1 shows is broken\". It asserts the clause is broken only by citing F1, states no behavior of its own, and gives no base-behavior reason for not binding."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "c0db9653cd20": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Lines 2303-2304 \"only execute\" the direct size arithmetic \"with no eviction\"; with maxSize 10, a=3, b=4, then a at size 8, \"Both entries remain and calculatedSize becomes 12\" with no eviction disposal, which is the target mechanism."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "c2eb495cd2a4": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"a throwing forced refresh of the least-recent entry changes eviction order and, with updateAgeOnGet enabled, its lifetime\" since line 3022 #get precedes memoMethod."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "c3d8eeb99a2e": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"A reset alias is built from the original name, not the new one... returns name `_next` with alias `private`... initializer uses the wrong keyword\". It names the trigger, the effect and the downstream initializer consequence."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "c4115e793072": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test grows a same-value entry past a nonzero maxSize total ... So Requirement 3 ... has no executable coverage\", a coverage-only claim."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "c4430ae8a0d8": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: \"No test passes { allowStale: false } to a cache whose default is allowStale: true\". The mention \"the defect in F1 goes undetected\" only points to another finding."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "c46d0a5f56c0": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For NaN, both conditions are false under every flag combination, so validation returns None... Assignment validation consequently accepts and stores NaN\", caused by using the inverse operators as rejection conditions."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "c53fca82c4c3": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For a nested list replaced with an integer ... 'for i in val', raising TypeError\", plus scalar to collection. It has no attrs-instance trigger."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "c5bab08ac310": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test covers a forced resolution failing on a class that was already cached\" and \"F1 got past the sealed pytest run\"; it claims missing coverage and gives no existing-behavior reason for being non-binding."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "c66f904d0964": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Same-value growth bypasses eviction\"; maxSize 10, a=3, b=4, a to 8 means \"Both entries remain, calculatedSize and status.totalCalculatedSize become 12, and b receives no eviction callbacks\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "c6de6eec1ae0": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Doc is incorrect because \"The code calls `this.#get(k, lookupOptions)` before the callback (line 3022), so a failed memo() can still reorder, re-age, or delete-and-dispose entries.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "c7c396e18322": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Because of line 498 (`cls.__attrs_types_resolved__ = None`), the resolution cache is cleared when a forced evaluation fails, so this customer documentation is wrong\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "c9ce2946e676": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The successful cache marker is now lost; an ordinary call with localns={'Token': str} re-evaluates and changes the field to str instead of retaining int\": the same marker loss, seen through a repaired namespace."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "cc2bc523d3b9": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"NameError propagates, but the marker is now None, so the next unforced call is a cache miss and re-evaluates\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "cce9687e1191": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"replacing the inner list with 0 reaches 'for i in val' at line 201 and raises TypeError\", plus scalar to collection. It has no attrs-instance trigger."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "cd73c07b3214": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Cites `<= minTTL` at src/index.ts:2447: \"A fresh entry with 25 ms remaining and minTTL: 25 incorrectly returns false, reports \"ttl\", and skips the requested age refresh. Use < instead of <=\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "d09a4a4fd121": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "The same-value resize path \"never evicts, unlike `#addItemSize`\"; maxSize 10, a=3, b=4, a to 8 makes \"calculatedSize becomes 12 > 10. 'b' is not evicted and no eviction dispose runs\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "d30552d8c0eb": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"For a nested list replaced with integer 0, the collection branch reaches 'for i in val' ... and raises TypeError\", plus integer to collection. It has no attrs-instance trigger."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "d3cec24a9ada": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": true,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test replaces a nested value with a value of a different type, so the sealed pytest pass does not cover Requirement #3's scalar-replacement clause ... which is why defect F1 passes the suite\". It asserts a defect only by pointing to F1 and states no behavior of its own."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "d4eab0eb21ab": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"get_type_hints raises NameError after line 498 has already set `__attrs_types_resolved__ = None` ... the next unforced call ... re-evaluates instead of hitting the cache\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "d549fc109cc3": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "The direct size arithmetic runs \"without eviction\"; maxSize 10, a=3, b=4, a to 8 makes \"calculatedSize/status.totalCalculatedSize become 12; b should be evicted\", because \"The existing eviction loop ... is bypassed by this branch\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "d5883590e956": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The marker is already None, so the next unforced `resolve_types(C)` is a cache miss and re-evaluates instead of hitting the cache\" after the failing forced call."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "d5c2f61c073b": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Its only counterexamples are a collection trigger, \"a callback replacing the inner list with 0 reaches 'for i in val' ... and raises TypeError\", and a scalar replaced by a collection. It names no nested attrs instance and no NotAnAttrsClassError, which 0227 labeled a different trigger and error."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "d7ad9bff3f8a": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": true,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Coverage-ruled but asserts the defect as fact: \"Moving to the tail and skipping the age update are no-ops there, so the test cannot detect the pre-callback `#get` mutation ... No test covers a failure ... on a non-MRU entry.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "d7d4f745be59": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Says there is \"no matching versionadded/versionchanged note for the new *force* parameter\", which is unrelated to the target mechanism and not a spec-required doc clause; marked \"advisory only\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "d8af9c135060": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Cites `<= minTTL`: \"With TTL 100, start 100, now 175, and minTTL 25, this rejects a qualifying entry, reports \"ttl\", and skips the requested age refresh. Change the rejection comparison to <\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "d9900f078088": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: \"there is no test where an explicit { allowStale: false } overrides cache.allowStale === true\". The phrase \"That gap is why F1 passed MECHANICAL\" only points to another finding."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "da39cffbebf2": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"With cache.allowStale=true and getOptions.allowStale=false, candidate selection still receives true. An expired MRU entry passes ... and reaches the predicate\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "db4dfaf2fc82": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"NameError leaves the cache marker cleared. A subsequent unforced call evaluates annotations again and can raise instead of reusing the cached int type\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "dbb4e1a6dfbf": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"a throwing forced refresh of an older fresh entry changes eviction order and, with updateAgeOnGet enabled, its TTL start\" because #get precedes memoMethod."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "ddd3a5215845": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The docstring says ValueError: If *lower* is greater than *upper* when constructed, but the code raises whenever not lower <= upper, which also covers unordered bounds\" plus a missing versionadded: precision about construction-time bound checking (a listed near-miss), with no base-behavior reason for non-binding."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "e00e0ec7f9ac": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"false cannot override a true cache default\"; find(..., {allowStale:false}) \"passes the expired entry to the predicate\", and retrieval \"deletes that entry ... and returns undefined instead of continuing to the fresh entry\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "e060378dc33d": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": true,
+   "doubt_demotion": false,
+   "reason": "Only the stale trigger: \"Take a stale key with allowStale and noDeleteOnStaleGet false. The early `this.#get` deletes it ... fires dispose/disposeAfter\"; mechanism.md lists the stale-entry throw as a near-miss with a different trigger and effect."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "e1ea578fb157": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Preloading a then b, failing a forced refresh of a, and inserting c therefore evicts b instead of a; the failed operation can also extend a's lifetime.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "e2e0ec87722b": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The same-value remeasure path never evicts\"; maxSize 10, a=3, b=4, a to 8 makes \"calculatedSize becomes 12 > 10 and b is not evicted or disposed\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "e31703ea13c1": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Says \"The sealed test suite has no case where a same-value remeasure pushes the total above a nonzero maxSize\" and so \"does not cover LRU eviction or disposal\", a missing-coverage claim with no assertion of broken behavior."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "e3908d74c334": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "With cache allowStale: true, an expired MRU and find(() => true, { allowStale: false }), \"#indexes({allowStale: true}) yields the stale entry, so it reaches the predicate\", and the search \"returns undefined instead of continuing to the older fresh entry\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "e3c93ed556bd": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The alias is derived from the original name, not the name after evolve... returns name='_next' and alias='private' with alias_is_default=True\". It cites the same-call clause and also notes missing tests, but it asserts the code is broken."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "e40d25d9b750": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test replaces a nested attrs instance or collection with a scalar ... That is why the passing pytest run ... did not catch F1/F2\". It is a test gap only, with no base or existing behavior reason."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "e52abfccbe26": {
+  "root": {
+   "kind": "coverage",
+   "match": true,
+   "demotion": false,
+   "doubt_kind": true,
+   "doubt_match": true,
+   "doubt_demotion": false,
+   "reason": "\"No test checks the inclusive boundary where remaining TTL equals minTTL ... That gap let F1 pass verification\": it names the equality trigger, but the wrong effect appears only through the cross-reference to F1, and it gives no existing or base behavior as its reason for not binding."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": false,
+   "doubt": false
+  }
+ },
+ "e5c02d2e1208": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Comment is false \"because `this.#get(k, lookupOptions)` changes recency, age, and stale membership before the callback runs (line 3022).\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "e5e7c0f4d3cd": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"a cache holds a,b (b is most recent), and `memo('a', {forceRefresh:true})` throws. #get moves 'a' to the tail ... with `updateAgeOnGet: true`, #get resets a's TTL start time.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "e6bcf6f06b00": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"cache entries a (LRU) and b; `memo('a', {forceRefresh:true})` with a memoMethod that throws. 'a' is moved to MRU ... If updateAgeOnGet is true, 'a' also gets a new start time.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "e7f09f475ab8": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Quotes the inverted rejection predicates and states \"For float('nan'), both predicates are false, so validation returns None for every endpoint configuration... Generated construction and assignment consequently accept NaN\", which is the target negation-vs-inversion NaN acceptance; the added custom-comparison remark is extra."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "e8706e1daaa8": {
+  "root": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"replacing the nested list with 0 enters the collection branch and reaches 'for i in val' (line 201), raising TypeError\", plus integer to collection. It has no attrs-instance trigger."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "eb05125555a6": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Doc \"memo() does not change the cache\" is false because \"The code calls `this.#get(k, lookupOptions)` before memoMethod ... so recency, age, and stale deletion can already have changed when the callback throws\" (0227 convention: doc-false-because-#get = match)."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "ec1221ad4619": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"false becomes true when cache.allowStale is true\"; find(fn, {allowStale:false}) \"incorrectly visits the expired entry\", \"deleting the excluded entry and never reaching the fresh match\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "ed636ce01450": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"{ allowStale: false } falls through to this.allowStale\"; with an allowStale: true cache, \"c.find(fn, { allowStale: false }) still sends expired entries to the predicate\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "f4592b933466": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "With cache.allowStale=true and find(() => true, {allowStale:false}), \"the expired entry reaches the predicate\", and #get then \"deletes that expired entry by default and returns undefined instead of continuing to the fresh entry\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "f4c7b0392fc1": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"preload 'a' then 'b', and have `memo('a', {forceRefresh: true})` throw. 'a' has already been moved to the tail ... With updateAgeOnGet set, the TTL start time has also been reset.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "f564699e3afd": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "Test-only: \"No test checks an explicit allowStale: false overriding a cache with allowStale: true\". The phrase \"why the defect in F1 passes the sealed verification\" only points to another finding."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "f628b60561d3": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The same-value branch only adjusts the total ... It never evicts\"; maxSize 10, a=3, b=4, a to 8 makes \"`calculatedSize` becomes 12 > 10. 'b' is not evicted and gets no dispose/disposeAfter with reason 'evict'\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "f7f72952ca41": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"false || true === true. Expired entries then still reach the predicate\"; a matched expired entry \"deletes it and returns undefined instead of continuing to older eligible entries\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "f838c86c27de": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Root(payload=[Child(1)]) with a hook that returns 5 for a nested Child ... line 175 calls `asdict(5, ...)`, and `fields(int)` raises NotAnAttrsClassError\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "f83d5b3ecb9c": {
+  "root": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"No test covers the case where a same-value resize pushes the total above a nonzero `maxSize` ... says nothing about the eviction and disposal requirement\". Rank-2 HIGH, but coverage only."
+  },
+  "astra": {
+   "kind": "coverage",
+   "match": false,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "fab6cddb4550": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"Root(payload=[Child(1)]) with a hook that returns `\"x\"` for `(None, None, child)` ... raises NotAnAttrsClassError instead of returning {'payload': ['x']}\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "fda84ea09967": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"cache holds a and b (b most recent). `memo('a', {forceRefresh: true})` with a throwing memoMethod reaches `this.#moveToTail(index)` ... with `updateAgeOnGet: true`, `this.#updateItemAge(index)` resets the TTL start time.\""
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "fdec5d9fead1": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"The new branch only does `this.#calculatedSize += size - ...` / `this.#sizes[index] = size` and never evicts\"; counterexample maxSize 10, a=3, b=4, set a to 8 gives \"calculatedSize becomes 12 > 10, 'b' is not evicted and dispose gets no 'evict' call\", which is exactly the recorded trigger and effect."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ },
+ "ffe8c7264915": {
+  "root": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt_kind": false,
+   "doubt_match": false,
+   "doubt_demotion": false,
+   "reason": "\"raises NameError after the marker has already been set to None. A later unforced `resolve_types(C)` ... re-evaluates instead of hitting the cache\"."
+  },
+  "astra": {
+   "kind": "behavioral",
+   "match": true,
+   "demotion": null,
+   "doubt": false
+  }
+ }
+}

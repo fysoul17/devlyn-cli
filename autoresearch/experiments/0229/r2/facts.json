@@ -1,0 +1,2618 @@
+[
+  {
+    "attempt": "H/1801a5478ae8/rep-1",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "No regression test makes a same-value resize push the total over a nonzero maxSize and then evict. The closest case, `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)` with maxSize 10, only reaches the limit exactly. Requirement 3 (evict least-recently-used entries until the total fits, keep the updated entry as most recently used, and dispose evicted entries) is therefore checked by source review only. The source does satisfy it: at src/index.ts:2250, `this.#moveToTail(index)` runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). The `while (this.#calculatedSize > maxSize) { this.#evict(true) }` loop at src/index.ts:1775-1776 then evicts from the head with eviction disposal, and the updated entry is never evicted because its size was removed and `size <= this.#maxSize`. The spec allows source-review obligations, so this finding does not affect the verdict.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-1",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 213,
+        "message": "Nothing in the new tests makes a same-value remeasure push the total over maxSize and force LRU eviction. The closest case is `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, which only reaches the limit exactly. The spec makes uncovered clauses source-review obligations, and source review confirms the behaviour. In src/index.ts:2250, `this.#moveToTail(index)` runs before src/index.ts:2303-2304 (`this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)`). Because of that order, the loop in #addItemSize at src/index.ts:1775-1776 (`while (this.#calculatedSize > maxSize) { this.#evict(true) }`) evicts from the head, applies the existing 'evict' dispose/disposeAfter behaviour, and never evicts the updated entry, since its size has already been zeroed and `size <= this.#maxSize`. This is advisory only: the missing regression test is not a demonstrated violation.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/f6634cfb3793/rep-1",
+    "arm": "H",
+    "token": "f6634cfb3793",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "claude",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS_WITH_ISSUES",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      }
+    },
+    "findings": [
+      {
+        "seat": "primary_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.missing-regression-case",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "Requirement 3 says that when a same-value update grows past the total limit, it must \"evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior.\" No test in the new file exercises this. The closest case, `c.set('a', a, { size: 6 })`, brings the total to exactly 10 (`t.equal(c.size, 2)`), so nothing is evicted. A source review shows the behavior is implemented: src/index.ts:2250 `this.#moveToTail(index)` runs before src/index.ts:2303-2304 `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)`, and #addItemSize evicts from the head with `while (this.#calculatedSize > maxSize) { this.#evict(true) }`. The spec allows source review for clauses the command does not exercise, so this finding is advisory: a regression test for this path is missing.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/488c710e81a1/rep-1",
+    "arm": "H",
+    "token": "488c710e81a1",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "claude",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS_WITH_ISSUES",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      }
+    },
+    "findings": [
+      {
+        "seat": "primary_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 208,
+        "message": "None of the new tests covers the eviction clause. A same-value resize that pushes the total over a nonzero maxSize is never tested: the closest case, `c.set('a', a, { size: 6 })` with `t.equal(c.calculatedSize, 10)`, lands exactly on the limit and evicts nothing. Eviction disposal and the updated entry staying most-recent therefore rest on source review only. The source looks correct. src/index.ts:2303-2304 calls `this.#removeItemSize(index)` and then `this.#addItemSize(index, size, status)`. The entry has already been moved to the tail (`this.#moveToTail(index)`, line 2250), and `#addItemSize` runs `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (lines 1775-1777), which evicts from the head with the existing dispose/disposeAfter behavior. The spec permits source review for this clause, so this is advisory.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/1801a5478ae8/rep-10",
+    "arm": "F",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 201,
+        "message": "None of the new tests trigger LRU eviction from a same-value resize. The closest case is `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, which only reaches the exact limit, so Requirement 3 (evict LRU entries until the total fits, keep the updated entry as most recent, dispose evicted entries) is not covered by the sealed command. Reading the source shows the behaviour is correct: src/index.ts:2250 `this.#moveToTail(index)` runs first, then src/index.ts:2303-2304 `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)`, and src/index.ts:1775-1776 `while (this.#calculatedSize > maxSize) { this.#evict(true) }` evicts from the head. The updated entry's size is zeroed and it sits at the tail, and the update only runs when `size <= this.#maxSize`, so the updated entry is never evicted. The spec allows source review for clauses the command does not exercise, so this is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/6f89d26e0ccb/rep-10",
+    "arm": "F",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 215,
+        "message": "No test makes a same-value resize push the total over a nonzero maxSize and trigger eviction. The closest test, `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, only reaches the limit exactly, so nothing is evicted. Reading the source shows the requirement is still met: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` and `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). Inside addItemSize, `while (this.#calculatedSize > maxSize) { this.#evict(true) }` evicts least-recently-used entries starting from the head, so the updated entry stays most recently used. Evicted entries go through the normal eviction disposal path, and the queued disposeAfter calls are flushed at src/index.ts:2323. The spec allows this clause to rest on source review, so this finding is advisory.",
+        "id": "pair-1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-2",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "Requirement 3 (eviction) has no regression test. No test triggers LRU eviction from a same-value remeasure. The closest one is 'validation, entry admission, and exact total limit', which only reaches the exact limit: `c.set('a', a, { size: 6 })` / `t.equal(c.calculatedSize, 10)` / `t.equal(c.size, 2)`. Reading the source, the behavior looks correct. At src/index.ts:2250 `this.#moveToTail(index)` runs first. Then src/index.ts:2303-2304 call `this.#removeItemSize(index)` and `this.#addItemSize(index, size, status)`, and addItemSize runs `while (this.#calculatedSize > maxSize) { this.#evict(true) }`. That evicts head (LRU) entries using the existing evict disposal, keeps the updated entry at the tail, and disposeAfter is flushed at src/index.ts:2323. The spec says clauses the command does not exercise stay source-review obligations, so this is advisory only.",
+        "id": "pj-1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-2",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-requirement",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "Nothing in the new test file exercises Requirement 3, which says a same-value resize that pushes the total over a nonzero maxSize \"must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used\" and that evicted entries receive eviction disposal. The closest test only reaches the exact limit: `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, so nothing is evicted. The spec makes unexercised clauses source-review obligations, and source review shows the requirement is met. In src/index.ts:2250, `this.#moveToTail(index)` runs before `this.#removeItemSize(index); this.#addItemSize(index, size, status)` at 2303-2304. The eviction loop in #addItemSize at 1775 (`while (this.#calculatedSize > maxSize) { this.#evict(true) }`) therefore removes head entries with eviction disposal. It cannot evict the updated entry: its size has already been removed and `size <= this.#maxSize` is guarded at 2301. This is advisory only; a regression test would strengthen it.",
+        "id": "pair-1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-3",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.missing-test",
+        "file": "test/set-size-update.ts",
+        "line": 204,
+        "message": "None of the new tests makes a same-value remeasure push the total over a nonzero maxSize, so Requirement 3 ('must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used') has no test. The closest case is `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, which only reaches the limit exactly (maxSize 10). Reading the source shows the clause is met: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` and `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). `#addItemSize` then loops `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776), evicting from the LRU head with the existing eviction disposal. The updated entry cannot evict itself because its own size is excluded from `calculatedSize` and `size <= this.#maxSize`. This is advisory only, because the spec allows clauses the command does not exercise to be checked by source review.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-3",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-advisory",
+        "file": "test/set-size-update.ts",
+        "line": 205,
+        "message": "Requirement 3 (\"the same-value update must evict least-recently-used entries until the total fits ... Each evicted entry must receive the existing eviction disposal behavior\") is not exercised by the new tests. The closest case, 'validation, entry admission, and exact total limit', only reaches the limit exactly (`c.set('a', a, { size: 6 })` / `t.equal(c.calculatedSize, 10)`) and never evicts. Source review shows the behavior is met: src/index.ts:2303-2304 calls `this.#removeItemSize(index)` and then `this.#addItemSize(index, size, status)`. `#addItemSize` (src/index.ts:1773-1777) runs `while (this.#calculatedSize > maxSize) { this.#evict(true) }` after `#moveToTail(index)` (2250), so it evicts from the LRU head, keeps the updated entry as most recently used, and goes through the existing eviction dispose path. The spec leaves this to source review, so this finding is advisory only: a regression test is missing.",
+        "id": "pair-1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/1801a5478ae8/rep-11",
+    "arm": "F",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.missing-executable-case",
+        "file": "test/set-size-update.ts",
+        "line": 1,
+        "message": "None of the new tests covers the required eviction case for same-value updates. The closest test is 'validation, entry admission, and exact total limit', which grows `a` with `c.set('a', a, { size: 6 })` to a total of exactly `maxSize` 10, so nothing is evicted. The sealed test run therefore does not check that remeasuring evicts least-recently-used entries, keeps the updated entry as most recent, or applies eviction disposal. The spec allows source review for clauses the command does not exercise. Reading the code, `this.#moveToTail(index)` runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2250, 2303-2304), and `addItemSize` loops `while (this.#calculatedSize > maxSize) { this.#evict(true) }` from the head. Because `size <= this.#maxSize`, the updated entry is never evicted. I found no behavioural defect; this is a test-coverage gap only.",
+        "id": "pair-1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/6f89d26e0ccb/rep-11",
+    "arm": "F",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "NEEDS_WORK",
+    "sub_verdicts": {
+      "judge": "NEEDS_WORK",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "NEEDS_WORK"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-requirement",
+        "file": "test/set-size-update.ts",
+        "line": 205,
+        "message": "None of the new tests covers the eviction requirement: a same-value resize that pushes the total over a nonzero maxSize. The closest case only reaches the exact limit and evicts nothing (`c.set('a', a, { size: 6 })` / `t.equal(c.calculatedSize, 10)`). I checked the source by hand: src/index.ts:2250 calls `this.#moveToTail(index)` before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (2303-2304). `#addItemSize` loops `while (this.#calculatedSize > maxSize) { this.#evict(true) }`. That `#evict` call fires dispose with reason 'evict' and queues disposeAfter. It cannot evict the updated entry, because that entry's size was zeroed first and the entry now sits at the tail. The requirement looks satisfied, but no test locks it in.",
+        "id": "pj-1"
+      },
+      {
+        "seat": "primary_judge",
+        "engine": "codex",
+        "index": 0,
+        "rank": 2,
+        "accepted_by_merge": true,
+        "severity": "HIGH",
+        "verdict_binding": null,
+        "rule_id": "spec.eviction-disposal",
+        "file": "src/index.ts",
+        "line": 2323,
+        "message": "Same-value resizing can leave eviction callbacks undelivered when noDisposeOnSet is true. With maxSize: 10, disposeAfter configured, and entries a(size 3), b(size 4), setting the identical a to size 8 with noDisposeOnSet: true evicts b. src/index.ts:2378 queues \"this.#disposed?.push([oldValue, k, 'evict'])\", but src/index.ts:2323 guards delivery with \"if (!noDisposeOnSet && this.#hasDisposeAfter && this.#disposed)\". The successful update therefore returns without calling disposeAfter for b; without another operation, it never runs. The contract requires \"Each evicted entry must receive the existing eviction disposal behavior.\" The public option documentation at src/index.ts:884\u2013886 limits suppression to when \"the entry key is still accessible within the cache\", which does not apply to evicted b. Drain eviction disposal callbacks even when replacement disposal is suppressed, and cover this interaction in the regression tests.",
+        "id": "V1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-4",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 207,
+        "message": "Requirement 3 (evict LRU entries when a remeasured same-value entry pushes the total over a nonzero `maxSize`, with eviction disposal) has no test. The closest case, `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, grows to exactly the limit, so nothing is evicted. The spec says unexercised clauses are source-review obligations, and source review passes: src/index.ts:2250 `this.#moveToTail(index)` runs before src/index.ts:2303-2304 `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)`. The loop in `addItemSize`, `while (this.#calculatedSize > maxSize) { this.#evict(true) }`, therefore evicts from the head and stops before the updated tail entry, because `size <= this.#maxSize` is guarded at src/index.ts:2301. The disposeAfter queue is flushed at src/index.ts:2323. This is advisory only: a regression test is missing.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-4",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "No regression test exercises the eviction clause ('the same-value update must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior'). The closest case, `c.set('a', a, { size: 6 })` with maxSize 10 and b=4, reaches the limit exactly and evicts nothing. The spec allows source review for clauses the command doesn't exercise, and the source is correct: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index); this.#addItemSize(index, size, status)` (2303-2304). `#addItemSize` loops `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (1775-1776) from the head, and the guard `size <= this.#maxSize` (2301) stops the loop before it reaches the updated tail entry. Evict disposals queued in `#disposed` are flushed at 2323-2328. Advisory only.",
+        "id": "pj-1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/f6634cfb3793/rep-2",
+    "arm": "H",
+    "token": "f6634cfb3793",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "claude",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS_WITH_ISSUES",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      }
+    },
+    "findings": [
+      {
+        "seat": "primary_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 205,
+        "message": "None of the new tests grows a same-value entry far enough to force eviction. The 'exact total limit' case stops at the limit (`c.set('a', a, { size: 6 })` then `t.equal(c.calculatedSize, 10)`), so no test shows that LRU entries are evicted, that the updated entry stays most recent, or that evicted entries get 'evict' disposal. Reading the code instead: `this.#removeItemSize(index)` then `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304) runs after `this.#moveToTail(index)` (2250). `#addItemSize` runs `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (1775-1776), and `#evict` calls `this.#dispose?.(oldValue, k, 'evict')` (2375). So the behavior looks correct. The spec keeps clauses the command doesn't exercise as source-review obligations, so this is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/488c710e81a1/rep-2",
+    "arm": "H",
+    "token": "488c710e81a1",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "claude",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS_WITH_ISSUES",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      }
+    },
+    "findings": [
+      {
+        "seat": "primary_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 215,
+        "message": "No test covers Requirement 3, where a same-value resize pushes the total over a nonzero maxSize. The closest test, 'validation, entry admission, and exact total limit', only reaches the limit exactly with `c.set('a', a, { size: 6 })` and `t.equal(c.calculatedSize, 10)`, so nothing is evicted. Reading the source shows the requirement is met: src/index.ts:2250 runs `this.#moveToTail(index)` before src/index.ts:2303-2304 runs `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)`. `#addItemSize` then evicts from the head with `while (this.#calculatedSize > maxSize) { this.#evict(true) }`, so the updated entry stays most recently used and evicted entries get the normal eviction disposal. The spec allows source review for clauses the test command does not exercise, so this is advisory only. A regression test is still missing.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-5",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 215,
+        "message": "The eviction requirement ('the same-value update must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior') has no regression test. The closest case, `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, only reaches the exact limit and evicts nothing. A source review shows the behavior is correct: src/index.ts:2303-2304 calls `this.#removeItemSize(index)` and then `this.#addItemSize(index, size, status)`. That runs `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1777) after `#moveToTail(index)` (2250). It evicts from the head with eviction disposal, and the zeroed updated entry is never evicted before the loop ends. Because the spec allows source review here, this finding is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-5",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 1,
+        "message": "No case in the new test file covers the Requirement 3 eviction path, where a same-value remeasure pushes the total over a nonzero maxSize and LRU entries are evicted and disposed. Source review shows the path is correct. At src/index.ts:2303-2304, `this.#removeItemSize(index)` and then `this.#addItemSize(index, size, status)` run after `this.#moveToTail(index)` (src/index.ts:2250). #addItemSize evicts from the head using `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1777). Because `size <= this.#maxSize` and the updated entry's size was zeroed, the loop stops before it reaches the updated tail entry. The queued disposeAfter tasks are flushed at src/index.ts:2323-2328. The spec allows source-review obligations, so this is advisory only.",
+        "id": "pair-1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/1801a5478ae8/rep-12",
+    "arm": "F",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 222,
+        "message": "Requirement 3 says the update \"must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior.\" No test grows a same-value entry past the total limit. The closest case, `c.set('a', a, { size: 6 })` with b=4 under maxSize 10, reaches exactly 10 and evicts nothing. Source review shows the code is correct. At src/index.ts:2250, `this.#moveToTail(index)` runs before `this.#removeItemSize(index); this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). Then `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776) evicts entries from the head and calls dispose with 'evict'. Because `size <= this.#maxSize`, the loop cannot reach the updated entry. The verification bullet treats untested clauses as source-review obligations, so this gap does not affect the verdict.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/6f89d26e0ccb/rep-12",
+    "arm": "F",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 219,
+        "message": "No regression case covers a same-value remeasure that pushes the total over a nonzero maxSize and forces LRU eviction. The closest case, `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, reaches the limit exactly and evicts nothing. Reading the source shows the requirement is still met: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index); this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). addItemSize then runs `while (this.#calculatedSize > maxSize) { this.#evict(true) }` from the head, so the updated entry is never evicted. Each evicted entry goes through #evict's dispose/disposeAfter path, and the existing disposeAfter flush at src/index.ts:2323 handles the deferred calls. Under the spec, this clause is a source-review obligation, so this finding is advisory only.",
+        "id": "pair-1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-6",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 219,
+        "message": "No test case covers the eviction clause (\"the same-value update must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior\"). The closest case, `c.set('a', a, { size: 6 })` followed by `t.equal(calculatedSize, 10)`, reaches the limit exactly and evicts nothing. The spec makes unexercised clauses source-review obligations, so I checked the source. It satisfies the clause: `#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). The loop `while (this.#calculatedSize > maxSize) { this.#evict(true) }` evicts from the head, and `#evict` calls dispose with 'evict' and queues disposeAfter. Because of the guard `size <= this.#maxSize`, the loop stops before it can evict the updated tail entry. This is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-6",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "No regression test makes a same-value remeasure push the total over a nonzero `maxSize`, so the requirement to \"evict least-recently-used entries until the total fits, retaining the updated entry as most recently used\" with eviction disposal is never exercised. The closest case only reaches the limit exactly: `c.set('a', a, { size: 6 })` / `t.equal(c.calculatedSize, 10)`. Reading the source shows the behavior is correct: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (2303-2304), and #addItemSize evicts from the head with `this.#evict(true)` (1775-1777), so the updated entry is never the one evicted. Queued disposeAfter tasks are flushed at 2323-2329. Because the spec allows source review for clauses the command doesn't exercise, this is advisory only.",
+        "id": "pj-1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-7",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 199,
+        "message": "None of the regression tests checks the clause 'the same-value update must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior.' The nearest test is `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, which only reaches the limit exactly and evicts nothing. Source review shows the clause is met. At src/index.ts:2250, `this.#moveToTail(index)` runs before src/index.ts:2303-2304 `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)`. The eviction loop at src/index.ts:1775-1776 (`while (this.#calculatedSize > maxSize) { this.#evict(true) }`) evicts from the head with 'evict' dispose. It cannot evict the updated entry, because that entry's size has been removed and `size <= this.#maxSize` is guarded. The spec lets clauses that the command does not exercise stay as source-review obligations, so this is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-7",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "No regression test makes a same-value resize push the total over a nonzero maxSize, so the eviction clause has no direct test. The closest case is `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, which lands exactly on maxSize=10 and evicts nothing. Source review shows the clause is met: `this.#moveToTail(index)` at src/index.ts:2250 runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` at src/index.ts:2303-2304. That function loops with `while (this.#calculatedSize > maxSize) { this.#evict(true) }`, which evicts from the head, so it removes LRU entries and keeps the updated entry at the tail. Evicted entries go through `#evict`, which handles dispose 'evict'. The spec allows source review for clauses its command does not exercise, so this finding is advisory.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/f6634cfb3793/rep-3",
+    "arm": "H",
+    "token": "f6634cfb3793",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "claude",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS_WITH_ISSUES",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      }
+    },
+    "findings": [
+      {
+        "seat": "primary_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 205,
+        "message": "Requirement 3 (\"the same-value update must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior\") has no regression test. Every same-value growth case in the new file still fits under maxSize. The closest one is `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, which only hits the exact limit. The spec leaves unexercised clauses to source review, and that review passes. The new branch calls `this.#moveToTail(index)` (src/index.ts:2250), then `this.#removeItemSize(index)` and `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). `#addItemSize` runs `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1777). `#evict` calls `this.#dispose?.(oldValue, k, 'evict')` and pushes `[oldValue, k, 'evict']` onto the disposeAfter queue, which `#set` drains at src/index.ts:2323-2328. Because the updated entry's own size has already been removed and the guard requires `size <= this.#maxSize`, the loop cannot evict the updated entry. This finding is advisory only: the behavior has no executable regression coverage.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/488c710e81a1/rep-3",
+    "arm": "H",
+    "token": "488c710e81a1",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "claude",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS_WITH_ISSUES",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      }
+    },
+    "findings": [
+      {
+        "seat": "primary_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-requirement",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "Requirement 3 (evict LRU entries when a remeasured same-value entry pushes the total over a nonzero maxSize, retaining the updated entry as MRU, with eviction disposal) has no test. The closest case, `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, only reaches the exact limit and never evicts. Source review shows the behavior is correct: src/index.ts:2250 `this.#moveToTail(index)` runs before src/index.ts:2303-2304 `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)`, and #addItemSize (src/index.ts:1775-1776) loops `while (this.#calculatedSize > maxSize) { this.#evict(true) }` from the head. Because the entry's own size was zeroed and `size <= this.#maxSize`, the loop cannot evict the updated entry. disposeAfter tasks are drained at src/index.ts:2323-2328. The spec makes untested clauses source-review obligations, so this finding is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/1801a5478ae8/rep-13",
+    "arm": "F",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "NEEDS_WORK",
+    "sub_verdicts": {
+      "judge": "NEEDS_WORK",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "NEEDS_WORK"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-requirement",
+        "file": "test/set-size-update.ts",
+        "line": 222,
+        "message": "Requirement 3 (evict LRU entries when a remeasured same-value entry pushes the total over a nonzero maxSize, with eviction disposal) is not covered by the new tests. The closest case, `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, reaches the limit exactly and evicts nothing. Source review shows the requirement is met: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304), and `#addItemSize` loops `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776). Because of the `size <= this.#maxSize` guard, the loop stops before it reaches the updated tail entry. Evicted entries are disposed with reason 'evict', and the disposeAfter queue is flushed at src/index.ts:2323. This finding is advisory: the spec makes unexercised clauses source-review obligations.",
+        "id": "F1"
+      },
+      {
+        "seat": "primary_judge",
+        "engine": "codex",
+        "index": 0,
+        "rank": 2,
+        "accepted_by_merge": true,
+        "severity": "HIGH",
+        "verdict_binding": null,
+        "rule_id": "spec.eviction-disposal",
+        "file": "src/index.ts",
+        "line": 2323,
+        "message": "Same-value growth with noDisposeOnSet: true can leave eviction disposeAfter callbacks uncalled. With maxSize: 10, insert a at size 3 and b at size 4, then set the identical a to size 8 with noDisposeOnSet: true. The new branch calls \"this.#addItemSize(index, size, status)\" (src/index.ts:2304), evicting b and queuing \"this.#disposed?.push([oldValue, k, 'evict'])\" (src/index.ts:2378). However, \"if (!noDisposeOnSet && this.#hasDisposeAfter && this.#disposed)\" (src/index.ts:2323) skips draining that queue. If no later operation drains it, b's disposeAfter never runs. Ensure eviction callbacks are delivered even when replacement disposal is suppressed, and cover this combination in the regression tests.",
+        "id": "V1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/6f89d26e0ccb/rep-13",
+    "arm": "F",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "No regression test makes a same-value remeasure push the total over a nonzero maxSize, so nothing checks that LRU entries get evicted with disposal while the updated entry stays most recently used. The closest case is `c.set('a', a, { size: 6 })` with `t.equal(c.calculatedSize, 10)`, which only reaches the limit exactly. The spec makes this clause a source-review obligation, and the source review passes: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). The eviction loop `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1777) therefore evicts from the head. It cannot evict the updated entry, because that entry's size was zeroed and `size <= this.#maxSize` is guarded. Disposals queued by #evict are flushed by the existing disposeAfter loop at src/index.ts:2323-2328. Advisory only.",
+        "id": "pair-1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-8",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-requirement",
+        "file": "test/set-size-update.ts",
+        "line": 205,
+        "message": "None of the new tests exercise the eviction clause: 'the same-value update must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior.' The closest test fills the cache exactly ('c.set('a', a, { size: 6 })' then 't.equal(c.calculatedSize, 10)' with maxSize 10), so nothing is evicted. The spec says unexercised clauses 'remain source-review obligations'. Source review finds the clause met. `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (2303-2304). In `#addItemSize`, `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (1775-1776) evicts from the head with the existing disposal behavior. Because the updated entry's size was first zeroed and `size <= this.#maxSize` is guarded, the updated tail entry is never evicted. Not binding; this is a regression-test gap only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-8",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "Requirement 3 (same-value growth that exceeds total maxSize must evict LRU entries, keep the updated entry as MRU, and dispose each evicted entry) has no regression test. The closest test only reaches the exact limit: `c.set('a', a, { size: 6 })` / `t.equal(calculatedSize, 10)`, so nothing is evicted. I checked the source and the behavior is correct. `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). The `while (this.#calculatedSize > maxSize) { this.#evict(true) }` loop (src/index.ts:1775-1777) therefore evicts from the head and never removes the updated entry. `#evict` calls `this.#dispose?.(oldValue, k, 'evict')` and queues disposeAfter, which set() flushes at src/index.ts:2323-2328. The spec makes untested clauses source-review obligations, so this finding is advisory only.",
+        "id": "pair-1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-9",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 196,
+        "message": "No regression case grows a same-value entry so the total exceeds a nonzero maxSize and forces LRU eviction. The closest case only reaches the exact limit: `c.set('a', a, { size: 6 })` / `t.equal(c.calculatedSize, 10)` / `t.equal(c.size, 2)`. Requirement 3 says 'the same-value update must evict least-recently-used entries until the total fits ... Each evicted entry must receive the existing eviction disposal behavior.' The spec makes untested clauses source-review obligations, and source review shows the requirement is met. At src/index.ts:2250, `this.#moveToTail(index)` runs before src/index.ts:2303-2304, `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)`. `#addItemSize` then loops `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776), which evicts from the head and never evicts the updated tail entry, because its size was removed and `size <= this.#maxSize`. This finding is advisory only: the requirement is met, but no test protects that behavior from regressing.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-9",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-requirement",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "None of the new tests grows a same-value entry so that the total goes over a nonzero maxSize and evicts LRU entries with disposal. The 'exact total limit' case only reaches the limit (`c.set('a', a, { size: 6 })` then `t.equal(calculatedSize, 10)`) and never evicts. Source review shows the behaviour is correct. src/index.ts:2250 calls `this.#moveToTail(index)` before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (2303-2304). The `while (this.#calculatedSize > maxSize) this.#evict(true)` loop (1775-1776) then evicts from the head with 'evict' disposal, and the disposeAfter flush runs at 2323-2328. The updated entry's size was already removed and `size <= this.#maxSize`, so it is never evicted. The spec makes this a source-review obligation, so the finding is advisory.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/1801a5478ae8/rep-14",
+    "arm": "F",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": []
+  },
+  {
+    "attempt": "F/6f89d26e0ccb/rep-14",
+    "arm": "F",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "NEEDS_WORK",
+    "sub_verdicts": {
+      "judge": "NEEDS_WORK",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "NEEDS_WORK"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 209,
+        "message": "No test makes a same-value remeasure push the total over a nonzero maxSize, so the eviction clause has no executable coverage. The closest case is `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, which only reaches the limit exactly and evicts nothing. The spec allows this clause to be checked by source review, and the source is correct: src/index.ts:2250 calls `this.#moveToTail(index)` first, then `this.#removeItemSize(index)` and `this.#addItemSize(index, size, status)` run the `while (this.#calculatedSize > maxSize) { this.#evict(true) }` loop (src/index.ts:1775-1777). That loop evicts from the head while the updated entry stays most recently used, and evicted entries get the existing 'evict' disposal. Advisory only.",
+        "id": "pair-1"
+      },
+      {
+        "seat": "primary_judge",
+        "engine": "codex",
+        "index": 0,
+        "rank": 2,
+        "accepted_by_merge": true,
+        "severity": "HIGH",
+        "verdict_binding": null,
+        "rule_id": "spec.eviction-disposal",
+        "file": "src/index.ts",
+        "line": 2323,
+        "message": "Same-value growth can leave eviction disposal callbacks undelivered. With maxSize: 10, disposeAfter configured, and entries a(size 3), b(size 4), setting the identical a to size 8 with noDisposeOnSet: true evicts b. src/index.ts:2378 queues \"this.#disposed?.push([oldValue, k, 'evict'])\", but src/index.ts:2323 gates delivery with \"if (!noDisposeOnSet && this.#hasDisposeAfter && this.#disposed)\". The call returns without invoking b's disposeAfter, potentially leaving it queued indefinitely. The requirement states \"Each evicted entry must receive the existing eviction disposal behavior.\" The public option contract at src/index.ts:884-886 limits suppression to \"if the entry key is still accessible within the cache\"; b is no longer accessible. Ensure eviction callbacks drain even when replacement disposal is suppressed, and cover this combination in the regression tests.",
+        "id": "V1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-10",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 205,
+        "message": "None of the new tests covers the same-value eviction path in Requirement 3. The closest case is 'validation, entry admission, and exact total limit': `c.set('a', a, { size: 6 })` brings the total to exactly 10 and asserts `c.size, 2`, so nothing is evicted. Source review shows the clause is met. At src/index.ts:2250, `this.#moveToTail(index)` runs before `this.#removeItemSize(index); this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). `#addItemSize` then loops `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776) on the total that excludes this entry. Because of the `size <= this.#maxSize` guard, the loop stops before the updated tail entry would be evicted. Evicted entries get the existing `#evict(true)` disposal, and `disposeAfter` is flushed at src/index.ts:2323-2328. This clause has source-review coverage only, which the spec permits.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-10",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 209,
+        "message": "None of the new tests grows a same-value entry far enough that the new total goes over a nonzero maxSize. The closest case is `c.set('a', a, { size: 6 })` with `t.equal(c.calculatedSize, 10)`, which lands exactly on the limit, so nothing gets evicted. Requirement 3 says the update must \"evict least-recently-used entries until the total fits, retaining the updated entry as most recently used\" and that \"each evicted entry must receive the existing eviction disposal behavior\". I checked this by reading the code instead. In src/index.ts, `this.#moveToTail(index)` at line 2250 runs first. Then `this.#removeItemSize(index)` and `this.#addItemSize(index, size, status)` at lines 2303-2304 run, and `addItemSize` loops `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (lines 1775-1777). Because the entry's own size is zeroed before that loop, the loop takes entries from the head and cannot evict the updated entry. The code meets the requirement, but no regression test covers it. The spec treats requirements the command does not exercise as source-review obligations, so this finding is advisory.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/f6634cfb3793/rep-4",
+    "arm": "H",
+    "token": "f6634cfb3793",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "claude",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS_WITH_ISSUES",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      }
+    },
+    "findings": [
+      {
+        "seat": "primary_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-requirement",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "Requirement 3 (\"the same-value update must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior\") has no regression test. The closest case is 'validation, entry admission, and exact total limit', where `c.set('a', a, { size: 6 })` brings the total to exactly 10 with `maxSize: 10`, so nothing is evicted. Source review shows the behavior is correct: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index); this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). `#addItemSize` then runs `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776), which evicts from the head with 'evict' disposal (src/index.ts:2375-2378). The disposeAfter queue is flushed at src/index.ts:2323-2328. This is advisory only, because the spec says requirements not exercised by the command remain source-review obligations.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/488c710e81a1/rep-4",
+    "arm": "H",
+    "token": "488c710e81a1",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "claude",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS_WITH_ISSUES",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      }
+    },
+    "findings": [
+      {
+        "seat": "primary_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 215,
+        "message": "No regression test makes a same-value remeasure push the total over a nonzero maxSize, so the eviction clause has no direct test. The closest case is `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, which only reaches the limit exactly and evicts nothing. I checked the source instead: src/index.ts:2250 runs `this.#moveToTail(index)` before the remeasure. Then `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304) runs `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776). Because of that order, LRU entries are evicted first and the updated entry stays most recently used. #evict also queues the existing 'evict' dispose/disposeAfter calls. The behavior looks correct, but no test pins it. This finding is advisory.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-11",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 4,
+        "message": "No test exercises the case where a same-value regrowth pushes the total over a nonzero maxSize, which should trigger LRU eviction. In every test, either the total stays within maxSize (test 1 uses `maxSize: 100`) or it lands exactly on the limit (`c.set('a', a, { size: 6 })` gives `calculatedSize` 10 with `maxSize: 10`). Source review shows the behavior is correct anyway. At src/index.ts:2250, `this.#moveToTail(index)` runs before `this.#removeItemSize(index)` and `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). `#addItemSize` then runs `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776), which calls the existing `this.#dispose?.(oldValue, k, 'evict')`. As a result, the updated entry stays most recently used and is never the evicted head. The clause is met by source review, and the spec allows that for unexercised clauses. This finding is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-11",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "MEDIUM",
+        "verdict_binding": false,
+        "rule_id": "coverage.missing-executable-case",
+        "file": "test/set-size-update.ts",
+        "line": 205,
+        "message": "No test covers Requirement 3, where a same-value remeasure pushes the total over a nonzero maxSize and must evict LRU entries with eviction disposal. The closest case only reaches the limit exactly: `c.set('a', a, { size: 6 })` / `t.equal(c.calculatedSize, 10)` / `t.equal(c.size, 2)`. A source review finds the behavior correct. `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index); this.#addItemSize(index, size, status)` (src/index.ts:2303-2304), and `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776) evicts from the head while the updated entry stays at the tail. The guard `size <= this.#maxSize` stops the entry from evicting itself. The spec keeps clauses the command does not exercise as source-review obligations, so this finding is advisory.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/1801a5478ae8/rep-15",
+    "arm": "F",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "No test exercises the eviction path for Requirement 3. The closest case, `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, only reaches the limit exactly and does not go over it. Reading the source shows the behavior is correct: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304), and the loop `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1777) then evicts LRU entries with eviction disposal while keeping the updated entry. The spec accepts source review for this clause, so the gap is advisory only.",
+        "id": "pj-1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/6f89d26e0ccb/rep-15",
+    "arm": "F",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 199,
+        "message": "Requirement 3 (eviction after a same-value remeasure pushes the total over a nonzero `maxSize`) has no test. The closest case, 'validation, entry admission, and exact total limit', only grows the total to exactly the limit: `c.set('a', a, { size: 6 })` / `t.equal(c.calculatedSize, 10)` / `t.equal(c.size, 2)`. Nothing triggers `#evict(true)` from the new branch or checks for 'evict' dispose/disposeAfter. I checked the source and the behavior is correct: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` + `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). The `while (this.#calculatedSize > maxSize) { this.#evict(true) }` loop (src/index.ts:1775-1776) therefore evicts from the LRU head without reaching the updated entry, whose size is temporarily 0. Evicted entries get `dispose(oldValue, k, 'evict')`, and their disposeAfter tasks run at src/index.ts:2323-2328. The spec makes untested clauses a source-review obligation, so this finding is advisory only.",
+        "id": "pair-1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-12",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": []
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-12",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 204,
+        "message": "The eviction clause for a same-value resize has no test. The spec says: \"the same-value update must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used\". The closest test, 'validation, entry admission, and exact total limit', only grows the total to exactly maxSize (`c.set('a', a, { size: 6 })` \u2192 `t.equal(c.calculatedSize, 10)`), so no eviction or eviction disposal happens. Reading the source shows the behavior is correct: at src/index.ts:2250 `this.#moveToTail(index)` runs before src/index.ts:2303-2304 `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)`. The `#addItemSize` loop `while (this.#calculatedSize > maxSize) { this.#evict(true) }` therefore evicts head entries first, never the updated entry while it fits maxSize, and disposes each with reason 'evict'; the queued disposeAfter calls are flushed at src/index.ts:2323. This is advisory only: the spec says requirements the verification command doesn't exercise are source-review obligations.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-13",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-requirement",
+        "file": "test/set-size-update.ts",
+        "line": 205,
+        "message": "Requirement 3 says the same-value update 'must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used'. No test in the regression file covers this. The closest case reaches the exact limit without evicting anything: `c.set('a', a, { size: 6 })` / `t.equal(c.calculatedSize, 10)`. I checked the source by hand instead and found no defect. In src/index.ts:2250, `this.#moveToTail(index)` runs before the new branch at :2303-2304 (`this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)`). The eviction loop in #addItemSize (`while (this.#calculatedSize > maxSize) { this.#evict(true) }`) therefore removes entries from the LRU head, and each removal goes through #evict's 'evict' dispose/disposeAfter path. The updated entry never gets evicted because `size <= this.#maxSize` is guarded. The spec allows source review for this clause, so this finding is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-13",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "Requirement 3 (\"the same-value update must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior\") isn't exercised by any test. The closest case, `c.set('a', a, { size: 6 })` with `maxSize: 10`, only reaches the exact limit (`t.equal(c.calculatedSize, 10)`) and evicts nothing. A source review of src/index.ts:2250-2304 shows the requirement is met. `#moveToTail(index)` runs first. `#removeItemSize(index)` zeroes the entry. Then `#addItemSize` loops `while (this.#calculatedSize > maxSize) { this.#evict(true) }` from the head, so it can't evict the updated tail entry because `size <= this.#maxSize`. The spec allows source review for clauses the command doesn't exercise, so this is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/f6634cfb3793/rep-5",
+    "arm": "H",
+    "token": "f6634cfb3793",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "claude",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS_WITH_ISSUES",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      }
+    },
+    "findings": [
+      {
+        "seat": "primary_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 215,
+        "message": "No test exercises a same-value grow that forces LRU eviction. The closest case is `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, which only reaches the limit exactly. Source review shows the behavior is correct. At src/index.ts:2250 `this.#moveToTail(index)` runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` at src/index.ts:2303-2304, so the `while (this.#calculatedSize > maxSize) { this.#evict(true) }` loop (src/index.ts:1775-1776) evicts other entries from the head and calls dispose with 'evict'. The updated entry stays most recently used. This is advisory only, because the spec's Verification section leaves clauses the command does not exercise to source review.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/488c710e81a1/rep-5",
+    "arm": "H",
+    "token": "488c710e81a1",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "claude",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS_WITH_ISSUES",
+      "mechanical": "PASS",
+      "pair_judge": "PASS"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      },
+      "primary_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      }
+    },
+    "findings": [
+      {
+        "seat": "primary_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "Requirement 3 (evict LRU entries when the remeasured total would exceed a nonzero maxSize, keeping the updated entry as most recent, with eviction disposal) has no executable test. The closest case only reaches the limit exactly: `c.set('a', a, { size: 6 })` / `t.equal(c.calculatedSize, 10)` / `t.equal(c.size, 2)`, so nothing gets evicted. Source review shows the requirement is met: `this.#moveToTail(index)` at src/index.ts:2250 runs before `this.#removeItemSize(index)` and `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). The `while (this.#calculatedSize > maxSize) { this.#evict(true) }` loop in addItemSize (src/index.ts:1775-1776) removes entries from the LRU head and cannot evict the updated entry, because `size <= this.#maxSize`. The spec treats clauses not exercised by tests as source-review obligations, so this is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/1801a5478ae8/rep-16",
+    "arm": "F",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "NEEDS_WORK",
+    "sub_verdicts": {
+      "judge": "NEEDS_WORK",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "NEEDS_WORK"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.missing-regression-case",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "Requirement 3 says the update \"must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior.\" No new test covers this. The closest case is `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, which reaches exactly maxSize=10 and evicts nothing. Source review shows the requirement is met: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (2303-2304). The `#evict(true)` loop in `#addItemSize` (1775-1777) therefore evicts from the head with 'evict' dispose and never reaches the updated entry, because `size <= this.#maxSize`. The spec allows source review for this, so the missing test is advisory only.",
+        "id": "F1"
+      },
+      {
+        "seat": "primary_judge",
+        "engine": "codex",
+        "index": 0,
+        "rank": 2,
+        "accepted_by_merge": true,
+        "severity": "HIGH",
+        "verdict_binding": null,
+        "rule_id": "spec.eviction-disposal",
+        "file": "src/index.ts",
+        "line": 2323,
+        "message": "Same-value resizing can evict entries without delivering their disposeAfter callbacks. With maxSize: 10 and a disposeAfter handler, insert a at size 3 and b at size 4, then set the identical a with { size: 8, noDisposeOnSet: true }. The new call at src/index.ts:2304, \"this.#addItemSize(index, size, status)\", evicts b and queues its callback, but src/index.ts:2323 gates delivery on \"if (!noDisposeOnSet && this.#hasDisposeAfter && this.#disposed)\". The operation returns with b removed and its callback still pending, potentially indefinitely. This violates \"Each evicted entry must receive the existing eviction disposal behavior\" and the public noDisposeOnSet contract at src/index.ts:884-886, which limits suppression to \"if the entry key is still accessible within the cache.\" Ensure eviction callbacks are delivered even when replacement disposal is suppressed, and add a regression covering this combination.",
+        "id": "V1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/6f89d26e0ccb/rep-16",
+    "arm": "F",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 205,
+        "message": "Requirement 3 (same-value remeasure that pushes the total over nonzero maxSize must evict LRU entries with eviction disposal and keep the updated entry most recent) has no regression test. The closest test, 'validation, entry admission, and exact total limit', only reaches the limit exactly (`c.set('a', a, { size: 6 })` / `t.equal(c.calculatedSize, 10)`), so no eviction happens. Source review shows the code meets the requirement: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). Because the entry is already at the tail and the update is gated by `size <= this.#maxSize`, the loop `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776) evicts only head entries, never the updated one. `#evict` calls dispose with 'evict' and queues disposeAfter, which is flushed at src/index.ts:2323-2328. The spec allows source review for this, so the gap is advisory.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-14",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "Requirement 3 says a same-value update whose total would exceed `maxSize` 'must evict least-recently-used entries until the total fits'. None of the new tests exercise this. The closest case, `c.set('a', a, { size: 6 })` with `maxSize: 10`, brings the total to exactly 10, so nothing is evicted. Reading the source shows the requirement is still met. `src/index.ts:2250` calls `this.#moveToTail(index)` before `this.#removeItemSize(index)` and `this.#addItemSize(index, size, status)` (lines 2303-2304). `#addItemSize` then runs `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (line 1775). It evicts from the head with eviction disposal and cannot evict the updated entry, because that entry's size is zeroed and `size <= this.#maxSize`. This is advisory only: the missing test is a coverage gap, not a defect.",
+        "id": "pair-1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-14",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 218,
+        "message": "The new tests never cover the Requirement 3 path, where a same-value remeasure pushes the total over a nonzero `maxSize` and LRU eviction must run. The closest case, `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, lands exactly on the limit, so nothing is evicted. Reading the source, the behavior is correct: `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). `#addItemSize` then repeats `while (this.#calculatedSize > maxSize) { this.#evict(true) }` from the head. That loop stops before it reaches the updated entry, because the entry's own size was zeroed and `size <= this.#maxSize`. Disposal of the evicted entries uses the `'evict'` reason, and `disposeAfter` is flushed at src/index.ts:2323. The spec allows source review for this clause, so this finding is advisory only.",
+        "id": "pj-1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/1801a5478ae8/rep-15",
+    "arm": "H",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "No test makes a same-value resize evict an LRU entry. The closest case, `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, fills maxSize exactly and evicts nothing. By source review the requirement is still met. At src/index.ts:2250, `this.#moveToTail(index)` makes the entry most recently used. Then `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304) runs the loop `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776). That loop evicts from the head and keeps the updated entry. Evicted entries get 'evict' dispose/disposeAfter (src/index.ts:2374-2379, flushed at 2323-2328). The spec explicitly leaves unexercised clauses to source review, so this finding is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "H/6f89d26e0ccb/rep-15",
+    "arm": "H",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 214,
+        "message": "The eviction clause ('the same-value update must evict least-recently-used entries until the total fits ... Each evicted entry must receive the existing eviction disposal behavior') is not tested. The closest test, `c.set('a', a, { size: 6 })` followed by `t.equal(c.calculatedSize, 10)`, only reaches the exact limit and evicts nothing. A source review shows the behaviour is correct. `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index); this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). The `while (this.#calculatedSize > maxSize) { this.#evict(true) }` loop in #addItemSize (src/index.ts:1775-1777) then evicts head entries with the existing disposal, and disposeAfter is flushed at src/index.ts:2323-2328. The spec allows this clause to be checked by source review, so this finding is advisory only.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/1801a5478ae8/rep-17",
+    "arm": "F",
+    "token": "1801a5478ae8",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "NEEDS_WORK",
+    "sub_verdicts": {
+      "judge": "NEEDS_WORK",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "NEEDS_WORK"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "LOW",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-eviction-path",
+        "file": "test/set-size-update.ts",
+        "line": 211,
+        "message": "Requirement 3 (\"the same-value update must evict least-recently-used entries until the total fits, retaining the updated entry as most recently used. Each evicted entry must receive the existing eviction disposal behavior\") has no test in the new file. The closest test only reaches the limit exactly, so nothing is evicted: `c.set('a', a, { size: 6 })` / `t.equal(c.calculatedSize, 10)` / `t.equal(c.size, 2)`. Reading the source shows the requirement is met. `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). After the remove, the entry's size counts as 0, so `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1777) evicts from the head and stops before it reaches the updated tail entry. Evictions go through `#evict(true)`, and their disposeAfter tasks are drained at src/index.ts:2323-2328. This is advisory only: the spec allows source review for clauses the command does not exercise.",
+        "id": "F1"
+      },
+      {
+        "seat": "primary_judge",
+        "engine": "codex",
+        "index": 0,
+        "rank": 2,
+        "accepted_by_merge": true,
+        "severity": "HIGH",
+        "verdict_binding": null,
+        "rule_id": "spec.eviction-disposal",
+        "file": "src/index.ts",
+        "line": 2323,
+        "message": "Resizing with noDisposeOnSet:true can leave eviction disposeAfter callbacks undelivered. With maxSize:10, insert a(size 3) and b(size 4), then set the identical a to size 8 with noDisposeOnSet:true. The new call at src/index.ts:2304, \"this.#addItemSize(index, size, status)\", evicts b. Eviction queues its callback at :2378, \"this.#disposed?.push([oldValue, k, 'evict'])\", but :2323 guards draining with \"if (!noDisposeOnSet && this.#hasDisposeAfter && this.#disposed)\". Consequently b is removed without its disposeAfter callback running, potentially indefinitely. This violates \"Each evicted entry must receive the existing eviction disposal behavior.\" The public noDisposeOnSet contract at :884-886 limits suppression to cases where \"the entry key is still accessible within the cache\", which does not apply to b. Drain eviction callbacks independently of replacement-disposal suppression and cover this resize/eviction interaction.",
+        "id": "F1"
+      }
+    ]
+  },
+  {
+    "attempt": "F/6f89d26e0ccb/rep-17",
+    "arm": "F",
+    "token": "6f89d26e0ccb",
+    "task": "J4",
+    "variant": "reference",
+    "orientation": "codex",
+    "verdict": "PASS_WITH_ISSUES",
+    "sub_verdicts": {
+      "judge": "PASS",
+      "mechanical": "PASS",
+      "pair_judge": "PASS_WITH_ISSUES"
+    },
+    "seats": {
+      "pair_judge": {
+        "engine": "claude",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS_WITH_ISSUES"
+      },
+      "primary_judge": {
+        "engine": "codex",
+        "completed": true,
+        "authenticated": true,
+        "accepted_by_merge": true,
+        "verdict": "PASS"
+      }
+    },
+    "findings": [
+      {
+        "seat": "pair_judge",
+        "engine": "claude",
+        "index": 0,
+        "rank": 1,
+        "accepted_by_merge": true,
+        "severity": "MEDIUM",
+        "verdict_binding": false,
+        "rule_id": "coverage.untested-clause",
+        "file": "test/set-size-update.ts",
+        "line": 205,
+        "message": "Requirement 3 (same-value update must evict LRU entries until the total fits, keep the updated entry as MRU, and dispose each evicted entry) has no executable coverage. The closest test only reaches an exact fit without evicting anything: `c.set('a', a, { size: 6 })` then `t.equal(c.calculatedSize, 10)` / `t.equal(c.size, 2)`. Reading the source shows the behavior is correct. `this.#moveToTail(index)` (src/index.ts:2250) runs before `this.#removeItemSize(index)` / `this.#addItemSize(index, size, status)` (src/index.ts:2303-2304). `#addItemSize` then loops `while (this.#calculatedSize > maxSize) { this.#evict(true) }` (src/index.ts:1775-1776), which applies eviction disposal, and queued disposeAfter tasks are flushed at src/index.ts:2323-2327. The spec allows unexercised clauses to be checked by source review, so this finding does not block the verdict. It is a regression-test gap only.",
+        "id": "F1"
+      }
+    ]
+  }
+]
