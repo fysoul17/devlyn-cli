@@ -19,6 +19,7 @@ through a helper that refuses, before acting, any target outside them. `stage` c
   classify <attempt>...         (research checkout) 0227's frozen infra classifier, per attempt
   scan <label> <attempt>...     (research checkout) read scan of each attempt's seat tool inputs
 """
+import ctypes
 import hashlib
 import io
 import json
@@ -515,15 +516,24 @@ def handle_signals():
         signal.signal(sig, record_signal)
 
 
-# macOS per-user agents launchd starts for any account that uses notifications or preferences (seen 2026-10-01).
-OS_AGENTS = ('/usr/sbin/distnoted agent', '/usr/sbin/cfprefsd agent')
+# macOS per-user agents launchd starts for any account that uses notifications or preferences (seen 2026-10-01):
+# command line -> the executable the kernel must report for it (on the read-only system volume).
+OS_AGENTS = {'/usr/sbin/distnoted agent': '/usr/sbin/distnoted', '/usr/sbin/cfprefsd agent': '/usr/sbin/cfprefsd'}
+
+
+def executable(pid):
+    """The kernel's executable path for a pid (proc_pidpath); unlike argv it cannot be set by the process."""
+    buffer = ctypes.create_string_buffer(4096)
+    length = ctypes.CDLL('/usr/lib/libproc.dylib', use_errno=True).proc_pidpath(int(pid), buffer, 4096)
+    return buffer.value.decode() if length > 0 else None
 
 
 def judge_rows(os_agents=False):
     """Live processes of the judge uid (real or effective), as ps rows. A zombie has already exited (it runs nothing and
     holds no files) and is left for its parent to reap. A macOS per-user agent that launchd itself starts for the
-    account (exact command lines in OS_AGENTS, parent launchd) is not a judge process: launchd restarts it after any
-    signal, so it is reported separately and never signalled (Addendum C2). Anything else counts."""
+    account is not a judge process: launchd restarts it after any signal. One counts as such only when its parent is
+    launchd, its command line is exactly one in OS_AGENTS and the kernel reports that agent's system executable; it is
+    reported and never signalled (Addendum C2). Anything else counts."""
     proc = subprocess.run(['/bin/ps', '-axo', 'pid=,ppid=,ruid=,uid=,stat=,etime=,command='], capture_output=True,
                           text=True)
     require(proc.returncode == 0 and proc.stdout.strip(), f'ps failed: rc={proc.returncode} {proc.stderr[-200:]}')
@@ -532,7 +542,8 @@ def judge_rows(os_agents=False):
         fields = line.split(None, 6)
         if len(fields) < 7 or str(JUDGE_UID) not in fields[2:4] or 'Z' in fields[4]:
             continue
-        agent = fields[1] == '1' and fields[6].strip() in OS_AGENTS
+        command = fields[6].strip()
+        agent = fields[1] == '1' and command in OS_AGENTS and executable(fields[0]) == OS_AGENTS[command]
         (agents if agent else judges).append(line.strip())
     return agents if os_agents else judges
 
@@ -548,13 +559,18 @@ def judge_signal(name):
     if not pids:
         return
     proc = subprocess.run([SUDO, '-n', '-u', JUDGE, '/bin/kill', f'-{name}', *pids], capture_output=True, text=True)
-    require(proc.returncode == 0 or 'No such process' in proc.stderr,
+    errors = [line for line in proc.stderr.splitlines() if line.strip()]
+    gone = all(re.fullmatch(r'kill: \d+: No such process', line.strip()) for line in errors)
+    require(proc.returncode == 0 or (errors and gone),
             f'kill as the judge failed: rc={proc.returncode} {proc.stderr[-200:]}')
 
 
 def judge_quiesce():
     """No judge process may remain: TERM, a grace period, KILL, a longer grace (a process may need time to leave the
     kernel), then none may be alive; the failure names each survivor."""
+    agents = judge_rows(os_agents=True)
+    if agents:
+        print(json.dumps({'os_agents_not_signalled': agents}), file=sys.stderr, flush=True)
     if not judge_pids():
         return
     for name, grace in (('TERM', 30), ('KILL', 60)):
