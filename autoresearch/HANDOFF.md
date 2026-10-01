@@ -13,7 +13,7 @@
 5. **Deliver as a PR.** Commit in the task worktree, write `<worktree>/.devlyn/acceptance.json` (kind `direct`), then from a cwd outside the checkout `task-complete.py complete --receipt <receipt> --acceptance <file> --mode pr --writers-stopped`. Root merges research PRs once Astra verification is SHIP and CI is green where it runs, with `--mode auto --writers-stopped`. G is a pushed branch with no PR, not merged during 0228.
 6. **Hand off** in the same PR: update the table below.
 
-**Replay batches (steps 3–4):** before each batch, record processes whose cwd lies in a sealed repository or worktree (`lsof -d cwd`); the user's worktree `~/Documents/GitHub/devlyn-cli-skill-names` holds the 0227 corpus, so ask the user to pause work there and wait for the answer. Root reads no hidden material while seals are applied.
+**Replay batches (steps 3–4):** judges run as `_devlynjudge` (Addendum C2); the runner changes nothing outside `/Users/Shared/devlyn-vr-0227*` and `/Users/Shared/devlyn-vr-0228-dev`. After R3, or if the owner stops, tell the owner: the devlyn-os-v1 session removes the judge account and token.
 
 ## Steps (0228 "Work order")
 
@@ -21,8 +21,8 @@
 |---|---|---|
 | 1 | Registration: Astra FREEZE, PR, merge | merged (PR #141) |
 | 2 | G on `f40da73b` (`candidate/0228-fix`, pushed, no PR): implement, lint, portability suite, identifier grep, Astra SHIP | done: G = `607c3cf7`, Astra SHIP |
-| 3 | Replay copy, inventory and isolation, R1, Astra SHIP; Addendum C1 (G, replay commit, inventory, replay order) | done: C1; R1 product, stub 64/64, isolation probe PASS (this PR) |
-| 4 | R2 (J4 references, G vs F) and R3 (recall and breadth), Astra reviews; replay root deleted after its record is committed | next: `replay.py inventory <label>` → `preflight` → ask the user → `batch plan-r2.json <root-pid> <label> <ack>` |
+| 3 | Replay copy, inventory and isolation, R1, Astra SHIP; Addendum C1 (G, replay commit, inventory, replay order) | C1 done; the C1 seals touched owner files (incident) → C2: isolation by the judge account `_devlynjudge` (Astra SHIP); R1 re-run (stub, probe, owner baseline compare) next |
+| 4 | R2 (J4 references, G vs F) and R3 (recall and breadth), Astra reviews; replay root deleted after its record is committed | after R1: `replay.py inventory <label>` → `batch plan-r2.json <label>` (judge runs as `_devlynjudge`; the owner may swap the judge token first) |
 | 5 | Corpus: selection, blind authoring, implementation, calibration, calibration review | |
 | 6 | Driver copy, stub dry run, Astra SHIP; freeze and witness, 64 rounds, masked scoring with Astra audit, join, RESULT | |
 

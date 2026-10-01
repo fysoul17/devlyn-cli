@@ -184,3 +184,89 @@ As 0227, and as "Gates" for replays.
     - Run 3 passed on the previous runner version.
     - Run 4 stopped before applying any seal, because a planned path had vanished. Vanished seal targets are now skipped.
 - **User:** paused their other work in the sealed repositories for the replay sessions (2026-10-01: "4.0.1 배포 끝나면 시작", then the go-ahead).
+
+## Addendum C2 (2026-10-01): seal incident, owner decision, isolation by identity
+
+- **Incident.** C1's seals changed paths the experiment did not own.
+  - **Windows:** 13:41:36–13:52:04, 14:01:28–14:01:55, 14:03:24–14:03:48, 14:12:45–14:13:16 and 14:24:48–14:25:21 (the R2 batch, stopped by SIGTERM).
+  - **What they changed:** they set `~/Documents/GitHub/devlyn-cli/.git` and the research checkout to mode 000. They set 575–6,149 marker-matched files under HOME, `/Users/Shared` and tmp to 0200. Those files included other sessions' Claude transcripts, live Devlyn terminal spools, Codex and Grok rollouts, and `/private/tmp/claude-501` scratchpads.
+  - **What the owner saw in Devlyn:** live sessions vanished; panes failed with `Permission denied`; git worktree listing failed; the owner ended a live session, believing it dead.
+  - **Restoration:** nothing was deleted and every mode was restored. Root checked all 610 targets of the stopped replay afterwards.
+  - **Consent:** option 1 covered devlyn-cli's git becoming unavailable. It did not cover this collateral.
+  - **Superseded:** the stopped replay `G/f6634cfb3793/rep-1` is not scored, and C1's R1 evidence under the old seals is superseded.
+- **Owner decision (2026-10-01):** isolate by a dedicated judge account instead of toggling permissions. The owner created:
+  - `_devlynjudge`: uid/gid 450, not in `staff`, shell `/usr/bin/false`, home `/var/empty`, hidden, no password;
+  - a sudoers rule that lets the owner start processes as that account, passing only the environment named;
+  - a separate Claude token for the account.
+
+  The change request is `~/.config/devlyn-vr/0228-isolation-change-request.md`.
+- **Invariant:** no experiment step changes the mode, ACL, owner, content or location of a path outside the three experiment-owned locations: `/Users/Shared/devlyn-vr-0227`, `/Users/Shared/devlyn-vr-0227-*` and `/Users/Shared/devlyn-vr-0228-dev`.
+  - **Enforcement:** every mutation in [`replay.py`](../experiments/0228/replay.py) goes through one of 18 helpers. Each calls `owned()`, which refuses an outside target before acting: an absolute normalized path whose real parent lies inside a root, so a parent symlink that leaves the roots is refused. Tar members must be unique regular files or directories, so nothing is written through a link. Directory helpers and extraction refuse a symlink destination. After a judge process has run in an attempt, the runner opens no path there for writing; the probe's prompts and outputs live in an owner-only `results/` folder. Cleanup and transcript parsing reopen attempt files for reading only. The credential scan opens regular files only, so a FIFO cannot block it.
+  - **RED/GREEN** ([`test_replay_guard.py`](../experiments/0228/test_replay_guard.py)). The test has a static part: every mutating call must sit inside a guarded helper. It has a dynamic part: every mutating primitive is intercepted, every outside target is a path that does not exist, and each helper must refuse before any primitive runs. It also covers a parent symlink, a symlink destination for directory creation and for extraction, and five escaping tar shapes; these cases also run under interception. The middle run replaces the guard with the identity function to show that the dynamic part detects a missing guard.
+```
+runner: replay.py at 5ad6d84a
+static: 35 mutating call(s) outside the guarded helpers
+  line 123: .mkdir in stage
+  ... (35 static violations)
+dynamic: 1 failure(s)
+  no ownership guard (`owned`) in the runner
+RED
+exit=1
+
+runner: replay.py (guard disabled)
+static: 0 mutating call(s) outside the guarded helpers
+dynamic: 22 failure(s)
+  owned() allowed /private/tmp/guard-absent-0228/x
+  owned() allowed /Users/aipalm/guard-absent-0228/x
+  owned() allowed /Users/Shared/devlyn-vr/guard-absent/x
+  owned() allowed /Users/Shared/devlyn-vr-0228-dev/../guard-absent
+  owned() allowed relative/x
+  dump reached a mutating primitive for an outside target: ['Path.mkdir']
+  ... (22 dynamic failures)
+RED
+exit=1
+
+runner: replay.py
+static: 0 mutating call(s) outside the guarded helpers
+dynamic: 0 failure(s)
+GREEN
+exit=0
+```
+- **Deleted:**
+  - the inventory-driven seals (mode 0, write-only and search);
+  - `sealed()` and restoration, with the journal and the unsafe marker;
+  - the process-cwd acknowledgement gate;
+  - the cwd/lsof process adoption.
+- **Judges run as `_devlynjudge`.** Before anything is granted, no judge process may be alive.
+  - **Command form:** `sudo -n -u _devlynjudge --preserve-env=<names> -- <argv>`. A secret never appears in argv.
+  - **Process control by uid:** after each run, and on timeout or signal (TERM, INT, HUP), `pkill -TERM -U 450`, a grace period, then `-KILL`, both run as the judge. `pgrep -U 450` must then be empty. A failing sudo, or a sudo child that does not exit, stops the runner.
+- **Judge access, on experiment-owned paths only:**
+  - **0228 root:** mode 0700 with judge search; its own files are owner-only.
+  - **0227 root:** judge search, with deny entries on every entry except `bin` and `toolchains`. Every toolchain is denied too, except the active round's for the duration of its run. Read/execute on the two pinned binaries.
+  - **Attempt folders:** each is 0700, with inheritable judge and owner entries during its run. The judge entry has no `delete`, so the attempt root cannot be moved out of the roots. The entries are cleared when the attempt closes. Closing runs in a `finally` whatever failed, and every start re-closes every earlier attempt and requires that no Codex login copy is left.
+  - **Products:** the arm's product is copied into the attempt, so the judge never reads either original.
+- **Environment delta from the 0227 rows** (identical for F and G):
+  - uid/gid 450 (was 501);
+  - `HOME` and `TMPDIR` are the attempt's `judge-home` and `judge-tmp` (were `/Users/aipalm` and the owner's TMPDIR). For Codex, the pinned shim sets `HOME` to `homes/<token>` inside the attempt, as in 0227;
+  - `GIT_CONFIG_PARAMETERS` trusts exactly the attempt's work tree (`safe.directory`): the tree belongs to the owner and the judge is another uid, so Git would otherwise refuse it ("detected dubious ownership").
+  - `USER`/`LOGNAME` are `_devlynjudge` (set by sudo); `SHELL` stays `/bin/zsh`, passed explicitly;
+  - sudo adds `SUDO_COMMAND`, `SUDO_GID`, `SUDO_HOME`, `SUDO_UID`, `SUDO_USER`, `MAIL` and `TERM=unknown`;
+  - Claude authenticates with `CLAUDE_CODE_OAUTH_TOKEN`, the judge token passed only through the environment, instead of the owner's login; its config and transcripts live in the judge HOME;
+  - the Codex login is a per-attempt copy readable by the judge, deleted after the run;
+  - `verify-judges.py` runs from the attempt's product copy.
+- **Inventory:** stays a read-only scan. Before every batch and probe the judge tries to open every hidden path; any success fails closed and is reported, and no owner path is changed to fix it. The hidden paths are:
+  - every inventoried file;
+  - each Git object store and its HEAD;
+  - the research tree's hidden corpus files;
+  - the other 0227 roots;
+  - the 0227 root's hidden entries;
+  - the 0228 root's own files.
+- **Credentials:** after each run the runner deletes the Codex login copy. It then requires that every file in the attempt is readable and that none contains the judge token.
+- **Probe (R1 again), run as the judge.** It must show:
+  - the control file is readable;
+  - the root transcript, the J4 hidden mechanism and `devlyn-cli/.git/HEAD` cannot be opened in the model-free check;
+  - those same reads are denied in the seats' own records. In the Claude transcript, each Read has its own error result naming EACCES. In the Codex rollout, the exact prescribed `head` command has, in that same call's output, a `head: <path>: Permission denied` line for each target and the control file's line;
+  - no judge process is left.
+
+  Afterwards the owner compares the mode, owner and ACL of every non-owned path against `~/.config/devlyn-vr/baseline-modes.json`. The probe passes only if none changed.
+- **npm logs:** the read-only judge check over inventory `r2` found that the judge could open two of 578 paths. Both were world-readable npm debug logs in `/private/tmp/.npm/_logs`, from the 2026-09-29 toolchain installs, naming only `SRC/toolchains` paths. The runner fails closed on them and never changes owner paths. The owner deleted them (2026-10-01).
