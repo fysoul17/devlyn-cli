@@ -1,0 +1,577 @@
+{
+ "01399174415218e019c8b5c37c5829cd449703daee48ebf9d611f2f671ff9bf5": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. Unrelated import reordering, 'churn the spec did not ask for'. Not the target."
+ },
+ "029550a3f40d7adab7755332e7d006f1a32e0bcd1bce1b779e8187594ef101ca": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Quotes `cacheBounds[pos] <= posMax` and req 2. On source '`a` x', a call at posMax=2 hits 'The backtick rule cannot close the span' and stores cache[0]=1; then 'widen posMax to 5 ... Because 2 <= 5, it returns 1, while an uncached call returns 3 (the end of the code span)'. Same input class (a code-span opener whose closer is excluded and then included) and same wrong effect (ends at 1 instead of 3). Only the trailing text and the bound value differ from the mechanism's trigger."
+ },
+ "072f3a9131e3dcd9db3c1aae2b6ea87c6707450130fb450a5a703eb99fc615cf": {
+  "doc_rule": null,
+  "doubt": true,
+  "reason": "Rank 1. Mainly a coverage gap ('No test computes an answer under a narrow bound and then looks ahead again ... under a wider bound'), but it also says the code is wrong: 'it is the case F1 gets wrong'. Per the 0227 precedent, findings that also assert a broken clause are behavioral. Not a match: it gives no input, no causal predicate and no concrete wrong effect, and defers to an unauthenticated 'F1' ('F1 already captures the binding defect'). This follows the 0227 non-match reason 'lacks stale trigger and causal path'. Doubt: it could also be read as coverage only. Either label has no scoring effect at rank 1."
+ },
+ "08db97ee062f19ef4e14c3cab555bdc62acca7a8409dd225d97121758bb1bf77": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1, test-only: \"No added test covers a duplicate same-label definition or a pre-populated `env.references` entry\". It states \"Source review shows the clause is met: reference.ts:219-220 `meta.href = href` / `meta.title = title` use the locals\"."
+ },
+ "0c74dcfc2e15b2aa5e957a5494c7ccd5a8dc1c5ebdabd0c79c37983c96b27f6d": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"`return list(itertools.islice(self, start, stop or None, step))` (line 169) turns 0 into None. So `recurrence[:0]` or `recurrence[0:0]` returns every remaining occurrence instead of `[]`. With a completed cache ... correctly returns `[]`, so the results depend on cache state.\" Recorded trigger and wrong effect."
+ },
+ "0f4d048259a1b1eab553319f6e9b214fdacb9d646e8d1ac1298c278ab35ac20a": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1 (MEDIUM, verdict_binding null); rule_id 'coverage.missing-earlier-to-later-move-test'. Its claim is 'Moving a rule from an earlier position to a non-adjacent later anchor is not tested' (verified: reference and twin patches test only moveBefore('c','a') and the no-ops ('b','b')/('a','b')). The tail 'which is why the ordering bug in F1 passed MECHANICAL' only explains why the tests passed; the finding itself never states the code's wrong effect (mechanism: moved rule inserted after the anchor, [b,c,a,d]). 0227 final labels treated the same shape as coverage, match=false ('the F1 reference concerns why tests passed'), and the referenced F1 claim can't be traced. The trigger matches but the wrong effect is never stated, so match=false under the strict bar. No documentation claim."
+ },
+ "10b23ba83bf92db2335292a5f86c75cadb9d605841a2b7f09373d7f6e2c6eb1f": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1, LOW. Only about missing tests: 'No test exercises the Wednesday-leap-year branch ... so that branch is checked only by source review.' It explicitly says 'The logic is correct by inspection. This is advisory only.' No mechanism is claimed."
+ },
+ "1424dd701499f084bbcd3cc2f87c1fae7ad02891edd25cdd1af3adab08163c85": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Claims only missing coverage: the rejected-batch tests \"never include a name that exists in `inline.ruler2`\" so `npm test` \"does not cover failure-state preservation for ruler2\". The \"broken in F1\" reference points to another finding (0227 precedent). Rank 1."
+ },
+ "14b2f87efddcde6864f03b9674328722a7e1488723af505ca3c0b0418176f81b": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "This is the exact witness: 'Rejecting -1 therefore leaves the capacity negative. With capacity 3 and cached A, B, C, rejecting -1 and then looking up C incorrectly evicts A'. The regression-test request comes on top of that behavioral claim."
+ },
+ "19dbea9594177fc1f3f0a304d43ed330853c6dc254b571972b68f6ca2d4427bc": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Matches the mechanism: ruler2 is changed \"BEFORE the strict unknown-name check\". With \"`md.disable(['emphasis', '__missing__'])`\", \"ruler2 has emphasis disabled and inline.ruler has it enabled. `renderInline('*x*')` no longer produces `<em>x</em>`\". It cites the failure-state preservation clause. The check uses the same witness."
+ },
+ "1bbce46d1e745dc48351ceeeb54bff774c48fab6db606a41ec7811130e90ccdb": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1, test-only claim: 'No test widens the upper bound after a narrower cached lookahead, so the sealed npm test evidence does not cover the either direction clause.' It does not assert that the code behaves incorrectly."
+ },
+ "21b066d62009ce4c8cc5a6d48bbd69670cdd21619bd91c82da33f9d051037939": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Asserts a violation of Req 2 \"by key presence, including when its value is None or zero\" and Req 4 \"A selected None produces a naive result\". The trigger is the mechanism's: \"tzinfos={(\"BRST\", -10800): None, \"BRST\": 3600}\", a present None pair plus a non-None name value. The wrong effect is the mechanism's too: it \"produces an aware result instead of the required naive result\", via the recorded \".get(pair)\" / \"if tzdata is None\" path. Its added claim (\"An unsupported name-key value would instead raise TypeError\") has the same trigger, so the check covers it as well."
+ },
+ "25ec6256c396bc62853a80fd86e96a8eb4e0b409a9a1d8b30409fe57a14b482e": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. Missing-test claim that explicitly finds the code correct: \"shows the rule lands immediately before the anchor, so the behavior is correct ... this is advisory only.\""
+ },
+ "27129c05d8479c076dde952da8afe2901982b91b8fd690437479c279819c351b": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. Blank-line style (PEP 8 E302), 'cosmetic only'. Not the target."
+ },
+ "27f97dac3ee8a03a92313a197b99c044a873b3d44f5d453500d3960fa5f2b9a9": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "This is the exact witness: 'A rejected set_cache_size(-1) therefore leaves capacity at -1. With capacity 3 and populated entries A, B, C, a subsequent lookup of C wrongly evicts A'. It quotes Requirement 3."
+ },
+ "29069a749d8dbe648c42a2dd39d9d68268642cb1bae678797e456bb334649156": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Quotes req 2 and the `cacheBounds[pos] <= posMax` predicate. Witness: 'For source \"`a`\", lookahead at position 0 with posMax=2 caches ending position 1. Resetting position to 0 and increasing posMax to 3 reuses that answer and returns 1, whereas uncached lookahead recognizes the complete code span and returns 3.' Exactly the mechanism trigger and wrong effect."
+ },
+ "2a930ea91e0378ca61c01409e13b5706d7f260dcf1638fa08ae0acf24926d404": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. The claim is import reordering ('incidental churn', 'Only `import operator` is required'). It makes no missing-test or runtime claim and does not mention the negative-capacity commit."
+ },
+ "2c0cde905ab3a7e8456484f49cd0fb2301b3dd8df0a5d0d44ce8786381ac41c6": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 2, MEDIUM (verdict_binding true), but it only claims missing tests: 'The invalid-week tests use only non-leap years ... No test covers a 52-week leap year such as 2016 or 2024, so the sealed pytest pass does not exercise the clause that F1 violates.' The behavioral claim belongs to F1. The finding only cites it by reference. This follows the 0227 stage-A precedent: 'the F1 reference concerns why tests passed' \u2192 coverage. Neutral."
+ },
+ "2cd829918c709727d4fe672d2dba39cf3452882c775a36cf21dac3c40709904d": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Quotes the guard `cacheBounds[pos] <= posMax` and req 2. Witness: on '`a`', 'set posMax=2 ... stores 1 ... Then restore posMax=3, reset pos=0 ... Because 2 <= 3, the call returns cached pos 1, but an uncached call returns 3 because the code span matches.' This is exactly the mechanism trigger and wrong effect (oracle J1-O3)."
+ },
+ "2ddf40612bc21ded5d6335d3c3dd9c0b459ee5e514194bc4d41d58b0363a8fb2": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Target mechanism exactly: \"If ruleIndex < beforeIndex, removing the rule shifts the anchor one position left, so the insert lands after the anchor. Counterexample: rules [a,b,c] and moveBefore('a','c') ... gives [b,c,a] where [b,a,c] is required.\" Violated clause quoted from spec.md requirement 2."
+ },
+ "321437f3e9e1113b0b1c64fe39ba516250e212c8f7525dec69b6e799a947a1f9": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. A missing-test claim: 'No test covers a leap year with 52 weeks, such as 2016 or 2012. That is why the passing MECHANICAL pytest run did not catch the wrong predicate in F1.' The behavioral claim is F1's and is only cited by reference."
+ },
+ "33b7e997251589bb6f928fa8304817db59c9127cb617e230c4b63f26f07ff0e4": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. Claims only missing tests: \"No test moves an earlier rule before a later, non-adjacent anchor, which is why F1 went undetected.\" The F1 reference explains why tests passed and makes no behavioral claim of its own (0227 precedent: \"the F1 reference concerns why tests passed\" -> coverage)."
+ },
+ "34a095fa3459e5f028980f1fc1cc5df6957160e447cdf940a8da1a068dfbdb0c": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Cites Req 2 (\"by key presence, including when its value is None or zero\") and Req 4 (\"A selected None produces a naive result\"). The trigger is \"tzinfos={(\"BRST\", -10800): None, \"BRST\": 3600}\", and the claimed effect is that it \"selects the name value and returns an aware result instead of the required naive result\". This is the mechanism's trigger and wrong effect."
+ },
+ "34aa34e8c5b72ca411269f2a28ab1c90cbeff54e0a42695c09158badde1445a7": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "The mechanism: \"Metadata is read from the shared lookup entry instead of this definition's parsed values\". Its counterexample: \"`[x]: /first \\\"A\\\"\\n[x]: /second \\\"B\\\"\\n`. The second token has map [1,2] but meta {href:'/first', title:'A'}\". It adds \"A pre-populated `env.references.X = {href:'/pre', title:''}` breaks it the same way\". It cites R2 and R3. The check covers both inputs."
+ },
+ "353494c594c7d9a06a91ce03d65a413c8d13ff20cef1914ac5d5a211e7b043c0": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "'`set_cache_size(-1)` raises ValueError but leaves the configured capacity at -1. Every later lookup then hits ... that condition is always true. Each lookup therefore evicts an extra LRU entry.' This asserts a Requirement 3 violation. The test-gap sentences come on top of that behavioral claim."
+ },
+ "383ef1bea8397cff225c3626992ebe7617ae240a8db8c5bb532f4b02d05151a7": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1, test-only claim ('Widening is not exercised'). It explicitly confirms the code is correct: 'source review finds it satisfied: src/parser_inline.ts:99 \"cacheBounds[pos] === posMax\" ... This is advisory only.'"
+ },
+ "3948cb92182badaaee1698f7f70244422009c5006943ec0935de5ed3756c5c7d": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Claims the `cacheBounds[pos] <= posMax` hit predicate violates req 2 ('in either direction must cause that position to be examined again'). Its witness is source '`a`' with the end cached at bound 2, then 'Restoring posMax to 3 then incorrectly reuses end 1 because 2 <= 3, whereas an uncached full-range call ends at 3'. That is the mechanism's own trigger (bound 2 then bound 3 on '`a`') and wrong effect (ends at 1, not 3). The extra full-range call at the start does not change the decisive widening step."
+ },
+ "3db8bc403051625bf7017f1f1081a83d044dfe4a55325d325d096208da3e4f11": {
+  "doc_rule": "Applicable. The cited 'source documentation the diff adds at line 84' ('Week 53 is valid only when January 1 is a Thursday, or a Wednesday in a leap year.') is introduced by the diff, and spec Requirement 6 requires documenting the rule. The base makes no such promise. Scored as a task claim.",
+  "doubt": false,
+  "reason": "Rank 2, HIGH (verdict_binding true). Trigger: '2016 is a leap year and January 1, 2016 was a Friday ... Leap years 2012 and 2000 behave the same way'. Wrong effect: \"isoparse('2016-W53') passes this check ... returns 2017-01-02, which is ISO 2017-W01\". It quotes Requirement 1. This is the target mechanism, plus an applicable docstring-contradiction claim."
+ },
+ "406a66a366264a78d98d639b71f872dadd0f7a7a575881fa495901d35994016d": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"for a second definition with the same normalized label, e.g. `[x]: /a \\\"A\\\"\\n[x]: /b \\\"B\\\"`, the second token gets map [1,2] but meta href '/a', title 'A', which come from the first occurrence. The same happens when `env.references` is pre-populated.\" It cites R3 and R2's \"parsed from that definition\". This is the mechanism. The check includes this input."
+ },
+ "43ebe1fef699543852cc27dc25c751277609053d8d16a19ec59b1ffb292b2f4f": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1, advisory scope note: \"The import block was reordered and regrouped, which isn't needed for this feature\", and it \"passes the Darker/isort check, so it is advisory only\". It is neither a test gap nor an execution condition, so it is labeled behavioral by elimination, as 0227 labeled rank-1 documentation notes. It is unrelated to the mechanism."
+ },
+ "46922df254c3bf77b3d27aef88b69f182d7369731dc711c7dfe8ac5125046c5d": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1 (MEDIUM, verdict_binding null). Test-only: \"No added test covers a duplicate normalized label or a pre-populated `env.references` entry ... The new tests ... each parse a single definition per label with `env = {}`\". It asserts no incorrect behavior."
+ },
+ "4b27cc139166367bb66bd27e11031dedaf3432f15f9f02054f5d2a7a46c19cca": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "It quotes lines 219-220 reading from `state.env.references[label]`. Its example: \"input '[x]: /first \\\"First\\\"\\n\\n[x]: /second\\n\\\"bad\\\" trailing\\n', the second token maps to [2,3] but receives /first and First rather than /second and an empty title. A pre-populated X entry causes the same mismatch\". It cites \"describe the same source occurrence\". The trigger (a shadowed label with different values) and the effect (own map, winner's payload) are the mechanism's. The check includes this exact input."
+ },
+ "4f6b48577fd34d2706d2e9c02061717dff085e11eac49ea683c2f19d3adae1e7": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 2, HIGH. Claims spec Requirement 1 ('reject a week number that does not exist in the supplied ISO week-year with ValueError') is violated by 'has_week_53 = jan1_weekday == 3 or calendar.isleap(year)'. Trigger: '2016 has only 52 ISO weeks'. Wrong effect: 'all three entry points accept \"2016-W53\" and \"2016W53\", returning 2017-01-02 instead of raising ValueError'. That is the mechanism's trigger (a leap year whose Jan 1 is neither Wednesday nor Thursday, e.g. 2016) and its wrong effect (a fabricated date in the next ISO year). The request to 'Add an invalid leap-year regression' does not make it coverage-only."
+ },
+ "5295a1fe2aa4314bd5a40c0e077d02ec7070fc2c780e69db6f4b566fa82e6fd6": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"Because `0 or None` evaluates to `None`, the explicit zero stop becomes an unbounded stop. As a result, `r[:0]` returns every occurrence instead of `[]`, and `r[2:0]` returns all occurrences from index 2 onward. Once the cache is complete ... correctly gives `[]`\". Exactly the mechanism: explicit zero stop collapsed into an omitted stop on the non-complete-cache path."
+ },
+ "55bf35477c738589c80d7a0ede249587fc031b4cfc719e944ed692f516987a15": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"The code picks the entry by value, not by key presence\". With \"{('BRST', -10800): None, 'BRST': tzoffset('NAME', -14400)}\", \"The tuple key is present and its value is None, so the result should be naive. Instead the code falls back to the name entry and returns a result aware in NAME (-4h)\". This is the P2-W trigger and the mechanism's wrong effect."
+ },
+ "584d6101d067dd4229933e6210ebdb4dceccf577992e4daf4dfcd83f3abd1ddd": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Target mechanism: \"The anchor index becomes stale when moving an earlier rule forward ... moveBefore('a','c') produces [b,c,a], violating \\\"immediately before the anchor ...\\\"\". It adds the same-cause path \"With a disabled and a/c in an already warmed alternate chain, re-enabling a likewise exposes [c,a] instead of [a,c]\", which the check also tests."
+ },
+ "587b9a4ee0ad85c5a7c337a115e7c16bde65666361fba27ee87c9e59a323bed2": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Asserts code behavior (\"converting zero into an omitted stop. For a nonempty finite recurrence, recurrence[:0] therefore returns every occurrence with caching disabled or incomplete, while the completed-cache branch ... returns []\"), so behavioral even though it also asks to \"add regression coverage\". Same trigger and effect as the mechanism."
+ },
+ "5b6d054543b863b43881420b60607202e00cd43b3a58e895254e501fa1f92763": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Asserts that Req 2 \"select the tuple entry by key presence, including when its value is None or zero\" is violated. The trigger is a present None pair with a competing name key, \"tzinfos={('BRST', -10800): None, 'BRST': 3600}\". The wrong effect is \"the present tuple entry is discarded and the name entry produces an aware result instead of the required naive result\". Both match the mechanism."
+ },
+ "5c844ee994ae569f377fa5825e7b68779c0f0597c151575e3619deb16d7e983a": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. Import-block reordering 'adds churn ... but changes no behavior'. Not the target."
+ },
+ "5e631247c47f9d5f9d3e25e7e51ecdaf086b1b555be7cb1ed30e1ec6bac45701": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Target mechanism: \"line 183 uses its original index ... For registrations [a,b,c], moveBefore('a','c') produces [b,c,a] instead of [b,a,c]. Decrement the insertion index when ruleIndex < beforeIndex.\" Quotes spec.md requirement 2."
+ },
+ "604c4054e41ba1e154574488ff05f2cd9e541a458e00cc927d08a821fb749c1f": {
+  "doc_rule": null,
+  "doubt": true,
+  "reason": "Cause and effect match the target: 'After the ValueError, the capacity stays at the negative value. The lookup path then checks `if len(self.__strong_cache) > self.__strong_cache_size:` and runs popitem', so 'Later lookups ... do not behave as if the call never happened'. Doubt: the worked counterexample uses a miss ('capacity 3 holding only [A] ... a lookup of B evicts A'), but the recorded trigger is 'followed by an ordinary cache hit'. The general 'lookup path' statement does cover hits. The check tests the claim as stated, a miss after rejecting -1."
+ },
+ "62246f665221a8d61f8502b15c68a4273c87b639c72040ecac8de2b4c84179bf": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1 (LOW, verdict_binding false). A documentation-consistency gap: \"The class-level capability list was not updated ... still reads \\\"- add/replace rules\\\"\" and \"moveBefore's block has no such links\". It concedes the JSDoc \"meets the constraint\" and calls it \"advisory\". It is not about tests or the execution environment, so by the 0227 precedent for doc-marker findings it is behavioral with no match. It says nothing about move ordering. doc_rule null: the claim is that the diff's own docs are incomplete, not that code breaks a promise in public documentation."
+ },
+ "64f99589dd24bddb977cf844675600eb02087113bbe8292b7640df91edd0bf4c": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Same trigger and same wrong effect as the mechanism. The trigger is a definition whose label the lookup already holds with other values: \"line 219 reads \\\"meta.href = state.env.references[label].href\\\"\". The effect: \"the second token has map [1,2] but href '/first' and title 'First', whereas its accepted definition requires '/second' and ''\", and \"A pre-populated references.X similarly overrides\". It cites R3 (\"describe the same source occurrence\") and R2's empty-title clause. The check runs its exact example and the pre-populated case."
+ },
+ "67044155831a80eb457d634860a1fd16bb4b5d86313339591868972baa347e34": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "The mechanism: \"for `[a]: /one \\\"One\\\"\\n[a]: /two \\\"Two\\\"\\n`, the second token has `map` [1,2] but its meta is `{href:'/one', title:'One'}`\". It adds \"when `env.references` is pre-populated with `{A:{href:'/pre',title:'P'}}`, every token for `[a]` reports `/pre`\". It cites R3 and R2. It also claims \"If a pre-populated entry has non-string or missing fields, the 'string fields `href` and `title`' requirement can fail too\". The string-fields check therefore tests its examples plus pre-populated entries `{}` and `{href:1,title:null}`."
+ },
+ "69fdc4f9647e7a76c5f3903bf012c5246a9c6781866c7991a34e743f6efe1ded": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1, test-only: \"No added test covers a duplicate normalized label or a pre-populated `env.references` entry\". It states \"Source review shows the requirement is met\" and calls itself \"advisory\"."
+ },
+ "6e00dc167065220882f55f3a1809179c27c84e6926e1ab02646ffddb7cbe94c3": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1, test-only claim: 'No test widens the bound after a narrower lookahead, so the widening half of Requirement 2 has no regression coverage.' It does not assert that the code behaves incorrectly."
+ },
+ "6fb0daa003952e4b66205ffa6c09f6beee16080dbeb5a083308f1029a707a114": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Quotes the guard `cacheBounds[pos] <= posMax` and req 2. Witness: on '`a`', 'call skipToken with posMax=2. The backtick rule cannot close ... stores cache[0]=1 ... Then set posMax=3 and call again. Because 2 <= 3, the guard returns state.pos=1, but an uncached call gives 3.' Exactly the mechanism trigger and wrong effect."
+ },
+ "72293be4b3f24e1234ab90fcd806094939e9b6c927b3e91ef98677bdb23db959": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. 'PEP 8 and black expect two blank lines between top-level definitions.' Style only. Not the target."
+ },
+ "78ec6970edfccb7e9c9622a4ec986323643d687634111c0e0aedafb7919a5e36": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. It claims only a missing regression test (\"don't combine a tuple value of None or 0 with a matching name key\") and states \"The clause is met; only the regression test is missing\". It does not claim the mechanism."
+ },
+ "7983be70a7b834c455bba37499ad5bd7ad55b7bf3bf95b2a95b57ad9f7a1ce96": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. Import reordering, 'review noise unrelated to the feature'. Not the target."
+ },
+ "799a0e7bceabd9ad03cfb6307381ddeefc51ebd9e36acf9b67e64a82131dde67": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. Claims import reordering in tests/test_rrule.py is \"unrelated formatting churn inside an authorized file, so it is advisory\". It is a scope/style claim, not missing coverage or execution environment, so it is labeled non-coverage (as 0227 did for its rank-1 documentation-marker advisories). It has nothing to do with the zero-stop mechanism."
+ },
+ "7a6f1ec7abdb307a8d6424325951790b0e623ef97ed8737f6f08ba2cf1829e4a": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Matches the mechanism: \"`md.disable(['emphasis', '__missing__'])` ... disables emphasis in ruler2, clears its `__cache__` and then throws ... changes `*x*` rendering\". It extends the claim to \"`balance_pairs`, `strikethrough` and `fragments_join`, and with `enable` on a parser where those rules were disabled\". The check covers disable and enable for all four ruler2 rules."
+ },
+ "814d523072bfa696f3cae532d20d996ec5b91c79f168b86980cad0b3aa41cfac": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. Blank-line style, 'advisory style only'. Not the target."
+ },
+ "83407d5ecc3206e5ea279ff9dbf72f1eb451898c50e3230f6865c1f24bb92875": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "This is the exact witness: 'set_cache_size(-1) raises but leaves capacity at -1. With capacity 3 and cached A, B, C, rejecting -1 then looking up C wrongly evicts A'. It quotes Requirement 3."
+ },
+ "8441a97a9e13bfbdc84516c010a95f3eec88efe2bfbfaea7f8c8e6ccbe59e782": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. \"No case covers an explicit stop of zero ... so the sealed MECHANICAL pass does not cover the clause\". It claims only that a regression case is missing. \"This is why F1 went undetected\" refers to another finding and does not itself assert incorrect behavior. This follows the 0227 coverage precedent for F1 references."
+ },
+ "856566c513f6119f2cd980d08c9206c7a7324ed9ff0e176f31a257e88dc1c235": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Target mechanism: \"When the moved rule starts earlier than the anchor, it ends up after the anchor instead of before it ... with rules [a,b,c], `moveBefore('a','c')` ... The result is [b,c,a], but the spec requires [b,a,c].\" Also notes missing tests, which does not change kind."
+ },
+ "865adfaa87f841953793161da502a7b9fd0e414e6defc8a70312b4098389d80f": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 2, MEDIUM (verdict_binding true), coverage only: '(2014, 2017) covers only non-leap 52-week years. No test covers a leap year that has 52 weeks ... so the passing MECHANICAL pytest run does not exercise the defect in F1.' The defect is cited by reference to F1. This follows the 0227 precedent ('the F1 reference concerns what tests missed' \u2192 coverage). Neutral."
+ },
+ "8aff9942d4d8121b93cae61278b35f8b4ef96a955fc6d91ee5de488a96cb2d9e": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. A missing-test claim only: 'The invalid-week tests only use (2014, 2017) ... so the added tests miss the branch that F1 gets wrong.' It does not itself assert the code behavior."
+ },
+ "8c8ea7198ee6bdfea119a6abf2df15adc970d7806946783bf7081ef7c64956c8": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1 and only about tests: \"The new tests never cover a duplicate normalized label or a pre-populated `env.references` entry\". It says the code is correct (\"Source review shows the code is correct here. ... `meta.href = href` / `meta.title = title` uses the local parsed values\") and calls itself \"advisory only\". It claims no wrong effect."
+ },
+ "8ca9e954795e12a72de3b5d80d67e8c331abcf1143deb3fc76aa7e7974376494": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. The claim is missing tests: 'only checks `with pytest.raises(ValueError)`' and 'never checks cache state'. The mention of 'the state-mutation bug in F1' is about what the tests missed (0227 precedent)."
+ },
+ "8d7f26ec47e88402dbc3d625aeafab8b626e9a3742e24d36c91531bcb57a8993": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. A removed blank line between imports in rrule.py is \"isort-driven churn ... It stays inside the authorized file and Darker passed, so it is advisory only.\" This is a scope/style advisory, not the zero-stop mechanism."
+ },
+ "92f7c65a2d002d5eb7e63ce45226c6c890859adb41506a576013396833249f62": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1, advisory: \"(res.tzname, res.tzoffset) in tzinfos also matches when the string has no timezone information at all\", so a \"(None, None)\" key \"would then attach a zone to input that has no zone\". It is a behavior concern (\"unclear whether a key with both components None should apply\"), not a test gap. The trigger and effect differ from the mechanism's present-None-pair-versus-name precedence."
+ },
+ "954d8bde7e6ebca511fbd9f9277527c0d7336e277f23c5834e6b8eecf03d3400": {
+  "doc_rule": "Applicable. The 'diff's own docstring' sentence 'Week 53 is valid only when January 1 is a Thursday, or a Wednesday in a leap year.' is introduced by the diff, and spec Requirement 6 requires documenting the rule in the parser source. The base makes no such promise. Scored as a task claim.",
+  "doubt": false,
+  "reason": "Rank 2, HIGH (verdict_binding true). Trigger: '2016 is a leap year and Jan 1 2016 is a Friday ... The same happens for 2024 ... 2028'. Wrong effect: \"isoparse('2016-W53') passes the check and returns 2017-01-02, a date in ISO week 2017-W01\". It quotes Requirement 1. This is the target mechanism. Its claim that the code 'contradict[s] the parser-source documentation' is applicable and covered by the check. The test remark is supplementary."
+ },
+ "95833c97c136d11a8dbc294d9ba78c928d107df98f013cb03e6f738ff6e86f0b": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. \"No added test covers an explicit stop of zero ... The Verification section does not explicitly require a stop-zero test, so this is advisory.\" It claims only a missing test. The cross-reference \"That gap let the defect in F1 pass\" explains why the tests passed and makes no behavioral claim of its own. This follows the 0227 precedent for F1 references in coverage findings (050fdfdd, 6ab6b91d)."
+ },
+ "966fe67b18181ce049dd09a5c0765c43847f88a4e6acd4eed0505f0642b87b5b": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1, advisory: a \"(None, None)\" key \"attaches a zone to an otherwise naive result\" for timezone-less input, which it says \"is not a demonstrated violation\". It is a behavior observation rather than only a test gap, so it is labeled behavioral, as 0227 labeled rank-1 advisories. The trigger (no timezone in the input, a (None, None) key) and the effect differ from the mechanism (a present None pair losing to a name entry). I confirmed the behavior: the reference attaches the zone and the base stays naive."
+ },
+ "96d601c9a2907ff6c305e28adc3bfc81f7a00746631497bc3021e4d6e563621c": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 2, HIGH. Cites Requirement 1. Trigger: '2024 starts on Monday and has only 52 ISO weeks', a leap year whose Jan 1 is neither Wednesday nor Thursday, which is the mechanism's trigger class. Wrong effect: 'all three entry points accept \"2024-W53\" and \"2024W53\", returning December 30, 2024 (in ISO year 2025)', a fabricated date in the following ISO year. The added regression request does not make it coverage-only."
+ },
+ "973175be35337cca553e48fbd5da23425548d40bebc80049a268c2ce99c2ef11": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Target mechanism: \"line 183 inserts using the original anchor index ... For registrations [a,b,c], moveBefore('a','c') produces [b,c,a] instead of [b,a,c], because removal shifts the anchor left.\" Quotes spec.md requirement 2."
+ },
+ "9851f7c7199d99d6513259e9a05a78e8d66c94779b109b5f3e07ca2399eb8c91": {
+  "doc_rule": null,
+  "doubt": true,
+  "reason": "Points at the same defective predicate ('\"cacheBounds[pos] <= posMax\" permits reuse after the range expands') and the same clause, but its only witness uses a different input class. It uses plain text 'abc' at posMax=1, where the end comes from the `text` rule ('uncached execution reaches 3 through \"while (pos < state.posMax && !isTerminatorChar(...))\" (src/rules_inline/text.ts:47)'). It does not use a code span whose closer the narrow bound excluded. The mechanism's effect ('retaining the unmatched-opener result, rather than at 3 after the code span') and causal path ('before `backticks` can examine the newly included closer') are not claimed. Strict 0227 rule (a different input class is not a match) gives match=false. Strongest counter-reading: the twin defect is a single input-agnostic predicate, the headline claim covers every input, and the near-miss exclusions do not list other token types; root should adjudicate. The check reproduces the claim on the twin only."
+ },
+ "995757317c9d054e960538788a00536402c4221a8282bf02ee578cd6be19b4e1": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Matches the mechanism: after warming, \"md.disable(['emphasis', '__missing__']) therefore throws but leaves secondary emphasis disabled, changes its compiled function sequence, and changes renderInline('*x*') from '<em>x</em>' to '*x*'\". It adds, generically, \"a rejected enable batch can enable previously disabled secondary rules\". The check covers disable of emphasis plus enable of each ruler2 rule."
+ },
+ "997584841919519616d6c5381028d32e94edf0e38d0c716ecdd6380ff5522c99": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. \"No test moves an earlier rule before a later, non-adjacent anchor, so the ordering defect in F1 goes undetected.\" The claim is missing tests. The F1 defect is another finding's, by reference (0227 precedent -> coverage)."
+ },
+ "9ac689758058e816c7c56184a2298e56081e41015c4e89991b8db28e8648eede": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Matches the mechanism: \"disable(['emphasis', '__missing__']) therefore throws but leaves secondary emphasis disabled and primary emphasis enabled; the rebuilt secondary chain omits emphasis post-processing, changing renderInline('*x*')\". It adds, generically, \"Rejected enable batches similarly enable secondary rules prematurely\". The check covers disable of emphasis plus enable of each ruler2 rule."
+ },
+ "9f801fa5f5317217dc1dd640ba05f803d57b0215a40c28e46dbbec2d82c7eabd": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 2, HIGH. Cites the requirement 'reject a week number that does not exist in the supplied ISO week-year with ValueError'. Trigger: '2016 began on Friday and has only 52 ISO weeks'. Wrong effect: 'all three entry points accept \"2016-W53\" and return January 2, 2017'. Same trigger and wrong effect as the mechanism."
+ },
+ "a2d0071ad9f9358921d57c14edbcf07b4ab98accbdd8043a03992f13687cc915": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Cites Req 2 \"select the tuple entry by key presence, including when its value is None or zero\". The trigger is \"tzinfos={(\"BRST\", -10800): None, \"BRST\": -14400}\", a present None pair plus a non-None integer name value, and the claimed effect is that it \"returns an aware datetime instead of the required naive result\". Both match the mechanism. Its added claim (\"An unsupported name-only value would incorrectly raise TypeError\") has the same trigger, so the check covers it as well."
+ },
+ "a51538565634289561407cefc170d02e4b4c9a7273de1b7280c6461b33f36873": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Quotes req 2 and line 99 'cacheBounds[pos] <= posMax'. Witness: 'For source \"`a`\", lookahead at position 0 with posMax=2 caches end=1. Resetting position to 0 and restoring posMax=3 incorrectly reuses end=1; uncached lookahead recognizes the complete code span and ends at 3.' Exactly the mechanism trigger and wrong effect."
+ },
+ "a898338723a928807cf7831cf00b3e577f67fbfe2c1a33b504d758371d386d37": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 2 coverage, test-only: \"None of the added tests covers a duplicate-label definition or a pre-populated `env.references` entry ... the passing `npm test` does not exercise the occurrence clause\". The phrase \"That is why the defect in F1 goes undetected\" only points to another finding and states no wrong effect of its own. This follows the 0229 R3 convention, where root and Astra agreed on every F1-pointer coverage finding (e.g. \"the defect in F1 goes undetected\")."
+ },
+ "ae022b5f3a4ef51d5b29fd1d47b78d02cb9faf83f98b2b36ff42ba86b3ff24f6": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"Because 0 is falsy, `stop or None` becomes None, which means 'no stop'. So `rrule(DAILY, dtstart=..., count=6)[:0]` and `[0:0]` return all six occurrences when caching is off or the cache is incomplete, not `[]`. Once the cache is complete ... returns `[]`\"; also \"On an infinite rrule, `r[:0]` never terminates\". Exactly the mechanism."
+ },
+ "afa941107abe916ac1ec5219a3de8b2f0e5e05f1b7b5eb0ce84eb0c5a3fcb0df": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. The test helper \"checks private cache state ... couples the tests to internal attributes. Advisory only.\" This is a test-design advisory: the finding does not say a test is missing or about the run environment, and it does not touch the zero-stop mechanism."
+ },
+ "b1382820305b5a2b06bb5569308d2967d5dd47c889cf7abe97e94312cae02712": {
+  "doc_rule": "Applicable. The cited sentence 'Week 53 is valid only when January 1 is a Thursday, or a Wednesday in a leap year.' is added by the diff (isoparse docstring hunk @@ -77,11 +77,12), and spec Requirement 6 independently requires 'Document the ISO week-year validity rule in the parser source'. The base makes no such promise, so no existing behavior contradicts it. Scored as a task claim; the check also tests that the code agrees with that sentence.",
+  "doubt": false,
+  "reason": "Rank 2, HIGH (verdict_binding true). Quotes the requirement 'reject a week number that does not exist in the supplied ISO week-year with ValueError, including week 53 in a 52-week ISO year'. Trigger: 2016 is leap with Jan 1 a Friday, plus 2024 and 2052. Wrong effect: \"isoparse('2016-W53') passes the check and returns date(2017, 1, 2), which is 2017-W01-1\". This is the target mechanism. The second claim, 'contradicts its own docstring at line 84-85', rests on documentation the diff introduced, so it is applicable and covered by the same check."
+ },
+ "b55c5ec833e39bdd08841c141c7f1ed3b8410c78f63bec5a1703d7dc9d4353fd": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. PEP 8/Black blank-line style ('Only one blank line separates'). That is an external style guide, not repository documentation. Not the target."
+ },
+ "b73805dcce5965efc1ab46c49d2715977ad3aeac983f62f7207db83d6dd0d769": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Claims the spec.md ordering clause is violated by the target mechanism: same trigger (earlier rule moved toward a later non-adjacent anchor, \"moveBefore('a','c')\") and same wrong effect (\"produces [b,c,a], instead of [b,a,c]\", i.e. lands after the anchor because \"line 183 uses its original index\"). Its secondary claim, \"incorrect default and alternate chains after moving a disabled a and re-enabling it\", follows from the same index error, so the check also tests that path. \"add coverage\" does not change kind."
+ },
+ "b8364b77938deb6ddec7b5350e12a0d4300a8f36c13fddb592d9c7a31a54b8a8": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Same trigger and effect as the mechanism: line 421 \"executes md.inline.ruler2[operation](names, true) before validation\", and with warmed chains \"disable(['emphasis', '__missing__']) ... leaves emphasis disabled in inline.ruler2 and changes its subsequently compiled function sequence\". The check runs the warmed disable(['emphasis','__missing__']) and compares flags, chains and rendering."
+ },
+ "bb52cf55de2631fbd14660a9e03636f92c422f1584bfc9464fe87fc0a788e1d6": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"The implementation decides by value, not by key presence\". With \"{(\"BRST\", -10800): None, \"BRST\": tzoffset(\"NAME\", -14400)}\", parsing \"uses the name entry and returns a result aware at -4h\", while \"The spec requires the selected tuple's None to give a naive result\". This is the P2-W trigger and the mechanism's wrong effect."
+ },
+ "bb84641ebd0a328f8ab06b08b62fa5819bef7791a06493859761cef67ef8307e": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "It cites R3 (\"describe the same source occurrence ... pre-populated `env.references` entry\") and lines 219-220 reading the lookup \"after line 207 preserves an existing lookup entry\". Its example: \"For '[x]: /first \\\"First\\\"\\n\\n[x]: /second\\n\\\"bad\\\" trailing\\n', the second definition's map describes its accepted destination line, but its metadata contains '/first' and 'First' instead of '/second' and ''. Pre-populated references cause the same mismatch.\" This is the mechanism's trigger and effect."
+ },
+ "bb9a594dc414371187a0e9eec96caa979695a24c0b809bdc79e7131b25719ec7": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Quotes \"place the moved rule immediately before the anchor whether its original position was earlier or later\" and states the recorded trigger and wrong effect: with [a,b,c], moveBefore('a','c') removes a, reuses the anchor index computed before the removal, and inserts after the anchor (\"gives [b,c,a], but the spec requires [b,a,c]\"). Root wrote this reason (the draft left a placeholder)."
+ },
+ "bcad57e8c8437cbeb3122698bcca157d3e56e61e67e28550d8e0213aa332d497": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. It claims a test gap only (\"the tests only check falsy tuple values without a competing name key\") and says \"This is advisory only, because source review shows the clause is met\". It does not claim the mechanism."
+ },
+ "c276b0d35dad239b4dbdab3a02467dccb0fa1cf0dbb88b89f3e0013f4ac93109": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Matches the mechanism: \"md.disable(['emphasis', '__missing__']) disables secondary-inline emphasis before throwing, while primary-inline emphasis remains enabled\", which \"changes both enabled state and the subsequently compiled function sequence\". It adds that \"The analogous rejected enable batch also mutates ruler2\", so the check covers both disable and enable of emphasis."
+ },
+ "c360d6d91bd9b3863b02fc43692e690c5218d8338103b2df4826adbfa608ae70": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 2, HIGH. Trigger: '2016 began on Friday and had only 52 ISO weeks'. Wrong effect: \"2016-W53-1 passes this guard and converts to 2017-01-02 instead of raising ValueError through all three entry points\". This matches the mechanism and its witness P4-W ('2016-W53-1'). The clause is Requirement 1 (rule_id spec-compliance.invalid-week-year). Its note about the sealed tests is supplementary."
+ },
+ "c50abb5c2fa27d3e523ff5b2708720e147726552c0855d2b33b0a36dd0166b59": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Same trigger and same wrong effect as the mechanism record: \"stop or None, converting an explicit stop of zero into an omitted stop. For a nonempty finite recurrence with caching disabled or incomplete, recurrence[:0] returns all occurrences and exhausts traversal. With a completed cache ... returns []\". Violated clause: spec.md \"an explicit stop of zero returns an empty list\" (also cache-state consistency and bounded traversal)."
+ },
+ "c5c54de846fe30a2b8ffe59c4458b45e9a0107979bdd9faa6472fd4b4e593d22": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Quotes \"an explicit stop of zero returns an empty list\" and says \"stop or None ... converting zero into an unbounded stop. Consequently, recurrence[:0] exhausts and returns a nonempty finite recurrence with caching disabled or incomplete, while the completed-cache path ... correctly returns []\". That is the recorded trigger (stop=0, cache not complete) and wrong effect (occurrences returned, cache-state dependence)."
+ },
+ "ca089b132efed818a3a8c222c57cb0e5a99eeaa13a3973f5d04794253a65e53c": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"The implementation chooses by value, not by key presence\". With \"tzinfos={(\"BRST\", -10800): None, \"BRST\": tzoffset(\"NAME\", -14400)}\", parsing \"returns an aware datetime using the name entry\", while \"The spec requires the selected tuple's None, which gives a naive result\". This is the P2-W trigger and the mechanism's wrong effect."
+ },
+ "ca1a81ce318cac957ad7650d6b222e7c9b96edbfe85c588a3a0667de4e086cd0": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. \"The diff reorders and reformats imports that the feature did not require ... Both files are within the authorized surface, so this is advisory churn only.\" This is a scope/style advisory, not the target mechanism."
+ },
+ "cf5480ad2d3c489166dd09523a9a75acd09021ea1ef1f186f12d8c67062db3a3": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. Import reorder 'adds diff noise', 'Advisory only'. Not the target."
+ },
+ "cf61f7645947db8e8fc9b974d0291f82beb46e1a6683723ddcecc87d6f82e2bc": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Target mechanism: \"Forward moves put the rule after the anchor, not before it ... with [a,b,c], `moveBefore('a','c')` ... The result is [b,c,a] instead of [b,a,c].\" Quotes spec.md requirement 2."
+ },
+ "cff6a30c1d0454c3fe6c2e0739b398f045306d49fb622100d7f4c44bf486b7c1": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"The requirement 'an explicit stop of zero returns an empty list' is violated by ... `stop or None` converts zero into an unbounded stop. For a nonempty finite recurrence, `recurrence[:0]` returns all occurrences with caching disabled or incomplete, while the completed-cache path ... returns []\". Same trigger and wrong effect as the mechanism record."
+ },
+ "d24d347cea197ea29be3a37977647217e885d19f6e029fcc68a847e61ad2f6b7": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Same commit-before-check cause, followed by a cache hit: 'capacity 3, cached A,B,C, call set_cache_size(-1) and catch the error, then look up A again. That hit evicts B'. It also says 'every call, cache hits included', citing the Requirement 3 rejected-size clause."
+ },
+ "d48fb50959474f9d4a8bd0b254046b56b800dc8a512ecbbe6ef384a43a2dea9c": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"Metadata copies the winning lookup entry instead of the current definition's parsed values\". Its example: \"For '[x]: /first \\\"First\\\"\\n[x]: /second\\n\\\"bad\\\" trailing\\n', the second token therefore reports /first and First despite its map identifying the second definition, whose accepted values are /second and an empty title. Pre-populated references cause the same error.\" This is the mechanism's trigger and effect."
+ },
+ "d5c8aa958bbd915fc9efccb0545902df6c7d5ab2d31533809377ba645310b5f2": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"Because `0 or None` is `None`, `recurrence[:0]` and `recurrence[2:0]` return every remaining occurrence instead of `[]` when caching is disabled or the cache is incomplete. With a completed cache ... returns `[]`\"; adds \"On an infinite rrule, `r[:0]` never terminates\" (covered by the guarded part of the check). Correctly notes the base shares the defect but the clause is a new task requirement."
+ },
+ "dfdc0983e1e13673c2022bf59a0a413ba8c7f5040cc560a4ae9e5e1990d14c20": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. 'No test checks cache state after a ValueError rejection, which is why the passing suite did not catch F1.' This is a test-evidence gap. The F1 mention explains why the suite passed."
+ },
+ "dffde6249db08a048aa4cbf81ca8b93add90daa67ec780c44c06b0867d9d044d": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Has the target trigger and effect: '`self.__strong_cache_size = size` comes before `if size < 0: raise ValueError`', 'a rejected `set_cache_size(-1)` leaves the capacity at -1', and then 'every lookup ... evicts entries on every call', which 'changes the retained objects'. It cites Requirement 3. The check covers later hits and an insert after rejecting -1."
+ },
+ "e2d47aa2a3af204a680fa99941aa1066c3dbdc2adfdf98a9316ecd535582296e": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"The code decides by the looked-up value, not by whether the key exists\". The trigger is \"{(\"BRST\", -10800): None, \"BRST\": tzoffset(\"NAME\", -14400)}\", the exact P2-W witness. The effect is \"the result uses the NAME zone (-4h)\" instead of naive, which \"breaks the clause 'A selected None produces a naive result'\". Same trigger and same wrong effect as the mechanism. The added test-gap remark does not change the kind."
+ },
+ "e2d71b0953e5de7d226166920a20495324e492dbc0c756ed7f59c1a4e2a4879d": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Claims only a test gap: the rejected-batch tests \"never include a name that lives in `inline.ruler2`\" so \"the suite does not exercise ruler2 failure-state preservation\". The F1 reference explains why tests passed and is not an independent behavioral claim (0227 precedent). Rank 1."
+ },
+ "e3231167f77ac2ec29f10a11db1639e7a2b6896fa8d34a07dda38ed4d2e0e414": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "\"a second definition with the same normalized label (e.g. `[x]: /a\\n[x]: /b`) gets meta.href '/a' while its map points at the `/b` line\". The destinations differ, which meets the mechanism's trigger. It adds \"A pre-populated `env.references` entry causes the same problem\". It also claims \"a pre-populated entry that is missing href/title (or a non-string one) leaks into meta and breaks the string-field requirement\". It cites R3 and R2. The string-fields check covers all three parts."
+ },
+ "e3f09b10bae72c171dcdfc23b3ad4317453b7ee1288235f03df771d61d89e45b": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Quotes `cacheBounds[pos] <= posMax` and req 2. Witness: source '`a` xx', 'First call with posMax=2 caches cache[0]=1 ... Restoring posMax=6 ... returns the stale value 1 and never re-runs the rules. An uncached call would return 3, because the code span now fits.' Same code-span trigger after widening and same wrong effect (1 instead of 3)."
+ },
+ "e5a800aed7f185f5d9ace32f0657b42d633a368ab593b57c75a62019f96e60e8": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1 (MEDIUM, verdict_binding false). The claim is test coverage: \"No test moves an earlier rule before a later non-adjacent anchor ... the passing MECHANICAL `npm test` run does not cover the 'earlier' half of Requirement 2.\" \"exactly the defect in F1\" refers to another finding (0227 precedent -> coverage)."
+ },
+ "eb9d78cdd3b721219feda6342e5d224723b2d43ee5baa3b17b801f961159c325": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. Missing-test claim that explicitly finds the code correct: \"The source handles it correctly ... Advisory only: a regression in that branch would not be caught by the tests.\""
+ },
+ "ee4c4a19179813a8ab9dd7732e9735ed979199e0f5a4a617ee957ad9be53db3f": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 2 (MEDIUM, verdict_binding true), but its own claim is only missing coverage: \"No test covers a tuple key with value None together with a matching name key ... the sealed pytest pass does not exercise the key-presence clause\". The closing \"and the defect in F1 goes undetected\" refers to another finding's defect and explains why the tests passed. 0227 precedent 880af6a3 (\"which is how the defect in F1 went undetected\") was labeled coverage by root and by Astra."
+ },
+ "efdc2ee88ed2146dd38ef7e716a8a7900e73d3eca337ec4fb6acac6c4f161140": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "This is the exact witness: 'Rejecting -1 therefore leaves the capacity negative. With capacity 3 and cached A, B, C, reject -1 and then look up C ... unexpectedly evicting A'. It quotes Requirement 3."
+ },
+ "f3577cc473bab284174b36d4eec7de31a09061270f24318da51fe002573d2478": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Matches the mechanism: ruler2 is mutated \"before the unknown-name check\", so \"`md.disable(['emphasis', '__missing__'])` turns off `emphasis` in ruler2 ... then throws\" and \"rendering of `*x*` changes\". It cites the failure-state preservation clause. The check uses the same disable-emphasis witness."
+ },
+ "f3a8ae7bda55f34ff2f5e312b5e04013d30cf0ca69de4edd5de722a675ff2fc3": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. It claims only untested cases: \"No test covers a tuple key mapped to None alongside a name key that also matches\" and \"A tuple mapped to 0 alongside a name key is also untested\". It asserts no incorrect behavior, so it does not claim the mechanism."
+ },
+ "f5eec3573d21198ec5608d39c3048d92e283544c6e3b85129188a03aeec9aa55": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1, LOW. A style claim about the code: 'There is only one blank line ... PEP 8 and the reformatted blocks above it use two', and it states it 'does not violate any spec clause'. It is about neither tests nor the verification runtime, so following the 0227 precedent for non-test rank-1 remarks it is labeled behavioral with no mechanism match. PEP 8 is not repository documentation, so doc_rule is null. Rank 1 means no check is needed."
+ },
+ "f72b4a9557248ddde4437bdc6d3b72d95e3d6b4185b9d9daf6f4eb9d78557e1b": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1, \"Advisory, not binding\": \"None of the added tests has two definitions with the same normalized label or a pre-populated `env.references` entry\". It states \"Source review shows the code is correct ... first-definition-wins behavior is preserved\", so it claims no wrong effect."
+ },
+ "f795011085a5bedf068d534f849400d16aa836a391ded3b6b28ec38215c366fd": {
+  "doc_rule": "Applicable. The cited sentence ('the docstring this diff adds at line 85': 'Week 53 is valid only when January 1 is a Thursday, or a Wednesday in a leap year.') is added by the diff, and spec Requirement 6 requires documenting the rule in the parser source. The base makes no such promise. Scored as a task claim.",
+  "doubt": false,
+  "reason": "Rank 2, HIGH (verdict_binding true). Trigger: '2016 is a leap year and Jan 1 2016 was a Friday ... The same happens for 2024'. Wrong effect: \"isoparse('2016-W53') passes the check and week_1 + timedelta(weeks=52) turns it into 2017-01-02, which belongs to a different ISO year\". It cites the requirement 'reject a week number that does not exist ... with ValueError'. This is the target mechanism. The docstring contradiction is a second, applicable documentation claim."
+ },
+ "fa776ac342a9c0f78781fbdf1bfbf4f08e58b44f92c02070512b7e7804289cec": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Rank 1. \"`operator.index(item.step)` raises TypeError with a different message than list slicing ... for non-integer bounds. The exception type matches ... Only the message text differs. Advisory.\" The trigger (non-integer bounds) and the effect (message text) both differ from the explicit-zero-stop mechanism."
+ },
+ "fcc1d9f3a170e90632655f7884d51d293b75258820fc604e133abef859982513": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "Matches the mechanism: \"a strict batch that is going to be rejected has already changed `inline.ruler2`. Example: `md.disable(['emphasis', '__missing__'])` disables `emphasis` in ruler2 ... and then throws ... emphasis closing pairs are no longer processed\". The parenthetical miscalls balance_pairs and fragments_join \"shared\", but this does not change the claim. The check uses the cited example."
+ },
+ "fe8d97c542f98b32cb0596e0eefcd9cb906619c22a1cb38083091d77cb5c22d9": {
+  "doc_rule": null,
+  "doubt": false,
+  "reason": "A style objection to the success path's two loops: \"`rulers.forEach(...)` would do the same thing ... This is style only and does not affect behavior.\" The mechanism's near-miss exclusion covers a successful-batch call-order objection with an unchanged end state. Rank 1."
+ }
+}

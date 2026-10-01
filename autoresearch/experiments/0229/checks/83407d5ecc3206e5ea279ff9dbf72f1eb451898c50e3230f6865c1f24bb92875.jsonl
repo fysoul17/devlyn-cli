@@ -1,0 +1,1 @@
+{"checked_at": "2026-10-01T21:36:50.222Z", "finding_key": "83407d5ecc3206e5ea279ff9dbf72f1eb451898c50e3230f6865c1f24bb92875", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0229/check-scripts/P3-negative-reject-hit-newest.sh", "script_sha256": "5e0b27b0ba5d46d509cee70cb460112997e64c840e5f0af3f1a238407cefb139", "task": "P3"}

@@ -1,0 +1,1 @@
+{"checked_at": "2026-10-01T21:36:39.466Z", "finding_key": "954d8bde7e6ebca511fbd9f9277527c0d7336e277f23c5834e6b8eecf03d3400", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0229/check-scripts/P4-week53-leap-docstring-rule.sh", "script_sha256": "280b2ce0629bf15e579f0e9e7ee2a944b9434ce7573ecfcfdf37cd4b741c4417", "task": "P4"}

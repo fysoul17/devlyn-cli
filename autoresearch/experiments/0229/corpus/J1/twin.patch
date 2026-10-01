@@ -1,0 +1,112 @@
+diff --git a/src/parser_inline.ts b/src/parser_inline.ts
+index b9b242e..4422a0e 100644
+--- a/src/parser_inline.ts
++++ b/src/parser_inline.ts
+@@ -89,12 +89,14 @@ class ParserInline {
+   //
+   skipToken (state: StateInline): void {
+     const pos = state.pos
++    const posMax = state.posMax
+     const rules = this.ruler.getRules('')
+     const len = rules.length
+     const maxNesting = state.md.options.maxNesting
+     const cache = state.cache
++    const cacheBounds = state.cacheBounds
+ 
+-    if (typeof cache[pos] !== 'undefined') {
++    if (typeof cache[pos] !== 'undefined' && cacheBounds[pos] <= posMax) {
+       state.pos = cache[pos]
+       return
+     }
+@@ -133,6 +135,7 @@ class ParserInline {
+ 
+     if (!ok) { state.pos++ }
+     cache[pos] = state.pos
++    cacheBounds[pos] = posMax
+   }
+ 
+   // Generate tokens for input range
+diff --git a/src/rules_inline/state_inline.ts b/src/rules_inline/state_inline.ts
+index 5f64d71..bdb5743 100644
+--- a/src/rules_inline/state_inline.ts
++++ b/src/rules_inline/state_inline.ts
+@@ -33,6 +33,9 @@ class StateInline {
+   // optimization of pairs parse (emphasis, strikes).
+   cache: Record<number, number> = {}
+ 
++  // Stores the posMax used for each corresponding entry in cache.
++  cacheBounds: Record<number, number> = {}
++
+   // backtick run length => position of its last run, built lazily on first use
+   backticks: Record<number, number> = {}
+   backticksScanned = false
+diff --git a/test/markdown-it/inline-cache.test.mjs b/test/markdown-it/inline-cache.test.mjs
+new file mode 100644
+index 0000000..7a5821d
+--- /dev/null
++++ b/test/markdown-it/inline-cache.test.mjs
+@@ -0,0 +1,64 @@
++import assert from 'node:assert/strict'
++import { describe, it } from 'node:test'
++import markdownit from '../../src/index.ts'
++
++describe('inline lookahead cache', function () {
++  it('reexamines a code span when the range narrows', function () {
++    const md = markdownit()
++    const state = new md.inline.State('`a`', md, {}, [])
++    state.pending = 'keep'
++    state.level = 2
++
++    md.inline.skipToken(state)
++    assert.equal(state.pos, 3)
++
++    state.pos = 0
++    state.posMax = 2
++    md.inline.skipToken(state)
++
++    assert.equal(state.pos, 1)
++    assert.deepEqual(state.tokens, [])
++    assert.equal(state.pending, 'keep')
++    assert.equal(state.level, 2)
++  })
++
++  it('reuses an answer within the same range', function () {
++    const md = markdownit()
++    let calls = 0
++    md.inline.ruler.before('text', 'observe', () => { calls++; return false })
++    const state = new md.inline.State('`a`', md, {}, [])
++
++    md.inline.skipToken(state)
++    assert.equal(state.pos, 3)
++    assert.equal(calls, 1)
++
++    state.pos = 0
++    md.inline.skipToken(state)
++    assert.equal(state.pos, 3)
++    assert.equal(calls, 1)
++    assert.equal(state.cache[0], 3)
++  })
++
++  it('reexamines a cached end that fits inside a smaller range', function () {
++    const md = markdownit()
++    let calls = 0
++    md.inline.ruler.before('text', 'observe', () => { calls++; return false })
++    const state = new md.inline.State('`a` xx', md, {}, [])
++
++    md.inline.skipToken(state)
++    assert.equal(state.pos, 3)
++
++    state.pos = 0
++    state.posMax = 3
++    md.inline.skipToken(state)
++    assert.equal(state.pos, 3)
++    assert.equal(calls, 2)
++  })
++
++  it('renders code spans in links and unmatched backticks', function () {
++    const md = markdownit()
++
++    assert.equal(md.renderInline('[a `b`](/u)'), '<a href="/u">a <code>b</code></a>')
++    assert.equal(md.renderInline('`a'), '`a')
++  })
++})

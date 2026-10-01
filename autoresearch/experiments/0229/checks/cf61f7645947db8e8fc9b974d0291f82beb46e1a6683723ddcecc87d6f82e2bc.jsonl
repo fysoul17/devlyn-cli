@@ -1,0 +1,1 @@
+{"checked_at": "2026-10-01T21:36:18.669Z", "finding_key": "cf61f7645947db8e8fc9b974d0291f82beb46e1a6683723ddcecc87d6f82e2bc", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0229/check-scripts/J2-earlier-to-later-before-anchor.sh", "script_sha256": "664c2b38a9b48b6ecc2bf97e4fee941651d815a964a775d9c05f66474b2be158", "task": "J2"}

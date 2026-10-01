@@ -1,0 +1,195 @@
+diff --git a/src/markdownit.ts b/src/markdownit.ts
+index adc0d17..2df20b7 100644
+--- a/src/markdownit.ts
++++ b/src/markdownit.ts
+@@ -295,8 +295,8 @@ class MarkdownIt {
+ 
+   /**
+    * Enable list or rules. It will automatically find appropriate components,
+-   * containing rules with given names. If rule not found, and `ignoreInvalid`
+-   * not set - throws exception.
++   * containing rules with given names. If any rule is not found and
++   * `ignoreInvalid` is not set, throws without changing any rules.
+    *
+    * @example
+    * ```javascript
+@@ -308,47 +308,14 @@ class MarkdownIt {
+    * ```
+    */
+   enable (list: string | string[], ignoreInvalid = false): this {
+-    let result: string[] = []
+-
+-    if (!Array.isArray(list)) { list = [list] }
+-
+-    const chains: MarkdownItComponentName[] = ['core', 'block', 'inline']
+-    chains.forEach((chain) => {
+-      result = result.concat(this[chain].ruler.enable(list, true))
+-    })
+-
+-    result = result.concat(this.inline.ruler2.enable(list, true))
+-
+-    const missed = list.filter((name) => result.indexOf(name) < 0)
+-
+-    if (missed.length && !ignoreInvalid) {
+-      throw new Error(`MarkdownIt. Failed to enable unknown rule(s): ${missed}`)
+-    }
+-
+-    return this
++    return changeRules(this, list, ignoreInvalid, 'enable')
+   }
+ 
+   /**
+    * The same as {@link MarkdownIt.enable}, but turn specified rules off.
+    */
+   disable (list: string | string[], ignoreInvalid = false): this {
+-    let result: string[] = []
+-
+-    if (!Array.isArray(list)) { list = [list] }
+-
+-    const chains: MarkdownItComponentName[] = ['core', 'block', 'inline']
+-    chains.forEach((chain) => {
+-      result = result.concat(this[chain].ruler.disable(list, true))
+-    })
+-
+-    result = result.concat(this.inline.ruler2.disable(list, true))
+-
+-    const missed = list.filter((name) => result.indexOf(name) < 0)
+-
+-    if (missed.length && !ignoreInvalid) {
+-      throw new Error(`MarkdownIt. Failed to disable unknown rule(s): ${missed}`)
+-    }
+-    return this
++    return changeRules(this, list, ignoreInvalid, 'disable')
+   }
+ 
+   /**
+@@ -441,4 +408,26 @@ class MarkdownIt {
+   static StateInline = StateInline
+ }
+ 
++function changeRules<Parser extends MarkdownIt> (
++  md: Parser,
++  list: string | string[],
++  ignoreInvalid: boolean,
++  operation: 'enable' | 'disable'
++): Parser {
++  const names = Array.isArray(list) ? list : [list]
++  const primaryRulers = [md.core.ruler, md.block.ruler, md.inline.ruler]
++  const rulers = [...primaryRulers, md.inline.ruler2]
++
++  if (!ignoreInvalid) {
++    const missed = names.filter(name => rulers.every(ruler => ruler.__find__(name) < 0))
++    if (missed.length) {
++      throw new Error(`MarkdownIt. Failed to ${operation} unknown rule(s): ${missed}`)
++    }
++  }
++
++  primaryRulers.forEach(ruler => { ruler[operation](names, true) })
++  md.inline.ruler2[operation](names, true)
++  return md
++}
++
+ export default MarkdownIt
+diff --git a/test/markdown-it/misc.test.mjs b/test/markdown-it/misc.test.mjs
+index 5b2ca86..a26fb1f 100644
+--- a/test/markdown-it/misc.test.mjs
++++ b/test/markdown-it/misc.test.mjs
+@@ -3,6 +3,18 @@ import { describe, it } from 'node:test'
+ import markdownit from '../../src/index.ts'
+ import forInline from 'markdown-it-for-inline'
+ 
++function ruleSnapshot (md) {
++  const rulers = [md.core.ruler, md.block.ruler, md.inline.ruler, md.inline.ruler2]
++  return {
++    enabled: rulers.map(ruler => ruler.__rules__.map(rule => [rule.name, rule.enabled])),
++    chains: [
++      ...rulers.map(ruler => ruler.getRules('').slice()),
++      md.block.ruler.getRules('paragraph').slice(),
++      md.block.ruler.getRules('reference').slice()
++    ]
++  }
++}
++
+ describe('API', function () {
+   it('constructor', function () {
+     assert.throws(function () {
+@@ -144,6 +156,79 @@ describe('API', function () {
+     })
+   })
+ 
++  it('rejects a mixed disable batch without changing warmed rules or rendering', function () {
++    const md = markdownit()
++    const src = '`x` &amp;'
++    const html = md.renderInline(src)
++    assert.strictEqual(html, '<code>x</code> &amp;')
++    const before = ruleSnapshot(md)
++
++    assert.throws(() => md.disable(['backticks', 'entity', '__missing__']), {
++      message: 'MarkdownIt. Failed to disable unknown rule(s): __missing__'
++    })
++    assert.deepEqual(ruleSnapshot(md), before)
++    assert.strictEqual(md.renderInline(src), html)
++
++    assert.strictEqual(md.disable(['backticks', 'entity']), md)
++    assert.strictEqual(md.renderInline(src), '`x` &amp;amp;')
++  })
++
++  it('rejects a mixed enable batch without changing warmed rules or rendering', function () {
++    const md = markdownit().disable(['backticks', 'entity'])
++    const src = '`x` &amp;'
++    const html = md.renderInline(src)
++    assert.strictEqual(html, '`x` &amp;amp;')
++    const before = ruleSnapshot(md)
++
++    assert.throws(() => md.enable(['backticks', 'entity', '__missing__']), {
++      message: 'MarkdownIt. Failed to enable unknown rule(s): __missing__'
++    })
++    assert.deepEqual(ruleSnapshot(md), before)
++    assert.strictEqual(md.renderInline(src), html)
++
++    assert.strictEqual(md.enable(['backticks', 'entity']), md)
++    assert.strictEqual(md.renderInline(src), '<code>x</code> &amp;')
++  })
++
++  it('changes shared rule names in both inline stages', function () {
++    const md = markdownit()
++    const emphasisEnabled = () => [md.inline.ruler, md.inline.ruler2]
++      .map(ruler => ruler.__rules__[ruler.__find__('emphasis')].enabled)
++
++    assert.deepEqual(emphasisEnabled(), [true, true])
++    assert.strictEqual(md.disable('emphasis'), md)
++    assert.deepEqual(emphasisEnabled(), [false, false])
++    assert.strictEqual(md.renderInline('*x*'), '*x*')
++    assert.strictEqual(md.enable('emphasis'), md)
++    assert.deepEqual(emphasisEnabled(), [true, true])
++    assert.strictEqual(md.renderInline('*x*'), '<em>x</em>')
++  })
++
++  it('handles unknown, repeated, empty, and permissive rule batches', function () {
++    const md = markdownit()
++    const input = ['__z__', 'entity', '__a__', '__z__']
++    const before = ruleSnapshot(md)
++
++    for (const operation of ['enable', 'disable']) {
++      assert.throws(() => md[operation](input), {
++        message: `MarkdownIt. Failed to ${operation} unknown rule(s): __z__,__a__,__z__`
++      })
++      assert.throws(() => md[operation](['__missing__']), {
++        message: `MarkdownIt. Failed to ${operation} unknown rule(s): __missing__`
++      })
++      assert.deepEqual(ruleSnapshot(md), before)
++      assert.deepEqual(input, ['__z__', 'entity', '__a__', '__z__'])
++      assert.strictEqual(md[operation]([], false), md)
++      assert.strictEqual(md[operation](['__missing__'], true), md)
++    }
++
++    assert.deepEqual(ruleSnapshot(md), before)
++    assert.strictEqual(md.disable(['entity', '__missing__', 'entity'], true), md)
++    assert.strictEqual(md.renderInline('&amp;'), '&amp;amp;')
++    assert.strictEqual(md.enable('entity'), md)
++    assert.strictEqual(md.renderInline('&amp;'), '&amp;')
++  })
++
+   it('bulk enable/disable should understand strings', function () {
+     const md = markdownit()
+ 

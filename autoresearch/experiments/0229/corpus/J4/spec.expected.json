@@ -1,0 +1,22 @@
+{
+  "verification_commands": [
+    {
+      "cmd": "PATH=/Users/Shared/devlyn-vr-0228-dev/screen-0229/toolchains/markdown-it/node-bin:$PATH npm test",
+      "exit_code": 0,
+      "timeout_sec": 180
+    }
+  ],
+  "required_files": [
+    "src/rules_block/reference.ts",
+    "test/markdown-it/misc.test.mjs"
+  ],
+  "forbidden_files": [
+    "package.json",
+    "package-lock.json"
+  ],
+  "spec_output_files": [
+    "src/rules_block/reference.ts",
+    "test/markdown-it/misc.test.mjs"
+  ],
+  "max_deps_added": 0
+}

@@ -1,0 +1,233 @@
+diff --git a/src/dateutil/rrule.py b/src/dateutil/rrule.py
+index 571a0d2..633eeaf 100644
+--- a/src/dateutil/rrule.py
++++ b/src/dateutil/rrule.py
+@@ -9,6 +9,7 @@ import calendar
+ import datetime
+ import heapq
+ import itertools
++import operator
+ import re
+ import sys
+ from functools import wraps
+@@ -16,7 +17,6 @@ from functools import wraps
+ from warnings import warn
+ 
+ from six import advance_iterator, integer_types
+-
+ from six.moves import _thread, range
+ 
+ from ._common import weekday as weekdaybase
+@@ -150,13 +150,23 @@ class rrulebase(object):
+         if self._cache_complete:
+             return self._cache[item]
+         elif isinstance(item, slice):
+-            if item.step and item.step < 0:
+-                return list(iter(self))[item]
+-            else:
+-                return list(itertools.islice(self,
+-                                             item.start or 0,
+-                                             item.stop or sys.maxsize,
+-                                             item.step or 1))
++            step = 1 if item.step is None else operator.index(item.step)
++            if step == 0:
++                raise ValueError("slice step cannot be zero")
++
++            start = None if item.start is None else operator.index(item.start)
++            stop = None if item.stop is None else operator.index(item.stop)
++            if (
++                step < 0
++                or (start is not None and start < 0)
++                or (stop is not None and stop < 0)
++            ):
++                return list(iter(self))[slice(start, stop, step)]
++
++            start = 0 if start is None else min(start, sys.maxsize)
++            stop = None if stop is None else min(stop, sys.maxsize)
++            step = min(step, sys.maxsize)
++            return list(itertools.islice(self, start, stop or None, step))
+         elif item >= 0:
+             gen = iter(self)
+             try:
+diff --git a/tests/test_rrule.py b/tests/test_rrule.py
+index 52673ec..48a0512 100644
+--- a/tests/test_rrule.py
++++ b/tests/test_rrule.py
+@@ -1,22 +1,34 @@
+ # -*- coding: utf-8 -*-
+ from __future__ import unicode_literals
+ 
+-from datetime import datetime, date
+ import unittest
++from datetime import date, datetime, timedelta
++
++import pytest
++from freezegun import freeze_time
+ from six import PY2
+ 
+ from dateutil import tz
+ from dateutil.rrule import (
+-    rrule, rruleset, rrulestr,
+-    YEARLY, MONTHLY, WEEKLY, DAILY,
+-    HOURLY, MINUTELY, SECONDLY,
+-    MO, TU, WE, TH, FR, SA, SU
++    DAILY,
++    FR,
++    HOURLY,
++    MINUTELY,
++    MO,
++    MONTHLY,
++    SA,
++    SECONDLY,
++    SU,
++    TH,
++    TU,
++    WE,
++    WEEKLY,
++    YEARLY,
++    rrule,
++    rruleset,
++    rrulestr,
+ )
+ 
+-from freezegun import freeze_time
+-
+-import pytest
+-
+ 
+ @pytest.mark.rrule
+ class RRuleTest(unittest.TestCase):
+@@ -4852,6 +4864,133 @@ class RRuleSetTest(unittest.TestCase):
+             self.assertEqual(rrset.count(), 5)
+ 
+ 
++def _slice_case(kind, mode):
++    start = datetime(2024, 1, 1)
++    count = 25 if mode == "partial" else 6
++    expected = [start + timedelta(days=i) for i in range(count)]
++    cache = mode != "off"
++
++    if kind == "rule":
++        recurrence = rrule(DAILY, dtstart=start, count=count, cache=cache)
++    else:
++        recurrence = rruleset(cache=cache)
++        recurrence.rrule(rrule(DAILY, dtstart=start, count=count))
++        recurrence.exdate(start + timedelta(days=3))
++        del expected[3]
++
++    if mode == "partial":
++        assert recurrence[0] == expected[0]
++        assert not recurrence._cache_complete
++    elif mode == "complete":
++        assert list(recurrence) == expected
++        assert recurrence._cache_complete
++
++    return recurrence, expected
++
++
++@pytest.mark.parametrize("kind", ("rule", "set"))
++@pytest.mark.parametrize("mode", ("off", "partial", "complete"))
++def test_slice_negative_and_reverse(kind, mode):
++    slices = (
++        slice(-3, None),
++        slice(None, -1),
++        slice(1, -1, 2),
++        slice(-20, 3),
++        slice(-3, -1),
++        slice(None, None, -1),
++        slice(4, 1, -2),
++    )
++    for selected in slices:
++        recurrence, expected = _slice_case(kind, mode)
++        assert recurrence[selected] == expected[selected]
++
++
++@pytest.mark.parametrize("kind", ("rule", "set"))
++@pytest.mark.parametrize("mode", ("off", "partial", "complete"))
++def test_slice_forward_and_integer(kind, mode):
++    for selected in (slice(None), slice(1, 4, 2), slice(4, 2)):
++        recurrence, expected = _slice_case(kind, mode)
++        assert recurrence[selected] == expected[selected]
++
++    for index in (0, 2, -1):
++        recurrence, expected = _slice_case(kind, mode)
++        assert recurrence[index] == expected[index]
++
++
++@pytest.mark.parametrize("kind", ("rule", "set"))
++@pytest.mark.parametrize("mode", ("off", "partial", "complete"))
++def test_slice_huge_positive_components(kind, mode):
++    huge = 10**100
++    for selected in (
++        slice(None, huge),
++        slice(None, None, huge),
++        slice(huge, None),
++        slice(1, huge, huge),
++    ):
++        recurrence, expected = _slice_case(kind, mode)
++        assert recurrence[selected] == expected[selected]
++
++
++@pytest.mark.parametrize("kind", ("rule", "set"))
++@pytest.mark.parametrize("mode", ("off", "partial", "complete"))
++def test_slice_zero_step(kind, mode):
++    recurrence, _ = _slice_case(kind, mode)
++    with pytest.raises(ValueError):
++        recurrence[::0]
++
++
++@pytest.mark.parametrize("kind", ("rule", "set"))
++@pytest.mark.parametrize("mode", ("off", "partial", "complete"))
++def test_slice_zero_step_precedes_invalid_bound(kind, mode):
++    recurrence, _ = _slice_case(kind, mode)
++    with pytest.raises(ValueError, match="slice step cannot be zero"):
++        recurrence[1.5::0]
++
++
++@pytest.mark.parametrize("cache", (False, True))
++def test_slice_zero_step_empty(cache):
++    recurrence = rrule(
++        DAILY, dtstart=datetime(2024, 1, 1), count=0, cache=cache
++    )
++    with pytest.raises(ValueError):
++        recurrence[::0]
++    if cache:
++        assert list(recurrence) == []
++        with pytest.raises(ValueError):
++            recurrence[::0]
++
++
++def test_slice_bounded_traversal():
++    start = datetime(2024, 1, 1)
++    expected = [start + timedelta(days=i) for i in range(3)]
++
++    class GuardedRule(rrule):
++        def _iter(self):
++            for occurrence in expected:
++                yield occurrence
++            raise AssertionError("slice exhausted the recurrence")
++
++    recurrence = GuardedRule(DAILY, dtstart=start)
++    assert recurrence[1:3] == expected[1:3]
++
++
++def test_slice_index_bounds():
++    class IndexBound(object):
++        def __init__(self, value):
++            self.value = value
++
++        def __index__(self):
++            return self.value
++
++    start = datetime(2024, 1, 1)
++    expected = [start + timedelta(days=i) for i in range(6)]
++    recurrence = rrule(DAILY, dtstart=start, count=6)
++    assert (
++        recurrence[IndexBound(1) : IndexBound(5) : IndexBound(2)]
++        == expected[1:5:2]
++    )
++
++
+ class WeekdayTest(unittest.TestCase):
+     def testInvalidNthWeekday(self):
+         with self.assertRaises(ValueError):

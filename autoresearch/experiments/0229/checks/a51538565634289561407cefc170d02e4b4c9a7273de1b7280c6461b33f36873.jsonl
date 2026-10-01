@@ -1,0 +1,1 @@
+{"checked_at": "2026-10-01T21:36:12.860Z", "finding_key": "a51538565634289561407cefc170d02e4b4c9a7273de1b7280c6461b33f36873", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0229/check-scripts/J1-widen-bound-reexamines-code-span.sh", "script_sha256": "9f428581abe6f389d9c880d5ee1f5908cbedc1d40aa7bb011fc84e92edecd865", "task": "J1"}

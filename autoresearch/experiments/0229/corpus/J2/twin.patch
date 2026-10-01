@@ -1,0 +1,122 @@
+diff --git a/src/ruler.ts b/src/ruler.ts
+index d23689d..3d7bca9 100644
+--- a/src/ruler.ts
++++ b/src/ruler.ts
+@@ -157,6 +157,33 @@ class Ruler<Args extends unknown[], Result> {
+     this.__cache__ = null
+   }
+ 
++  /**
++   * Move an existing rule immediately before another rule. The rule keeps its
++   * enabled state and membership in additional chains. Throws if either rule
++   * is not found.
++   *
++   * @example
++   * ```javascript
++   * import MarkdownIt from 'markdown-it'
++   * const md = new MarkdownIt()
++   *
++   * md.core.ruler.moveBefore('my_rule', 'inline')
++   * ```
++   */
++  moveBefore (ruleName: string, beforeName: string): void {
++    const ruleIndex = this.__find__(ruleName)
++    if (ruleIndex === -1) { throw new Error(`Parser rule not found: ${ruleName}`) }
++
++    const beforeIndex = this.__find__(beforeName)
++    if (beforeIndex === -1) { throw new Error(`Parser rule not found: ${beforeName}`) }
++
++    if (ruleIndex === beforeIndex || ruleIndex + 1 === beforeIndex) return
++
++    const [rule] = this.__rules__.splice(ruleIndex, 1)
++    this.__rules__.splice(beforeIndex, 0, rule)
++    this.__cache__ = null
++  }
++
+   /**
+    * Push new rule to the end of chain. See also
+    * {@link Ruler.before}, {@link Ruler.after}.
+diff --git a/test/markdown-it/ruler.test.mjs b/test/markdown-it/ruler.test.mjs
+index b99de7d..325c43e 100644
+--- a/test/markdown-it/ruler.test.mjs
++++ b/test/markdown-it/ruler.test.mjs
+@@ -36,6 +36,79 @@ describe('Ruler', function () {
+     assert.strictEqual(res, 10)
+   })
+ 
++  it('should move a later rule before an earlier rule in every chain', function () {
++    const ruler = new Ruler()
++    const a = () => 'a'
++    const b = () => 'b'
++    const c = () => 'c'
++
++    ruler.push('a', a, { alt: ['probe'] })
++    ruler.push('b', b)
++    ruler.push('c', c, { alt: ['probe'] })
++    assert.deepEqual(ruler.getRules(''), [a, b, c])
++    assert.deepEqual(ruler.getRules('probe'), [a, c])
++
++    assert.equal(ruler.moveBefore('c', 'a'), undefined)
++    assert.deepEqual(ruler.getRules(''), [c, a, b])
++    assert.deepEqual(ruler.getRules('probe'), [c, a])
++    assert.deepEqual(ruler.getRules('').map(fn => fn()), ['c', 'a', 'b'])
++  })
++
++  it('should preserve a disabled rule and its alternate chains when moving', function () {
++    const ruler = new Ruler()
++    const a = () => 'a'
++    const b = () => 'b'
++    const c = () => 'c'
++
++    ruler.push('a', a, { alt: ['probe'] })
++    ruler.push('b', b)
++    ruler.push('c', c, { alt: ['probe'] })
++    ruler.disable('c')
++    assert.deepEqual(ruler.getRules(''), [a, b])
++    assert.deepEqual(ruler.getRules('probe'), [a])
++
++    ruler.moveBefore('c', 'a')
++    assert.deepEqual(ruler.getRules(''), [a, b])
++    assert.deepEqual(ruler.getRules('probe'), [a])
++    ruler.enable('c')
++    assert.deepEqual(ruler.getRules(''), [c, a, b])
++    assert.deepEqual(ruler.getRules('probe'), [c, a])
++  })
++
++  it('should leave self and adjacent moves unchanged', function () {
++    const ruler = new Ruler()
++    const a = () => 'a'
++    const b = () => 'b'
++    const c = () => 'c'
++
++    ruler.push('a', a)
++    ruler.push('b', b)
++    ruler.push('c', c)
++    const cached = ruler.getRules('')
++    ruler.moveBefore('b', 'b')
++    ruler.moveBefore('a', 'b')
++    assert.strictEqual(ruler.getRules(''), cached)
++    assert.deepEqual(ruler.getRules(''), [a, b, c])
++  })
++
++  it('should reject missing move names without changing registrations', function () {
++    const ruler = new Ruler()
++    const a = () => 'a'
++    const b = () => 'b'
++
++    ruler.push('a', a)
++    ruler.push('b', b)
++    ruler.disable('b')
++    const registrations = ruler.__rules__.map(rule => ({ ...rule, alt: [...rule.alt] }))
++    const cached = ruler.getRules('')
++
++    assert.throws(() => ruler.moveBefore('missing', 'other'), { message: 'Parser rule not found: missing' })
++    assert.throws(() => ruler.moveBefore('a', 'other'), { message: 'Parser rule not found: other' })
++    assert.deepEqual(ruler.__rules__, registrations)
++    assert.strictEqual(ruler.getRules(''), cached)
++    assert.deepEqual(ruler.getRules(''), [a])
++  })
++
+   it('should enable/disable rule', function () {
+     const ruler = new Ruler()
+     let rules

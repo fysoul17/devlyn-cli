@@ -1,0 +1,231 @@
+diff --git a/src/dateutil/tz/tz.py b/src/dateutil/tz/tz.py
+index 6175914..30305dd 100644
+--- a/src/dateutil/tz/tz.py
++++ b/src/dateutil/tz/tz.py
+@@ -7,24 +7,30 @@ etc), TZ environment string (in all known formats), given ranges (with help
+ from relative deltas), local machine timezone, fixed offset timezone, and UTC
+ timezone.
+ """
++
++import bisect
+ import datetime
++import operator
++import os
+ import struct
+-import time
+ import sys
+-import os
+-import bisect
++import time
+ import weakref
+ from collections import OrderedDict
+ 
+ import six
+ from six import string_types
+ from six.moves import _thread
+-from ._common import tzname_in_python2, _tzinfo
+-from ._common import tzrangebase, enfold
+-from ._common import _validate_fromutc_inputs
+ 
+-from ._factories import _TzSingleton, _TzOffsetFactory
+-from ._factories import _TzStrFactory
++from ._common import (
++    _tzinfo,
++    _validate_fromutc_inputs,
++    enfold,
++    tzname_in_python2,
++    tzrangebase,
++)
++from ._factories import _TzOffsetFactory, _TzSingleton, _TzStrFactory
++
+ try:
+     from .win import tzwin, tzwinlocal
+ except ImportError:
+@@ -1577,8 +1583,18 @@ def __get_gettz():
+             return rv
+ 
+         def set_cache_size(self, size):
++            """Set the number of time zones retained in the strong cache.
++
++            ``size`` must be a nonnegative integer or support ``__index__``.
++            Zero disables strong retention. Raises ``TypeError`` if ``size``
++            has no integer index and ``ValueError`` if it is negative.
++            Exceptions raised by ``__index__`` propagate.
++            """
++            size = operator.index(size)
+             with self._cache_lock:
+                 self.__strong_cache_size = size
++                if size < 0:
++                    raise ValueError("Cache size must be nonnegative")
+                 while len(self.__strong_cache) > size:
+                     self.__strong_cache.popitem(last=False)
+ 
+diff --git a/tests/test_tz.py b/tests/test_tz.py
+index 665d32d..56280a5 100644
+--- a/tests/test_tz.py
++++ b/tests/test_tz.py
+@@ -1171,6 +1171,164 @@ def test_gettz_set_cache_size():
+ 
+     assert MONACO_ref() is None
+ 
++
++class _GettzCacheZone(tzinfo):
++    def __init__(self, name):
++        self.name = name
++
++    def utcoffset(self, dt):
++        return timedelta(0)
++
++    def dst(self, dt):
++        return timedelta(0)
++
++    def tzname(self, dt):
++        return self.name
++
++
++class _GettzCacheSizeIndex(object):
++    def __init__(self, value):
++        self.value = value
++
++    def __index__(self):
++        return self.value
++
++
++def _isolated_gettz_cache(size=3):
++    getter = type(tz.gettz)()
++    getter.nocache = lambda name=None: _GettzCacheZone(name)
++    assert getter.set_cache_size(size) is None
++    return getter
++
++
++def _gettz_cache_refs(getter, names):
++    return {name: weakref.ref(getter(name)) for name in names}
++
++
++@pytest.mark.gettz
++@pytest.mark.parametrize(
++    "size,retained",
++    [
++        (0, ()),
++        (1, ("C",)),
++        (3, ("A", "B", "C")),
++        (False, ()),
++        (True, ("C",)),
++        (_GettzCacheSizeIndex(2), ("B", "C")),
++    ],
++)
++def test_gettz_cache_size_valid_inputs(size, retained):
++    getter = _isolated_gettz_cache()
++    assert getter.set_cache_size(size) is None
++    refs = _gettz_cache_refs(getter, ("A", "B", "C"))
++    gc.collect()
++    assert {name for name, ref in refs.items() if ref() is not None} == set(
++        retained
++    )
++
++
++@pytest.mark.gettz
++@pytest.mark.parametrize("size", (-1, _GettzCacheSizeIndex(-1)))
++def test_gettz_cache_size_negative_input(size):
++    getter = _isolated_gettz_cache()
++    with pytest.raises(ValueError):
++        getter.set_cache_size(size)
++
++
++@pytest.mark.gettz
++@pytest.mark.parametrize("size", (None, "3", 1.5, object()))
++def test_gettz_cache_size_invalid_type(size):
++    getter = _isolated_gettz_cache()
++    with pytest.raises(TypeError):
++        getter.set_cache_size(size)
++
++
++@pytest.mark.gettz
++def test_gettz_cache_size_index_exception():
++    failure = RuntimeError("conversion failed")
++
++    class BrokenIndex(object):
++        def __index__(self):
++            raise failure
++
++    getter = _isolated_gettz_cache()
++    with pytest.raises(RuntimeError) as raised:
++        getter.set_cache_size(BrokenIndex())
++    assert raised.value is failure
++
++
++@pytest.mark.gettz
++def test_gettz_cache_size_failed_conversion_preserves_order():
++    getter = _isolated_gettz_cache()
++    refs = _gettz_cache_refs(getter, ("A", "B", "C"))
++    assert getter("A") is refs["A"]()
++
++    with pytest.raises(TypeError):
++        getter.set_cache_size("2")
++
++    refs["D"] = weakref.ref(getter("D"))
++    gc.collect()
++    assert refs["B"]() is None
++    assert all(refs[name]() is not None for name in ("A", "C", "D"))
++
++    assert getter.set_cache_size(2) is None
++    gc.collect()
++    assert refs["C"]() is None
++    assert refs["A"]() is not None and refs["D"]() is not None
++
++
++@pytest.mark.gettz
++def test_gettz_cache_size_shrink_and_grow():
++    getter = _isolated_gettz_cache()
++    refs = _gettz_cache_refs(getter, ("A", "B", "C"))
++    assert getter("A") is refs["A"]()
++
++    assert getter.set_cache_size(_GettzCacheSizeIndex(2)) is None
++    gc.collect()
++    assert refs["B"]() is None
++    assert refs["A"]() is not None and refs["C"]() is not None
++
++    assert getter.set_cache_size(3) is None
++    refs["D"] = weakref.ref(getter("D"))
++    gc.collect()
++    assert all(refs[name]() is not None for name in ("C", "A", "D"))
++
++    refs["E"] = weakref.ref(getter("E"))
++    gc.collect()
++    assert refs["C"]() is None
++    assert all(refs[name]() is not None for name in ("A", "D", "E"))
++
++
++@pytest.mark.gettz
++def test_gettz_cache_size_zero_keeps_live_identity():
++    getter = _isolated_gettz_cache(2)
++    held = getter("A")
++    a_ref = weakref.ref(held)
++    b_ref = weakref.ref(getter("B"))
++
++    assert getter.set_cache_size(0) is None
++    gc.collect()
++    assert b_ref() is None
++    assert getter("A") is held
++
++    del held
++    gc.collect()
++    assert a_ref() is None
++
++
++@pytest.mark.gettz
++def test_gettz_cache_clear_isolated():
++    getter = _isolated_gettz_cache(1)
++    held = getter("A")
++    getter.cache_clear()
++    fresh = getter("A")
++    assert fresh is not held
++    fresh_ref = weakref.ref(fresh)
++    del fresh
++    getter("B")
++    gc.collect()
++    assert fresh_ref() is None
++
+ @pytest.mark.xfail(IS_WIN, reason="Windows does not use system zoneinfo")
+ @pytest.mark.smoke
+ @pytest.mark.gettz

@@ -1,0 +1,1 @@
+{"checked_at": "2026-10-01T21:36:47.882Z", "finding_key": "353494c594c7d9a06a91ce03d65a413c8d13ff20cef1914ac5d5a211e7b043c0", "results": {"base": false, "reference": true, "twin": false}, "script": "autoresearch/experiments/0229/check-scripts/P3-negative-reject-later-lookups.sh", "script_sha256": "6f9bcf20cb6f157dbb8f23eaa313980dffbe4ac6215e881a9e493ef07b56b67b", "task": "P3"}

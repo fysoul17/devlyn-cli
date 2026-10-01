@@ -1,0 +1,218 @@
+diff --git a/src/dateutil/parser/_parser.py b/src/dateutil/parser/_parser.py
+index 37d1663..d762dd5 100644
+--- a/src/dateutil/parser/_parser.py
++++ b/src/dateutil/parser/_parser.py
+@@ -588,14 +588,15 @@ class parser(object):
+ 
+         :param tzinfos:
+             Additional time zone names / aliases which may be present in the
+-            string. This argument maps time zone names (and optionally offsets
+-            from those time zones) to time zones. This parameter can be a
+-            dictionary with timezone aliases mapping time zone names to time
+-            zones or a function taking two parameters (``tzname`` and
+-            ``tzoffset``) and returning a time zone.
++            string. This parameter can be a dictionary mapping time zone names
++            or ``(tzname, tzoffset)`` pairs to time zones, or a function taking
++            two parameters (``tzname`` and ``tzoffset``) and returning a time
++            zone. Pair keys use the parsed name and offset in seconds; either
++            component may be ``None``. A matching pair takes precedence over
++            a name key, which is used when the pair is absent.
+ 
+-            The timezones to which the names are mapped can be an integer
+-            offset from UTC in seconds or a :class:`tzinfo` object.
++            Mapped values can be a :class:`tzinfo` object, a time zone string,
++            an integer offset from UTC in seconds, or ``None``.
+ 
+             .. doctest::
+                :options: +NORMALIZE_WHITESPACE
+@@ -1160,7 +1161,11 @@ class parser(object):
+         if callable(tzinfos):
+             tzdata = tzinfos(tzname, tzoffset)
+         else:
+-            tzdata = tzinfos.get(tzname)
++            pair = (tzname, tzoffset)
++            if pair in tzinfos:
++                tzdata = tzinfos[pair]
++            else:
++                tzdata = tzinfos.get(tzname)
+         # handle case where tzinfo is paased an options that returns None
+         # eg tzinfos = {'BRST' : None}
+         if isinstance(tzdata, datetime.tzinfo) or tzdata is None:
+@@ -1175,7 +1180,10 @@ class parser(object):
+         return tzinfo
+ 
+     def _build_tzaware(self, naive, res, tzinfos):
+-        if (callable(tzinfos) or (tzinfos and res.tzname in tzinfos)):
++        if callable(tzinfos) or (
++            tzinfos
++            and ((res.tzname, res.tzoffset) in tzinfos or res.tzname in tzinfos)
++        ):
+             tzinfo = self._build_tzinfo(tzinfos, res.tzname, res.tzoffset)
+             aware = naive.replace(tzinfo=tzinfo)
+             aware = self._assign_tzname(aware, res.tzname)
+@@ -1294,14 +1302,15 @@ def parse(timestr, parserinfo=None, **kwargs):
+ 
+     :param tzinfos:
+         Additional time zone names / aliases which may be present in the
+-        string. This argument maps time zone names (and optionally offsets
+-        from those time zones) to time zones. This parameter can be a
+-        dictionary with timezone aliases mapping time zone names to time
+-        zones or a function taking two parameters (``tzname`` and
+-        ``tzoffset``) and returning a time zone.
+-
+-        The timezones to which the names are mapped can be an integer
+-        offset from UTC in seconds or a :class:`tzinfo` object.
++        string. This parameter can be a dictionary mapping time zone names
++        or ``(tzname, tzoffset)`` pairs to time zones, or a function taking
++        two parameters (``tzname`` and ``tzoffset``) and returning a time
++        zone. Pair keys use the parsed name and offset in seconds; either
++        component may be ``None``. A matching pair takes precedence over
++        a name key, which is used when the pair is absent.
++
++        Mapped values can be a :class:`tzinfo` object, a time zone string,
++        an integer offset from UTC in seconds, or ``None``.
+ 
+         .. doctest::
+            :options: +NORMALIZE_WHITESPACE
+diff --git a/tests/test_parser.py b/tests/test_parser.py
+index 08a34da..cb5b46c 100644
+--- a/tests/test_parser.py
++++ b/tests/test_parser.py
+@@ -2,23 +2,26 @@
+ from __future__ import unicode_literals
+ 
+ import itertools
+-from datetime import datetime, timedelta
+-import unittest
+ import sys
++import unittest
++from datetime import datetime, timedelta
++from io import StringIO
++
++import pytest
++from six import PY2, assertRaisesRegex
+ 
+ from dateutil import tz
++from dateutil.parser import (
++    ParserError,
++    UnknownTimezoneWarning,
++    parse,
++    parser,
++    parserinfo,
++)
+ from dateutil.tz import tzoffset
+-from dateutil.parser import parse, parserinfo
+-from dateutil.parser import ParserError
+-from dateutil.parser import UnknownTimezoneWarning
+ 
+ from ._common import TZEnvContext
+ 
+-from six import assertRaisesRegex, PY2
+-from io import StringIO
+-
+-import pytest
+-
+ # Platform info
+ IS_WIN = sys.platform.startswith('win')
+ 
+@@ -405,6 +408,100 @@ class TestTzinfoInputTypes(object):
+         self.assert_equal_same_tz(res, expected)
+ 
+ 
++@pytest.mark.parametrize("parse_fn", [parse, parser().parse])
++def test_tzinfos_pair_priority_fallback_and_ignoretz(parse_fn):
++    text = "2012-01-19 17:21:00 -0300 (BRST)"
++    name_text = "2012-01-19 17:21:00 BRST"
++    wall = datetime(2012, 1, 19, 17, 21)
++    pair_zone = tzoffset("PAIR", -7200)
++    name_zone = tzoffset("NAME", -14400)
++    tzinfos = {("BRST", -10800): pair_zone, "BRST": name_zone}
++
++    exact = parse_fn(text, tzinfos=tzinfos)
++    fallback = parse_fn(name_text, tzinfos=tzinfos)
++    ignored = parse_fn(text, tzinfos=tzinfos, ignoretz=True)
++
++    assert exact.tzinfo is pair_zone
++    assert fallback.tzinfo is name_zone
++    assert exact.replace(tzinfo=None) == wall
++    assert fallback.replace(tzinfo=None) == wall
++    assert ignored == wall
++    assert ignored.tzinfo is None
++
++
++@pytest.mark.parametrize(
++    "value,seconds",
++    [
++        (tzoffset("PAIR", -7200), -7200),
++        ("UTC+0", 0),
++        (3600, 3600),
++        (0, 0),
++    ],
++)
++def test_tzinfos_pair_conversions(value, seconds):
++    text = "2012-01-19 17:21:00 -0300 (BRST)"
++    result = parse(text, tzinfos={("BRST", -10800): value})
++
++    if isinstance(value, tz.tzoffset):
++        assert result.tzinfo is value
++    assert result.utcoffset() == timedelta(seconds=seconds)
++    assert result.replace(tzinfo=None) == datetime(2012, 1, 19, 17, 21)
++
++
++def test_tzinfos_pair_absent_components():
++    name_zone = tzoffset("NAME", -14400)
++    offset_zone = tzoffset("OFFSET", -7200)
++
++    name_result = parse(
++        "2012-01-19 17:21:00 BRST", tzinfos={("BRST", None): name_zone}
++    )
++    offset_result = parse(
++        "2012-01-19 17:21:00 -0300", tzinfos={(None, -10800): offset_zone}
++    )
++
++    assert name_result.tzinfo is name_zone
++    assert offset_result.tzinfo is offset_zone
++
++
++def test_tzinfos_pair_miss_uses_name_or_numeric_offset():
++    text = "2012-01-19 17:21:00 -0300 (BRST)"
++    pair_zone = tzoffset("PAIR", -7200)
++    name_zone = tzoffset("NAME", -14400)
++    tzinfos = {("BRST", 3600): pair_zone, "BRST": name_zone}
++
++    assert parse(text, tzinfos=tzinfos).tzinfo is name_zone
++    numeric = parse(
++        "2012-01-19 17:21:00 -0300", tzinfos={("BRST", 3600): pair_zone}
++    )
++    assert numeric.utcoffset() == timedelta(hours=-3)
++
++
++def test_tzinfos_pair_none_and_invalid_value():
++    text = "2012-01-19 17:21:00 -0300 (BRST)"
++    name_zone = tzoffset("NAME", -14400)
++
++    assert parse(text, tzinfos={("BRST", -10800): None}).tzinfo is None
++    with pytest.raises(TypeError):
++        parse(text, tzinfos={("BRST", -10800): object(), "BRST": name_zone})
++
++
++def test_tzinfos_pair_callback_and_ignoretz():
++    text = "2012-01-19 17:21:00 -0300 (BRST)"
++    calls = []
++    pair_zone = tzoffset("PAIR", -7200)
++
++    def resolve(name, offset):
++        calls.append((name, offset))
++        return pair_zone
++
++    assert parse(text, tzinfos=resolve).tzinfo is pair_zone
++    assert calls == [("BRST", -10800)]
++    assert parse(text, tzinfos=resolve, ignoretz=True) == datetime(
++        2012, 1, 19, 17, 21
++    )
++    assert calls == [("BRST", -10800)]
++
++
+ class ParserTest(unittest.TestCase):
+ 
+     @classmethod
