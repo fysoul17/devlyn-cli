@@ -699,6 +699,23 @@ installClaudeCore();
                     self.assertEqual(dest.read_bytes(), installed)
                     self.assertEqual(entry.read_bytes(), b'keep obstruction')
 
+    def test_queue_add_helper_appends_one_literal_line_at_the_end(self):
+        helper = self.package / 'config/skills/devlyn-queue/scripts/append.py'
+        queue = self.project / 'docs/specs/queue.md'
+        handoff = self.project / '.devlyn/queue-intent.txt'
+        add = lambda code=0: run([sys.executable, helper, '.devlyn/queue-intent.txt'], cwd=self.project, code=code)
+        handoff.parent.mkdir(); handoff.write_text('Keep "quotes", $HOME and `ticks`\n  on two lines\n', encoding='utf-8')
+        add()
+        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [ ] Keep "quotes", $HOME and `ticks` on two lines\n')
+        self.assertFalse(handoff.exists())
+        queue.write_bytes(b'# Intent Queue\n\n- [x] done')
+        handoff.write_text('(spec: docs/specs/a/spec.md) next', encoding='utf-8')
+        add()
+        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [x] done\n- [ ] (spec: docs/specs/a/spec.md) next\n')
+        handoff.write_text(' \n', encoding='utf-8')
+        self.assertIn(b'queue add failed', add(code=1).stderr)
+        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [x] done\n- [ ] (spec: docs/specs/a/spec.md) next\n')
+
     def test_incomplete_source_has_no_marker(self):
         copy = self.case / 'broken'; shutil.copytree(self.package, copy)
         skill = next((copy / 'config/skills').glob('devlyn*resolve'))

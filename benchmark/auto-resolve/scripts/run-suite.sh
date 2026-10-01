@@ -11,7 +11,7 @@
 #   run-suite.sh --judge-only --run-id X    # re-judge an existing run
 #   run-suite.sh --label v3.6               # tag this run
 #   run-suite.sh --bless                    # if ship-gate PASS, promote to baselines/shipped.json
-#   run-suite.sh --resolve-skill new        # invoke /devlyn:resolve --spec (the only supported value post iter-0034 cutover; flag kept as accepted no-op for historical runners)
+#   run-suite.sh --resolve-skill new        # invoke /devlyn-resolve --spec (the only supported value post iter-0034 cutover; flag kept as accepted no-op for historical runners)
 #   run-suite.sh --suite shadow --dry-run   # list shadow tasks; shadow suite refuses provider/judge runs
 #
 # Exits 0 on PASS, 1 on FAIL.
@@ -61,7 +61,7 @@ while [ $# -gt 0 ]; do
 done
 
 # iter-0034 Phase 4 cutover (2026-05-03): OLD `/devlyn:auto-resolve` deleted.
-# Only `new` (= /devlyn:resolve --spec) is supported. The flag is retained as
+# Only `new` (= /devlyn-resolve --spec) is supported. The flag is retained as
 # an accepted no-op so historical runners (e.g. run-iter-0033c.sh) keep working
 # without edit. `old` is hard-errored with a pointer at the cutover commit.
 if [ "$RESOLVE_SKILL" = "old" ]; then

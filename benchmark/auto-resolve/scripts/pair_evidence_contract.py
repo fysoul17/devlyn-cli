@@ -38,7 +38,7 @@ HISTORICAL_NORMALIZED_PAIR_TRIGGER_REASON_ALIASES = {
     "state.complexity.high",
 }
 # Benchmark readers accept historical aliases only for archived artifacts.
-# Runtime /devlyn:resolve state must continue to emit canonical reasons.
+# Runtime /devlyn-resolve state must continue to emit canonical reasons.
 KNOWN_PAIR_TRIGGER_REASONS = (
     CANONICAL_PAIR_TRIGGER_REASONS | HISTORICAL_PAIR_TRIGGER_REASON_ALIASES
 )

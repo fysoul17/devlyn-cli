@@ -124,7 +124,6 @@ After generating the skill, present:
 3. **Test invocation** — Example command to test the skill
 
 Offer to:
-- Run `/devlyn:review` on the generated skill for quality assurance
 - Run `pyx-scan` if the skill will be published
 
 ---

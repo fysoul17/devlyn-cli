@@ -261,7 +261,7 @@ trap cleanup_claude_credentials EXIT INT TERM
 json_quote_task_prompt() {
   local worktree="$1"
   cp "$TASK_TEXT_FILE" "$worktree/.devlyn/goal.txt"
-  printf '%s' '/devlyn:resolve --goal-file .devlyn/goal.txt --pair-verify'
+  printf '%s' '/devlyn-resolve --goal-file .devlyn/goal.txt --pair-verify'
 }
 
 bare_prompt() {
@@ -785,8 +785,8 @@ case "$ARM" in
   A)
     stage_devlyn_context "$WORKTREE"
     write_settings_staging_receipt "$WORKTREE/.claude/settings.json" "$WORKTREE"
-    [ -f "$WORKTREE/.claude/skills/devlyn:resolve/SKILL.md" ] || {
-      echo "staged devlyn:resolve skill missing" >&2
+    [ -f "$WORKTREE/.claude/skills/devlyn-resolve/SKILL.md" ] || {
+      echo "staged devlyn-resolve skill missing" >&2
       exit 1
     }
     [ -f "$WORKTREE/.claude/settings.json" ] || {

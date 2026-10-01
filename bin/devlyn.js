@@ -170,6 +170,8 @@ const DEPRECATED_DIRS = [
   'skills/devlyn:team-resolve',
   'skills/devlyn:team-review',
   'skills/devlyn:update-docs',
+  // Deleted in the same cutover but never listed, so installs kept it pointing at retired skills.
+  'skills/workflow-routing',
   // 0221 Session 1: standards skills moved to optional-skills/ (opt-in).
   'skills/code-health-standards',
   'skills/code-review-standards',

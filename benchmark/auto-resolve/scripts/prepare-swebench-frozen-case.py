@@ -170,7 +170,7 @@ review.
 ## Verification
 
 - Run the official SWE-bench evaluator separately for solve-rate evidence.
-- Use `/devlyn:resolve --verify-only` here only to compare solo vs gated pair
+- Use `/devlyn-resolve --verify-only` here only to compare solo vs gated pair
   review of the frozen candidate patch against the visible problem statement.
 """
     (case_dir / "spec.md").write_text(spec, encoding="utf8")

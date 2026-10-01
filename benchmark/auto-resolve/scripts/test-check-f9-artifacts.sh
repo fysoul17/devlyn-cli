@@ -32,7 +32,7 @@ EOF
 }
 EOF
   cat > "$result_dir/transcript.txt" <<'EOF'
-spec ready - /devlyn:resolve --spec docs/specs/F9-e2e-ideate-to-resolve/spec.md
+spec ready - /devlyn-resolve --spec docs/specs/F9-e2e-ideate-to-resolve/spec.md
 EOF
   printf '%s\n' "$result_dir"
 }

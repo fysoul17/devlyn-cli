@@ -948,9 +948,9 @@ def execute_attempt(
         else:
             row["staged_intervention_sha256"] = stage_harness(work, goal_bytes, params)
             prompt = (
-                b"/devlyn:resolve --goal-file .devlyn/goal.txt --no-pair"
+                b"/devlyn-resolve --goal-file .devlyn/goal.txt --no-pair"
                 if arm == "L1"
-                else b"/devlyn:resolve --goal-file .devlyn/goal.txt --pair-verify"
+                else b"/devlyn-resolve --goal-file .devlyn/goal.txt --pair-verify"
             )
         prompt_path = attempt_dir / "prompt.txt"
         prompt_path.write_bytes(prompt)
@@ -1281,9 +1281,9 @@ def expected_cell_digests(params: dict[str, Any], arm: str, task: str) -> dict[s
         staged = None
     else:
         prompt = (
-            b"/devlyn:resolve --goal-file .devlyn/goal.txt --no-pair"
+            b"/devlyn-resolve --goal-file .devlyn/goal.txt --no-pair"
             if arm == "L1"
-            else b"/devlyn:resolve --goal-file .devlyn/goal.txt --pair-verify"
+            else b"/devlyn-resolve --goal-file .devlyn/goal.txt --pair-verify"
         )
         staged = params["harness"]["staged_intervention_sha256"]
     return {

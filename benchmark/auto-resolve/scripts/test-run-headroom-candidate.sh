@@ -316,12 +316,12 @@ STUB_BENCH="$STUB_REPO/benchmark/auto-resolve"
 mkdir -p \
   "$STUB_BENCH/scripts" \
   "$STUB_BENCH/fixtures/F21-cli-scheduler-priority" \
-  "$STUB_REPO/config/skills/devlyn:resolve"
+  "$STUB_REPO/config/skills/devlyn-resolve"
 cp "$RUNNER" "$STUB_BENCH/scripts/run-headroom-candidate.sh"
 cp "$REJECTED" "$STUB_BENCH/scripts/pair-rejected-fixtures.sh"
 chmod +x "$STUB_BENCH/scripts/run-headroom-candidate.sh"
 chmod +x "$STUB_BENCH/scripts/pair-rejected-fixtures.sh"
-printf -- '---\nname: devlyn:resolve\n---\n' > "$STUB_REPO/config/skills/devlyn:resolve/SKILL.md"
+printf -- '---\nname: devlyn-resolve\n---\n' > "$STUB_REPO/config/skills/devlyn-resolve/SKILL.md"
 cat > "$STUB_BENCH/scripts/run-fixture.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail

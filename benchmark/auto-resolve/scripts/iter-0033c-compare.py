@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""iter-0033c gate table — NEW L2 vs NEW L1 on /devlyn:resolve.
+"""iter-0033c gate table — NEW L2 vs NEW L1 on /devlyn-resolve.
 
 Reads:
   - manifest (immutable; built by build-pair-eligible-manifest.py)

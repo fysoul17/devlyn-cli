@@ -38,10 +38,10 @@ If the user's intent is ambiguous (e.g., they say "지워줘" but didn't specify
 
 Always run scan first — even in KILL mode — so the user sees what is about to happen.
 
-Run the bundled scanner. The skill is installed at `~/.claude/skills/devlyn-reap/`:
+Run the bundled scanner:
 
 ```bash
-bash ~/.claude/skills/devlyn-reap/scripts/scan.sh
+bash "${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}/scripts/scan.sh"
 ```
 
 Report the output verbatim to the user. Then add your own 2-line summary:
@@ -60,7 +60,7 @@ sysctl kern.maxprocperuid kern.tty.ptmx_max 2>/dev/null
 Run the reap script with the parsed flags:
 
 ```bash
-bash ~/.claude/skills/devlyn-reap/scripts/reap.sh [flags]
+bash "${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}/scripts/reap.sh" [flags]
 ```
 
 Show the output verbatim. The script re-verifies `PPID==1 && user==current` for every PID right before signaling — a process that was legitimately adopted since the scan will be skipped, not killed.

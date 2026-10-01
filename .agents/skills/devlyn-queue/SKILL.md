@@ -9,7 +9,7 @@ Utility front-end for the intent-queue contract in the project instructions ("In
 $ARGUMENTS
 </args>
 
-For `drain`, resolve the installed shared scripts before the first item:
+For `add` and `drain`, resolve the installed skill directory first (`drain` also needs the shared scripts):
 
 ```bash
 DEVLYN_SKILL_DIR="${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}"
@@ -31,7 +31,7 @@ Read the queue state above (absent `docs/specs/queue.md` → report "queue empty
 
 ## Subcommands
 
-- `add <intent text>` — append `- [ ] <intent>` to `docs/specs/queue.md` (create the file with its header if missing). If the intent came out of a conversation that already produced a spec, link it: `- [ ] (spec: docs/specs/<id>/spec.md) <intent>`.
+- `add <intent text>` — use the Write tool to place the exact full intent in `.devlyn/queue-intent.txt`; do not create it with shell syntax. If the conversation already produced a spec, the file must start with `(spec: docs/specs/<id>/spec.md)`. Then, from the project root, run exactly once `python3 "$DEVLYN_SKILL_DIR/scripts/append.py" .devlyn/queue-intent.txt` (resolve `DEVLYN_SKILL_DIR` as for `drain`). The helper consumes that file, appends one `- [ ] <intent>` line at the physical end of `docs/specs/queue.md` (creating it with its header if missing), and is the sole queue writer. Never edit `docs/specs/queue.md` directly for `add` and never use a direct-edit fallback; a nonzero helper exit is shown to the user and stops the `add`.
 - `drain` — serial drain per the project-instructions contract. For each pending item, in order:
   1. Allocate the owner's absent task branch with `--worktree <absent path>` per `../devlyn-resolve/references/task-completion.md`, and work in that worktree; then spec it if unspecced (the queue entry is the user's go-ahead). Unattended assumptions may only take scope-narrowing, reversible, non-user-visible defaults; material ambiguity (user-visible behavior, data/state semantics, new files/scripts/flags, implementation surface) → mark `[F] needs-review: <question>`, commit that queue transition, and continue.
   2. Bring only the current queue-item delta and linked spec bundle from the queue view into the task worktree, which starts from the fetched remote base with no other local commits, commit that scoped owner baseline, then run `/devlyn-resolve --spec <path>` hands-free.
