@@ -885,8 +885,10 @@ def probe(label, transcript):
 
 
 def runs_only(payload, command):
-    """True when a rollout tool call ran exactly `command` and did nothing else: a shell function call whose cmd or
-    command is that command, or a code-mode `exec` whose whole input runs it and returns its result."""
+    """True when a rollout tool call ran exactly `command` and did nothing else: a shell function call whose cmd is the
+    command or whose argv is `<shell> -c|-lc <command>`, or a code-mode `exec` whose entire input runs the command and
+    returns that run's `.output` (the form Codex used in the earlier probes). A second `cmd` key, any option outside a
+    short allowlist, or any extra statement is refused."""
     raw = payload.get('input') if payload.get('type') == 'custom_tool_call' else payload.get('arguments')
     if not isinstance(raw, str):
         return False
@@ -896,12 +898,16 @@ def runs_only(payload, command):
         except ValueError:
             return False
         value = arguments.get('cmd', arguments.get('command')) if isinstance(arguments, dict) else None
-        return value == command or (isinstance(value, list) and value[-1:] == [command])
+        if isinstance(value, str):
+            return value == command
+        shells = {'sh', 'bash', 'zsh', '/bin/sh', '/bin/bash', '/bin/zsh'}
+        return isinstance(value, list) and len(value) == 3 and value[0] in shells and value[1] in ('-c', '-lc') \
+            and value[2] == command
     literal = re.escape(json.dumps(command)[1:-1])
-    options = r'(?:\s*,\s*\w+\s*:\s*(?:"(?:[^"\\]|\\.)*"|\d+))*'
-    call = r'await\s+tools\.exec_command\(\s*\{\s*cmd\s*:\s*"' + literal + '"' + options + r'\s*\}\s*\)'
-    forms = (r'text\(\s*' + call + r'\s*\)\s*;?',
-             r'const\s+(\w+)\s*=\s*' + call + r'\s*;?\s*text\(\s*\1\s*\)\s*;?')
+    option = r'\s*,\s*(?:max_output_tokens|yield_time_ms|timeout_ms)\s*:\s*\d+'
+    call = r'await\s+tools\.exec_command\(\s*\{\s*cmd\s*:\s*"' + literal + '"(?:' + option + r')*\s*\}\s*\)'
+    forms = (r'text\(\s*\(\s*' + call + r'\s*\)\.output\s*\)\s*;?',
+             r'const\s+(\w+)\s*=\s*' + call + r'\s*;?\s*text\(\s*\1\.output\s*\)\s*;?')
     return any(re.fullmatch(form, raw.strip()) for form in forms)
 
 
