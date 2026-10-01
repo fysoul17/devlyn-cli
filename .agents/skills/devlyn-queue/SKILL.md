@@ -22,7 +22,8 @@ Treat the hint as literal path data, never shell code. If the reader
 replaced it with an absolute directory, use that directory. Otherwise
 use the filesystem path or base directory reported for this loaded
 SKILL.md. Resolve virtual URIs through the reader's native filesystem
-mapping. If available source locations disagree, stop.
+mapping. If available source locations name different directories,
+stop.
 
 Bind DEVLYN_SKILL_DIR to that absolute directory. Do not obtain this
 binding from an environment variable, cwd, or another installation.
@@ -33,7 +34,9 @@ when known.
 Resolve bundled references against this directory. These bindings are
 workflow values: establish them explicitly using each tool or shell's
 literal-path rules, and include their absolute values in every fresh
-worker's prompt. Do not rely on shell state surviving between calls.
+worker's prompt, telling it to set them from those values, never from
+its inherited environment. Do not rely on shell state surviving between
+calls.
 
 Resolve directory symlinks on DEVLYN_SKILL_DIR before deriving its
 sibling _shared. Bind that directory as DEVLYN_SHARED_DIR. References
@@ -54,7 +57,7 @@ Read the queue state above (absent `docs/specs/queue.md` → report "queue empty
 - `add <intent text>` — use the Write tool to place the exact full intent in a new file `.devlyn/queue-intent-<unique>.txt` (a name no other add uses, made of letters, digits, `.`, `_` and `-`, e.g. `queue-intent-20261001-1230-k3x9.txt`); do not create it with shell syntax. If the conversation already produced a spec, the file must start with `(spec: docs/specs/<id>/spec.md)`. Then, from the project root, run exactly once `python3 "$DEVLYN_SKILL_DIR/scripts/append.py" .devlyn/queue-intent-<unique>.txt`. The helper consumes that file, appends one `- [ ] <intent>` line at the physical end of `docs/specs/queue.md` under a lock (creating it with its header if missing), and is the sole queue writer. Never edit `docs/specs/queue.md` directly for `add` and never use a direct-edit fallback; a nonzero helper exit is shown to the user and stops the `add`.
 - `drain` — serial drain per the project-instructions contract. For each pending item, in order:
   1. Allocate the owner's absent task branch with `--worktree <absent path>` per `../devlyn-resolve/references/task-completion.md`, and work in that worktree; then spec it if unspecced (the queue entry is the user's go-ahead). Unattended assumptions may only take scope-narrowing, reversible, non-user-visible defaults; material ambiguity (user-visible behavior, data/state semantics, new files/scripts/flags, implementation surface) → mark `[F] needs-review: <question>`, commit that queue transition, and continue.
-  2. Bring only the current queue-item delta and linked spec bundle from the queue view into the task worktree, which starts from the fetched remote base with no other local commits, commit that scoped owner baseline, then run `/devlyn-resolve --spec <path>` hands-free.
+  2. Bring only the current queue-item delta and linked spec bundle from the queue view into the task worktree, which starts from the fetched remote base with no other local commits, commit that scoped owner baseline, then run the sibling devlyn-resolve loaded above with `--spec <path>` hands-free.
      After every resolve invocation, run `python3 "$DEVLYN_SHARED_DIR/terminal-claim-check.py" .`; exit 79 marks `[F] FAILED-INCOMPLETE` from the predicate, never from the session self-report.
   3. Outer loop on the terminal verdict: PASS → mark `[x]`. Findings-backed verdicts (NEEDS_WORK, BLOCKED:repair-budget-exhausted) → amend the spec, commit that scoped amendment, then re-run — at most 3 outer iterations. Infrastructure / invalid-input / engine-availability / implement-empty BLOCKED verdicts are not spec-amendable → mark `[F] <verdict>` immediately.
   4. Commit each terminal `[x]` / `[F]` queue transition before advancing. For successfully archived normal runs, invoke owner completion once after that declared queue-file-only commit; bind it separately from the verified source. Honor local-only/no-push. Failed products never publish. Retain PR/pending workspaces and use a separate owned branch from base for the next item; unavailable safe placement stops the drain with remaining items pending. A product-blocked item otherwise never halts the queue.

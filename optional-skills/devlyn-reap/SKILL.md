@@ -49,7 +49,8 @@ Treat the hint as literal path data, never shell code. If the reader
 replaced it with an absolute directory, use that directory. Otherwise
 use the filesystem path or base directory reported for this loaded
 SKILL.md. Resolve virtual URIs through the reader's native filesystem
-mapping. If available source locations disagree, stop.
+mapping. If available source locations name different directories,
+stop.
 
 Bind DEVLYN_SKILL_DIR to that absolute directory. Do not obtain this
 binding from an environment variable, cwd, or another installation.
@@ -60,7 +61,9 @@ when known.
 Resolve bundled references against this directory. These bindings are
 workflow values: establish them explicitly using each tool or shell's
 literal-path rules, and include their absolute values in every fresh
-worker's prompt. Do not rely on shell state surviving between calls.
+worker's prompt, telling it to set them from those values, never from
+its inherited environment. Do not rely on shell state surviving between
+calls.
 
 In omp, use: printf '%s\n' skill://devlyn-reap
 Verify the requested script under this bound directory before running
