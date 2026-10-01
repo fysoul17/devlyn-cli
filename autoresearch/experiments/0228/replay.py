@@ -539,10 +539,11 @@ def judge_rows(os_agents=False):
     require(proc.returncode == 0 and proc.stdout.strip(), f'ps failed: rc={proc.returncode} {proc.stderr[-200:]}')
     judges, agents = [], []
     for line in proc.stdout.splitlines():
-        fields = line.split(None, 6)
-        if len(fields) < 7 or str(JUDGE_UID) not in fields[2:4] or 'Z' in fields[4]:
+        fields = line.split(None, 6)  # pid ppid ruid uid stat etime [command]; the command may be empty or blank
+        require(len(fields) >= 6, f'unparsed ps row: {line!r}')
+        if str(JUDGE_UID) not in fields[2:4] or 'Z' in fields[4]:
             continue
-        command = fields[6].strip()
+        command = fields[6].strip() if len(fields) > 6 else ''
         agent = fields[1] == '1' and command in OS_AGENTS and executable(fields[0]) == OS_AGENTS[command]
         (agents if agent else judges).append(line.strip())
     return agents if os_agents else judges
