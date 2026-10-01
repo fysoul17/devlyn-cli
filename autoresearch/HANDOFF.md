@@ -13,7 +13,13 @@
 5. **Deliver as a PR.** Commit in the task worktree, write `<worktree>/.devlyn/acceptance.json` (kind `direct`), then from a cwd outside the checkout `task-complete.py complete --receipt <receipt> --acceptance <file> --mode pr --writers-stopped`. Root merges research PRs once Astra verification is SHIP and CI is green where it runs, with `--mode auto --writers-stopped`. H is a pushed branch with no PR, not merged during 0229.
 6. **Hand off** in the same PR: update the table below.
 
-**Replays and the screen (steps 4–5) are finished.** Judges ran as `_devlynjudge` (0228 Addendum C2, 0229 D2), and nothing changed outside `/Users/Shared/devlyn-vr-0227*` and `/Users/Shared/devlyn-vr-0228-dev`. The owner has been told the screen ended, so the devlyn-os-v1 session can remove the judge account and token. The raw replay and screen outputs stay in `/Users/Shared/devlyn-vr-0228-dev` until the owner decides.
+**Replays and the screen (steps 4–5) are finished.** Judges ran as `_devlynjudge` (0228 Addendum C2, 0229 D2), and nothing changed outside `/Users/Shared/devlyn-vr-0227*` and `/Users/Shared/devlyn-vr-0228-dev`.
+
+**Judge cleanup (2026-10-02, done by the devlyn-os-v1 session):**
+- A search of HOME, `/Users/Shared`, `/private/tmp` and `/private/var/folders` found no copy of the token. The token file and `~/.config/devlyn-vr` were then deleted.
+- Also removed: the sudoers rule, the `_devlynjudge` group, `/private/tmp/claude-450` and `cc-socks-450`, and every uid-450 process.
+- **Still present:** the `_devlynjudge` user record (uid 450). macOS refused its deletion without Full Disk Access. It has no password, sudo rule or process, so it is unusable; removing it is the user's call.
+- **Raw outputs** of the replays and the screen remain in `/Users/Shared/devlyn-vr-0228-dev` (owner-only, mode 0700, including files the judge owns) until the user decides.
 
 ## Steps (0229 "Work order")
 
