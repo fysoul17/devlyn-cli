@@ -1,0 +1,35 @@
+{
+ "rule": "0229 corpus rule (as 0228/0227): per language the eligible candidate with the lowest sha256 of its GitHub clone_url; prior use = case-insensitive grep of the repository name over autoresearch/ and benchmark/ (0 hits for both selected); agent-instruction scan of the full tree; suite run on the host with standard tools",
+ "phase_a": "Astra ultra isolated seat (author-A), 5 Python and 5 JavaScript candidates",
+ "hash_order": {
+  "python": [
+   "dateutil/dateutil",
+   "mahmoud/boltons",
+   "python-jsonschema/jsonschema",
+   "marshmallow-code/marshmallow",
+   "more-itertools/more-itertools"
+  ],
+  "javascript": [
+   "markdown-it/markdown-it",
+   "nodeca/js-yaml",
+   "npm/node-semver",
+   "eemeli/yaml",
+   "ljharb/qs"
+  ]
+ },
+ "selected": {
+  "javascript": {
+   "repo": "markdown-it/markdown-it",
+   "sha": "3c51991c32aaa2b002a52c009334ebe5752c84b3",
+   "license": "MIT",
+   "suite": "npm ci; npm test (lint, build, type-check, node --test suites) on host Node v25.4.0: exit 0"
+  },
+  "python": {
+   "repo": "dateutil/dateutil",
+   "sha": "2642afacc33fb839c404b75b230fff58b79793f2",
+   "license": "Apache-2.0 (LICENSE; BSD-3-Clause for older contributions)",
+   "suite": "requirements-dev.txt on host Python 3.14.7; python -m pytest tests docs: 41 tz tests fail without the zoneinfo tarball; after the repository CI step updatezinfo.py (system /usr/sbin/zic, tzdata2024a pinned by sha512 in zonefile_metadata.json): 2032 passed, 47 skipped, 17 xfailed. Counted as standard tools by 0227 B2 precedent (the rule states no provisioning condition)"
+  }
+ },
+ "not_checked": "every candidate after the first eligible one in its language order"
+}

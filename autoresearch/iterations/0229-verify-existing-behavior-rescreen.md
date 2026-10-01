@@ -151,3 +151,82 @@ As 0228, whose corpus was never run.
 - **Isolation over the whole run:** the owner's baseline compare showed changed 0 after R1, R2 and R3; the same five baseline paths are gone, none removed by the experiment. The judge token appears in 0 of 228,988 files under the 0228 root, and no Codex login copy is left.
 - **Against the predictions:** root gave R2 0.5 and R3 0.7, gates ≈ 0.3; Astra gave R2 0.45 and R3 0.65, gates ≈ 0.26. All three gates passed.
 - **Next (work order step 5):** a fresh corpus, the screen driver change D2 (judge account), then the 64-round screen under 22616b57 + F + G + H.
+
+## Addendum D2 (2026-10-02, before the screen's freeze): corpus selection and the screen driver
+
+- **Templates:** [`experiments/0229/author/`](../experiments/0229/author/) at `2d51f133`, committed before any author call. They are 0227's with 0228's changes:
+  - attrs, node-lru-cache and adm-zip are excluded;
+  - PHASE-B drops "run from the repository root" and gains the no-rewrite sentence;
+  - the seat runner uses the 0229 workspace root.
+- **Selection** ([`selection.json`](../experiments/0229/selection.json)):
+  - Phase A (isolated Astra ultra seat) proposed 5 Python and 5 JavaScript candidates. The lowest clone-URL hashes are markdown-it/markdown-it (JS) and dateutil/dateutil (Python); both are eligible.
+  - Neither has prior use in `autoresearch/` or `benchmark/`, and neither has agent instruction files.
+  - Licenses: MIT (markdown-it); Apache-2.0 per dateutil's LICENSE.
+  - Suites:
+    - markdown-it passes `npm ci` then `npm test` on host Node v25.4.0.
+    - dateutil fails 41 tz tests until its own CI step `updatezinfo.py` generates the zoneinfo tarball (system `zic`; tzdata2024a, pinned by sha512 in `zonefile_metadata.json`). After that step it passes on host Python 3.14.7 (2032 passed). By 0227 B2's precedent (the rule states no provisioning condition), this counts as standard tools.
+  - Pins: markdown-it `3c51991c`, dateutil `2642afac`.
+- **Toolchains** (inside the screen root):
+  - markdown-it: a copy of the official Node v25.4.0 (0227's toolchain copy), with `npm ci` from the pinned lock.
+  - dateutil: a Python 3.14.7 venv from `requirements-dev.txt`, plus the lint tools its `.pre-commit-config.yaml` pins (darker 3.0.0 with black and isort>5.9; pre-commit-hooks 6.0.0), and the generated tarball.
+  - **Provisioned links**, excluded from Git, kept out of the pristine tars and re-linked on redispatch: `node_modules`, and dateutil's `src/dateutil/zoneinfo/dateutil-zoneinfo.tar.gz`.
+  - **Scratch outputs** removed after MECHANICAL: `dist/`; `.hypothesis/`, `.pytest_cache/`, `.tox/`, `.cache/`.
+- **Corpus** (private until the result, as in 0227; under the screen root's `private/`):
+  - **Requests** (two isolated Astra ultra author seats):
+    - dateutil:
+      - P1, boundary: recurrence slicing across cache states;
+      - P2, ordering: `(tzname, tzoffset)` keys in `tzinfos`;
+      - P3, failure state: `gettz` cache-capacity validation;
+      - P4, cross-field: ISO week numbers against their week-year.
+    - markdown-it:
+      - J1, boundary: inline lookahead memoization scoped to the source bound;
+      - J2, ordering: `Ruler.moveBefore`;
+      - J3, failure state: strict enable/disable batches;
+      - J4, cross-field: definition metadata on reference tokens.
+  - **Implementation:** eight isolated gpt-6-sol seats.
+  - **Calibration** ([`calibrate.py`](../experiments/0229/calibrate.py), model-free and offline, each tree built as the screen builds a round): all eight passed on the first run. Each reference passes every public check and oracle row. Each twin passes the public checks and fails only its designated witness (P1-W, P2-W, P3-W, P4-W, J1-O3, J2-O2, J3-O3, J4-O3). Patch file sets match, and the checks rewrite nothing.
+  - **Calibration review:**
+    - Astra, per repository, returned REVISE:
+      - P1–P4: the darker and `git diff --check` checks compare with `HEAD` and are vacuous once the change is committed;
+      - P1: the reference treated slice bounds above `sys.maxsize` differently by cache state, and its oracle crashed on a failed expectation;
+      - J1–J4: the specs stated an unevidenced "from the working copy root".
+    - Eight Claude checkers, one per task, found no blocking defect. Their minor items were:
+      - hints toward the twin in J3, J4 and P3;
+      - unrequested reference edits in P2, P4 and J3;
+      - P1's step-zero order and oracle coverage;
+      - the J3 and J4 mechanism records.
+    - Repair 1 covered all of them: two author seats, then implementer seats for P1–P4 and J3.
+    - After recalibration, all eight pass and Astra's recheck is SHIP for both repositories (`.devlyn/0229/calib*`).
+  - **Seat isolation:**
+    - No seat transcript shows a web-search or MCP event.
+    - The seats' Codex read scan finds no read of an existing path outside each seat's workspace and the toolchains. Its only outside words are root-relative words from variable-prefixed paths and sed patterns, which name no existing file.
+  - **Stub dry runs** (all 64 spans, as the judge) passed twice, with no MECHANICAL retry in either: before the repair (`manifest.dry.json` `5fce4ed6…`), and on the final corpus with the final driver bytes (driver `53abf3cb…`, `manifest.dry.json` `c7c21f0f…`).
+- **Driver D2** ([`experiments/0229/screen.py`](../experiments/0229/screen.py), from 0227's):
+  - **Bindings:**
+    - root `/Users/Shared/devlyn-vr-0228-dev/screen-0229`; `CANDIDATE` = H `3afbb18e`; `CONTRACT` = this file;
+    - new `STAMP` and `RUN_ID_PREFIX`; `SCREEN_REPOS` P→dateutil, J→markdown-it; `TOOLCHAINS` with links and scratch outputs;
+    - the 0227 pins, read-only; `MECHANICAL_ATTEMPTS` 8.
+  - **Deleted:** development mode (`dev_stage` through `g2`, the `DEV_*` constants and their commands), attrs' pyright cache, and the permission-toggle `sealed()`.
+  - **Judge processes:** every one runs as `_devlynjudge` (`sudo -n -u … --preserve-env=<names>`) — the seats, prepare's Claude instruction probe and the stub dry run.
+    - The environment is the round's, with the judge's own HOME and TMPDIR in its run folder, Git trust for exactly its work tree, and SHELL.
+    - The Claude token is read at launch and passed only as `CLAUDE_CODE_OAUTH_TOKEN`.
+  - **Isolation:**
+    - The driver's umask is 077.
+    - `isolate()` runs before prepare's rounds and in the open check before run and redispatch. It makes the root owner-only with judge search; `product` and `bin` are readable through their modes, with the pinned binaries executable by the judge.
+    - `rounds/`, `homes/`, `dry/` and `toolchains/` are search-only. Every round, home and dry entry is closed, every toolchain is denied, and every other entry is closed. No Codex login copy may remain.
+  - **Per run:**
+    - The judge gets inheritable read/write without `delete` on its work tree, its judge HOME and TMPDIR, and its round's Codex home; search on the round folder; and its toolchain undenied. The Codex login is copied in.
+    - Afterwards, in this order:
+      1. judge processes stop: TERM, then KILL with bounded waits, by uid, with the OS-agent exemption;
+      2. the toolchain is denied and the folders closed, even if stopping fails;
+      3. the login copy is deleted through `owned()`, and a missing copy fails closed;
+      4. every entry must be a folder, an owner-readable regular file without the judge token and not a login copy, an expected provisioned link, or a terminated Codex's arg0 dispatch link to the pinned binary.
+    - Only then does the driver write its records, by exclusive no-follow creation, in the round folder where the judge had search only. A round that fails the check is classified without reading any judge-written file, and scoring treats it the same way (`unread_facts`, which fails condition 5).
+  - **Transcripts** are copied from the judge HOME to `transcripts/<tok>/attempt-N`. Nothing is moved out of the owner's HOME anymore.
+  - **Account drift:** Codex is checked by its account id, as in 0227. Claude is checked by the judge token file's identity (device, inode, size, mtime). The owner swaps the token by replacing the file; its bytes are never read for this.
+  - **`inventory LABEL`** is a read-only marker scan over HOME except Library, `/Users/Shared`, `/private/tmp` and `$TMPDIR`. The markers are the root's name and one line per hidden mechanism.
+  - **Open check:** `prepare --inventory`, `run --pr N --inventory` and `redispatch --inventory` each need an inventory under 30 minutes old. In each, the judge must fail to list or open every hidden path.
+  - **Observed, not changed:** the judge's per-uid Claude folder `/private/tmp/claude-450` holds only prompt-cache diagnostic hashes, with no task content.
+  - **Self-test:** 0227's cases plus the D2 cases, among them a check that no top-level function is defined twice. Review caught two such redefinitions, `check` and `inventory`.
+  - **Smoke test:** with real `sudo`, a judge run in a grant could write its outputs and HOME. It could not open a sibling round, the private corpus or `~/.zshrc`, and nothing remained afterwards.
+  - **Review** (`.devlyn/0229/d2-r*`): Astra R0 REVISE (5) and two Claude reviewers (1 critical, plus HIGH/MEDIUM/LOW findings), all adopted; R1 REVISE (1); R2 SHIP.

@@ -1,4 +1,4 @@
-# 0229 gates R1–R3 PASS — next: fresh corpus, screen driver D2, 64-round screen
+# 0229 gates R1–R3 PASS; corpus and driver D2 ready (Astra SHIP) — next: freeze, witness PR, 64-round screen
 
 2026-10-01 KST. Root direct, no resolve. The contract is [0229](iterations/0229-verify-existing-behavior-rescreen.md), which amends [0228](iterations/0228-verify-rubric-rescreen.md) (itself amending [0227](iterations/0227-verify-rescreen.md)) by reference; registered with Astra (gpt-6-astra, ultra) before the H commit and any call. The raw record is `.devlyn/0229/` and `.devlyn/0228/`. 0228 closed at R2 FAIL (Addendum C3, [DIAGNOSIS](experiments/0228/diagnosis/DIAGNOSIS.md)); the owner chose to fix and re-screen (2026-10-01). 0227 closed NOT PASS ([RESULT](experiments/0227/RESULT.md), [DIAGNOSIS](experiments/0227/diagnosis/DIAGNOSIS.md)); its handoff is in git history (last version at `f3835c04`). User decision 2026-09-30 ("1"): fix the rubric where the diagnosis points, test by replay on 0227 material, then re-screen on fresh tasks.
 
@@ -23,7 +23,7 @@
 | 2 | H on G (`candidate/0229-fix`, pushed, no PR), runner change, Astra SHIP each; Addendum D1 | done: H = `3afbb18e`, runner `17c8b7b8`, D1 |
 | 3 | **Owner approval** of 0229 — nothing runs before it | approved 2026-10-01 23:44 (relayed by devlyn-os-v1) |
 | 4 | R1 (stage H, product, stub 64/64, inventory, open check, probe, owner compare), R2, R3 with Astra reviews and the owner's compares | **PASS** (0229 "Gate results"): R2 H 40/40 clean vs F 5/16 blocked; R3 72/72 twin hits, 28/28 references clean, 0 demotions |
-| 5 | Corpus, screen driver D2 (judge account), screen, scoring, RESULT | **next** |
+| 5 | Corpus, screen driver D2 (judge account), screen, scoring, RESULT | corpus (markdown-it, dateutil; repair 1, calibration SHIP) and D2 (Astra SHIP, stub dry run 64/64 twice) done — **next: `prepare --inventory`, freeze commit + witness PR, `run --pr N --inventory`, scoring** (Addendum D2) |
 
 0228 in one line: under G, the correct J4 reference was blocked in 1 of 40 replays (a Codex primary binding the base's own eviction deferral as a violation of "the existing … behavior"), F in 4 of 16; R3 not run. Isolation by the judge account held (owner compare changed 0; both tokens absent from all files).
 
