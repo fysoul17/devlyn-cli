@@ -158,24 +158,24 @@ PR #161 (`candidate/bundle-step4`, commits e6434e3d + a787b1c0 + 99bab57e), merg
 - **Scripts (`_shared`):** +896 / −246. Of that, the self-tests are +474 / −191 and product code is +422 / −55.
 - **Docs (`devlyn-resolve`):** +141 / −158.
 
-Lint, test-owner-phases, test-windows-portability and every touched self-test pass; CI passes on POSIX and Windows.
+Lint, test-owner-phases, test-windows-portability and the touched self-tests pass at 99bab57e (root runs, reported in the v3 prompt). PR #161 CI passes on POSIX and Windows (Actions run 37112152416).
 
 **What the scripts now own.**
 - **Bootstrap:** records the `--risk-probes`, `--no-risk-probes` and `--no-pair` fields.
 - **Freeze:** binds complexity, criteria bytes, high-risk reasons and the automatic-probe decision. Verify-only never auto-enables probes, because MECHANICAL would then require a probe file that verify-only can never produce.
 - **Probe derive:** a PASS binds the probe digest.
-- **Phase-gated progress:** the writer derives it, counting real `## Execution phases` headings only (fences excluded).
-- **Final report:** `final_report complete` derives the terminal verdict from bound evidence and renders the one report.
+- **Phase-gated progress:** the writer counts `### Phase <k>` headings within `## Execution phases`, excluding fenced content.
+- **Final report:** `final_report complete` derives the verdict from recorded state and evidence, requires a supplied `BLOCKED:<reason>` when it cannot derive the halt reason, and renders the report.
 - **Denial CLI:** refreshes the results carrier.
 
 **Kept as owner prose until PR-5:** the small-surface demotion. It is the one locked owner edit left.
 
 **Review.**
 - **Astra ultra:** R0 REVISE (8), v1 REVISE (5), v2 REVISE (3), v3 SHIP.
-- **Five-lens Claude review with two refuters per finding:** 27 confirmed findings, about 15 distinct, all fixed.
+- **Five-lens Claude review** (workflow `wf_2dfb3815-3bf`; the script gave each finding two refuters): 27 confirmed findings, about 15 distinct. The v2 prompt lists the fixes, and Astra v2/v3 found no incorrect fix beyond the three v2 findings, which v3 closed.
 - **Regression it caught:** halts before IMPLEMENT got `finish-gate-unclean`, because the real finish gate is malformed without a usable PLAN surface. That made TCC's plan-empty witness unreachable. Now exit 2 always decides, while exit 1 decides only once IMPLEMENT has started. The finish gate also keeps its first result, so a rerun after automatic reverts cannot launder a clean pass.
-- **Mutation checks:** removing any of the 36 new guards fails a fixture; 4 more cover the v2 fixes.
+- **Mutation checks:** root's guard-removal run killed all 36 listed mutations (v2 prompt), and 4 more for the v2 fixes (three fence conditions, the changed-criteria order). This is a listed set, not an exhaustive inventory of every guard.
 
 **Honest limits.**
 - The Codex foreground, timeout and maximum-wait recipe is a mitigation; a delayed-child host test is still open.
-- Product code grew by about 370 lines. In return, the owner-written state edits, the hand-written report and the verdict derivation became script-enforced. The SKILL docs shrank only slightly.
+- Product code grew by about 370 lines. In return, the moved state writes and the report rendering became script-enforced. The small-surface demotion remains an owner edit, and halts without a derivable reason still need a supplied reason. Per skill tree, `SKILL.md` shrank by 78 lines; the resolve docs overall shrank by 17.

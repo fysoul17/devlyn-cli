@@ -4,7 +4,7 @@
 - PR #157: port of the 0229 candidate onto 4.1.0.
 - PR #158: step-2 follow-up — omp judge auto-assign, grok diagnostic, global Bash-max guidance.
 - PR #159: step 3 — one sealed MECHANICAL gate inside VERIFY. Astra v4 SHIP.
-- PR #161: step 4 — scripts own the remaining owner state writes; `final_report complete` derives the verdict and renders the report. Astra v3 SHIP; merged `ea14d7fe`.
+- PR #161: step 4 — scripts take over the owner state writes except the small-surface probe demotion; `final_report complete` derives supported verdicts, requires a supplied halt reason where it cannot derive one, and renders the report. Astra v3 SHIP; merged `ea14d7fe`.
 
 Next: PR-5 (contract-first PLAN, U4 probes, defect-4 witnesses), each through Astra SHIP and CI. Then a whole-bundle review, then a live-comparison registration, whose run needs the owner's approval. Nothing ships. Working notes are in `.devlyn/bundle/` (design inputs, Astra rounds, `pr3-contract.md`, `pr4-contract.md`).
 
