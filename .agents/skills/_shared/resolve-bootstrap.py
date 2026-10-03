@@ -143,6 +143,8 @@ def parse_flags(argv: list[str]) -> dict:
 
     if "--pair-verify" in switches and "--no-pair" in switches:
         block("BLOCKED:invalid-flags", "--pair-verify and --no-pair are mutually exclusive")
+    if "--risk-probes" in switches and "--no-risk-probes" in switches:
+        block("BLOCKED:invalid-flags", "--risk-probes and --no-risk-probes are mutually exclusive")
     if "--goal-file" in values and any(flag in values for flag in ("--spec", "--verify-only")):
         block("BLOCKED:invalid-flags", "--goal-file is mutually exclusive with --spec/--verify-only")
     if "--goal-file" in values and positional:
@@ -170,6 +172,8 @@ def parse_flags(argv: list[str]) -> dict:
         "goal_file": values.get("--goal-file"),
         "role_config": values.get("--role-config"),
         "no_pair": "--no-pair" in switches,
+        "risk_probes": "--risk-probes" in switches,
+        "no_risk_probes": "--no-risk-probes" in switches,
         "inline_goal": " ".join(positional),
         "pair_verify": "--pair-verify" in switches,
     }
@@ -425,7 +429,6 @@ def bootstrap(
         state = {
             "version": "3.0",
             "role_config_input": role_input,
-            "role_no_pair": parsed["no_pair"],
             "run_id": run_id,
             "started_at": started_at,
             "session_id": os.environ.get("CLAUDE_CODE_SESSION_ID"),
@@ -437,9 +440,9 @@ def bootstrap(
             "risk_profile": {
                 "high_risk": False,
                 "reasons": [],
-                "risk_probes_enabled": False,
-                "risk_probes_explicit": False,
-                "pair_default_enabled": True,
+                "risk_probes_enabled": parsed["risk_probes"],
+                "risk_probes_explicit": parsed["risk_probes"] or parsed["no_risk_probes"],
+                "pair_default_enabled": not parsed["no_pair"],
             },
             "risk_probes_digest": None,
             "process_evidence": None,
@@ -450,7 +453,6 @@ def bootstrap(
             "rounds": {"max_rounds": parsed["max_rounds"], "global": 0},
             "untracked_baseline_sha256": None,
             "source": source,
-            "criteria": [],
             "phases": {name: None for name in PHASE_NAMES},
             "verify": {"coverage_failed": False, "pair_trigger": None},
         }
@@ -957,7 +959,13 @@ def self_test() -> int:
         role_file.write_text("{}", encoding="utf-8")
         assert staged_role["role_config_input"]["sha256"] == sha256(role_raw)
         assert staged_role["role_config_input"]["value"] == strict_json(role_raw.decode())
-        assert staged_role["role_no_pair"] is True
+        assert staged_role["risk_profile"]["pair_default_enabled"] is False
+        for flags, enabled, explicit in ((["--risk-probes"], True, True), (["--no-risk-probes"], False, True)):
+            flag_work = root / ("flags" + flags[0])
+            init_repo(flag_work)
+            bootstrap([*flags, "fix app.py"], flag_work, script_shared)
+            flagged = strict_json((flag_work / ".devlyn/pipeline.state.json").read_text(encoding="utf-8"))["risk_profile"]
+            assert (flagged["risk_probes_enabled"], flagged["risk_probes_explicit"]) == (enabled, explicit), flagged
         work = root / "repo"
         init_repo(work)
         session_key = "CLAUDE_CODE_SESSION_ID"
@@ -975,7 +983,6 @@ def self_test() -> int:
             "engine_source": "default",
             "mode": "free-form",
             "role_config_input": None,
-            "role_no_pair": False,
             "pair_verify": False,
             "complexity": None,
             "risk_profile": {
@@ -1002,7 +1009,6 @@ def self_test() -> int:
                 "criteria_path": ".devlyn/criteria.generated.md",
                 "criteria_sha256": None,
             },
-            "criteria": [],
             "phases": {name: None for name in PHASE_NAMES},
             "verify": {"coverage_failed": False, "pair_trigger": None},
         }
@@ -1010,7 +1016,13 @@ def self_test() -> int:
                        if (script_shared.parent / name).is_dir()]
         assert len(schema_dirs) == 1, schema_dirs
         schema = (schema_dirs[0] / "references" / "state-schema.md").read_text(encoding="utf-8")
-        assert '"version": "3.0"' in schema and all(f'"{name}"' in schema for name in PHASE_NAMES)
+        # Two-way parity: the documented skeleton has exactly the keys bootstrap writes.
+        shape = schema.split("## Top-level shape", 1)[1].split("```json\n", 1)[1].split("\n```", 1)[0]
+        documented = strict_json(shape)
+        assert set(documented) == set(expected), set(documented) ^ set(expected)
+        for field in ("risk_profile", "base_ref", "rounds", "phases", "verify"):
+            assert set(documented[field]) == set(expected[field]), (field, set(documented[field]) ^ set(expected[field]))
+        assert set(documented["source"]) | {"goal_path", "goal_sha256"} == set(expected["source"])
         assert state_path.read_bytes() == json_bytes(expected)
         assert result["state_sha256"] == sha256(json_bytes(expected))
         assert (work / ".devlyn" / "goal.raw.txt").read_bytes() == b"fix app.py failing test"
@@ -1061,6 +1073,7 @@ def self_test() -> int:
             ["--max-rounds", "x", "fix", "app.py"],
             ["--max-rounds"],
             ["--bypass", "build-gate,cleanup", "fix", "app.py"],
+            ["--risk-probes", "--no-risk-probes", "fix", "app.py"],
             ["--bypass"],
             ["--unknown", "fix", "app.py"],
         ]

@@ -204,6 +204,19 @@ class OwnerPhases(unittest.TestCase):
         self.assertEqual((verify["round"], verify["pre_sha"]), (1, fixed))
         self.assertFalse((self.devlyn / "source-seal.json").exists())
 
+    def finish_and_report(self, expected):
+        # The writer derives the terminal verdict from state and evidence and renders the report.
+        self.cli("final_report", "spawn", "--round", "0")
+        finished = subprocess.run([sys.executable, str(SHARED / "finish-gate.py")],
+                                  cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertEqual(finished.returncode, 0, finished.stdout + finished.stderr)
+        rendered = subprocess.run([sys.executable, str(SHARED / "state-phase-write.py"), "--devlyn-dir", ".devlyn",
+                                   "--phase", "final_report", "complete"],
+                                  cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertEqual(rendered.returncode, 0, rendered.stderr)
+        self.assertEqual(self.state()["phases"]["final_report"]["verdict"], expected)
+        self.assertIn(f"| {expected} |", rendered.stdout)
+
     def test_repair_admission_lock_serializes_contenders(self):
         self.implemented()
         self.needs_work()
@@ -234,11 +247,7 @@ class OwnerPhases(unittest.TestCase):
                  "--next-triggered-by", "verify", "--next-engine", "claude",
                  error="BLOCKED:repair-budget-exhausted")
         self.cli("verify", "complete")
-        self.cli("final_report", "spawn", "--round", "0")
-        (self.devlyn / "final-report.md").write_text(
-            "<!-- devlyn:final-report run_id=rs-owner-test -->\n# Repair budget exhausted\n")
-        self.cli("final_report", "complete", "--verdict", "NEEDS_WORK",
-                 "--log-file", ".devlyn/final-report.md")
+        self.finish_and_report("NEEDS_WORK")
         archived = subprocess.run([sys.executable, str(SHARED / "archive_run.py"), "--devlyn-dir", ".devlyn"],
                                   cwd=self.work, env=ENV, capture_output=True, text=True)
         self.assertEqual(archived.returncode, 0, archived.stderr)
@@ -253,16 +262,14 @@ class OwnerPhases(unittest.TestCase):
         self.implemented()
         self.assertEqual(self.mechanical().returncode, 0)
         # A required tool proven absent with prohibited supply is recorded as a `tool` denial.
-        runner = runpy.run_path(str(SHARED / "process-evidence.py"))
-        state = self.state()
-        manifest = runner["manifest_relative_path"](state, "verify")
-        obligation = runner["normalize_obligation"]({"id": "required-tool-tsc", "phase": "verify", "cmd": "tsc --noEmit"})
-        runner["record_capability_denial"](self.work, self.work / manifest, state["run_id"], "verify", 0, obligation,
-                                           "tool", b"tsc absent; the task prohibits installing it")
-        carrier = runner["validate_manifest"](self.work, manifest, state["run_id"], "verify", 0,
-                                              require_expectations=False)
-        (self.devlyn / "spec-verify.results.json").write_text(json.dumps({
-            "commands": runner["bound_carrier_summary_commands"](self.work, carrier), "process_evidence": carrier}))
+        denied = subprocess.run([sys.executable, str(SHARED / "process-evidence.py"), "--devlyn-dir", ".devlyn",
+                                 "record-capability-denial", "--phase", "verify", "--id", "required-tool-tsc",
+                                 "--cmd", "tsc --noEmit", "--operation", "tool",
+                                 "--detail", "tsc absent; the task prohibits installing it"],
+                                cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertEqual(denied.returncode, 1, denied.stderr)  # a denial never meets its expectation
+        results = json.loads((self.devlyn / "spec-verify.results.json").read_text())
+        self.assertEqual(results["process_evidence"]["phase"], "verify")
         (self.devlyn / "verify-mechanical.findings.jsonl").write_text("")
         self.assertEqual(self.checker("--seal").returncode, 0)
         judged = subprocess.run([sys.executable, str(SHARED / "verify-judges.py"), "--devlyn-dir", str(self.devlyn)],
@@ -276,11 +283,7 @@ class OwnerPhases(unittest.TestCase):
                  "--next-triggered-by", "verify", "--next-engine", "claude", error="repair-edge-invalid")
         self.assertEqual(self.state()["rounds"]["global"], 0)
         self.cli("verify", "complete")
-        self.cli("final_report", "spawn", "--round", "0")
-        (self.devlyn / "final-report.md").write_text(
-            "<!-- devlyn:final-report run_id=rs-owner-test -->\n# BLOCKED: required tool tsc is unavailable\n")
-        self.cli("final_report", "complete", "--verdict", "BLOCKED:build-env-underprovisioned",
-                 "--log-file", ".devlyn/final-report.md")
+        self.finish_and_report("BLOCKED:build-env-underprovisioned")
         archived = subprocess.run([sys.executable, str(SHARED / "archive_run.py"), "--devlyn-dir", ".devlyn"],
                                   cwd=self.work, env=ENV, capture_output=True, text=True)
         self.assertEqual(archived.returncode, 0, archived.stderr)

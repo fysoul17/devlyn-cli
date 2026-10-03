@@ -909,6 +909,42 @@ def self_test() -> int:
             "execution": {"command": "tsc --noEmit", "argv": None},
         }]
         print("PASS process evidence explicit capability classification without stderr heuristics")
+
+    # The owner's undeclared-gate denial refreshes only the evidence fields of the results
+    # carrier; with no results yet it still surfaces through a new carrier.
+    with tempfile.TemporaryDirectory() as tmp:
+        work = pathlib.Path(tmp)
+        devlyn = work / ".devlyn"
+        devlyn.mkdir()
+        (devlyn / "pipeline.state.json").write_text(json.dumps({
+            "run_id": "rs-denial-cli", "phases": {"implement": {"round": 0}, "verify": {"round": 0}}}), encoding="utf-8")
+        results_path = devlyn / "spec-verify.results.json"
+
+        def deny(evidence_id: str) -> subprocess.CompletedProcess:
+            return subprocess.run([sys.executable, str(pathlib.Path(__file__).resolve()), "--workdir", str(work),
+                                   "record-capability-denial", "--phase", "verify", "--id", evidence_id,
+                                   "--cmd", "tsc --noEmit", "--operation", "tool", "--detail", "tsc absent"],
+                                  capture_output=True, text=True, encoding="utf-8")
+
+        assert deny("tsc-a").returncode == 1 and results_path.is_file()
+        first = loads_strict_json(results_path.read_text(encoding="utf-8"))
+        assert set(first) == {"commands", "process_evidence"} and len(first["commands"]) == 1
+        assert bound_carrier_outcome(work, first["process_evidence"])["verdict"] == "BLOCKED"
+        first["findings"] = ["retained"]
+        results_path.write_text(json.dumps(first), encoding="utf-8")
+        assert deny("tsc-b").returncode == 1
+        second = loads_strict_json(results_path.read_text(encoding="utf-8"))
+        assert second["findings"] == ["retained"] and second["commands"][:1] == first["commands"]
+        assert [item["id"] for item in bound_carrier_outcome(work, second["process_evidence"])["capability_denials"]] == ["tsc-a", "tsc-b"]
+        manifest_before = (work / first["process_evidence"]["manifest"]["path"]).read_bytes()
+        results_path.write_text("[]", encoding="utf-8")
+        assert deny("tsc-c").returncode == 2
+        assert (work / first["process_evidence"]["manifest"]["path"]).read_bytes() == manifest_before
+        rejected = subprocess.run([sys.executable, str(pathlib.Path(__file__).resolve()), "--workdir", str(work),
+                                   "record-capability-denial", "--phase", "implement", "--id", "x", "--cmd", "tsc",
+                                   "--operation", "tool", "--detail", "absent"], capture_output=True, text=True)
+        assert rejected.returncode == 2 and "only --phase verify" in rejected.stderr
+        print("PASS undeclared VERIFY gate denial: absent results surface, existing fields and entries retained")
     return 0
 
 
@@ -926,6 +962,7 @@ def main() -> int:
     deny_parser.add_argument("--id", required=True)
     deny_parser.add_argument("--operation", choices=sorted(CAPABILITIES), required=True)
     deny_parser.add_argument("--detail", required=True)
+    deny_parser.add_argument("--cmd", help="exact command of an undeclared VERIFY MECHANICAL gate")
     validate_parser = subparsers.add_parser("validate")
     validate_parser.add_argument("--phase", choices=sorted(PHASES), required=True)
     args = parser.parse_args()
@@ -950,14 +987,31 @@ def main() -> int:
             )
             sys.stdout.write(json.dumps(carrier, sort_keys=True) + "\n")
             return 0
-        obligation = _declared_by_id(work, state, phase, args.id)
+        if args.action == "record-capability-denial" and args.cmd is not None:
+            if phase != "verify":
+                raise EvidenceError("--cmd records an owner MECHANICAL gate; only --phase verify accepts it")
+            obligation = normalize_obligation({"id": args.id, "phase": phase, "cmd": args.cmd}, phase)
+        else:
+            obligation = _declared_by_id(work, state, phase, args.id)
         if args.action == "run":
             entry = capture_process(work, manifest, state["run_id"], phase, round_, obligation)
         else:
+            results_path = devlyn / "spec-verify.results.json"
+            if phase == "verify":
+                # Validate the results carrier before the manifest changes, so a refusal appends nothing.
+                results = _read_json(results_path) if results_path.exists() or results_path.is_symlink() else {}
+                if not isinstance(results, dict):
+                    raise EvidenceError("spec-verify.results.json must contain a JSON object")
             entry = record_capability_denial(
                 work, manifest, state["run_id"], phase, round_, obligation,
                 args.operation, args.detail.encode("utf-8"),
             )
+            if phase == "verify":
+                # The merge reads MECHANICAL evidence from the results carrier; keep it current.
+                carrier = validate_manifest(work, manifest_rel, state["run_id"], phase, round_,
+                                            require_expectations=False)
+                results.update(commands=bound_carrier_summary_commands(work, carrier), process_evidence=carrier)
+                _atomic_write(results_path, (json.dumps(results, indent=2) + "\n").encode("utf-8"))
         sys.stdout.write(json.dumps({
             "id": entry["id"], "expectation_met": entry["expectation_met"],
             "manifest_path": manifest_rel, "classification": entry["classification"],

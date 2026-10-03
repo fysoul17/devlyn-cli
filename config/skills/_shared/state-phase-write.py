@@ -52,6 +52,8 @@ LEGAL_TRANSITIONS = {
 WORKER_SESSION_ARTIFACT_PHASES = {"plan": "plan", "implement": "implement"}
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PLAN_MAX_DISPATCHES = 2
+PHASE_HEADING_RE = re.compile(r"^###[ \t]+Phase[ \t]+[0-9]+")
+FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 PLAN_SPAWN_RECEIPT_FIELDS = (
     "round", "started_at", "triggered_by", "engine", "model_requested", "prompt_sha256",
 )
@@ -201,6 +203,249 @@ def final_report_digest(state: dict, devlyn: pathlib.Path | None, log_file: str 
         raise SystemExit(f"BLOCKED:final-report-invalid: {exc}") from exc
 
 
+# Reasons only evidence can establish; a caller cannot supply them.
+EVIDENCE_ONLY_REASONS = {"finish-gate-unclean", "build-env-underprovisioned", "repair-budget-exhausted"}
+SKIPS_MARKER = "<!-- devlyn:mechanical-skips -->"
+REPORT_PHASES = ("plan", "probe_derive", "implement", "verify")
+
+
+def report_invalid(detail: str) -> SystemExit:
+    return SystemExit(f"BLOCKED:final-report-invalid: {detail}")
+
+
+def read_regular(path: pathlib.Path, label: str) -> bytes:
+    if path.is_symlink() or not path.is_file():
+        raise report_invalid(f"{label} must be a nonsymlink regular file: {path.name}")
+    return path.read_bytes()
+
+
+def read_jsonl(path: pathlib.Path) -> list[dict]:
+    if not path.exists() and not path.is_symlink():
+        return []
+    items = []
+    for line in read_regular(path, "findings").decode("utf-8").splitlines():
+        if line.strip():
+            item = loads_strict_json(line)
+            if not isinstance(item, dict):
+                raise report_invalid(f"{path.name} has a non-object finding")
+            items.append(item)
+    return items
+
+
+def bound_dispatch_roles(verify: dict, devlyn: pathlib.Path) -> dict:
+    """Return the seat decisions of this round's state-bound dispatch record, rehashed."""
+    binding = verify.get("dispatch")
+    if binding is None:
+        return {}
+    expected = f".devlyn/verify-judge.r{verify.get('round')}.dispatch.json"
+    if not isinstance(binding, dict) or binding.get("path") != expected:
+        raise report_invalid("VERIFY dispatch binding is malformed")
+    raw = read_regular(devlyn / pathlib.Path(expected).name, "VERIFY dispatch record")
+    if hashlib.sha256(raw).hexdigest() != binding.get("sha256"):
+        raise report_invalid("VERIFY dispatch record differs from its state binding")
+    # The merge checked this record's run/round identity when it bound these exact bytes.
+    record = loads_strict_json(raw.decode("utf-8"))
+    roles = record.get("roles") if isinstance(record, dict) else None
+    return {role: entry for role, entry in roles.items() if isinstance(entry, dict)} if isinstance(roles, dict) else {}
+
+
+def verify_blocked_reason(state: dict, devlyn: pathlib.Path, work: pathlib.Path) -> str | None:
+    """Derive a VERIFY BLOCKED reason from this round's state-bound evidence, rehashed."""
+    verify = state["phases"]["verify"]
+    carrier = next((item for item in state.get("process_evidence") or []
+                    if isinstance(item, dict) and item.get("phase") == "verify"
+                    and item.get("round") == verify.get("round")), None)
+    if carrier is not None:
+        module = process_evidence_module()
+        try:
+            outcome = module.bound_carrier_outcome(work, carrier)
+        except module.EvidenceError as exc:
+            raise report_invalid(f"bound VERIFY evidence: {exc}") from exc
+        if outcome["verdict"] == "BLOCKED":
+            return "BLOCKED:build-env-underprovisioned"
+    roles = bound_dispatch_roles(verify, devlyn)
+    for role in ("primary_judge", "pair_judge"):
+        entry = roles.get(role) or {}
+        reason = entry.get("reason") if entry.get("decision") == "blocked" else None
+        if isinstance(reason, str) and reason.startswith("BLOCKED:") and len(reason) > 8:
+            return reason.split(": ", 1)[0]
+    return None
+
+
+def terminal_verdict(state: dict, devlyn: pathlib.Path, work: pathlib.Path, supplied: str | None) -> str:
+    """PHASE 6 precedence: finish gate, BLOCKED phase, repair exhaustion, verify-only, VERIFY."""
+    phases = state.get("phases") or {}
+    try:
+        finish = loads_strict_json(read_regular(devlyn / "finish-gate.summary.json", "finish-gate summary").decode("utf-8"))
+    except SystemExit:
+        raise report_invalid("run finish-gate.py before completing the final report") from None
+    if not isinstance(finish, dict) or type(finish.get("exit")) is not int or finish["exit"] not in (0, 1, 2):
+        raise report_invalid("finish-gate summary has no valid exit")
+    blocked = [name for name in REPORT_PHASES
+               if isinstance(phases.get(name), dict) and phases[name].get("verdict") == "BLOCKED"]
+    implement = phases.get("implement")
+    derived = None
+    # Before IMPLEMENT there is no product change; a malformed gate (no usable PLAN surface) then
+    # does not displace the halt's own reason, while offenders (exit 2) always decide.
+    if finish["exit"] == 2 or (finish["exit"] == 1 and isinstance(implement, dict) and implement.get("started_at")):
+        derived = "BLOCKED:finish-gate-unclean"
+    elif blocked:
+        derived = verify_blocked_reason(state, devlyn, work) if "verify" in blocked else None
+    else:
+        origin = exhausted_origin(state) if state.get("mode") != "verify-only" else None
+        rounds = state.get("rounds") or {}
+        if origin is not None:
+            if type(rounds.get("global")) is int and rounds.get("global") == rounds.get("max_rounds"):
+                derived = "NEEDS_WORK" if origin == "verify" else "BLOCKED:repair-budget-exhausted"
+            elif supplied is None:
+                raise report_invalid(f"{origin} repair budget remains; request repair admission or pass the halt reason")
+        else:
+            predecessor = repair_predecessor(state)
+            verify = phases.get("verify")
+            if (predecessor is not None and predecessor[0] == "verify" and verify.get("completed_at")
+                    and (verify.get("verdict") in {"PASS", "PASS_WITH_ISSUES"}
+                         or (state.get("mode") == "verify-only" and verify.get("verdict") == "NEEDS_WORK"))):
+                derived = verify["verdict"]
+    if derived is not None:
+        if supplied is not None and supplied != derived:
+            raise report_invalid(f"supplied {supplied} contradicts the evidence-derived {derived}")
+        return derived
+    if supplied is None:
+        raise report_invalid("this halt is not represented in state; pass --verdict BLOCKED:<reason>")
+    label = supplied.removeprefix("BLOCKED:").split(":", 1)[0].strip()
+    if not supplied.startswith("BLOCKED:") or not label or label in EVIDENCE_ONLY_REASONS:
+        raise report_invalid(f"supplied {supplied} is not supported by the recorded evidence")
+    return supplied
+
+
+def mechanical_skips(state: dict, devlyn: pathlib.Path) -> list[dict]:
+    """Read this VERIFY round's marked skip block from mechanical.log.md, if any."""
+    verify = (state.get("phases") or {}).get("verify")
+    path = devlyn / "mechanical.log.md"
+    if not isinstance(verify, dict) or (not path.exists() and not path.is_symlink()):
+        return []
+    lines = read_regular(path, "MECHANICAL log").decode("utf-8").splitlines()
+    current = []
+    for index, line in enumerate(lines):
+        if line.strip() != SKIPS_MARKER:
+            continue
+        try:
+            end = lines.index("```", index + 2)
+            if lines[index + 1].strip() != "```json":
+                raise ValueError("marker must precede a ```json block")
+            block = loads_strict_json("\n".join(lines[index + 2:end]))
+            if not isinstance(block, dict) or set(block) != {"run_id", "round", "skips"} or not isinstance(block["skips"], list):
+                raise ValueError("block must be {run_id, round, skips}")
+            for skip in block["skips"]:
+                if (not isinstance(skip, dict) or set(skip) != {"gate", "reason"}
+                        or not all(isinstance(v, str) and v.strip() for v in skip.values())):
+                    raise ValueError("each skip must be {gate, reason} with nonempty strings")
+        except (IndexError, ValueError) as exc:
+            raise report_invalid(f"mechanical.log.md skip block at line {index + 1}: {exc}") from exc
+        if (block["run_id"], block["round"]) == (state.get("run_id"), verify.get("round")):
+            current.append(block)
+    if len(current) > 1:
+        raise report_invalid("mechanical.log.md has more than one skip block for this VERIFY round")
+    return current[0]["skips"] if current else []
+
+
+def cell(value: object) -> str:
+    return "-" if value is None else str(value).replace("|", "\\|").replace("\n", " ")
+
+
+def render_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, verdict: str,
+                        detail: str | None) -> str:
+    phases = state.get("phases") or {}
+    verify = phases.get("verify") if isinstance(phases.get("verify"), dict) else {}
+    predecessor = repair_predecessor(state)
+    current_verify = predecessor is not None and predecessor[0] == "verify"
+    merged = verify.get("merged") if current_verify else None
+    findings = read_jsonl(devlyn / "verify-merged.findings.jsonl") if isinstance(merged, dict) else []
+    finish_findings = read_jsonl(devlyn / "finish-gate.findings.jsonl")
+    skips = mechanical_skips(state, devlyn) if current_verify else []
+    started = state.get("started_at")
+    wall = round((now_ms() - parse_iso(started)).total_seconds()) if isinstance(started, str) else None
+    out = [f"<!-- devlyn:final-report run_id={state.get('run_id')} -->", "# devlyn-resolve final report", "",
+           "| run_id | engine | mode | complexity | verdict | wall_time_s |", "|---|---|---|---|---|---|",
+           "| " + " | ".join(cell(v) for v in (state.get("run_id"), state.get("engine"), state.get("mode"),
+                                               state.get("complexity"), verdict, wall)) + " |", "",
+           "## Phases", "", "| phase | verdict | duration_ms | round | triggered_by | findings_count | note |",
+           "|---|---|---|---|---|---|---|"]
+    for name in REPORT_PHASES:
+        entry = phases.get(name)
+        if not isinstance(entry, dict) or entry.get("started_at") is None:
+            continue
+        note = {"plan": "owner context",
+                "verify": "MECHANICAL: orchestrator commands, no separate model"}.get(name, entry.get("engine"))
+        if name == "implement" and valid_phase_gate_progress(entry.get("exec")):
+            note = f"{note}; phase {entry['exec']['current']}/{entry['exec']['total']}"
+        if name == "verify" and skips:
+            note += "; skipped: " + ", ".join(f"{s['gate']} ({s['reason']})" for s in skips)
+        count = len(findings) if name == "verify" and isinstance(merged, dict) else None
+        out.append("| " + " | ".join(cell(v) for v in (name, entry.get("verdict"), entry.get("duration_ms"),
+                                                        entry.get("round"), entry.get("triggered_by"), count, note)) + " |")
+    profile = state.get("risk_profile") or {}
+    seat = bound_dispatch_roles(verify, devlyn).get("pair_judge") if current_verify else None
+    pair_status = ("not reached" if seat is None else "on" if seat.get("decision") == "dispatch"
+                   else f"{seat.get('decision')}: {seat.get('reason')}")
+    out += ["", "## Pair and risk probes", "", f"- pair: {pair_status}",
+            "- risk_probes: " + ("on" if profile.get("risk_probes_enabled") else "off")
+            + (f" ({'; '.join(profile['reasons'])})" if profile.get("reasons") else "")]
+    out += ["", "## Findings", ""]
+    rows = [("verify", f) for f in findings] + [("finish-gate", f) for f in finish_findings]
+    if rows:
+        out += ["| source | severity | rule_id | file:line | message | confidence |", "|---|---|---|---|---|---|"]
+        out += ["| " + " | ".join(cell(v) for v in (source, f.get("severity"), f.get("rule_id"),
+                                                    f"{f.get('file')}:{f.get('line')}", f.get("message"),
+                                                    f.get("confidence"))) + " |" for source, f in rows]
+    else:
+        out.append("None.")
+    notes = []
+    if state.get("complexity") == "large":
+        criteria = read_regular(devlyn / "criteria.generated.md", "generated criteria")
+        if hashlib.sha256(criteria).hexdigest() != (state.get("source") or {}).get("criteria_sha256"):
+            notes.append("- generated criteria changed after freeze; assumptions omitted")
+        else:
+            text = criteria.decode("utf-8").splitlines()
+            start = next((i for i, line in enumerate(text) if line.strip() == "## Assumptions"), None)
+            if start is not None:
+                end = next((i for i in range(start + 1, len(text)) if text[i].startswith("## ")), len(text))
+                notes += ["Assumptions for user review (recommend: /devlyn-ideate first):", *text[start + 1:end]]
+    if current_verify and (verify.get("sub_verdicts") or {}).get("pair_judge") == "TIMEOUT":
+        notes.append("- solo verdict after pair TIMEOUT")
+    if profile.get("pair_default_enabled") is False:
+        notes.append("- opt-out: --no-pair")
+    if profile.get("risk_probes_explicit") and not profile.get("risk_probes_enabled"):
+        notes.append("- opt-out: --no-risk-probes")
+    if verdict.startswith("BLOCKED:") and verdict.endswith("-unavailable"):
+        engine = verdict.removeprefix("BLOCKED:").removesuffix("-unavailable")
+        if (pathlib.Path(__file__).with_name("adapters") / f"{engine}.md").is_file():
+            notes.append(f"- setup: install and authenticate {engine}, then rerun")
+    if (state.get("verify") or {}).get("coverage_failed"):
+        notes.append(f"- coverage_failed: {state['verify']['coverage_failed']}")
+    if detail:
+        notes.append(f"- detail: {detail}")
+    if notes:
+        out += ["", "## Follow-up", "", *notes]
+    return "\n".join(out) + "\n"
+
+
+def write_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, supplied: str | None,
+                       detail: str | None) -> tuple[str, str]:
+    """Derive the terminal verdict, render the report and return (verdict, digest)."""
+    path = devlyn / "final-report.md"
+    if path.is_symlink() or (path.exists() and not path.is_file()):
+        raise report_invalid("existing final-report.md is not a regular file; nothing was replaced")
+    if not isinstance(state.get("run_id"), str) or not state["run_id"]:
+        raise report_invalid("state.run_id is required for the report marker")
+    verdict = terminal_verdict(state, devlyn, work, supplied)
+    text = render_final_report(state, devlyn, work, verdict, detail)
+    with tempfile.NamedTemporaryFile("wb", dir=devlyn, delete=False, suffix=".tmp") as handle:
+        handle.write(text.encode("utf-8"))
+    os.replace(handle.name, path)
+    return verdict, final_report_digest(state, devlyn, str(path))
+
+
 def process_evidence_module():
     global _PROCESS_EVIDENCE_MODULE
     if _PROCESS_EVIDENCE_MODULE is None:
@@ -235,6 +480,39 @@ def invocation_receipt_module():
             sys.dont_write_bytecode = previous_bytecode_setting
         _INVOCATION_RECEIPT_MODULE = module
     return _INVOCATION_RECEIPT_MODULE
+
+
+def execution_phase_count(plan_bytes: bytes) -> int:
+    """Count `### Phase <k>` headings under `## Execution phases`, outside fenced examples."""
+    count, in_section, fence = 0, False, None
+    for line in plan_bytes.decode("utf-8", "replace").splitlines():
+        match = FENCE_RE.match(line)
+        if fence is not None:
+            # A fence closes only with the same character, at least as long, and nothing after it.
+            if match and match.group(1)[0] == fence[0] and len(match.group(1)) >= len(fence) and not line[match.end():].strip():
+                fence = None
+        elif match:
+            fence = match.group(1)
+        elif line.startswith("## "):
+            in_section = line[3:].strip() == "Execution phases"
+        elif in_section and PHASE_HEADING_RE.match(line):
+            count += 1
+    return count
+
+
+def bind_risk_probes(state: dict, devlyn: pathlib.Path | None, work: pathlib.Path | None) -> None:
+    """A passing PROBE_DERIVE validates its artifact and binds the probe digest under the lock."""
+    if devlyn is None or work is None:
+        raise SystemExit("BLOCKED:probe-derive-malformed: the worktree is required to validate probes")
+    checker = pathlib.Path(__file__).with_name("spec-verify-check.py")
+    proc = subprocess.run([sys.executable, str(checker), "--validate-risk-probes"], cwd=work,
+                          capture_output=True, text=True, encoding="utf-8", check=False)
+    if proc.returncode != 0:
+        raise SystemExit("BLOCKED:probe-derive-malformed: " + (proc.stderr.strip() or f"exit {proc.returncode}"))
+    digest, error = runpy.run_path(str(checker))["risk_probes_digest"](devlyn)
+    if error:
+        raise SystemExit(f"BLOCKED:probe-derive-malformed: {error}")
+    state["risk_probes_digest"] = digest
 
 
 def bind_process_evidence(
@@ -539,20 +817,73 @@ def bind_worker_role_argv(state, phase, entry, devlyn, receipt):
             "bytes": len(raw), "effort_requested": effort, "identity_basis": "invocation-argv"}
 
 
-def freeze_roles(state: dict, work: pathlib.Path, default_engine: str) -> dict:
+COMPLEXITIES = ("trivial", "medium", "large")
+AUTO_PROBE_PREFIX = "auto-risk-probes "
+
+
+def freeze_classification(state: dict, work: pathlib.Path, complexity: str | None,
+                          reasons: list[str]) -> str | None:
+    """Validate the owner's classification; return the generated criteria digest."""
+    source = state.get("source") if isinstance(state.get("source"), dict) else {}
+    generated = source.get("type") == "generated"
+    if generated and complexity not in COMPLEXITIES:
+        raise ValueError("BLOCKED:invalid-classification: free-form runs need --complexity "
+                         + "|".join(COMPLEXITIES))
+    if not generated and complexity is not None:
+        raise ValueError("BLOCKED:invalid-classification: --complexity applies only to free-form runs")
+    for reason in reasons:
+        if (not isinstance(reason, str) or not reason.strip() or "\n" in reason
+                or reason.startswith(AUTO_PROBE_PREFIX) or reasons.count(reason) > 1):
+            raise ValueError(f"BLOCKED:invalid-classification: invalid high-risk reason {reason!r}")
+    if not generated:
+        return None
+    criteria = work / ".devlyn" / "criteria.generated.md"
+    if criteria.is_symlink() or not criteria.is_file():
+        raise ValueError("BLOCKED:invalid-classification: free-form freeze needs the regular file "
+                         ".devlyn/criteria.generated.md")
+    return hashlib.sha256(criteria.read_bytes()).hexdigest()
+
+
+def freeze_roles(state: dict, work: pathlib.Path, default_engine: str, *, complexity: str | None = None,
+                 high_risk_reasons: list[str] | tuple = (), available=None) -> dict:
     helper = role_config_module()
+    reasons = list(high_risk_reasons)
+    criteria_sha256 = freeze_classification(state, work, complexity, reasons)
     existing = helper["snapshot"](state)
     if existing is not None:
+        profile = state.get("risk_profile") or {}
+        frozen_reasons = [r for r in profile.get("reasons", []) if not r.startswith(AUTO_PROBE_PREFIX)]
+        if (state.get("complexity") != complexity or frozen_reasons != reasons
+                or (criteria_sha256 is not None and state["source"].get("criteria_sha256") != criteria_sha256)):
+            raise ValueError("BLOCKED:invalid-classification: a repeated freeze differs from the frozen classification")
         return existing
     if any(isinstance(entry, dict) and entry.get("started_at") for entry in state.get("phases", {}).values()):
         raise ValueError("BLOCKED:invalid-engine-config: roles must be frozen before phase dispatch")
+    available = available or (lambda engine: shutil.which(engine) is not None)
+    profile = copy.deepcopy(state.get("risk_profile") or {})
     resolved = helper["resolve"](
         work, default_engine,
         flag_engine=state.get("engine") if state.get("engine_source") == "flag" else None,
-        run_input=state.get("role_config_input"), no_pair=state.get("role_no_pair", False),
+        run_input=state.get("role_config_input"),
+        no_pair=profile.get("pair_default_enabled") is False,
+        available=available,
     )
+    profile["high_risk"], profile["reasons"] = bool(reasons), list(reasons)
+    if reasons and profile.get("risk_probes_explicit") is False and state.get("mode") != "verify-only":
+        # Probes route to the legacy executor's OTHER engine; VERIFY profiles never reroute them.
+        legacy = resolved["legacy_engine"]
+        project, _ = helper["read_config"](work / ".devlyn/engines.json", optional=True)
+        candidates = [engine for engine in project.get("pair_judge_priority", ["codex" if legacy == "claude" else "claude"])
+                      if engine != legacy]
+        if any(available(engine) for engine in candidates):
+            profile["risk_probes_enabled"] = True
+        else:
+            profile["reasons"].append(f"{AUTO_PROBE_PREFIX}skipped: {(candidates or ['other-engine'])[0]}-unavailable")
     state["role_resolution"] = resolved
     state["engine"], state["engine_source"] = resolved["legacy_engine"], resolved["legacy_source"]
+    state["complexity"], state["risk_profile"] = complexity, profile
+    if criteria_sha256 is not None:
+        state["source"]["criteria_sha256"] = criteria_sha256
     return resolved
 
 
@@ -585,6 +916,25 @@ def repair_predecessor(state: dict) -> tuple[str, dict] | None:
         if selected is None or (round_, order) > selected[0]:
             selected = ((round_, order), name, entry)
     return None if selected is None else (selected[1], selected[2])
+
+
+def exhausted_origin(state: dict) -> str | None:
+    """Name the current failing repair predecessor whose refused admission ends the run."""
+    predecessor = repair_predecessor(state)
+    if predecessor is None or predecessor[1].get("completed_at") is None:
+        return None
+    name, entry = predecessor
+    if name == "verify":
+        merged = entry.get("merged")
+        return "verify" if entry.get("verdict") == "NEEDS_WORK" and isinstance(merged, dict) and merged.get("verdict") == "NEEDS_WORK" else None
+    if name == "cleanup":
+        return name if entry.get("verdict") == "FAIL" and entry.get("execution_kind") == "orchestrator_commands" else None
+    if name == "build_gate":
+        return name if entry.get("verdict") == "FAIL" else None
+    progress = entry.get("exec")
+    if valid_phase_gate_progress(progress) and entry.get("verdict") == "FAIL" and progress["statuses"][progress["current"] - 1] == "FAIL":
+        return "phase_gate"
+    return None
 
 
 def repair_admission(state: dict, phase: str, round_: int,
@@ -760,6 +1110,11 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         if baseline.is_file() and not baseline.is_symlink():
             state["untracked_baseline_sha256"] = hashlib.sha256(baseline.read_bytes()).hexdigest()
     append_phase_history(entry, phase)
+    if phase == "implement" and "exec" not in entry and not entry.get("history") and devlyn is not None:
+        plan = devlyn / "plan.md"
+        total = execution_phase_count(plan.read_bytes()) if plan.is_file() and not plan.is_symlink() else 0
+        if total >= 2:
+            entry["exec"] = {"total": total, "current": 1, "statuses": [None] * total}
     if phase in WORKER_SESSION_ARTIFACT_PHASES:
         entry.pop("invocation_receipt", None)
         entry.pop("role_argv", None)
@@ -809,7 +1164,7 @@ def do_complete(state: dict, phase: str, verdict: str | None,
                  engine: str | None, model: str | None,
                  engine_session_log: str | None = None,
                  devlyn: pathlib.Path | None = None,
-                 work: pathlib.Path | None = None) -> str | None:
+                 work: pathlib.Path | None = None, *, detail: str | None = None) -> str | None:
     phases = state.setdefault("phases", {})
     entry = phases.get(phase)
     if not isinstance(entry, dict) or not entry.get("started_at"):
@@ -833,7 +1188,9 @@ def do_complete(state: dict, phase: str, verdict: str | None,
     if phase != "plan":
         validate_plan_output(state, devlyn, phase)
     if phase == "final_report":
-        report_digest = final_report_digest(state, devlyn, log_file)
+        if devlyn is None or any(value is not None for value in (findings_file, log_file, engine, model, engine_session_log)):
+            raise SystemExit("error: the writer renders .devlyn/final-report.md; pass only --verdict/--detail")
+        verdict, report_digest = write_final_report(state, devlyn, work or devlyn.resolve().parent, verdict, detail)
         log_file = ".devlyn/final-report.md"
     if phase == "plan" and entry.get("prompt_sha256") is not None:
         missing = [field for field in PLAN_SPAWN_RECEIPT_FIELDS if field not in entry]
@@ -853,6 +1210,8 @@ def do_complete(state: dict, phase: str, verdict: str | None,
                 f"error: phases.{phase} completion cannot replace requested model"
             )
     bind_process_evidence(state, phase, verdict, devlyn, work)
+    if phase == "probe_derive" and verdict in {"PASS", "PASS_WITH_ISSUES"}:
+        bind_risk_probes(state, devlyn, work)
     started = parse_iso(entry["started_at"])
     now = now_ms()
     entry["completed_at"] = now_iso(now)
@@ -976,6 +1335,13 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             )
     if attestation_error is not None:
         entry["verdict"] = "BLOCKED"
+    elif (phase == "implement" and entry["verdict"] in {"PASS", "PASS_WITH_ISSUES"}
+          and entry.get("triggered_by") != "verify" and valid_phase_gate_progress(entry.get("exec"))):
+        # An attested passing phase advances progress; a VERIFY repair round never does.
+        progress = entry["exec"]
+        progress["statuses"][progress["current"] - 1] = "PASS"
+        if progress["current"] < progress["total"]:
+            progress["current"] += 1
     return attestation_error
 
 
@@ -1030,114 +1396,240 @@ def do_transition(
 
 
 def final_report_self_test() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        work = pathlib.Path(tmp)
+    script = pathlib.Path(__file__).resolve()
+    archive = script.with_name("archive_run.py")
+    classifier = runpy.run_path(str(script.with_name("terminal-claim-check.py")))
+    stamp = "2026-01-01T00:00:00.000Z"
+
+    def span(verdict, round_=0, **extra):
+        return {"started_at": stamp, "completed_at": stamp, "duration_ms": 1, "round": round_,
+                "triggered_by": None, "verdict": verdict, **extra}
+
+    def fixture(tmp, name, *, mode="spec", phases=None, rounds=(0, 2), finish=0, plan=True):
+        work = pathlib.Path(tmp) / name
         devlyn = work / ".devlyn"
-        devlyn.mkdir()
-        state_path = devlyn / "pipeline.state.json"
+        devlyn.mkdir(parents=True)
+        run_id = f"rs-final-{name}"
+        state = {"version": "3.0", "run_id": run_id, "started_at": stamp, "engine": "claude", "mode": mode,
+                 "complexity": None, "rounds": {"global": rounds[0], "max_rounds": rounds[1]},
+                 "risk_profile": {"high_risk": False, "reasons": [], "risk_probes_enabled": False,
+                                  "risk_probes_explicit": False, "pair_default_enabled": True},
+                 "phases": {"plan": None, "probe_derive": None, "implement": None, "verify": None, "final_report": None}}
+        if plan and mode != "verify-only":
+            (devlyn / "plan.md").write_bytes(b"# PLAN\n")
+            state["phases"]["plan"] = span("PASS", output_sha256=hashlib.sha256(b"# PLAN\n").hexdigest(),
+                                           execution_kind="orchestrator_context")
+        state["phases"].update(phases or {})
+        if finish is not None:
+            (devlyn / "finish-gate.summary.json").write_text(json.dumps({"exit": finish, "mode": mode}) + "\n", encoding="utf-8")
+        write_state(devlyn / "pipeline.state.json", state)
+        spawned = cli(work, "spawn", "--round", "0")
+        assert spawned.returncode == 0, (name, spawned.stderr)
+        return work, devlyn
+
+    def cli(work, *args):
+        return subprocess.run([sys.executable, str(script), "--devlyn-dir", ".devlyn", "--phase", "final_report", *args],
+                              cwd=work, capture_output=True, text=True, encoding="utf-8")
+
+    def refused(work, devlyn, needle, *args):
         report = devlyn / "final-report.md"
-        script = pathlib.Path(__file__).resolve()
-        archive = script.with_name("archive_run.py")
-        run_id = "rs-final-report-0126"
-        write_state(state_path, {"version": "3.0", "run_id": run_id, "engine": "claude", "phases": {}})
-        command = [sys.executable, str(script), "--devlyn-dir", ".devlyn", "--phase", "final_report"]
-        spawned = subprocess.run(command + ["spawn", "--round", "0"], cwd=work, capture_output=True, text=True, encoding="utf-8")
-        assert spawned.returncode == 0, spawned.stderr
-        before = state_path.read_bytes()
-        marker = f"<!-- devlyn:final-report run_id={run_id} -->\n"
-        valid = (marker + "# Report\nPASS_WITH_ISSUES — retained LOW finding.\n").encode("utf-8")
-        outside = work / "other.md"
-        outside.write_bytes(valid)
-        cases = (
-            "missing-argument", "missing-file", "empty", "blank-body", "stale",
-            "missing-marker", "duplicate-marker", "invalid-utf8", "directory", "symlink", "wrong-path",
-        )
-        for case in cases:
-            if report.is_dir() and not report.is_symlink():
-                report.rmdir()
-            else:
-                report.unlink(missing_ok=True)
-            args = ["--log-file", ".devlyn/final-report.md"]
-            if case == "missing-argument":
-                args = []
-            elif case == "empty":
-                report.write_bytes(b"")
-            elif case == "blank-body":
-                report.write_text(marker + " \t\n", encoding="utf-8")
-            elif case == "stale":
-                report.write_bytes(valid.replace(run_id.encode(), b"another-run"))
-            elif case == "missing-marker":
-                report.write_bytes(b"# Report\nBLOCKED\n")
-            elif case == "duplicate-marker":
-                report.write_bytes(valid + marker.encode())
-            elif case == "invalid-utf8":
-                report.write_bytes(marker.encode() + b"\xff")
-            elif case == "directory":
-                report.mkdir()
-            elif case == "symlink":
-                report.symlink_to(outside)
-            elif case == "wrong-path":
-                report.write_bytes(valid)
-                args = ["--log-file", str(outside)]
-            result = subprocess.run(command + ["complete", "--verdict", "PASS_WITH_ISSUES", *args],
-                                    cwd=work, capture_output=True, text=True, encoding="utf-8")
-            assert result.returncode == 1 and "BLOCKED:final-report-invalid" in result.stderr, (case, result)
-            assert state_path.read_bytes() == before, case
-        report.write_bytes(valid)
+        before = (devlyn / "pipeline.state.json").read_bytes()
+        prior = report.read_bytes() if report.is_file() and not report.is_symlink() else None
+        result = cli(work, "complete", *args)
+        assert result.returncode != 0 and needle in result.stderr, (needle, result)
+        assert (devlyn / "pipeline.state.json").read_bytes() == before, needle
+        if prior is not None or not os.path.lexists(report):
+            assert (report.read_bytes() if report.is_file() and not report.is_symlink() else None) == prior, needle
+
+    verify_pass = lambda verdict="PASS": span(verdict, merged={"verdict": verdict}, pre_sha="0" * 40)
+    with tempfile.TemporaryDirectory() as tmp:
+        # Refusals change neither state nor an existing report.
+        work, devlyn = fixture(tmp, "refusals", phases={"verify": verify_pass()})
+        for extra in (("--log-file", ".devlyn/final-report.md"), ("--engine", "codex"), ("--model", "m"),
+                      ("--engine-session-log", ".devlyn/x.jsonl"), ("--findings-file", ".devlyn/f.jsonl")):
+            refused(work, devlyn, "pass only --verdict/--detail", *extra)
+            assert not os.path.lexists(devlyn / "final-report.md"), extra
         for invalid in ("FAIL", "BLOCKED:", "unknown"):
-            result = subprocess.run(command + ["complete", "--verdict", invalid,
-                                             "--log-file", ".devlyn/final-report.md"],
-                                    cwd=work, capture_output=True, text=True, encoding="utf-8")
-            assert result.returncode == 1 and result.stderr.strip() == (
-                f"error: invalid verdict for phases.final_report: {invalid}"
-            ), result.stderr
-            assert state_path.read_bytes() == before
-        result = subprocess.run(command + ["complete", "--verdict", "PASS_WITH_ISSUES", "--log-file", ".devlyn/final-report.md"],
-                                cwd=work, capture_output=True, text=True, encoding="utf-8")
-        assert result.returncode == 0, result.stderr
-        completed_bytes = state_path.read_bytes()
-        completed = read_state(state_path)
-        final = completed["phases"]["final_report"]
-        assert final["completed_at"] is not None and final["verdict"] == "PASS_WITH_ISSUES"
-        assert final["artifacts"]["log_file"] == ".devlyn/final-report.md"
-        assert final["output_sha256"] == hashlib.sha256(valid).hexdigest()
-        archive_command = [sys.executable, str(archive), "--devlyn-dir", ".devlyn"]
-        for case in ("missing", "altered", "null-digest", "malformed-digest", "wrong-path", "symlink"):
-            candidate = copy.deepcopy(completed)
-            report.unlink(missing_ok=True)
-            report.write_bytes(valid)
-            if case == "missing":
-                report.unlink()
-            elif case == "altered":
-                report.write_bytes(valid + b"changed after completion\n")
-            elif case in {"null-digest", "malformed-digest"}:
-                candidate["phases"]["final_report"]["output_sha256"] = None if case == "null-digest" else "invalid"
-            elif case == "wrong-path":
-                candidate["phases"]["final_report"]["artifacts"]["log_file"] = str(outside)
-            else:
-                report.unlink()
-                report.symlink_to(outside)
-            write_state(state_path, candidate)
-            before_archive = state_path.read_bytes()
-            result = subprocess.run(archive_command, cwd=work, capture_output=True, text=True, encoding="utf-8")
-            assert result.returncode == 1 and "error: archive blocked:" in result.stderr, (case, result)
-            assert state_path.read_bytes() == before_archive, case
-            assert not (devlyn / "runs").exists(), case
-            if case != "missing":
-                assert report.is_symlink() if case == "symlink" else report.read_bytes() == (
-                    valid + b"changed after completion\n" if case == "altered" else valid
-                ), case
-        report.unlink()
-        report.write_bytes(valid)
-        state_path.write_bytes(completed_bytes)
-        result = subprocess.run(archive_command, cwd=work, capture_output=True, text=True, encoding="utf-8")
-        assert result.returncode == 0, result.stderr
-        target = devlyn / "runs" / run_id
-        assert (target / "final-report.md").read_bytes() == valid
-        assert (target / "pipeline.state.json").read_bytes() == completed_bytes
-        assert not state_path.exists() and not report.exists()
-        assert outside.read_bytes() == valid
-    print("PASS iter-0126 final report: 14 invalid CLI completions preserve state; exact binding/archive; 6 archive refusals preserve artifacts")
+            refused(work, devlyn, f"invalid verdict for phases.final_report: {invalid}", "--verdict", invalid)
+        refused(work, devlyn, "contradicts the evidence-derived PASS", "--verdict", "BLOCKED:plan-empty")
+        (devlyn / "verify-merged.findings.jsonl").write_text("[1]\n", encoding="utf-8")
+        refused(work, devlyn, "non-object finding")
+        (devlyn / "verify-merged.findings.jsonl").unlink()
+        finish_path = devlyn / "finish-gate.summary.json"
+        finish_path.write_text('{"exit": 3}\n', encoding="utf-8")
+        refused(work, devlyn, "no valid exit")
+        finish_path.write_text('{"exit": 0}\n', encoding="utf-8")
+        state = read_state(devlyn / "pipeline.state.json")
+        state["phases"]["verify"]["dispatch"] = {"path": ".devlyn/elsewhere.json", "sha256": "0" * 64}
+        write_state(devlyn / "pipeline.state.json", state)
+        refused(work, devlyn, "dispatch binding is malformed")
+        del state["phases"]["verify"]["dispatch"]
+        write_state(devlyn / "pipeline.state.json", state)
+        outside = work / "outside.md"
+        outside.write_text("keep\n", encoding="utf-8")
+        report = devlyn / "final-report.md"
+        report.symlink_to(outside)
+        refused(work, devlyn, "not a regular file")
+        assert outside.read_text(encoding="utf-8") == "keep\n" and report.is_symlink()
+        report.unlink(); report.mkdir()
+        refused(work, devlyn, "not a regular file")
+        report.rmdir()
+        log = devlyn / "mechanical.log.md"
+        log.write_text("<!-- devlyn:mechanical-skips -->\n```json\n{\"run_id\": 1}\n```\n", encoding="utf-8")
+        refused(work, devlyn, "skip block at line 1")
+        block = json.dumps({"run_id": "rs-final-refusals", "round": 0, "skips": [{"gate": "lint", "reason": "none"}]})
+        log.write_text(("<!-- devlyn:mechanical-skips -->\n```json\n" + block + "\n```\n") * 2, encoding="utf-8")
+        refused(work, devlyn, "more than one skip block")
+        log.unlink()
+        (devlyn / "finish-gate.summary.json").unlink()
+        refused(work, devlyn, "run finish-gate.py")
+        work, devlyn = fixture(tmp, "unrepresented")
+        refused(work, devlyn, "pass --verdict BLOCKED:<reason>")
+        for reason in sorted(EVIDENCE_ONLY_REASONS):
+            refused(work, devlyn, "not supported by the recorded evidence", "--verdict", f"BLOCKED:{reason}")
+            refused(work, devlyn, "not supported by the recorded evidence", "--verdict", f"BLOCKED:{reason}: detail")
+        work, devlyn = fixture(tmp, "budget-left", rounds=(0, 2), phases={
+            "implement": span("PASS"), "verify": span("NEEDS_WORK", merged={"verdict": "NEEDS_WORK"})})
+        refused(work, devlyn, "verify repair budget remains")
+
+        # Every terminal outcome: header verdict == bound verdict == TCC CLEAN after archive.
+        denied = fixture(tmp, "denial", phases={"implement": span("PASS"), "verify": span("BLOCKED")})
+        module = process_evidence_module()
+        denial_state = read_state(denied[1] / "pipeline.state.json")
+        manifest = module.manifest_relative_path(denial_state, "verify")
+        module.record_capability_denial(denied[0], denied[0] / manifest, denial_state["run_id"], "verify", 0,
+                                        module.normalize_obligation({"id": "tsc", "phase": "verify", "cmd": "tsc"}),
+                                        "tool", b"tsc absent; the task prohibits supplying it")
+        denial_state["process_evidence"] = [module.validate_manifest(
+            denied[0], manifest, denial_state["run_id"], "verify", 0, require_expectations=False)]
+        write_state(denied[1] / "pipeline.state.json", denial_state)
+        unavailable = fixture(tmp, "judge-unavailable", phases={"implement": span("PASS"), "verify": span("BLOCKED")})
+        record = json.dumps({"run_id": "rs-final-judge-unavailable", "round": 0, "roles": {
+            "primary_judge": {"decision": "dispatch", "reason": None},
+            "pair_judge": {"decision": "blocked", "reason": "BLOCKED:codex-unavailable: --pair-verify requires codex"}}}).encode()
+        (unavailable[1] / "verify-judge.r0.dispatch.json").write_bytes(record)
+        unavailable_state = read_state(unavailable[1] / "pipeline.state.json")
+        unavailable_state["phases"]["verify"]["dispatch"] = {
+            "path": ".devlyn/verify-judge.r0.dispatch.json", "sha256": hashlib.sha256(record).hexdigest(), "bytes": len(record)}
+        write_state(unavailable[1] / "pipeline.state.json", unavailable_state)
+        gated = {"total": 2, "current": 1, "statuses": ["FAIL", None]}
+        matrix = [
+            ("pass", fixture(tmp, "pass", phases={"implement": span("PASS"), "verify": verify_pass()}), [], "PASS"),
+            ("issues", fixture(tmp, "issues", phases={"implement": span("PASS"), "verify": verify_pass("PASS_WITH_ISSUES")}),
+             [], "PASS_WITH_ISSUES"),
+            ("verify-only", fixture(tmp, "verify-only", mode="verify-only", phases={
+                "verify": span("NEEDS_WORK", merged={"verdict": "NEEDS_WORK"})}), [], "NEEDS_WORK"),
+            ("verify-exhausted", fixture(tmp, "verify-exhausted", rounds=(1, 1), phases={
+                "implement": span("PASS", 1, triggered_by="verify"),
+                "verify": span("NEEDS_WORK", 1, merged={"verdict": "NEEDS_WORK"})}), [], "NEEDS_WORK"),
+            ("gate-exhausted", fixture(tmp, "gate-exhausted", rounds=(2, 2), phases={
+                "implement": span("FAIL", 2, exec=gated)}), [], "BLOCKED:repair-budget-exhausted"),
+            ("finish-unclean", fixture(tmp, "finish-unclean", finish=2, phases={
+                "implement": span("PASS"), "verify": verify_pass()}), [], "BLOCKED:finish-gate-unclean"),
+            ("denial", denied, [], "BLOCKED:build-env-underprovisioned"),
+            ("judge-unavailable", unavailable, [], "BLOCKED:codex-unavailable"),
+            ("plan-empty", fixture(tmp, "plan-empty", finish=None, phases={"plan": None}), ["--verdict", "BLOCKED:plan-empty"],
+             "BLOCKED:plan-empty"),
+            ("finish-malformed", fixture(tmp, "finish-malformed", finish=1, phases={
+                "implement": span("PASS"), "verify": verify_pass()}), [], "BLOCKED:finish-gate-unclean"),
+            ("budget-left-halt", fixture(tmp, "budget-left-halt", rounds=(0, 2), phases={
+                "implement": span("PASS"), "verify": span("NEEDS_WORK", merged={"verdict": "NEEDS_WORK"})}),
+             ["--verdict", "BLOCKED:codex-unavailable"], "BLOCKED:codex-unavailable"),
+            ("stale-findings", fixture(tmp, "stale-findings", rounds=(1, 2), phases={
+                "implement": span("BLOCKED", 1, triggered_by="verify"),
+                "verify": span("NEEDS_WORK", merged={"verdict": "NEEDS_WORK"})}),
+             ["--verdict", "BLOCKED:implement-empty"], "BLOCKED:implement-empty"),
+            ("followups", fixture(tmp, "followups", mode="free-form", phases={
+                "implement": span("PASS"), "verify": verify_pass()}), [], "PASS"),
+        ]
+        plan_empty_devlyn = matrix[8][1][1]
+        (plan_empty_devlyn / "plan.md").write_bytes(b"# PLAN\n")
+        plan_empty_state = read_state(plan_empty_devlyn / "pipeline.state.json")
+        plan_empty_state["phases"]["plan"] = span("BLOCKED", output_sha256=hashlib.sha256(b"# PLAN\n").hexdigest(),
+                                                  execution_kind="orchestrator_context")
+        write_state(plan_empty_devlyn / "pipeline.state.json", plan_empty_state)
+        # Before IMPLEMENT the real finish gate is malformed (no usable PLAN surface); the halt keeps its reason.
+        gate = subprocess.run([sys.executable, str(script.with_name("finish-gate.py"))], cwd=matrix[8][1][0],
+                              capture_output=True, text=True, encoding="utf-8")
+        assert gate.returncode == 1, gate
+        (matrix[11][1][1] / "verify-merged.findings.jsonl").write_text(json.dumps({
+            "severity": "HIGH", "rule_id": "stale.round", "file": "a.py", "line": 1, "message": "superseded",
+            "confidence": "high"}) + "\n", encoding="utf-8")
+        follow_work, follow_devlyn = matrix[12][1]
+        criteria_bytes = b"# Criteria\n## Assumptions\n- narrowed to the CLI only\n## Verification\n"
+        (follow_devlyn / "criteria.generated.md").write_bytes(criteria_bytes)
+        follow = read_state(follow_devlyn / "pipeline.state.json")
+        follow.update(complexity="large", source={"type": "generated", "criteria_path": ".devlyn/criteria.generated.md",
+                                                  "criteria_sha256": hashlib.sha256(criteria_bytes).hexdigest()})
+        follow["risk_profile"].update(pair_default_enabled=False, risk_probes_explicit=True)
+        follow["phases"]["verify"]["sub_verdicts"] = {"pair_judge": "TIMEOUT"}
+        write_state(follow_devlyn / "pipeline.state.json", follow)
+        changed = copy.deepcopy(follow)
+        changed["source"]["criteria_sha256"] = "0" * 64
+        changed_report = render_final_report(changed, follow_devlyn, follow_work, "PASS", None)
+        assert "assumptions omitted" in changed_report and "narrowed to the CLI only" not in changed_report
+        (follow_devlyn / "criteria.generated.md").write_bytes(criteria_bytes.decode().encode("utf-16"))
+        assert "assumptions omitted" in render_final_report(changed, follow_devlyn, follow_work, "PASS", None)
+        (follow_devlyn / "criteria.generated.md").write_bytes(criteria_bytes)
+        pass_block = json.dumps({"run_id": "rs-final-pass", "round": 0, "skips": [{"gate": "lint", "reason": "no linter"}]})
+        old_block = json.dumps({"run_id": "rs-older", "round": 0, "skips": [{"gate": "tests", "reason": "old"}]})
+        (matrix[0][1][1] / "mechanical.log.md").write_text(
+            "".join(f"<!-- devlyn:mechanical-skips -->\n```json\n{b}\n```\n" for b in (old_block, pass_block)), encoding="utf-8")
+        (matrix[5][1][1] / "finish-gate.findings.jsonl").write_text(json.dumps({
+            "severity": "HIGH", "rule_id": "scope.finish-unaudited-file", "file": "notes.txt", "line": 1,
+            "message": "outside | surface", "confidence": "high"}) + "\n", encoding="utf-8")
+        # Evidence is rehashed: a dispatch record or VERIFY carrier altered after binding refuses completion.
+        for label, (work, devlyn), target in (("dispatch", unavailable, "verify-judge.r0.dispatch.json"),
+                                              ("carrier", denied, None)):
+            path = devlyn / target if target else work / manifest
+            original = path.read_bytes()
+            path.write_bytes(original + b" ")
+            refused(work, devlyn, "differs from its state binding" if target else "bound VERIFY evidence")
+            path.write_bytes(original)
+        # A VERIFY result from before a later IMPLEMENT round never decides the verdict.
+        work, devlyn = fixture(tmp, "stale-verify", phases={
+            "implement": span("PASS", 1, triggered_by="verify"), "verify": verify_pass()})
+        refused(work, devlyn, "pass --verdict BLOCKED:<reason>")
+        for name, (work, devlyn), args, expected in matrix:
+            result = cli(work, "complete", *args)
+            assert result.returncode == 0, (name, result.stderr)
+            raw_report = (devlyn / "final-report.md").read_bytes()
+            report = raw_report.decode("utf-8")
+            assert result.stdout.replace("\r\n", "\n") == report, name
+            state = read_state(devlyn / "pipeline.state.json")
+            final = state["phases"]["final_report"]
+            assert final["verdict"] == expected, (name, final["verdict"])
+            assert f"| {expected} |" in report.splitlines()[5], (name, report)
+            assert final["output_sha256"] == hashlib.sha256(raw_report).hexdigest(), name
+            if name == "pass":
+                assert "skipped: lint (no linter)" in report and "old" not in report, report
+            if name == "finish-unclean":
+                assert "outside \\| surface" in report, report
+            if name == "judge-unavailable":
+                assert "setup: install and authenticate codex" in report, report
+                assert "- pair: blocked: BLOCKED:codex-unavailable" in report, report
+            if name == "stale-findings":
+                assert "## Findings\n\nNone." in report and "superseded" not in report, report
+            if name == "followups":
+                for line in ("Assumptions for user review", "- narrowed to the CLI only", "solo verdict after pair TIMEOUT",
+                             "opt-out: --no-pair", "opt-out: --no-risk-probes"):
+                    assert line in report, (line, report)
+            archived = subprocess.run([sys.executable, str(archive), "--devlyn-dir", ".devlyn"],
+                                      cwd=work, capture_output=True, text=True, encoding="utf-8")
+            assert archived.returncode == 0, (name, archived.stderr)
+            state_file = devlyn / "runs" / state["run_id"] / "pipeline.state.json"
+            verdict = classifier["classify_state_bytes"](work, state_file, state_file.read_bytes(), archived=True)[0]
+            assert verdict.status == "CLEAN", (name, verdict)
+
+        # A report altered after binding blocks archive.
+        work, devlyn = fixture(tmp, "tamper", phases={"implement": span("PASS"), "verify": verify_pass()})
+        assert cli(work, "complete").returncode == 0
+        with (devlyn / "final-report.md").open("a", encoding="utf-8") as handle:
+            handle.write("edited\n")
+        archived = subprocess.run([sys.executable, str(archive), "--devlyn-dir", ".devlyn"],
+                                  cwd=work, capture_output=True, text=True, encoding="utf-8")
+        assert archived.returncode == 1 and "error: archive blocked:" in archived.stderr, archived
+    print("PASS final report: evidence-derived verdict matrix (13) agrees with archive and TCC; refusals preserve state")
 
 
 def repair_admission_self_test() -> None:
@@ -1233,10 +1725,120 @@ def repair_admission_self_test() -> None:
     print("PASS repair admission: verify and phase-gate origins, trigger/counter/round refusal, phased invocation and last repair")
 
 
+def probe_digest_self_test() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        work = pathlib.Path(tmp); devlyn = work / ".devlyn"; devlyn.mkdir()
+        spec = b"# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- running the tool prints ok\n"
+        (work / "spec.md").write_bytes(spec)
+        probe = {"id": "probe-1", "cmd": "python3 -c \"print('ok')\"", "exit_code": 0, "stdout_contains": ["ok"],
+                 "derived_from": "running the tool prints ok", "tags": ["shape_contract"],
+                 "tag_evidence": {"shape_contract": ["uses_visible_input_key_names", "asserts_visible_output_key_names",
+                                                     "asserts_no_unexpected_output_keys"]}}
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(probe) + "\n", encoding="utf-8")
+        state = {"run_id": "rs-probe", "mode": "spec", "phases": {},
+                 "source": {"type": "spec", "spec_path": "spec.md", "spec_sha256": hashlib.sha256(spec).hexdigest()},
+                 "risk_profile": {"high_risk": True, "reasons": ["x"], "risk_probes_enabled": True,
+                                  "risk_probes_explicit": True, "pair_default_enabled": True}}
+        write_state(devlyn / "pipeline.state.json", state)
+        do_spawn(state, "probe_derive", 0, None, "codex", None, devlyn=devlyn)
+        before = copy.deepcopy(state)
+        do_complete(state, "probe_derive", "PASS", None, None, None, None, devlyn=devlyn, work=work)
+        expected, _ = runpy.run_path(str(pathlib.Path(__file__).with_name("spec-verify-check.py")))["risk_probes_digest"](devlyn)
+        assert state["risk_probes_digest"] == expected and expected
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps({**probe, "derived_from": "not in the spec"}) + "\n", encoding="utf-8")
+        try:
+            do_complete(before, "probe_derive", "PASS", None, None, None, None, devlyn=devlyn, work=work)
+        except SystemExit as exc:
+            assert str(exc).startswith("BLOCKED:probe-derive-malformed"), exc
+        else:
+            raise AssertionError("malformed probes were bound")
+        assert before.get("risk_probes_digest") is None
+        assert before["phases"]["probe_derive"]["completed_at"] is None
+    print("PASS probe_derive PASS binds the validated probe digest; malformed probes refuse completion")
+
+
+def freeze_classification_self_test() -> None:
+    def fresh(mode="free-form", explicit=False, enabled=False, no_pair=False):
+        source = ({"type": "generated", "criteria_path": ".devlyn/criteria.generated.md", "criteria_sha256": None}
+                  if mode == "free-form" else {"type": "spec", "criteria_path": None, "criteria_sha256": None})
+        return {"version": "3.0", "engine": "claude", "engine_source": "default", "mode": mode,
+                "complexity": None, "source": source, "phases": {},
+                "risk_profile": {"high_risk": False, "reasons": [], "risk_probes_enabled": enabled,
+                                 "risk_probes_explicit": explicit, "pair_default_enabled": not no_pair}}
+
+    def refused(state, work, needle, **kw):
+        before = json.dumps(state, sort_keys=True)
+        try:
+            freeze_roles(state, work, "claude", **kw)
+        except ValueError as exc:
+            assert needle in str(exc), exc
+        else:
+            raise AssertionError("freeze accepted " + needle)
+        assert json.dumps(state, sort_keys=True) == before, "a refused freeze changed state"
+
+    both = lambda engine: engine in {"claude", "codex"}
+    only_claude = lambda engine: engine == "claude"
+    with tempfile.TemporaryDirectory() as tmp:
+        work = pathlib.Path(tmp); devlyn = work / ".devlyn"; devlyn.mkdir()
+        criteria = devlyn / "criteria.generated.md"
+        state = fresh()
+        refused(state, work, "need --complexity", available=both)
+        refused(state, work, "regular file", complexity="medium", available=both)
+        (work / "elsewhere.md").write_text("# C\n", encoding="utf-8")
+        criteria.symlink_to(work / "elsewhere.md")
+        refused(state, work, "regular file", complexity="medium", available=both)
+        criteria.unlink(); criteria.write_bytes(b"# Criteria\n")
+        refused(state, work, "invalid high-risk reason", complexity="medium", high_risk_reasons=["auth", "auth"])
+        refused(state, work, "invalid high-risk reason", complexity="medium",
+                high_risk_reasons=["auto-risk-probes skipped: codex-unavailable"])
+        frozen = freeze_roles(state, work, "claude", complexity="medium", high_risk_reasons=["auth"], available=both)
+        assert state["complexity"] == "medium" and state["source"]["criteria_sha256"] == hashlib.sha256(b"# Criteria\n").hexdigest()
+        assert state["risk_profile"] == {"high_risk": True, "reasons": ["auth"], "risk_probes_enabled": True,
+                                         "risk_probes_explicit": False, "pair_default_enabled": True}, state["risk_profile"]
+        assert freeze_roles(state, work, "claude", complexity="medium", high_risk_reasons=["auth"], available=both) == frozen
+        refused(state, work, "differs from the frozen classification", complexity="large", high_risk_reasons=["auth"])
+        refused(state, work, "differs from the frozen classification", complexity="medium", high_risk_reasons=[])
+        criteria.write_bytes(b"# Changed\n")
+        refused(state, work, "differs from the frozen classification", complexity="medium", high_risk_reasons=["auth"])
+
+        # The skip reason belongs only to an automatic high-risk run whose OTHER engine is absent.
+        state = fresh()
+        freeze_roles(state, work, "claude", complexity="trivial", high_risk_reasons=["payment"], available=only_claude)
+        assert state["risk_profile"]["risk_probes_enabled"] is False
+        assert state["risk_profile"]["reasons"] == ["payment", "auto-risk-probes skipped: codex-unavailable"]
+        assert freeze_roles(state, work, "claude", complexity="trivial", high_risk_reasons=["payment"],
+                            available=only_claude)["roles"]
+        for explicit_enabled in (True, False):
+            state = fresh(explicit=True, enabled=explicit_enabled)
+            freeze_roles(state, work, "claude", complexity="trivial", high_risk_reasons=["payment"], available=only_claude)
+            assert state["risk_profile"]["reasons"] == ["payment"]
+            assert state["risk_profile"]["risk_probes_enabled"] is explicit_enabled
+        state = fresh()
+        freeze_roles(state, work, "claude", complexity="trivial", available=both)
+        assert state["risk_profile"]["high_risk"] is False and state["risk_profile"]["risk_probes_enabled"] is False
+        assert state["risk_profile"]["reasons"] == []
+        state = fresh(mode="verify-only")
+        refused(state, work, "only to free-form", complexity="medium", available=both)
+        freeze_roles(state, work, "claude", high_risk_reasons=["webhook"], available=both)
+        assert state["risk_profile"]["reasons"] == ["webhook"] and state["risk_profile"]["risk_probes_enabled"] is False
+        assert state["complexity"] is None
+
+        # Probes follow the legacy executor's OTHER engine, not an independently configured VERIFY seat.
+        (devlyn / "engines.json").write_text(
+            '{"executor":"codex","roles":{"primary_judge":{"engine":"claude"}}}', encoding="utf-8")
+        state = fresh(mode="spec")
+        freeze_roles(state, work, "claude", high_risk_reasons=["migration"], available=lambda engine: engine == "codex")
+        assert state["role_resolution"]["roles"]["pair_judge"]["engine"] == "codex"
+        assert state["risk_profile"]["reasons"] == ["migration", "auto-risk-probes skipped: claude-unavailable"]
+    print("PASS freeze classification: complexity/criteria binding, auto-probe selection, repeat refusal")
+
+
 def self_test() -> int:
     import time
 
     repair_admission_self_test()
+    freeze_classification_self_test()
+    probe_digest_self_test()
     final_report_self_test()
     with tempfile.TemporaryDirectory() as tmp:
         work = pathlib.Path(tmp); devlyn = work / ".devlyn"; devlyn.mkdir()
@@ -1955,27 +2557,72 @@ def self_test() -> int:
         assert (devlyn / "codex-primary-judge.prompt.md").exists(), "judge prompts must survive VERIFY spawn"
         assert (devlyn / "spec-verify.json").exists(), "non-VERIFY-round files must survive"
 
-        # Normal phase-gated IMPLEMENT advancement must preserve `exec`
-        # (routing truth for large runs, state-schema.md line 55) — spawn
-        # merges into the existing entry rather than replacing it wholesale.
-        write_state(state_path, {"phases": {}})
+        # Phase-gated IMPLEMENT: the writer derives `exec` from the PLAN's `### Phase <k>` blocks,
+        # a passing phase advances it, the next phase's spawn keeps it and charges nothing, and
+        # nothing spawns after the last phase passes. A single block is not phase-gated.
+        write_state(state_path, {"phases": {}, "rounds": {"global": 0, "max_rounds": 4}})
+        (devlyn / "plan.md").write_text("# PLAN\n## Execution phases\n### Phase 1 — a\n### Phase 2 — b\n### Phase 3 — c\n", encoding="utf-8")
         state = read_state(state_path)
-        do_spawn(state, "implement", 0, None, "claude", None)
-        state["phases"]["implement"]["exec"] = {
-            "total": 3, "current": 3, "statuses": ["PASS", "PASS", None], "commits": ["a", "b", "c"],
-        }
-        write_state(state_path, state)
-        state = read_state(state_path)
+        do_spawn(state, "implement", 0, None, "claude", None, devlyn=devlyn)
+        assert state["phases"]["implement"]["exec"] == {"total": 3, "current": 1, "statuses": [None, None, None]}
+        for round_, statuses in ((1, ["PASS", None, None]), (2, ["PASS", "PASS", None])):
+            do_complete(state, "implement", "PASS", None, None, None, None)
+            assert state["phases"]["implement"]["exec"] == {"total": 3, "current": round_ + 1, "statuses": statuses}
+            do_spawn(state, "implement", round_, None, None, None, devlyn=devlyn)
+            assert state["phases"]["implement"]["verdict"] is None and state["rounds"]["global"] == 0
         do_complete(state, "implement", "PASS", None, None, None, None)
-        write_state(state_path, state)
-        state = read_state(state_path)
-        do_spawn(state, "implement", 1, None, None, None)
-        write_state(state_path, state)
-        respawned_exec = read_state(state_path)["phases"]["implement"]
-        assert respawned_exec["exec"]["current"] == 3, "spawn must not clobber unowned fields like exec"
-        assert respawned_exec["verdict"] is None, "respawn still nulls owned fields even with exec present"
-        assert len(respawned_exec["history"]) == 1
-        assert respawned_exec["history"][0]["verdict"] == "PASS"
+        assert state["phases"]["implement"]["exec"] == {"total": 3, "current": 3, "statuses": ["PASS", "PASS", "PASS"]}
+        assert [entry["verdict"] for entry in state["phases"]["implement"]["history"]] == ["PASS", "PASS"]
+        try:
+            do_spawn(state, "implement", 3, None, None, None, devlyn=devlyn)
+        except SystemExit as exc:
+            assert str(exc) == "BLOCKED:repair-edge-invalid", exc
+        else:
+            raise AssertionError("IMPLEMENT spawned after its last phase passed")
+        # A phase-gate FAIL keeps current and its charged repair advances on PASS_WITH_ISSUES;
+        # a VERIFY repair round and an attestation failure never advance progress.
+        (devlyn / "plan.md").write_text("# PLAN\n## Execution phases\n### Phase 1 — a\n### Phase 2 — b\n", encoding="utf-8")
+        gated = {"phases": {}, "rounds": {"global": 0, "max_rounds": 4}}
+        do_spawn(gated, "implement", 0, None, "claude", None, devlyn=devlyn)
+        do_complete(gated, "implement", "FAIL", None, None, None, None)
+        assert gated["phases"]["implement"]["exec"] == {"total": 2, "current": 1, "statuses": ["FAIL", None]}
+        do_spawn(gated, "implement", 1, None, None, None, devlyn=devlyn)
+        assert gated["rounds"]["global"] == 1
+        do_complete(gated, "implement", "PASS_WITH_ISSUES", None, None, None, None)
+        assert gated["phases"]["implement"]["exec"] == {"total": 2, "current": 2, "statuses": ["PASS", None]}
+        repair = json.loads(json.dumps(gated))
+        repair["phases"]["implement"]["exec"] = {"total": 2, "current": 2, "statuses": ["PASS", None]}
+        repair["phases"]["implement"].update(started_at=now_iso(), completed_at=None, verdict=None, triggered_by="verify")
+        do_complete(repair, "implement", "PASS", None, None, None, None)
+        assert repair["phases"]["implement"]["exec"]["statuses"] == ["PASS", None], "a VERIFY repair advanced progress"
+        attested = json.loads(json.dumps(gated))
+        attested["phases"]["implement"].update(started_at=now_iso(), completed_at=None, verdict=None, triggered_by=None)
+        bad_session = devlyn / "no-model.jsonl"
+        bad_session.write_text("no model evidence\n", encoding="utf-8")
+        failure = do_complete(attested, "implement", "PASS", None, None, None, None, str(bad_session))
+        assert failure and attested["phases"]["implement"]["verdict"] == "BLOCKED"
+        assert attested["phases"]["implement"]["exec"]["statuses"] == ["PASS", None], "a failed attestation advanced progress"
+        bad_session.unlink()
+        planned = {"phases": {}, "rounds": {"global": 0, "max_rounds": 4}}
+        do_spawn(planned, "implement", 0, "plan", "claude", None, devlyn=devlyn)
+        do_complete(planned, "implement", "PASS", None, None, None, None)
+        assert planned["phases"]["implement"]["exec"]["statuses"] == ["PASS", None], "a PLAN-triggered phase did not advance"
+        (devlyn / "plan.md").write_text("# PLAN\n## Execution phases\n### Phase 1 — only\n", encoding="utf-8")
+        single = {"phases": {}}
+        do_spawn(single, "implement", 0, None, "claude", None, devlyn=devlyn)
+        assert "exec" not in single["phases"]["implement"]
+        # Only real headings under `## Execution phases` count; fenced examples and other sections never do.
+        example = b"## Acceptance\n```md\n### Phase 1 \xe2\x80\x94 a\n### Phase 2 \xe2\x80\x94 b\n```\n### Phase 3 \xe2\x80\x94 c\n"
+        assert execution_phase_count(example) == 0
+        assert execution_phase_count(b"## Execution phases\n~~~\n### Phase 1\n~~~\n### Phase 2 \xe2\x80\x94 x\n## Risks\n### Phase 3\n") == 1
+        assert execution_phase_count(b"````md\n```\n## Execution phases\n### Phase 1\n### Phase 2\n````\n") == 0
+        assert execution_phase_count(b"```\n``` not a close\n## Execution phases\n### Phase 1\n### Phase 2\n```\n") == 0
+        assert execution_phase_count(b"```\n~~~\n## Execution phases\n### Phase 1\n### Phase 2\n```\n") == 0
+        (devlyn / "plan.md").write_bytes(example + b"## Execution phases\n### Phase 1 \xe2\x80\x94 only\n")
+        examples = {"phases": {}}
+        do_spawn(examples, "implement", 0, None, "claude", None, devlyn=devlyn)
+        assert "exec" not in examples["phases"]["implement"]
+        (devlyn / "plan.md").unlink()
 
         # Existing history is append-only; a respawn must not clobber prior
         # entries that were already preserved from older rounds.
@@ -2522,16 +3169,15 @@ def self_test() -> int:
         result = receipt_cli("final_report", "spawn", "--round", "0")
         assert result.returncode == 0, result.stderr
         blocked_report = receipt_devlyn / "final-report.md"
-        blocked_report.write_text(
-            f"<!-- devlyn:final-report run_id={read_state(receipt_state_path)['run_id']} -->\n"
-            "# BLOCKED\nPLAN invocation failed; no PLAN output was produced.\n", encoding="utf-8",
-        )
-        result = receipt_cli("final_report", "complete", "--verdict", "BLOCKED", "--log-file", str(blocked_report))
+        (receipt_devlyn / "finish-gate.summary.json").write_text('{"exit": 0}\n', encoding="utf-8")
+        result = receipt_cli("final_report", "complete", "--verdict", "BLOCKED:invocation-receipt-invalid",
+                             "--detail", "PLAN invocation failed; no PLAN output was produced.")
         assert result.returncode == 0, result.stderr
         terminal_state = read_state(receipt_state_path)
         assert terminal_state["phases"]["plan"] == blocked_plan
         assert terminal_state["phases"]["final_report"]["completed_at"] is not None
-        assert terminal_state["phases"]["final_report"]["verdict"] == "BLOCKED"
+        assert terminal_state["phases"]["final_report"]["verdict"] == "BLOCKED:invocation-receipt-invalid"
+        assert "detail: PLAN invocation failed" in blocked_report.read_text(encoding="utf-8")
         assert terminal_state["phases"]["final_report"]["output_sha256"] == hashlib.sha256(blocked_report.read_bytes()).hexdigest()
         with tempfile.TemporaryDirectory() as archive_tmp:
             archive_work = pathlib.Path(archive_tmp)
@@ -2828,6 +3474,8 @@ def _main_unlocked() -> int:
     ap.add_argument("--self-test", action="store_true")
     ap.add_argument("--freeze-roles", action="store_true")
     ap.add_argument("--default-engine", default="claude")
+    ap.add_argument("--complexity", choices=COMPLEXITIES, default=None)
+    ap.add_argument("--high-risk-reason", action="append", default=[])
     sub = ap.add_subparsers(dest="event")
 
     spawn_p = sub.add_parser("spawn")
@@ -2844,6 +3492,7 @@ def _main_unlocked() -> int:
     complete_p.add_argument("--engine", default=None)
     complete_p.add_argument("--model", default=None)
     complete_p.add_argument("--engine-session-log", default=None)
+    complete_p.add_argument("--detail", default=None)
 
     transition_p = sub.add_parser("transition")
     transition_p.add_argument("--verdict", default=None)
@@ -2871,7 +3520,8 @@ def _main_unlocked() -> int:
         state_path = devlyn / "pipeline.state.json"
         try:
             state = read_state(state_path)
-            result = freeze_roles(state, devlyn.resolve().parent, args.default_engine)
+            result = freeze_roles(state, devlyn.resolve().parent, args.default_engine,
+                                  complexity=args.complexity, high_risk_reasons=args.high_risk_reason)
             write_state(state_path, state)
             print(json.dumps(result, sort_keys=True))
             return 0
@@ -2947,7 +3597,7 @@ def _main_unlocked() -> int:
         attestation_error = do_complete(
             state, args.phase, args.verdict, args.findings_file,
             args.log_file, args.engine, args.model, args.engine_session_log, devlyn,
-            work,
+            work, detail=args.detail,
         )
         if (
             args.phase == "plan"
@@ -2963,6 +3613,9 @@ def _main_unlocked() -> int:
     if args.event == "complete" and attestation_error is not None:
         sys.stderr.write(attestation_error + "\n")
         return 1
+    if args.event == "complete" and args.phase == "final_report":
+        sys.stdout.write((devlyn / "final-report.md").read_bytes().decode("utf-8"))
+        return 0
     sys.stdout.write(f"ok: phases.{args.phase}.{args.event}\n")
     return 0
 

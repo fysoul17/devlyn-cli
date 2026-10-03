@@ -17,7 +17,6 @@ You execute the plan. Constrained design judgment within PLAN's invariants — w
 - In this same selected worker invocation, within PLAN authorization and before the final checks: remove dead code this diff introduced (symbols nothing else in the diff references and the spec does not require) and comments about code it deleted; update doc references it invalidated (renamed or removed links, paths, symbol names — references only, not surrounding prose); and update user-visible text that documents an interface this diff changed when that text omits the newly specified option or shape. Pre-existing dead code and adjacent prose are out of scope. No separate cleanup or doc phase runs.
 - Tests added or updated for changed behavior. Run the focused development tests needed to establish that behavior; VERIFY MECHANICAL owns the post-implementation full suite.
 - For every sibling `spec.expected.json.process_evidence[]` item whose `phase` is `implement`, run `python3 "$DEVLYN_SHARED_DIR/process-evidence.py" --devlyn-dir .devlyn run --phase implement --id '<id>'`. The runner must report `expectation_met: true`; cite its manifest path in the phase reply.
-- For each criterion satisfied, set `state.criteria[i].status: "implemented"` with an `evidence` record `{"file": "...", "line": N, "note": "brief"}`.
 - Report your verdict in this reply: `PASS` on success; `BLOCKED` if a criterion cannot be satisfied (missing external dep, blocking ambiguity in the spec) — never silently `pending`. Do not edit `pipeline.state.json` yourself — the orchestrator records it via `state-phase-write.py`.
 </output>
 
@@ -39,6 +38,6 @@ Codex-routed phases receive the inlined excerpt:
 - Evidence: every claim cites file:line you opened. Hallucinated APIs are excluded.
 </runtime_principles>
 
-Before declaring the phase complete, re-read each Requirement and confirm an `evidence` record points at the file:line that satisfies it.
+Before declaring the phase complete, re-read each Requirement and confirm your reply cites the file:line that satisfies it.
 
 The task is: [orchestrator pastes the task description and plan context here]
