@@ -1293,7 +1293,12 @@ def expected_contract_findings(
     findings: list[dict] = []
     seq = finding_start
     diff_text, diff_error = diff_text_for_expected(work, devlyn_dir, state)
-    paths, paths_error = changed_files(work, state, devlyn_dir) if expected_data.get("forbidden_files") else ([], None)
+    paths, paths_error = [], None
+    if expected_data.get("forbidden_files"):
+        # Observed like the scope check: the baseline's sparse absences are not deletions.
+        _baseline, sparse_absences, paths_error = load_untracked_baseline(devlyn_dir)
+        if paths_error is None or (devlyn_dir / "external-diff.patch").is_file():
+            paths, paths_error = changed_files(work, state, devlyn_dir, sparse_absences)
     diff_error = diff_error or paths_error
     if diff_error and (
         expected_data.get("forbidden_patterns") or expected_data.get("forbidden_files")
@@ -1807,8 +1812,9 @@ def observed_git(work: Path, sparse_absences: frozenset[str] = frozenset()):
     worker can set both. On a private copy of the index (mtime kept, so racily clean entries
     are still content-checked) assume-unchanged is cleared everywhere and skip-worktree
     everywhere except an absent path in `sparse_absences`, the caches are off, and the real
-    index is never written. Yields (git, flags): a runner returning stdout bytes, and the
-    original tag of every flagged path.
+    index is never written (reading a split index still refreshes its shared index's mtime,
+    Git's expiry clock, as every Git read does). Yields (git, flags): a runner returning stdout
+    bytes, and the original tag of every flagged path.
     """
     index = _git_path(work, "index")
     with tempfile.TemporaryDirectory(prefix="devlyn-observe-") as tmp:
@@ -4195,6 +4201,7 @@ def run_self_test() -> int:
             "max_deps_added": 0,
         }) + "\n", encoding="utf-8")
         subprocess.run(["git", "add", "-A"], cwd=contract_root, check=True)
+        (contract_devlyn / "untracked.baseline").write_text(EMPTY_BASELINE, encoding="utf-8")
         (contract_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(contract_spec)},
             "base_ref": {"sha": base_sha},
@@ -5258,10 +5265,10 @@ def binding_self_test(script_path: str) -> int:
         spec = outside / "spec.md"
         spec.write_bytes(b"# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- prints ok\n")
 
-        def contract(cmd: str) -> bytes:
-            return json.dumps({"verification_commands": [{"cmd": cmd}]}).encode()
+        def contract(cmd: str, **extra) -> bytes:
+            return json.dumps({"verification_commands": [{"cmd": cmd}], **extra}).encode()
 
-        def repo(name: str, *, mode: str = "spec", cmd: str = "true", setup=None):
+        def repo(name: str, *, mode: str = "spec", cmd: str = "true", setup=None, **extra):
             root = Path(tmp) / name
             devlyn = root / ".devlyn"
             devlyn.mkdir(parents=True)
@@ -5274,7 +5281,7 @@ def binding_self_test(script_path: str) -> int:
             for name_ in ("a.txt", "b.txt", "sparse.txt"):
                 (root / name_).write_bytes(f"{name_}\n".encode())
             git("init", "-q"); git("add", "-A"); git("commit", "-q", "-m", "base")
-            (outside / "spec.expected.json").write_bytes(contract(cmd))
+            (outside / "spec.expected.json").write_bytes(contract(cmd, **extra))
             if setup is not None:
                 setup(root, git)
             (devlyn / "plan.md").write_bytes(b'<!-- devlyn:authorized-surface -->\n## Files\n```json\n{"authorized_surface": ["a.txt"]}\n```\n')
@@ -5284,7 +5291,7 @@ def binding_self_test(script_path: str) -> int:
             state = {"run_id": f"rs-{name}", "mode": mode,
                      "base_ref": {"sha": head, "excludes_sha256": exclude_rules_digest(root)},
                      "source": {"type": "spec", "spec_path": str(spec), "spec_sha256": hashlib.sha256(spec.read_bytes()).hexdigest(),
-                                "expected_sha256": hashlib.sha256(contract(cmd)).hexdigest()},
+                                "expected_sha256": hashlib.sha256(contract(cmd, **extra)).hexdigest()},
                      "untracked_baseline_sha256": hashlib.sha256((devlyn / "untracked.baseline").read_bytes()).hexdigest(),
                      "phases": {"verify": {"round": 0, "started_at": "2026-10-03T00:00:00.000Z", "completed_at": None,
                                            "pre_sha": head}}}
@@ -5315,6 +5322,24 @@ def binding_self_test(script_path: str) -> int:
         check(rc == 0, f"a clean sparse checkout did not seal: {findings}")
         check((index.read_bytes(), index.stat().st_mtime_ns, sorted(p.name for p in index.parent.rglob("*"))) == before,
               "observing changed the real index or Git directory")
+
+        # A split index is read, never written: index bytes and mtime, shared-index bytes and the
+        # Git directory's file set stay as they were (Git's read refreshes only the shared index's mtime).
+        root, devlyn, git, state = repo("split-index")
+        git("update-index", "--split-index")
+        gitdir = Path(git("rev-parse", "--absolute-git-dir"))
+        def split_state():
+            return ({p.name: p.read_bytes() for p in gitdir.glob("sharedindex.*")},
+                    ((gitdir / "index").read_bytes(), (gitdir / "index").stat().st_mtime_ns),
+                    sorted(str(p.relative_to(gitdir)) for p in gitdir.rglob("*")))
+        before = split_state()
+        rc, findings = sealed(root)
+        check(rc == 0 and split_state() == before, f"observing a split index wrote Git metadata: {findings}")
+
+        # A sparse absence a contract forbids changing is no change.
+        root, devlyn, git, state = repo("sparse-forbidden", setup=sparse, forbidden_files=["sparse.txt"])
+        rc, findings = sealed(root)
+        check(rc == 0 and "forbidden" not in findings, f"a sparse absence counted as a forbidden change: {findings}")
 
         # A changed contract is never used.
         (outside / "spec.expected.json").write_bytes(contract("printf other"))

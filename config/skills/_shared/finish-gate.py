@@ -169,13 +169,14 @@ def changed_files(work: pathlib.Path, base_sha: str, sparse_absences: frozenset[
     return {os.fsdecode(path) for path in raw.split(b"\0") if path}
 
 
-def contract_drift(work: pathlib.Path, state: dict) -> tuple[str, str, bool] | None:
-    """A sibling spec.expected.json that is no longer what bootstrap bound: (path, why, restorable).
+def contract_drift(work: pathlib.Path, state: dict) -> tuple[str, str, str] | None:
+    """A sibling spec.expected.json that is no longer what bootstrap bound: (path, why, action).
 
-    It offends wherever PLAN's surface lies, so the next run cannot bind a worker's contract.
-    Only bytes bootstrap bound are authoritative: an appeared file is removed, and a changed one is
-    restored only from base_ref.sha when base holds exactly the bound bytes. A contract outside the
-    worktree is reported, never touched.
+    It offends wherever PLAN's surface lies, so the next run cannot bind a worker's contract, and
+    only its binding decides the action: "remove" when bootstrap bound its absence, "restore" from
+    base_ref.sha when base holds exactly the bound bytes, otherwise "report". The sibling's own
+    path is the offender (a planted symlink is removed, never followed), and a contract outside the
+    worktree is only reported.
     """
     source = state.get("source") if isinstance(state.get("source"), dict) else {}
     if source.get("type") != "spec" or "expected_sha256" not in source or not source.get("spec_path"):
@@ -187,15 +188,35 @@ def contract_drift(work: pathlib.Path, state: dict) -> tuple[str, str, bool] | N
         return None
     sibling = spec.with_name("spec.expected.json")
     try:
-        path = sibling.resolve().relative_to(work.resolve()).as_posix()
+        path = (sibling.parent.resolve() / sibling.name).relative_to(work.resolve()).as_posix()
     except ValueError:
-        return (str(sibling), why, False)
+        return (str(sibling), why, "report")
     bound = source["expected_sha256"]
+    if bound is None:
+        return (path, why, "remove")
     base_blob = git(work, "rev-parse", "--verify", "--quiet", f"{state['base_ref']['sha']}:{path}")
-    restorable = bound is None or (base_blob.returncode == 0 and hashlib.sha256(
+    restorable = base_blob.returncode == 0 and hashlib.sha256(
         subprocess.run(["git", "cat-file", "blob", base_blob.stdout.strip()], cwd=work, capture_output=True).stdout
-    ).hexdigest() == bound)
-    return (path, why, restorable)
+    ).hexdigest() == bound
+    return (path, why, "restore" if restorable else "report")
+
+
+def settle_contract(work: pathlib.Path, base_sha: str, path: str, action: str) -> tuple[bool, str | None]:
+    """Return the drifted contract to its binding: absent, or the bound bytes from base."""
+    if action == "report":
+        return (False, "no bytes bootstrap bound exist to restore it")
+    if action == "restore":
+        proc = git(work, "checkout", base_sha, "--", path)
+        return (proc.returncode == 0, proc.stderr.strip() or proc.stdout.strip() or None)
+    if path_exists_at_base(work, base_sha, path):
+        # Bound absent while base tracks it (a sparse absence): only the worktree copy goes.
+        try:
+            remove_worktree_path(work / path)
+        except OSError as e:
+            return (False, str(e))
+        return (True, None)
+    ok, detail, _existed = revert_offender(work, base_sha, path)
+    return (ok, detail)
 
 
 def devlyn_relative_prefix(work: pathlib.Path, devlyn_dir: pathlib.Path) -> str:
@@ -294,8 +315,8 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
         write_summary(devlyn_dir, {"exit": 1, "malformed": str(e)})
         return 1
 
-    offenders = sorted({path for path in checked if not SPEC_VERIFY.path_matches_surface(path, surface)}
-                       | ({drift[0]} if drift is not None and drift[2] else set()))
+    contract = drift[0] if drift is not None else None
+    offenders = sorted(path for path in checked if path != contract and not SPEC_VERIFY.path_matches_surface(path, surface))
     if not offenders and drift is None:
         findings_path.unlink(missing_ok=True)
         write_summary(devlyn_dir, {
@@ -309,14 +330,17 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
     findings: list[dict] = []
     reverted = 0
     revert_failed = 0
-    contract = drift[0] if drift is not None else None
-    if drift is not None and not drift[2]:
-        revert_failed += 1
+    if drift is not None:
+        ok, detail = settle_contract(work, base_sha, *drift[::2])
+        reverted, revert_failed = (1, 0) if ok else (0, 1)
+        outcome = {"remove": "removed, as bootstrap bound its absence", "restore": "restored to the bytes bootstrap bound",
+                   "report": "left in place"}[drift[2]]
         findings.append(make_finding(
             1, "scope.finish-contract-drift",
-            f"The run's verification contract is no longer what bootstrap bound, and no bound bytes exist to restore it: {drift[1]}",
-            contract, status="revert-failed", criterion_ref="pipeline.state.json/source.expected_sha256",
-            fix_hint="Restore the contract bootstrap bound before any run uses it; a run never verifies against a contract it changed.",
+            f"The run's verification contract is no longer what bootstrap bound: {drift[1]}" + (f" ({detail})" if detail else ""),
+            contract, status="reverted" if ok else "revert-failed",
+            criterion_ref="pipeline.state.json/source.expected_sha256",
+            fix_hint=f"The contract was {outcome}; a run never verifies against a contract it changed.",
         ))
     for path in offenders:
         ok, detail, existed_at_base = revert_offender(work, base_sha, path)
@@ -326,18 +350,13 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
         else:
             revert_failed += 1
         action = "restored to base_ref.sha" if existed_at_base else "removed because it did not exist at base_ref.sha"
-        if path == contract:
-            rule, criterion = "scope.finish-contract-drift", "pipeline.state.json/source.expected_sha256"
-            message = f"The run's verification contract is no longer what bootstrap bound: {drift[1]}"
-            hint = f"The contract was {action}; a run never verifies against a contract it changed."
-        else:
-            rule, criterion = "scope.finish-unaudited-file", "plan.md/authorized_surface"
-            message = f"Final diff touched an unaudited file outside authorized_surface: {path}"
-            hint = f"This file was outside authorized_surface and was {action}; do not ship unlicensed final-diff changes."
+        message = f"Final diff touched an unaudited file outside authorized_surface: {path}"
         if detail:
             message = f"{message} ({detail})"
-        findings.append(make_finding(len(findings) + 1, rule, message, path, status=status,
-                                     criterion_ref=criterion, fix_hint=hint))
+        findings.append(make_finding(
+            len(findings) + 1, "scope.finish-unaudited-file", message, path, status=status,
+            criterion_ref="plan.md/authorized_surface",
+            fix_hint=f"This file was outside authorized_surface and was {action}; do not ship unlicensed final-diff changes."))
     write_findings(devlyn_dir, findings)
     # Exit 0 let a real run treat reverted orchestrator commits as a clean pass.
     # Any offender is therefore unclean even when every automatic revert succeeds;
@@ -575,6 +594,31 @@ def self_test() -> int:
         finding = read_findings(devlyn)[0]
         assert (finding["rule_id"], finding["status"]) == ("scope.finish-contract-drift", "revert-failed"), finding
         assert (work / "docs" / "spec.expected.json").read_bytes() == b'{"a": 0}\n'
+
+        # A planted symlink is removed itself; its target is never touched.
+        work, devlyn = contract_fixture("contract-symlink", None, None)
+        write_text(work / "docs" / "real.json", '{"verification_commands": []}\n')
+        git_check(work, "add", "docs/real.json")
+        git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "real")
+        state = json.loads((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+        state["base_ref"]["sha"] = git_check(work, "rev-parse", "HEAD")
+        write_state(devlyn, state)
+        (work / "docs" / "spec.expected.json").symlink_to("real.json")
+        assert checked_run_gate(work, devlyn) == 2
+        assert not os.path.lexists(work / "docs" / "spec.expected.json")
+        assert (work / "docs" / "real.json").read_text(encoding="utf-8") == '{"verification_commands": []}\n'
+        # Only the binding decides: an unrestorable contract is reported, even when it is out of surface and staged.
+        work, devlyn = contract_fixture("contract-staged-unrestorable", None, b'{"a": 1}\n')
+        write_text(work / "docs" / "spec.expected.json", '{"a": 2}\n')
+        git_check(work, "add", "docs/spec.expected.json")
+        assert checked_run_gate(work, devlyn) == 2
+        assert [(f["rule_id"], f["status"]) for f in read_findings(devlyn)] == [("scope.finish-contract-drift", "revert-failed")]
+        assert (work / "docs" / "spec.expected.json").read_text(encoding="utf-8") == '{"a": 2}\n'
+        # A contract bound absent while base tracks it (a sparse absence) loses only its worktree copy.
+        work, devlyn = contract_fixture("contract-sparse-absent", b'{"a": 1}\n', None)
+        assert checked_run_gate(work, devlyn) == 2
+        assert not (work / "docs" / "spec.expected.json").exists()
+        assert "docs/spec.expected.json" in git_check(work, "ls-files", "docs")
 
     return 0
 
