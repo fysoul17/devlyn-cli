@@ -232,12 +232,16 @@ def pipeline_acceptance(work, acceptance, files, directory):
     final = phases.get("final_report") or {}
     require(verify.get("verdict") in success and final.get("verdict") == verify["verdict"], "archive did not finish successfully")
     require(not any(str((phase or {}).get("verdict", "")).startswith("BLOCKED") for phase in phases.values()), "blocked phase takes terminal precedence")
-    for name in ("plan", "implement", "cleanup", "verify", "final_report", "build_gate"):
-        if name == "build_gate" and "build-gate" in (state.get("bypasses") or []):
-            continue
+    for name in ("plan", "implement", "verify", "final_report"):
         phase = phases.get(name) or {}
         require(phase.get("completed_at") and phase.get("verdict") in success, f"required {name} evidence is incomplete")
-    require(phases["cleanup"].get("post_sha") == acceptance["source_sha"], "accepted source must equal cleanup.post_sha")
+    # VERIFY MECHANICAL sealed the exact source it checked; delivery must publish that source.
+    seal_binding = verify.get("source_seal")
+    require(isinstance(seal_binding, dict) and seal_binding.get("path") == ".devlyn/source-seal.json", "VERIFY has no bound MECHANICAL source seal")
+    seal_record = file_record(archive / "source-seal.json")
+    require((seal_record["sha256"], seal_record["bytes"]) == (seal_binding.get("sha256"), seal_binding.get("bytes")), "MECHANICAL source seal binding mismatch")
+    seal = read_json(archive / "source-seal.json").get("seal")
+    require(isinstance(seal, dict) and seal.get("head") == acceptance["source_sha"], "accepted source must equal the sealed MECHANICAL source")
     report_digest = shared("state-phase-write")["final_report_digest"](state, archive, str(archive / "final-report.md"))
     require(final.get("output_sha256") == report_digest and final.get("artifacts", {}).get("log_file") == ".devlyn/final-report.md", "final report binding mismatch")
     finish = read_json(archive / "finish-gate.summary.json")
@@ -273,7 +277,7 @@ def pipeline_acceptance(work, acceptance, files, directory):
                 dest = safe_path(reconstructed, str(expected))
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(original, dest)
-                for phase in ("implement", "build_gate", "verify"):
+                for phase in ("implement", "verify"):
                     obligations = evidence_module["declared_obligations"](reconstructed, state, phase)
                     if obligations:
                         carriers = [c for c in state.get("process_evidence") or [] if c.get("phase") == phase and c.get("round") == (phases.get(phase) or {}).get("round")]
@@ -1192,8 +1196,10 @@ class CompletionTests(unittest.TestCase):
             report = "<!-- devlyn:final-report run_id=fixture-run -->\nFixture completed.\n"
             (archive / "final-report.md").write_text(report, encoding="utf-8")
             phases = {n: {"started_at": "2026-09-10T00:00:00Z", "completed_at": "2026-09-10T00:00:01Z", "verdict": "PASS"}
-                      for n in ("plan", "implement", "build_gate", "cleanup", "verify", "final_report")}
-            phases["cleanup"]["post_sha"] = self.sha
+                      for n in ("plan", "implement", "verify", "final_report")}
+            seal_raw = json.dumps({"run_id": a["run_id"], "round": 0, "seal": {"digest": "0" * 64, "head": self.sha}}).encode()
+            (archive / "source-seal.json").write_bytes(seal_raw)
+            phases["verify"]["source_seal"] = {"path": ".devlyn/source-seal.json", "sha256": hashlib.sha256(seal_raw).hexdigest(), "bytes": len(seal_raw)}
             phases["final_report"].update(output_sha256=hashlib.sha256(report.encode()).hexdigest(), artifacts={"log_file": ".devlyn/final-report.md"})
             criteria = "# Fixture acceptance\nProduct contains accepted bytes.\n"
             (archive / "criteria.generated.md").write_text(criteria, encoding="utf-8")
@@ -1688,20 +1694,27 @@ class CompletionTests(unittest.TestCase):
     def test_reject_acceptance_and_policy_before_push(self):
         self.allocate(); self.accept(pipeline=True)
         original = json.loads(json.dumps(self.state))
-        for case in ("failed", "verify-only", "blocked", "unfinished", "digest", "source"):
+        for case in ("failed", "verify-only", "blocked", "unfinished", "digest", "source", "unsealed", "seal-binding"):
             state = json.loads(json.dumps(original))
             if case == "failed": state["phases"]["verify"]["verdict"] = "NEEDS_WORK"
             if case == "verify-only": state["mode"] = "verify-only"
             if case == "blocked": state["phases"]["implement"]["verdict"] = "BLOCKED"
             if case == "unfinished": state["phases"]["verify"]["completed_at"] = None
             if case == "digest": state["phases"]["final_report"]["output_sha256"] = "0"*64
-            if case == "source": state["phases"]["cleanup"]["post_sha"] = self.g("rev-parse", "main")
+            if case == "source":
+                moved = json.dumps({"run_id": state["run_id"], "round": 0, "seal": {"digest": "0" * 64, "head": self.g("rev-parse", "main")}}).encode()
+                (self.archive / "source-seal.json").write_bytes(moved)
+                state["phases"]["verify"]["source_seal"].update(sha256=hashlib.sha256(moved).hexdigest(), bytes=len(moved))
+            if case == "unsealed": state["phases"]["verify"].pop("source_seal")
+            if case == "seal-binding": state["phases"]["verify"]["source_seal"]["sha256"] = "0" * 64
             (self.archive / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
             with self.subTest(case=case):
                 _, r = self.complete(success=False)
                 self.assertNotEqual(r.returncode, 0)
                 self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
         (self.archive / "pipeline.state.json").write_text(json.dumps(original), encoding="utf-8")
+        sealed = json.dumps({"run_id": original["run_id"], "round": 0, "seal": {"digest": "0" * 64, "head": self.sha}}).encode()
+        (self.archive / "source-seal.json").write_bytes(sealed)
         for value in ("typo", "", " auto"):
             self.g("config", "--local", "devlyn.completionMode", value)
             _, r = self.complete("--mode", "pr", success=False)

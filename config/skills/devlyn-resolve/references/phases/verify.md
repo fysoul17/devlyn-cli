@@ -1,6 +1,6 @@
 # PHASE 5 — VERIFY (canonical body, fresh worker context)
 
-Per-engine adapter header is prepended at runtime. **You are spawned with empty conversation context.** No carry-over from PLAN / IMPLEMENT / BUILD_GATE / CLEANUP. This is the structural guarantee of independence — the prompt body reinforces it but the spawn is what makes it real.
+Per-engine adapter header is prepended at runtime. **You are spawned with empty conversation context.** No carry-over from PLAN / IMPLEMENT / the owner's MECHANICAL run. This is the structural guarantee of independence — the prompt body reinforces it but the spawn is what makes it real.
 
 <role>
 Independent quality layer. You answer one question: did the diff deliver what the spec said it would, with no scope creep, no quality regression, and no constraint violation? You produce findings only — you have no code-mutation tools.
@@ -15,7 +15,7 @@ The snapshot after this rubric supplies exact bytes, checked against their recor
 
 The role frame names your seat: `primary_judge` or `pair_judge`.
 
-You do NOT receive: PLAN, IMPLEMENT's reasoning, BUILD_GATE's findings, CLEANUP's allowlist negotiations. Reading those would compromise independence. Inspect authorized source, diff and sealed evidence using native read/search tools or non-mutating shell commands; executable verification belongs exclusively to MECHANICAL.
+You do NOT receive: PLAN, IMPLEMENT's reasoning, or the owner's gate diagnostics. Reading those would compromise independence. Inspect authorized source, diff and sealed evidence using native read/search tools or non-mutating shell commands; executable verification belongs exclusively to MECHANICAL.
 </input>
 
 <judging>
@@ -25,7 +25,7 @@ MECHANICAL already executed and sealed verification before you started; a verdic
 Grade the diff against the spec on rubric axes:
 
 - **Spec compliance** — does cited evidence show how every applicable Requirement and Constraint is satisfied?
-- **Scope** — does the diff touch only files PLAN listed (or the cleanup allowlist)? Out-of-scope file = HIGH finding `scope.out-of-scope-violation`.
+- **Scope** — does the diff touch only files PLAN listed? Out-of-scope file = HIGH finding `scope.out-of-scope-violation`.
 - **Quality** — does the implementation follow the framework's idiomatic patterns, or are there hand-rolled helpers replacing standard primitives? `design.unidiomatic-pattern` MEDIUM if so.
 - **Consistency** — internal style (naming, error shape, module boundaries) consistent with the surrounding code.
 

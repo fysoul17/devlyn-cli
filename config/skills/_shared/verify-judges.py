@@ -233,9 +233,12 @@ def run(devlyn: pathlib.Path) -> int:
     pair = roles["pair_judge"]
     trigger = ({"eligible": False, "reasons": [], "skipped_reason": pair["reason"]} if pair["decision"] == "skip"
                else {"eligible": True, "reasons": MERGE["outcome_independent_reasons"](devlyn), "skipped_reason": None})
+    seal = devlyn / "source-seal.json"
     record = {"schema": 1, "run_id": state.get("run_id"), "round": verify["round"],
               "verify_started_at": verify["started_at"], "resolution_sha256": resolution["sha256"],
               "snapshot_sha256": sha256(snapshot) if snapshot is not None else None,
+              # The merge refuses a MECHANICAL seal that changed after this dispatch decision.
+              "source_seal_sha256": hashlib.sha256(seal.read_bytes()).hexdigest() if seal.is_file() else None,
               "pair_trigger": trigger, "roles": roles}
     # From the claim on, a signal is recorded and handled: launched runners are torn down
     # and the merge still runs.
@@ -523,6 +526,42 @@ def self_test() -> int:
         assert "forged" not in merged_ids(work) and "verify-judge-execution-incomplete" in merged_ids(work)
         assert "primary_judge" in loads(work / ".devlyn/pipeline.state.json")["phases"]["verify"]["role_evidence"]
 
+        # A sealed round binds its MECHANICAL seal into the dispatch record: an unchanged seal
+        # merges, a seal replaced after the dispatch decision never does.
+        checker = runpy.run_path(str(SHARED / "spec-verify-check.py"))
+
+        def sealed_run(name):
+            work = make_run(name)
+            (work / ".gitignore").write_text(".devlyn/\nstubs/\n")  # judge stubs write into the work tree
+            git(work, "commit", "-qam", "ignore judge stubs")
+            state_path = work / ".devlyn/pipeline.state.json"
+            state = loads(state_path)
+            state["phases"]["verify"]["pre_sha"] = git(work, "rev-parse", "HEAD")
+            state_path.write_bytes(ROLE["encoded"](state))
+            reseal(work)
+            return work
+
+        def reseal(work):
+            current = loads(work / ".devlyn/pipeline.state.json")
+            document, digest, problems = checker["source_snapshot"](work, work / ".devlyn", current)
+            (work / ".devlyn/source-seal.json").write_text(json.dumps({
+                "schema": 1, "run_id": current["run_id"], "round": 0, "snapshot": document, "digest": digest,
+                "problems": problems, "seal": {"digest": digest, "head": document["head"]}}))
+
+        work = sealed_run("sealed-ok")
+        code, summary, sealed_state = verify(work)
+        assert code == 0 and summary["verdict"] == "PASS", summary
+        assert sealed_state["phases"]["verify"]["source_seal"]["sha256"] == sha256((work / ".devlyn/source-seal.json").read_bytes())
+        work = sealed_run("sealed-replaced")
+        verify(work, hold=True)
+        assert loads(work / ".devlyn/verify-judge.r0.dispatch.json")["source_seal_sha256"] == sha256(
+            (work / ".devlyn/source-seal.json").read_bytes())
+        (work / "app.py").write_text("changed after the judges were dispatched\n")
+        reseal(work)
+        merged = merge_cli(work)
+        assert json.loads(merged.stdout)["verdict"] == "BLOCKED", merged.stdout
+        assert "verify-dispatch-invalid" in merged_ids(work), merged.stdout
+
         # A dispatch record that no longer matches the span is never published, checked before
         # any defect of the record itself; a seat whose names differ from the frozen selection is BLOCKED.
         work = make_run("drift")
@@ -559,7 +598,7 @@ def self_test() -> int:
         writer = runpy.run_path(str(SHARED / "state-phase-write.py"))
         state["phases"]["verify"]["completed_at"] = "2026-09-27T00:10:00Z"
         try:
-            writer["do_spawn"](state, "implement", 1, "verify", None, None, None)
+            writer["do_spawn"](state, "implement", 1, "verify", None, None)
         except SystemExit as exc:
             assert str(exc) == "BLOCKED:repair-edge-invalid"
         else:
@@ -568,7 +607,7 @@ def self_test() -> int:
         _, summary, state = verify(work, claude="high")
         assert summary["verdict"] == "NEEDS_WORK" and state["phases"]["verify"]["verdict"] == "NEEDS_WORK"
         state["phases"]["verify"]["completed_at"] = "2026-09-27T00:10:00Z"
-        writer["do_spawn"](state, "implement", 1, "verify", None, None, None)
+        writer["do_spawn"](state, "implement", 1, "verify", None, None)
         assert state["rounds"]["global"] == 1
         work = make_run("garbage")
         _, summary, _ = verify(work, codex="garbage")

@@ -300,6 +300,50 @@ def required_source_missing(source: str, name: str) -> dict[str, Any]:
     }
 
 
+_SPEC_VERIFY: dict[str, Any] | None = None
+
+
+def mechanical_seal_violation(devlyn: pathlib.Path, verdict: str) -> dict[str, Any] | None:
+    """A VERIFY span opened with a writer-recorded `pre_sha` reviews only sealed source.
+
+    An unsealed round is acceptable only when MECHANICAL already binds NEEDS_WORK
+    (the `--seal` refusal or another binding finding routes it to repair). A seal
+    is rechecked against the live tree at every call: dispatch and merge.
+    """
+    global _SPEC_VERIFY
+    state = loads_strict_json((devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+    verify = (state.get("phases") or {}).get("verify") if isinstance(state, dict) else None
+    if not isinstance(verify, dict) or not verify.get("pre_sha"):
+        return None
+
+    def blocker(message: str) -> dict[str, Any]:
+        return {"id": "verify-mechanical-seal", "rule_id": "invariant.mechanical-seal",
+                "severity": "CRITICAL", "confidence": "high", "file": "source-seal.json", "line": 1,
+                "message": message, "criterion_ref": "mechanical://seal", "source": "mechanical",
+                "verdict_binding": True}
+
+    try:
+        record = loads_strict_json((devlyn / "source-seal.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return blocker(f"MECHANICAL source seal is missing or unreadable: {exc}")
+    if not isinstance(record, dict) or (record.get("run_id"), record.get("round")) != (
+            state.get("run_id"), verify.get("round")):
+        return blocker("MECHANICAL source seal belongs to another run or round")
+    seal = record.get("seal")
+    if seal is None:
+        return None if rank(verdict) >= 2 else blocker(
+            "MECHANICAL source was never sealed; run spec-verify-check.py --seal after artifact cleanup")
+    if _SPEC_VERIFY is None:
+        _SPEC_VERIFY = runpy.run_path(str(pathlib.Path(__file__).with_name("spec-verify-check.py")))
+    try:
+        _document, digest, _problems = _SPEC_VERIFY["source_snapshot"](devlyn.parent.resolve(), devlyn, state)
+    except (OSError, ValueError) as exc:
+        return blocker(f"MECHANICAL source seal could not be rechecked: {exc}")
+    if not isinstance(seal, dict) or seal.get("digest") != record.get("digest") or digest != record.get("digest"):
+        return blocker("source changed after the MECHANICAL seal")
+    return None
+
+
 def mechanical_source(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], str]:
     """MECHANICAL findings plus the sealed-evidence verdict; rank >= 2 skips both judges."""
     findings: list[dict[str, Any]] = []
@@ -343,6 +387,10 @@ def mechanical_source(devlyn: pathlib.Path) -> tuple[list[dict[str, Any]], str]:
             "verdict_binding": True,
         })
         verdict = outcome["verdict"]
+    seal_violation = mechanical_seal_violation(devlyn, verdict)
+    if seal_violation is not None:
+        findings.append(seal_violation)
+        return findings, "BLOCKED"
     return findings, verdict
 
 
@@ -514,6 +562,11 @@ def collect_judges(devlyn: pathlib.Path) -> dict[str, Any]:
     # A record for another run, round or span is never published here.
     if recorded != identity:
         raise SystemExit("BLOCKED:verify-state-changed: dispatch record differs from the open VERIFY span")
+    if verify.get("pre_sha"):
+        seal = devlyn / "source-seal.json"
+        current_seal = hashlib.sha256(seal.read_bytes()).hexdigest() if seal.is_file() else None
+        if record.get("source_seal_sha256") != current_seal:
+            return invalid("MECHANICAL source seal changed after the dispatch decision")
     try:
         collected["dispatch"] = seal_file(devlyn / name)
     except ValueError as exc:
@@ -779,29 +832,6 @@ def verify_state_contract_violation(devlyn: pathlib.Path) -> dict[str, Any] | No
             ),
             "file": "pipeline.state.json",
         }
-    if state.get("complexity") in {"trivial", "medium"}:
-        phases = state.get("phases")
-        surface_close = phases.get("surface_close") if isinstance(phases, dict) else None
-        skipped = (
-            isinstance(surface_close, dict)
-            and surface_close.get("verdict") is None
-            and surface_close.get("started_at") is None
-            and surface_close.get("skipped_reason") == "auto_surface_close_claude_unavailable"
-        )
-        if (
-            not isinstance(surface_close, dict)
-            or (surface_close.get("verdict") is None and not skipped)
-        ):
-            rule = "verify.state.surface-close-skipped"
-            return {
-                "id": rule,
-                "rule_id": rule,
-                "message": (
-                    "schema-v3 generated trivial/medium runs require completed SURFACE_CLOSE "
-                    "or its canonical automatic Claude-unavailable skip before VERIFY merge."
-                ),
-                "file": "pipeline.state.json",
-            }
     return None
 
 
@@ -1197,6 +1227,8 @@ def write_state(devlyn: pathlib.Path, summary: dict[str, Any], collected: dict[s
     if not isinstance(verify, dict):
         verify = {}
         phases["verify"] = verify
+    if verify.get("pre_sha") and (devlyn / "source-seal.json").is_file():
+        verify["source_seal"] = seal_file(devlyn / "source-seal.json")
     if collected is not None:
         # Bindings were authenticated or sealed by collect_judges under this same lock.
         for field in ("role_evidence", "executions", "dispatch"):
@@ -1370,6 +1402,106 @@ def self_test() -> int:
         ), removed_findings
         print("PASS iter-0112 sealed VERIFY outcome resists mutable-derivative laundering")
 
+        # Moved from BUILD_GATE completion: the sealed outcome sets the floor even when the
+        # mutable findings file is empty — a failed expectation is NEEDS_WORK, a recorded
+        # capability denial (including a prohibited missing tool) is BLOCKED.
+        honest_commands = PROCESS_EVIDENCE["bound_carrier_summary_commands"](failed_work, failed_carrier)
+        (failed_devlyn / "spec-verify.results.json").write_text(json.dumps({
+            "commands": honest_commands, "process_evidence": failed_carrier,
+        }), encoding="utf-8")
+        floor_findings, floor_verdicts = read_findings(failed_devlyn)
+        assert floor_verdicts["mechanical"] == "NEEDS_WORK", floor_verdicts
+        assert any(item.get("rule_id") == "invariant.mechanical-expectation-mismatch"
+                   for item in floor_findings), floor_findings
+        tool_obligation = PROCESS_EVIDENCE["normalize_obligation"]({
+            "id": "required-tool", "phase": "verify", "cmd": "tsc --noEmit",
+        })
+        PROCESS_EVIDENCE["record_capability_denial"](
+            failed_work, failed_work / failed_manifest, failed_state["run_id"], "verify", 0,
+            tool_obligation, "tool", b"tsc absent; the task prohibits supplying it",
+        )
+        denied_carrier = PROCESS_EVIDENCE["validate_manifest"](
+            failed_work, failed_manifest, failed_state["run_id"], "verify", 0,
+            require_expectations=False,
+        )
+        (failed_devlyn / "spec-verify.results.json").write_text(json.dumps({
+            "commands": PROCESS_EVIDENCE["bound_carrier_summary_commands"](failed_work, denied_carrier),
+            "process_evidence": denied_carrier,
+        }), encoding="utf-8")
+        denied_findings, denied_verdicts = read_findings(failed_devlyn)
+        assert denied_verdicts["mechanical"] == "BLOCKED", denied_verdicts
+        assert any(item.get("rule_id") == "invariant.build-env-underprovisioned"
+                   and "required-tool" in item.get("message", "") for item in denied_findings), denied_findings
+        print("PASS sealed outcome floor: failed expectation NEEDS_WORK, tool denial BLOCKED, empty findings")
+
+        # New runs (VERIFY opened with a writer-recorded pre_sha) review only sealed source.
+        seal_work = pathlib.Path(tmp) / "seal-work"
+        seal_devlyn = seal_work / ".devlyn"
+        seal_devlyn.mkdir(parents=True)
+
+        def seal_git(*args: str) -> str:
+            return subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=seal_work,
+                                  check=True, capture_output=True, text=True, encoding="utf-8").stdout.strip()
+
+        seal_git("init", "-q")
+        (seal_work / ".gitignore").write_text(".devlyn/\n", encoding="utf-8")
+        (seal_work / "a.txt").write_text("base\n", encoding="utf-8")
+        seal_git("add", "-A")
+        seal_git("commit", "-qm", "base")
+        seal_state = {"version": "3.0", "run_id": "rs-seal-merge", "engine": "claude", "process_evidence": None,
+                      "phases": {"verify": {"round": 1, "started_at": "2026-10-03T00:00:00.000Z",
+                                            "completed_at": None, "verdict": None, "sub_verdicts": None,
+                                            "pre_sha": seal_git("rev-parse", "HEAD")}}}
+        (seal_devlyn / "pipeline.state.json").write_text(json.dumps(seal_state), encoding="utf-8")
+        (seal_devlyn / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
+        checker = runpy.run_path(str(pathlib.Path(__file__).with_name("spec-verify-check.py")))
+
+        def write_seal(sealed: bool) -> None:
+            document, digest, problems = checker["source_snapshot"](seal_work, seal_devlyn, seal_state)
+            (seal_devlyn / "source-seal.json").write_text(json.dumps({
+                "schema": 1, "run_id": "rs-seal-merge", "round": 1, "snapshot": document, "digest": digest,
+                "problems": problems, "seal": {"digest": digest, "head": document["head"]} if sealed else None,
+            }), encoding="utf-8")
+
+        def seal_rule(findings: list[dict[str, Any]]) -> bool:
+            return any(item.get("rule_id") == "invariant.mechanical-seal" for item in findings)
+
+        missing_findings, missing = mechanical_source(seal_devlyn)
+        assert missing == "BLOCKED" and seal_rule(missing_findings), missing_findings
+        write_seal(False)
+        unsealed_findings, unsealed = mechanical_source(seal_devlyn)
+        assert unsealed == "BLOCKED" and seal_rule(unsealed_findings), unsealed_findings
+        (seal_devlyn / "verify-mechanical.findings.jsonl").write_text(json.dumps({
+            "id": "VERIFY-MECH-0001", "rule_id": "scope.unsealed-source", "severity": "CRITICAL",
+        }) + "\n", encoding="utf-8")
+        repair_findings, repair = mechanical_source(seal_devlyn)
+        assert repair == "NEEDS_WORK" and not seal_rule(repair_findings), repair_findings
+        (seal_devlyn / "verify-mechanical.findings.jsonl").write_text("", encoding="utf-8")
+        write_seal(True)
+        sealed_findings, sealed = mechanical_source(seal_devlyn)
+        assert sealed == "PASS", sealed_findings
+        for mutate, restore in (
+            (lambda: (seal_work / "a.txt").write_text("edited after seal\n", encoding="utf-8"),
+             lambda: seal_git("checkout", "--", "a.txt")),
+            (lambda: (seal_work / "new.txt").write_text("residue\n", encoding="utf-8"),
+             lambda: (seal_work / "new.txt").unlink()),
+        ):
+            mutate()
+            changed_findings, changed = mechanical_source(seal_devlyn)
+            assert changed == "BLOCKED" and seal_rule(changed_findings), changed_findings
+            restore()
+        other_round = loads_strict_json((seal_devlyn / "source-seal.json").read_text(encoding="utf-8"))
+        (seal_devlyn / "source-seal.json").write_text(json.dumps({**other_round, "round": 0}), encoding="utf-8")
+        stale_findings, stale = mechanical_source(seal_devlyn)
+        assert stale == "BLOCKED" and seal_rule(stale_findings), stale_findings
+        write_seal(True)
+        (seal_devlyn / "verify.findings.jsonl").write_text("", encoding="utf-8")
+        bound_findings, bound_verdicts = read_findings(seal_devlyn)
+        write_state(seal_devlyn, write_outputs(seal_devlyn, bound_findings, bound_verdicts))
+        seal_bound = loads_strict_json((seal_devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+        assert seal_bound["phases"]["verify"]["source_seal"] == seal_file(seal_devlyn / "source-seal.json")
+        print("PASS MECHANICAL seal: required, rechecked against the tree, round-bound, bound at merge")
+
         sealed_stdout = sealed_work / carrier["streams"][0]["stdout"]["path"]
         sealed_stdout.write_bytes(sealed_stdout.read_bytes() + b"altered")
         altered_findings, altered_verdicts = read_findings(sealed_devlyn)
@@ -1487,83 +1619,12 @@ def self_test() -> int:
             "goal_path": ".devlyn/goal.raw.txt",
             "goal_sha256": "a" * 64,
         }
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({
-                "version": "3.0",
-                "engine": "claude",
-                "complexity": "medium",
-                "source": generated_source,
-                "phases": {
-                    "surface_close": None,
-                    "verify": {"verdict": None, "sub_verdicts": None},
-                },
-            }),
-            encoding="utf-8",
-        )
-        findings, source_verdicts = read_findings(devlyn)
-        summary = write_outputs(devlyn, findings, source_verdicts)
-        assert summary["verdict"] == "BLOCKED", summary
-        assert any(
-            finding.get("rule_id") == "verify.state.surface-close-skipped"
-            for finding in findings
-        ), findings
-
-        for surface_entry in (
-            {"verdict": "PASS"},
-            {
-                "verdict": None,
-                "started_at": None,
-                "skipped_reason": "auto_surface_close_claude_unavailable",
-            },
-        ):
-            (devlyn / "pipeline.state.json").write_text(
-                json.dumps({
-                    "version": "3.0",
-                    "engine": "claude",
-                    "complexity": "medium",
-                    "source": generated_source,
-                    "phases": {"surface_close": surface_entry},
-                }),
-                encoding="utf-8",
-            )
-            assert verify_state_contract_violation(devlyn) is None
-
-        (devlyn / "pipeline.state.json").write_text(
-            json.dumps({
-                "version": "3.0",
-                "engine": "claude",
-                "complexity": "medium",
-                "source": generated_source,
-                "phases": {
-                    "surface_close": {
-                        "verdict": None,
-                        "started_at": None,
-                        "skipped_reason": "claude-unavailable",
-                    },
-                },
-            }),
-            encoding="utf-8",
-        )
-        assert verify_state_contract_violation(devlyn)["rule_id"] == "verify.state.surface-close-skipped"
-
-        for state_shape in (
-            {
-                "version": "3.0", "engine": "claude", "complexity": "medium",
-                "source": {"type": "spec"}, "phases": {"surface_close": None},
-            },
-            {
-                "version": "3.0", "engine": "claude", "complexity": "large",
-                "source": generated_source, "phases": {"surface_close": None},
-            },
-            {
-                "version": "2.0", "engine": "claude", "complexity": "medium",
-                "source": {"type": "generated"}, "phases": {"surface_close": None},
-            },
-        ):
-            (devlyn / "pipeline.state.json").write_text(
-                json.dumps(state_shape), encoding="utf-8",
-            )
-            assert verify_state_contract_violation(devlyn) is None
+        # Generated trivial/medium runs no longer carry a SURFACE_CLOSE prerequisite.
+        (devlyn / "pipeline.state.json").write_text(json.dumps({
+            "version": "3.0", "engine": "claude", "complexity": "medium",
+            "source": generated_source, "phases": {},
+        }), encoding="utf-8")
+        assert verify_state_contract_violation(devlyn) is None
 
         # 2026-07-04 field bug (iter-0060 G1): an AUTO pair trigger skipped on
         # OTHER-engine unavailability spawns no second judge — pair_judge must

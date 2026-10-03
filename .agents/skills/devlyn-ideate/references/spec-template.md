@@ -9,7 +9,7 @@ The shape `/devlyn-ideate` writes and `/devlyn-resolve --spec` consumes. Single 
 id: "<spec-id>"          # kebab-case, unique per spec-dir; auto-generated if user omits
 title: "<short title>"    # one line, descriptive
 kind: feature             # feature | spike | prototype
-status: planned           # planned → in_progress → done. ideate writes "planned"; resolve's CLEANUP flips to "done".
+status: planned           # planned → in_progress → done. ideate writes "planned".
 complexity: medium        # trivial | medium | high. Use high when Verification needs compound state/order/failure checks.
 depends_on: []            # list of spec ids this depends on (empty for standalone). project mode populates this.
 ---
@@ -95,7 +95,7 @@ Schema: `_shared/expected.schema.json`. Required when Requirements have observab
 python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>
 ```
 
-Map mechanically decidable rules from both Requirements and Constraints into the existing carriers. Preserve specific file constraints even when narrower than PLAN's scope. During BUILD_GATE, with `state.base_ref.sha` recorded, the existing `authorized_surface` check enforces PLAN's scope over the run diff and newly created untracked paths (`.devlyn/` exempt). Do not duplicate this general scope check with a whole-checkout scan in `verification_commands`. Validate each new guard with a violating control that fails and an allowed control that passes, preserving permitted pre-existing occurrences:
+Map mechanically decidable rules from both Requirements and Constraints into the existing carriers. Preserve specific file constraints even when narrower than PLAN's scope. During VERIFY MECHANICAL, with `state.base_ref.sha` recorded, the existing `authorized_surface` check enforces PLAN's scope over the run diff and newly created untracked paths (`.devlyn/` exempt). Do not duplicate this general scope check with a whole-checkout scan in `verification_commands`. Validate each new guard with a violating control that fails and an allowed control that passes, preserving permitted pre-existing occurrences:
 - `verification_commands` ← `## Verification` + commands the conversation surfaced. While drafting both Verification and its carrier, omit a standalone check only when another command in that contract runs the same assertions under the required execution conditions and propagates failure; describe that shared coverage in Verification and keep both carriers aligned. Preserve distinct scenarios and required independent verification; execute approved commands unchanged without reusing results across phases. For semantic annotation or exception-handling rules, use a suitable syntax-aware/executable check, preferring existing checks; explicitly retain uncovered semantics as source-review obligations.
 - `forbidden_patterns` ← literal syntax constraints only; regex does not prove semantics. It scans the whole file-filtered diff, including context, deletions and headers; additions-only guards must exclude those lines.
 - `required_files` / `forbidden_files` ← literal file paths from Requirements, Constraints and Out of Scope; `forbidden_files` matches exact Git-relative paths (forward slashes, no leading `./`), including both names of a rename. Globs and directory-wide exclusions need a suitable `verification_commands` guard, not wildcard-looking entries in these lists.

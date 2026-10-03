@@ -31,7 +31,7 @@ The runtime sub-agent contract below (Subtractive-first / Goal-locked / No-worka
 Choose direct work or full resolve using the conversational-entry rules below; engine selection follows the role map.
 
 1. `/devlyn-ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project`.
-2. `/devlyn-resolve` — full pipeline for work selected by the conversational-entry rules below. Free-form goal, `--spec <path>`, or `--verify-only <diff> --spec <path>`. Phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh subagent, findings-only).
+2. `/devlyn-resolve` — full pipeline for work selected by the conversational-entry rules below. Free-form goal, `--spec <path>`, or `--verify-only <diff> --spec <path>`. Phases: PLAN → IMPLEMENT → VERIFY (one sealed MECHANICAL gate, then fresh findings-only judges).
 
 Each skill's `SKILL.md` is the source of truth for its flags and workflow — don't duplicate them here. Before 4.0.0 each skill was named `devlyn:<name>`; read an old reference as the matching `devlyn-<name>` skill.
 
@@ -169,9 +169,9 @@ For Codex model selection, receipts, isolation and availability, follow the invo
 
 ## Skill Boundary Policy
 
-The runtime pipeline surface is two skills — `/devlyn-resolve` and `/devlyn-ideate` — plus `/devlyn-design-ui` for creative UI exploration and two utilities: `/devlyn-engines` (engine-role config) and `/devlyn-queue` (intent-queue status/add/drain). `/devlyn-resolve` runs PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY inline; verification, cleanup, and security review (delegated to the native `security-review` Claude Code skill from BUILD_GATE) all live inside the pipeline. There are no standalone `/devlyn:review`, `/devlyn:evaluate`, or `/devlyn:team-resolve` surfaces. `/devlyn-design-ui` spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer). `/devlyn-reap` is an optional user-invoked skill in `optional-skills/`; resolve never delegates to it.
+The runtime pipeline surface is two skills — `/devlyn-resolve` and `/devlyn-ideate` — plus `/devlyn-design-ui` for creative UI exploration and two utilities: `/devlyn-engines` (engine-role config) and `/devlyn-queue` (intent-queue status/add/drain). `/devlyn-resolve` runs PLAN → IMPLEMENT → VERIFY inline; mechanical verification, artifact cleanup and the judges all live inside the pipeline. There are no standalone `/devlyn:review`, `/devlyn:evaluate`, or `/devlyn:team-resolve` surfaces. `/devlyn-design-ui` spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer). `/devlyn-reap` is an optional user-invoked skill in `optional-skills/`; resolve never delegates to it.
 
-Browser validation runs directly from BUILD_GATE using whichever toolchain is available (Chrome MCP, Playwright, or curl-tier fallback) — there is no separate `/devlyn:browser-validate` skill.
+Browser validation runs directly from VERIFY MECHANICAL using whichever toolchain is available (Chrome MCP, Playwright, or curl-tier fallback) — there is no separate `/devlyn:browser-validate` skill.
 
 ## Communication Style
 

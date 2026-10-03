@@ -242,14 +242,13 @@ def observations(state):
     phases = state.get("phases", {})
     if not isinstance(phases, dict):
         fail("state phases must be an object")
-    for phase in ("implement", "cleanup"):
-        entry = phases.get(phase)
-        if isinstance(entry, dict) and entry.get("model_effective") and entry.get("verdict") in {"PASS", "PASS_WITH_ISSUES"} and entry.get("completed_at"):
-            basis = ("completed-phase/session-model-attestation"
-                     if entry.get("engine") == "claude" and not entry.get("invocation_receipt") else None)
-            if basis:
-                result["worker"] = {"model_effective": entry["model_effective"], "effort_effective": None,
-                                    "evidence_basis": basis}
+    entry = phases.get("implement")
+    if isinstance(entry, dict) and entry.get("model_effective") and entry.get("verdict") in {"PASS", "PASS_WITH_ISSUES"} and entry.get("completed_at"):
+        basis = ("completed-phase/session-model-attestation"
+                 if entry.get("engine") == "claude" and not entry.get("invocation_receipt") else None)
+        if basis:
+            result["worker"] = {"model_effective": entry["model_effective"], "effort_effective": None,
+                                "evidence_basis": basis}
     verify = phases.get("verify")
     if isinstance(verify, dict):
         evidence = verify.get("role_evidence") or {}

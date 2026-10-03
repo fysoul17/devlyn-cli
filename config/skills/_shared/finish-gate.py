@@ -157,29 +157,6 @@ def load_authorized_surface(devlyn_dir: pathlib.Path) -> list[str]:
     return list(data["authorized_surface"])
 
 
-def cleanup_window(work: pathlib.Path, state: dict) -> set[str]:
-    if "cleanup" in (state.get("bypasses") or []):
-        return set()
-    phases = state.get("phases") or {}
-    cleanup = phases.get("cleanup") if isinstance(phases, dict) else None
-    if cleanup is None:
-        return set()
-    if not isinstance(cleanup, dict):
-        raise Malformed("phases.cleanup must be an object or null")
-    if cleanup.get("verdict") is None:
-        return set()
-    pre_sha = (cleanup.get("pre_sha") or "").strip()
-    post_sha = (cleanup.get("post_sha") or "").strip()
-    if not pre_sha or not post_sha:
-        raise Malformed("phases.cleanup with a verdict must include both pre_sha and post_sha")
-    ensure_commit(work, pre_sha, "phases.cleanup.pre_sha")
-    ensure_commit(work, post_sha, "phases.cleanup.post_sha")
-    proc = git(work, "diff", "--name-only", pre_sha, post_sha)
-    if proc.returncode != 0:
-        raise Malformed(f"cannot compute cleanup window: {proc.stderr.strip()}")
-    return {line.strip() for line in proc.stdout.splitlines() if line.strip()}
-
-
 def changed_files(work: pathlib.Path, base_sha: str) -> set[str]:
     proc = git(work, "diff", "--name-only", base_sha, "--")
     if proc.returncode != 0:
@@ -251,7 +228,6 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
             raise Malformed("pipeline.state.json must include non-empty base_ref.sha")
         ensure_commit(work, base_sha, "base_ref.sha")
         surface = load_authorized_surface(devlyn_dir)
-        cleanup_paths = cleanup_window(work, state)
         changed = changed_files(work, base_sha)
         devlyn_prefix = devlyn_relative_prefix(work, devlyn_dir)
         checked = sorted(path for path in changed if not is_under_prefix(path, devlyn_prefix))
@@ -261,13 +237,7 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
         write_summary(devlyn_dir, {"exit": 1, "malformed": str(e)})
         return 1
 
-    offenders = sorted(
-        path for path in checked
-        if (
-            not SPEC_VERIFY.path_matches_surface(path, surface)
-            and path not in cleanup_paths
-        )
-    )
+    offenders = sorted(path for path in checked if not SPEC_VERIFY.path_matches_surface(path, surface))
     if not offenders:
         findings_path.unlink(missing_ok=True)
         write_summary(devlyn_dir, {
@@ -289,7 +259,7 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
         else:
             revert_failed += 1
         action = "restored to base_ref.sha" if existed_at_base else "removed because it did not exist at base_ref.sha"
-        message = f"Final diff touched an unaudited file outside authorized_surface and cleanup window: {path}"
+        message = f"Final diff touched an unaudited file outside authorized_surface: {path}"
         if detail:
             message = f"{message} ({detail})"
         findings.append(make_finding(
@@ -300,8 +270,8 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
             status=status,
             criterion_ref="plan.md/authorized_surface",
             fix_hint=(
-                "This file was outside authorized_surface plus the cleanup window "
-                f"and was {action}; do not ship unlicensed final-diff changes."
+                f"This file was outside authorized_surface and was {action}; "
+                "do not ship unlicensed final-diff changes."
             ),
         ))
     write_findings(devlyn_dir, findings)
@@ -366,7 +336,7 @@ def make_fixture(root: pathlib.Path, name: str, *, mode: str = "full") -> tuple[
     write_state(devlyn, {
         "mode": mode,
         "base_ref": {"sha": base_sha},
-        "phases": {"cleanup": None},
+        "phases": {},
     })
     return (work, devlyn, base_sha)
 
@@ -427,32 +397,6 @@ def self_test() -> int:
             "mode": "full", "checked": 1, "offenders": 1,
             "reverted": 1, "revert_failed": 0, "exit": 2,
         })
-
-        work, devlyn, base = make_fixture(root, "cleanup-window")
-        write_text(work / "cleanable.txt", "cleanup changed\n")
-        git_check(work, "add", "cleanable.txt")
-        git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "cleanup")
-        post_sha = git_check(work, "rev-parse", "HEAD")
-        write_state(devlyn, {
-            "mode": "full",
-            "base_ref": {"sha": base},
-            "phases": {"cleanup": {"verdict": "PASS", "pre_sha": base, "post_sha": post_sha}},
-        })
-        assert checked_run_gate(work, devlyn) == 0
-        assert not (devlyn / FINDINGS_NAME).exists()
-        assert_summary(devlyn, {"mode": "full", "checked": 1, "offenders": 0, "exit": 0})
-
-        work, devlyn, base = make_fixture(root, "cleanup-malformed")
-        write_state(devlyn, {
-            "mode": "full",
-            "base_ref": {"sha": base},
-            "phases": {"cleanup": {"verdict": "PASS", "pre_sha": base}},
-        })
-        assert checked_run_gate(work, devlyn) == 1
-        assert read_findings(devlyn)[0]["rule_id"] == "scope.finish-gate-malformed"
-        summary = read_summary(devlyn)
-        assert summary["exit"] == 1, summary
-        assert "phases.cleanup with a verdict" in summary["malformed"], summary
 
         work, devlyn, _base = make_fixture(root, "verify-only", mode="verify-only")
         (devlyn / "plan.md").unlink()

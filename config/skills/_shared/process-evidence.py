@@ -17,8 +17,11 @@ import time
 
 
 SCHEMA_VERSION = "1.0"
-PHASES = {"implement", "build_gate", "verify"}
-CAPABILITIES = {"filesystem", "subprocess", "loopback", "pty", "network"}
+PHASES = {"implement", "verify"}
+# Archived runs bound BUILD_GATE carriers: they are still read and rehashed, never written.
+RETIRED_PHASES = {"build_gate"}
+# `tool`: a required tool proven absent whose supply the task prohibits (resolve VERIFY MECHANICAL).
+CAPABILITIES = {"filesystem", "subprocess", "loopback", "pty", "network", "tool"}
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 OBLIGATION_KEYS = {
@@ -85,7 +88,7 @@ def _string_list(value: object, label: str) -> list[str]:
     return list(value)
 
 
-def normalize_obligation(value: object, phase: str | None = None) -> dict:
+def normalize_obligation(value: object, phase: str | None = None, *, retired_ok: bool = False) -> dict:
     if not isinstance(value, dict):
         raise EvidenceError("process_evidence entry must be an object")
     unknown = sorted(set(value) - OBLIGATION_KEYS)
@@ -95,7 +98,7 @@ def normalize_obligation(value: object, phase: str | None = None) -> dict:
     if not isinstance(evidence_id, str) or ID_RE.fullmatch(evidence_id) is None:
         raise EvidenceError("process_evidence id must be a safe non-empty path component")
     declared_phase = value.get("phase")
-    if declared_phase not in PHASES:
+    if declared_phase not in PHASES and not (retired_ok and declared_phase in RETIRED_PHASES):
         raise EvidenceError(f"process_evidence[{evidence_id}].phase is invalid")
     if phase is not None and declared_phase != phase:
         raise EvidenceError(
@@ -216,7 +219,7 @@ def declared_obligations(work: pathlib.Path, state: dict, phase: str) -> list[di
 
 
 def mechanical_evidence_required(work: pathlib.Path, state: dict) -> bool:
-    """Return whether BUILD_GATE/VERIFY has declared executable obligations."""
+    """Return whether VERIFY MECHANICAL has declared executable obligations."""
     expected_path = _source_expected_path(work, state)
     if expected_path is not None:
         expected = _read_json(expected_path)
@@ -456,7 +459,7 @@ def validate_manifest(
             **({"cmd": execution["command"]} if execution["command"] is not None else
                {"argv": execution["argv"]}),
             **(expectation if isinstance(expectation, dict) else {}),
-        }, phase)
+        }, phase, retired_ok=True)
         if execution != _execution(normalized) or expectation != _expectation(normalized):
             raise EvidenceError(f"{label} execution or expectation is non-canonical")
         if evidence_id in declared and normalized != declared[evidence_id]:
@@ -829,29 +832,69 @@ def self_test() -> int:
 
     with tempfile.TemporaryDirectory() as raw_tmp:
         work = pathlib.Path(raw_tmp)
-        state = {"run_id": "rs-cap-test", "phases": {"build_gate": {"round": 0}}}
-        manifest_rel = manifest_relative_path(state, "build_gate")
+        state = {"run_id": "rs-cap-test", "phases": {"verify": {"round": 0}}}
+        manifest_rel = manifest_relative_path(state, "verify")
         manifest = work / manifest_rel
         product = normalize_obligation({
-            "id": "product", "phase": "build_gate",
+            "id": "product", "phase": "verify",
             "cmd": "printf 'Operation not permitted' >&2; exit 1",
         })
         denied = normalize_obligation({
-            "id": "denied", "phase": "build_gate", "cmd": "python3 -m pytest",
+            "id": "denied", "phase": "verify", "cmd": "python3 -m pytest",
         })
         product_entry = capture_process(
-            work, manifest, state["run_id"], "build_gate", 0, product,
+            work, manifest, state["run_id"], "verify", 0, product,
         )
         denied_entry = record_capability_denial(
-            work, manifest, state["run_id"], "build_gate", 0, denied,
+            work, manifest, state["run_id"], "verify", 0, denied,
             "subprocess", b"parent route denied subprocess creation",
         )
         assert product_entry["classification"] == {"kind": "product_result", "operation": None}
         assert denied_entry["classification"] == {
             "kind": "capability_denied", "operation": "subprocess",
         }
+        tool = normalize_obligation({"id": "tool", "phase": "verify", "cmd": "tsc --noEmit"})
+        tool_entry = record_capability_denial(
+            work, manifest, state["run_id"], "verify", 0, tool,
+            "tool", b"tsc absent from the declared toolchain; the task prohibits installing it",
+        )
+        assert tool_entry["classification"] == {"kind": "capability_denied", "operation": "tool"}
+        try:
+            record_capability_denial(
+                work, manifest, state["run_id"], "verify", 0,
+                normalize_obligation({"id": "other", "phase": "verify", "cmd": "true"}), "disk", b"",
+            )
+        except EvidenceError as exc:
+            assert "unsupported denied capability: disk" in str(exc)
+        else:
+            raise AssertionError("an unknown capability was recorded")
+        try:
+            normalize_obligation({"id": "retired", "phase": "build_gate", "cmd": "true"})
+        except EvidenceError as exc:
+            assert "phase is invalid" in str(exc)
+        else:
+            raise AssertionError("a retired build_gate obligation was accepted")
+        # An archived run's BUILD_GATE carrier (written before the phase retired) still rehashes.
+        retired_state = {"run_id": "rs-retired", "phases": {"build_gate": {"round": 0}}}
+        retired_rel = manifest_relative_path(retired_state, "build_gate")
+        PHASES.add("build_gate")
+        try:
+            capture_process(work, work / retired_rel, "rs-retired", "build_gate", 0,
+                            normalize_obligation({"id": "old", "phase": "build_gate", "cmd": "true"}, "build_gate"))
+        finally:
+            PHASES.discard("build_gate")
+        retired_carrier = validate_manifest(work, retired_rel, "rs-retired", "build_gate", 0,
+                                            require_expectations=False)
+        validate_bound_carrier(work, retired_carrier)
+        try:
+            capture_process(work, work / retired_rel, "rs-retired", "build_gate", 0,
+                            {"id": "new", "phase": "build_gate", "cmd": "true"})
+        except EvidenceError as exc:
+            assert "phase is invalid" in str(exc)
+        else:
+            raise AssertionError("a new build_gate entry was written")
         denied_carrier = validate_manifest(
-            work, manifest_rel, state["run_id"], "build_gate", 0,
+            work, manifest_rel, state["run_id"], "verify", 0,
             require_expectations=False,
         )
         denied_outcome = bound_carrier_outcome(work, denied_carrier)
@@ -860,6 +903,10 @@ def self_test() -> int:
             "id": "denied",
             "operation": "subprocess",
             "execution": {"command": "python3 -m pytest", "argv": None},
+        }, {
+            "id": "tool",
+            "operation": "tool",
+            "execution": {"command": "tsc --noEmit", "argv": None},
         }]
         print("PASS process evidence explicit capability classification without stderr heuristics")
     return 0

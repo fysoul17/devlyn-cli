@@ -19,7 +19,12 @@ from typing import TextIO
 INCOMPLETE_EXIT = 79
 VALID_VERIFY_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED"}
 SAFE_RUN_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
-ENGINE_UNAVAILABLE_RE = re.compile(r"^[A-Za-z0-9_.-]+-unavailable$")
+# `<engine>-unavailable` witnesses only an engine that ships an adapter; any other
+# `*-unavailable` label (for example a missing tool) is not an engine halt.
+ADAPTER_ENGINES = frozenset(
+    path.stem for path in (pathlib.Path(__file__).resolve().parent / "adapters").glob("*.md")
+    if path.stem != "README"
+)
 PHASE_ORDER = (
     "plan",
     "probe_derive",
@@ -114,7 +119,8 @@ def terminal_halt_witness(phases: dict[str, object]) -> tuple[str, str] | None:
     reason = verdict.removeprefix("BLOCKED:")
     target = HALT_WITNESS_PHASES.get(reason)
     if target is None and (
-        reason == "fresh-context-unavailable" or ENGINE_UNAVAILABLE_RE.fullmatch(reason)
+        reason == "fresh-context-unavailable"
+        or (reason.endswith("-unavailable") and reason.removesuffix("-unavailable") in ADAPTER_ENGINES)
     ):
         reached = [name for name in WORK_PHASE_ORDER if phases.get(name) is not None]
         target = reached[-1] if reached else None
@@ -703,6 +709,10 @@ def self_test() -> int:
             }
             state = {"run_id": f"witness-{reason}", "phases": phases}
             assert terminal_halt_witness(phases) == (halt_phase, reason)
+            if reason == "codex-unavailable":
+                for invented in ("required-tools-unavailable", "invented-unavailable"):
+                    claimed = {**phases, "final_report": {**phases["final_report"], "verdict": f"BLOCKED:{invented}"}}
+                    assert terminal_halt_witness(claimed) is None, invented
             write_archived_state(root, state)
             assert classify(root).status == "CLEAN"
             tests += 1

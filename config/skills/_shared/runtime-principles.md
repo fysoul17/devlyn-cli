@@ -1,6 +1,6 @@
 # Runtime principles — sub-agent contract
 
-The runtime contract every sub-agent inside `/devlyn-resolve` (PLAN / IMPLEMENT / BUILD_GATE / CLEANUP / VERIFY) and `/devlyn-ideate` must satisfy. Source of truth for sub-agent behavior on user tasks. NOT for autoresearch-loop / harness-developer concerns (see `autoresearch/PRINCIPLES.md`).
+The runtime contract every sub-agent inside `/devlyn-resolve` (PLAN / IMPLEMENT / VERIFY) and `/devlyn-ideate` must satisfy. Source of truth for sub-agent behavior on user tasks. NOT for autoresearch-loop / harness-developer concerns (see `autoresearch/PRINCIPLES.md`).
 
 The three sections below mirror the corresponding CLAUDE.md sections (Subtractive-first editing, Goal-locked execution, Evidence over claim). No-workaround discipline lives in CLAUDE.md Core Principle #1 only — it does not have a runtime-mirror block. Each mirrored section is wrapped in `<!-- runtime-principles:section=NAME:begin -->` / `:end -->` markers in BOTH this file and CLAUDE.md; lint Check 12 extracts each named block from both files and diffs to detect drift.
 

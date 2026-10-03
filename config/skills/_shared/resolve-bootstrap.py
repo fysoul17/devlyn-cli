@@ -20,15 +20,10 @@ sys.dont_write_bytecode = True
 
 
 VALUE_FLAGS = {
-    "--max-rounds", "--engine", "--spec", "--verify-only", "--goal-file", "--bypass", "--role-config",
+    "--max-rounds", "--engine", "--spec", "--verify-only", "--goal-file", "--role-config",
 }
 BOOL_FLAGS = {"--pair-verify", "--no-pair", "--risk-probes", "--no-risk-probes", "--perf"}
-SINGLE_VALUE_FLAGS = VALUE_FLAGS - {"--bypass"}
-VALID_BYPASSES = {"build-gate", "cleanup"}
-PHASE_NAMES = (
-    "plan", "probe_derive", "implement", "surface_close",
-    "build_gate", "cleanup", "verify", "final_report",
-)
+PHASE_NAMES = ("plan", "probe_derive", "implement", "verify", "final_report")
 
 
 class BootstrapBlocked(Exception):
@@ -112,7 +107,7 @@ def sha256(raw: bytes) -> str:
 
 
 def parse_flags(argv: list[str]) -> dict:
-    values: dict[str, str | list[str]] = {"--bypass": []}
+    values: dict[str, str] = {}
     switches: set[str] = set()
     positional: list[str] = []
     seen_single: set[str] = set()
@@ -133,17 +128,12 @@ def parse_flags(argv: list[str]) -> dict:
             i += 1
             continue
         if token in VALUE_FLAGS:
-            if token in SINGLE_VALUE_FLAGS and token in seen_single:
+            if token in seen_single:
                 block("BLOCKED:invalid-flags", f"{token} may be passed only once")
             if i + 1 >= len(argv) or argv[i + 1].startswith("--"):
                 block("BLOCKED:invalid-flags", f"{token} requires a value")
-            value = argv[i + 1]
-            if token == "--bypass":
-                assert isinstance(values[token], list)
-                values[token].append(value)
-            else:
-                values[token] = value
-                seen_single.add(token)
+            values[token] = argv[i + 1]
+            seen_single.add(token)
             i += 2
             continue
         if token.startswith("-"):
@@ -170,14 +160,6 @@ def parse_flags(argv: list[str]) -> dict:
     if max_rounds < 1:
         block("BLOCKED:invalid-flags", "--max-rounds must be a positive integer")
 
-    bypasses: list[str] = []
-    for group in values["--bypass"]:
-        for phase in group.split(","):
-            if phase not in VALID_BYPASSES:
-                block("BLOCKED:invalid-flags", f"invalid --bypass phase: {phase or '<empty>'}")
-            if phase not in bypasses:
-                bypasses.append(phase)
-
     mode = "verify-only" if "--verify-only" in values else "spec" if "--spec" in values else "free-form"
     return {
         "mode": mode,
@@ -190,7 +172,6 @@ def parse_flags(argv: list[str]) -> dict:
         "no_pair": "--no-pair" in switches,
         "inline_goal": " ".join(positional),
         "pair_verify": "--pair-verify" in switches,
-        "bypasses": bypasses,
     }
 
 
@@ -467,8 +448,7 @@ def bootstrap(
                 "sha": git_text(cwd, "rev-parse", "HEAD"),
             },
             "rounds": {"max_rounds": parsed["max_rounds"], "global": 0},
-            "bypasses": parsed["bypasses"],
-            "implement_passed_sha": None,
+            "untracked_baseline_sha256": None,
             "source": source,
             "criteria": [],
             "phases": {name: None for name in PHASE_NAMES},
@@ -1012,8 +992,7 @@ def self_test() -> int:
                 "sha": git_text(work, "rev-parse", "HEAD"),
             },
             "rounds": {"max_rounds": 4, "global": 0},
-            "bypasses": [],
-            "implement_passed_sha": None,
+            "untracked_baseline_sha256": None,
             "source": {
                 "type": "generated",
                 "spec_path": None,
@@ -1081,7 +1060,7 @@ def self_test() -> int:
             ["--max-rounds", "0", "fix", "app.py"],
             ["--max-rounds", "x", "fix", "app.py"],
             ["--max-rounds"],
-            ["--bypass", "plan", "fix", "app.py"],
+            ["--bypass", "build-gate,cleanup", "fix", "app.py"],
             ["--bypass"],
             ["--unknown", "fix", "app.py"],
         ]

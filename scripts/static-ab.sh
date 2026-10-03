@@ -7,7 +7,7 @@
 # Files measured (current two-skill resolve load set):
 #   - devlyn-resolve/SKILL.md
 #   - devlyn-resolve/references/{state-schema.md, free-form-mode.md}
-#   - devlyn-resolve/references/phases/{plan,probe-derive,implement,build-gate,cleanup,verify}.md
+#   - devlyn-resolve/references/phases/{plan,probe-derive,implement,mechanical,verify}.md
 #   - _shared/codex-config.md
 #   - _shared/engine-preflight.md
 #   - _shared/runtime-principles.md
@@ -31,8 +31,7 @@ FILES=(
   config/skills/devlyn-resolve/references/phases/plan.md
   config/skills/devlyn-resolve/references/phases/probe-derive.md
   config/skills/devlyn-resolve/references/phases/implement.md
-  config/skills/devlyn-resolve/references/phases/build-gate.md
-  config/skills/devlyn-resolve/references/phases/cleanup.md
+  config/skills/devlyn-resolve/references/phases/mechanical.md
   config/skills/devlyn-resolve/references/phases/verify.md
 )
 
