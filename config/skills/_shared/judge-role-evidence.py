@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Authenticate explicit read-only judge transport; never accept mutation receipts."""
+"""Authenticate read-only VERIFY judge transport; never accept mutation receipts."""
 from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import runpy
@@ -40,15 +41,49 @@ def seal(devlyn, name):
     return {"path": ".devlyn/" + name, "sha256": digest(raw), "bytes": len(raw)}, raw
 
 
+FINDING_FIELDS = {"id": str, "rule_id": str, "severity": str, "file": str, "line": int,
+                  "message": str, "criterion_ref": str, "confidence": str}
+VERDICTS = ["PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED"]
+# Claude judges answer through the CLI's structured output (--json-schema), never free text.
+JUDGE_SCHEMA = {
+    "type": "object", "required": ["findings", "verdict"],
+    "properties": {
+        "findings": {"type": "array", "items": {
+            "type": "object", "required": list(FINDING_FIELDS),
+            "properties": {**{key: {"type": "integer" if kind is int else "string"} for key, kind in FINDING_FIELDS.items()},
+                           "severity": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]},
+                           "verdict_binding": {"type": "boolean"}}}},
+        "verdict": {"enum": VERDICTS}}}
+JUDGE_SCHEMA_TEXT = json.dumps(JUDGE_SCHEMA, separators=(",", ":"))
+
+
+def structured_judgment(value):
+    """Canonical JSONL for a successful Claude envelope's validated structured_output: findings, then the verdict.
+
+    Authentication and the timed-out capture use this one check. ASCII escapes keep U+0085/U+2028/U+2029 from
+    splitting a record under the parser's str.splitlines().
+    """
+    require(isinstance(value, dict) and value.get("type") == "result" and value.get("subtype") == "success"
+            and value.get("is_error") is False and isinstance(value.get("session_id"), str)
+            and bool(value["session_id"].strip()), "unsuccessful or malformed Claude terminal envelope")
+    judgment = value.get("structured_output")
+    require(isinstance(judgment, dict) and isinstance(judgment.get("findings"), list)
+            and judgment.get("verdict") in VERDICTS, "missing or invalid Claude structured_output")
+    severities = JUDGE_SCHEMA["properties"]["findings"]["items"]["properties"]["severity"]["enum"]
+    for finding in judgment["findings"]:
+        require(isinstance(finding, dict) and finding.get("severity") in severities
+                and all(type(finding.get(key)) is kind for key, kind in FINDING_FIELDS.items())
+                and type(finding.get("verdict_binding", False)) is bool, "Claude structured finding violates the judge schema")
+    lines = [json.dumps(finding) for finding in judgment["findings"]] + [judgment["verdict"]]
+    return ("\n".join(lines) + "\n").encode()
+
+
 def claude_result(raw, exit_code):
     value = loads(raw)
     require(type(exit_code) is int and exit_code == 0 and isinstance(value, dict), "unsuccessful Claude execution")
-    require(value.get("type") == "result" and value.get("subtype") == "success"
-            and value.get("is_error") is False and value.get("stop_reason") == "end_turn"
-            and isinstance(value.get("session_id"), str) and bool(value["session_id"].strip())
-            and isinstance(value.get("result"), str), "unsuccessful or malformed Claude terminal envelope")
+    derived = structured_judgment(value)
     model = runpy.run_path(Path(__file__).with_name("state-phase-write.py"))["select_claude_primary_model"](value)
-    return value["result"].encode(), model, value["session_id"]
+    return derived, model, value["session_id"]
 
 
 def codex_header(stderr):
@@ -64,6 +99,96 @@ def codex_header(stderr):
         require(len(values) == 1 and bool(values[0].strip()), f"missing/conflicting native {key}")
         fields[key] = values[0]
     return fields
+
+
+def native_executable(command, actual, windows=os.name == "nt"):
+    """Whether `actual` is what platform-support.native_argv makes of `command`, checked without PATH.
+
+    POSIX runs the command unchanged. Windows mirrors native_argv: a named .exe/.com path runs
+    exactly; an extensionless path may gain .exe/.com; a bare name resolves on PATH to an .exe/.com
+    of that name; an npm .cmd shim runs node.exe with the entry that the engine package's own
+    manifest declares (under that shim's package root when the shim is named by path).
+    """
+    if not windows:
+        return actual == command
+    if actual[len(actual) - len(command) + 1:] != command[1:]:
+        return False
+    directory, name = os.path.split(command[0])  # As shutil.which splits it: `./codex.exe` names a path.
+    engine, suffix = Path(name).stem.lower(), Path(name).suffix.lower()
+    if len(actual) == len(command):
+        executable = Path(actual[0])
+        if executable.suffix.lower() not in {".exe", ".com"} or executable.stem.lower() != engine:
+            return False
+        if not directory:
+            return True  # A bare name resolves through the dispatch-time PATH.
+        found, resolved = os.path.split(actual[0])
+        return found == directory and (resolved == name if suffix else Path(resolved).stem == name)
+    package = {"claude": "@anthropic-ai/claude-code", "codex": "@openai/codex"}.get(engine)
+    if (package is None or suffix not in {"", ".cmd"} or len(actual) != len(command) + 1
+            or Path(actual[0]).name.lower() != "node.exe" or Path(actual[1]).suffix not in {".js", ".cjs", ".mjs"}):
+        return False
+    script = Path(actual[1])
+    root = None
+    if directory:
+        shims = Path(directory)
+        root = (shims.parent if shims.name == ".bin" else shims / "node_modules") / package
+    for folder in script.parents:
+        try:
+            manifest = loads((folder / "package.json").read_bytes())
+        except (OSError, ValueError):
+            continue  # No manifest here, or a nested non-package one.
+        if not isinstance(manifest, dict) or manifest.get("name") != package:
+            continue
+        entry = manifest.get("bin")
+        entry = entry.get(engine) if isinstance(entry, dict) else entry
+        return (isinstance(entry, str) and (folder / entry).resolve() == script.resolve()
+                and (root is None or folder.resolve() == root.resolve()))
+    return False
+
+
+def bound_transport(devlyn, stem, entry, argv, prompt):
+    """The runner-written carrier for `argv`, authorized against the frozen judge route.
+
+    Checks the exact prompt bytes, the 600 s bound, the bounded/isolated wrapper shape and the
+    read-only native command with the requested model/effort, whether or not the seat succeeded.
+    """
+    engine, model, effort = entry["engine"], entry.get("model_requested"), entry.get("effort_requested")
+    receipt = runpy.run_path(Path(__file__).with_name("invocation-receipt.py"))
+    transport = receipt["validate_transport"](devlyn / (stem + ".prompt.transport.json"), prompt.encode("utf-8"),
+                                              require_outcome=True)
+    require(transport["timeout_sec"] == 600, "file transport budget mismatch")
+    require(native_executable(transport["command"], transport["argv"]), "actual executable differs from the authorized command")
+    if model is not None:
+        require(option(argv, "-m", "--model") == model, "requested model differs from argv")
+    if engine == "claude":
+        index = next((i for i, arg in enumerate(argv) if Path(arg).name == "run-bounded.py"), -1)
+        require(index >= 0 and argv[index + 1:index + 3] == ["600", "--stdin-file"]
+                and len(argv) > index + 6 and argv[index + 4:index + 6] == ["--record-transport", "--"], "invalid bounded file transport")
+        require(Path(argv[index + 3]).resolve() == (devlyn / (stem + ".prompt")).resolve(), "bounded prompt path mismatch")
+        require(transport["command"] == argv[index + 6:] and prompt not in transport["command"], "bounded actual argv mismatch")
+        require(transport["command"][:2] == ["claude", "-p"], "Claude print-mode command missing")
+        for flag, expected in (("--permission-mode", "dontAsk"), ("--tools", "Read,Grep,Glob"),
+                               ("--allowedTools", "Read,Grep,Glob"), ("--setting-sources", "project"), ("--output-format", "json")):
+            require(option(argv, flag) == expected, f"Claude {flag} differs from read-only contract")
+        require("--strict-mcp-config" in argv and loads(option(argv, "--mcp-config") or "null") == {"mcpServers": {}}, "Claude MCP isolation missing")
+        require(option(argv, "--json-schema") == JUDGE_SCHEMA_TEXT, "Claude judge schema differs from the structured-output contract")
+        if effort:
+            require(option(argv, "--effort") == effort, "requested effort differs from argv")
+    else:
+        index = next((i for i, arg in enumerate(argv) if Path(arg).name == "codex-monitored.sh"), -1)
+        require(index >= 0, "monitored file transport missing")
+        isolation = ["--ignore-user-config", "--ignore-rules", "--ephemeral", "--disable", "codex_hooks", "--disable", "hooks"]
+        require(transport["isolated"] and Path(transport["command"][0]).stem == "codex"
+                and transport["command"][1:] == ["exec", *isolation, *argv[index + 1:]], "actual isolated argv mismatch")
+        receipt["file_prompt_args"](transport["command"][2:])
+        require(option(argv, "-s", "--sandbox") == "read-only", "judge sandbox is not read-only")
+        cwd = option(argv, "-C", "--cd")
+        require(isinstance(cwd, str) and Path(cwd).is_absolute() and Path(cwd).resolve() == devlyn.parent.resolve(), "judge cwd differs from actual worktree")
+        require(not any(arg in argv for arg in ("--dangerously-bypass-approvals-and-sandbox", "--yolo", "--full-auto")), "judge bypass is forbidden")
+        flags = [argv[i + 1] for i, item in enumerate(argv[:-1]) if item in {"-c", "--config"}]
+        efforts = [flag.split("=", 1)[1].strip('"') for flag in flags if flag.startswith("model_reasoning_effort=")]
+        require(len(efforts) == 1 and (not effort or efforts[0] == effort), "missing/conflicting requested effort")
+    return transport
 
 
 def describe(devlyn, state, role, exit_code):
@@ -88,55 +213,20 @@ def describe(devlyn, state, role, exit_code):
         else:
             stderr = raw.decode()
     require(isinstance(argv, list) and all(isinstance(x, str) for x in argv), "argv must be an array of strings")
-    file_mode = ((devlyn / (stem + ".prompt.transport.json")).exists()
-                 or ("--stdin-file" in argv if engine == "claude" else "-" in argv))
-    transport = None
-    if file_mode:
-        artifacts["transport"], _ = seal(devlyn, stem + ".prompt.transport.json")
-        transport = runpy.run_path(Path(__file__).with_name("invocation-receipt.py"))["validate_transport"](
-            devlyn / (stem + ".prompt.transport.json"), prompt.encode("utf-8"))
-        require(transport["exit_code"] == exit_code and transport["timeout_sec"] == 600, "file transport exit/budget mismatch")
-        if engine == "claude":
-            index = next((i for i, arg in enumerate(argv) if Path(arg).name == "run-bounded.py"), -1)
-            require(index >= 0 and argv[index + 1:index + 3] == ["600", "--stdin-file"]
-                    and len(argv) > index + 6 and argv[index + 4:index + 6] == ["--record-transport", "--"], "invalid bounded file transport")
-            require(Path(argv[index + 3]).resolve() == (devlyn / (stem + ".prompt")).resolve(), "bounded prompt path mismatch")
-            require(transport["command"] == argv[index + 6:] and prompt not in transport["command"], "bounded actual argv mismatch")
-            require("-p" in transport["command"] or "--print" in transport["command"], "Claude print mode missing")
-        else:
-            index = next((i for i, arg in enumerate(argv) if Path(arg).name == "codex-monitored.sh"), -1)
-            require(index >= 0, "monitored file transport missing")
-            isolation = ["--ignore-user-config", "--ignore-rules", "--ephemeral", "--disable", "codex_hooks", "--disable", "hooks"]
-            require(transport["isolated"] and transport["command"][1:] == ["exec", *isolation, *argv[index + 1:]], "actual isolated argv mismatch")
-            runpy.run_path(Path(__file__).with_name("invocation-receipt.py"))["file_prompt_args"](transport["command"][2:])
-    else:
-        require(prompt in argv, "canonical prompt is not an exact dispatched argument")
+    artifacts["transport"], _ = seal(devlyn, stem + ".prompt.transport.json")
+    transport = bound_transport(devlyn, stem, entry, argv, prompt)
+    require(transport["outcome"] == "exited" and transport["exit_code"] == exit_code, "file transport outcome/exit mismatch")
     diagnostics = stderr.partition("\nuser\n")[0] if engine == "codex" else stderr
     require(not re.search(r"(?im)^.*(?:model|effort).*\b(?:ignor\w*|clamp\w*|unsupported|not supported)\b", diagnostics), "native diagnostic rejected or ignored an explicit option")
     requested_model, requested_effort = entry.get("model_requested"), entry.get("effort_requested")
-    supplied_model = option(argv, "-m", "--model")
-    if requested_model is not None:
-        require(supplied_model == requested_model, "requested model differs from argv")
     if engine == "claude":
-        for flag, expected in (("--permission-mode", "dontAsk"), ("--tools", "Read,Grep,Glob"),
-                               ("--allowedTools", "Read,Grep,Glob"), ("--setting-sources", "project"), ("--output-format", "json")):
-            require(option(argv, flag) == expected, f"Claude {flag} differs from read-only contract")
-        require("--strict-mcp-config" in argv and loads(option(argv, "--mcp-config") or "null") == {"mcpServers": {}}, "Claude MCP isolation missing")
-        require(transport is not None or any(Path(arg).name == "run-bounded.py" and argv[i + 1:i + 3] == ["600", "--"] for i, arg in enumerate(argv)), "Claude 600s bound missing")
-        if requested_effort:
-            require(option(argv, "--effort") == requested_effort, "requested effort differs from argv")
         artifacts["raw"], raw = seal(devlyn, stem + ".output.json")
         derived, observed, session = claude_result(raw, exit_code)
         effort = None
         basis = "native-Claude-result-modelUsage"
     else:
-        require(option(argv, "-s", "--sandbox") == "read-only", "judge sandbox is not read-only")
-        cwd = option(argv, "-C", "--cd")
-        require(isinstance(cwd, str) and Path(cwd).is_absolute() and Path(cwd).resolve() == devlyn.parent.resolve(), "judge cwd differs from actual worktree")
-        require(not any(arg in argv for arg in ("--dangerously-bypass-approvals-and-sandbox", "--yolo", "--full-auto")), "judge bypass is forbidden")
         flags = [argv[i + 1] for i, item in enumerate(argv[:-1]) if item in {"-c", "--config"}]
         efforts = [flag.split("=", 1)[1].strip('"') for flag in flags if flag.startswith("model_reasoning_effort=")]
-        require(len(efforts) == 1 and (not requested_effort or efforts[0] == requested_effort), "missing/conflicting requested effort")
         require("[codex-monitored] isolated=1\n" in diagnostics, "missing actual isolation marker")
         require(re.search(r"^\[codex-monitored\] start: .* timeout=600s ", diagnostics, re.M) is not None, "missing actual 600s bound")
         header = codex_header(stderr)
@@ -171,13 +261,20 @@ def authenticate(devlyn, state, role):
             "identity_basis": actual["identity_basis"], "artifacts": list(actual["artifacts"].values())}
 
 
-def required_roles(state):
-    resolution = ROLE["snapshot"](state)
-    if resolution is None:
-        return []
-    return [role for role in ("primary_judge", "pair_judge")
-            if not resolution["roles"][role].get("skipped_reason")
-            and any(resolution["roles"][role].get(key) is not None for key in ("model_requested", "effort_requested"))]
+def retain(devlyn, state, role, exit_code):
+    """Write the round evidence and derived stdout for one successful judge, then authenticate it."""
+    record, derived = describe(devlyn, state, role, exit_code)
+    stem = record["engine"] + "-judge.r" + str(record["round"])
+    target = devlyn / (stem + ".role-evidence.json")
+    require(not target.exists(), "role evidence already exists for this round")
+    stdout = devlyn / (record["engine"] + "-judge.stdout")
+    require(not stdout.exists(), "canonical stdout already exists")
+    if record["engine"] == "claude":
+        require(not (devlyn / (stem + ".stdout")).exists(), "derived stdout already exists")
+        (devlyn / (stem + ".stdout")).write_bytes(derived)
+    stdout.write_bytes(derived)
+    target.write_bytes(encoded(record))
+    return authenticate(devlyn, state, role)
 
 
 def self_test():
@@ -189,44 +286,87 @@ def self_test():
         selection = ROLE["resolve"](work, "codex", available=lambda e: True)
         state = {"run_id": "fixture", "role_resolution": selection, "engine": "codex", "phases": {"verify": {"engine": "claude", "round": 0}}}
         envelope = {"type": "result", "subtype": "success", "is_error": False, "stop_reason": "end_turn",
-                    "session_id": "fixture-claude", "result": "PASS", "modelUsage": {"fixture-claude-model": {}}}
-        argv = ["python3", "run-bounded.py", "600", "--", "claude", "-p", "review", "--model", "fixture-claude-model", "--effort", "high", "--permission-mode", "dontAsk", "--tools", "Read,Grep,Glob", "--allowedTools", "Read,Grep,Glob", "--setting-sources", "project", "--output-format", "json", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
-        for suffix, raw in (("argv.json", encoded(argv)), ("prompt", b"review"), ("stderr", b""), ("output.json", encoded(envelope))):
+                    "session_id": "fixture-claude", "result": "", "structured_output": {"findings": [], "verdict": "PASS"},
+                    "modelUsage": {"fixture-claude-model": {}}}
+        prompt_path = devlyn / "claude-judge.r0.prompt"
+        file_command = ["claude", "-p", "--model", "fixture-claude-model", "--effort", "high", "--permission-mode", "dontAsk",
+                        "--tools", "Read,Grep,Glob", "--allowedTools", "Read,Grep,Glob", "--setting-sources", "project",
+                        "--output-format", "json", "--json-schema", JUDGE_SCHEMA_TEXT,
+                        "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
+        file_argv = ["python3", "run-bounded.py", "600", "--stdin-file", str(prompt_path), "--record-transport", "--", *file_command]
+        for suffix, raw in (("argv.json", encoded(file_argv)), ("prompt", b"review"), ("stderr", b""), ("output.json", encoded(envelope))):
             (devlyn / ("claude-judge.r0." + suffix)).write_bytes(raw)
+        carrier = devlyn / "claude-judge.r0.prompt.transport.json"
+        def native(command):  # What native_argv records for a bare engine name on this platform.
+            return [command[0] + ".exe", *command[1:]] if os.name == "nt" else list(command)
+        completed = {"schema_version": 2, "transport": "stdin-file",
+            "prompt": {"path": str(prompt_path), "sha256": digest(b"review"), "bytes": 6},
+            "command": file_command, "argv": native(file_command), "timeout_sec": 600,
+            "isolated": False, "status": "completed", "exit_code": 0, "outcome": "exited",
+            "started_at": "2026-09-27T00:00:00.000Z", "ended_at": "2026-09-27T00:00:01.000Z", "elapsed_ms": 1000}
+        for rejected in ({key: value for key, value in completed.items() if key not in {"started_at", "ended_at", "elapsed_ms", "outcome"}}
+                         | {"schema_version": 1},
+                         {**completed, "outcome": "timed_out"}, {**completed, "outcome": "cancelled", "exit_code": 143}):
+            carrier.write_bytes(encoded(rejected))
+            try:
+                describe(devlyn, state, "primary_judge", 0)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("legacy or unsuccessful judge transport accepted")
+        carrier.write_bytes(encoded(completed))
         receipt, text = describe(devlyn, state, "primary_judge", 0)
-        assert text == b"PASS" and receipt["effort_observed"] is None
+        assert text == b"PASS\n" and receipt["effort_observed"] is None
         (devlyn / "claude-judge.stdout").write_bytes(text)
         (devlyn / "claude-judge.r0.stdout").write_bytes(text)
         (devlyn / "claude-judge.r0.role-evidence.json").write_bytes(encoded(receipt))
         authenticate(devlyn, state, "primary_judge")
-        file_command = [argv[4], argv[5], *argv[7:]]
-        file_argv = ["python3", "run-bounded.py", "600", "--stdin-file",
-                     str(devlyn / "claude-judge.r0.prompt"), "--record-transport", "--", *file_command]
+        schema_at = file_argv.index("--json-schema")
+        for broken in (file_argv[:4] + [str(work / "wrong.prompt")] + file_argv[5:],
+                       [arg for arg in file_argv if arg != "--record-transport"],
+                       file_argv[:schema_at] + file_argv[schema_at + 2:]):
+            (devlyn / "claude-judge.r0.argv.json").write_bytes(encoded(broken))
+            try:
+                describe(devlyn, state, "primary_judge", 0)
+            except ValueError as exc:
+                assert "bounded" in str(exc) or "file transport" in str(exc) or "schema" in str(exc), exc
+            else:
+                raise AssertionError("wrong file-transport argv accepted")
         (devlyn / "claude-judge.r0.argv.json").write_bytes(encoded(file_argv))
-        carrier = devlyn / "claude-judge.r0.prompt.transport.json"
-        carrier.write_bytes(encoded({"schema_version": 1, "transport": "stdin-file",
-            "prompt": {"path": str(devlyn / "claude-judge.r0.prompt"), "sha256": digest(b"review"), "bytes": 6},
-            "command": file_command, "argv": file_command, "timeout_sec": 600,
-            "isolated": False, "status": "completed", "exit_code": 0}))
-        describe(devlyn, state, "primary_judge", 0)
-        file_argv[4] = str(work / "wrong.prompt")
-        (devlyn / "claude-judge.r0.argv.json").write_bytes(encoded(file_argv))
-        try:
-            describe(devlyn, state, "primary_judge", 0)
-        except ValueError as exc:
-            assert "bounded prompt path mismatch" in str(exc)
-        else:
-            raise AssertionError("wrong file-transport prompt accepted")
-        carrier.unlink()
-        (devlyn / "claude-judge.r0.argv.json").write_bytes(encoded(argv))
-        for field, value in (("subtype", "error_max_turns"), ("stop_reason", "tool_use"), ("is_error", True), ("session_id", ""), ("result", None)):
+        finding = {"id": "F1", "rule_id": "r", "severity": "LOW", "file": "a.md", "line": 1,
+                   "message": "quotes `code`, a \\ backslash, \"quotes\", a newline\nand non-ASCII é 漢, \u0085 \u2028 \u2029",
+                   "criterion_ref": "spec", "confidence": "high"}
+        for judgment in ({"findings": [finding], "verdict": "PASS_WITH_ISSUES"},
+                         {"findings": [{**finding, "severity": "MEDIUM", "verdict_binding": True}], "verdict": "NEEDS_WORK"}):
+            text = claude_result(encoded({**envelope, "structured_output": judgment}), 0)[0]
+            *records, verdict = text.decode().splitlines()
+            assert [json.loads(record) for record in records] == judgment["findings"] and verdict == judgment["verdict"]
+        # Terminal authority comes from subtype, is_error and a valid structured_output; stop_reason and result are recorded only.
+        accepted = {key: value for key, value in envelope.items() if key != "result"}
+        assert claude_result(encoded({**accepted, "stop_reason": "tool_use"}), 0)[0] == b"PASS\n"
+        for field, value in (("subtype", "error_max_turns"), ("subtype", "error_max_structured_output_retries"),
+                             ("is_error", True), ("session_id", ""), ("structured_output", None),
+                             ("structured_output", "PASS"), ("structured_output", {"findings": [], "verdict": "MAYBE"}),
+                             ("structured_output", {"findings": "none", "verdict": "PASS"}),
+                             ("structured_output", {"verdict": "PASS"}),
+                             ("structured_output", {"findings": [{"severity": "HIGH"}], "verdict": "NEEDS_WORK"}),
+                             ("structured_output", {"findings": [{**finding, "line": "1"}], "verdict": "NEEDS_WORK"}),
+                             ("structured_output", {"findings": [{**finding, "severity": "SEVERE"}], "verdict": "NEEDS_WORK"}),
+                             ("structured_output", {"findings": [{**finding, "verdict_binding": "yes"}], "verdict": "NEEDS_WORK"})):
             bad = {**envelope, field: value}
             try:
                 claude_result(encoded(bad), 0)
             except ValueError:
                 pass
             else:
-                raise AssertionError(field)
+                raise AssertionError((field, value))
+        for raw in (encoded(envelope).rstrip()[:-1], encoded(envelope).replace(b'"type"', b'"type":"result","type"', 1)):
+            try:
+                claude_result(raw, 0)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("truncated or duplicate-key envelope accepted")
         for status in (1, 124, True):
             try:
                 describe(devlyn, state, "primary_judge", status)
@@ -242,11 +382,16 @@ def self_test():
         else:
             raise AssertionError("derived tampering accepted")
         prompt = "review unsupported model/effort warning handling\n"
-        argv = ["bash", "codex-monitored.sh", "-C", str(work), "-s", "read-only", "-m", "gpt-6-astra", "-c", "model_reasoning_effort=high", prompt]
-        header = f"[codex-monitored] start: ts=fixture timeout=600s bin=codex\n[codex-monitored] isolated=1\nOpenAI Codex v0.153.4\n--------\nworkdir: {work}\nmodel: gpt-6-astra\nsandbox: read-only\nreasoning effort: high\nsession id: fixture-codex\n--------\nuser\nreview\n"
-        header = header.replace("\nuser\nreview\n", "\nuser\n" + prompt)
+        argv = ["bash", "codex-monitored.sh", "-C", str(work), "-s", "read-only", "-m", "gpt-6-astra", "-c", "model_reasoning_effort=high", "-"]
+        header = f"[codex-monitored] start: ts=fixture timeout=600s bin=codex\n[codex-monitored] isolated=1\nOpenAI Codex v0.153.4\n--------\nworkdir: {work}\nmodel: gpt-6-astra\nsandbox: read-only\nreasoning effort: high\nsession id: fixture-codex\n--------\nuser\n" + prompt
         for suffix, raw in (("argv.json", encoded(argv)), ("prompt", prompt.encode()), ("stderr", header.encode()), ("stdout", b"PASS\n")):
             (devlyn / ("codex-judge.r0." + suffix)).write_bytes(raw)
+        isolation = ["--ignore-user-config", "--ignore-rules", "--ephemeral", "--disable", "codex_hooks", "--disable", "hooks"]
+        codex_command = ["codex", "exec", *isolation, *argv[2:]]
+        (devlyn / "codex-judge.r0.prompt.transport.json").write_bytes(encoded({
+            **completed, "prompt": {"path": str(devlyn / "codex-judge.r0.prompt"), "sha256": digest(prompt.encode()),
+                                    "bytes": len(prompt.encode())},
+            "command": codex_command, "argv": native(codex_command), "isolated": True}))
         receipt, _ = describe(devlyn, state, "pair_judge", 0)
         assert receipt["model_observed"] == "gpt-6-astra"
         alias = work / "logical-cwd"
@@ -258,10 +403,15 @@ def self_test():
         alias_argv = [str(alias) if arg == str(work) else arg for arg in argv]
         alias_header = header.replace(f"workdir: {work}\n", f"workdir: {alias}\n")
         (devlyn / "codex-judge.r0.argv.json").write_bytes(encoded(alias_argv))
-        (devlyn / "codex-judge.r0.stderr").write_text(alias_header, encoding="utf-8")
+        codex_carrier = devlyn / "codex-judge.r0.prompt.transport.json"
+        original_carrier = codex_carrier.read_bytes()
+        alias_command = ["codex", "exec", *isolation, *alias_argv[2:]]
+        codex_carrier.write_bytes(encoded({**loads(original_carrier), "command": alias_command, "argv": native(alias_command)}))
+        (devlyn / "codex-judge.r0.stderr").write_bytes(alias_header.encode())
         receipt, _ = describe(devlyn, state, "pair_judge", 0)
         assert receipt["artifacts"]["argv"]["sha256"] == digest(encoded(alias_argv))
         assert (devlyn / "codex-judge.r0.stderr").read_text(encoding="utf-8") == alias_header
+        codex_carrier.write_bytes(original_carrier)
         elsewhere = work / "elsewhere"; elsewhere.mkdir()
         (devlyn / "codex-judge.r0.argv.json").write_bytes(encoded([str(elsewhere) if arg == str(work) else arg for arg in argv]))
         try:
@@ -279,40 +429,56 @@ def self_test():
                 pass
             else:
                 raise AssertionError("invalid native header accepted")
-    print("PASS judge-role-evidence self-test: success/error/timeout, raw derivation, tampering and native header identity")
+    with tempfile.TemporaryDirectory() as temp:
+        # The Windows form is checked from the package manifest, never from PATH or a path name.
+        package = Path(temp) / "linked-source"; package.mkdir()
+        (package / "package.json").write_bytes(encoded({"name": "@anthropic-ai/claude-code", "bin": {"claude": "cli.js"}}))
+        (package / "cli.js").write_bytes(b"")
+        other = Path(temp) / "other"; other.mkdir()
+        (other / "package.json").write_bytes(encoded({"name": "other", "bin": "x.js"})); (other / "x.js").write_bytes(b"")
+        command = ["claude", "-p", "--model", "m"]
+        assert native_executable(command, list(command), windows=False)
+        assert not native_executable(command, ["not-claude", *command[1:]], windows=False)
+        nested = Path(temp) / "nested"; (nested / "bin").mkdir(parents=True)
+        (nested / "package.json").write_bytes(encoded({"name": "@openai/codex", "bin": {"codex": "bin/codex.js"}}))
+        (nested / "bin" / "package.json").write_bytes(encoded({"type": "module"})); (nested / "bin" / "codex.js").write_bytes(b"")
+        shims = Path(temp) / "shims"; (shims / "node_modules" / "@openai").mkdir(parents=True)
+        linked = shims / "node_modules" / "@openai" / "codex"  # npm links a locally installed package.
+        if sys.platform == "win32":
+            import subprocess
+            subprocess.run(["cmd.exe", "/d", "/c", "mklink", "/J", str(linked), str(nested)], check=True, capture_output=True)
+        else:
+            linked.symlink_to(nested, target_is_directory=True)
+        for authorized, actual, accepted in (
+                ("C:/authorized/codex.exe", ["C:/authorized/codex.exe"], True),
+                ("C:/authorized/codex.exe", ["C:/substituted/codex.exe"], False),
+                ("C:/authorized/codex.exe", ["C:/authorized/codex.com"], False),
+                ("C:/authorized/codex.exe", ["C:/authorized/codex.bat"], False),
+                ("C:/authorized/codex.exe", ["node.exe", str(nested / "bin" / "codex.js")], False),
+                ("./codex.exe", ["./codex.exe"], True),
+                ("./codex.exe", ["codex.exe"], False),
+                ("./codex.exe", ["C:/substituted/codex.exe"], False),
+                ("./codex.exe", ["C:/substituted/codex.com"], False),
+                ("C:/authorized/codex", ["C:/authorized/codex.EXE"], True),
+                ("codex", ["node.exe", str(nested / "bin" / "codex.js")], True),
+                (str(shims / "codex.cmd"), ["node.exe", str(nested / "bin" / "codex.js")], True),
+                (str(Path(temp) / "elsewhere" / "codex.cmd"), ["node.exe", str(nested / "bin" / "codex.js")], False)):
+            assert native_executable([authorized, "exec", "-"], [*actual, "exec", "-"], windows=True) is accepted, (authorized, actual)
+        for actual, accepted in ((["node.exe", str(package / "cli.js"), *command[1:]], True),
+                                 (["claude.exe", *command[1:]], True), (["not-claude.exe", *command[1:]], False),
+                                 (["python.exe", str(package / "cli.js"), *command[1:]], False),
+                                 (["node.exe", str(other / "x.js"), *command[1:]], False),
+                                 (["node.exe", str(package / "cli.js"), "-p", "--model", "other"], False)):
+            assert native_executable(command, actual, windows=True) is accepted, actual
+    print("PASS judge-role-evidence self-test: success/error/timeout, structured derivation, tampering and native header identity")
     return 0
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--self-test", action="store_true")
-    parser.add_argument("--devlyn-dir", type=Path, default=Path(".devlyn"))
-    parser.add_argument("--role", choices=("primary_judge", "pair_judge"))
-    parser.add_argument("--exit-code", type=int)
-    args = parser.parse_args()
-    if args.self_test:
-        return self_test()
-    if args.role is None or args.exit_code is None:
-        parser.error("--role and --exit-code are required")
-    try:
-        devlyn = args.devlyn_dir.resolve()
-        state = loads((devlyn / "pipeline.state.json").read_bytes())
-        record, derived = describe(devlyn, state, args.role, args.exit_code)
-        stem = record["engine"] + "-judge.r" + str(record["round"])
-        target = devlyn / (stem + ".role-evidence.json")
-        require(not target.exists(), "role evidence already exists for this round")
-        stdout = devlyn / (record["engine"] + "-judge.stdout")
-        require(not stdout.exists(), "canonical stdout already exists")
-        if record["engine"] == "claude":
-            require(not (devlyn / (stem + ".stdout")).exists(), "derived stdout already exists")
-            (devlyn / (stem + ".stdout")).write_bytes(derived)
-        stdout.write_bytes(derived)
-        target.write_bytes(encoded(record))
-        print(json.dumps(authenticate(devlyn, state, args.role), sort_keys=True))
-        return 0
-    except (OSError, ValueError, TypeError, KeyError) as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
+    parser.add_argument("--self-test", action="store_true", required=True)
+    parser.parse_args()
+    return self_test()
 
 
 if __name__ == "__main__":

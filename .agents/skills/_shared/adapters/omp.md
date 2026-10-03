@@ -11,3 +11,7 @@ Keep phase output machine-consumable and concise. Write the artifacts the canoni
 ## Fresh Context
 
 Each native `task` tool invocation with a fresh `context` is a fresh phase worker. Do not call `/devlyn-resolve` recursively from inside a phase prompt; execute only the phase body you received.
+
+## Invocation
+
+VERIFY judge seats are not scripted for omp: `verify-judges.py` stops with `BLOCKED:judge-route-unsupported:omp`; configure a claude or codex judge role.
