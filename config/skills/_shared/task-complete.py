@@ -235,7 +235,10 @@ def pipeline_acceptance(work, acceptance, files, directory):
     for name in ("plan", "implement", "verify", "final_report"):
         phase = phases.get(name) or {}
         require(phase.get("completed_at") and phase.get("verdict") in success, f"required {name} evidence is incomplete")
-    # VERIFY MECHANICAL sealed the exact source it checked; delivery must publish that source.
+    # VERIFY MECHANICAL sealed the source Git observed (phases/mechanical.md names what the seal does not
+    # attest); delivery must publish that source.
+    require("source_seal" in verify or not (phases.get("cleanup") or {}).get("post_sha"),
+            "archived by an older devlyn; deliver it with that version or rerun")
     seal_binding = verify.get("source_seal")
     require(isinstance(seal_binding, dict) and seal_binding.get("path") == ".devlyn/source-seal.json", "VERIFY has no bound MECHANICAL source seal")
     seal_record = file_record(archive / "source-seal.json")
@@ -349,6 +352,10 @@ def bind_acceptance(receipt, path, supplied):
                     bound = file_record(contract)["sha256"] if contract.exists() else None
                     require(bound == source["expected_sha256"], "verification contract differs from run binding")
                 if safe_path(work, expected).exists():
+                    if key == "spec_path" and relative == source[key]:
+                        committed = subprocess.run(["git", "--git-dir", receipt["common_gitdir"], "show", sha+":"+expected], capture_output=True)
+                        require(committed.returncode == 0 and committed.stdout == safe_path(work, expected).read_bytes(),
+                                "verification contract changed since accepted commit")
                     paths.append(expected)
     else:
         raise CompletionError("acceptance kind must be direct|pipeline")
@@ -1177,11 +1184,17 @@ class CompletionTests(unittest.TestCase):
             with self.assertRaisesRegex(CompletionError, "cannot parse mount table"):
                 scratch_mounts()
 
-    def accept(self, pipeline=False, queue=False, spec_expected=None, spec_name="spec.md", expected_binding=None):
+    def accept(self, pipeline=False, queue=False, spec_expected=None, spec_name="spec.md", expected_binding=None,
+               contract_committed=True):
         if spec_expected is not None:
             (self.task / spec_name).write_text("# Fixture\nProduct contains accepted bytes.\n", encoding="utf-8")
             (self.task / "spec.expected.json").write_text(json.dumps(spec_expected), encoding="utf-8")
-            self.g("add", spec_name, "spec.expected.json", work=self.task)
+            if not contract_committed:  # an ignored contract never shows as a dirty workspace
+                exclude = self.task / self.g("rev-parse", "--git-path", "info/exclude", work=self.task)
+                exclude.parent.mkdir(parents=True, exist_ok=True)
+                with exclude.open("a", encoding="utf-8") as handle:
+                    handle.write("\nspec.expected.json\n")
+            self.g("add", spec_name, *(["spec.expected.json"] if contract_committed else []), work=self.task)
         (self.task / "product").write_text("accepted\n", encoding="utf-8")
         self.g("add", "product", work=self.task)
         self.g("commit", "-m", "scoped task", work=self.task)
@@ -1970,6 +1983,22 @@ class CompletionTests(unittest.TestCase):
         _, r = self.complete(success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("verification contract differs from run binding", json.loads(r.stdout)["reason"])
+
+    def test_named_spec_publishes_the_committed_contract(self):
+        self.allocate(); self.accept(pipeline=True, spec_expected={"pure_design": True}, spec_name="X.md", contract_committed=False)
+        _, r = self.complete(success=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("verification contract changed since accepted commit", json.loads(r.stdout)["reason"])
+
+    def test_pre_seal_archive_is_refused_with_guidance(self):
+        self.allocate(); self.accept(pipeline=True)
+        del self.state["phases"]["verify"]["source_seal"]
+        self.state["phases"]["cleanup"] = {"started_at": "2026-09-10T00:00:00Z", "completed_at": "2026-09-10T00:00:01Z",
+                                           "verdict": "PASS", "post_sha": self.sha}
+        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
+        _, r = self.complete(success=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("archived by an older devlyn", json.loads(r.stdout)["reason"])
 
     def test_named_spec_missing_required_process_evidence(self):
         expected = {"process_evidence": [{"id": "red-first", "phase": "implement", "argv": [sys.executable, "-c", "print('red')"], "exit_code": 0, "timeout_sec": 10}]}

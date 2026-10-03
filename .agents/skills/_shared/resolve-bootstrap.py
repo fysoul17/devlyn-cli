@@ -332,21 +332,23 @@ def capture_external_diff(cwd: pathlib.Path, ref: str) -> bytes:
     return raw
 
 
-def require_clean_tracked_baseline(cwd: pathlib.Path) -> None:
-    changed: list[bytes] = []
-    for args in (("diff",), ("diff", "--cached")):
-        proc = subprocess.run(
-            ["git", *args, "--no-renames", "--name-only", "-z"],
-            cwd=cwd,
-            capture_output=True,
-        )
-        if proc.returncode != 0:
-            block("BLOCKED:invalid-flags", os.fsdecode(proc.stderr or proc.stdout).strip())
-        changed.extend(path for path in proc.stdout.split(b"\0") if path)
-    if any(path != b".devlyn" and not path.startswith(b".devlyn/") for path in changed):
+def require_clean_tracked_baseline(cwd: pathlib.Path, shared_dir: pathlib.Path) -> None:
+    """Refuse tracked changes, including ones index flags hide; a sparse checkout's absences are not changes."""
+    helper = load_spec_helper(shared_dir)
+    changed: list[str] = []
+    try:
+        with helper.observed_git(cwd, helper.sparse_absent_entries(cwd)) as (git, flags):
+            for args in (("diff",), ("diff", "--cached")):
+                changed += [os.fsdecode(path) for path in git(*args, "--no-renames", "--name-only", "-z").split(b"\0") if path]
+    except (OSError, ValueError) as exc:
+        block("BLOCKED:invalid-flags", str(exc))
+    dirty = sorted({path for path in changed if path != ".devlyn" and not path.startswith(".devlyn/")})
+    if dirty:
+        hidden = [f"{path} ({flags[path]})" for path in dirty if path in flags]
         block(
             "BLOCKED:worktree-dirty",
-            "Commit or stash tracked changes outside .devlyn before starting a full resolve.",
+            "Commit or stash tracked changes outside .devlyn before starting a full resolve."
+            + (f" Index flags hid these: {', '.join(hidden)}." if hidden else ""),
         )
 
 
@@ -387,7 +389,7 @@ def bootstrap(
     if cwd != root:
         block("BLOCKED:worktree-root-required", f"{cwd} is not the worktree root {root}. Retry from {root}.")
     if parsed["mode"] != "verify-only":
-        require_clean_tracked_baseline(cwd)
+        require_clean_tracked_baseline(cwd, shared_dir)
     with admission_lock(cwd):
         devlyn = cwd / ".devlyn"
         outputs: dict[pathlib.Path, bytes | None] = {devlyn / "external-diff.patch": None}
@@ -1286,6 +1288,23 @@ def self_test() -> int:
                 raise AssertionError(f"{label} tracked owner change accepted")
             assert snapshot(dirty_work / ".devlyn") == before_dirty
         subprocess.run(["git", "restore", "--staged", "app.py"], cwd=dirty_work, check=True)
+        subprocess.run(["git", "restore", "app.py"], cwd=dirty_work, check=True)
+        # Index flags never hide a tracked change from the clean baseline; a sparse absence is no change.
+        subprocess.run(["git", "update-index", "--assume-unchanged", "app.py"], cwd=dirty_work, check=True)
+        require_clean_tracked_baseline(dirty_work, script_shared)
+        (dirty_work / "app.py").write_text("print('hidden')\n", encoding="utf-8")
+        try:
+            require_clean_tracked_baseline(dirty_work, script_shared)
+        except BootstrapBlocked as exc:
+            assert exc.reason == "BLOCKED:worktree-dirty" and "app.py (h)" in exc.detail, exc.detail
+        else:
+            raise AssertionError("a change hidden by assume-unchanged was accepted")
+        subprocess.run(["git", "update-index", "--no-assume-unchanged", "app.py"], cwd=dirty_work, check=True)
+        subprocess.run(["git", "restore", "app.py"], cwd=dirty_work, check=True)
+        subprocess.run(["git", "update-index", "--skip-worktree", "app.py"], cwd=dirty_work, check=True)
+        (dirty_work / "app.py").unlink()
+        require_clean_tracked_baseline(dirty_work, script_shared)
+        subprocess.run(["git", "update-index", "--no-skip-worktree", "app.py"], cwd=dirty_work, check=True)
         subprocess.run(["git", "restore", "app.py"], cwd=dirty_work, check=True)
 
         devlyn_work = root / "devlyn-dirty-repo"

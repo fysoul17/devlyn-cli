@@ -15,6 +15,7 @@ SHARED = Path(__file__).resolve().parents[1] / "config/skills/_shared"
 ENV = {k: v for k, v in os.environ.items() if not k.startswith("DEVLYN_INVOCATION_")}
 ENV["PYTHONDONTWRITEBYTECODE"] = "1"
 ENV.pop("BENCH_WORKDIR", None)
+EMPTY_BASELINE = runpy.run_path(str(SHARED / "spec-verify-check.py"))["EMPTY_BASELINE"]
 
 
 class OwnerPhases(unittest.TestCase):
@@ -25,7 +26,7 @@ class OwnerPhases(unittest.TestCase):
         self.devlyn = self.work / ".devlyn"
         self.devlyn.mkdir()
         self.state_path = self.devlyn / "pipeline.state.json"
-        (self.devlyn / "untracked.baseline").write_text("")
+        (self.devlyn / "untracked.baseline").write_text(EMPTY_BASELINE)
         self.git("init", "-q")
         self.git("config", "user.name", "Owner phase test")
         self.git("config", "user.email", "owner@example.invalid")
@@ -274,7 +275,7 @@ class OwnerPhases(unittest.TestCase):
         entry = self.assert_owner("plan")
         self.assertEqual(entry["output_sha256"],
                          hashlib.sha256((self.devlyn / "plan.md").read_bytes()).hexdigest())
-        self.assertEqual(self.state()["untracked_baseline_sha256"], hashlib.sha256(b"").hexdigest())
+        self.assertEqual(self.state()["untracked_baseline_sha256"], hashlib.sha256(EMPTY_BASELINE.encode()).hexdigest())
         self.cli("plan", "spawn", "--round", "1", "--triggered-by", "plan",
                  error="plan-already-in-use")
         (self.devlyn / "plan.md").write_text("widened scope")
@@ -339,7 +340,7 @@ class OwnerPhases(unittest.TestCase):
 
     def test_preexisting_untracked_files_survive_and_residue_cannot_seal(self):
         (self.work / "user-existing.txt").write_text("preserve")
-        (self.devlyn / "untracked.baseline").write_text("user-existing.txt\n")
+        (self.devlyn / "untracked.baseline").write_text(json.dumps({"untracked": ["user-existing.txt"], "sparse_absences": []}))
         self.implemented()
         (self.work / "outside-plan.txt").write_text("created before MECHANICAL")
         self.mechanical()
@@ -412,6 +413,28 @@ class OwnerPhases(unittest.TestCase):
         self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
                  "--next-round", "1", "--next-triggered-by", "verify", "--next-engine", "claude")
         self.assertEqual(self.state()["phases"]["verify"]["round"], 1)
+
+    def test_repair_restores_a_committed_out_of_surface_file_and_checkpoints(self):
+        """The documented checkpoint returns a committed out-of-surface path to base, then reaches a fresh VERIFY."""
+        self.plan()
+        self.cli("plan", "complete", "--verdict", "PASS")
+        self.cli("implement", "spawn", "--round", "0", "--engine", "claude")
+        (self.work / "source.txt").write_text("implemented\n")
+        (self.work / "extra.txt").write_text("outside the surface\n")
+        self.git("add", "source.txt", "extra.txt")
+        self.git("commit", "-qm", "chore(pipeline): implement")
+        self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
+                 "--next-round", "0", "--next-engine", "claude")
+        self.needs_work()
+        self.cli("verify", "complete")
+        self.cli("implement", "spawn", "--round", "1", "--triggered-by", "verify", "--engine", "claude")
+        self.git("restore", f"--source={self.head}", "--staged", "--worktree", "--", "extra.txt")
+        self.git("commit", "--allow-empty", "-qm", "chore(pipeline): implement fix round 1")
+        self.cli("implement", "durability-enforce", "--round", "1")
+        self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
+                 "--next-round", "1", "--next-triggered-by", "verify", "--next-engine", "claude")
+        self.assertNotIn("extra.txt", self.git("ls-files"))
+        self.assertFalse((self.work / "extra.txt").exists())
 
     def test_refused_repair_closes_and_archives_terminal_report(self):
         self.implemented()

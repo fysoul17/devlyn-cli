@@ -939,6 +939,30 @@ def self_test() -> int:
             assert "network-access capability mismatch" in str(exc), exc
         else:
             raise AssertionError("a historical BUILD_GATE receipt without its network capability was accepted")
+        # f33cf2ca sent every Codex phase through DEVLYN_CODEX_PROMPT_FILE, so the realistic historical
+        # BUILD_GATE receipt carries a transport: its transported argv must enable network access.
+        prompt_raw = (devlyn / "build_gate.prompt.0").read_bytes()
+        for enabled in ("true", "false"):
+            transported = ["-C", str(work), "-s", "workspace-write", "-m", historical["model"],
+                           "-c", f"{NETWORK_ACCESS_CONFIG}={enabled}", "-"]
+            carrier = devlyn / "build_gate.prompt.0.transport.json"
+            carrier.write_text(json.dumps({
+                "schema_version": 1, "transport": "stdin-file",
+                "prompt": {"path": str((devlyn / "build_gate.prompt.0").resolve()), "sha256": sha256(prompt_raw),
+                           "bytes": len(prompt_raw)},
+                "command": ["codex", "exec", *transported], "argv": ["codex", "exec", *transported],
+                "timeout_sec": 0, "isolated": False, "status": "completed", "exit_code": historical["exit_code"]}),
+                encoding="utf-8")
+            historical_receipt.write_text(json.dumps({
+                **historical, "argv_sha256": sha256(json.dumps(transported, separators=(",", ":")).encode("utf-8")),
+                "transport": {"path": ".devlyn/build_gate.prompt.0.transport.json", "sha256": sha256(carrier.read_bytes())},
+            }), encoding="utf-8")
+            try:
+                validate_receipt_artifacts(work, historical_receipt, run_id="rs-receipt", phase="build_gate")
+            except ReceiptError as exc:
+                assert enabled == "false" and "network" in str(exc), exc
+            else:
+                assert enabled == "true", "a transported BUILD_GATE receipt without network access was accepted"
         try:
             start_receipt(work, devlyn / "build_gate.invocation.1.json", "rs-receipt", "build_gate", 1,
                           str(prompt), str(session), argv)

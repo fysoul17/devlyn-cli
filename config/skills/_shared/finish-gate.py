@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -158,12 +159,43 @@ def load_authorized_surface(devlyn_dir: pathlib.Path) -> list[str]:
     return list(data["authorized_surface"])
 
 
-def changed_files(work: pathlib.Path, base_sha: str) -> set[str]:
-    proc = git(work, "diff", "--name-only", base_sha, "--")
-    if proc.returncode != 0:
-        detail = proc.stderr.strip() or proc.stdout.strip() or "git diff --name-only failed"
-        raise Malformed(f"cannot compute finish-gate changed files: {detail}")
-    return {line.strip() for line in proc.stdout.splitlines() if line.strip()}
+def changed_files(work: pathlib.Path, base_sha: str, sparse_absences: frozenset[str]) -> set[str]:
+    """Paths changed since base_ref.sha (committed or not, both sides of a rename), observed as MECHANICAL observes."""
+    try:
+        with SPEC_VERIFY.observed_git(work, sparse_absences) as (observe, _flags):
+            raw = observe("diff", "--name-only", "-z", "--no-renames", base_sha, "--")
+    except (OSError, ValueError) as e:
+        raise Malformed(f"cannot compute finish-gate changed files: {e}") from e
+    return {os.fsdecode(path) for path in raw.split(b"\0") if path}
+
+
+def contract_drift(work: pathlib.Path, state: dict) -> tuple[str, str, bool] | None:
+    """A sibling spec.expected.json that is no longer what bootstrap bound: (path, why, restorable).
+
+    It offends wherever PLAN's surface lies, so the next run cannot bind a worker's contract.
+    Only bytes bootstrap bound are authoritative: an appeared file is removed, and a changed one is
+    restored only from base_ref.sha when base holds exactly the bound bytes. A contract outside the
+    worktree is reported, never touched.
+    """
+    source = state.get("source") if isinstance(state.get("source"), dict) else {}
+    if source.get("type") != "spec" or "expected_sha256" not in source or not source.get("spec_path"):
+        return None
+    spec = pathlib.Path(source["spec_path"])
+    spec = spec if spec.is_absolute() else work / spec
+    why = SPEC_VERIFY.expected_contract_error(source, spec)
+    if why is None:
+        return None
+    sibling = spec.with_name("spec.expected.json")
+    try:
+        path = sibling.resolve().relative_to(work.resolve()).as_posix()
+    except ValueError:
+        return (str(sibling), why, False)
+    bound = source["expected_sha256"]
+    base_blob = git(work, "rev-parse", "--verify", "--quiet", f"{state['base_ref']['sha']}:{path}")
+    restorable = bound is None or (base_blob.returncode == 0 and hashlib.sha256(
+        subprocess.run(["git", "cat-file", "blob", base_blob.stdout.strip()], cwd=work, capture_output=True).stdout
+    ).hexdigest() == bound)
+    return (path, why, restorable)
 
 
 def devlyn_relative_prefix(work: pathlib.Path, devlyn_dir: pathlib.Path) -> str:
@@ -242,18 +274,29 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
         plan_error = writer["plan_output_error"](state, devlyn_dir, "final_report")
         if plan_error is not None:
             raise Malformed(f"bound PLAN no longer verifies: {plan_error}", ".devlyn/plan.md")
-        surface = load_authorized_surface(devlyn_dir)
-        changed = changed_files(work, base_sha)
+        # Before PLAN opens (a PHASE 0 halt) the run owns no product surface: any change offends.
+        plan_opened = isinstance((state.get("phases") or {}).get("plan"), dict)
+        surface = load_authorized_surface(devlyn_dir) if plan_opened else []
+        baseline, sparse_absences, baseline_error = SPEC_VERIFY.load_untracked_baseline(devlyn_dir)
+        if baseline_error is not None:
+            raise Malformed(baseline_error, ".devlyn/untracked.baseline")
+        changed = changed_files(work, base_sha, sparse_absences)
+        untracked, untracked_error = SPEC_VERIFY.current_untracked_files(work, sparse_absences)
+        if untracked_error is not None:
+            raise Malformed(f"cannot list untracked files: {untracked_error}")
+        changed |= untracked - baseline
         devlyn_prefix = devlyn_relative_prefix(work, devlyn_dir)
         checked = sorted(path for path in changed if not is_under_prefix(path, devlyn_prefix))
+        drift = contract_drift(work, state)
     except Malformed as e:
         findings_path.unlink(missing_ok=True)
         write_findings(devlyn_dir, [malformed_finding(e)])
         write_summary(devlyn_dir, {"exit": 1, "malformed": str(e)})
         return 1
 
-    offenders = sorted(path for path in checked if not SPEC_VERIFY.path_matches_surface(path, surface))
-    if not offenders:
+    offenders = sorted({path for path in checked if not SPEC_VERIFY.path_matches_surface(path, surface)}
+                       | ({drift[0]} if drift is not None and drift[2] else set()))
+    if not offenders and drift is None:
         findings_path.unlink(missing_ok=True)
         write_summary(devlyn_dir, {
             "mode": state.get("mode"),
@@ -266,7 +309,16 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
     findings: list[dict] = []
     reverted = 0
     revert_failed = 0
-    for seq, path in enumerate(offenders, start=1):
+    contract = drift[0] if drift is not None else None
+    if drift is not None and not drift[2]:
+        revert_failed += 1
+        findings.append(make_finding(
+            1, "scope.finish-contract-drift",
+            f"The run's verification contract is no longer what bootstrap bound, and no bound bytes exist to restore it: {drift[1]}",
+            contract, status="revert-failed", criterion_ref="pipeline.state.json/source.expected_sha256",
+            fix_hint="Restore the contract bootstrap bound before any run uses it; a run never verifies against a contract it changed.",
+        ))
+    for path in offenders:
         ok, detail, existed_at_base = revert_offender(work, base_sha, path)
         status = "reverted" if ok else "revert-failed"
         if ok:
@@ -274,21 +326,18 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
         else:
             revert_failed += 1
         action = "restored to base_ref.sha" if existed_at_base else "removed because it did not exist at base_ref.sha"
-        message = f"Final diff touched an unaudited file outside authorized_surface: {path}"
+        if path == contract:
+            rule, criterion = "scope.finish-contract-drift", "pipeline.state.json/source.expected_sha256"
+            message = f"The run's verification contract is no longer what bootstrap bound: {drift[1]}"
+            hint = f"The contract was {action}; a run never verifies against a contract it changed."
+        else:
+            rule, criterion = "scope.finish-unaudited-file", "plan.md/authorized_surface"
+            message = f"Final diff touched an unaudited file outside authorized_surface: {path}"
+            hint = f"This file was outside authorized_surface and was {action}; do not ship unlicensed final-diff changes."
         if detail:
             message = f"{message} ({detail})"
-        findings.append(make_finding(
-            seq,
-            "scope.finish-unaudited-file",
-            message,
-            path,
-            status=status,
-            criterion_ref="plan.md/authorized_surface",
-            fix_hint=(
-                f"This file was outside authorized_surface and was {action}; "
-                "do not ship unlicensed final-diff changes."
-            ),
-        ))
+        findings.append(make_finding(len(findings) + 1, rule, message, path, status=status,
+                                     criterion_ref=criterion, fix_hint=hint))
     write_findings(devlyn_dir, findings)
     # Exit 0 let a real run treat reverted orchestrator commits as a clean pass.
     # Any offender is therefore unclean even when every automatic revert succeeds;
@@ -297,7 +346,7 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
     write_summary(devlyn_dir, {
         "mode": state.get("mode"),
         "checked": len(checked),
-        "offenders": len(offenders),
+        "offenders": len(findings),
         "reverted": reverted,
         "revert_failed": revert_failed,
         "exit": exit_code,
@@ -351,8 +400,9 @@ def make_fixture(root: pathlib.Path, name: str, *, mode: str = "full") -> tuple[
     write_state(devlyn, {
         "mode": mode,
         "base_ref": {"sha": base_sha},
-        "phases": {},
+        "phases": {"plan": {"started_at": "t", "completed_at": "t", "verdict": "PASS"}},
     })
+    write_text(devlyn / "untracked.baseline", json.dumps({"untracked": [], "sparse_absences": []}) + "\n")
     return (work, devlyn, base_sha)
 
 
@@ -457,14 +507,12 @@ def self_test() -> int:
         })
 
         work, devlyn, _base = make_fixture(root, "git-diff-failure")
-        original_git = globals()["git"]
+        original_observer = SPEC_VERIFY.observed_git
 
-        def failing_git(work_arg: pathlib.Path, *args: str) -> subprocess.CompletedProcess[str]:
-            if args[:2] == ("diff", "--name-only"):
-                return subprocess.CompletedProcess(["git", *args], 128, "", "simulated diff failure")
-            return original_git(work_arg, *args)
+        def failing_observer(*_args, **_kwargs):
+            raise ValueError("simulated diff failure")
 
-        globals()["git"] = failing_git
+        SPEC_VERIFY.observed_git = failing_observer
         try:
             assert checked_run_gate(work, devlyn) == 1
             finding = read_findings(devlyn)[0]
@@ -474,7 +522,59 @@ def self_test() -> int:
             assert summary["exit"] == 1, summary
             assert "cannot compute finish-gate changed files" in summary["malformed"], summary
         finally:
-            globals()["git"] = original_git
+            SPEC_VERIFY.observed_git = original_observer
+
+        # A PHASE 0 halt owns no product surface: a clean tree passes and any change offends.
+        work, devlyn, _base = make_fixture(root, "phase0-clean")
+        write_state(devlyn, {"mode": "full", "base_ref": {"sha": _base}, "phases": {}})
+        (devlyn / "plan.md").unlink()
+        assert checked_run_gate(work, devlyn) == 0 and not (devlyn / FINDINGS_NAME).exists()
+        work, devlyn, _base = make_fixture(root, "phase0-change")
+        write_state(devlyn, {"mode": "full", "base_ref": {"sha": _base}, "phases": {}})
+        write_text(work / "src" / "app.txt", "changed before any PLAN\n")
+        assert checked_run_gate(work, devlyn) == 2
+        assert (work / "src" / "app.txt").read_text(encoding="utf-8") == "base app\n"
+
+        # Untracked files the run created are offenders too; the user's baseline files are kept.
+        work, devlyn, _base = make_fixture(root, "untracked-residue")
+        write_text(work / "keep.txt", "the user's\n")
+        write_text(devlyn / "untracked.baseline", json.dumps({"untracked": ["keep.txt"], "sparse_absences": []}) + "\n")
+        write_text(work / "stray.txt", "left by the run\n")
+        assert checked_run_gate(work, devlyn) == 2
+        assert not (work / "stray.txt").exists() and (work / "keep.txt").is_file()
+        assert [finding["file"] for finding in read_findings(devlyn)] == ["stray.txt"]
+        work, devlyn, _base = make_fixture(root, "missing-baseline")
+        (devlyn / "untracked.baseline").unlink()
+        assert checked_run_gate(work, devlyn) == 1 and "untracked.baseline" in read_summary(devlyn)["malformed"]
+
+        # The run's verification contract must still be what bootstrap bound, wherever PLAN's surface lies.
+        def contract_fixture(name: str, committed: bytes | None, bound: bytes | None) -> tuple[pathlib.Path, pathlib.Path]:
+            work, devlyn, base = make_fixture(root, name)
+            write_text(work / "docs" / "spec.md", "# Spec\n")
+            if committed is not None:
+                (work / "docs" / "spec.expected.json").write_bytes(committed)
+            git_check(work, "add", "-A")
+            git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "spec")
+            base = git_check(work, "rev-parse", "HEAD")
+            write_state(devlyn, {"mode": "spec", "base_ref": {"sha": base},
+                                 "source": {"type": "spec", "spec_path": "docs/spec.md",
+                                            "expected_sha256": hashlib.sha256(bound).hexdigest() if bound else None},
+                                 "phases": {"plan": {"started_at": "t", "completed_at": "t", "verdict": "PASS"}}})
+            return work, devlyn
+
+        work, devlyn = contract_fixture("contract-appeared", None, None)
+        write_text(work / "docs" / "spec.expected.json", '{"verification_commands": []}\n')
+        assert checked_run_gate(work, devlyn) == 2 and not (work / "docs" / "spec.expected.json").exists()
+        assert read_findings(devlyn)[0]["rule_id"] == "scope.finish-contract-drift"
+        work, devlyn = contract_fixture("contract-restored", b'{"a": 1}\n', b'{"a": 1}\n')
+        (work / "docs" / "spec.expected.json").write_bytes(b'{"a": 2}\n')
+        assert checked_run_gate(work, devlyn) == 2
+        assert (work / "docs" / "spec.expected.json").read_bytes() == b'{"a": 1}\n'
+        work, devlyn = contract_fixture("contract-unrestorable", b'{"a": 0}\n', b'{"a": 1}\n')
+        assert checked_run_gate(work, devlyn) == 2
+        finding = read_findings(devlyn)[0]
+        assert (finding["rule_id"], finding["status"]) == ("scope.finish-contract-drift", "revert-failed"), finding
+        assert (work / "docs" / "spec.expected.json").read_bytes() == b'{"a": 0}\n'
 
     return 0
 
