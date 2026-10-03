@@ -517,7 +517,7 @@ def verify_self_test() -> None:
                                   check=True, capture_output=True, text=True).stdout.strip()
         git("init", "-q")
         (work / ".gitignore").write_text(".devlyn/\n")
-        (work / "spec.md").write_text("# Spec\n")
+        (work / "spec.md").write_bytes(b"# Spec\n")  # hashed below: exact bytes on every platform
         (work / "app.py").write_text("a\n")
         git("add", ".")
         git("commit", "-qm", "base")
