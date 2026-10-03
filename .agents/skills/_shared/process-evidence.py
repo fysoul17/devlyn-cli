@@ -17,8 +17,9 @@ import time
 
 
 SCHEMA_VERSION = "1.0"
-PHASES = {"implement", "build_gate", "verify"}
-CAPABILITIES = {"filesystem", "subprocess", "loopback", "pty", "network"}
+PHASES = {"implement", "verify"}
+# `tool`: a required tool proven absent whose supply the task prohibits (resolve VERIFY MECHANICAL).
+CAPABILITIES = {"filesystem", "subprocess", "loopback", "pty", "network", "tool"}
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 OBLIGATION_KEYS = {
@@ -216,7 +217,7 @@ def declared_obligations(work: pathlib.Path, state: dict, phase: str) -> list[di
 
 
 def mechanical_evidence_required(work: pathlib.Path, state: dict) -> bool:
-    """Return whether BUILD_GATE/VERIFY has declared executable obligations."""
+    """Return whether VERIFY MECHANICAL has declared executable obligations."""
     expected_path = _source_expected_path(work, state)
     if expected_path is not None:
         expected = _read_json(expected_path)
@@ -829,29 +830,50 @@ def self_test() -> int:
 
     with tempfile.TemporaryDirectory() as raw_tmp:
         work = pathlib.Path(raw_tmp)
-        state = {"run_id": "rs-cap-test", "phases": {"build_gate": {"round": 0}}}
-        manifest_rel = manifest_relative_path(state, "build_gate")
+        state = {"run_id": "rs-cap-test", "phases": {"verify": {"round": 0}}}
+        manifest_rel = manifest_relative_path(state, "verify")
         manifest = work / manifest_rel
         product = normalize_obligation({
-            "id": "product", "phase": "build_gate",
+            "id": "product", "phase": "verify",
             "cmd": "printf 'Operation not permitted' >&2; exit 1",
         })
         denied = normalize_obligation({
-            "id": "denied", "phase": "build_gate", "cmd": "python3 -m pytest",
+            "id": "denied", "phase": "verify", "cmd": "python3 -m pytest",
         })
         product_entry = capture_process(
-            work, manifest, state["run_id"], "build_gate", 0, product,
+            work, manifest, state["run_id"], "verify", 0, product,
         )
         denied_entry = record_capability_denial(
-            work, manifest, state["run_id"], "build_gate", 0, denied,
+            work, manifest, state["run_id"], "verify", 0, denied,
             "subprocess", b"parent route denied subprocess creation",
         )
         assert product_entry["classification"] == {"kind": "product_result", "operation": None}
         assert denied_entry["classification"] == {
             "kind": "capability_denied", "operation": "subprocess",
         }
+        tool = normalize_obligation({"id": "tool", "phase": "verify", "cmd": "tsc --noEmit"})
+        tool_entry = record_capability_denial(
+            work, manifest, state["run_id"], "verify", 0, tool,
+            "tool", b"tsc absent from the declared toolchain; the task prohibits installing it",
+        )
+        assert tool_entry["classification"] == {"kind": "capability_denied", "operation": "tool"}
+        try:
+            record_capability_denial(
+                work, manifest, state["run_id"], "verify", 0,
+                normalize_obligation({"id": "other", "phase": "verify", "cmd": "true"}), "disk", b"",
+            )
+        except EvidenceError as exc:
+            assert "unsupported denied capability: disk" in str(exc)
+        else:
+            raise AssertionError("an unknown capability was recorded")
+        try:
+            normalize_obligation({"id": "retired", "phase": "build_gate", "cmd": "true"})
+        except EvidenceError as exc:
+            assert "phase is invalid" in str(exc)
+        else:
+            raise AssertionError("a retired build_gate obligation was accepted")
         denied_carrier = validate_manifest(
-            work, manifest_rel, state["run_id"], "build_gate", 0,
+            work, manifest_rel, state["run_id"], "verify", 0,
             require_expectations=False,
         )
         denied_outcome = bound_carrier_outcome(work, denied_carrier)
@@ -860,6 +882,10 @@ def self_test() -> int:
             "id": "denied",
             "operation": "subprocess",
             "execution": {"command": "python3 -m pytest", "argv": None},
+        }, {
+            "id": "tool",
+            "operation": "tool",
+            "execution": {"command": "tsc --noEmit", "argv": None},
         }]
         print("PASS process evidence explicit capability classification without stderr heuristics")
     return 0

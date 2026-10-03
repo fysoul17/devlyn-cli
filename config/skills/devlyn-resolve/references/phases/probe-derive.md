@@ -18,7 +18,7 @@ second planner, critic essay, or debate participant. Your output is JSONL only.
   substring of the visible `## Verification` text you read directly, so this
   exposes nothing hidden. Emit at least one probe per declared entry whose
   `tags` includes that `tag` and whose `derived_from` matches the declared
-  value verbatim — BUILD_GATE mechanically checks this coverage.
+  value verbatim — VERIFY MECHANICAL checks this coverage.
 </input>
 
 <forbidden_input>
@@ -188,7 +188,7 @@ Rules:
   `ordering_inversion` evidence markers.
 - Empty output is invalid when this phase is enabled. If no bounded executable
   probe can be derived, write one JSONL object whose command exits nonzero and
-  whose `derived_from` names the blocking verification bullet; BUILD_GATE will
+  whose `derived_from` names the blocking verification bullet; VERIFY MECHANICAL will
   surface the inability as a concrete failure instead of silently proceeding.
 - No prose, no Markdown, no summaries, no alternate plan.
 </output>
@@ -196,7 +196,7 @@ Rules:
 <quality_bar>
 - Executable beats rhetorical. A risk that cannot become a bounded command does
   not belong in this artifact.
-- Keep probes small. They are BUILD_GATE obligations, not a replacement for the
+- Keep probes small. They are VERIFY MECHANICAL obligations, not a replacement for the
   full test suite.
 - Coverage over cleverness: mirror the verification bullet literally before
   inventing an edge case.

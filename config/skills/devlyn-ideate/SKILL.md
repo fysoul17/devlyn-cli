@@ -82,9 +82,9 @@ Four modes, selected by flag:
 <spec_kind_escape_hatch>
 The spec carries `spec.kind ∈ {feature, spike, prototype}` in its frontmatter. The kind changes downstream behavior:
 
-- **feature** — production-quality implementation expected. `/devlyn-resolve --spec` runs the full pipeline (PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY).
+- **feature** — production-quality implementation expected. `/devlyn-resolve --spec` runs the full pipeline (PLAN → IMPLEMENT → VERIFY).
 - **spike** — exploratory work; deliverable is learning, evidence, or a disposable demo. `/devlyn-resolve --spec` proceeds but VERIFY's quality bar is relaxed for code that the spike says is throwaway.
-- **prototype** — between feature and spike. Production-shape but not production-grade. CLEANUP runs; VERIFY's quality bar is stricter than spike, looser than feature.
+- **prototype** — between feature and spike. Production-shape but not production-grade. VERIFY's quality bar is stricter than spike, looser than feature.
 
 The user picks the kind during elicitation. Default = feature when not specified. `--quick` infers from the goal text (verbs like "explore", "investigate", "spike" → spike; "implement", "ship", "add" → feature).
 </spec_kind_escape_hatch>

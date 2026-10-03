@@ -559,7 +559,7 @@ def self_test() -> int:
         writer = runpy.run_path(str(SHARED / "state-phase-write.py"))
         state["phases"]["verify"]["completed_at"] = "2026-09-27T00:10:00Z"
         try:
-            writer["do_spawn"](state, "implement", 1, "verify", None, None, None)
+            writer["do_spawn"](state, "implement", 1, "verify", None, None)
         except SystemExit as exc:
             assert str(exc) == "BLOCKED:repair-edge-invalid"
         else:
@@ -568,7 +568,7 @@ def self_test() -> int:
         _, summary, state = verify(work, claude="high")
         assert summary["verdict"] == "NEEDS_WORK" and state["phases"]["verify"]["verdict"] == "NEEDS_WORK"
         state["phases"]["verify"]["completed_at"] = "2026-09-27T00:10:00Z"
-        writer["do_spawn"](state, "implement", 1, "verify", None, None, None)
+        writer["do_spawn"](state, "implement", 1, "verify", None, None)
         assert state["rounds"]["global"] == 1
         work = make_run("garbage")
         _, summary, _ = verify(work, codex="garbage")

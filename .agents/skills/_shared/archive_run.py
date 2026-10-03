@@ -37,14 +37,9 @@ PER_RUN_PATTERNS = (
     "*.findings.jsonl",
     "*.log.md",
     "fix-batch.round-*.json",
-    "closure-durability.round-*.json",
     "resolve-stop-hook.*.json",
     "criteria.generated.md",
     "goal.raw.txt",
-    "surface-close.input.patch",
-    "surface-close.prompt",
-    "surface-close.output.json",
-    "surface-close.stdout",
     # Mutation workers retain the exact session JSONL identified by their
     # dispatch receipt. Round-scoped root files avoid engine-global scans.
     "*.worker-session.*.jsonl",
@@ -62,6 +57,7 @@ PER_RUN_PATTERNS = (
     # killed prior run cannot poison this run's gate.
     "spec-verify.json",
     "spec-verify.results.json",
+    "source-seal.json",
     "spec-verify-findings.jsonl",
     "verify-merge.summary.json",
     "finish-gate.summary.json",
@@ -92,8 +88,7 @@ PER_RUN_PATTERNS = (
 PER_RUN_PATTERNS += tuple(
     f"{phase}.{suffix}"
     for phase in (
-        "plan", "probe-derive", "implement", "surface-close", "build_gate",
-        "build-gate", "cleanup", "verify", "final-report", "finish-gate",
+        "plan", "probe-derive", "implement", "verify", "final-report", "finish-gate",
     )
     for suffix in (
         "task-context", "prompt", "stdout", "stderr", "events.jsonl",
@@ -387,6 +382,9 @@ def dynamic_judge_role_artifacts(devlyn: pathlib.Path, state: dict) -> list[path
         groups = [(binding, True) for binding in evidence.values()] + [(binding, False) for binding in executions.values()]
         if record.get("dispatch") is not None:
             groups.append(({**record["dispatch"], "artifacts": []} if isinstance(record["dispatch"], dict) else None, True))
+        # The MECHANICAL seal file is current-round only; its binding never enters history.
+        if record is verify and record.get("source_seal") is not None:
+            groups.append(({**record["source_seal"], "artifacts": []} if isinstance(record["source_seal"], dict) else None, True))
         for binding, bound_self in groups:
             if not isinstance(binding, dict) or not isinstance(binding.get("artifacts"), list):
                 raise ArchiveError("malformed judge role artifact binding")
@@ -594,10 +592,12 @@ def self_test() -> int:
         # current span and in history; missing or altered bytes stop archive.
         devlyn = pathlib.Path(tmp)
         seal = {}
-        for name in ("verify-judge.r0.dispatch.json", "codex-judge.r0.stdout", "verify-judge.r1.dispatch.json"):
+        for name in ("verify-judge.r0.dispatch.json", "codex-judge.r0.stdout", "verify-judge.r1.dispatch.json",
+                     "source-seal.json"):
             (devlyn / name).write_bytes(name.encode())
             seal[name] = {"path": ".devlyn/" + name, "sha256": hashlib.sha256(name.encode()).hexdigest(), "bytes": len(name)}
-        state = {"phases": {"verify": {"dispatch": seal["verify-judge.r1.dispatch.json"], "history": [{
+        state = {"phases": {"verify": {"dispatch": seal["verify-judge.r1.dispatch.json"],
+                                       "source_seal": seal["source-seal.json"], "history": [{
             "dispatch": seal["verify-judge.r0.dispatch.json"],
             "executions": {"pair_judge": {"outcome": "timed_out", "exit_code": 124,
                                           "artifacts": [seal["codex-judge.r0.stdout"]]}}}]}}}
@@ -623,38 +623,38 @@ def self_test() -> int:
         devlyn = pathlib.Path(tmp) / ".devlyn"
         devlyn.mkdir()
         invocation = invocation_receipt_module()
-        prior_prompt = devlyn / "build_gate.prompt.1"
+        prior_prompt = devlyn / "implement.prompt.1"
         prior_prompt.write_text("verify prior archive\n", encoding="utf-8")
-        prior_session = devlyn / "build_gate.worker-session.1.jsonl"
+        prior_session = devlyn / "implement.worker-session.1.jsonl"
         prior_session.write_text('{"type":"thread.started","round":1}\n', encoding="utf-8")
-        prior_receipt = devlyn / "build_gate.invocation.1.json"
+        prior_receipt = devlyn / "implement.invocation.1.json"
         invocation["start_receipt"](
-            work, prior_receipt, "run-1", "build_gate", 1,
+            work, prior_receipt, "run-1", "implement", 1,
             str(prior_prompt), str(prior_session),
             ["--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
-             "-c", "sandbox_workspace_write.network_access=true",
+             "-c", "sandbox_workspace_write.network_access=false",
              "verify prior archive"],
         )
         invocation["finish_receipt"](work, prior_receipt, 0)
         prior_binding = invocation["validate_receipt"](
-            work, prior_receipt, run_id="run-1", phase="build_gate", round_=1,
+            work, prior_receipt, run_id="run-1", phase="implement", round_=1,
             model="gpt-test", prompt_sha256=hashlib.sha256(prior_prompt.read_bytes()).hexdigest(),
             session_path=prior_session,
         )
-        build_prompt = devlyn / "build_gate.prompt.2"
+        build_prompt = devlyn / "implement.prompt.2"
         build_prompt.write_text("verify archive\n", encoding="utf-8")
-        build_session = devlyn / "build_gate.worker-session.2.jsonl"
+        build_session = devlyn / "implement.worker-session.2.jsonl"
         build_session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
-        build_receipt = devlyn / "build_gate.invocation.2.json"
+        build_receipt = devlyn / "implement.invocation.2.json"
         invocation["start_receipt"](
-            work, build_receipt, "run-1", "build_gate", 2,
+            work, build_receipt, "run-1", "implement", 2,
             str(build_prompt), str(build_session),
             ["--json", "-C", str(work), "-s", "workspace-write", "-m", "gpt-test",
-             "-c", "sandbox_workspace_write.network_access=true", "verify archive"],
+             "-c", "sandbox_workspace_write.network_access=false", "verify archive"],
         )
         invocation["finish_receipt"](work, build_receipt, 0)
         receipt_binding = invocation["validate_receipt"](
-            work, build_receipt, run_id="run-1", phase="build_gate", round_=2,
+            work, build_receipt, run_id="run-1", phase="implement", round_=2,
             model="gpt-test", prompt_sha256=hashlib.sha256(build_prompt.read_bytes()).hexdigest(),
             session_path=build_session,
         )
@@ -684,7 +684,7 @@ def self_test() -> int:
                     "history": [{"invocation_receipt": plan_binding}],
                 },
                 "verify": {"round": 2},
-                "build_gate": {
+                "implement": {
                     "round": 2,
                     "history": [{"invocation_receipt": prior_binding}],
                     "invocation_receipt": receipt_binding,
@@ -713,13 +713,8 @@ def self_test() -> int:
         for name in (
             "risk-probes.jsonl",
             "goal.raw.txt",
-            "surface-close.input.patch",
-            "surface-close.prompt",
-            "surface-close.output.json",
-            "surface-close.stdout",
+            "source-seal.json",
             "implement.worker-session.0.jsonl",
-            "surface-close.worker-session.0.jsonl",
-            "cleanup.worker-session.1.jsonl",
             "resolve-stop-hook.run-1.123.456.json",
             "verify.pair.findings.jsonl",
             "verify-merge.summary.json",
@@ -760,14 +755,14 @@ def self_test() -> int:
         else:
             raise AssertionError("archive accepted a mutated invocation worker session")
         build_session.write_bytes(original_session)
-        receipt_binding["sandbox_network_access"] = False
+        receipt_binding["sandbox_network_access"] = True
         try:
             archive_plan(devlyn, devlyn / "runs" / run_id, state)
         except ArchiveError as exc:
             assert "fields mismatch sealed file" in str(exc)
         else:
             raise AssertionError("archive accepted a falsified invocation receipt binding")
-        receipt_binding["sandbox_network_access"] = True
+        receipt_binding["sandbox_network_access"] = False
 
         escape = work / "archive-escape"
         escape.mkdir()
@@ -789,19 +784,14 @@ def self_test() -> int:
             "pipeline.state.json",
             "risk-probes.jsonl",
             "goal.raw.txt",
-            "surface-close.input.patch",
-            "surface-close.prompt",
-            "surface-close.output.json",
-            "surface-close.stdout",
+            "source-seal.json",
             "implement.worker-session.0.jsonl",
-            "surface-close.worker-session.0.jsonl",
-            "build_gate.prompt.1",
-            "build_gate.worker-session.1.jsonl",
-            "build_gate.invocation.1.json",
-            "build_gate.prompt.2",
-            "build_gate.worker-session.2.jsonl",
-            "cleanup.worker-session.1.jsonl",
-            "build_gate.invocation.2.json",
+            "implement.prompt.1",
+            "implement.worker-session.1.jsonl",
+            "implement.invocation.1.json",
+            "implement.prompt.2",
+            "implement.worker-session.2.jsonl",
+            "implement.invocation.2.json",
             "plan.prompt.0",
             "plan.worker-session.0.jsonl",
             "plan.invocation.0.json",

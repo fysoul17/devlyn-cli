@@ -2250,9 +2250,12 @@ if (process.env.DEVLYN_TEST_LEAF) {
             self.work, receipt, run_id='rs-native', phase='implement', round_=0, model='fixture-model',
             prompt_sha256=hashlib.sha256(PAYLOAD).hexdigest(), session_path=session)
         phases = {name: {'started_at': '2026-09-10T00:00:00Z', 'completed_at': '2026-09-10T00:00:01Z', 'verdict': 'PASS'}
-                  for name in ('plan', 'implement', 'build_gate', 'cleanup', 'verify', 'final_report')}
+                  for name in ('plan', 'implement', 'verify', 'final_report')}
         phases['implement']['invocation_receipt'] = binding
-        phases['cleanup']['post_sha'] = 'a' * 40
+        seal = json.dumps({'run_id': 'rs-native', 'round': 0, 'seal': {'digest': '0' * 64, 'head': 'a' * 40}}).encode()
+        (self.devlyn / 'source-seal.json').write_bytes(seal)
+        phases['verify']['source_seal'] = {'path': '.devlyn/source-seal.json',
+                                           'sha256': hashlib.sha256(seal).hexdigest(), 'bytes': len(seal)}
         report = b'<!-- devlyn:final-report run_id=rs-native -->\nTransport fixture completed.\n'
         (self.devlyn / 'final-report.md').write_bytes(report)
         phases['final_report'].update(output_sha256=hashlib.sha256(report).hexdigest(),

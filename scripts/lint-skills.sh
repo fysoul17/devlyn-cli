@@ -74,6 +74,7 @@ _shared/resolve-stop-hook.py
 _shared/resolve-bootstrap.py
 _shared/phase-prompt-render.py
 _shared/verify-judges.py
+_shared/finish-gate.py
 devlyn-ideate/SKILL.md
 devlyn-ideate/references/spec-template.md
 devlyn-ideate/references/elicitation.md
@@ -89,9 +90,7 @@ devlyn-resolve/references/free-form-mode.md
 devlyn-resolve/references/phases/plan.md
 devlyn-resolve/references/phases/probe-derive.md
 devlyn-resolve/references/phases/implement.md
-devlyn-resolve/references/phases/surface-close.md
-devlyn-resolve/references/phases/build-gate.md
-devlyn-resolve/references/phases/cleanup.md
+devlyn-resolve/references/phases/mechanical.md
 devlyn-resolve/references/phases/verify.md
 _shared/expected.schema.json
 _shared/adapters/README.md
@@ -483,7 +482,7 @@ check_skill_mirror_parity \
 
 # ---------------------------------------------------------------------------
 # 6b. VERIFY merge verdict binding self-test.
-for helper in role-config judge-role-evidence task-complete phase-prompt-render verify-judges; do
+for helper in role-config judge-role-evidence task-complete phase-prompt-render verify-judges finish-gate resolve-bootstrap terminal-claim-check; do
   if python3 "config/skills/_shared/$helper.py" --self-test; then
     ok "$helper.py self-test passed"
   else
@@ -576,7 +575,8 @@ if python3 config/skills/_shared/process-evidence.py --self-test >/dev/null 2>&1
 else
   bad "process-evidence.py self-test failed"
 fi
-if ! grep -Fq 'PHASES = {"implement", "build_gate", "verify"}' config/skills/_shared/process-evidence.py \
+if ! grep -Fq 'PHASES = {"implement", "verify"}' config/skills/_shared/process-evidence.py \
+  || ! grep -Fq '"network", "tool"}' config/skills/_shared/process-evidence.py \
   || ! grep -Fq 'classification' config/skills/_shared/process-evidence.py \
   || ! grep -Fq 'validate_bound_carrier' config/skills/_shared/process-evidence.py \
   || ! grep -Fq 'validate_summary_commands' config/skills/_shared/process-evidence.py; then
@@ -633,7 +633,7 @@ if ! grep -Fq 'SAFE_RUN_ID_RE' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"verify.pair.findings.jsonl"' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"verify-merge.summary.json"' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"verify-judge.r0.dispatch.json"' config/skills/_shared/archive_run.py \
-  || ! grep -Fq '"surface-close.output.json"' config/skills/_shared/archive_run.py \
+  || ! grep -Fq '"source-seal.json"' config/skills/_shared/archive_run.py \
   || ! grep -Fq '"*-judge.*"' config/skills/_shared/archive_run.py; then
   bad "archive_run.py must safely archive pair/risk-probe evidence and reject unsafe run ids"
 fi
@@ -645,82 +645,45 @@ else
   bad "owner phase CLI and Git regression tests failed"
 fi
 
-section "Check 6c2: SURFACE_CLOSE v6 dispatch is complete and mirrored"
-surface_close_missing=0
+section "Check 6c2: VERIFY MECHANICAL is the one sealed final gate"
 if python3 config/skills/_shared/state-phase-write.py --self-test >/dev/null 2>&1; then
-  ok "SURFACE_CLOSE state/envelope/adjudication/audit/rollback self-test passed"
+  ok "state-phase-write.py self-test passed (repair checkpoint, retired phases, baseline binding)"
 else
-  bad "state-phase-write.py SURFACE_CLOSE self-test failed"
+  bad "state-phase-write.py self-test failed"
 fi
-if python3 - <<'PY'
-import ast
-import runpy
-
-entries = ["src/{a,b}/**"]
-paths = ("src/a/example.py", "src/b/example.py", "src/c/example.py")
-expected = (True, True, False)
-sources = {"path_matches_surface": [], "validate_surface_brace_glob": []}
-for name in ("state-phase-write.py", "spec-verify-check.py"):
-    path = f"config/skills/_shared/{name}"
-    module = runpy.run_path(path)
-    actual = tuple(module["path_matches_surface"](path, entries) for path in paths)
-    assert actual == expected, (name, actual)
-    tree = ast.parse(open(path, encoding="utf-8").read())
-    text = open(path, encoding="utf-8").read()
-    for function_name in sources:
-        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == function_name)
-        sources[function_name].append(ast.get_source_segment(text, function))
-    for invalid in ("src/{a,b", "src/{a,}/**", "src/{a,{b,c}}", "src/{a,**}"):
-        try:
-            module["path_matches_surface"]("src/a/example.py", [invalid])
-        except ValueError as exc:
-            assert invalid in str(exc) and "supported form" in str(exc)
-        else:
-            raise AssertionError((name, invalid))
-for function_name, bodies in sources.items():
-    assert bodies[0] == bodies[1], f"{function_name} bodies differ"
-PY
-then
-  ok "brace-glob surface matching and errors are byte-parity checked in both consumers"
+if ! grep -Fq 'PHASE_NAMES = {"plan", "probe_derive", "implement", "verify", "final_report"}' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'def enforce_repair_checkpoint' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'BLOCKED:repair-checkpoint' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'pre_sha = _git_text(work, "rev-parse", "HEAD")' config/skills/_shared/state-phase-write.py \
+  || ! grep -Fq 'def run_seal' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'def mechanical_seal_violation' config/skills/_shared/verify-merge-findings.py \
+  || ! grep -Fq 'accepted source must equal the sealed MECHANICAL source' config/skills/_shared/task-complete.py; then
+  bad "the MECHANICAL seal, writer-recorded pre_sha and repair checkpoint must stay wired end to end"
 else
-  bad "brace-glob surface matching or errors drifted between state and spec checks"
+  ok "MECHANICAL seal, writer-recorded pre_sha and repair checkpoint are wired end to end"
 fi
-if ! grep -Fq 'rollback_surface_delta' config/skills/_shared/state-phase-write.py \
-  || ! grep -Fq 'validate_surface_adjudication' config/skills/_shared/state-phase-write.py \
-  || ! grep -Fq 'validate_surface_execution' config/skills/_shared/state-phase-write.py \
-  || ! grep -Fq 'phases.surface_close spawn requires --engine claude' config/skills/_shared/state-phase-write.py \
-  || ! grep -Fq 'SURFACE_CLOSE requires canonical native JSON' config/skills/_shared/state-phase-write.py \
-  || ! grep -Fq 'BLOCKED:surface-close-input-mismatch' config/skills/_shared/state-phase-write.py \
-  || ! grep -Fq 'surface-check' config/skills/_shared/state-phase-write.py \
-  || ! grep -Fq 'surface-rollback' config/skills/_shared/state-phase-write.py; then
-  bad "state-phase-write.py must mechanically adjudicate, audit, guard, and roll back SURFACE_CLOSE"
-fi
+mechanical_missing=0
 for tree in config/skills .agents/skills; do
   skill="$tree/devlyn-resolve/SKILL.md"
-  phase="$tree/devlyn-resolve/references/phases/surface-close.md"
-  if ! grep -Fq '## PHASE 2.5: SURFACE_CLOSE' "$skill" \
-    || ! grep -Fq '`state.source.type == "generated"` and complexity is trivial/medium' "$skill" \
-    || ! grep -Fq 'Engine is Claude always' "$skill" \
-    || ! grep -Fq 'executor flag/pin' "$skill" \
-    || ! grep -Fq 'auto_surface_close_claude_unavailable' "$skill" \
-    || ! grep -Fq 'canonical body VERBATIM' "$skill" \
-    || ! grep -Fq 'run-bounded.py 600 --stdin-file .devlyn/surface-close.prompt.<round> --record-transport -- claude -p' "$skill" \
-    || ! grep -Fq -- '--tools "Read,Grep,Glob,Edit,Write" --dangerously-skip-permissions --output-format json --strict-mcp-config --mcp-config '\''{"mcpServers":{}}'\''' "$skill" \
-    || ! grep -Fq '.devlyn/surface-close.output.json' "$skill" \
-    || ! grep -Fq '**Common post-fix checkpoint (BUILD_GATE and VERIFY):**' "$skill" \
-    || ! grep -Fq 'durability-enforce --round <n> --origin-phase <build_gate|cleanup|verify>' "$skill" \
-    || ! grep -Fq '`surface-rollback`' "$skill" \
-    || grep -Fq 'Supplied digests' "$phase" \
-    || grep -Fq 'Hash both artifacts first' "$phase" \
-    || ! grep -Fq 'Never modify inputs or read state, PLAN, or IMPLEMENT transcript/reasoning.' "$phase" \
-    || ! grep -Fq 'optionally followed by ` — <one-line evidence>`' "$phase" \
-    || ! grep -Fq 'N/A <authorized-file>[:<line>] — <one-line evidence-based relationship judgment>' "$phase"; then
-    bad "$tree — SURFACE_CLOSE v6 dispatch/timeout/adjudication/rollback contract missing"
-    surface_close_missing=1
+  phase="$tree/devlyn-resolve/references/phases/mechanical.md"
+  if ! grep -Fq '3. Order: PLAN → RISK_PROBES? → IMPLEMENT → VERIFY → FINAL_REPORT. No others.' "$skill" \
+    || ! grep -Fq 'spec-verify-check.py" --seal` seals the source only if it is unchanged since step 1' "$skill" \
+    || ! grep -Fq '**Post-fix checkpoint:**' "$skill" \
+    || ! grep -Fq 'durability-enforce --round <n>`' "$skill" \
+    || ! grep -Fq 'operation=<filesystem|subprocess|loopback|pty|network|tool>' "$phase" \
+    || ! grep -Fq 'A required tool is a denial with operation `tool` only if a parent probe confirms' "$phase" \
+    || ! grep -Fq 'Only a gate that detection inferred on its own, and that genuinely does not apply, may SKIP' "$phase" \
+    || ! grep -Fq '`python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --seal`' "$phase" \
+    || grep -Eq 'SURFACE_CLOSE|BUILD_GATE|PHASE 4: CLEANUP|--bypass|implement_passed_sha' "$skill" "$tree"/devlyn-resolve/references/phases/*.md \
+    || [ -e "$tree/devlyn-resolve/references/phases/build-gate.md" ] \
+    || [ -e "$tree/devlyn-resolve/references/phases/cleanup.md" ] \
+    || [ -e "$tree/devlyn-resolve/references/phases/surface-close.md" ]; then
+    bad "$tree — VERIFY MECHANICAL single-gate contract missing or a retired phase remains"
+    mechanical_missing=1
   fi
 done
-if [ $surface_close_missing -eq 0 ]; then
-  ok "SURFACE_CLOSE v6 dispatch/timeout/adjudication/rollback contract is mirrored"
+if [ $mechanical_missing -eq 0 ]; then
+  ok "VERIFY MECHANICAL single-gate contract is mirrored and retired phases are gone"
 fi
 
 section "Check 6d: Spec verification executes hidden-blind risk probes"
@@ -778,15 +741,13 @@ if ! grep -Fq 'def state_requires_risk_probes' config/skills/_shared/spec-verify
 else
   ok "spec-verify-check.py validates enabled risk-probe state"
 fi
-if ! grep -Fq 'requires `.devlyn/risk-probes.jsonl`' config/skills/devlyn-resolve/SKILL.md \
-  || ! grep -Fq 'requires `.devlyn/risk-probes.jsonl`' .agents/skills/devlyn-resolve/SKILL.md \
-  || ! grep -Fq 'missing `.devlyn/risk-probes.jsonl` is a CRITICAL mechanical blocker' config/skills/devlyn-resolve/SKILL.md \
-  || ! grep -Fq 'missing `.devlyn/risk-probes.jsonl` is a CRITICAL mechanical blocker' .agents/skills/devlyn-resolve/SKILL.md \
-  || ! grep -Fq 'requires that file when `state.risk_profile.risk_probes_enabled == true`' config/skills/devlyn-resolve/references/phases/build-gate.md \
-  || ! grep -Fq 'requires that file when `state.risk_profile.risk_probes_enabled == true`' .agents/skills/devlyn-resolve/references/phases/build-gate.md \
-  || ! grep -Fq 'Malformed `state.risk_profile` is also CRITICAL because it can hide enabled risk probes' config/skills/devlyn-resolve/references/phases/build-gate.md \
-  || ! grep -Fq 'Malformed `state.risk_profile` is also CRITICAL because it can hide enabled risk probes' .agents/skills/devlyn-resolve/references/phases/build-gate.md; then
-  bad "BUILD_GATE and VERIFY must fail closed when enabled risk probes are missing"
+if ! grep -Fq 'a missing `.devlyn/risk-probes.jsonl` is a CRITICAL blocker' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'a missing `.devlyn/risk-probes.jsonl` is a CRITICAL blocker' .agents/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'requires that file when `state.risk_profile.risk_probes_enabled == true`' config/skills/devlyn-resolve/references/phases/mechanical.md \
+  || ! grep -Fq 'requires that file when `state.risk_profile.risk_probes_enabled == true`' .agents/skills/devlyn-resolve/references/phases/mechanical.md \
+  || ! grep -Fq 'Malformed `state.risk_profile` is also CRITICAL because it can hide enabled risk probes' config/skills/devlyn-resolve/references/phases/mechanical.md \
+  || ! grep -Fq 'Malformed `state.risk_profile` is also CRITICAL because it can hide enabled risk probes' .agents/skills/devlyn-resolve/references/phases/mechanical.md; then
+  bad "VERIFY MECHANICAL must fail closed when enabled risk probes are missing"
 else
   ok "BUILD_GATE and VERIFY require enabled risk probes"
 fi
@@ -1076,7 +1037,7 @@ section "Check 6g: resolve consumes sibling spec.expected.json"
 sibling_consume_missing=0
 for file in \
   config/skills/devlyn-resolve/SKILL.md \
-  config/skills/devlyn-resolve/references/phases/build-gate.md \
+  config/skills/devlyn-resolve/references/phases/mechanical.md \
   config/skills/devlyn-resolve/references/phases/verify.md
 do
   if ! grep -Fq 'sibling `spec.expected.json`' "$file"; then
@@ -1090,8 +1051,7 @@ for pattern in \
   'contract_found, _staged, expected_error, expected_path' \
   'def expected_contract_findings' \
   'correctness.forbidden-pattern' \
-  'scope.max-deps-added-exceeded' \
-  'SPEC_VERIFY_FINDINGS_FILE'
+  'scope.max-deps-added-exceeded'
 do
   if ! grep -Fq "$pattern" config/skills/_shared/spec-verify-check.py; then
     bad "spec-verify-check.py missing sibling expected staging implementation: $pattern"
@@ -1104,17 +1064,13 @@ fi
 
 section "Check 6i: VERIFY mechanical findings are merge-visible"
 verify_mech_missing=0
-for pattern in \
-  'SPEC_VERIFY_PHASE=verify_mechanical' \
-  'SPEC_VERIFY_FINDINGS_FILE=verify-mechanical.findings.jsonl' \
-  'SPEC_VERIFY_FINDING_PREFIX=VERIFY-MECH'
-do
-  if ! grep -Fq "$pattern" config/skills/devlyn-resolve/SKILL.md \
-     || ! grep -Fq "$pattern" config/skills/_shared/spec-verify-check.py; then
-    bad "VERIFY mechanical output contract missing: $pattern"
-    verify_mech_missing=1
-  fi
-done
+if ! grep -Fq '`.devlyn/verify-mechanical.findings.jsonl`' config/skills/devlyn-resolve/SKILL.md \
+  || ! grep -Fq 'FINDINGS_NAME = "verify-mechanical.findings.jsonl"' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'FINDING_PREFIX = "VERIFY-MECH"' config/skills/_shared/spec-verify-check.py \
+  || grep -Fq 'SPEC_VERIFY_PHASE' config/skills/_shared/spec-verify-check.py; then
+  bad "VERIFY mechanical output contract missing or the retired SPEC_VERIFY_* routing remains"
+  verify_mech_missing=1
+fi
 if ! grep -Fq '("mechanical", "verify-mechanical.findings.jsonl")' \
   config/skills/_shared/verify-merge-findings.py; then
   bad "verify-merge-findings.py does not consume verify-mechanical.findings.jsonl"
@@ -1135,7 +1091,7 @@ for file in \
   .agents/skills/devlyn-resolve/SKILL.md
 do
   if ! grep -Fq 'orchestrator commands with no separate model' "$file" \
-    || ! grep -Fq 'execution_kind: "orchestrator_commands"' "$file" \
+    || ! grep -Fq 'No fresh VERIFY worker → `BLOCKED:fresh-context-unavailable`' "$file" \
     || grep -Fq 'resolved BUILD_GATE engine through the fresh-worker route' "$file" \
     || grep -Fq 'Codex-routed IMPLEMENT, BUILD_GATE, or CLEANUP spawn' "$file" \
     || ! grep -Fq 'BLOCKED:build-env-underprovisioned' "$file" \

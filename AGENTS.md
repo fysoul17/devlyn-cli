@@ -31,7 +31,7 @@ inspect intent  ->  direct work or full resolve  ->  ship
 ```
 
 - `/devlyn-ideate` (optional) — unstructured idea → `docs/specs/<id>/spec.md` + `spec.expected.json`. Modes: default Q&A, `--quick` (autonomous-pipeline-safe), `--from-spec <path>`, `--project` (multi-feature).
-- `/devlyn-resolve` — full pipeline for work selected by the conversational-entry rules below. Free-form goal, `--spec <path>`, or `--verify-only <ref> --spec <path>`. Phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (fresh-subagent, findings-only).
+- `/devlyn-resolve` — full pipeline for work selected by the conversational-entry rules below. Free-form goal, `--spec <path>`, or `--verify-only <ref> --spec <path>`. Phases: PLAN → IMPLEMENT → VERIFY (one sealed MECHANICAL gate, then fresh findings-only judges).
 - `/devlyn-design-ui` — required creative UI exploration surface. Spawns a 5-specialist design team (Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer) to generate N (default 5) portfolio-worthy HTML/CSS samples. The optional `/devlyn-reap` companion lives in `optional-skills/` and installs only when the user opts in.
 
 Each skill's `SKILL.md` is the source of truth for flags and workflow. Do not duplicate. Before 4.0.0 each skill was named `devlyn:<name>`; read an old reference as the matching `devlyn-<name>` skill.

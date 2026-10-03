@@ -3,11 +3,11 @@
 
 Usage:
     python3 state-phase-write.py --devlyn-dir .devlyn --phase implement spawn \
-        --round 1 --triggered-by verify [--pre-sha <sha>] [--engine claude] [--model <id>]
+        --round 1 --triggered-by verify [--engine claude] [--model <id>]
     python3 state-phase-write.py --devlyn-dir .devlyn --phase implement durability-enforce \
-        --round 1 --origin-phase verify
+        --round 1
     python3 state-phase-write.py --devlyn-dir .devlyn --phase implement complete \
-        --verdict PASS [--post-sha <sha>] [--findings-file <path>] [--log-file <path>] \
+        --verdict PASS [--findings-file <path>] [--log-file <path>] \
         [--engine claude] [--model <requested-id>] [--engine-session-log <path>]
     python3 state-phase-write.py --devlyn-dir .devlyn --phase plan transition \
         --verdict PASS --next-phase implement --next-round 0 --next-engine claude
@@ -40,39 +40,18 @@ import tempfile
 
 VALID_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK", "BLOCKED"}
 FINAL_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED"}
-VALID_TRIGGERS = {"build_gate", "cleanup", "verify"}
+VALID_TRIGGERS = {"verify"}
 SPAWN_TRIGGERS = VALID_TRIGGERS | {"plan"}
-PHASE_NAMES = {"plan", "probe_derive", "implement", "surface_close", "build_gate", "cleanup", "verify", "final_report"}
+PHASE_NAMES = {"plan", "probe_derive", "implement", "verify", "final_report"}
 LEGAL_TRANSITIONS = {
     "plan": {"probe_derive", "implement", "final_report"},
     "probe_derive": {"implement", "final_report"},
-    "implement": {"implement", "surface_close", "build_gate", "cleanup", "verify", "final_report"},
-    "surface_close": {"build_gate", "cleanup", "verify", "final_report"},
-    "build_gate": {"implement", "cleanup", "verify", "final_report"},
-    "cleanup": {"implement", "verify", "final_report"},
+    "implement": {"implement", "verify", "final_report"},
     "verify": {"implement", "final_report"},
     "final_report": set(),
 }
-WORKER_SESSION_ARTIFACT_PHASES = {
-    "plan": "plan",
-    "implement": "implement",
-    "surface_close": "surface-close",
-    "build_gate": "build_gate",
-    "cleanup": "cleanup",
-}
+WORKER_SESSION_ARTIFACT_PHASES = {"plan": "plan", "implement": "implement"}
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-SURFACE_ROW_RE = re.compile(
-    r"^(?P<obligation>UVR-STALE|PATH-TEST): (?:"
-    r"(?P<fired>FIRED) (?P<fired_path>.+):(?P<fired_line>[1-9][0-9]*)"
-    r"(?: — (?P<fired_evidence>\S.*))?|"
-    r"(?P<na>N/A) (?P<na_path>.+?)(?::(?P<na_line>[1-9][0-9]*))?"
-    r"(?: — (?P<na_evidence>\S.*))?)$"
-)
-VALIDATION_EXECUTION_RE = re.compile(
-    r"npm\s+test|node\s+--test|node\s+-e|node\s+bin/|node\s+tests/|git\s+stash"
-)
-SURFACE_SKIP_REASON = "auto_surface_close_claude_unavailable"
-SURFACE_RECOVERY_REASON = "surface_close_rolled_back_adjudication_malformed"
 PLAN_MAX_DISPATCHES = 2
 PLAN_SPAWN_RECEIPT_FIELDS = (
     "round", "started_at", "triggered_by", "engine", "model_requested", "prompt_sha256",
@@ -263,9 +242,7 @@ def bind_process_evidence(
     state: dict, phase: str, verdict: str | None,
     devlyn: pathlib.Path | None, work: pathlib.Path | None,
 ) -> None:
-    if phase == "implement" and verdict not in {"PASS", "PASS_WITH_ISSUES"}:
-        return
-    if phase not in {"implement", "build_gate"}:
+    if phase != "implement" or verdict not in {"PASS", "PASS_WITH_ISSUES"}:
         return
     source = state.get("source")
     if work is None or devlyn is None:
@@ -277,111 +254,14 @@ def bind_process_evidence(
         return
     runner = process_evidence_module()
     try:
-        results_path = devlyn / "spec-verify.results.json"
-        if phase == "implement":
-            obligations = runner.declared_obligations(work, state, phase)
-            if not obligations:
-                state.setdefault("process_evidence", None)
-                return
-            round_ = runner.phase_round(state, phase)
-            manifest_path = runner.manifest_relative_path(state, phase)
-            carrier = runner.validate_manifest(
-                work, manifest_path, state.get("run_id"), phase, round_, obligations,
-            )
-        elif verdict == "BLOCKED" and not os.path.lexists(results_path):
-            round_ = runner.phase_round(state, phase)
-            carrier = runner.validate_manifest(
-                work, runner.manifest_relative_path(state, phase),
-                state.get("run_id"), phase, round_, require_expectations=False,
-            )
-        else:
-            if not results_path.is_file():
-                raise runner.EvidenceError(
-                    "spec-verify.results.json is missing for BUILD_GATE completion"
-                )
-            results = loads_strict_json(results_path.read_text(encoding="utf-8"))
-            if not isinstance(results, dict):
-                raise runner.EvidenceError(
-                    "spec-verify.results.json must contain a JSON object"
-                )
-            commands = results.get("commands")
-            if not isinstance(commands, list):
-                raise runner.EvidenceError(
-                    "spec-verify.results.json commands must be an array"
-                )
-            preflight_failure = "preflight_failure" in results
-            if preflight_failure:
-                failure = results["preflight_failure"]
-                if (
-                    not isinstance(failure, dict)
-                    or set(failure) != {"run_id", "phase", "round", "findings"}
-                    or failure["run_id"] != state.get("run_id")
-                    or failure["phase"] != phase
-                    or type(failure["round"]) is not int
-                    or failure["round"] != runner.phase_round(state, phase)
-                ):
-                    raise runner.EvidenceError("BUILD_GATE preflight failure identity is invalid")
-                record = failure["findings"]
-                if not isinstance(record, dict) or set(record) != {"path", "sha256"}:
-                    raise runner.EvidenceError("BUILD_GATE preflight failure findings binding is invalid")
-                path = runner._checked_file(work, record["path"], "preflight failure findings")
-                raw = path.read_bytes()
-                if hashlib.sha256(raw).hexdigest() != record["sha256"]:
-                    raise runner.EvidenceError("BUILD_GATE preflight failure findings digest mismatch")
-                findings = [loads_strict_json(line) for line in raw.decode("utf-8").splitlines() if line.strip()]
-                if len(findings) != 1 or not isinstance(findings[0], dict) or (
-                    findings[0].get("phase") != phase
-                    or findings[0].get("severity") != "CRITICAL"
-                    or findings[0].get("rule_id") not in {
-                        "correctness.spec-verify-malformed", "correctness.risk-probe-integrity",
-                    }
-                ):
-                    raise runner.EvidenceError("BUILD_GATE preflight failure requires its CRITICAL finding")
-                if verdict not in {"FAIL", "BLOCKED"}:
-                    raise runner.EvidenceError("BUILD_GATE preflight failure requires FAIL or BLOCKED verdict")
-            carrier = results.get("process_evidence")
-            if carrier is None:
-                if commands:
-                    raise runner.EvidenceError(
-                        "BUILD_GATE commands exist without a process-evidence carrier"
-                    )
-                manifest_path = work / runner.manifest_relative_path(state, phase)
-                if os.path.lexists(manifest_path):
-                    raise runner.EvidenceError(
-                        "BUILD_GATE manifest exists without a process-evidence carrier"
-                    )
-                if not preflight_failure and runner.mechanical_evidence_required(work, state):
-                    raise runner.EvidenceError(
-                        "required BUILD_GATE evidence has no process-evidence carrier"
-                    )
-            else:
-                round_ = runner.phase_round(state, phase)
-                manifest = carrier.get("manifest") if isinstance(carrier, dict) else None
-                if (
-                    not isinstance(carrier, dict)
-                    or carrier.get("phase") != phase
-                    or carrier.get("round") != round_
-                    or not isinstance(manifest, dict)
-                    or manifest.get("path") != runner.manifest_relative_path(state, phase)
-                ):
-                    raise runner.EvidenceError(
-                        "BUILD_GATE process-evidence carrier does not match the active run/round"
-                    )
-                outcome = runner.validate_summary_commands(work, commands, carrier)
-                if outcome["verdict"] == "BLOCKED" and verdict != "BLOCKED":
-                    denial = outcome["capability_denials"][0]
-                    raise runner.EvidenceError(
-                        "BUILD_GATE capability denial requires BLOCKED verdict: "
-                        f"{denial['id']}:{denial['operation']}"
-                    )
-                if (
-                    outcome["verdict"] == "NEEDS_WORK"
-                    and verdict in {"PASS", "PASS_WITH_ISSUES"}
-                ):
-                    raise runner.EvidenceError(
-                        "BUILD_GATE process evidence mismatch cannot complete as "
-                        f"{verdict}: {','.join(outcome['failed_ids'])}"
-                    )
+        obligations = runner.declared_obligations(work, state, phase)
+        if not obligations:
+            state.setdefault("process_evidence", None)
+            return
+        carrier = runner.validate_manifest(
+            work, runner.manifest_relative_path(state, phase), state.get("run_id"),
+            phase, runner.phase_round(state, phase), obligations,
+        )
     except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
         raise SystemExit(f"BLOCKED:process-evidence-invalid: {exc}") from exc
     existing = state.get("process_evidence")
@@ -394,9 +274,6 @@ def bind_process_evidence(
             runner.validate_bound_carrier(work, prior)
     except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
         raise SystemExit(f"BLOCKED:process-evidence-invalid: {exc}") from exc
-    if carrier is None:
-        state.setdefault("process_evidence", None)
-        return
     if any(
         isinstance(item, dict)
         and item.get("phase") == carrier["phase"]
@@ -408,477 +285,6 @@ def bind_process_evidence(
             f"{phase} round {carrier['round']}"
         )
     state["process_evidence"] = [*existing, carrier]
-
-
-def parse_string_list(raw: str, label: str) -> list[str]:
-    try:
-        value = loads_strict_json(raw)
-    except ValueError as exc:
-        raise SystemExit(f"error: {label} is not valid JSON: {exc}") from exc
-    if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
-        raise SystemExit(f"error: {label} must be a JSON array of strings")
-    return value
-
-
-def run_git_paths(work: pathlib.Path, *args: str) -> list[str]:
-    proc = subprocess.run(
-        ["git", *args], cwd=work, capture_output=True, check=False,
-    )
-    if proc.returncode != 0:
-        detail = os.fsdecode(proc.stderr or proc.stdout).strip() or "git command failed"
-        raise SystemExit(f"error: {detail}")
-    return [os.fsdecode(item) for item in proc.stdout.split(b"\0") if item]
-
-
-def surface_entry(state: dict) -> dict:
-    entry = (state.get("phases") or {}).get("surface_close")
-    if not isinstance(entry, dict) or not entry.get("started_at"):
-        raise SystemExit("error: phases.surface_close was never spawned")
-    pre_sha = entry.get("pre_sha")
-    patch_digest = entry.get("input_patch_sha256")
-    prompt_digest = entry.get("prompt_sha256")
-    baseline = entry.get("untracked_before")
-    if not isinstance(pre_sha, str) or not pre_sha:
-        raise SystemExit("error: phases.surface_close.pre_sha is missing")
-    if not isinstance(patch_digest, str) or not SHA256_RE.fullmatch(patch_digest):
-        raise SystemExit("error: phases.surface_close.input_patch_sha256 must be 64 lowercase hex characters")
-    if not isinstance(prompt_digest, str) or not SHA256_RE.fullmatch(prompt_digest):
-        raise SystemExit("error: phases.surface_close.prompt_sha256 must be 64 lowercase hex characters")
-    if not isinstance(baseline, list) or any(not isinstance(item, str) for item in baseline):
-        raise SystemExit("error: phases.surface_close.untracked_before must be a string array")
-    return entry
-
-
-def devlyn_prefix(work: pathlib.Path, devlyn: pathlib.Path) -> str:
-    try:
-        return devlyn.resolve().relative_to(work.resolve()).as_posix().strip("/")
-    except ValueError as exc:
-        raise SystemExit("error: --devlyn-dir must be inside --workdir") from exc
-
-
-def file_sha256(path: pathlib.Path) -> str:
-    digest = hashlib.sha256()
-    try:
-        with path.open("rb") as handle:
-            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                digest.update(chunk)
-    except OSError as exc:
-        raise SystemExit(f"BLOCKED:surface-close-input-mismatch: {path}: {exc}") from exc
-    return digest.hexdigest()
-
-
-def validate_surface_inputs(work: pathlib.Path, devlyn: pathlib.Path, state: dict) -> None:
-    entry = surface_entry(state)
-    source = state.get("source")
-    if not isinstance(source, dict):
-        raise SystemExit("BLOCKED:surface-close-input-mismatch: source is missing")
-    goal_path = source.get("goal_path")
-    goal_digest = source.get("goal_sha256")
-    if not isinstance(goal_path, str) or not goal_path or not isinstance(goal_digest, str):
-        raise SystemExit("BLOCKED:surface-close-input-mismatch: Goal metadata is missing")
-    goal = work / goal_path
-    try:
-        goal.resolve().relative_to(work.resolve())
-    except (OSError, ValueError) as exc:
-        raise SystemExit("BLOCKED:surface-close-input-mismatch: Goal path escapes worktree") from exc
-    patch = devlyn / "surface-close.input.patch"
-    if file_sha256(goal) != goal_digest or file_sha256(patch) != entry["input_patch_sha256"]:
-        raise SystemExit("BLOCKED:surface-close-input-mismatch: artifact digest changed")
-
-
-def validate_surface_prompt(devlyn: pathlib.Path, state: dict) -> None:
-    prompt = devlyn / "surface-close.prompt"
-    if file_sha256(prompt) != surface_entry(state)["prompt_sha256"]:
-        raise SystemExit("BLOCKED:surface-close-prompt-mismatch")
-
-
-def surface_delta_paths(work: pathlib.Path, devlyn: pathlib.Path, state: dict) -> tuple[list[str], list[str]]:
-    entry = surface_entry(state)
-    pre_sha = entry["pre_sha"]
-    prefix = devlyn_prefix(work, devlyn)
-    tracked = set(run_git_paths(work, "diff", "--name-only", "-z", pre_sha, "--"))
-    untracked_now = set(run_git_paths(work, "ls-files", "--others", "--exclude-standard", "-z"))
-    new_untracked = untracked_now - set(entry["untracked_before"])
-
-    def external(path: str) -> bool:
-        return bool(path) and path != prefix and not path.startswith(f"{prefix}/")
-
-    return (
-        sorted(path for path in tracked if external(path)),
-        sorted(path for path in new_untracked if external(path)),
-    )
-
-
-def ensure_surface_clean_baseline(work: pathlib.Path, devlyn: pathlib.Path, state: dict) -> None:
-    tracked, new_untracked = surface_delta_paths(work, devlyn, state)
-    if tracked or new_untracked:
-        detail = json.dumps(sorted(set(tracked + new_untracked)))
-        raise SystemExit(f"BLOCKED:surface-close-preexisting-delta: {detail}")
-
-
-def validate_surface_brace_glob(entry: str) -> str | None:
-    if "{" not in entry and "}" not in entry:
-        return None
-    brace = re.search(r"\{([^{}]*)\}", entry)
-    alternatives = brace.group(1).split(",") if brace else []
-    if (
-        entry.count("{") != 1
-        or entry.count("}") != 1
-        or len(alternatives) < 2
-        or any(not value or any(char in value for char in "{},/*") for value in alternatives)
-    ):
-        return (
-            f"unsupported brace glob {entry!r}; supported form is {{alt1,alt2,...}} "
-            "with at least two non-empty plain alternatives"
-        )
-    return None
-
-
-def validate_authorized_surface(raw: str) -> list[str]:
-    surface = parse_string_list(raw, "--authorized-surface-json")
-    if not surface:
-        raise SystemExit("error: --authorized-surface-json must not be empty")
-    for entry in surface:
-        path = entry[:-3] if entry.endswith("/**") else entry
-        parts = pathlib.PurePosixPath(path).parts
-        if (
-            not path or path == "." or path.startswith("./")
-            or pathlib.PurePosixPath(path).is_absolute() or ".." in parts
-        ):
-            raise SystemExit(f"error: invalid authorized_surface entry: {entry!r}")
-        brace_error = validate_surface_brace_glob(entry)
-        if brace_error is not None:
-            raise SystemExit(f"error: {brace_error}")
-    return surface
-
-
-def path_matches_surface(path: str, surface: list[str]) -> bool:
-    for entry in surface:
-        brace_error = validate_surface_brace_glob(entry)
-        if brace_error is not None:
-            raise ValueError(brace_error)
-        if "{" in entry:
-            brace = re.search(r"\{([^{}]*)\}", entry)
-            assert brace is not None
-            alternatives = brace.group(1).split(",")
-            entries = tuple(
-                entry[:brace.start()] + value + entry[brace.end():]
-                for value in alternatives
-            )
-        else:
-            entries = (entry,)
-        for expanded in entries:
-            if expanded.endswith("/**"):
-                prefix = expanded[:-3].rstrip("/")
-                if path == prefix or path.startswith(f"{prefix}/"):
-                    return True
-            elif path == expanded:
-                return True
-    return False
-
-
-def safe_path_matches_surface(path: str, surface: list[str]) -> bool:
-    parsed = pathlib.PurePosixPath(path)
-    return not (parsed.is_absolute() or ".." in parsed.parts) and path_matches_surface(path, surface)
-
-
-def worktree_file_exists(work: pathlib.Path, path: str) -> bool:
-    parsed = pathlib.PurePosixPath(path)
-    if parsed.is_absolute() or ".." in parsed.parts:
-        return False
-    try:
-        resolved = (work / path).resolve()
-        resolved.relative_to(work.resolve())
-        return resolved.is_file()
-    except (OSError, RuntimeError, ValueError):
-        return False
-
-
-def worktree_path_exists(work: pathlib.Path, path: str) -> bool:
-    parsed = pathlib.PurePosixPath(path)
-    if parsed.is_absolute() or ".." in parsed.parts:
-        return False
-    try:
-        resolved = (work / path).resolve()
-        resolved.relative_to(work.resolve())
-        return resolved.exists()
-    except (OSError, RuntimeError, ValueError):
-        return False
-
-
-def resolve_na_surface_citation(
-    work: pathlib.Path, raw: str, parsed_path: str, parsed_line: int | None,
-    surface: list[str],
-) -> tuple[str, int | None]:
-    def proven(path: str) -> bool:
-        if path in surface and not path.endswith("/**"):
-            return True
-        return worktree_file_exists(work, path) and any(
-            entry.endswith("/**") and safe_path_matches_surface(path, [entry])
-            for entry in surface
-        )
-
-    if proven(raw):
-        return raw, None
-    if worktree_path_exists(work, raw) and not safe_path_matches_surface(raw, surface):
-        raise SystemExit(f"BLOCKED:surface-close-adjudication-out-of-surface: {raw}")
-    if (
-        worktree_path_exists(work, parsed_path)
-        and not safe_path_matches_surface(parsed_path, surface)
-    ):
-        raise SystemExit(f"BLOCKED:surface-close-adjudication-out-of-surface: {raw}")
-    for split in range(len(raw) - 1, -1, -1):
-        if raw[split] != ":" or not proven(raw[:split]):
-            continue
-        suffix = raw[split:]
-        if not re.fullmatch(r":[1-9][0-9]*", suffix):
-            raise SystemExit(
-                f"BLOCKED:surface-close-adjudication-malformed: citation {raw!r}"
-            )
-        return raw[:split], int(suffix[1:])
-    return parsed_path, parsed_line
-
-
-def surface_offenders(work: pathlib.Path, devlyn: pathlib.Path, state: dict,
-                      surface: list[str]) -> list[str]:
-    tracked, untracked = surface_delta_paths(work, devlyn, state)
-    return sorted(path for path in set(tracked + untracked) if not safe_path_matches_surface(path, surface))
-
-
-def path_exists_at_commit(work: pathlib.Path, sha: str, path: str) -> bool:
-    proc = subprocess.run(
-        ["git", "ls-tree", "--name-only", "-z", sha, "--", path],
-        cwd=work, capture_output=True, check=False,
-    )
-    if proc.returncode != 0:
-        detail = os.fsdecode(proc.stderr or proc.stdout).strip() or "git ls-tree failed"
-        raise SystemExit(f"error: {detail}")
-    return bool(proc.stdout)
-
-
-def remove_worktree_path(work: pathlib.Path, path: str) -> None:
-    parsed = pathlib.PurePosixPath(path)
-    if parsed.is_absolute() or ".." in parsed.parts:
-        raise SystemExit(f"error: rollback path escapes worktree: {path!r}")
-    target = work / path
-    if target.is_symlink() or target.is_file():
-        target.unlink()
-    elif target.is_dir():
-        shutil.rmtree(target)
-
-
-def rollback_surface_delta(work: pathlib.Path, devlyn: pathlib.Path, state: dict) -> list[str]:
-    entry = surface_entry(state)
-    pre_sha = entry["pre_sha"]
-    tracked, untracked = surface_delta_paths(work, devlyn, state)
-    restore = [path for path in tracked if path_exists_at_commit(work, pre_sha, path)]
-    remove = sorted(set(untracked + [
-        path for path in tracked if not path_exists_at_commit(work, pre_sha, path)
-    ]))
-    if restore:
-        proc = subprocess.run(
-            ["git", "restore", f"--source={pre_sha}", "--staged", "--worktree", "--", *restore],
-            cwd=work, capture_output=True, check=False,
-        )
-        if proc.returncode != 0:
-            detail = os.fsdecode(proc.stderr or proc.stdout).strip() or "git restore failed"
-            raise SystemExit(f"error: {detail}")
-    if remove:
-        proc = subprocess.run(
-            ["git", "rm", "-f", "--cached", "--ignore-unmatch", "--", *remove],
-            cwd=work, capture_output=True, check=False,
-        )
-        if proc.returncode != 0:
-            detail = os.fsdecode(proc.stderr or proc.stdout).strip() or "git rm --cached failed"
-            raise SystemExit(f"error: {detail}")
-        for path in remove:
-            remove_worktree_path(work, path)
-    return sorted(set(restore + remove))
-
-
-def validate_surface_adjudication(
-    work: pathlib.Path, devlyn: pathlib.Path, state: dict, surface: list[str],
-) -> dict[str, str]:
-    output = devlyn / "surface-close.stdout"
-    try:
-        lines = output.read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeError) as exc:
-        raise SystemExit(f"BLOCKED:surface-close-adjudication-malformed: {output}: {exc}") from exc
-
-    rows: dict[str, tuple[str, str, int | None, str | None, int]] = {}
-    for index, line in enumerate(lines):
-        if "UVR-STALE:" not in line and "PATH-TEST:" not in line:
-            continue
-        match = SURFACE_ROW_RE.fullmatch(line)
-        if match is None:
-            raise SystemExit(
-                f"BLOCKED:surface-close-adjudication-malformed: line {index + 1}: {line!r}"
-            )
-        obligation = match.group("obligation")
-        if obligation in rows:
-            raise SystemExit(
-                f"BLOCKED:surface-close-adjudication-malformed: duplicate {obligation} row"
-            )
-        status = "FIRED" if match.group("fired") else "N/A"
-        evidence = match.group("fired_evidence") or match.group("na_evidence")
-        if status == "N/A" and evidence is None:
-            raise SystemExit(
-                f"BLOCKED:surface-close-adjudication-malformed: {obligation} N/A requires evidence"
-            )
-        path = match.group("fired_path") or match.group("na_path")
-        raw_line = match.group("fired_line") or match.group("na_line")
-        line_number = int(raw_line) if raw_line is not None else None
-        citation = path if line_number is None else f"{path}:{line_number}"
-        if status == "N/A":
-            path, line_number = resolve_na_surface_citation(
-                work, citation, path, line_number, surface,
-            )
-            citation = path if line_number is None else f"{path}:{line_number}"
-        if not safe_path_matches_surface(path, surface):
-            raise SystemExit(
-                f"BLOCKED:surface-close-adjudication-out-of-surface: {citation}"
-            )
-        try:
-            cited = (work / path).resolve()
-            cited.relative_to(work.resolve())
-            cited_lines = cited.read_text(encoding="utf-8").splitlines()
-        except (OSError, RuntimeError, UnicodeError, ValueError) as exc:
-            raise SystemExit(
-                f"BLOCKED:surface-close-adjudication-citation-missing: {citation}: {exc}"
-            ) from exc
-        if line_number is not None and line_number > len(cited_lines):
-            raise SystemExit(
-                f"BLOCKED:surface-close-adjudication-citation-missing: {path}:{line_number}"
-            )
-        rows[obligation] = (status, path, line_number, evidence, index)
-
-    missing = [name for name in ("UVR-STALE", "PATH-TEST") if name not in rows]
-    if missing:
-        raise SystemExit(
-            "BLOCKED:surface-close-adjudication-malformed: missing " + ", ".join(missing)
-        )
-    pass_lines = [index for index, line in enumerate(lines) if line == "PASS"]
-    if len(pass_lines) != 1 or pass_lines[0] <= max(row[4] for row in rows.values()):
-        raise SystemExit(
-            "BLOCKED:surface-close-adjudication-malformed: exactly one PASS must follow both rows"
-        )
-    statuses = {name: row[0] for name, row in rows.items()}
-    if all(status == "N/A" for status in statuses.values()):
-        tracked, untracked = surface_delta_paths(work, devlyn, state)
-        if tracked or untracked:
-            raise SystemExit("BLOCKED:surface-close-empty-pass-has-delta")
-    return statuses
-
-
-def surface_transcript_commands(transcript: pathlib.Path) -> list[str]:
-    try:
-        lines = transcript.read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeError) as exc:
-        raise SystemExit(f"BLOCKED:surface-close-worker-session-invalid: {transcript}: {exc}") from exc
-    commands: list[str] = []
-    for line_number, line in enumerate(lines, start=1):
-        if not line.strip():
-            continue
-        try:
-            event = loads_strict_json(line)
-        except ValueError as exc:
-            raise SystemExit(
-                f"BLOCKED:surface-close-worker-session-invalid: line {line_number}: {exc}"
-            ) from exc
-        if not isinstance(event, dict):
-            continue
-        message = event.get("message")
-        content = message.get("content") if isinstance(message, dict) else None
-        if isinstance(content, list):
-            for item in content:
-                if not isinstance(item, dict) or item.get("type") != "tool_use":
-                    continue
-                if item.get("name") != "Bash":
-                    continue
-                tool_input = item.get("input")
-                command = tool_input.get("command") if isinstance(tool_input, dict) else None
-                if isinstance(command, str):
-                    commands.append(command)
-    return commands
-
-
-def validate_surface_execution(devlyn: pathlib.Path, state: dict) -> None:
-    entry = surface_entry(state)
-    transcript = devlyn / f"surface-close.worker-session.{entry.get('round')}.jsonl"
-    commands = surface_transcript_commands(transcript)
-    hits = [command for command in commands if VALIDATION_EXECUTION_RE.search(command)]
-    if hits:
-        raise SystemExit(
-            "BLOCKED:surface-close-validation-execution: " + json.dumps(hits)
-        )
-
-
-def validate_surface_write_audit(
-    work: pathlib.Path, devlyn: pathlib.Path, state: dict, surface: list[str],
-) -> list[str]:
-    entry = surface_entry(state)
-    transcript = devlyn / f"surface-close.worker-session.{entry.get('round')}.jsonl"
-    try:
-        lines = transcript.read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeError) as exc:
-        raise SystemExit(f"BLOCKED:surface-close-worker-session-invalid: {transcript}: {exc}") from exc
-    targets: list[str] = []
-    for line_number, line in enumerate(lines, start=1):
-        if not line.strip():
-            continue
-        try:
-            event = loads_strict_json(line)
-        except ValueError as exc:
-            raise SystemExit(
-                f"BLOCKED:surface-close-worker-session-invalid: line {line_number}: {exc}"
-            ) from exc
-        message = event.get("message") if isinstance(event, dict) else None
-        content = message.get("content") if isinstance(message, dict) else None
-        if not isinstance(content, list):
-            continue
-        for item in content:
-            if not isinstance(item, dict) or item.get("type") != "tool_use":
-                continue
-            if item.get("name") not in {"Edit", "Write"}:
-                continue
-            tool_input = item.get("input")
-            raw_target = tool_input.get("file_path") if isinstance(tool_input, dict) else None
-            if not isinstance(raw_target, str) or not raw_target:
-                raise SystemExit(
-                    "BLOCKED:surface-close-write-audit-violation: "
-                    f"line {line_number}: Edit/Write target missing"
-                )
-            target = pathlib.Path(raw_target)
-            try:
-                resolved = (target if target.is_absolute() else work / target).resolve()
-                relative = resolved.relative_to(work.resolve()).as_posix()
-            except (OSError, ValueError) as exc:
-                raise SystemExit(
-                    "BLOCKED:surface-close-write-audit-violation: "
-                    f"line {line_number}: {raw_target!r}"
-                ) from exc
-            if not safe_path_matches_surface(relative, surface):
-                raise SystemExit(
-                    "BLOCKED:surface-close-write-audit-violation: "
-                    f"line {line_number}: {relative!r}"
-                )
-            targets.append(relative)
-    return targets
-
-
-def require_surface_adjudication_malformed(
-    work: pathlib.Path, devlyn: pathlib.Path, state: dict, surface: list[str],
-) -> None:
-    try:
-        validate_surface_adjudication(work, devlyn, state, surface)
-    except SystemExit as exc:
-        if str(exc).startswith("BLOCKED:surface-close-adjudication-malformed:"):
-            return
-        raise
-    raise SystemExit(
-        "error: surface-adjudication-recover requires "
-        "BLOCKED:surface-close-adjudication-malformed"
-    )
 
 
 CLAUDE_USAGE_COUNTERS = (
@@ -975,590 +381,57 @@ def parse_effective_model(session_log: pathlib.Path) -> str:
     )
 
 
-def _git_output(work: pathlib.Path, *args: str, input_bytes: bytes | None = None) -> bytes:
-    proc = subprocess.run(
-        ["git", *args], cwd=work, input=input_bytes, capture_output=True, check=False,
-    )
+def _git_text(work: pathlib.Path, *args: str) -> str:
+    proc = subprocess.run(["git", *args], cwd=work, capture_output=True, text=True,
+                          encoding="utf-8", check=False)
     if proc.returncode != 0:
-        detail = os.fsdecode(proc.stderr or proc.stdout).strip() or "git command failed"
-        raise SystemExit(f"BLOCKED:closure-durability-mechanical: {detail}")
-    return proc.stdout
+        detail = (proc.stderr or proc.stdout).strip() or f"exit {proc.returncode}"
+        raise SystemExit(f"BLOCKED:repair-checkpoint: git {args[0]} failed: {detail}")
+    return proc.stdout.strip()
 
 
-def _commit_blob(work: pathlib.Path, sha: str, path: str) -> bytes | None:
-    if not path_exists_at_commit(work, sha, path):
-        return None
-    return _git_output(work, "show", f"{sha}:{path}")
-
-
-def _line_matches(haystack: list[bytes], needle: list[bytes]) -> list[int]:
-    if not needle or len(needle) > len(haystack):
-        return []
-    width = len(needle)
-    return [index for index in range(len(haystack) - width + 1)
-            if haystack[index:index + width] == needle]
-
-
-def _nearest(matches: list[int], expected: int) -> int | None:
-    return min(matches, key=lambda value: (abs(value - expected), value)) if matches else None
-
-
-def _block_image_index(lines: list[bytes], image: list[bytes], block: dict) -> int | None:
-    matches = []
-    before = block["_before_lines"]
-    after = block["_after_lines"]
-    for index in _line_matches(lines, image):
-        if before and (index < len(before) or lines[index - len(before):index] != before):
-            continue
-        end = index + len(image)
-        if after and lines[end:end + len(after)] != after:
-            continue
-        matches.append(index)
-    return _nearest(matches, block["_expected_index"])
-
-
-def _block_anchor_index(lines: list[bytes], block: dict) -> int | None:
-    before = block["_before_lines"]
-    after = block["_after_lines"]
-    if not before and not after:
-        return 0 if not lines else None
-    candidates = []
-    for index in range(len(lines) + 1):
-        if before and (index < len(before) or lines[index - len(before):index] != before):
-            continue
-        if after and lines[index:index + len(after)] != after:
-            continue
-        candidates.append(index)
-    return _nearest(candidates, block["_expected_index"])
-
-
-def _map_pre_fix_span(block: dict, pre_fix_lines: list[bytes]) -> None:
-    post_lines = block["_post_lines"]
-    if post_lines:
-        index = _block_image_index(pre_fix_lines, post_lines, block)
-    else:
-        index = _block_anchor_index(pre_fix_lines, block)
-    if index is None:
-        block["_pre_fix_anchor"] = False
-        return
-    block["_pre_fix_anchor"] = True
-    block["_expected_index"] = index
-    width = max(1, len(post_lines))
-    block["pre_fix_span"] = [index + 1, index + width]
-
-
-def surface_change_blocks(work: pathlib.Path, state: dict,
-                          pre_fix_sha: str | None = None) -> list[dict]:
-    surface = ((state.get("phases") or {}).get("surface_close") or {})
-    pre_sha = surface.get("pre_sha")
-    post_sha = surface.get("post_sha")
-    if not isinstance(pre_sha, str) or not pre_sha or not isinstance(post_sha, str) or not post_sha:
-        return []
-    paths = run_git_paths(work, "diff", "--name-only", "--no-renames", "-z", pre_sha, post_sha, "--")
-    blocks = []
-    for path in paths:
-        parsed = pathlib.PurePosixPath(path)
-        if parsed.is_absolute() or ".." in parsed.parts:
-            raise SystemExit(f"BLOCKED:closure-durability-mechanical: unsafe surface path {path!r}")
-        old_blob = _commit_blob(work, pre_sha, path)
-        post_blob = _commit_blob(work, post_sha, path)
-        old_lines = [] if old_blob is None else old_blob.splitlines(keepends=True)
-        post_lines = [] if post_blob is None else post_blob.splitlines(keepends=True)
-        matcher = difflib.SequenceMatcher(None, old_lines, post_lines, autojunk=False)
-        opcodes = matcher.get_opcodes()
-        for ordinal, (tag, old_start, old_end, new_start, new_end) in enumerate(opcodes):
-            if tag == "equal":
-                continue
-            old_image = old_lines[old_start:old_end]
-            post_image = post_lines[new_start:new_end]
-            before_lines = []
-            after_lines = []
-            if ordinal > 0 and opcodes[ordinal - 1][0] == "equal":
-                _tag, _i1, _i2, prior_start, prior_end = opcodes[ordinal - 1]
-                before_lines = post_lines[max(prior_start, prior_end - 2):prior_end]
-            if ordinal + 1 < len(opcodes) and opcodes[ordinal + 1][0] == "equal":
-                _tag, _i1, _i2, next_start, next_end = opcodes[ordinal + 1]
-                after_lines = post_lines[next_start:min(next_end, next_start + 2)]
-            identity = hashlib.sha256(
-                path.encode("utf-8", "surrogateescape") + b"\0"
-                + str(old_start + 1).encode() + b":" + str(old_end - old_start).encode() + b"\0"
-                + str(new_start + 1).encode() + b":" + str(new_end - new_start).encode() + b"\0"
-                + b"".join(old_image) + b"\0" + b"".join(post_image)
-            ).hexdigest()[:16]
-            width = max(1, len(post_image))
-            block = {
-                "id": f"{path}:{ordinal}:{identity}",
-                "path": path,
-                "pre_fix_span": [new_start + 1, new_start + width],
-                "_pre_lines": old_image,
-                "_post_lines": post_image,
-                "_before_lines": before_lines,
-                "_after_lines": after_lines,
-                "_expected_index": new_start,
-                "_pre_fix_anchor": True,
-                "_post_exists": post_blob is not None,
-            }
-            if pre_fix_sha is not None:
-                pre_fix_blob = _commit_blob(work, pre_fix_sha, path)
-                _map_pre_fix_span(block, [] if pre_fix_blob is None else pre_fix_blob.splitlines(keepends=True))
-            blocks.append(block)
-    return blocks
-
-
-def classify_surface_block(block: dict, current: bytes | None) -> str:
-    lines = [] if current is None else current.splitlines(keepends=True)
-    post_lines = block["_post_lines"]
-    pre_lines = block["_pre_lines"]
-    if post_lines:
-        post_index = _block_image_index(lines, post_lines, block)
-        if post_index is not None:
-            block["_restore_index"] = post_index
-            return "SURVIVED"
-        if pre_lines:
-            pre_index = _block_image_index(lines, pre_lines, block)
-            if pre_index is not None:
-                block["_restore_index"] = pre_index
-                return "REVERTED"
-        else:
-            anchor = _block_anchor_index(lines, block)
-            if anchor is not None:
-                block["_restore_index"] = anchor
-                return "REVERTED"
-        return "EVOLVED"
-    pre_index = _block_image_index(lines, pre_lines, block)
-    if pre_index is not None:
-        block["_restore_index"] = pre_index
-        return "REVERTED"
-    anchor = _block_anchor_index(lines, block)
-    if anchor is not None:
-        block["_restore_index"] = anchor
-        return "SURVIVED"
-    return "EVOLVED"
-
-
-def finding_targets_block(block: dict, findings: list[dict]) -> bool:
-    start, end = block["pre_fix_span"]
-    for finding in findings:
-        path = finding.get("path", finding.get("file"))
-        line = finding.get("line")
-        if path == block["path"] and isinstance(line, int) and not isinstance(line, bool):
-            if start <= line <= end:
-                return True
-    return False
-
-
-def _read_triggering_findings(devlyn: pathlib.Path, origin_phase: str) -> tuple[list[dict], str]:
-    name = "verify-merged.findings.jsonl" if origin_phase == "verify" else f"{origin_phase}.findings.jsonl"
-    path = devlyn / name
+def repair_checkpoint(work: pathlib.Path, devlyn: pathlib.Path, round_: int) -> dict:
+    """The fix checkpoint a VERIFY-origin repair round must leave before fresh VERIFY."""
+    if _git_text(work, "status", "--porcelain", "--untracked-files=no", "--", ".", ":(exclude).devlyn"):
+        raise SystemExit("BLOCKED:repair-checkpoint: tracked worktree/index is not clean")
+    fix = _git_text(work, "rev-parse", "HEAD")
+    subject = _git_text(work, "show", "-s", "--format=%s", fix)
+    if subject != f"chore(pipeline): implement fix round {round_}":
+        raise SystemExit(f"BLOCKED:repair-checkpoint: expected fix checkpoint round {round_}, got {subject!r}")
+    findings = devlyn / "verify-merged.findings.jsonl"
     try:
-        raw = path.read_bytes()
+        findings_sha = hashlib.sha256(findings.read_bytes()).hexdigest()
     except OSError as exc:
-        raise SystemExit(f"BLOCKED:closure-durability-receipt: {path}: {exc}") from exc
-    findings = []
-    for line_number, line in enumerate(raw.splitlines(), start=1):
-        if not line.strip():
-            continue
-        try:
-            finding = loads_strict_json(line.decode("utf-8"))
-        except (UnicodeError, ValueError) as exc:
-            raise SystemExit(
-                f"BLOCKED:closure-durability-receipt: {path}:{line_number}: {exc}"
-            ) from exc
-        if not isinstance(finding, dict):
-            raise SystemExit(
-                f"BLOCKED:closure-durability-receipt: {path}:{line_number} is not an object"
-            )
-        findings.append(finding)
-    return findings, hashlib.sha256(raw).hexdigest()
+        raise SystemExit(f"BLOCKED:repair-checkpoint: {findings}: {exc}") from exc
+    return {"round": round_, "origin_phase": "verify", "triggering_findings_sha256": findings_sha,
+            "pre_fix_sha": _git_text(work, "rev-parse", f"{fix}^"), "fix_commit_sha": fix}
 
 
-def _worktree_file(work: pathlib.Path, path: str) -> bytes | None:
-    target = work / path
-    if target.is_file() or target.is_symlink():
-        return target.read_bytes()
-    return None
-
-
-def _restored_files(work: pathlib.Path, blocks: list[dict]) -> dict[str, bytes | None]:
-    desired = {}
-    for path in sorted({block["path"] for block in blocks}):
-        current = _worktree_file(work, path)
-        lines = [] if current is None else current.splitlines(keepends=True)
-        path_blocks = sorted(
-            (block for block in blocks if block["path"] == path),
-            key=lambda block: block["_restore_index"], reverse=True,
-        )
-        for block in path_blocks:
-            index = block["_restore_index"]
-            pre_lines = block["_pre_lines"]
-            post_lines = block["_post_lines"]
-            if lines[index:index + len(pre_lines)] != pre_lines:
-                raise SystemExit(
-                    f"BLOCKED:closure-durability-apply: restore anchor changed for {block['id']}"
-                )
-            lines[index:index + len(pre_lines)] = post_lines
-        desired[path] = b"".join(lines) if lines or any(
-            block["_post_exists"] for block in path_blocks
-        ) else None
-    return desired
-
-
-def _restore_patch(work: pathlib.Path, desired: dict[str, bytes | None]) -> bytes:
-    parts = []
-    with tempfile.TemporaryDirectory(prefix="closure-durability-") as tmp:
-        root = pathlib.Path(tmp)
-        for path, wanted in desired.items():
-            old = root / "old" / path
-            new = root / "new" / path
-            current = _worktree_file(work, path)
-            if current is not None:
-                old.parent.mkdir(parents=True, exist_ok=True)
-                old.write_bytes(current)
-            if wanted is not None:
-                new.parent.mkdir(parents=True, exist_ok=True)
-                new.write_bytes(wanted)
-            old_arg = str(old.relative_to(root)) if current is not None else "/dev/null"
-            new_arg = str(new.relative_to(root)) if wanted is not None else "/dev/null"
-            proc = subprocess.run(
-                ["git", "diff", "--no-index", "--binary", "--src-prefix=a/", "--dst-prefix=b/",
-                 "--", old_arg, new_arg],
-                cwd=root, capture_output=True, check=False,
-            )
-            if proc.returncode not in (0, 1):
-                detail = os.fsdecode(proc.stderr or proc.stdout).strip() or "git diff --no-index failed"
-                raise SystemExit(f"BLOCKED:closure-durability-apply: {detail}")
-            patch = proc.stdout
-            encoded = path.encode("utf-8", "surrogateescape")
-            rewritten = []
-            header = True
-            for line in patch.splitlines(keepends=True):
-                if line.startswith(b"@@ ") or line.startswith(b"GIT binary patch"):
-                    header = False
-                if header and line.startswith((b"diff --git ", b"--- ", b"+++ ", b"Binary files ")):
-                    for prefix in (b"a/old/", b"a/new/"):
-                        line = line.replace(prefix + encoded, b"a/" + encoded)
-                    for prefix in (b"b/old/", b"b/new/"):
-                        line = line.replace(prefix + encoded, b"b/" + encoded)
-                rewritten.append(line)
-            parts.append(b"".join(rewritten))
-    return b"".join(parts)
-
-
-def _tracked_status(work: pathlib.Path) -> bytes:
-    return _git_output(work, "status", "--porcelain=v1", "-z", "--untracked-files=no")
-
-
-def _apply_restore_patch(work: pathlib.Path, patch: bytes, paths: list[str]) -> None:
-    before = _tracked_status(work)
-    if before:
-        raise SystemExit("BLOCKED:closure-durability-apply: tracked worktree/index is not clean")
-    check = subprocess.run(
-        ["git", "apply", "--check", "--index", "-"], cwd=work,
-        input=patch, capture_output=True, check=False,
-    )
-    if check.returncode != 0:
-        if _tracked_status(work) != before:
-            raise SystemExit("BLOCKED:closure-durability-apply: preflight mutated tracked state")
-        detail = os.fsdecode(check.stderr or check.stdout).strip() or "git apply --check failed"
-        raise SystemExit(f"BLOCKED:closure-durability-apply: {detail}")
-    apply = subprocess.run(
-        ["git", "apply", "--index", "-"], cwd=work,
-        input=patch, capture_output=True, check=False,
-    )
-    if apply.returncode != 0:
-        subprocess.run(
-            ["git", "restore", "--source=HEAD", "--staged", "--worktree", "--", *paths],
-            cwd=work, capture_output=True, check=False,
-        )
-        if _tracked_status(work) != before:
-            raise SystemExit("BLOCKED:closure-durability-apply: failed apply left partial mutation")
-        detail = os.fsdecode(apply.stderr or apply.stdout).strip() or "git apply failed"
-        raise SystemExit(f"BLOCKED:closure-durability-apply: {detail}")
-
-
-def _write_json_atomic(path: pathlib.Path, value: dict) -> bytes:
-    raw = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
-    fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".tmp.")
-    try:
-        with open(fd, "wb") as handle:
-            handle.write(raw)
-        pathlib.Path(tmp_name).replace(path)
-    except BaseException:
-        pathlib.Path(tmp_name).unlink(missing_ok=True)
-        raise
-    return raw
-
-
-def _surface_durability_ledger(state: dict) -> list[dict]:
-    phases = state.setdefault("phases", {})
-    surface = phases.get("surface_close")
-    if surface is None:
-        surface = {}
-        phases["surface_close"] = surface
-    if not isinstance(surface, dict):
-        raise SystemExit("BLOCKED:closure-durability-receipt: phases.surface_close is malformed")
-    ledger = surface.setdefault("durability", [])
+def checkpoint_ledger(state: dict) -> list:
+    implement = (state.get("phases") or {}).get("implement")
+    ledger = implement.setdefault("durability", []) if isinstance(implement, dict) else None
     if not isinstance(ledger, list) or any(not isinstance(item, dict) for item in ledger):
-        raise SystemExit("BLOCKED:closure-durability-receipt: durability ledger is malformed")
+        raise SystemExit("BLOCKED:repair-checkpoint: phases.implement.durability is malformed")
     return ledger
 
 
-def _receipt_blocks(blocks: list[dict]) -> list[dict]:
-    return [{
-        "id": block["id"],
-        "path": block["path"],
-        "pre_fix_span": block["pre_fix_span"],
-        "classification": block["classification"],
-        "finding_targeted": block["finding_targeted"],
-        "action": block["action"],
-    } for block in blocks]
-
-
-def _rollback_durability_creation(
-    work: pathlib.Path, receipt_path: pathlib.Path, state: dict, receipt: dict,
-) -> None:
-    restore_sha = receipt.get("restore_commit_sha")
-    fix_sha = receipt["fix_commit_sha"]
-    restored_paths = sorted({
-        block["path"] for block in receipt.get("blocks", [])
-        if block.get("action") == "restored"
-    })
-    if restore_sha is not None:
-        head = _git_output(work, "rev-parse", "HEAD").decode().strip()
-        if head != restore_sha:
-            raise SystemExit("BLOCKED:closure-durability-rollback: restore commit is no longer HEAD")
-        restore = subprocess.run(
-            ["git", "restore", f"--source={fix_sha}", "--staged", "--worktree", "--", *restored_paths],
-            cwd=work, capture_output=True, check=False,
-        )
-        if restore.returncode != 0:
-            detail = os.fsdecode(restore.stderr or restore.stdout).strip() or "git restore failed"
-            raise SystemExit(f"BLOCKED:closure-durability-rollback: {detail}")
-        update = subprocess.run(
-            ["git", "update-ref", "HEAD", fix_sha, restore_sha],
-            cwd=work, capture_output=True, check=False,
-        )
-        if update.returncode != 0:
-            subprocess.run(
-                ["git", "restore", f"--source={restore_sha}", "--staged", "--worktree", "--",
-                 *restored_paths], cwd=work, capture_output=True, check=False,
-            )
-            detail = os.fsdecode(update.stderr or update.stdout).strip() or "git update-ref failed"
-            raise SystemExit(f"BLOCKED:closure-durability-rollback: {detail}")
-    receipt_path.unlink(missing_ok=True)
-    ledger = _surface_durability_ledger(state)
-    ledger[:] = [
-        item for item in ledger
-        if not (item.get("round") == receipt["round"]
-                and item.get("origin_phase") == receipt["origin_phase"])
-    ]
-    head = _git_output(work, "rev-parse", "HEAD").decode().strip()
-    if head != fix_sha or _tracked_status(work):
-        raise SystemExit("BLOCKED:closure-durability-rollback: rollback left partial mutation")
-
-
-def _validate_durability_receipt(
-    work: pathlib.Path, devlyn: pathlib.Path, state: dict, origin_phase: str, round_: int,
-    receipt_path: pathlib.Path, findings_digest: str, ledger: list[dict],
-) -> dict | None:
-    matches = [item for item in ledger if item.get("round") == round_]
-    if not receipt_path.exists() and not matches:
-        return None
-    if not receipt_path.is_file() or len(matches) != 1:
-        raise SystemExit(
-            f"BLOCKED:closure-durability-receipt: missing or duplicate round {round_} receipt/ledger"
-        )
-    try:
-        raw = receipt_path.read_bytes()
-        receipt = loads_strict_json(raw.decode("utf-8"))
-    except (OSError, UnicodeError, ValueError) as exc:
-        raise SystemExit(f"BLOCKED:closure-durability-receipt: {receipt_path}: {exc}") from exc
-    required = {
-        "schema_version", "round", "origin_phase", "triggering_findings_sha256",
-        "surface_close_commit_sha", "pre_fix_sha", "fix_commit_sha", "post_restore_sha",
-        "restore_commit_sha", "blocks",
-    }
-    if not isinstance(receipt, dict) or set(receipt) != required:
-        raise SystemExit("BLOCKED:closure-durability-receipt: receipt fields are stale or malformed")
-    surface = ((state.get("phases") or {}).get("surface_close") or {})
-    expected_surface_sha = surface.get("post_sha") if isinstance(surface, dict) else None
-    if (
-        receipt["schema_version"] != 1 or receipt["round"] != round_
-        or receipt["origin_phase"] != origin_phase
-        or receipt["triggering_findings_sha256"] != findings_digest
-        or receipt["surface_close_commit_sha"] != expected_surface_sha
-    ):
-        raise SystemExit("BLOCKED:closure-durability-receipt: receipt metadata is stale")
-    blocks = receipt.get("blocks")
-    if not isinstance(blocks, list):
-        raise SystemExit("BLOCKED:closure-durability-receipt: blocks must be an array")
-    block_fields = {"id", "path", "pre_fix_span", "classification", "finding_targeted", "action"}
-    for block in blocks:
-        span = block.get("pre_fix_span") if isinstance(block, dict) else None
-        if (
-            not isinstance(block, dict) or set(block) != block_fields
-            or not isinstance(block.get("id"), str) or not isinstance(block.get("path"), str)
-            or not isinstance(span, list) or len(span) != 2
-            or any(not isinstance(value, int) or isinstance(value, bool) or value < 1 for value in span)
-            or span[0] > span[1]
-            or block.get("classification") not in {"SURVIVED", "REVERTED", "EVOLVED"}
-            or not isinstance(block.get("finding_targeted"), bool)
-            or block.get("action") not in {"restored", "finding-targeted", "none"}
-        ):
-            raise SystemExit("BLOCKED:closure-durability-receipt: block entry is malformed")
-    sha_fields = ("pre_fix_sha", "fix_commit_sha", "post_restore_sha")
-    if any(not isinstance(receipt.get(field), str) or not re.fullmatch(r"[0-9a-f]{40,64}", receipt[field])
-           for field in sha_fields):
-        raise SystemExit("BLOCKED:closure-durability-receipt: commit sha is malformed")
-    restore_sha = receipt.get("restore_commit_sha")
-    if restore_sha is not None and (
-        not isinstance(restore_sha, str) or not re.fullmatch(r"[0-9a-f]{40,64}", restore_sha)
-    ):
-        raise SystemExit("BLOCKED:closure-durability-receipt: restore_commit_sha is malformed")
-    head = _git_output(work, "rev-parse", "HEAD").decode().strip()
-    if head != receipt["post_restore_sha"] or (restore_sha is not None and restore_sha != head):
-        raise SystemExit("BLOCKED:closure-durability-receipt: receipt does not match current HEAD")
-    if restore_sha is None and receipt["fix_commit_sha"] != receipt["post_restore_sha"]:
-        raise SystemExit("BLOCKED:closure-durability-receipt: no-op receipt changed HEAD")
-    if restore_sha is not None:
-        parent = _git_output(work, "rev-parse", f"{restore_sha}^").decode().strip()
-        subject = _git_output(work, "show", "-s", "--format=%s", restore_sha).decode().strip()
-        if parent != receipt["fix_commit_sha"] or subject != f"chore(pipeline): closure-restore round {round_}":
-            raise SystemExit("BLOCKED:closure-durability-receipt: restore commit evidence is stale")
-    fix_parent = _git_output(work, "rev-parse", f"{receipt['fix_commit_sha']}^").decode().strip()
-    fix_subject = _git_output(
-        work, "show", "-s", "--format=%s", receipt["fix_commit_sha"]
-    ).decode().strip()
-    if fix_parent != receipt["pre_fix_sha"] or fix_subject != f"chore(pipeline): implement fix round {round_}":
-        raise SystemExit("BLOCKED:closure-durability-receipt: fix checkpoint evidence is stale")
-    receipt_rel = f"{devlyn_prefix(work, devlyn)}/{receipt_path.name}"
-    expected_ledger = {
-        "round": round_,
-        "origin_phase": origin_phase,
-        "receipt_path": receipt_rel,
-        "receipt_sha256": hashlib.sha256(raw).hexdigest(),
-        "restore_commit_sha": restore_sha,
-    }
-    if matches[0] != expected_ledger:
-        raise SystemExit("BLOCKED:closure-durability-receipt: ledger entry is stale")
+def record_repair_checkpoint(work: pathlib.Path, devlyn: pathlib.Path, state: dict, round_: int) -> dict:
+    ledger = checkpoint_ledger(state)
+    receipt = repair_checkpoint(work, devlyn, round_)
+    existing = [item for item in ledger if item.get("round") == round_]
+    if existing and existing != [receipt]:
+        raise SystemExit(f"BLOCKED:repair-checkpoint: round {round_} already has a different checkpoint")
+    if not existing:
+        ledger.append(receipt)
     return receipt
 
 
-def enforce_closure_durability_reentry(
-    work: pathlib.Path, devlyn: pathlib.Path, state: dict, origin_phase: str, round_: int,
-    *, require_existing: bool = False,
-) -> dict | None:
-    if round_ < 1:
-        return None
-    if origin_phase not in VALID_TRIGGERS:
-        raise SystemExit(f"BLOCKED:closure-durability-receipt: invalid origin phase {origin_phase!r}")
-    findings, findings_digest = _read_triggering_findings(devlyn, origin_phase)
-    ledger = _surface_durability_ledger(state)
-    receipt_path = devlyn / f"closure-durability.round-{round_}.json"
-    existing = _validate_durability_receipt(
-        work, devlyn, state, origin_phase, round_, receipt_path, findings_digest, ledger,
-    )
-    if existing is not None:
-        return existing
-    if require_existing:
-        raise SystemExit(
-            f"BLOCKED:closure-durability-receipt: round {round_} checkpoint receipt is missing"
-        )
-
-    if any(item.get("round") == round_ or item.get("origin_phase") == origin_phase
-           and item.get("receipt_path") == f"{devlyn_prefix(work, devlyn)}/{receipt_path.name}"
-           for item in ledger):
-        raise SystemExit("BLOCKED:closure-durability-receipt: append-only ledger collision")
-    if _tracked_status(work):
-        raise SystemExit("BLOCKED:closure-durability-apply: tracked worktree/index is not clean")
-    fix_commit_sha = _git_output(work, "rev-parse", "HEAD").decode().strip()
-    fix_subject = _git_output(work, "show", "-s", "--format=%s", fix_commit_sha).decode().strip()
-    if fix_subject != f"chore(pipeline): implement fix round {round_}":
-        raise SystemExit(
-            f"BLOCKED:closure-durability-receipt: expected fix checkpoint round {round_}, got {fix_subject!r}"
-        )
-    pre_fix_sha = _git_output(work, "rev-parse", f"{fix_commit_sha}^").decode().strip()
-    surface = ((state.get("phases") or {}).get("surface_close") or {})
-    surface_commit_sha = surface.get("post_sha") if isinstance(surface, dict) else None
-    blocks = surface_change_blocks(work, state, pre_fix_sha)
-    restore_blocks = []
-    for block in blocks:
-        classification = classify_surface_block(block, _worktree_file(work, block["path"]))
-        targeted = finding_targets_block(block, findings)
-        block["classification"] = classification
-        block["finding_targeted"] = targeted
-        if classification == "REVERTED" and not targeted:
-            block["action"] = "restored"
-            restore_blocks.append(block)
-        elif targeted:
-            block["action"] = "finding-targeted"
-        else:
-            block["action"] = "none"
-
-    restore_commit_sha = None
-    if restore_blocks:
-        desired = _restored_files(work, restore_blocks)
-        patch = _restore_patch(work, desired)
-        if not patch:
-            raise SystemExit("BLOCKED:closure-durability-apply: restored blocks produced an empty patch")
-        paths = sorted(desired)
-        _apply_restore_patch(work, patch, paths)
-        commit = subprocess.run(
-            ["git", "commit", "-m", f"chore(pipeline): closure-restore round {round_}"],
-            cwd=work, capture_output=True, check=False,
-        )
-        if commit.returncode != 0:
-            subprocess.run(
-                ["git", "restore", "--source=HEAD", "--staged", "--worktree", "--", *paths],
-                cwd=work, capture_output=True, check=False,
-            )
-            detail = os.fsdecode(commit.stderr or commit.stdout).strip() or "git commit failed"
-            raise SystemExit(f"BLOCKED:closure-durability-apply: {detail}")
-        restore_commit_sha = _git_output(work, "rev-parse", "HEAD").decode().strip()
-    post_restore_sha = _git_output(work, "rev-parse", "HEAD").decode().strip()
-    receipt = {
-        "schema_version": 1,
-        "round": round_,
-        "origin_phase": origin_phase,
-        "triggering_findings_sha256": findings_digest,
-        "surface_close_commit_sha": surface_commit_sha,
-        "pre_fix_sha": pre_fix_sha,
-        "fix_commit_sha": fix_commit_sha,
-        "post_restore_sha": post_restore_sha,
-        "restore_commit_sha": restore_commit_sha,
-        "blocks": _receipt_blocks(blocks),
-    }
-    try:
-        raw = _write_json_atomic(receipt_path, receipt)
-        ledger.append({
-            "round": round_,
-            "origin_phase": origin_phase,
-            "receipt_path": f"{devlyn_prefix(work, devlyn)}/{receipt_path.name}",
-            "receipt_sha256": hashlib.sha256(raw).hexdigest(),
-            "restore_commit_sha": restore_commit_sha,
-        })
-    except BaseException as exc:
-        _rollback_durability_creation(work, receipt_path, state, receipt)
-        raise SystemExit(f"BLOCKED:closure-durability-receipt: {exc}") from exc
-    return receipt
-
-
-def _persist_durability_event(
-    work: pathlib.Path, devlyn: pathlib.Path, state: dict, state_path: pathlib.Path,
-    origin_phase: str, round_: int, writer=write_state,
-) -> dict:
-    receipt_path = devlyn / f"closure-durability.round-{round_}.json"
-    existed = receipt_path.exists()
-    receipt = enforce_closure_durability_reentry(
-        work, devlyn, state, origin_phase, round_,
-    )
-    try:
-        writer(state_path, state)
-    except BaseException:
-        if not existed:
-            _rollback_durability_creation(work, receipt_path, state, receipt)
-        raise
-    return receipt
+def enforce_repair_checkpoint(work: pathlib.Path, devlyn: pathlib.Path, state: dict, round_: int) -> None:
+    matches = [item for item in checkpoint_ledger(state) if item.get("round") == round_]
+    if len(matches) != 1:
+        raise SystemExit(f"BLOCKED:repair-checkpoint: round {round_} checkpoint receipt is missing")
+    if matches[0] != repair_checkpoint(work, devlyn, round_):
+        raise SystemExit(f"BLOCKED:repair-checkpoint: round {round_} checkpoint no longer matches the tree")
 
 
 def clear_verify_round_artifacts(devlyn: pathlib.Path) -> None:
@@ -1573,15 +446,15 @@ def clear_verify_round_artifacts(devlyn: pathlib.Path) -> None:
     for pattern in ("verify*.jsonl", "*-judge.stdout", "*-judge.stderr", "*-judge.summary.json"):
         for path in devlyn.glob(pattern):
             path.unlink()
-    (devlyn / "verify-merge.summary.json").unlink(missing_ok=True)
+    for name in ("verify-merge.summary.json", "source-seal.json", "spec-verify.results.json"):
+        (devlyn / name).unlink(missing_ok=True)
 
 
 def is_plan_dispatch_receipt(entry: dict) -> bool:
     return all(field in entry for field in PLAN_RECEIPT_FIELDS)
 
 
-OWNER_EXECUTION = {"plan": "orchestrator_context", "build_gate": "orchestrator_commands",
-                   "cleanup": "orchestrator_commands"}
+OWNER_EXECUTION = {"plan": "orchestrator_context"}
 
 
 def orchestrator_phase(entry: dict | None, phase: str) -> bool:
@@ -1618,11 +491,11 @@ def append_phase_history(entry: dict, phase: str) -> None:
         fields = PLAN_RECEIPT_FIELDS + (
             ("invocation_receipt",) if "invocation_receipt" in entry else ()
         )
-    elif phase == "build_gate" or (phase in OWNER_EXECUTION and "execution_kind" in entry):
+    elif phase in OWNER_EXECUTION and "execution_kind" in entry:
         fields = tuple(field for field in (
             "started_at", "verdict", "completed_at", "duration_ms", "round", "triggered_by",
             "execution_kind", "engine", "model", "model_requested", "model_effective", "prompt_sha256",
-            "invocation_receipt", "role_argv", "artifacts", "output_sha256", "pre_sha", "post_sha",
+            "invocation_receipt", "role_argv", "artifacts", "output_sha256",
         ) if field in entry)
     elif phase in WORKER_SESSION_ARTIFACT_PHASES and "invocation_receipt" in entry:
         fields = (
@@ -1630,7 +503,7 @@ def append_phase_history(entry: dict, phase: str) -> None:
             "invocation_receipt",
         ) + (("role_argv",) if "role_argv" in entry else ())
     elif phase == "verify":
-        fields = ("started_at", "verdict", "completed_at", "duration_ms", "round", "engine", "role_evidence",
+        fields = ("started_at", "verdict", "completed_at", "duration_ms", "round", "engine", "pre_sha", "role_evidence",
                   "executions", "dispatch", "pair_trigger", "judge_durations_ms", "sub_verdicts", "merged")
     else:
         fields = ("started_at", "verdict", "completed_at", "duration_ms")
@@ -1643,7 +516,7 @@ def role_config_module():
 
 
 def bind_worker_role_argv(state, phase, entry, devlyn, receipt):
-    if phase not in {"implement", "cleanup"}:
+    if phase != "implement":
         return None
     helper = role_config_module()
     resolution = helper["snapshot"](state)
@@ -1684,6 +557,8 @@ def freeze_roles(state: dict, work: pathlib.Path, default_engine: str) -> dict:
     return resolved
 
 
+# build_gate/cleanup no longer open in new runs; they stay here so archived runs that used
+# them still resolve their repair predecessor for terminal classification.
 REPAIR_PHASES = ("implement", "build_gate", "cleanup", "verify")
 
 
@@ -1729,12 +604,9 @@ def repair_admission(state: dict, phase: str, round_: int,
                 raise SystemExit("BLOCKED:repair-edge-invalid")
             verdict = prior.get("verdict")
             origin = None
-            if prior_name in {"build_gate", "cleanup", "verify"}:
-                valid = (verdict == "NEEDS_WORK" and isinstance(prior.get("merged"), dict)
-                         and prior["merged"].get("verdict") == "NEEDS_WORK") if prior_name == "verify" else verdict == "FAIL"
-                if prior_name == "cleanup":
-                    valid = valid and orchestrator_phase(prior, "cleanup")
-                if not valid:
+            if prior_name == "verify":
+                if not (verdict == "NEEDS_WORK" and isinstance(prior.get("merged"), dict)
+                        and prior["merged"].get("verdict") == "NEEDS_WORK"):
                     raise SystemExit("BLOCKED:repair-edge-invalid")
                 origin = prior_name
             elif prior_name == "implement":
@@ -1769,7 +641,7 @@ def repair_admission(state: dict, phase: str, round_: int,
                     f"max_rounds={rounds['max_rounds']} origin={origin}"
                 )
             rounds["global"] += 1
-    elif phase in {"build_gate", "cleanup", "verify"}:
+    elif phase == "verify":
         implement = (state.get("phases") or {}).get("implement")
         expected_round = implement.get("round", 0) if isinstance(implement, dict) and implement.get("started_at") else 0
         if round_ != expected_round:
@@ -1785,19 +657,15 @@ def validate_verdict(phase: str, verdict: str | None) -> None:
 
 
 def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
-             pre_sha: str | None, engine: str | None, model: str | None, *,
+             engine: str | None, model: str | None, *,
              source_phase: str | None = None,
-             input_patch_sha256: str | None = None,
              prompt_sha256: str | None = None,
-             untracked_before: list[str] | None = None,
-             devlyn: pathlib.Path | None = None) -> None:
-    # Omitted worker metadata selects owner PLAN/CLEANUP. Explicit metadata keeps
-    # the historical worker API; an owner span never accepts those claims.
-    owner = phase == "build_gate" or (
-        phase in {"plan", "cleanup"}
-        and all(value is None for value in (engine, model, prompt_sha256))
-    )
-    if not owner and phase in {"implement", "cleanup", "verify"} and "role_resolution" in state:
+             devlyn: pathlib.Path | None = None,
+             work: pathlib.Path | None = None) -> None:
+    # Omitted worker metadata selects owner PLAN. Explicit metadata keeps the
+    # historical worker API; an owner span never accepts those claims.
+    owner = phase == "plan" and all(value is None for value in (engine, model, prompt_sha256))
+    if not owner and phase in {"implement", "verify"} and "role_resolution" in state:
         resolution = role_config_module()["snapshot"](state)
         selected = resolution["roles"]["primary_judge" if phase == "verify" else "worker"]
         if engine is not None and engine != selected["engine"]:
@@ -1818,8 +686,6 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
             raise SystemExit("error: owner phase cannot respawn as a worker")
     if owner:
         validate_owner_identity(devlyn, phase, round_, engine, model, prompt_sha256)
-        if phase == "cleanup" and pre_sha is None:
-            raise SystemExit("error: owner cleanup requires --pre-sha")
     if phase == "plan":
         if owner and (state.get("phases", {}).get("implement") or {}).get("started_at"):
             raise SystemExit("BLOCKED:plan-already-in-use: scope cannot change after implementation starts")
@@ -1843,31 +709,7 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
             raise SystemExit("error: phases.plan spawn requires --prompt-sha256")
         if dispatch_count > 0 and triggered_by is None:
             raise SystemExit("error: phases.plan re-spawn requires --triggered-by")
-    if phase == "surface_close" and engine != "claude":
-        raise SystemExit("error: phases.surface_close spawn requires --engine claude")
-    if phase == "surface_close" and model is not None and (
-        not isinstance(model, str) or not model.strip() or model != model.strip()
-    ):
-        raise SystemExit("error: phases.surface_close explicit --model must be a nonempty exact string")
-    if phase == "surface_close" and isinstance(entry, dict) and (
-        entry.get("started_at") is not None or entry.get("skipped_reason") is not None
-    ):
-        raise SystemExit("error: phases.surface_close is one-shot and cannot be re-entered")
-    if phase == "surface_close":
-        if pre_sha is None:
-            raise SystemExit("error: phases.surface_close spawn requires --pre-sha")
-        if input_patch_sha256 is None or not SHA256_RE.fullmatch(input_patch_sha256):
-            raise SystemExit("error: phases.surface_close spawn requires --input-patch-sha256")
-        if prompt_sha256 is None or not SHA256_RE.fullmatch(prompt_sha256):
-            raise SystemExit("error: phases.surface_close spawn requires --prompt-sha256")
-        if untracked_before is None:
-            raise SystemExit("error: phases.surface_close spawn requires --untracked-before-json")
-    elif phase == "plan":
-        if input_patch_sha256 is not None or untracked_before is not None:
-            raise SystemExit("error: SURFACE_CLOSE metadata is invalid for this phase")
-    else:
-        if input_patch_sha256 is not None or untracked_before is not None:
-            raise SystemExit("error: SURFACE_CLOSE metadata is invalid for this phase")
+    if phase != "plan":
         if prompt_sha256 is not None and SHA256_RE.fullmatch(prompt_sha256) is None:
             raise SystemExit("error: --prompt-sha256 must be a lowercase SHA-256 digest")
         requested_engine = (
@@ -1907,7 +749,17 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         raise SystemExit(
             f"error: phases.{phase} has an open span — complete it before respawn"
         )
+    pre_sha = None
+    if phase == "verify" and work is not None:
+        # MECHANICAL seals the source against the HEAD this span opened on.
+        pre_sha = _git_text(work, "rev-parse", "HEAD")
     repair_admission(state, phase, round_, triggered_by, source_phase)
+    if (devlyn is not None and "untracked_baseline_sha256" in state
+            and state["untracked_baseline_sha256"] is None
+            and not any(isinstance(item, dict) and item.get("started_at") for item in phases.values())):
+        baseline = devlyn / "untracked.baseline"
+        if baseline.is_file() and not baseline.is_symlink():
+            state["untracked_baseline_sha256"] = hashlib.sha256(baseline.read_bytes()).hexdigest()
     append_phase_history(entry, phase)
     if phase in WORKER_SESSION_ARTIFACT_PHASES:
         entry.pop("invocation_receipt", None)
@@ -1916,17 +768,17 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     entry["completed_at"] = None
     entry["duration_ms"] = None
     entry["round"] = round_
-    entry["triggered_by"] = (
-        "cleanup" if phase == "implement" and triggered_by is None
-        and entry.get("triggered_by") == "cleanup" else triggered_by
-    )
+    entry["triggered_by"] = triggered_by
     entry["verdict"] = None
     entry["artifacts"] = {"findings_file": None, "log_file": None}
     entry["sub_verdicts"] = None
     if phase == "verify":
         entry["judge_durations_ms"] = None
-        for field in ("role_evidence", "executions", "dispatch", "pair_trigger", "merged", "coverage_failed"):
+        for field in ("role_evidence", "executions", "dispatch", "pair_trigger", "merged", "coverage_failed",
+                      "source_seal", "pre_sha"):
             entry.pop(field, None)
+        if pre_sha is not None:
+            entry["pre_sha"] = pre_sha
         if isinstance(state.get("verify"), dict):
             state["verify"]["pair_trigger"] = None
     if engine is not None:
@@ -1944,8 +796,6 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         entry.setdefault("model_requested", None)
     entry.pop("model", None)
     entry["model_effective"] = None
-    if pre_sha is not None:
-        entry["pre_sha"] = pre_sha
     if prompt_sha256 is not None:
         entry["prompt_sha256"] = prompt_sha256
     if owner:
@@ -1953,36 +803,10 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
         entry["engine"] = entry["model_requested"] = entry["model_effective"] = None
         entry.pop("prompt_sha256", None)
         entry.pop("role_evidence", None)
-    if phase == "surface_close":
-        entry["input_patch_sha256"] = input_patch_sha256
-        entry["untracked_before"] = untracked_before
-
-
-def do_surface_skip(state: dict) -> None:
-    phases = state.setdefault("phases", {})
-    existing = phases.get("surface_close")
-    if isinstance(existing, dict) and (
-        existing.get("started_at") is not None or existing.get("skipped_reason") is not None
-    ):
-        raise SystemExit("error: phases.surface_close is one-shot and cannot be re-entered")
-    phases["surface_close"] = {
-        "started_at": None,
-        "completed_at": now_iso(),
-        "duration_ms": 0,
-        "round": 0,
-        "triggered_by": None,
-        "verdict": None,
-        "engine": "claude",
-        "model_requested": None,
-        "model_effective": None,
-        "artifacts": {"findings_file": None, "log_file": None},
-        "sub_verdicts": None,
-        "skipped_reason": SURFACE_SKIP_REASON,
-    }
 
 
 def do_complete(state: dict, phase: str, verdict: str | None,
-                 post_sha: str | None, findings_file: str | None, log_file: str | None,
+                 findings_file: str | None, log_file: str | None,
                  engine: str | None, model: str | None,
                  engine_session_log: str | None = None,
                  devlyn: pathlib.Path | None = None,
@@ -2007,27 +831,6 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             devlyn, phase, entry.get("round"), engine, model,
             engine_session_log=engine_session_log, entry=entry,
         )
-        if phase == "cleanup" and verdict in {"PASS", "PASS_WITH_ISSUES"}:
-            if work is None or not entry.get("pre_sha") or post_sha != entry["pre_sha"]:
-                raise SystemExit("BLOCKED:owner-cleanup-source-changed: preserve the IMPLEMENT checkpoint")
-            checked = subprocess.run(
-                ["git", "diff", "--quiet", entry["pre_sha"], "--"], cwd=work,
-                capture_output=True, check=False,
-            )
-            indexed = subprocess.run(
-                ["git", "diff", "--cached", "--quiet", entry["pre_sha"], "--"], cwd=work,
-                capture_output=True, check=False,
-            )
-            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=work,
-                                  capture_output=True, text=True, check=False)
-            if checked.returncode != 0 or indexed.returncode != 0 or head.returncode != 0 or head.stdout.strip() != post_sha:
-                raise SystemExit("BLOCKED:owner-cleanup-source-changed: return code cleanup to IMPLEMENT")
-            checker = runpy.run_path(pathlib.Path(__file__).with_name("spec-verify-check.py"))
-            baseline, baseline_error = checker["load_untracked_baseline"](devlyn)
-            current, current_error = checker["current_untracked_files"](work)
-            if baseline_error or current_error or current - baseline:
-                detail = baseline_error or current_error or repr(sorted(current - baseline))
-                raise SystemExit(f"BLOCKED:owner-cleanup-untracked: {detail}")
     if phase != "plan":
         validate_plan_output(state, devlyn, phase)
     if phase == "final_report":
@@ -2101,16 +904,6 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             retained_session = candidate
 
     attestation_error = None
-    if phase == "surface_close":
-        canonical_result = (devlyn or pathlib.Path(".devlyn")) / "surface-close.output.json"
-        if engine_session_log is None or pathlib.Path(engine_session_log).resolve() != canonical_result.resolve():
-            attestation_error = (
-                "BLOCKED:model-attestation-failed: SURFACE_CLOSE requires canonical native JSON "
-                f"via --engine-session-log {canonical_result}"
-            )
-        else:
-            # Select the Claude JSON parser even if the caller used a .jsonl symlink alias.
-            engine_session_log = str(canonical_result)
     schema_v3_worker = (
         state.get("version") == "3.0"
         and artifact_phase is not None
@@ -2184,8 +977,6 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             )
     if attestation_error is not None:
         entry["verdict"] = "BLOCKED"
-    if post_sha is not None:
-        entry["post_sha"] = post_sha
     return attestation_error
 
 
@@ -2194,7 +985,6 @@ def do_transition(
     phase: str,
     next_phase: str,
     verdict: str | None,
-    post_sha: str | None,
     findings_file: str | None,
     log_file: str | None,
     engine: str | None,
@@ -2203,13 +993,10 @@ def do_transition(
     devlyn: pathlib.Path,
     next_round: int,
     next_triggered_by: str | None,
-    next_pre_sha: str | None,
     next_engine: str | None,
     next_model: str | None,
     *,
-    next_input_patch_sha256: str | None = None,
     next_prompt_sha256: str | None = None,
-    next_untracked_before: list[str] | None = None,
     between=None,
     work: pathlib.Path | None = None,
 ) -> dict:
@@ -2223,25 +1010,9 @@ def do_transition(
     if next_phase not in LEGAL_TRANSITIONS.get(phase, set()):
         raise SystemExit(f"error: illegal phase transition: {phase} -> {next_phase}")
     validate_verdict(phase, verdict)
-    if (phase == "implement" and next_phase != "implement"
-        and state.get("phases", {}).get(phase, {}).get("triggered_by") == "cleanup"):
-        bypasses = state.get("bypasses", [])
-        required = "build_gate" if "build-gate" not in bypasses else (
-            "cleanup" if "cleanup" not in bypasses else "verify"
-        )
-        if next_phase not in {required, "final_report"}:
-            raise SystemExit(f"BLOCKED:owner-cleanup-repair-route: next phase must be {required}")
-        if next_phase != "final_report" and next_round != state["phases"][phase]["round"]:
-            raise SystemExit("BLOCKED:owner-cleanup-repair-route: preserve the IMPLEMENT repair round")
-    if phase == "cleanup":
-        owner = orchestrator_phase(state.get("phases", {}).get(phase), phase)
-        if owner and next_phase == "verify" and verdict not in {"PASS", "PASS_WITH_ISSUES"}:
-            raise SystemExit("BLOCKED:owner-cleanup-failed: repair before VERIFY")
-        if next_phase == "implement" and (not owner or verdict != "FAIL" or next_triggered_by != "cleanup"):
-            raise SystemExit("BLOCKED:owner-cleanup-failed: repair requires owner FAIL and cleanup trigger")
     candidate = copy.deepcopy(state)
     attestation_error = do_complete(
-        candidate, phase, verdict, post_sha, findings_file, log_file,
+        candidate, phase, verdict, findings_file, log_file,
         engine, model, engine_session_log, devlyn, work,
     )
     if attestation_error is not None:
@@ -2250,29 +1021,13 @@ def do_transition(
         between()
     do_spawn(
         candidate, next_phase, next_round, next_triggered_by,
-        next_pre_sha, next_engine, next_model,
+        next_engine, next_model,
         source_phase=phase,
-        input_patch_sha256=next_input_patch_sha256,
         prompt_sha256=next_prompt_sha256,
-        untracked_before=next_untracked_before,
         devlyn=devlyn,
+        work=work,
     )
     return candidate
-
-
-def do_surface_adjudication_recovery(state: dict, devlyn: pathlib.Path) -> str | None:
-    entry = surface_entry(state)
-    attestation_error = do_complete(
-        state, "surface_close", "BLOCKED", entry["pre_sha"], None,
-        ".devlyn/surface-close.stdout", None, None,
-        str(devlyn / "surface-close.output.json"), devlyn,
-    )
-    if attestation_error is not None:
-        return attestation_error
-    entry["verdict"] = None
-    entry["skipped_reason"] = SURFACE_RECOVERY_REASON
-    entry["continued_after_block"] = True
-    return None
 
 
 def final_report_self_test() -> None:
@@ -2388,10 +1143,17 @@ def final_report_self_test() -> None:
 
 def repair_admission_self_test() -> None:
     stamp = "2026-01-01T00:00:00.000Z"
+    # Archived runs may still carry a failed BUILD_GATE or CLEANUP span; a new run never admits from one.
+    for retired in ("build_gate", "cleanup"):
+        candidate = {"phases": {retired: {"started_at": stamp, "completed_at": stamp, "round": 0, "verdict": "FAIL"}},
+                     "rounds": {"global": 0, "max_rounds": 1}}
+        try:
+            do_spawn(candidate, "implement", 1, None, None, None)
+        except SystemExit as exc:
+            assert str(exc) == "BLOCKED:repair-edge-invalid", exc
+        else:
+            raise AssertionError(f"retired {retired} origin admitted a repair")
     origins = {
-        "build_gate": ({"started_at": stamp, "completed_at": stamp, "round": 0, "verdict": "FAIL"}, "build_gate"),
-        "cleanup": ({"started_at": stamp, "completed_at": stamp, "round": 0, "verdict": "FAIL",
-                     "execution_kind": "orchestrator_commands"}, "cleanup"),
         "verify": ({"started_at": stamp, "completed_at": stamp, "round": 0,
                     "verdict": "NEEDS_WORK", "merged": {"verdict": "NEEDS_WORK"}}, "verify"),
         "phase_gate": ({"started_at": stamp, "completed_at": stamp, "round": 0, "verdict": "FAIL",
@@ -2405,7 +1167,7 @@ def repair_admission_self_test() -> None:
                 continue
             candidate = copy.deepcopy(initial)
             try:
-                do_spawn(candidate, "implement", 1, wrong, None, None, None)
+                do_spawn(candidate, "implement", 1, wrong, None, None)
             except SystemExit as exc:
                 assert "repair-trigger-mismatch" in str(exc), (origin, wrong, exc)
             else:
@@ -2415,23 +1177,23 @@ def repair_admission_self_test() -> None:
             candidate = copy.deepcopy(initial)
             candidate["rounds"] = malformed
             try:
-                do_spawn(candidate, "implement", 1, trigger, None, None, None)
+                do_spawn(candidate, "implement", 1, trigger, None, None)
             except SystemExit as exc:
                 assert str(exc) == "BLOCKED:rounds-malformed"
             else:
                 raise AssertionError((origin, malformed))
         candidate = copy.deepcopy(initial)
         try:
-            do_spawn(candidate, "implement", 2, trigger, None, None, None)
+            do_spawn(candidate, "implement", 2, trigger, None, None)
         except SystemExit as exc:
             assert "implement-round-nonmonotonic" in str(exc)
         else:
             raise AssertionError((origin, "skipped round"))
         candidate = copy.deepcopy(initial)
-        do_spawn(candidate, "implement", 1, trigger, None, None, None)
+        do_spawn(candidate, "implement", 1, trigger, None, None)
         assert candidate["rounds"]["global"] == 1, origin
         try:
-            do_spawn(candidate, "implement", 1, trigger, None, None, None)
+            do_spawn(candidate, "implement", 1, trigger, None, None)
         except SystemExit:
             pass
         else:
@@ -2439,86 +1201,43 @@ def repair_admission_self_test() -> None:
         exhausted = copy.deepcopy(initial)
         exhausted["rounds"]["global"] = 1
         try:
-            do_spawn(exhausted, "implement", 1, trigger, None, None, None)
+            do_spawn(exhausted, "implement", 1, trigger, None, None)
         except SystemExit as exc:
             assert str(exc) == f"BLOCKED:repair-budget-exhausted: global=1 max_rounds=1 origin={origin}"
         else:
             raise AssertionError((origin, "shared exhaustion"))
     phased = {"rounds": {"global": 0, "max_rounds": 1}, "phases": {}}
-    do_spawn(phased, "implement", 0, None, None, None, None)
+    do_spawn(phased, "implement", 0, None, None, None)
     phased["phases"]["implement"].update({"completed_at": stamp, "verdict": "PASS",
         "exec": {"total": 2, "current": 2, "statuses": ["PASS", None]}})
-    do_spawn(phased, "implement", 1, None, None, None, None)
+    do_spawn(phased, "implement", 1, None, None, None)
     assert phased["rounds"]["global"] == 0
-    do_complete(phased, "implement", "FAIL", None, None, None, None, None)
+    do_complete(phased, "implement", "FAIL", None, None, None, None)
     assert phased["phases"]["implement"]["exec"]["statuses"] == ["PASS", "FAIL"]
-    do_spawn(phased, "implement", 2, None, None, None, None)
+    do_spawn(phased, "implement", 2, None, None, None)
     assert phased["rounds"]["global"] == 1
-    do_complete(phased, "implement", "PASS", None, None, None, None, None)
-    do_spawn(phased, "verify", 2, None, None, None, None)
+    do_complete(phased, "implement", "PASS", None, None, None, None)
+    do_spawn(phased, "verify", 2, None, None, None)
     with tempfile.TemporaryDirectory() as tmp:
         transition_state = {"rounds": {"global": 0, "max_rounds": 1}, "phases": {}}
-        do_spawn(transition_state, "implement", 0, None, None, None, None)
+        do_spawn(transition_state, "implement", 0, None, None, None)
         transition_state["phases"]["implement"]["exec"] = {
             "total": 2, "current": 1, "statuses": [None, None],
         }
         transitioned = do_transition(
-            transition_state, "implement", "implement", "FAIL", None, None, None,
-            None, None, None, pathlib.Path(tmp), 1, None, None, None, None,
+            transition_state, "implement", "implement", "FAIL", None, None,
+            None, None, None, pathlib.Path(tmp), 1, None, None, None,
         )
         assert transition_state["rounds"]["global"] == 0
         assert transitioned["rounds"]["global"] == 1
         assert transitioned["phases"]["implement"]["exec"]["statuses"][0] == "FAIL"
-    print("PASS repair admission: four origins, trigger/counter/round refusal, phased invocation and last repair")
-
-
-def cleanup_origin_phase_gate_reentry_self_test() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        stamp = "2026-01-01T00:00:00.000Z"
-        state = {"version": "3.0", "rounds": {"global": 1, "max_rounds": 4}, "phases": {
-            "cleanup": {"started_at": stamp, "completed_at": stamp, "round": 0,
-                        "verdict": "FAIL", "execution_kind": "orchestrator_commands"},
-            "implement": {"started_at": stamp, "completed_at": None, "round": 1,
-                          "triggered_by": "cleanup", "verdict": None,
-                          "exec": {"total": 2, "current": 1, "statuses": [None, None]}},
-        }}
-        try:
-            do_transition(
-                state, "implement", "verify", "PASS", None, None, None,
-                None, None, None, pathlib.Path(tmp), 1, None, None, None, None,
-            )
-        except SystemExit as exc:
-            assert str(exc) == "BLOCKED:owner-cleanup-repair-route: next phase must be build_gate", exc
-        else:
-            raise AssertionError("cleanup repair bypassed BUILD_GATE")
-        transitioned = do_transition(
-            state, "implement", "implement", "FAIL", None, None, None,
-            None, None, None, pathlib.Path(tmp), 2, None, None, None, None,
-        )
-        assert transitioned["rounds"]["global"] == 2
-        assert transitioned["phases"]["implement"]["exec"]["statuses"] == ["FAIL", None]
-        assert transitioned["phases"]["implement"]["triggered_by"] == "cleanup"
-        try:
-            do_transition(
-                transitioned, "implement", "verify", "PASS", None, None, None,
-                None, None, None, pathlib.Path(tmp), 2, None, None, None, None,
-            )
-        except SystemExit as exc:
-            assert str(exc) == "BLOCKED:owner-cleanup-repair-route: next phase must be build_gate", exc
-        else:
-            raise AssertionError("phase-gate retry bypassed BUILD_GATE")
-        spawned = copy.deepcopy(state)
-        do_complete(spawned, "implement", "FAIL", None, None, None, None, None)
-        do_spawn(spawned, "implement", 2, None, None, None, None)
-        assert spawned["rounds"]["global"] == 2
-        assert spawned["phases"]["implement"]["triggered_by"] == "cleanup"
+    print("PASS repair admission: verify and phase-gate origins, trigger/counter/round refusal, phased invocation and last repair")
 
 
 def self_test() -> int:
     import time
 
     repair_admission_self_test()
-    cleanup_origin_phase_gate_reentry_self_test()
     final_report_self_test()
     with tempfile.TemporaryDirectory() as tmp:
         work = pathlib.Path(tmp); devlyn = work / ".devlyn"; devlyn.mkdir()
@@ -2530,12 +1249,12 @@ def self_test() -> int:
         frozen = freeze_roles(state, work, "codex")
         (devlyn / "engines.json").write_text('{"executor":"claude"}', encoding="utf-8")
         assert freeze_roles(state, work, "codex") == frozen
-        do_spawn(state, "verify", 0, None, None, None, None, devlyn=devlyn)
+        do_spawn(state, "verify", 0, None, None, None, devlyn=devlyn)
         assert state["engine"] == "codex" and state["phases"]["verify"]["engine"] == "claude"
-        for phase in ("implement", "cleanup"):
+        for phase in ("implement",):
             before = copy.deepcopy(state)
             try:
-                do_spawn(state, phase, 0, None, None, "claude", None, devlyn=devlyn)
+                do_spawn(state, phase, 0, None, "claude", None, devlyn=devlyn)
             except SystemExit:
                 pass
             else:
@@ -2554,7 +1273,7 @@ def self_test() -> int:
             pass
         else:
             raise AssertionError("modified worker argv accepted")
-        assert bind_worker_role_argv(state, "build_gate", {}, devlyn, receipt) is None
+        assert bind_worker_role_argv(state, "verify", {}, devlyn, receipt) is None
     print("PASS explicit roles: frozen primary/worker routing and actual worker argv binding")
 
     try:
@@ -2728,7 +1447,7 @@ def self_test() -> int:
         blocked_plan_mutation = subprocess.run(
             [
                 sys.executable, script, "--devlyn-dir", str(devlyn),
-                "--phase", "build_gate", "spawn", "--round", "0",
+                "--phase", "verify", "spawn", "--round", "0",
             ],
             capture_output=True, text=True, check=False,
             encoding="utf-8",
@@ -2798,13 +1517,13 @@ def self_test() -> int:
 
         # Round 0: spawn -> complete.
         state = read_state(state_path)
-        do_spawn(state, "implement", 0, None, None, "claude", None)
+        do_spawn(state, "implement", 0, None, "claude", None)
         write_state(state_path, state)
         round0_started = read_state(state_path)["phases"]["implement"]["started_at"]
 
         time.sleep(0.05)
         state = read_state(state_path)
-        do_complete(state, "implement", "NEEDS_WORK", None, None, None, None, "test-model-id")
+        do_complete(state, "implement", "NEEDS_WORK", None, None, None, "test-model-id")
         write_state(state_path, state)
         entry = read_state(state_path)["phases"]["implement"]
         assert "history" not in entry, "history must be absent before re-entry"
@@ -2817,12 +1536,12 @@ def self_test() -> int:
         # Round 1: VERIFY finding admits a fix-loop respawn.
         time.sleep(0.05)
         state = read_state(state_path)
-        do_spawn(state, "verify", 0, None, None, None, None)
+        do_spawn(state, "verify", 0, None, None, None)
         state["phases"]["verify"].update({
             "completed_at": now_iso(), "verdict": "NEEDS_WORK",
             "merged": {"verdict": "NEEDS_WORK"},
         })
-        do_spawn(state, "implement", 1, "verify", None, None, None)
+        do_spawn(state, "implement", 1, "verify", None, None)
         write_state(state_path, state)
         respawned = read_state(state_path)["phases"]["implement"]
         assert respawned["started_at"] != round0_started, "started_at must refresh on respawn"
@@ -2842,7 +1561,7 @@ def self_test() -> int:
 
         time.sleep(0.05)
         state = read_state(state_path)
-        do_complete(state, "implement", "PASS", None, ".devlyn/x.jsonl", None, None, None)
+        do_complete(state, "implement", "PASS", ".devlyn/x.jsonl", None, None, None)
         write_state(state_path, state)
         final = read_state(state_path)["phases"]["implement"]
         assert final["verdict"] == "PASS"
@@ -2881,9 +1600,9 @@ def self_test() -> int:
             "run_id": "rs-state-evidence",
             "source": {"type": "spec", "spec_path": "docs/evidence/spec.md"},
             "rounds": {"global": 0, "max_rounds": 4},
-            "phases": {"implement": None, "build_gate": None},
+            "phases": {"implement": None, "verify": None},
         }
-        do_spawn(evidence_state, "implement", 0, None, None, "codex", None)
+        do_spawn(evidence_state, "implement", 0, None, "codex", None)
         evidence_state_path = evidence_devlyn / "pipeline.state.json"
         write_state(evidence_state_path, evidence_state)
         evidence_script = str(pathlib.Path(__file__).resolve())
@@ -2901,7 +1620,7 @@ def self_test() -> int:
         for event_args in (
             ("complete", "--verdict", "PASS"),
             (
-                "transition", "--verdict", "PASS", "--next-phase", "build_gate",
+                "transition", "--verdict", "PASS", "--next-phase", "verify",
                 "--next-round", "0",
             ),
         ):
@@ -2934,7 +1653,7 @@ def self_test() -> int:
         assert evidence_state_path.read_bytes() == before
         stderr_path.write_bytes(original_stderr)
         transitioned = evidence_state_cli(
-            "transition", "--verdict", "PASS", "--next-phase", "build_gate",
+            "transition", "--verdict", "PASS", "--next-phase", "verify",
             "--next-round", "0",
         )
         assert transitioned.returncode == 0, transitioned.stderr
@@ -2944,826 +1663,18 @@ def self_test() -> int:
         assert carrier["manifest"]["path"] == manifest_rel
         assert carrier["manifest"]["sha256"] == hashlib.sha256(manifest.read_bytes()).hexdigest()
         assert sealed_state["phases"]["implement"]["verdict"] == "PASS"
-        assert sealed_state["phases"]["build_gate"]["started_at"] is not None
+        assert sealed_state["phases"]["verify"]["started_at"] is not None
+        assert sealed_state["phases"]["verify"]["pre_sha"] == subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=evidence_work, capture_output=True, text=True,
+            check=True, encoding="utf-8",
+        ).stdout.strip()
         print("PASS iter-0111 process evidence: completion/transition gate and state digest binding")
-
-        # Gate-discovered iter-0111 regression: BUILD_GATE MECHANICAL emitted
-        # sealed process evidence, but completion left it outside the state
-        # binding and archive_run.py correctly rejected the orphaned files.
-        def build_gate_state_cli(
-            event: str, *event_args: str,
-        ) -> subprocess.CompletedProcess[str]:
-            return subprocess.run(
-                [
-                    sys.executable, evidence_script, "--devlyn-dir", ".devlyn",
-                    "--phase", "build_gate", event, *event_args,
-                ],
-                cwd=evidence_work, capture_output=True, text=True, check=False,
-                encoding="utf-8",
-            )
-
-        results_path = evidence_devlyn / "spec-verify.results.json"
-        results_path.write_text(json.dumps({
-            "commands": [{"pass": True}], "process_evidence": None,
-        }) + "\n", encoding="utf-8")
-        before = evidence_state_path.read_bytes()
-        missing = build_gate_state_cli("complete", "--verdict", "PASS")
-        assert missing.returncode != 0
-        assert "commands exist without a process-evidence carrier" in missing.stderr
-        assert evidence_state_path.read_bytes() == before
-        results_path.write_text(json.dumps({
-            "commands": [], "process_evidence": None,
-        }) + "\n", encoding="utf-8")
-        removed = build_gate_state_cli("complete", "--verdict", "PASS")
-        assert removed.returncode != 0
-        assert "required BUILD_GATE evidence has no process-evidence carrier" in removed.stderr
-        assert evidence_state_path.read_bytes() == before
-
-        runner = process_evidence_module()
-
-        def write_build_gate_results() -> dict:
-            current = read_state(evidence_state_path)
-            round_ = runner.phase_round(current, "build_gate")
-            obligation = runner.normalize_obligation({
-                "id": "verification-command-0001",
-                "phase": "build_gate",
-                "argv": [sys.executable, "-c", "print('sealed build gate')"],
-            })
-            relative = runner.manifest_relative_path(current, "build_gate")
-            runner.capture_process(
-                evidence_work, evidence_work / relative, current["run_id"],
-                "build_gate", round_, obligation,
-            )
-            build_carrier = runner.validate_manifest(
-                evidence_work, relative, current["run_id"], "build_gate", round_,
-                [obligation], require_expectations=False,
-            )
-            results_path.write_text(json.dumps({
-                "commands": runner.bound_carrier_summary_commands(
-                    evidence_work, build_carrier,
-                ),
-                "process_evidence": build_carrier,
-            }) + "\n", encoding="utf-8")
-            return build_carrier
-
-        build_carrier_0 = write_build_gate_results()
-        completed = build_gate_state_cli("complete", "--verdict", "FAIL")
-        assert completed.returncode == 0, completed.stderr
-        completed_state = read_state(evidence_state_path)
-        assert completed_state["process_evidence"] == [carrier, build_carrier_0]
-
-        repaired = evidence_state_cli("spawn", "--round", "1", "--triggered-by", "build_gate")
-        assert repaired.returncode == 0, repaired.stderr
-        captured = subprocess.run(
-            [sys.executable, runner_script, "--devlyn-dir", ".devlyn", "run",
-             "--phase", "implement", "--id", "red-first"],
-            cwd=evidence_work, capture_output=True, text=True, encoding="utf-8",
-        )
-        assert captured.returncode == 0, captured.stderr
-        completed = evidence_state_cli("complete", "--verdict", "PASS")
-        assert completed.returncode == 0, completed.stderr
-        implement_carrier_1 = read_state(evidence_state_path)["process_evidence"][-1]
-        subprocess.run(["git", "commit", "--allow-empty", "-qm", "chore(pipeline): implement fix round 1"],
-                       cwd=evidence_work, check=True)
-        (evidence_devlyn / "build_gate.findings.jsonl").write_text("", encoding="utf-8")
-        durable = evidence_state_cli("durability-enforce", "--round", "1", "--origin-phase", "build_gate")
-        assert durable.returncode == 0, durable.stderr
-
-        spawned = build_gate_state_cli(
-            "spawn", "--round", "1", "--triggered-by", "build_gate",
-        )
-        assert spawned.returncode == 0, spawned.stderr
-        build_carrier_1 = write_build_gate_results()
-        transitioned = build_gate_state_cli(
-            "transition", "--verdict", "PASS", "--next-phase", "cleanup",
-            "--next-round", "1", "--next-pre-sha", "test-pre-sha",
-        )
-        assert transitioned.returncode == 0, transitioned.stderr
-        build_bound_state = read_state(evidence_state_path)
-        assert build_bound_state["process_evidence"] == [
-            carrier, build_carrier_0, implement_carrier_1, build_carrier_1,
-        ]
-        assert build_bound_state["phases"]["cleanup"]["started_at"] is not None
-        print("PASS iter-0111 BUILD_GATE evidence: completion/transition state binding")
-
-        # Iter-0112 audit counterexample: a valid carrier previously authenticated
-        # bytes only, so a failed entry or capability denial could still be completed
-        # with caller-supplied PASS.
-        build_bound_state["phases"]["build_gate"] = None
-        build_bound_state["phases"]["implement"]["round"] = 2
-        do_spawn(build_bound_state, "build_gate", 2, "build_gate", None, None, None)
-        write_state(evidence_state_path, build_bound_state)
-        mismatch = runner.normalize_obligation({
-            "id": "verification-command-0001",
-            "phase": "build_gate",
-            "argv": [sys.executable, "-c", "raise SystemExit(7)"],
-        })
-        mismatch_rel = runner.manifest_relative_path(build_bound_state, "build_gate")
-        runner.capture_process(
-            evidence_work, evidence_work / mismatch_rel, build_bound_state["run_id"],
-            "build_gate", 2, mismatch,
-        )
-        mismatch_carrier = runner.validate_manifest(
-            evidence_work, mismatch_rel, build_bound_state["run_id"], "build_gate", 2,
-            [mismatch], require_expectations=False,
-        )
-        mismatch_commands = runner.bound_carrier_summary_commands(
-            evidence_work, mismatch_carrier,
-        )
-        mismatch_commands[0]["pass"] = True
-        results_path.write_text(json.dumps({
-            "commands": mismatch_commands, "process_evidence": mismatch_carrier,
-        }) + "\n", encoding="utf-8")
-        before = evidence_state_path.read_bytes()
-        laundered = build_gate_state_cli("complete", "--verdict", "PASS")
-        assert laundered.returncode != 0
-        assert "command 0 disagrees with sealed process evidence" in laundered.stderr
-        assert evidence_state_path.read_bytes() == before
-        results_path.write_text(json.dumps({
-            "commands": [], "process_evidence": None,
-        }) + "\n", encoding="utf-8")
-        removed_after_capture = build_gate_state_cli("complete", "--verdict", "PASS")
-        assert removed_after_capture.returncode != 0
-        assert "manifest exists without a process-evidence carrier" in removed_after_capture.stderr
-        assert evidence_state_path.read_bytes() == before
-        results_path.write_text(json.dumps({
-            "commands": runner.bound_carrier_summary_commands(
-                evidence_work, mismatch_carrier,
-            ),
-            "process_evidence": mismatch_carrier,
-        }) + "\n", encoding="utf-8")
-        failed = build_gate_state_cli("complete", "--verdict", "FAIL")
-        assert failed.returncode == 0, failed.stderr
-
-        failed_state = read_state(evidence_state_path)
-        failed_state["phases"]["implement"]["round"] = 3
-        do_spawn(failed_state, "build_gate", 3, "build_gate", None, None, None)
-        write_state(evidence_state_path, failed_state)
-        denied = runner.normalize_obligation({
-            "id": "verification-command-0001",
-            "phase": "build_gate",
-            "cmd": "python3 -m pytest",
-        })
-        denied_rel = runner.manifest_relative_path(failed_state, "build_gate")
-        runner.record_capability_denial(
-            evidence_work, evidence_work / denied_rel, failed_state["run_id"],
-            "build_gate", 3, denied, "subprocess", b"parent denied",
-        )
-        denied_carrier = runner.validate_manifest(
-            evidence_work, denied_rel, failed_state["run_id"], "build_gate", 3,
-            [denied], require_expectations=False,
-        )
-        denied_commands = runner.bound_carrier_summary_commands(
-            evidence_work, denied_carrier,
-        )
-        denied_commands[0]["pass"] = True
-        results_path.write_text(json.dumps({
-            "commands": denied_commands, "process_evidence": denied_carrier,
-        }) + "\n", encoding="utf-8")
-        before = evidence_state_path.read_bytes()
-        denial_laundered = build_gate_state_cli("complete", "--verdict", "PASS")
-        assert denial_laundered.returncode != 0
-        assert "command 0 disagrees with sealed process evidence" in denial_laundered.stderr
-        assert evidence_state_path.read_bytes() == before
-        results_path.write_text(json.dumps({
-            "commands": runner.bound_carrier_summary_commands(
-                evidence_work, denied_carrier,
-            ),
-            "process_evidence": denied_carrier,
-        }) + "\n", encoding="utf-8")
-        blocked = build_gate_state_cli("complete", "--verdict", "BLOCKED")
-        assert blocked.returncode == 0, blocked.stderr
-        print("PASS iter-0112 BUILD_GATE sealed outcome owns the verdict floor")
-
-        def test_orchestrator_build() -> None:
-            work = (devlyn / "orchestrator-build").resolve()
-            active = work / ".devlyn"
-            active.mkdir(parents=True)
-            state_file = active / "pipeline.state.json"
-            fixture = {"version": "3.0", "run_id": "rs-orchestrator-build",
-                       "engine": "codex", "phases": {"build_gate": None}}
-            (active / "spec-verify.results.json").write_text(
-                json.dumps({"commands": [], "process_evidence": None}), encoding="utf-8",
-            )
-            env = {key: value for key, value in os.environ.items()
-                   if not key.startswith("DEVLYN_INVOCATION_")}
-            env["PYTHONDONTWRITEBYTECODE"] = "1"
-
-            def cli(phase, *args):
-                return subprocess.run(
-                    [sys.executable, str(pathlib.Path(__file__).resolve()),
-                     "--devlyn-dir", ".devlyn", "--phase", phase, *args],
-                    cwd=work, env=env, capture_output=True, text=True, check=False,
-                )
-
-            def rejected(phase, *args):
-                before = state_file.read_bytes()
-                result = cli(phase, *args)
-                assert result.returncode != 0, result.stdout
-                assert "error:" in result.stderr or "BLOCKED:" in result.stderr, result.stderr
-                assert state_file.read_bytes() == before
-
-            def command_identity(entry):
-                assert entry["execution_kind"] == "orchestrator_commands"
-                assert all(entry[key] is None for key in ("engine", "model_requested", "model_effective"))
-                assert not {"prompt_sha256", "invocation_receipt", "role_argv", "role_evidence"} & entry.keys()
-
-            write_state(state_file, fixture)
-            for args in (("--engine", "claude"), ("--model", "worker-model"),
-                         ("--prompt-sha256", "0" * 64)):
-                rejected("build_gate", "spawn", "--round", "0", *args)
-            for name in ("build_gate.prompt.0", "build_gate.worker-session.0.jsonl",
-                         "build_gate.invocation.0.json", "build_gate.argv.0.json"):
-                path = active / name
-                path.write_text("forged", encoding="utf-8")
-                rejected("build_gate", "spawn", "--round", "0")
-                path.unlink()
-            result = cli("build_gate", "spawn", "--round", "0")
-            assert result.returncode == 0, result.stderr
-            opened = read_state(state_file)
-            command_identity(opened["phases"]["build_gate"])
-            for args in (("--engine", "codex"), ("--model", "worker-model"),
-                         ("--engine-session-log", str(active / "external.jsonl"))):
-                rejected("build_gate", "complete", "--verdict", "PASS", *args)
-            for field, value in (("engine", "codex"), ("model_effective", "worker-model"),
-                                 ("invocation_receipt", {}), ("prompt_sha256", None)):
-                bad = copy.deepcopy(opened)
-                bad["phases"]["build_gate"][field] = value
-                write_state(state_file, bad)
-                rejected("build_gate", "complete", "--verdict", "PASS")
-            for kind in (None, "worker", {}, False):
-                bad = copy.deepcopy(opened)
-                bad["phases"]["build_gate"]["execution_kind"] = kind
-                write_state(state_file, bad)
-                rejected("build_gate", "complete", "--verdict", "PASS")
-                bad["phases"]["build_gate"]["completed_at"] = now_iso()
-                write_state(state_file, bad)
-                rejected("build_gate", "spawn", "--round", "1")
-            write_state(state_file, opened)
-            proof = active / "build_gate.worker-session.0.jsonl"
-            proof.symlink_to(active / "missing")
-            rejected("build_gate", "complete", "--verdict", "PASS")
-            proof.unlink()
-            result = cli("build_gate", "complete", "--verdict", "PASS")
-            assert result.returncode == 0, result.stderr
-            completed = read_state(state_file)["phases"]["build_gate"]
-            command_identity(completed)
-            assert completed["verdict"] == "PASS" and completed["completed_at"]
-            result = cli("build_gate", "spawn", "--round", "0")
-            assert result.returncode == 0, result.stderr
-            reentered = read_state(state_file)["phases"]["build_gate"]
-            command_identity(reentered)
-            assert reentered["history"][0]["execution_kind"] == "orchestrator_commands"
-            assert reentered["history"][0]["round"] == 0
-            result = cli("build_gate", "transition", "--verdict", "PASS",
-                         "--next-phase", "cleanup", "--next-round", "0", "--next-engine", "claude")
-            assert result.returncode == 0, result.stderr
-
-            # Incoming atomic handoff must not inherit the top-level Codex identity.
-            incoming = copy.deepcopy(fixture)
-            incoming["phases"]["implement"] = {
-                "started_at": now_iso(), "completed_at": None, "round": 0, "engine": "claude",
-            }
-            write_state(state_file, incoming)
-            args = ("transition", "--verdict", "PASS", "--next-phase", "build_gate", "--next-round", "0")
-            rejected("implement", *args, "--next-engine", "codex")
-            result = cli("implement", *args)
-            assert result.returncode == 0, result.stderr
-            command_identity(read_state(state_file)["phases"]["build_gate"])
-
-            # Seed a historical span, then use the unchanged real receipt API.
-            prompt = active / "build_gate.prompt.0"
-            session = active / "build_gate.worker-session.0.jsonl"
-            receipt_path = active / "build_gate.invocation.0.json"
-            prompt.write_text("historical build\n", encoding="utf-8")
-            session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
-            model = "gpt-5.6-sol"
-            legacy = copy.deepcopy(fixture)
-            legacy["phases"]["build_gate"] = {
-                "started_at": now_iso(), "completed_at": None, "round": 0,
-                "engine": "codex", "model_requested": model,
-                "prompt_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
-            }
-            receipts = invocation_receipt_module()
-            receipts.start_receipt(
-                work, receipt_path, fixture["run_id"], "build_gate", 0, str(prompt), str(session),
-                ["--json", "-C", str(work), "-s", "workspace-write", "-m", model,
-                 "-c", "sandbox_workspace_write.network_access=true", "historical build"],
-            )
-            receipts.finish_receipt(work, receipt_path, 0)
-            write_state(state_file, legacy)
-            result = cli("build_gate", "complete", "--verdict", "PASS", "--engine-session-log", str(session))
-            assert result.returncode == 0, result.stderr
-            legacy_done = read_state(state_file)
-            old = legacy_done["phases"]["build_gate"]
-            assert "execution_kind" not in old and old["model_effective"] is None
-            assert old["invocation_receipt"]["sandbox_network_access"] is True
-            legacy_done["phases"]["implement"] = {
-                "started_at": now_iso(), "completed_at": now_iso(), "round": 1,
-                "verdict": "PASS",
-            }
-            write_state(state_file, legacy_done)
-            result = cli("build_gate", "spawn", "--round", "1")
-            assert result.returncode == 0, result.stderr
-            fresh = read_state(state_file)["phases"]["build_gate"]
-            command_identity(fresh)
-            history = fresh["history"][0]
-            assert "execution_kind" not in history and history["round"] == 0
-            for field in ("engine", "model_requested", "model_effective", "prompt_sha256", "invocation_receipt"):
-                assert history[field] == old[field]
-            write_state(state_file, legacy)
-            session.write_text("altered", encoding="utf-8")
-            rejected("build_gate", "transition", "--verdict", "PASS", "--engine-session-log", str(session),
-                     "--next-phase", "cleanup", "--next-round", "0", "--next-engine", "claude")
-            result = cli("build_gate", "complete", "--verdict", "PASS", "--engine-session-log", str(session))
-            assert result.returncode == 1 and "invocation-receipt-invalid" in result.stderr
-            assert read_state(state_file)["phases"]["build_gate"]["verdict"] == "BLOCKED"
-            print("PASS iter-0125 command BUILD CLI identity, transitions/history and historical receipt boundaries")
-
-        test_orchestrator_build()
-
-        def test_interrupted_build_gate() -> None:
-            # Iter-0119 R1-R5: interrupted observations bind only to BLOCKED,
-            # without changing their bytes or bypassing archive/receipt guards.
-            work = (devlyn / "interrupted-build-gate").resolve()
-            active = work / ".devlyn"
-            active.mkdir(parents=True)
-            state_file = active / "pipeline.state.json"
-            summary = active / "spec-verify.results.json"
-            runner = process_evidence_module()
-            archive_spec = importlib.util.spec_from_file_location(
-                "interrupted_archive", pathlib.Path(__file__).with_name("archive_run.py"),
-            )
-            assert archive_spec is not None and archive_spec.loader is not None
-            archive = importlib.util.module_from_spec(archive_spec)
-            archive_spec.loader.exec_module(archive)
-            fixture = {
-                "version": "3.0", "run_id": "rs-interrupted-build-gate",
-                "source": {"type": "spec", "spec_path": "spec.md"},
-                "phases": {"build_gate": None, "final_report": None},
-                "process_evidence": None,
-            }
-            do_spawn(fixture, "build_gate", 0, None, None, None, None)
-            write_state(state_file, fixture)
-            open_bytes = state_file.read_bytes()
-            relative = runner.manifest_relative_path(fixture, "build_gate")
-            manifest = work / relative
-            obligations = [
-                runner.normalize_obligation({
-                    "id": f"verification-command-{index:04d}", "phase": "build_gate",
-                    "argv": [sys.executable, "-c", (
-                        "import os; os.write(1, b'observed\\x00\\xff\\n'); "
-                        f"os.write(2, b'diagnostic\\r\\n'); raise SystemExit({exit_code})"
-                    )],
-                })
-                for index, exit_code in enumerate((0, 7, 0), 1)
-            ]
-            (work / "spec.md").write_text("# Interrupted build fixture\n", encoding="utf-8")
-            (work / "spec.expected.json").write_text(json.dumps({
-                "process_evidence": obligations,
-            }), encoding="utf-8")
-            assert runner.declared_obligations(work, fixture, "build_gate") == obligations
-            for obligation in obligations[:2]:
-                runner.capture_process(
-                    work, manifest, fixture["run_id"], "build_gate", 0, obligation,
-                )
-            manifest_bytes = manifest.read_bytes()
-            document = loads_strict_json(manifest_bytes.decode("utf-8"))
-            assert [entry["expectation_met"] for entry in document["entries"]] == [True, False]
-            assert [entry["outcome"] for entry in document["entries"]] == [
-                {"kind": "exit", "exit_code": code, "signal": None} for code in (0, 7)
-            ]
-            observed = {path: path.read_bytes() for path in manifest.parent.iterdir()}
-            assert set(observed) == {manifest} | {
-                manifest.parent / f"verification-command-{index:04d}.{stream}"
-                for index in (1, 2) for stream in ("stdout", "stderr")
-            }
-            carrier = runner.validate_manifest(
-                work, relative, fixture["run_id"], "build_gate", 0,
-                require_expectations=False,
-            )
-            cli_env = {key: value for key, value in os.environ.items()
-                       if not key.startswith("DEVLYN_INVOCATION_")}
-            cli_env["PYTHONDONTWRITEBYTECODE"] = "1"
-
-            def cli(*args: str) -> subprocess.CompletedProcess[str]:
-                return subprocess.run(
-                    [sys.executable, str(pathlib.Path(__file__).resolve()),
-                     "--devlyn-dir", ".devlyn", "--phase", "build_gate", *args],
-                    cwd=work, env=cli_env, capture_output=True, text=True, check=False,
-                    encoding="utf-8",
-                )
-
-            def rejected(*args: str, error: str = "BLOCKED:process-evidence-invalid") -> None:
-                before = state_file.read_bytes()
-                result = cli(*args)
-                assert result.returncode != 0, result.stdout
-                assert error in result.stderr, result.stderr
-                assert state_file.read_bytes() == before
-
-            def archived(state: dict) -> None:
-                paths = archive.dynamic_evidence_artifacts(active, state)
-                assert set(paths) == set(observed)
-                assert {path: path.read_bytes() for path in paths} == observed
-                assert {path: path.read_bytes() for path in manifest.parent.iterdir()} == observed
-
-            def terminal() -> dict:
-                state = read_state(state_file)
-                entry = state["phases"]["build_gate"]
-                assert entry["verdict"] == "BLOCKED"
-                assert entry["completed_at"] is not None and entry["duration_ms"] >= 0
-                assert entry["model_effective"] is None
-                assert entry.get("invocation_receipt") is None
-                assert state["phases"]["final_report"] is None
-                assert state["process_evidence"] == [carrier]
-                assert not summary.exists() and not summary.is_symlink()
-                archived(state)
-                return state
-
-            completed = cli("complete", "--verdict", "BLOCKED")
-            assert completed.returncode == 0, completed.stderr
-            bound = terminal()
-            print("PASS iter-0119 absent-summary BLOCKED persists exact five-file evidence")
-
-            for control in ("unbound", "tampered", "manifest", "binding", "malformed", "duplicate"):
-                candidate = copy.deepcopy(bound)
-                extra = manifest.parent / "unexpected.stdout"
-                stream = manifest.parent / "verification-command-0001.stdout"
-                if control == "unbound":
-                    extra.write_bytes(b"unbound")
-                elif control == "tampered":
-                    stream.write_bytes(b"tampered")
-                elif control == "manifest":
-                    manifest.write_text("{", encoding="utf-8")
-                elif control == "malformed":
-                    candidate["process_evidence"] = [{}]
-                elif control == "duplicate":
-                    candidate["process_evidence"].append(copy.deepcopy(carrier))
-                else:
-                    candidate["process_evidence"][0]["manifest"]["sha256"] = "0" * 64
-                try:
-                    archive.dynamic_evidence_artifacts(active, candidate)
-                except archive.ArchiveError as exc:
-                    if control == "duplicate":
-                        assert "duplicate state-bound process-evidence" in str(exc), str(exc)
-                    else:
-                        assert ("unbound process-evidence" if control == "unbound" else
-                                "invalid bound process evidence") in str(exc), str(exc)
-                else:
-                    raise AssertionError(f"archive accepted {control}")
-                extra.unlink(missing_ok=True)
-                stream.write_bytes(observed[stream])
-                manifest.write_bytes(manifest_bytes)
-            archived(bound)
-
-            state_file.write_bytes(open_bytes)
-            for verdict in ("PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "FAIL"):
-                rejected("complete", "--verdict", verdict, error="spec-verify.results.json is missing")
-            rejected("complete", error="spec-verify.results.json is missing")
-            manifest.unlink()
-            rejected("complete", "--verdict", "BLOCKED")
-            manifest.write_text("{", encoding="utf-8")
-            rejected("complete", "--verdict", "BLOCKED")
-            for control in ("run_id", "phase", "round", "expectation", "expectation_met",
-                            "duplicate", "path", "bytes", "sha256"):
-                altered = copy.deepcopy(document)
-                entry = altered["entries"][1]
-                if control in {"run_id", "phase", "round"}:
-                    altered[control] = {"run_id": "rs-wrong", "phase": "implement", "round": 1}[control]
-                elif control == "expectation":
-                    entry["expectation"]["exit_code"] = "zero"
-                elif control == "expectation_met":
-                    entry[control] = True
-                elif control == "duplicate":
-                    altered["entries"].append(copy.deepcopy(entry))
-                else:
-                    entry["stdout"][control] = {
-                        "path": "../escaped.stdout", "bytes": entry["stdout"]["bytes"] + 1,
-                        "sha256": "0" * 64,
-                    }[control]
-                manifest.write_text(json.dumps(altered), encoding="utf-8")
-                rejected("complete", "--verdict", "BLOCKED")
-            manifest.write_bytes(manifest_bytes)
-            stream = manifest.parent / "verification-command-0001.stdout"
-            stream.write_bytes(b"tampered")
-            rejected("complete", "--verdict", "BLOCKED")
-            stream.write_bytes(observed[stream])
-            outside = devlyn / "escaped-evidence"
-            for path in (manifest, manifest.parent / "verification-command-0001.stdout"):
-                outside.write_bytes(observed[path])
-                path.unlink()
-                path.symlink_to(outside)
-                rejected("complete", "--verdict", "BLOCKED")
-                path.unlink()
-                path.write_bytes(observed[path])
-            bad_prior = copy.deepcopy(carrier)
-            bad_prior["manifest"]["sha256"] = "0" * 64
-            for invalid, error in (
-                ({}, "state.process_evidence must be null or an array"),
-                ([{}], "state process-evidence carrier has an invalid shape"),
-                ([bad_prior], "bound process evidence manifest digest mismatch"),
-                ([carrier], "duplicate state carrier"),
-            ):
-                candidate = copy.deepcopy(fixture)
-                candidate["process_evidence"] = invalid
-                write_state(state_file, candidate)
-                rejected("complete", "--verdict", "BLOCKED", error=error)
-            state_file.write_bytes(open_bytes)
-
-            commands = runner.bound_carrier_summary_commands(work, carrier)
-            wrong_commands = copy.deepcopy(commands)
-            wrong_commands[1]["pass"] = True
-            wrong_carrier = copy.deepcopy(carrier)
-            wrong_carrier["round"] = 1
-            for content in (
-                "{", "[]", json.dumps({"commands": {}}),
-                json.dumps({"commands": commands, "process_evidence": None}),
-                json.dumps({"commands": commands, "process_evidence": wrong_carrier}),
-                json.dumps({"commands": wrong_commands, "process_evidence": carrier}),
-            ):
-                summary.write_text(content, encoding="utf-8")
-                rejected("complete", "--verdict", "BLOCKED")
-            summary.unlink()
-            summary.mkdir()
-            rejected("complete", "--verdict", "BLOCKED")
-            summary.rmdir()
-            summary.symlink_to(active / "absent-summary")
-            rejected("complete", "--verdict", "BLOCKED")
-            summary.unlink()
-            # A valid summary symlink retains the existing outcome floor.
-            target = devlyn / "valid-summary.json"
-            target.write_text(json.dumps({
-                "commands": commands, "process_evidence": carrier,
-            }), encoding="utf-8")
-            summary.symlink_to(target)
-            for verdict in ("PASS", "PASS_WITH_ISSUES"):
-                rejected("complete", "--verdict", verdict, error="mismatch cannot complete")
-            completed = cli("complete", "--verdict", "FAIL")
-            assert completed.returncode == 0, completed.stderr
-            summarized = read_state(state_file)
-            assert summarized["phases"]["build_gate"]["verdict"] == "FAIL"
-            assert summarized["process_evidence"] == [carrier]
-            archived(summarized)
-            summary.unlink()
-            print("PASS iter-0119 ineligible verdicts, invalid summaries and integrity controls preserve state")
-
-            # Valid nonzero receipt: transition stays atomic; standalone
-            # completion persists BLOCKED before reporting the receipt error.
-            prompt = active / "build_gate.prompt.0"
-            prompt.write_text("inspect interrupted build\n", encoding="utf-8")
-            session = active / "build_gate.worker-session.0.jsonl"
-            session.write_text('{"type":"thread.started"}\n', encoding="utf-8")
-            receipt = active / "build_gate.invocation.0.json"
-            model = "gpt-5.6-sol"
-            candidate = copy.deepcopy(fixture)
-            # Seed the historical absent-kind route; a new spawn is commands-only.
-            candidate["phases"]["build_gate"].pop("execution_kind")
-            candidate["phases"]["build_gate"].update({
-                "engine": "codex", "model_requested": model,
-                "prompt_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
-            })
-            write_state(state_file, candidate)
-            receipts = invocation_receipt_module()
-            receipts.start_receipt(
-                work, receipt, fixture["run_id"], "build_gate", 0, str(prompt), str(session),
-                ["--json", "-C", str(work), "-s", "workspace-write", "-m", model,
-                 "-c", "sandbox_workspace_write.network_access=true", "inspect interrupted build"],
-            )
-            receipts.finish_receipt(work, receipt, 7)
-            receipt_bytes = receipt.read_bytes()
-            error = "BLOCKED:invocation-receipt-invalid: Codex invocation exited 7"
-            rejected(
-                "transition", "--verdict", "BLOCKED", "--engine-session-log", str(session),
-                "--next-phase", "final_report", "--next-round", "0", error=error,
-            )
-            completed = cli(
-                "complete", "--verdict", "BLOCKED", "--engine-session-log", str(session),
-            )
-            assert completed.returncode == 1, completed.stdout
-            assert completed.stderr.strip() == error, completed.stderr
-            terminal()
-            assert receipt.read_bytes() == receipt_bytes
-            print("PASS iter-0119 nonzero receipt persists BLOCKED before exit1; transition stays atomic")
-
-            candidate = read_state(state_file)
-            candidate["phases"]["implement"] = {
-                "started_at": now_iso(), "completed_at": now_iso(), "round": 1,
-                "verdict": "PASS",
-            }
-            do_spawn(candidate, "build_gate", 1, None, None, None, None)
-            write_state(state_file, candidate)
-            next_relative = runner.manifest_relative_path(candidate, "build_gate")
-            runner.capture_process(
-                work, work / next_relative, fixture["run_id"], "build_gate", 1, obligations[0],
-            )
-            next_carrier = runner.validate_manifest(
-                work, next_relative, fixture["run_id"], "build_gate", 1,
-                require_expectations=False,
-            )
-            completed = cli("complete", "--verdict", "BLOCKED")
-            assert completed.returncode == 0, completed.stderr
-            appended = read_state(state_file)
-            assert appended["process_evidence"] == [carrier, next_carrier]
-            assert appended["phases"]["build_gate"]["verdict"] == "BLOCKED"
-            assert {path: path.read_bytes() for path in observed} == observed
-            assert set(observed).issubset(archive.dynamic_evidence_artifacts(active, appended))
-
-            # A post-spec denial refresh must preserve earlier failed checks.
-            refresh_state = copy.deepcopy(fixture)
-            refresh_state["phases"]["build_gate"] = None
-            refresh_state["phases"]["implement"] = {
-                "started_at": now_iso(), "completed_at": now_iso(), "round": 2,
-                "verdict": "PASS",
-            }
-            do_spawn(refresh_state, "build_gate", 2, None, None, None, None, devlyn=active)
-            write_state(state_file, refresh_state)
-            refresh_relative = runner.manifest_relative_path(refresh_state, "build_gate")
-            refresh_manifest = work / refresh_relative
-            for obligation in obligations[:2]:
-                runner.capture_process(work, refresh_manifest, fixture["run_id"], "build_gate", 2, obligation)
-            prior_raw = {path: path.read_bytes() for path in refresh_manifest.parent.iterdir()
-                         if path != refresh_manifest}
-            sealed = runner.validate_manifest(
-                work, refresh_relative, fixture["run_id"], "build_gate", 2, require_expectations=False,
-            )
-            summary.write_text(json.dumps({
-                "commands": runner.bound_carrier_summary_commands(work, sealed),
-                "process_evidence": sealed, "findings_count": 1,
-            }), encoding="utf-8")
-            denied = runner.normalize_obligation({
-                "id": "browser-capability", "phase": "build_gate", "cmd": "browser-check",
-            })
-            runner.record_capability_denial(
-                work, refresh_manifest, fixture["run_id"], "build_gate", 2, denied,
-                "loopback", b"authoritative route denial fixture",
-            )
-            rejected("complete", "--verdict", "BLOCKED")
-            refreshed = runner.validate_manifest(
-                work, refresh_relative, fixture["run_id"], "build_gate", 2, require_expectations=False,
-            )
-            refreshed_commands = runner.bound_carrier_summary_commands(work, refreshed)
-            runner.validate_summary_commands(work, refreshed_commands, refreshed)
-            results = loads_strict_json(summary.read_text(encoding="utf-8"))
-            results.update(commands=refreshed_commands, process_evidence=refreshed)
-            summary.write_text(json.dumps(results), encoding="utf-8")
-            for verdict in ("PASS", "FAIL"):
-                rejected("complete", "--verdict", verdict)
-            completed = cli("complete", "--verdict", "BLOCKED")
-            assert completed.returncode == 0, completed.stderr
-            assert results["findings_count"] == 1 and len(refreshed_commands) == 3
-            assert refreshed_commands[1]["pass"] is False
-            assert {path: path.read_bytes() for path in prior_raw} == prior_raw
-            assert read_state(state_file)["process_evidence"] == [refreshed]
-            print("PASS iter-0125 post-spec denial refresh retains failed expectations/raw without replay")
-
-        test_interrupted_build_gate()
-
-        def test_preflight_build_gate() -> None:
-            work = (devlyn / "preflight-build-gate").resolve()
-            active = work / ".devlyn"
-            active.mkdir(parents=True)
-            state_file = active / "pipeline.state.json"
-            results_file = active / "spec-verify.results.json"
-            checker = pathlib.Path(__file__).resolve().with_name("spec-verify-check.py")
-            env = {key: value for key, value in os.environ.items() if key not in {
-                "BENCH_WORKDIR", "SPEC_VERIFY_PHASE", "SPEC_VERIFY_FINDINGS_FILE",
-                "SPEC_VERIFY_FINDING_PREFIX",
-            } and not key.startswith("DEVLYN_INVOCATION_")}
-            runner = process_evidence_module()
-
-            def complete(verdict: str) -> subprocess.CompletedProcess[str]:
-                return subprocess.run(
-                    [sys.executable, str(pathlib.Path(__file__).resolve()),
-                     "--devlyn-dir", ".devlyn", "--phase", "build_gate", "complete",
-                     "--verdict", verdict, "--findings-file", ".devlyn/spec-verify-findings.jsonl"],
-                    cwd=work, env=env, capture_output=True, text=True, encoding="utf-8",
-                )
-
-            history = []
-            for round_, scenario in enumerate(("fresh", "language", "stale", "denied")):
-                fixture = {
-                    "version": "3.0", "run_id": "rs-preflight-build-gate",
-                    "source": {"type": "generated", "criteria_path": ".devlyn/criteria.generated.md"},
-                    "phases": {"build_gate": None, "implement": {
-                        "started_at": now_iso(), "completed_at": now_iso(),
-                        "round": round_, "verdict": "PASS",
-                    }}, "process_evidence": copy.deepcopy(history) or None,
-                }
-                do_spawn(fixture, "build_gate", round_, None, None, None, None)
-                write_state(state_file, fixture)
-                original_state = state_file.read_bytes()
-                results_file.unlink(missing_ok=True)
-                relative = runner.manifest_relative_path(fixture, "build_gate")
-                manifest = work / relative
-                obligation = {"id": "type-check", "phase": "build_gate",
-                              "argv": [sys.executable, "-c", "raise SystemExit(7)"]}
-                if scenario == "language":
-                    runner.capture_process(work, manifest, fixture["run_id"], "build_gate", round_, obligation)
-                elif scenario == "denied":
-                    runner.record_capability_denial(
-                        work, manifest, fixture["run_id"], "build_gate", round_, obligation,
-                        "subprocess", b"route denied subprocess",
-                    )
-                elif scenario == "stale":
-                    results_file.write_bytes(prior_results)
-                observed = {path: path.read_bytes() for path in manifest.parent.iterdir()} if manifest.exists() else {}
-                rejected = subprocess.run(
-                    [sys.executable, str(checker), "--include-risk-probes"],
-                    cwd=work, env=env, capture_output=True, text=True, encoding="utf-8",
-                )
-                assert rejected.returncode == 1 and "source.criteria_path" in rejected.stderr, rejected.stderr
-                results = loads_strict_json(results_file.read_text(encoding="utf-8"))
-                assert results["preflight_failure"]["round"] == round_
-                prior_results = results_file.read_bytes()
-                finding = active / "spec-verify-findings.jsonl"
-                finding_bytes = finding.read_bytes()
-                for verdict in ("PASS", "PASS_WITH_ISSUES", "NEEDS_WORK"):
-                    denied = complete(verdict)
-                    assert denied.returncode != 0 and "preflight failure requires" in denied.stderr, denied.stderr
-                    assert state_file.read_bytes() == original_state
-                if scenario == "denied":
-                    denied = complete("FAIL")
-                    assert denied.returncode != 0 and "capability denial requires BLOCKED" in denied.stderr
-                    assert state_file.read_bytes() == original_state
-                completed = complete("BLOCKED" if scenario == "denied" else "FAIL")
-                assert completed.returncode == 0, completed.stderr
-                bound = read_state(state_file)
-                assert bound["phases"]["build_gate"]["verdict"] == ("BLOCKED" if scenario == "denied" else "FAIL")
-                assert finding.read_bytes() == finding_bytes and results_file.read_bytes() == prior_results
-                assert {path: path.read_bytes() for path in observed} == observed
-                if observed:
-                    assert bound["process_evidence"] == [*history, results["process_evidence"]]
-                else:
-                    assert bound["process_evidence"] == (history or None) and results["commands"] == []
-                history = bound["process_evidence"] or []
-                for mutation in ("run", "phase", "round", "bool-round", "digest", "escape", "finding", "null"):
-                    state_file.write_bytes(original_state)
-                    altered = copy.deepcopy(results)
-                    failure = altered["preflight_failure"]
-                    if mutation in {"run", "phase", "round", "bool-round"}:
-                        field, value = {"run": ("run_id", "rs-other"), "phase": ("phase", "verify"),
-                                        "round": ("round", round_ + 1), "bool-round": ("round", True)}[mutation]
-                        failure[field] = value
-                    elif mutation == "null":
-                        altered["preflight_failure"] = None
-                    elif mutation == "finding":
-                        finding.write_bytes(b"{}\n")
-                        failure["findings"]["sha256"] = hashlib.sha256(finding.read_bytes()).hexdigest()
-                    else:
-                        failure["findings"]["path" if mutation == "escape" else "sha256"] = (
-                            "../outside.jsonl" if mutation == "escape" else "0" * 64
-                        )
-                    results_file.write_text(json.dumps(altered), encoding="utf-8")
-                    result = complete("FAIL")
-                    assert result.returncode != 0 and "BLOCKED:process-evidence-invalid" in result.stderr, (mutation, result.stderr)
-                    assert state_file.read_bytes() == original_state
-                    finding.write_bytes(finding_bytes)
-                results_file.write_bytes(prior_results)
-                if scenario in {"fresh", "stale"}:
-                    state_file.write_bytes(original_state)
-                    malformed_prior = read_state(state_file)
-                    malformed_prior["process_evidence"] = {}
-                    write_state(state_file, malformed_prior)
-                    before = state_file.read_bytes()
-                    invalid = complete("FAIL")
-                    assert invalid.returncode != 0 and "null or an array" in invalid.stderr, invalid.stderr
-                    assert state_file.read_bytes() == before
-                    state_file.write_bytes(original_state)
-                if scenario == "stale":
-                    prior_stream = work / history[0]["streams"][0]["stdout"]["path"]
-                    saved = prior_stream.read_bytes()
-                    prior_stream.write_bytes(b"altered prior observation")
-                    invalid = complete("FAIL")
-                    assert invalid.returncode != 0 and "mismatch" in invalid.stderr, invalid.stderr
-                    assert state_file.read_bytes() == original_state
-                    prior_stream.write_bytes(saved)
-                    from unittest.mock import patch
-                    read_bytes = pathlib.Path.read_bytes
-
-                    def unreadable_prior(path):
-                        if path == prior_stream:
-                            raise PermissionError("prior stream unreadable")
-                        return read_bytes(path)
-
-                    fixture = read_state(state_file)
-                    unchanged = copy.deepcopy(fixture)
-                    with patch.object(pathlib.Path, "read_bytes", unreadable_prior):
-                        try:
-                            bind_process_evidence(fixture, "build_gate", "FAIL", active, work)
-                        except SystemExit as exc:
-                            assert str(exc) == "BLOCKED:process-evidence-invalid: prior stream unreadable", exc
-                        else:
-                            raise AssertionError("unreadable prior evidence completed")
-                    assert fixture == unchanged and state_file.read_bytes() == original_state
-            print("PASS preflight rejection: actual checker-to-completion, success floors, identity/digest controls")
-
-        test_preflight_build_gate()
 
         # complete() before spawn() must fail loudly, not silently invent data.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
         try:
-            do_complete(state, "build_gate", "PASS", None, None, None, None, None)
+            do_complete(state, "probe_derive", "PASS", None, None, None, None)
         except SystemExit as e:
             assert "never spawned" in str(e)
         else:
@@ -3784,7 +1695,7 @@ def self_test() -> int:
         }
         before_f11 = json.dumps(f11_open, sort_keys=True)
         try:
-            do_spawn(f11_open, "verify", 1, "verify", None, "codex", None)
+            do_spawn(f11_open, "verify", 1, "verify", "codex", None)
         except SystemExit as e:
             assert "open span" in str(e) and "complete it before respawn" in str(e)
         else:
@@ -3815,9 +1726,7 @@ def self_test() -> int:
 
         try:
             do_transition(
-                transition_state, "plan", "implement", "PASS", None,
-                None, None, None, None, None, devlyn, 0, None, None,
-                "claude", None, between=fail_between_halves,
+                transition_state, "plan", "implement", "PASS", None, None, None, None, None, devlyn, 0, None, "claude", None, between=fail_between_halves,
             )
         except RuntimeError as exc:
             assert str(exc) == "forced transition failure"
@@ -3837,9 +1746,8 @@ def self_test() -> int:
         attestation_before = state_path.read_bytes()
         try:
             do_transition(
-                attestation_state, "plan", "implement", "PASS", None,
-                None, None, None, None, str(attestation_log), devlyn,
-                0, None, None, "claude", None,
+                attestation_state, "plan", "implement", "PASS", None, None, None, None, str(attestation_log), devlyn,
+                0, None, "claude", None,
             )
         except SystemExit as exc:
             assert "BLOCKED:model-attestation-mismatch" in str(exc)
@@ -3850,21 +1758,17 @@ def self_test() -> int:
 
         try:
             do_transition(
-                transition_state, "plan", "cleanup", "PASS", None,
-                None, None, None, None, None, devlyn, 0, None, None,
-                "claude", None,
+                transition_state, "plan", "verify", "PASS", None, None, None, None, None, devlyn, 0, None, "claude", None,
             )
         except SystemExit as exc:
-            assert "illegal phase transition: plan -> cleanup" in str(exc)
+            assert "illegal phase transition: plan -> verify" in str(exc)
         else:
             raise AssertionError("transition accepted an illegal phase edge")
         assert state_path.read_bytes() == attestation_before
         print("PASS self-test transition legal-edge guard: illegal edge left state unchanged")
 
         transitioned = do_transition(
-            transition_state, "plan", "implement", "PASS", None,
-            None, None, None, None, None, devlyn, 0, None, None,
-            "claude", None,
+            transition_state, "plan", "implement", "PASS", None, None, None, None, None, devlyn, 0, None, "claude", None,
         )
         write_state(state_path, transitioned)
         assert transitioned["phases"]["plan"]["verdict"] == "PASS"
@@ -3918,9 +1822,7 @@ def self_test() -> int:
         open_next_before = state_path.read_bytes()
         try:
             do_transition(
-                open_next, "plan", "implement", "PASS", None,
-                None, None, None, None, None, devlyn, 1, None, None,
-                "claude", None,
+                open_next, "plan", "implement", "PASS", None, None, None, None, None, devlyn, 1, None, "claude", None,
             )
         except SystemExit as exc:
             assert "open span" in str(exc) and "complete it before respawn" in str(exc)
@@ -3933,17 +1835,17 @@ def self_test() -> int:
         # resets the live record.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "build_gate", 0, None, None, None, None)
+        do_spawn(state, "probe_derive", 0, None, None, None)
         write_state(state_path, state)
         time.sleep(0.05)
         state = read_state(state_path)
-        do_complete(state, "build_gate", "FAIL", None, None, None, None, None)
+        do_complete(state, "probe_derive", "FAIL", None, None, None, None)
         write_state(state_path, state)
-        failed_round = read_state(state_path)["phases"]["build_gate"]
+        failed_round = read_state(state_path)["phases"]["probe_derive"]
         state = read_state(state_path)
-        do_spawn(state, "build_gate", 0, None, None, None, None)
+        do_spawn(state, "probe_derive", 0, None, None, None)
         write_state(state_path, state)
-        respawned_fail = read_state(state_path)["phases"]["build_gate"]
+        respawned_fail = read_state(state_path)["phases"]["probe_derive"]
         assert respawned_fail["verdict"] is None
         assert len(respawned_fail["history"]) == 1
         assert respawned_fail["history"][0]["verdict"] == "FAIL"
@@ -3953,14 +1855,14 @@ def self_test() -> int:
         # must preserve it when --verdict is omitted.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "verify", 0, None, None, "claude", None)
+        do_spawn(state, "verify", 0, None, "claude", None)
         assert state["phases"]["verify"]["judge_durations_ms"] is None
         state["phases"]["verify"]["verdict"] = "PASS"
         state["phases"]["verify"]["sub_verdicts"] = {"mechanical": "PASS", "judge": "PASS"}
         state["phases"]["verify"]["judge_durations_ms"] = {"judge": 23, "pair_judge": None}
         write_state(state_path, state)
         state = read_state(state_path)
-        do_complete(state, "verify", None, None, None, None, None, None)
+        do_complete(state, "verify", None, None, None, None, None)
         write_state(state_path, state)
         verify_entry = read_state(state_path)["phases"]["verify"]
         assert verify_entry["verdict"] == "PASS", "complete() must preserve pre-set verdict when omitted"
@@ -3972,7 +1874,7 @@ def self_test() -> int:
         # owned exclusively by verify-merge-findings.py --write-state.
         state = read_state(state_path)
         try:
-            do_complete(state, "verify", "PASS", None, None, None, None, None)
+            do_complete(state, "verify", "PASS", None, None, None, None)
         except SystemExit as e:
             assert "owned by verify-merge-findings.py" in str(e)
         else:
@@ -3982,7 +1884,7 @@ def self_test() -> int:
         state["verify"] = {"coverage_failed": False, "pair_trigger": trigger}
         state["phases"]["verify"].update(pair_trigger=trigger, dispatch=dispatch, merged={"verdict": "PASS"},
                                          executions={"pair_judge": dispatch}, coverage_failed=False)
-        do_spawn(state, "verify", 0, None, None, None, None)
+        do_spawn(state, "verify", 0, None, None, None)
         respawned = state["phases"]["verify"]
         assert respawned["judge_durations_ms"] is None and state["verify"]["pair_trigger"] is None
         assert not {"pair_trigger", "dispatch", "merged", "executions", "coverage_failed"} & set(respawned)
@@ -3994,13 +1896,13 @@ def self_test() -> int:
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
         do_spawn(
-            state, "plan", 0, None, None, "claude", "plan-test-model",
+            state, "plan", 0, None, "claude", "plan-test-model",
             prompt_sha256=digest0,
         )
         write_state(state_path, state)
         state = read_state(state_path)
         try:
-            do_complete(state, "plan", None, None, None, None, None, None)
+            do_complete(state, "plan", None, None, None, None, None)
         except SystemExit as e:
             assert "is required" in str(e)
         else:
@@ -4010,11 +1912,11 @@ def self_test() -> int:
         # must also fail loudly, not silently pass with a null verdict.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "verify", 0, None, None, None, None)
+        do_spawn(state, "verify", 0, None, None, None)
         write_state(state_path, state)
         state = read_state(state_path)
         try:
-            do_complete(state, "verify", None, None, None, None, None, None)
+            do_complete(state, "verify", None, None, None, None, None)
         except SystemExit as e:
             assert "still null" in str(e)
         else:
@@ -4059,16 +1961,16 @@ def self_test() -> int:
         # merges into the existing entry rather than replacing it wholesale.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "implement", 0, None, None, "claude", None)
+        do_spawn(state, "implement", 0, None, "claude", None)
         state["phases"]["implement"]["exec"] = {
             "total": 3, "current": 3, "statuses": ["PASS", "PASS", None], "commits": ["a", "b", "c"],
         }
         write_state(state_path, state)
         state = read_state(state_path)
-        do_complete(state, "implement", "PASS", None, None, None, None, None)
+        do_complete(state, "implement", "PASS", None, None, None, None)
         write_state(state_path, state)
         state = read_state(state_path)
-        do_spawn(state, "implement", 1, None, None, None, None)
+        do_spawn(state, "implement", 1, None, None, None)
         write_state(state_path, state)
         respawned_exec = read_state(state_path)["phases"]["implement"]
         assert respawned_exec["exec"]["current"] == 3, "spawn must not clobber unowned fields like exec"
@@ -4100,578 +2002,12 @@ def self_test() -> int:
             }
         })
         state = read_state(state_path)
-        do_spawn(state, "implement", 3, None, None, None, None)
+        do_spawn(state, "implement", 3, None, None, None)
         write_state(state_path, state)
         history_preserved = read_state(state_path)["phases"]["implement"]["history"]
         assert len(history_preserved) == 2
         assert history_preserved[0]["started_at"] == "2026-01-01T00:00:00.000Z"
         assert history_preserved[1]["started_at"] == "2026-01-01T00:00:02.000Z"
-
-        # complete() records a post-state commit when a bounded phase needs an
-        # exact diff window for later mechanical checks.
-        write_state(state_path, {"phases": {}})
-        state = read_state(state_path)
-        do_spawn(state, "cleanup", 0, None, "pre-sha", "claude", None)
-        write_state(state_path, state)
-        state = read_state(state_path)
-        do_complete(state, "cleanup", "PASS", "post-sha", None, None, None, None)
-        write_state(state_path, state)
-        cleanup_entry = read_state(state_path)["phases"]["cleanup"]
-        assert cleanup_entry["pre_sha"] == "pre-sha"
-        assert cleanup_entry["post_sha"] == "post-sha"
-
-        # SURFACE_CLOSE keeps its one-shot envelope, adjudication grammar,
-        # scope boundary, rollback, and execution prohibition mechanical.
-        work = devlyn / "surface-repo"
-        work.mkdir()
-        subprocess.run(["git", "init", "-q"], cwd=work, check=True)
-        subprocess.run(["git", "config", "user.email", "self-test@example.invalid"], cwd=work, check=True)
-        subprocess.run(["git", "config", "user.name", "self-test"], cwd=work, check=True)
-        (work / "allowed.txt").write_text("base\n", encoding="utf-8")
-        (work / "blocked.txt").write_text("base\n", encoding="utf-8")
-        (work / "blocked:literal.txt:1").write_text("base\n", encoding="utf-8")
-        (work / "blocked:raw.txt").write_text("base\n", encoding="utf-8")
-        (work / "branchbase").write_text("line\n" * 10, encoding="utf-8")
-        (work / "branchbase:7").write_text("base\n", encoding="utf-8")
-        (work / "branchbase:dir").mkdir()
-        (work / "branchbase:dir" / "marker").write_text("base\n", encoding="utf-8")
-        (work / "exact:1").write_text("base\n", encoding="utf-8")
-        (work / "schedule").mkdir()
-        (work / "schedule" / "__init__.py").write_text("line\n" * 700, encoding="utf-8")
-        (work / "test_schedule.py").write_text("line\n", encoding="utf-8")
-        (work / "tests").mkdir()
-        (work / "tests" / "cli.test.js").write_text("line\n" * 170, encoding="utf-8")
-        (work / "tests" / "literal:1-3").write_text("line\n", encoding="utf-8")
-        subprocess.run(
-            ["git", "add", "--", "allowed.txt", "blocked.txt", "blocked:literal.txt:1",
-             "blocked:raw.txt", "branchbase", "branchbase:7", "branchbase:dir/marker",
-             "exact:1", "schedule/__init__.py", "test_schedule.py", "tests/cli.test.js",
-             "tests/literal:1-3"],
-            cwd=work, check=True,
-        )
-        subprocess.run(["git", "commit", "-qm", "base"], cwd=work, check=True)
-        pre_sha = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=work, check=True, capture_output=True, text=True,
-            encoding="utf-8",
-        ).stdout.strip()
-        work_devlyn = work / ".devlyn"
-        work_devlyn.mkdir()
-        (work / "kept.txt").write_text("keep\n", encoding="utf-8")
-        goal = work_devlyn / "goal.raw.txt"
-        patch = work_devlyn / "surface-close.input.patch"
-        prompt = work_devlyn / "surface-close.prompt"
-        goal.write_text("goal\n", encoding="utf-8")
-        patch.write_text("patch\n", encoding="utf-8")
-        prompt.write_text("adapter\nbody\ninputs\n", encoding="utf-8")
-        surface_state = {
-            "source": {
-                "goal_path": ".devlyn/goal.raw.txt",
-                "goal_sha256": file_sha256(goal),
-            },
-            "phases": {},
-        }
-        for rejected_engine in (None, "codex"):
-            rejected_state = {"sentinel": True}
-            try:
-                do_spawn(
-                    rejected_state, "surface_close", 0, None, pre_sha, rejected_engine, "sonnet",
-                    input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
-                    untracked_before=["kept.txt"],
-                )
-            except SystemExit as exc:
-                assert "requires --engine claude" in str(exc)
-            else:
-                raise AssertionError("SURFACE_CLOSE accepted a non-Claude engine")
-            assert rejected_state == {"sentinel": True}
-        for blank_model in ("", " ", " sonnet"):
-            rejected_state = {"sentinel": True}
-            try:
-                do_spawn(
-                    rejected_state, "surface_close", 0, None, pre_sha, "claude", blank_model,
-                    input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
-                    untracked_before=["kept.txt"],
-                )
-            except SystemExit as exc:
-                assert "explicit --model must be a nonempty exact string" in str(exc)
-            else:
-                raise AssertionError("SURFACE_CLOSE accepted an invalid requested model")
-            assert rejected_state == {"sentinel": True}
-        inherited_surface = {**copy.deepcopy(surface_state), "version": "3.0"}
-        do_spawn(
-            inherited_surface, "surface_close", 0, None, pre_sha, "claude", None,
-            input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
-            untracked_before=["kept.txt"],
-        )
-        assert inherited_surface["phases"]["surface_close"]["model_requested"] is None
-        do_spawn(
-            surface_state, "surface_close", 0, None, pre_sha, "claude", "sonnet",
-            input_patch_sha256=file_sha256(patch), prompt_sha256=file_sha256(prompt),
-            untracked_before=["kept.txt"],
-        )
-        validate_surface_inputs(work, work_devlyn, surface_state)
-        validate_surface_prompt(work_devlyn, surface_state)
-        ensure_surface_clean_baseline(work, work_devlyn, surface_state)
-        (work_devlyn / "pipeline.state.json").write_text(
-            json.dumps(surface_state), encoding="utf-8",
-        )
-        for entry in ("src/{a,b", "src/{a,}/**", "src/{a,{b,c}}", "src/{a,**}"):
-            surface_check = subprocess.run(
-                [
-                    sys.executable, str(pathlib.Path(__file__).resolve()),
-                    "--devlyn-dir", ".devlyn", "--phase", "surface_close", "surface-check",
-                    "--authorized-surface-json", json.dumps([entry]),
-                ],
-                cwd=work, capture_output=True, text=True,
-                encoding="utf-8",
-            )
-            if (
-                surface_check.returncode == 0
-                or "error: unsupported brace glob" not in surface_check.stderr
-                or "supported form" not in surface_check.stderr
-                or "Traceback" in surface_check.stderr
-            ):
-                raise AssertionError(f"surface-check did not fail closed for {entry}: {surface_check.stderr}")
-        surface = validate_authorized_surface(
-            '["allowed.txt", "branchbase", "exact-link", "exact:1", "schedule/**", '
-            '"test_schedule.py", "tests/**", "x.ts"]'
-        )
-        assert path_matches_surface("src/a/example.py", ["src/{a,b}/**"])
-        assert path_matches_surface("src/b/example.py", ["src/{a,b}/**"])
-        assert not path_matches_surface("src/c/example.py", ["src/{a,b}/**"])
-        for entry in ("src/{a,b", "src/{a,}/**", "src/{a,{b,c}}", "src/{a,**}"):
-            try:
-                validate_authorized_surface(json.dumps([entry]))
-            except SystemExit as exc:
-                assert str(exc).startswith("error: unsupported brace glob") and "supported form" in str(exc)
-            else:
-                raise AssertionError(f"malformed brace glob passed validation: {entry}")
-            try:
-                path_matches_surface("src/a/example.py", [entry])
-            except ValueError as exc:
-                assert entry in str(exc) and "supported form" in str(exc)
-            else:
-                raise AssertionError(f"malformed brace glob accepted: {entry}")
-        outside = devlyn / "outside.txt"
-        outside.write_text("outside\n", encoding="utf-8")
-        (work / "outside-link").symlink_to(outside)
-        assert worktree_file_exists(work, "allowed.txt")
-        assert not worktree_file_exists(work, str(outside))
-        assert not worktree_file_exists(work, "../outside.txt")
-        assert not worktree_file_exists(work, "outside-link")
-        assert worktree_path_exists(work, "branchbase:dir")
-        assert not worktree_path_exists(work, str(outside))
-        assert not worktree_path_exists(work, "../outside.txt")
-        assert not worktree_path_exists(work, "outside-link")
-        (work / "outside-link").unlink()
-        for link, target in (
-            ("exact-link", "allowed.txt"),
-            ("tests/inside-link", "cli.test.js"),
-        ):
-            (work / link).symlink_to(target)
-            output = work_devlyn / "surface-close.stdout"
-            output.write_text(
-                f"UVR-STALE: N/A {link} — contained symlink\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                encoding="utf-8",
-            )
-            validate_surface_adjudication(
-                work, work_devlyn, surface_state, surface,
-            )
-            (work / link).unlink()
-        for link in ("exact-link", "tests/outside-link"):
-            (work / link).symlink_to(outside)
-            output = work_devlyn / "surface-close.stdout"
-            output.write_text(
-                f"UVR-STALE: N/A {link} — escaping symlink\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                encoding="utf-8",
-            )
-            try:
-                validate_surface_adjudication(
-                    work, work_devlyn, surface_state, surface,
-                )
-            except SystemExit as exc:
-                assert "citation-missing" in str(exc), (link, exc)
-            else:
-                raise AssertionError(f"SURFACE_CLOSE followed escaping symlink: {link}")
-            (work / link).unlink()
-        entry = surface_entry(surface_state)
-        assert entry["prompt_sha256"] == file_sha256(prompt)
-        assert entry["model_requested"] == "sonnet"
-        try:
-            do_spawn(surface_state, "surface_close", 1, None, pre_sha, "claude", "sonnet")
-        except SystemExit as exc:
-            assert "one-shot" in str(exc)
-        else:
-            raise AssertionError("SURFACE_CLOSE re-entry must fail")
-
-        output = work_devlyn / "surface-close.stdout"
-        output.write_text(
-            "UVR-STALE: FIRED allowed.txt:1\n"
-            "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-            encoding="utf-8",
-        )
-        assert validate_surface_adjudication(work, work_devlyn, surface_state, surface) == {
-            "UVR-STALE": "FIRED", "PATH-TEST": "FIRED",
-        }
-        output.write_text(
-            "UVR-STALE: FIRED allowed.txt:1 — updated visible text\n"
-            "PATH-TEST: N/A allowed.txt:1 — goal names no uncovered path\nPASS\n",
-            encoding="utf-8",
-        )
-        validate_surface_adjudication(work, work_devlyn, surface_state, surface)
-        output.write_text(
-            "UVR-STALE: N/A exact:1 — exact colon path is unchanged\n"
-            "PATH-TEST: N/A exact:1:1 — exact colon path line is covered\nPASS\n",
-            encoding="utf-8",
-        )
-        validate_surface_adjudication(work, work_devlyn, surface_state, surface)
-        output.write_text(
-            "UVR-STALE: N/A tests/literal:1-3 — literal range-shaped path is unchanged\n"
-            "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-            encoding="utf-8",
-        )
-        validate_surface_adjudication(work, work_devlyn, surface_state, surface)
-
-        output.write_text(
-            "PATH-TEST review confirms every success/failure path the goal specifies (chaining in both positions, exact-nth-run cancellation via both `run_pending()` and `run_all()`, first-limit-wins with `.until()` in both directions, `next_run`/`idle_seconds` reflecting removal, validation errors, repeated-call override, per-job independence) is already covered by the added tests — no gap found.\n\n"
-            "UVR-STALE: FIRED schedule/__init__.py:690 — `Job.run()`'s docstring described CancelJob only via `.until()`'s deadline, omitting the new `max_runs` cancellation path added to the same method in this diff (line 715); updated the docstring minimally.\n"
-            "PATH-TEST: N/A test_schedule.py — every success/failure path in the goal (chaining order, exact-nth-run cutoff via both `run_pending()`/`run_all()`, `.until()` first-limit-wins both directions, `next_run`/`idle_seconds` post-removal, validation errors, repeat-call override, per-job independence) already has a covering test in the patch.\n"
-            "PASS\n",
-            encoding="utf-8",
-        )
-        validate_surface_adjudication(work, work_devlyn, surface_state, surface)
-        output.write_text(
-            "UVR-STALE: N/A tests/cli.test.js — USAGE in bin/cli.js was already updated in this patch to document `fulfill-wave --input PATH`; no authorized file has stale interface text.\n"
-            "PATH-TEST: FIRED tests/cli.test.js:166 — goal names \"file-read failures\" as a distinct exit-2 path, implemented via the shared catch in `runFulfillWave`, but untested before this addition.\n"
-            "PASS\n",
-            encoding="utf-8",
-        )
-        validate_surface_adjudication(work, work_devlyn, surface_state, surface)
-
-        rejected_outputs = (
-            ("PASS\n", "missing UVR-STALE, PATH-TEST"),
-            (
-                "UVR-STALE: N/A allowed.txt:1\n"
-                "PATH-TEST: N/A allowed.txt:1 — evidence\nPASS\n",
-                "requires evidence",
-            ),
-            ("UVR-STALE: FIRED allowed.txt:1\nPASS\n", "missing PATH-TEST"),
-            (
-                "UVR-STALE: FIRED allowed.txt:1\n"
-                "UVR-STALE: FIRED allowed.txt:1\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "duplicate UVR-STALE",
-            ),
-            (
-                "PASS\nUVR-STALE: FIRED allowed.txt:1\n"
-                "PATH-TEST: FIRED allowed.txt:1\n",
-                "exactly one PASS must follow both rows",
-            ),
-            (
-                "UVR-STALE: N/A allowed.txt — \n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "requires evidence",
-            ),
-            (
-                "UVR-STALE: FIRED blocked.txt:1\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "out-of-surface",
-            ),
-            (
-                "UVR-STALE: FIRED allowed.txt:2\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "citation-missing",
-            ),
-            (
-                "UVR-STALE: N/A allowed.txt:49-73,223-235,293-295 — production range citation\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "adjudication-malformed",
-            ),
-            (
-                "UVR-STALE: N/A allowed.txt:1, allowed.txt:1 — production list citation\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "adjudication-malformed",
-            ),
-            (
-                "UVR-STALE: N/A tests/cli.test.js:1-3 — glob range citation\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "adjudication-malformed",
-            ),
-            (
-                "UVR-STALE: N/A x.ts:12:34 — doubled line citation\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "adjudication-malformed",
-            ),
-            (
-                "UVR-STALE: N/A allowed.txt:0 — zero line citation\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "adjudication-malformed",
-            ),
-            (
-                "UVR-STALE: N/A allowed.txt:012 — leading-zero line citation\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "adjudication-malformed",
-            ),
-            (
-                "UVR-STALE: N/A allowed.txt: — empty line citation\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "adjudication-malformed",
-            ),
-            (
-                "UVR-STALE: N/A blocked.txt:1 — blocked parsed path\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "out-of-surface",
-            ),
-            (
-                "UVR-STALE: N/A blocked.txt:1-3 — blocked range citation\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "out-of-surface",
-            ),
-            (
-                "UVR-STALE: N/A blocked:literal.txt:1 — blocked raw colon path\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "out-of-surface",
-            ),
-            (
-                "UVR-STALE: N/A blocked:raw.txt:1 — blocked parsed colon path\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "out-of-surface",
-            ),
-            (
-                "UVR-STALE: N/A branchbase:7 — existing unauthorized raw path\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "out-of-surface",
-            ),
-            (
-                "UVR-STALE: N/A branchbase:dir:1 — existing unauthorized parsed directory\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "out-of-surface",
-            ),
-            (
-                "UVR-STALE: N/A tests/../blocked.txt:1 — wildcard traversal\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "out-of-surface",
-            ),
-            (
-                "UVR-STALE: N/A tests/ghost.txt:1 — nonexistent glob descendant\n"
-                "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-                "citation-missing",
-            ),
-        )
-        for raw_output, marker in rejected_outputs:
-            output.write_text(raw_output, encoding="utf-8")
-            try:
-                validate_surface_adjudication(work, work_devlyn, surface_state, surface)
-            except SystemExit as exc:
-                assert marker in str(exc), (marker, exc)
-            else:
-                raise AssertionError(f"SURFACE_CLOSE accepted invalid adjudication: {marker}")
-
-        output.write_text(
-            "UVR-STALE: N/A allowed.txt:49-73,223-235,293-295 — production range citation\n"
-            "PATH-TEST: FIRED allowed.txt:1\nPASS\n",
-            encoding="utf-8",
-        )
-        require_surface_adjudication_malformed(
-            work, work_devlyn, surface_state, surface,
-        )
-        output.write_text(
-            "UVR-STALE: N/A allowed.txt:1 — no stale interface text\n"
-            "PATH-TEST: N/A allowed.txt:1 — requested path already covered\nPASS\n",
-            encoding="utf-8",
-        )
-        validate_surface_adjudication(work, work_devlyn, surface_state, surface)
-
-        transcript = work_devlyn / "surface-close.worker-session.0.jsonl"
-        transcript.write_text(json.dumps({
-            "message": {"content": [{
-                "type": "tool_use", "name": "Bash",
-                "input": {"command": "git diff -- allowed.txt"},
-            }]},
-        }) + "\n", encoding="utf-8")
-        validate_surface_execution(work_devlyn, surface_state)
-        for validation_command in ("npm test", "node bin/cli.js version"):
-            transcript.write_text(json.dumps({
-                "message": {"content": [{
-                    "type": "tool_use", "name": "Bash",
-                    "input": {"command": validation_command},
-                }]},
-            }) + "\n", encoding="utf-8")
-            try:
-                validate_surface_execution(work_devlyn, surface_state)
-            except SystemExit as exc:
-                assert "validation-execution" in str(exc)
-            else:
-                raise AssertionError(
-                    f"SURFACE_CLOSE execution audit accepted {validation_command}"
-                )
-
-        transcript.write_text(
-            json.dumps({"message": {"content": [
-                {"type": "tool_use", "name": "Edit", "input": {"file_path": str(work / "allowed.txt")}},
-                {"type": "tool_use", "name": "Write", "input": {"file_path": "tests/new.txt"}},
-            ]}}) + "\n",
-            encoding="utf-8",
-        )
-        assert validate_surface_write_audit(
-            work, work_devlyn, surface_state, surface,
-        ) == ["allowed.txt", "tests/new.txt"]
-        for invalid_target in (str(work / "blocked.txt"), str(work_devlyn / "hidden.txt"), "../escape.txt"):
-            transcript.write_text(
-                json.dumps({"message": {"content": [{
-                    "type": "tool_use", "name": "Edit",
-                    "input": {"file_path": invalid_target},
-                }]}}) + "\n",
-                encoding="utf-8",
-            )
-            try:
-                validate_surface_write_audit(work, work_devlyn, surface_state, surface)
-            except SystemExit as exc:
-                assert "write-audit-violation" in str(exc)
-            else:
-                raise AssertionError(f"SURFACE_CLOSE write audit accepted {invalid_target}")
-
-        wrapper_log = work_devlyn / "surface-close.output.json"
-        wrapper_log.write_text(json.dumps({
-            "result": output.read_text(encoding="utf-8"),
-            "modelUsage": {"sonnet": {"inputTokens": 1}},
-        }) + "\n", encoding="utf-8")
-        completion_state = loads_strict_json(json.dumps(surface_state))
-        assert do_complete(
-            completion_state, "surface_close", "PASS", pre_sha, None,
-            ".devlyn/surface-close.stdout", None, None, str(wrapper_log),
-            devlyn=work_devlyn,
-        ) is None
-        completed_surface = completion_state["phases"]["surface_close"]
-        assert completed_surface["model_requested"] == "sonnet"
-        assert completed_surface["model_effective"] == "sonnet"
-        assert completed_surface["verdict"] == "PASS"
-
-        inherited_completion = copy.deepcopy(inherited_surface)
-        assert do_complete(
-            inherited_completion, "surface_close", "PASS", pre_sha, None, None,
-            None, None, str(wrapper_log), devlyn=work_devlyn,
-        ) is None
-        assert inherited_completion["phases"]["surface_close"]["model_requested"] is None
-        assert inherited_completion["phases"]["surface_close"]["model_effective"] == "sonnet"
-        replacement = copy.deepcopy(inherited_surface)
-        try:
-            do_complete(replacement, "surface_close", "PASS", None, None, None,
-                        None, "sonnet", str(wrapper_log), devlyn=work_devlyn)
-        except SystemExit as exc:
-            assert "cannot replace requested model" in str(exc)
-        else:
-            raise AssertionError("completion replaced inherited model selection")
-        assert replacement == inherited_surface
-
-        native_json = wrapper_log.read_bytes()
-        transcript_bytes = transcript.read_bytes()
-        foreign_log = work_devlyn / "foreign.output.json"
-        foreign_log.write_bytes(native_json)
-        for retained in (False, True):
-            if retained:
-                transcript.write_bytes(transcript_bytes)
-            else:
-                transcript.unlink()
-            for log in (None, str(foreign_log)):
-                rejected = copy.deepcopy(inherited_surface)
-                error = do_complete(rejected, "surface_close", "PASS", None, None, None,
-                                    None, None, log, devlyn=work_devlyn)
-                assert error and "canonical native JSON" in error
-                assert rejected["phases"]["surface_close"]["verdict"] == "BLOCKED"
-        for invalid_json in (
-            b"not JSON", b'{"result":"PASS"}',
-            b'{"modelUsage":{"model-a":{},"model-b":{}}}',
-            b'{"type":"turn_context","payload":{"model":"sonnet"}}\n',
-        ):
-            wrapper_log.write_bytes(invalid_json)
-            rejected = copy.deepcopy(inherited_surface)
-            assert do_complete(rejected, "surface_close", "PASS", None, None, None,
-                               None, None, str(wrapper_log), devlyn=work_devlyn)
-            assert rejected["phases"]["surface_close"]["verdict"] == "BLOCKED"
-        alias_log = work_devlyn / "aliased-native.jsonl"
-        alias_log.symlink_to(wrapper_log)
-        rejected = copy.deepcopy(inherited_surface)
-        assert do_complete(rejected, "surface_close", "PASS", None, None, None,
-                           None, None, str(alias_log), devlyn=work_devlyn)
-        wrapper_log.unlink()
-        rejected = copy.deepcopy(inherited_surface)
-        assert do_complete(rejected, "surface_close", "PASS", None, None, None,
-                           None, None, str(wrapper_log), devlyn=work_devlyn)
-        recovery_failure = copy.deepcopy(inherited_surface)
-        assert do_surface_adjudication_recovery(recovery_failure, work_devlyn)
-        assert recovery_failure["phases"]["surface_close"]["verdict"] == "BLOCKED"
-        assert not recovery_failure["phases"]["surface_close"].get("continued_after_block")
-        transition_state = copy.deepcopy(inherited_surface)
-        try:
-            do_transition(transition_state, "surface_close", "build_gate", "PASS", pre_sha,
-                          None, None, None, None, None, work_devlyn, 0, None, None, "claude", None)
-        except SystemExit as exc:
-            assert "canonical native JSON" in str(exc)
-        else:
-            raise AssertionError("SURFACE_CLOSE opened BUILD_GATE without native evidence")
-        assert transition_state == inherited_surface
-        wrapper_log.write_text('{"modelUsage":{"different-model":{"inputTokens":1}}}\n', encoding="utf-8")
-        mismatch = copy.deepcopy(surface_state)
-        assert "model-attestation-mismatch" in do_complete(
-            mismatch, "surface_close", "PASS", None, None, None, None, None,
-            str(wrapper_log), devlyn=work_devlyn,
-        )
-        wrapper_log.write_bytes(native_json)
-
-        recovery_state = loads_strict_json(json.dumps(surface_state))
-        recovery_started_at = recovery_state["phases"]["surface_close"]["started_at"]
-        output.write_text("UVR-STALE: FIRED allowed.txt:1\nPASS\n", encoding="utf-8")
-        (work / "allowed.txt").write_text("surface edit\n", encoding="utf-8")
-        transcript.write_text(
-            json.dumps({"message": {"content": [{
-                "type": "tool_use", "name": "Edit",
-                "input": {"file_path": str(work / "allowed.txt")},
-            }]}}) + "\n",
-            encoding="utf-8",
-        )
-        require_surface_adjudication_malformed(
-            work, work_devlyn, recovery_state, surface,
-        )
-        assert rollback_surface_delta(work, work_devlyn, recovery_state) == ["allowed.txt"]
-        assert validate_surface_write_audit(
-            work, work_devlyn, recovery_state, surface,
-        ) == ["allowed.txt"]
-        assert do_surface_adjudication_recovery(recovery_state, work_devlyn) is None
-        recovered = recovery_state["phases"]["surface_close"]
-        assert recovered["started_at"] == recovery_started_at
-        assert isinstance(recovered["duration_ms"], int)
-        assert recovered["verdict"] is None
-        assert recovered["skipped_reason"] == SURFACE_RECOVERY_REASON
-        assert recovered["continued_after_block"] is True
-
-        (work / "allowed.txt").write_text("pre-existing\n", encoding="utf-8")
-        try:
-            ensure_surface_clean_baseline(work, work_devlyn, surface_state)
-        except SystemExit as exc:
-            assert "surface-close-preexisting-delta" in str(exc)
-        else:
-            raise AssertionError("SURFACE_CLOSE accepted a pre-existing tracked delta")
-        subprocess.run(["git", "restore", "--", "allowed.txt"], cwd=work, check=True)
-        (work / "allowed.txt").write_text("changed\n", encoding="utf-8")
-        (work / "blocked.txt").write_text("changed\n", encoding="utf-8")
-        (work / "tests" / "new.txt").write_text("new\n", encoding="utf-8")
-        (work / "escape.txt").write_text("new\n", encoding="utf-8")
-        assert surface_offenders(work, work_devlyn, surface_state, surface) == ["blocked.txt", "escape.txt"]
-        restored = rollback_surface_delta(work, work_devlyn, surface_state)
-        assert restored == ["allowed.txt", "blocked.txt", "escape.txt", "tests/new.txt"]
-        assert (work / "allowed.txt").read_text(encoding="utf-8") == "base\n"
-        assert (work / "blocked.txt").read_text(encoding="utf-8") == "base\n"
-        assert (work / "kept.txt").read_text(encoding="utf-8") == "keep\n"
-        assert not (work / "tests" / "new.txt").exists()
-        assert not (work / "escape.txt").exists()
-
-        skipped_state = {"phases": {}}
-        do_surface_skip(skipped_state)
-        skipped = skipped_state["phases"]["surface_close"]
-        assert skipped["verdict"] is None
-        assert skipped["skipped_reason"] == SURFACE_SKIP_REASON
 
         # Effective model evidence: handwritten headers are not provenance;
         # canonical rollout JSONL and Claude wrapper output remain accepted.
@@ -4836,11 +2172,11 @@ def self_test() -> int:
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
         do_spawn(
-            state, "plan", 0, None, None, "claude", "claude-default",
+            state, "plan", 0, None, "claude", "claude-default",
             prompt_sha256=digest0,
         )
         malformed = do_complete(
-            state, "plan", "PASS", None, None, None, None, None, str(claude_log)
+            state, "plan", "PASS", None, None, None, None, str(claude_log)
         )
         assert malformed and "model-attestation-failed" in malformed
         assert state["phases"]["plan"]["model_effective"] is None
@@ -4849,9 +2185,9 @@ def self_test() -> int:
         # Requested/effective drift is a persisted, fail-closed attestation.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "implement", 0, None, None, "codex", "gpt-5.5")
+        do_spawn(state, "implement", 0, None, "codex", "gpt-5.5")
         mismatch = do_complete(
-            state, "implement", "PASS", None, None, None, None, None, str(rollout_log)
+            state, "implement", "PASS", None, None, None, None, str(rollout_log)
         )
         mismatched = state["phases"]["implement"]
         assert mismatch and "model-attestation-mismatch" in mismatch
@@ -4864,15 +2200,15 @@ def self_test() -> int:
         )
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        # Historical Claude BUILD evidence keeps the original mismatch guard.
-        state["phases"]["build_gate"] = {
+        # Claude worker evidence keeps the requested/effective mismatch guard.
+        state["phases"]["implement"] = {
             "started_at": now_iso(), "completed_at": None, "round": 0,
             "engine": "claude", "model_requested": "claude-" "opus-5",
         }
         mismatch = do_complete(
-            state, "build_gate", "PASS", None, None, None, None, None, str(claude_log)
+            state, "implement", "PASS", None, None, None, None, str(claude_log)
         )
-        mismatched = state["phases"]["build_gate"]
+        mismatched = state["phases"]["implement"]
         assert mismatch and "model-attestation-mismatch" in mismatch
         assert mismatched["model_requested"] == "claude-" "opus-5"
         assert mismatched["model_effective"] == "claude-" "opus-5[1m]"
@@ -4886,9 +2222,9 @@ def self_test() -> int:
         }) + "\n", encoding="utf-8")
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "implement", 0, None, None, "codex", "gpt-5.6-terra")
+        do_spawn(state, "implement", 0, None, "codex", "gpt-5.6-terra")
         omitted = do_complete(
-            state, "implement", "PASS", None, None, None, None, None,
+            state, "implement", "PASS", None, None, None, None,
             devlyn=devlyn,
         )
         assert omitted and "model-attestation-failed" in omitted
@@ -4898,9 +2234,9 @@ def self_test() -> int:
 
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "implement", 0, None, None, "codex", "gpt-5.6-terra")
+        do_spawn(state, "implement", 0, None, "codex", "gpt-5.6-terra")
         assert do_complete(
-            state, "implement", "PASS", None, None, None, None, None,
+            state, "implement", "PASS", None, None, None, None,
             str(retained_log), devlyn=devlyn,
         ) is None
         assert state["phases"]["implement"]["model_effective"] == "gpt-5.6-terra"
@@ -4924,7 +2260,7 @@ def self_test() -> int:
         }
         try:
             do_spawn(
-                inherited_engine_state, "implement", 0, None, None, None, None,
+                inherited_engine_state, "implement", 0, None, None, None,
                 prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn,
             )
         except SystemExit as exc:
@@ -4932,7 +2268,7 @@ def self_test() -> int:
         else:
             raise AssertionError("schema-v3 inherited Codex engine accepted no model")
         do_spawn(
-            inherited_engine_state, "implement", 0, None, None, None, receipt_model,
+            inherited_engine_state, "implement", 0, None, None, receipt_model,
             prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn,
         )
         assert inherited_engine_state["phases"]["implement"]["engine"] == "codex"
@@ -4943,7 +2279,7 @@ def self_test() -> int:
             "phases": {"implement": None},
         }
         do_spawn(
-            receipt_state, "implement", 0, None, None, "codex", receipt_model,
+            receipt_state, "implement", 0, None, "codex", receipt_model,
             prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn,
         )
         receipt_runner = invocation_receipt_module()
@@ -4956,7 +2292,7 @@ def self_test() -> int:
         receipt_runner.finish_receipt(receipt_work, receipt_path, 0)
         rerouted_state = copy.deepcopy(receipt_state)
         assert do_complete(
-            receipt_state, "implement", "PASS", None, None, None, None, None,
+            receipt_state, "implement", "PASS", None, None, None, None,
             str(receipt_session), devlyn=receipt_devlyn, work=receipt_work,
         ) is None
         receipt_entry = receipt_state["phases"]["implement"]
@@ -4981,13 +2317,13 @@ def self_test() -> int:
         )
         receipt_runner.finish_receipt(receipt_work, receipt_path, 0)
         reroute_error = do_complete(
-            rerouted_state, "implement", "PASS", None, None, None, None, None,
+            rerouted_state, "implement", "PASS", None, None, None, None,
             str(receipt_session), devlyn=receipt_devlyn, work=receipt_work,
         )
         assert reroute_error and "model reroute" in reroute_error
         assert rerouted_state["phases"]["implement"]["verdict"] == "BLOCKED"
         try:
-            do_spawn(rerouted_state, "implement", 1, None, None, "codex", receipt_model,
+            do_spawn(rerouted_state, "implement", 1, None, "codex", receipt_model,
                      prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn)
         except SystemExit as exc:
             assert str(exc) == "BLOCKED:repair-edge-invalid"
@@ -5009,7 +2345,7 @@ def self_test() -> int:
             "phases": {"plan": None},
         }
         do_spawn(
-            plan_state, "plan", 0, None, None, "codex", plan_model,
+            plan_state, "plan", 0, None, "codex", plan_model,
             prompt_sha256=plan_prompt_sha, devlyn=receipt_devlyn,
         )
         receipt_runner.start_receipt(
@@ -5021,7 +2357,7 @@ def self_test() -> int:
         )
         receipt_runner.finish_receipt(receipt_work, plan_path, 0)
         assert do_complete(
-            plan_state, "plan", "PASS", None, None, None, None, None,
+            plan_state, "plan", "PASS", None, None, None, None,
             str(plan_session), devlyn=receipt_devlyn, work=receipt_work,
         ) is None
         plan_entry = plan_state["phases"]["plan"]
@@ -5038,7 +2374,7 @@ def self_test() -> int:
         plan_path_1 = receipt_devlyn / "plan.invocation.1.json"
         plan_prompt_sha_1 = hashlib.sha256(plan_prompt_1.read_bytes()).hexdigest()
         do_spawn(
-            plan_state, "plan", 1, "plan", None, "codex", plan_model,
+            plan_state, "plan", 1, "plan", "codex", plan_model,
             prompt_sha256=plan_prompt_sha_1, devlyn=receipt_devlyn,
         )
         plan_history = plan_state["phases"]["plan"]["history"]
@@ -5055,7 +2391,7 @@ def self_test() -> int:
         )
         receipt_runner.finish_receipt(receipt_work, plan_path_1, 0)
         assert do_complete(
-            plan_state, "plan", "PASS", None, None, None, None, None,
+            plan_state, "plan", "PASS", None, None, None, None,
             str(plan_session_1), devlyn=receipt_devlyn, work=receipt_work,
         ) is None
         assert plan_state["phases"]["plan"]["invocation_receipt"]["path"] == (
@@ -5069,13 +2405,13 @@ def self_test() -> int:
             "phases": {"implement": None},
         }
         do_spawn(
-            confused_state, "implement", 0, None, None, "codex", receipt_model,
+            confused_state, "implement", 0, None, "codex", receipt_model,
             prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn,
         )
         confused_before = copy.deepcopy(confused_state)
         try:
             do_complete(
-                confused_state, "implement", "PASS", None, None, None,
+                confused_state, "implement", "PASS", None, None,
                 "claude", receipt_model, str(receipt_session),
                 devlyn=receipt_devlyn, work=receipt_work,
             )
@@ -5086,7 +2422,7 @@ def self_test() -> int:
         assert confused_state == confused_before
         try:
             do_complete(
-                confused_state, "implement", "PASS", None, None, None,
+                confused_state, "implement", "PASS", None, None,
                 None, "other-model", str(receipt_session),
                 devlyn=receipt_devlyn, work=receipt_work,
             )
@@ -5103,13 +2439,13 @@ def self_test() -> int:
             "phases": {"implement": None},
         }
         do_spawn(
-            wrong_path_state, "implement", 0, None, None, "codex", receipt_model,
+            wrong_path_state, "implement", 0, None, "codex", receipt_model,
             prompt_sha256=receipt_prompt_sha, devlyn=receipt_devlyn,
         )
         arbitrary_log = receipt_devlyn / "handwritten.log"
         arbitrary_log.write_text(f"model: {receipt_model}\n", encoding="utf-8")
         wrong_path_error = do_complete(
-            wrong_path_state, "implement", "PASS", None, None, None, None, None,
+            wrong_path_state, "implement", "PASS", None, None, None, None,
             str(arbitrary_log), devlyn=receipt_devlyn, work=receipt_work,
         )
         assert wrong_path_error and "canonical phase/round session" in wrong_path_error
@@ -5177,11 +2513,7 @@ def self_test() -> int:
                 "--model", plan_model, "--prompt-sha256", plan_prompt_sha,
             )) for phase in sorted(PHASE_NAMES - {"final_report"})
         ] + [
-            ("surface_close", ("surface-skip",)),
-            ("surface_close", ("surface-check", "--authorized-surface-json", "[]")),
-            ("surface_close", ("surface-adjudication-recover", "--authorized-surface-json", "[]")),
-            ("surface_close", ("surface-rollback",)),
-            ("implement", ("durability-enforce", "--round", "1", "--origin-phase", "verify")),
+            ("implement", ("durability-enforce", "--round", "1")),
         ]:
             before = receipt_state_path.read_bytes()
             result = receipt_cli(phase, *event_args)
@@ -5346,394 +2678,146 @@ def self_test() -> int:
         retained_log.unlink()
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
-        do_spawn(state, "cleanup", 0, None, None, "claude", "claude-default")
+        do_spawn(state, "implement", 0, None, "claude", "claude-default")
         assert do_complete(
-            state, "cleanup", "PASS", None, None, None, None, None,
+            state, "implement", "PASS", None, None, None, None,
             devlyn=devlyn,
         ) is None
-        assert state["phases"]["cleanup"]["model_effective"] is None
+        assert state["phases"]["implement"]["model_effective"] is None
 
         # Supplied evidence must parse and never silently record null.
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
         do_spawn(
-            state, "plan", 0, None, None, "claude", "claude-default",
+            state, "plan", 0, None, "claude", "claude-default",
             prompt_sha256=digest0,
         )
-        assert do_complete(state, "plan", "PASS", None, None, None, None, None) is None
+        assert do_complete(state, "plan", "PASS", None, None, None, None) is None
         assert state["phases"]["plan"]["model_effective"] is None
         invalid_log = devlyn / "invalid-session.log"
         invalid_log.write_text("no model evidence\n", encoding="utf-8")
         write_state(state_path, {"phases": {}})
         state = read_state(state_path)
         do_spawn(
-            state, "plan", 0, None, None, "claude", "claude-default",
+            state, "plan", 0, None, "claude", "claude-default",
             prompt_sha256=digest0,
         )
         invalid = do_complete(
-            state, "plan", "PASS", None, None, None, None, None, str(invalid_log)
+            state, "plan", "PASS", None, None, None, None, str(invalid_log)
         )
         assert invalid and "model-attestation-failed" in invalid
         assert state["phases"]["plan"]["model_effective"] is None
         assert state["phases"]["plan"]["verdict"] == "BLOCKED"
 
-        def write_fixture_tree(repo: pathlib.Path, files: dict[str, str]) -> None:
-            existing = {
-                path.relative_to(repo).as_posix() for path in repo.rglob("*")
-                if path.is_file() and ".git" not in path.parts and ".devlyn" not in path.parts
-            }
-            for path in existing - set(files):
-                (repo / path).unlink()
-            for path, content in files.items():
-                target = repo / path
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(content, encoding="utf-8")
+        # A VERIFY-origin repair round leaves a clean tracked tree whose HEAD is its
+        # `chore(pipeline): implement fix round <n>` commit, bound to the triggering
+        # findings; fresh VERIFY re-entry rechecks that receipt against the tree.
+        repo = devlyn / "repair-checkpoint"
+        repo.mkdir()
 
-        def commit_fixture(repo: pathlib.Path, files: dict[str, str], message: str) -> str:
-            write_fixture_tree(repo, files)
-            paths = sorted(set(files) | {
-                path.relative_to(repo).as_posix() for path in repo.rglob("*")
-                if path.is_file() and ".git" not in path.parts and ".devlyn" not in path.parts
-            })
-            subprocess.run(["git", "add", "--all", "--", *paths], cwd=repo, check=True)
-            subprocess.run(["git", "commit", "-qm", message], cwd=repo, check=True)
+        def repo_git(*args: str) -> str:
             return subprocess.run(
-                ["git", "rev-parse", "HEAD"], cwd=repo, check=True,
-                capture_output=True, text=True,
-                encoding="utf-8",
+                ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=repo,
+                check=True, capture_output=True, text=True, encoding="utf-8",
             ).stdout.strip()
 
-        def durability_fixture(
-            name: str, base_files: dict[str, str], surface_files: dict[str, str],
-            fix_files: dict[str, str], origin: str, findings: list[dict], round_: int = 1,
-            with_surface_post: bool = True,
-        ) -> tuple[pathlib.Path, pathlib.Path, dict, str, str]:
-            repo = devlyn / name
-            repo.mkdir()
-            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
-            subprocess.run(["git", "config", "user.email", "self-test@example.invalid"], cwd=repo, check=True)
-            subprocess.run(["git", "config", "user.name", "self-test"], cwd=repo, check=True)
-            base_sha = commit_fixture(repo, base_files, "base")
-            surface_sha = commit_fixture(repo, surface_files, "surface close")
-            fix_sha = commit_fixture(repo, fix_files, f"chore(pipeline): implement fix round {round_}")
-            fixture_devlyn = repo / ".devlyn"
-            fixture_devlyn.mkdir()
-            findings_name = (
-                "build_gate.findings.jsonl" if origin == "build_gate"
-                else "verify-merged.findings.jsonl"
-            )
-            (fixture_devlyn / findings_name).write_text(
-                "".join(json.dumps(finding) + "\n" for finding in findings), encoding="utf-8",
-            )
-            surface_entry = {"pre_sha": base_sha, "durability": []}
-            if with_surface_post:
-                surface_entry["post_sha"] = surface_sha
-            fixture_state = {"phases": {"surface_close": surface_entry}}
-            return repo, fixture_devlyn, fixture_state, fix_sha, surface_sha
+        repo_git("init", "-q")
+        (repo / ".gitignore").write_text(".devlyn/\n", encoding="utf-8")
+        (repo / "a.txt").write_text("base\n", encoding="utf-8")
+        repo_git("add", "-A")
+        repo_git("commit", "-qm", "base")
+        base = repo_git("rev-parse", "HEAD")
+        repo_devlyn = repo / ".devlyn"
+        repo_devlyn.mkdir()
+        merged = repo_devlyn / "verify-merged.findings.jsonl"
+        merged.write_text('{"id": "VERIFY-0001", "severity": "HIGH"}\n', encoding="utf-8")
+        (repo / "a.txt").write_text("fixed\n", encoding="utf-8")
+        repo_git("commit", "-qam", "chore(pipeline): implement fix round 1")
+        fix = repo_git("rev-parse", "HEAD")
+        checkpoint_state = {"phases": {"implement": {"round": 1, "triggered_by": "verify"}}}
+        receipt = record_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1)
+        assert receipt == {"round": 1, "origin_phase": "verify",
+                           "triggering_findings_sha256": hashlib.sha256(merged.read_bytes()).hexdigest(),
+                           "pre_fix_sha": base, "fix_commit_sha": fix}, receipt
+        assert record_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1) == receipt
+        assert checkpoint_state["phases"]["implement"]["durability"] == [receipt]
+        enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1)
 
-        # M-CP 1/8/9: exact -19c topology. The VERIFY finding is line 60,
-        # outside the pre-fix USAGE block; the unrelated real fix survives,
-        # the USAGE revert is restored, and the frozen gate's check-7 function
-        # observes the separate closure-restore commit's final tree.
-        base_lines = [f"line {index}\n" for index in range(1, 66)]
-        base_lines[6] = "const USAGE = `\n"
-        base_lines[7] = "usage: cli <command>\n"
-        base_lines[9] = "  version                 Show version\n"
-        base_lines[10] = "`;\n"
-        base_lines[59] = "  return args.indexOf('--format')\n"
-        surface_lines = list(base_lines)
-        surface_lines[9] = "  version --format <fmt>  Show version\n"
-        fix_lines = list(base_lines)
-        fix_lines[59] = "  return args.lastIndexOf('--format')\n"
-        exact_repo, exact_devlyn, exact_state, exact_fix, _ = durability_fixture(
-            "durability-exact", {"bin/cli.js": "".join(base_lines)},
-            {"bin/cli.js": "".join(surface_lines)}, {"bin/cli.js": "".join(fix_lines)},
-            "verify", [{"id": "-19c", "file": "bin/cli.js", "line": 60}],
-        )
-        exact_receipt = enforce_closure_durability_reentry(
-            exact_repo, exact_devlyn, exact_state, "verify", 1,
-        )
-        exact_text = (exact_repo / "bin/cli.js").read_text(encoding="utf-8")
-        assert "version --format <fmt>" in exact_text
-        assert "lastIndexOf('--format')" in exact_text
-        assert exact_receipt and exact_receipt["restore_commit_sha"]
-        assert exact_receipt["fix_commit_sha"] == exact_fix
-        assert subprocess.run(
-            ["git", "show", "-s", "--format=%s", "HEAD"], cwd=exact_repo,
-            check=True, capture_output=True, text=True,
-            encoding="utf-8",
-        ).stdout.strip() == "chore(pipeline): closure-restore round 1"
-        gate_spec = importlib.util.spec_from_file_location(
-            "f7_carrier_gate", pathlib.Path(__file__).resolve().parents[3]
-            / "benchmark/ceiling/scripts/f7-carrier-gate.py",
-        )
-        gate = importlib.util.module_from_spec(gate_spec)
-        gate_spec.loader.exec_module(gate)
-        assert gate.check7(exact_text)[0]
-        print("PASS M-CP self-test 1/8/9: -19c restore + file-line targeting + frozen check 7")
-
-        # M-CP 2: BUILD_GATE uses the same durability route.
-        build_repo, build_devlyn, build_state, _, _ = durability_fixture(
-            "durability-build", {"a.txt": "old\n"}, {"a.txt": "surface\n"},
-            {"a.txt": "old\n"}, "build_gate",
-            [{"id": "BG", "file": "a.txt", "line": 8}],
-        )
-        build_state["phases"]["implement"] = {
-            "started_at": now_iso(), "completed_at": now_iso(), "round": 1,
-            "triggered_by": "build_gate", "verdict": "PASS",
-        }
-        write_state(build_devlyn / "pipeline.state.json", build_state)
-        subprocess.run(
-            [sys.executable, str(pathlib.Path(__file__).resolve()), "--devlyn-dir", ".devlyn",
-             "--phase", "implement", "durability-enforce", "--round", "1",
-             "--origin-phase", "build_gate"],
-            cwd=build_repo, check=True, capture_output=True,
-        )
-        subprocess.run(
-            [sys.executable, str(pathlib.Path(__file__).resolve()), "--devlyn-dir", ".devlyn",
-             "--phase", "build_gate", "spawn", "--round", "1"],
-            cwd=build_repo, check=True, capture_output=True,
-        )
-        # The next phase's first spawn shares rounds.global=1 but is not a
-        # VERIFY re-entry; it must not reinterpret the BUILD_GATE receipt.
-        subprocess.run(
-            [sys.executable, str(pathlib.Path(__file__).resolve()), "--devlyn-dir", ".devlyn",
-             "--phase", "verify", "spawn", "--round", "1"],
-            cwd=build_repo, check=True, capture_output=True,
-        )
-        build_receipt = loads_strict_json(
-            (build_devlyn / "closure-durability.round-1.json").read_text(encoding="utf-8")
-        )
-        assert (build_repo / "a.txt").read_text(encoding="utf-8") == "surface\n"
-        assert build_receipt and build_receipt["origin_phase"] == "build_gate"
-        print("PASS M-CP self-test 2: build_gate and verify routes")
-
-        # M-CP 3: block-granular multi-file partial revert mixture.
-        mix_base = {
-            "mix.txt": "A\nkeep-1\nB\nkeep-2\nC\n", "other.txt": "old\n",
-            "context.txt": "before\nold\nafter\n",
-        }
-        mix_surface = {
-            "mix.txt": "A-sc\nkeep-1\nB-sc\nkeep-2\nC-sc\n", "other.txt": "new\n",
-            "context.txt": "before\nnew\nafter\n",
-        }
-        mix_fix = {
-            "mix.txt": "A-sc\nkeep-1\nB-evolved\nkeep-2\nC\n", "other.txt": "old\n",
-            "context.txt": "changed-context\nold\nafter\n",
-        }
-        mix_repo, mix_devlyn, mix_state, _, _ = durability_fixture(
-            "durability-mix", mix_base, mix_surface, mix_fix, "verify", [],
-        )
-        mix_receipt = enforce_closure_durability_reentry(
-            mix_repo, mix_devlyn, mix_state, "verify", 1,
-        )
-        mix_classes = [block["classification"] for block in mix_receipt["blocks"]]
-        assert {"SURVIVED", "EVOLVED", "REVERTED"} <= set(mix_classes), mix_receipt["blocks"]
-        assert (mix_repo / "mix.txt").read_text(encoding="utf-8") == (
-            "A-sc\nkeep-1\nB-evolved\nkeep-2\nC-sc\n"
-        )
-        assert (mix_repo / "other.txt").read_text(encoding="utf-8") == "new\n"
-        assert (mix_repo / "context.txt").read_text(encoding="utf-8") == (
-            "changed-context\nold\nafter\n"
-        )
-        print("PASS M-CP self-test 3: multi-file SURVIVED/EVOLVED/REVERTED partial restore")
-
-        # M-CP 4: a deleted additive SC block is REVERTED and restored.
-        add_repo, add_devlyn, add_state, _, _ = durability_fixture(
-            "durability-add", {"docs/x.txt": "head\ntail\n"},
-            {"docs/x.txt": "head\na/old/docs/x.txt\ntail\n"},
-            {"docs/x.txt": "head\ntail\n"}, "verify", [],
-        )
-        add_receipt = enforce_closure_durability_reentry(add_repo, add_devlyn, add_state, "verify", 1)
-        assert (add_repo / "docs/x.txt").read_text(encoding="utf-8") == (
-            "head\na/old/docs/x.txt\ntail\n"
-        )
-        assert any(block["classification"] == "REVERTED" for block in add_receipt["blocks"])
-        print("PASS M-CP self-test 4: deleted additive block restored")
-
-        # M-CP 5: an exact line-targeted deletion is preserved, not restored.
-        target_repo, target_devlyn, target_state, target_fix, _ = durability_fixture(
-            "durability-target", {"target.txt": "head\ntail\n"},
-            {"target.txt": "head\nconsolidate\ntail\n"}, {"target.txt": "head\ntail\n"},
-            "verify", [{"id": "E1", "path": "target.txt", "line": 2}],
-        )
-        target_receipt = enforce_closure_durability_reentry(
-            target_repo, target_devlyn, target_state, "verify", 1,
-        )
-        assert (target_repo / "target.txt").read_text(encoding="utf-8") == "head\ntail\n"
-        assert target_receipt["restore_commit_sha"] is None
-        assert target_receipt["post_restore_sha"] == target_fix
-        assert target_receipt["blocks"][0]["finding_targeted"] is True
-        print("PASS M-CP self-test 5: finding-targeted deletion not restored")
-
-        # M-CP 6: once ledgered, a missing or stale receipt blocks re-entry.
-        target_path = target_devlyn / "closure-durability.round-1.json"
-        target_raw = target_path.read_bytes()
-        target_state["phases"]["implement"] = {"round": 1, "triggered_by": "verify"}
-        write_state(target_devlyn / "pipeline.state.json", target_state)
-        stale_verify_artifact = target_devlyn / "verify.findings.jsonl"
-        stale_verify_artifact.write_text("stale\n", encoding="utf-8")
-        target_path.unlink()
-        for mode in ("missing", "stale"):
-            if mode == "stale":
-                target_path.write_bytes(target_raw.replace(b'"schema_version": 1', b'"schema_version": 2'))
+        def refused(call, needle: str) -> None:
             try:
-                enforce_closure_durability_reentry(
-                    target_repo, target_devlyn, target_state, "verify", 1,
-                )
+                call()
             except SystemExit as exc:
-                assert "closure-durability-receipt" in str(exc)
+                assert str(exc).startswith("BLOCKED:repair-checkpoint") and needle in str(exc), exc
             else:
-                raise AssertionError(f"{mode} durability receipt was accepted")
-            if mode == "missing":
-                reentry = subprocess.run(
-                    [sys.executable, str(pathlib.Path(__file__).resolve()),
-                     "--devlyn-dir", ".devlyn", "--phase", "verify", "spawn",
-                     "--round", "1"],
-                    cwd=target_repo, capture_output=True, text=True,
-                    encoding="utf-8",
-                )
-                assert reentry.returncode != 0
-                assert "closure-durability-receipt" in reentry.stderr
-                assert stale_verify_artifact.exists(), "re-entry guard must run before VERIFY clearing"
-        target_path.write_bytes(target_raw)
+                raise AssertionError(f"repair checkpoint accepted: {needle}")
 
-        # Skipping the explicit post-fix checkpoint cannot be repaired by the
-        # spawn guard: re-entry is validation-only and both artifacts missing
-        # must block without changing the fix tree.
-        skipped_repo, skipped_devlyn, skipped_state, skipped_fix, _ = durability_fixture(
-            "durability-skipped-checkpoint", {"skip.txt": "base\n"},
-            {"skip.txt": "surface\n"}, {"skip.txt": "base\n"}, "build_gate", [],
-        )
-        skipped_state["phases"]["implement"] = {"round": 1, "triggered_by": "build_gate"}
-        write_state(skipped_devlyn / "pipeline.state.json", skipped_state)
-        skipped = subprocess.run(
-            [sys.executable, str(pathlib.Path(__file__).resolve()),
-             "--devlyn-dir", ".devlyn", "--phase", "build_gate", "spawn", "--round", "1"],
-            cwd=skipped_repo, capture_output=True, text=True,
-            encoding="utf-8",
-        )
-        assert skipped.returncode != 0 and "checkpoint receipt is missing" in skipped.stderr
-        assert not (skipped_devlyn / "closure-durability.round-1.json").exists()
-        assert subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=skipped_repo, check=True,
-            capture_output=True, text=True,
-            encoding="utf-8",
-        ).stdout.strip() == skipped_fix
+        refused(lambda: enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 2), "receipt is missing")
+        (repo / "a.txt").write_text("uncommitted\n", encoding="utf-8")
+        refused(lambda: enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1), "not clean")
+        repo_git("add", "a.txt")
+        refused(lambda: enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1), "not clean")
+        repo_git("reset", "-q", "--hard", fix)
+        merged.write_text('{"id": "VERIFY-0002", "severity": "HIGH"}\n', encoding="utf-8")
+        refused(lambda: enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1), "no longer matches")
+        refused(lambda: record_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1), "different checkpoint")
+        merged.write_text('{"id": "VERIFY-0001", "severity": "HIGH"}\n', encoding="utf-8")
+        (repo / "a.txt").write_text("later\n", encoding="utf-8")
+        repo_git("commit", "-qam", "wip after the checkpoint")
+        refused(lambda: enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1), "expected fix checkpoint round 1")
+        refused(lambda: record_repair_checkpoint(repo, repo_devlyn, {"phases": {"implement": {}}}, 1),
+                "expected fix checkpoint round 1")
+        repo_git("reset", "-q", "--hard", fix)
+        refused(lambda: checkpoint_ledger({"phases": {"implement": {"durability": {}}}}), "malformed")
 
-        receipt_repo, receipt_devlyn, receipt_state, receipt_fix, _ = durability_fixture(
-            "durability-receipt-write-fail", {"receipt.txt": "base\n"},
-            {"receipt.txt": "surface\n"}, {"receipt.txt": "base\n"}, "verify", [],
-        )
-        original_json_writer = globals()["_write_json_atomic"]
-        def fail_receipt_write(_path, _value):
-            raise OSError("injected receipt write failure")
-        globals()["_write_json_atomic"] = fail_receipt_write
-        try:
-            try:
-                enforce_closure_durability_reentry(
-                    receipt_repo, receipt_devlyn, receipt_state, "verify", 1,
-                )
-            except SystemExit as exc:
-                assert "injected receipt write failure" in str(exc)
-            else:
-                raise AssertionError("receipt write failure did not fail closed")
-        finally:
-            globals()["_write_json_atomic"] = original_json_writer
-        assert _git_output(receipt_repo, "rev-parse", "HEAD").decode().strip() == receipt_fix
-        assert (receipt_repo / "receipt.txt").read_text(encoding="utf-8") == "base\n"
-        assert not (receipt_devlyn / "closure-durability.round-1.json").exists()
-        assert receipt_state["phases"]["surface_close"]["durability"] == []
+        # CLI: re-entry without a receipt is refused with state unchanged; durability-enforce
+        # records it, then fresh VERIFY opens on the fix commit.
+        checkpoint_state_path = repo_devlyn / "pipeline.state.json"
+        write_state(checkpoint_state_path, {
+            "version": "3.0", "run_id": "rs-repair-checkpoint", "rounds": {"global": 1, "max_rounds": 4},
+            "phases": {"implement": {"started_at": "2026-01-01T00:00:00.000Z", "completed_at": None,
+                                     "round": 1, "triggered_by": "verify", "verdict": None}},
+        })
 
-        state_repo, state_devlyn, state_state, state_fix, _ = durability_fixture(
-            "durability-state-write-fail", {"state.txt": "base\n"},
-            {"state.txt": "surface\n"}, {"state.txt": "base\n"}, "verify", [],
-        )
-        def fail_state_write(_path, _state):
-            raise OSError("injected state write failure")
-        try:
-            _persist_durability_event(
-                state_repo, state_devlyn, state_state,
-                state_devlyn / "pipeline.state.json", "verify", 1,
-                writer=fail_state_write,
-            )
-        except OSError as exc:
-            assert "injected state write failure" in str(exc)
-        else:
-            raise AssertionError("state write failure did not fail closed")
-        assert _git_output(state_repo, "rev-parse", "HEAD").decode().strip() == state_fix
-        assert (state_repo / "state.txt").read_text(encoding="utf-8") == "base\n"
-        assert not (state_devlyn / "closure-durability.round-1.json").exists()
-        assert state_state["phases"]["surface_close"]["durability"] == []
-        print("PASS M-CP self-test 6: missing/stale receipt fails closed")
+        def checkpoint_cli(*cli_args: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run([sys.executable, script, "--devlyn-dir", ".devlyn", *cli_args],
+                                  cwd=repo, capture_output=True, text=True, check=False, encoding="utf-8")
 
-        # M-CP 7: failed patch preflight leaves index and worktree byte-clean.
-        before_status = _tracked_status(target_repo)
-        before_bytes = (target_repo / "target.txt").read_bytes()
-        try:
-            _apply_restore_patch(target_repo, b"not a patch\n", ["target.txt"])
-        except SystemExit as exc:
-            assert "closure-durability-apply" in str(exc)
-        else:
-            raise AssertionError("invalid restore patch was accepted")
-        assert _tracked_status(target_repo) == before_status
-        assert (target_repo / "target.txt").read_bytes() == before_bytes
+        before = checkpoint_state_path.read_bytes()
+        refused_reentry = checkpoint_cli("--phase", "implement", "transition", "--verdict", "PASS",
+                                         "--next-phase", "verify", "--next-round", "1", "--next-triggered-by", "verify")
+        assert refused_reentry.returncode != 0 and "receipt is missing" in refused_reentry.stderr, refused_reentry.stderr
+        assert checkpoint_state_path.read_bytes() == before
+        recorded = checkpoint_cli("--phase", "implement", "durability-enforce", "--round", "1")
+        assert recorded.returncode == 0, recorded.stderr
+        reentered = checkpoint_cli("--phase", "implement", "transition", "--verdict", "PASS",
+                                   "--next-phase", "verify", "--next-round", "1", "--next-triggered-by", "verify")
+        assert reentered.returncode == 0, reentered.stderr
+        reentered_state = read_state(checkpoint_state_path)
+        assert reentered_state["phases"]["verify"]["pre_sha"] == fix
+        assert reentered_state["phases"]["implement"]["durability"] == [receipt]
+        print("PASS repair checkpoint: receipt binding, dirty/moved/stale refusal, CLI re-entry")
 
-        binary_repo = devlyn / "durability-binary"
-        binary_repo.mkdir()
-        subprocess.run(["git", "init", "-q"], cwd=binary_repo, check=True)
-        subprocess.run(["git", "config", "user.email", "self-test@example.invalid"], cwd=binary_repo, check=True)
-        subprocess.run(["git", "config", "user.name", "self-test"], cwd=binary_repo, check=True)
-        binary_path = binary_repo / "binary.dat"
-        binary_path.write_bytes(b"\x00base\xff\n")
-        subprocess.run(["git", "add", "--", "binary.dat"], cwd=binary_repo, check=True)
-        subprocess.run(["git", "commit", "-qm", "base"], cwd=binary_repo, check=True)
-        wanted_binary = b"\x00a/old/binary.dat\xffb/new/binary.dat\n"
-        binary_patch = _restore_patch(binary_repo, {"binary.dat": wanted_binary})
-        _apply_restore_patch(binary_repo, binary_patch, ["binary.dat"])
-        assert binary_path.read_bytes() == wanted_binary
-        assert _git_output(binary_repo, "show", ":binary.dat") == wanted_binary
-
-        literal_repo = devlyn / "durability-header-literal"
-        literal_repo.mkdir()
-        subprocess.run(["git", "init", "-q"], cwd=literal_repo, check=True)
-        subprocess.run(["git", "config", "user.email", "self-test@example.invalid"], cwd=literal_repo, check=True)
-        subprocess.run(["git", "config", "user.name", "self-test"], cwd=literal_repo, check=True)
-        literal_path = literal_repo / "literal.txt"
-        literal_path.write_bytes(b"-- a/old/literal.txt\n")
-        subprocess.run(["git", "add", "--", "literal.txt"], cwd=literal_repo, check=True)
-        subprocess.run(["git", "commit", "-qm", "base"], cwd=literal_repo, check=True)
-        wanted_literal = b"++ b/new/literal.txt\n"
-        literal_patch = _restore_patch(literal_repo, {"literal.txt": wanted_literal})
-        _apply_restore_patch(literal_repo, literal_patch, ["literal.txt"])
-        assert literal_path.read_bytes() == wanted_literal
-        assert _git_output(literal_repo, "show", ":literal.txt") == wanted_literal
-        print("PASS M-CP self-test 7: apply failure leaves zero partial mutation")
-
-        # File-only findings are deliberately non-targeting.
-        file_repo, file_devlyn, file_state, _, _ = durability_fixture(
-            "durability-file-only", {"usage.txt": "usage old\n"},
-            {"usage.txt": "usage --format\n"}, {"usage.txt": "usage old\n"},
-            "verify", [{"id": "file-only", "file": "usage.txt"}],
-        )
-        file_receipt = enforce_closure_durability_reentry(
-            file_repo, file_devlyn, file_state, "verify", 1,
-        )
-        assert (file_repo / "usage.txt").read_text(encoding="utf-8") == "usage --format\n"
-        assert file_receipt["blocks"][0]["finding_targeted"] is False
-        print("PASS M-CP self-test 8: file-only finding cannot mask restore")
-
-        # Skipped/no-post-SHA is receipt-visible and commit-free.
-        noop_repo, noop_devlyn, noop_state, noop_fix, _ = durability_fixture(
-            "durability-noop", {"noop.txt": "base\n"}, {"noop.txt": "surface\n"},
-            {"noop.txt": "fix\n"}, "build_gate", [], with_surface_post=False,
-        )
-        noop_receipt = enforce_closure_durability_reentry(
-            noop_repo, noop_devlyn, noop_state, "build_gate", 1,
-        )
-        assert noop_receipt["blocks"] == [] and noop_receipt["restore_commit_sha"] is None
-        assert noop_receipt["post_restore_sha"] == noop_fix
-        print("PASS M-CP self-test no-op: no post_sha writes receipt without commit")
+        # Retired phases, events and caller-supplied SHAs are rejected before any state write.
+        before = checkpoint_state_path.read_bytes()
+        for cli_args in (("--phase", "build_gate", "spawn", "--round", "1"),
+                         ("--phase", "cleanup", "complete", "--verdict", "PASS"),
+                         ("--phase", "verify", "surface-skip"),
+                         ("--phase", "verify", "spawn", "--round", "1", "--pre-sha", fix),
+                         ("--phase", "implement", "complete", "--verdict", "PASS", "--post-sha", fix)):
+            rejected_cli = checkpoint_cli(*cli_args)
+            assert rejected_cli.returncode == 2 and "error:" in rejected_cli.stderr, (cli_args, rejected_cli.stderr)
+            assert checkpoint_state_path.read_bytes() == before
+        # The first phase spawn binds the PHASE 0 untracked baseline once.
+        baseline = repo_devlyn / "untracked.baseline"
+        baseline.write_text("keep.local\n", encoding="utf-8")
+        baseline_state = {"untracked_baseline_sha256": None, "phases": {}}
+        do_spawn(baseline_state, "plan", 0, None, None, None, devlyn=repo_devlyn)
+        bound = hashlib.sha256(b"keep.local\n").hexdigest()
+        assert baseline_state["untracked_baseline_sha256"] == bound
+        baseline.write_text("residue.txt\n", encoding="utf-8")
+        do_spawn(baseline_state, "probe_derive", 0, None, None, None, devlyn=repo_devlyn)
+        assert baseline_state["untracked_baseline_sha256"] == bound
+        print("PASS retired phases/arguments rejected unchanged; baseline digest bound at first spawn")
 
     return 0
 
@@ -5750,16 +2834,12 @@ def _main_unlocked() -> int:
     spawn_p = sub.add_parser("spawn")
     spawn_p.add_argument("--round", type=int, required=True)
     spawn_p.add_argument("--triggered-by", choices=sorted(SPAWN_TRIGGERS), default=None)
-    spawn_p.add_argument("--pre-sha", default=None)
-    spawn_p.add_argument("--input-patch-sha256", default=None)
     spawn_p.add_argument("--prompt-sha256", default=None)
-    spawn_p.add_argument("--untracked-before-json", default=None)
     spawn_p.add_argument("--engine", default=None)
     spawn_p.add_argument("--model", default=None)
 
     complete_p = sub.add_parser("complete")
     complete_p.add_argument("--verdict", default=None)
-    complete_p.add_argument("--post-sha", default=None)
     complete_p.add_argument("--findings-file", default=None)
     complete_p.add_argument("--log-file", default=None)
     complete_p.add_argument("--engine", default=None)
@@ -5768,7 +2848,6 @@ def _main_unlocked() -> int:
 
     transition_p = sub.add_parser("transition")
     transition_p.add_argument("--verdict", default=None)
-    transition_p.add_argument("--post-sha", default=None)
     transition_p.add_argument("--findings-file", default=None)
     transition_p.add_argument("--log-file", default=None)
     transition_p.add_argument("--engine", default=None)
@@ -5777,22 +2856,12 @@ def _main_unlocked() -> int:
     transition_p.add_argument("--next-phase", choices=sorted(PHASE_NAMES), required=True)
     transition_p.add_argument("--next-round", type=int, required=True)
     transition_p.add_argument("--next-triggered-by", choices=sorted(SPAWN_TRIGGERS), default=None)
-    transition_p.add_argument("--next-pre-sha", default=None)
-    transition_p.add_argument("--next-input-patch-sha256", default=None)
     transition_p.add_argument("--next-prompt-sha256", default=None)
-    transition_p.add_argument("--next-untracked-before-json", default=None)
     transition_p.add_argument("--next-engine", default=None)
     transition_p.add_argument("--next-model", default=None)
 
-    check_p = sub.add_parser("surface-check")
-    check_p.add_argument("--authorized-surface-json", required=True)
-    recover_p = sub.add_parser("surface-adjudication-recover")
-    recover_p.add_argument("--authorized-surface-json", required=True)
-    sub.add_parser("surface-rollback")
-    sub.add_parser("surface-skip")
     durability_p = sub.add_parser("durability-enforce")
     durability_p.add_argument("--round", type=int, required=True)
-    durability_p.add_argument("--origin-phase", choices=sorted(VALID_TRIGGERS), required=True)
 
     args = ap.parse_args()
     if args.self_test:
@@ -5811,10 +2880,7 @@ def _main_unlocked() -> int:
             print(str(exc), file=sys.stderr)
             return 1
 
-    surface_events = {
-        "surface-check", "surface-adjudication-recover", "surface-rollback", "surface-skip",
-    }
-    if not args.phase or args.event not in {"spawn", "complete", "transition", "durability-enforce", *surface_events}:
+    if not args.phase or args.event not in {"spawn", "complete", "transition", "durability-enforce"}:
         ap.error("--phase and a phase event are required unless --self-test")
     devlyn = pathlib.Path(args.devlyn_dir)
     if not devlyn.is_dir():
@@ -5822,119 +2888,40 @@ def _main_unlocked() -> int:
         return 1
     state_path = devlyn / "pipeline.state.json"
     state = read_state(state_path)
+    work = pathlib.Path.cwd()
 
     if args.event == "durability-enforce":
         if args.phase != "implement":
             ap.error("durability-enforce is valid only for --phase implement")
         validate_plan_output(state, devlyn, args.phase)
-        _persist_durability_event(
-            pathlib.Path.cwd(), devlyn, state, state_path, args.origin_phase, args.round,
-        )
-        sys.stdout.write(f"ok: phases.surface_close.durability.round-{args.round}\n")
-        return 0
-
-    if args.event in surface_events:
-        if args.phase != "surface_close":
-            ap.error(f"{args.event} is valid only for --phase surface_close")
-        validate_plan_output(state, devlyn, args.phase)
-        if args.event == "surface-skip":
-            do_surface_skip(state)
-            write_state(state_path, state)
-            sys.stdout.write("ok: phases.surface_close.surface-skip\n")
-            return 0
-        work = pathlib.Path.cwd()
-        if args.event == "surface-adjudication-recover":
-            validate_surface_inputs(work, devlyn, state)
-            validate_surface_prompt(devlyn, state)
-            surface = validate_authorized_surface(args.authorized_surface_json)
-            offenders = surface_offenders(work, devlyn, state, surface)
-            if offenders:
-                raise SystemExit(
-                    "BLOCKED:surface-close-out-of-surface: " + json.dumps(offenders)
-                )
-            validate_surface_execution(devlyn, state)
-            require_surface_adjudication_malformed(work, devlyn, state, surface)
-            rollback_surface_delta(work, devlyn, state)
-            tracked, untracked = surface_delta_paths(work, devlyn, state)
-            if tracked or untracked:
-                raise SystemExit(
-                    "BLOCKED:surface-close-rollback-failed: "
-                    + json.dumps(sorted(set(tracked + untracked)))
-                )
-            validate_surface_write_audit(work, devlyn, state, surface)
-            attestation_error = do_surface_adjudication_recovery(state, devlyn)
-            write_state(state_path, state)
-            if attestation_error is not None:
-                sys.stderr.write(attestation_error + "\n")
-                return 1
-            sys.stdout.write("ok: phases.surface_close.surface-adjudication-recover\n")
-            return 0
-        if args.event == "surface-check":
-            validate_surface_inputs(work, devlyn, state)
-            surface = validate_authorized_surface(args.authorized_surface_json)
-            offenders = surface_offenders(work, devlyn, state, surface)
-            if offenders:
-                sys.stderr.write("BLOCKED:surface-close-out-of-scope: " + json.dumps(offenders) + "\n")
-                return 2
-            validate_surface_adjudication(work, devlyn, state, surface)
-            validate_surface_execution(devlyn, state)
-            sys.stdout.write("ok: phases.surface_close.surface-check\n")
-            return 0
-        restored = rollback_surface_delta(work, devlyn, state)
-        sys.stdout.write("ok: phases.surface_close.surface-rollback " + json.dumps(restored) + "\n")
+        record_repair_checkpoint(work, devlyn, state, args.round)
+        write_state(state_path, state)
+        sys.stdout.write(f"ok: phases.implement.durability.round-{args.round}\n")
         return 0
 
     if args.event in {"spawn", "transition"}:
         spawn_phase = args.phase if args.event == "spawn" else args.next_phase
         spawn_round = args.round if args.event == "spawn" else args.next_round
         implement = (state.get("phases") or {}).get("implement")
-        origin = implement.get("triggered_by") if isinstance(implement, dict) else None
-        fix_reentry = (
-            spawn_phase in VALID_TRIGGERS and spawn_round >= 1
-            and isinstance(implement, dict)
-            and implement.get("round") == spawn_round
-            and (origin == spawn_phase or origin == "cleanup")
-            and (origin != "cleanup" or args.event == "spawn" or args.phase == "implement")
-        )
-        if fix_reentry:
-            enforce_closure_durability_reentry(
-                pathlib.Path.cwd(), devlyn, state, origin, spawn_round,
-                require_existing=True,
-            )
+        if (spawn_phase == "verify" and spawn_round >= 1 and isinstance(implement, dict)
+                and implement.get("round") == spawn_round and implement.get("triggered_by") == "verify"):
+            enforce_repair_checkpoint(work, devlyn, state, spawn_round)
         if args.event == "spawn":
-            untracked_before = (
-                None if args.untracked_before_json is None
-                else parse_string_list(args.untracked_before_json, "--untracked-before-json")
-            )
             do_spawn(
-                state, args.phase, args.round, args.triggered_by, args.pre_sha, args.engine, args.model,
-                input_patch_sha256=args.input_patch_sha256,
+                state, args.phase, args.round, args.triggered_by, args.engine, args.model,
                 prompt_sha256=args.prompt_sha256,
-                untracked_before=untracked_before,
                 devlyn=devlyn,
+                work=work,
             )
         else:
-            next_untracked_before = (
-                None if args.next_untracked_before_json is None
-                else parse_string_list(
-                    args.next_untracked_before_json, "--next-untracked-before-json"
-                )
-            )
             state = do_transition(
-                state, args.phase, args.next_phase, args.verdict, args.post_sha,
+                state, args.phase, args.next_phase, args.verdict,
                 args.findings_file, args.log_file, args.engine, args.model,
                 args.engine_session_log, devlyn, args.next_round,
-                args.next_triggered_by, args.next_pre_sha, args.next_engine,
-                args.next_model,
-                next_input_patch_sha256=args.next_input_patch_sha256,
+                args.next_triggered_by, args.next_engine, args.next_model,
                 next_prompt_sha256=args.next_prompt_sha256,
-                next_untracked_before=next_untracked_before,
-                work=pathlib.Path.cwd(),
+                work=work,
             )
-        if spawn_phase == "surface_close":
-            validate_surface_inputs(pathlib.Path.cwd(), devlyn, state)
-            validate_surface_prompt(devlyn, state)
-            ensure_surface_clean_baseline(pathlib.Path.cwd(), devlyn, state)
         write_state(state_path, state)
         if spawn_phase == "verify":
             clear_verify_round_artifacts(devlyn)
@@ -5959,9 +2946,9 @@ def _main_unlocked() -> int:
             return 0
     else:
         attestation_error = do_complete(
-            state, args.phase, args.verdict, args.post_sha, args.findings_file,
+            state, args.phase, args.verdict, args.findings_file,
             args.log_file, args.engine, args.model, args.engine_session_log, devlyn,
-            pathlib.Path.cwd(),
+            work,
         )
         if (
             args.phase == "plan"

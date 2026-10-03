@@ -2,7 +2,7 @@
 """Spec literal verification gate (iter-0019.6 + iter-0019.8 + iter-0019.9
 carrier).
 
-Default mode (BUILD_GATE invocation, no args):
+Default mode (VERIFY MECHANICAL invocation, no args):
 - Resolves the contract carrier in this priority order (iter-0019.8 + Codex
   R2 + iter-0019.9 Codex R-phaseA fix):
   (1) **Benchmark mode trust** (iter-0019.9 fix for the F9 regression): when
@@ -25,7 +25,7 @@ Default mode (BUILD_GATE invocation, no args):
       contract removes stale `.devlyn/spec-verify.json` instead.
   (4) If no json block in source AND source.type=="generated": emit
       CRITICAL `correctness.spec-verify-malformed` so the fix-loop reruns
-      BUILD.
+      IMPLEMENT.
   (5) If no sibling/json block in source AND source.type=="spec": benchmark mode
       with a pre-staged file would have hit branch (1). Without the
       pre-staged file, benchmark falls through to no-op (rare — fixture
@@ -54,15 +54,15 @@ Expected-contract check mode (`--check-expected <json_path>`):
   Exits 2 on unreadable, malformed, unsupported fields, or unsupported sibling
   spec complexity.
 
-Output routing:
-- Default BUILD_GATE output writes `.devlyn/spec-verify-findings.jsonl` with
-  `phase: build_gate` and `BGATE-*` ids.
-- VERIFY may set `SPEC_VERIFY_PHASE=verify_mechanical`,
-  `SPEC_VERIFY_FINDINGS_FILE=verify-mechanical.findings.jsonl`, and
-  `SPEC_VERIFY_FINDING_PREFIX=VERIFY-MECH` so `verify-merge-findings.py` consumes
-  deterministic blockers directly.
+Output:
+- Findings go to `.devlyn/verify-mechanical.findings.jsonl` with
+  `phase: verify` and `VERIFY-MECH-*` ids, which `verify-merge-findings.py`
+  consumes directly.
 - `.devlyn/spec-verify.results.json` points each result at its sealed raw
   streams and includes the validated process-evidence carrier.
+- In a pipeline VERIFY span, the run first records the source snapshot in
+  `.devlyn/source-seal.json`; `--seal` (after owner gates and artifact
+  cleanup) seals it only when the source is unchanged since that snapshot.
 
 Why: iter-0018.5's prompt-only contract enforcement was empirically dead
 (F9 verify=0.4 across all engines in iter-0019). Same lesson as iter-0008
@@ -78,10 +78,8 @@ Exit codes:
 - 1: at least one command failed, carrier malformed (generated source
   required carrier, generated source had invalid json/shape, or pre-staged
   file failed shape validation), or a blocking expected-contract finding
-  was emitted. Findings are written to the routed `.devlyn/` findings file:
-  `.devlyn/spec-verify-findings.jsonl` by default, or the file selected by
-  `SPEC_VERIFY_FINDINGS_FILE` (for example, VERIFY uses
-  `.devlyn/verify-mechanical.findings.jsonl`).
+  was emitted. Findings are written to
+  `.devlyn/verify-mechanical.findings.jsonl`.
 - 2: invocation error (unreadable spec-verify.json, missing markdown in
   --check mode, etc.) or explicit evidence-backed
   `BLOCKED:build-env-underprovisioned` capability denial.
@@ -95,6 +93,7 @@ import json
 import hashlib
 import os
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -122,24 +121,11 @@ def loads_strict_json(text: str):
     )
 
 
-def output_phase() -> str:
-    return os.environ.get("SPEC_VERIFY_PHASE", "build_gate")
-
-
-def output_findings_name() -> str:
-    return os.environ.get("SPEC_VERIFY_FINDINGS_FILE", "spec-verify-findings.jsonl")
-
-
-def output_finding_prefix() -> str:
-    return os.environ.get("SPEC_VERIFY_FINDING_PREFIX", "BGATE")
-
-
+MECHANICAL_PHASE = "verify"
+FINDINGS_NAME = "verify-mechanical.findings.jsonl"
+FINDING_PREFIX = "VERIFY-MECH"
+SEAL_NAME = "source-seal.json"
 _PROCESS_EVIDENCE_MODULE = None
-RUNNER_ENV_KEYS = (
-    "SPEC_VERIFY_PHASE",
-    "SPEC_VERIFY_FINDINGS_FILE",
-    "SPEC_VERIFY_FINDING_PREFIX",
-)
 
 
 def process_evidence_module():
@@ -161,7 +147,7 @@ def process_evidence_module():
 
 
 def mechanical_evidence_identity(state: dict, runner) -> tuple[str, str, int, str]:
-    phase = "verify" if output_phase() == "verify_mechanical" else "build_gate"
+    phase = MECHANICAL_PHASE
     run_id = state.get("run_id")
     phase_state = (state.get("phases") or {}).get(phase)
     round_ = phase_state.get("round") if isinstance(phase_state, dict) else None
@@ -207,20 +193,17 @@ def capture_mechanical_command(
     runner, work: Path, manifest_path: Path, run_id: str, phase: str,
     round_: int, obligation: dict,
 ) -> dict:
-    saved = {key: os.environ.get(key) for key in (*RUNNER_ENV_KEYS, "BENCH_WORKDIR")}
-    for key in RUNNER_ENV_KEYS:
-        os.environ.pop(key, None)
+    saved = os.environ.get("BENCH_WORKDIR")
     os.environ["BENCH_WORKDIR"] = str(work)
     try:
         return runner.capture_process(
             work, manifest_path, run_id, phase, round_, obligation,
         )
     finally:
-        for key, value in saved.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
+        if saved is None:
+            os.environ.pop("BENCH_WORKDIR", None)
+        else:
+            os.environ["BENCH_WORKDIR"] = saved
 
 
 VERIFICATION_SECTION_RE = re.compile(
@@ -1095,10 +1078,10 @@ def write_malformed_finding(
 ) -> None:
     """Emit a single CRITICAL finding for a malformed verification carrier."""
     devlyn_dir.mkdir(parents=True, exist_ok=True)
-    findings_path = devlyn_dir / output_findings_name()
+    findings_path = devlyn_dir / FINDINGS_NAME
     file_ref = str(source_path) if source_path else ".devlyn/pipeline.state.json"
     finding = {
-        "id": f"{output_finding_prefix()}-0001",
+        "id": f"{FINDING_PREFIX}-0001",
         "rule_id": "correctness.spec-verify-malformed",
         "level": "error",
         "severity": "CRITICAL",
@@ -1106,13 +1089,13 @@ def write_malformed_finding(
         "message": f"Verification contract carrier is malformed: {error}",
         "file": file_ref,
         "line": 1,
-        "phase": output_phase(),
+        "phase": MECHANICAL_PHASE,
         "criterion_ref": "spec-verify://carrier",
         "fix_hint": fix_hint if fix_hint is not None else (
             "Fix the sibling `spec.expected.json` file or the `## Verification` "
             "```json``` block: a JSON object with a non-empty `verification_commands` array of "
             "{cmd, exit_code?, stdout_contains?, stdout_not_contains?} "
-            "entries. See references/build-gate.md § 'Spec literal check'."
+            "entries. See references/phases/mechanical.md."
         ),
         "blocking": True,
         "status": "open",
@@ -1123,9 +1106,9 @@ def write_malformed_finding(
 
 def write_risk_probe_integrity_finding(devlyn_dir: Path, error: str) -> None:
     devlyn_dir.mkdir(parents=True, exist_ok=True)
-    findings_path = devlyn_dir / output_findings_name()
+    findings_path = devlyn_dir / FINDINGS_NAME
     finding = {
-        "id": f"{output_finding_prefix()}-0001",
+        "id": f"{FINDING_PREFIX}-0001",
         "rule_id": "correctness.risk-probe-integrity",
         "level": "error",
         "severity": "CRITICAL",
@@ -1133,7 +1116,7 @@ def write_risk_probe_integrity_finding(devlyn_dir: Path, error: str) -> None:
         "message": f"Risk probe artifact integrity check failed: {error}.",
         "file": ".devlyn/risk-probes.jsonl",
         "line": 1,
-        "phase": output_phase(),
+        "phase": MECHANICAL_PHASE,
         "criterion_ref": "risk-probes://digest",
         "fix_hint": RISK_PROBE_INTEGRITY_FIX_HINT,
         "blocking": True,
@@ -1260,7 +1243,7 @@ def expected_contract_findings(
         expected_data.get("forbidden_patterns") or expected_data.get("forbidden_files")
     ):
         findings.append({
-            "id": f"{output_finding_prefix()}-{seq:04d}",
+            "id": f"{FINDING_PREFIX}-{seq:04d}",
             "rule_id": "correctness.expected-contract-unverifiable",
             "level": "error",
             "severity": "CRITICAL",
@@ -1268,7 +1251,7 @@ def expected_contract_findings(
             "message": f"Cannot compute diff for expected contract: {diff_error}",
             "file": str(expected_path or "spec.expected.json"),
             "line": 1,
-            "phase": output_phase(),
+            "phase": MECHANICAL_PHASE,
             "criterion_ref": "spec.expected.json/forbidden_files" if paths_error else "spec.expected.json/forbidden_patterns",
             "fix_hint": "Ensure base_ref.sha is valid and any external-diff.patch is a readable Git patch with a/ and b/ prefixes.",
             "blocking": True,
@@ -1281,7 +1264,7 @@ def expected_contract_findings(
             continue
         is_disqualifier = pattern.get("severity") == "disqualifier"
         findings.append({
-            "id": f"{output_finding_prefix()}-{seq:04d}",
+            "id": f"{FINDING_PREFIX}-{seq:04d}",
             "rule_id": "correctness.forbidden-pattern",
             "level": "error" if is_disqualifier else "warning",
             "severity": "CRITICAL" if is_disqualifier else "MEDIUM",
@@ -1289,7 +1272,7 @@ def expected_contract_findings(
             "message": pattern.get("description") or f"Forbidden pattern matched: {pattern['pattern']}",
             "file": str(expected_path or "spec.expected.json"),
             "line": 1,
-            "phase": output_phase(),
+            "phase": MECHANICAL_PHASE,
             "criterion_ref": f"spec.expected.json/forbidden_patterns/{i}",
             "fix_hint": "Remove the forbidden diff pattern or change the spec.expected.json contract explicitly.",
             "blocking": is_disqualifier,
@@ -1301,7 +1284,7 @@ def expected_contract_findings(
         if (work / required).exists():
             continue
         findings.append({
-            "id": f"{output_finding_prefix()}-{seq:04d}",
+            "id": f"{FINDING_PREFIX}-{seq:04d}",
             "rule_id": "correctness.required-file-missing",
             "level": "error",
             "severity": "CRITICAL",
@@ -1309,7 +1292,7 @@ def expected_contract_findings(
             "message": f"Required file is missing: {required}",
             "file": str(expected_path or "spec.expected.json"),
             "line": 1,
-            "phase": output_phase(),
+            "phase": MECHANICAL_PHASE,
             "criterion_ref": f"spec.expected.json/required_files/{i}",
             "fix_hint": "Create the required file or remove it from the expected contract.",
             "blocking": True,
@@ -1320,7 +1303,7 @@ def expected_contract_findings(
         if forbidden not in changed:
             continue
         findings.append({
-            "id": f"{output_finding_prefix()}-{seq:04d}",
+            "id": f"{FINDING_PREFIX}-{seq:04d}",
             "rule_id": "scope.forbidden-file-touched",
             "level": "error",
             "severity": "CRITICAL",
@@ -1328,7 +1311,7 @@ def expected_contract_findings(
             "message": f"Forbidden file appears in the diff: {forbidden}",
             "file": str(expected_path or "spec.expected.json"),
             "line": 1,
-            "phase": output_phase(),
+            "phase": MECHANICAL_PHASE,
             "criterion_ref": f"spec.expected.json/forbidden_files/{i}",
             "fix_hint": "Remove that file from the diff or update the expected contract.",
             "blocking": True,
@@ -1339,7 +1322,7 @@ def expected_contract_findings(
     deps_added = count_deps_added(work, state)
     if deps_added > max_deps:
         findings.append({
-            "id": f"{output_finding_prefix()}-{seq:04d}",
+            "id": f"{FINDING_PREFIX}-{seq:04d}",
             "rule_id": "scope.max-deps-added-exceeded",
             "level": "error",
             "severity": "CRITICAL",
@@ -1347,7 +1330,7 @@ def expected_contract_findings(
             "message": f"Added {deps_added} package dependencies; max_deps_added is {max_deps}.",
             "file": str(expected_path or "spec.expected.json"),
             "line": 1,
-            "phase": output_phase(),
+            "phase": MECHANICAL_PHASE,
             "criterion_ref": "spec.expected.json/max_deps_added",
             "fix_hint": "Remove the new dependency or explicitly license it in spec.expected.json.",
             "blocking": True,
@@ -1487,7 +1470,7 @@ def current_untracked_files(work: Path) -> tuple[set[str], str | None]:
 def load_untracked_baseline(devlyn_dir: Path) -> tuple[set[str], str | None]:
     baseline_path = devlyn_dir / "untracked.baseline"
     if not baseline_path.is_file():
-        return (set(), "BUILD_GATE requires .devlyn/untracked.baseline from PHASE 0; the file is missing.")
+        return (set(), "VERIFY MECHANICAL requires .devlyn/untracked.baseline from PHASE 0; the file is missing.")
     try:
         lines = baseline_path.read_text(encoding="utf-8").splitlines()
     except OSError as e:
@@ -1500,7 +1483,7 @@ def load_authorized_surface(devlyn_dir: Path) -> tuple[list[str] | None, str | N
     if not plan_path.is_file():
         return (
             None,
-            "BUILD_GATE requires .devlyn/plan.md with a declared authorized_surface; the file is missing.",
+            "VERIFY MECHANICAL requires .devlyn/plan.md with a declared authorized_surface; the file is missing.",
         )
     try:
         plan_text = plan_path.read_text(encoding="utf-8")
@@ -1539,7 +1522,7 @@ def scope_finding(
     fix_hint: str,
 ) -> dict:
     return {
-        "id": f"{output_finding_prefix()}-{seq:04d}",
+        "id": f"{FINDING_PREFIX}-{seq:04d}",
         "rule_id": rule_id,
         "level": "error",
         "severity": "CRITICAL",
@@ -1547,7 +1530,7 @@ def scope_finding(
         "message": message,
         "file": file_ref,
         "line": 1,
-        "phase": output_phase(),
+        "phase": MECHANICAL_PHASE,
         "criterion_ref": "plan.md/authorized_surface",
         "fix_hint": fix_hint,
         "blocking": True,
@@ -1558,21 +1541,17 @@ def scope_finding(
 def authorized_surface_findings(
     work: Path, devlyn_dir: Path, state: dict, finding_start: int,
 ) -> tuple[list[dict], int]:
-    """BUILD_GATE-only (caller gates on `output_phase() == "build_gate"`):
-    enforce PLAN's declared `authorized_surface` against this run's diff.
+    """Normal-mode MECHANICAL: enforce PLAN's declared `authorized_surface`
+    against this run's diff and its created-during-run untracked files.
 
     This closes the measured scope-leak drift class: bare-model diffs leaked
     an out-of-scope tracked file even with the full CLAUDE.md contract loaded,
     on every measured model tier. `fix_hint` deliberately never offers
-    "widen the surface" — the fix-loop respawns the same IMPLEMENT worker
+    "widen the surface" — the fix loop respawns the same IMPLEMENT worker
     that produced the leak, and letting it edit `plan.md` to authorize its
     own diff would let it self-authorize the exact drift this gate exists
-    to catch. A persistent finding exhausts the existing BUILD_GATE
-    fix-loop budget and halts for user/orchestrator review instead.
-
-    Not re-run at VERIFY MECHANICAL time: historical worker CLEANUP can
-    license paths outside PLAN. Owner CLEANUP instead enforces an unchanged
-    source checkpoint and the final untracked baseline before VERIFY.
+    to catch. A persistent finding exhausts the shared repair budget and
+    ends the run for user/orchestrator review instead.
     """
     surface, surface_error = load_authorized_surface(devlyn_dir)
     if surface_error is not None:
@@ -1584,7 +1563,7 @@ def authorized_surface_findings(
             (
                 "PLAN must write .devlyn/plan.md with a `Files to touch` "
                 "section and an authorized_surface json block before "
-                "BUILD_GATE can run."
+                "VERIFY MECHANICAL can run."
             ),
         )], finding_start + 1)
     assert surface is not None
@@ -1598,7 +1577,7 @@ def authorized_surface_findings(
             ".devlyn/untracked.baseline",
             (
                 "PHASE 0 must write .devlyn/untracked.baseline before "
-                "BUILD_GATE so created-during-run untracked files remain "
+                "VERIFY so created-during-run untracked files remain "
                 "visible to the scope gate."
             ),
         )], finding_start + 1)
@@ -1609,7 +1588,7 @@ def authorized_surface_findings(
             "scope.authorized-surface-malformed",
             f"Cannot read current untracked files: {untracked_error}",
             ".devlyn/untracked.baseline",
-            "Ensure BUILD_GATE runs inside a readable git worktree.",
+            "Ensure VERIFY MECHANICAL runs inside a readable git worktree.",
         )], finding_start + 1)
 
     findings: list[dict] = []
@@ -1686,7 +1665,7 @@ def run_print_risk_probes_digest(devlyn_dir: Path) -> int:
 
 def run_write_untracked_baseline(work: Path, devlyn_dir: Path) -> int:
     """PHASE 0 writer for `.devlyn/untracked.baseline`. Shares
-    git_status_entries with the BUILD_GATE reader so writer and comparer can
+    git_status_entries with the MECHANICAL reader so writer and comparer can
     never disagree on quoting or directory collapsing (a shell-side
     `git status --porcelain | awk` writer records untracked directories as
     `dir/` and C-quotes special characters, while the comparer sees
@@ -1708,6 +1687,166 @@ def run_write_untracked_baseline(work: Path, devlyn_dir: Path) -> int:
         encoding="utf-8",
         errors="surrogateescape",
     )
+    return 0
+
+
+def _git_bytes(work: Path, *args: str) -> bytes:
+    proc = subprocess.run(["git", *args], cwd=str(work), capture_output=True)
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout).decode("utf-8", "replace").strip()
+        raise ValueError(f"git {args[0]} failed: {detail or proc.returncode}")
+    return proc.stdout
+
+
+def _file_sha256(path: Path) -> str | None:
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+
+
+def open_verify_span(state: dict) -> dict | None:
+    """The VERIFY span the writer opened with a recorded `pre_sha`, else None."""
+    verify = (state.get("phases") or {}).get("verify")
+    if (not isinstance(verify, dict) or not verify.get("started_at")
+            or verify.get("completed_at") or not isinstance(verify.get("pre_sha"), str)):
+        return None
+    return verify
+
+
+def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, str, list[str]]:
+    """Snapshot the source a MECHANICAL round reviews.
+
+    Returns (document, digest, problems). The digest covers HEAD, tracked and
+    staged changes, every nonignored untracked file outside `.devlyn/` (bytes,
+    or link text for a symlink, plus mode), the PHASE 0 baseline and external
+    diff bytes, and the state-bound source, PLAN and probe digests. Problems
+    name what keeps a normal-mode tree from being sealable: tracked or staged
+    changes, untracked files outside the baseline, a baseline that differs from
+    its bound digest, or HEAD away from the VERIFY span's `pre_sha`.
+    """
+    head = _git_bytes(work, "rev-parse", "HEAD").decode().strip()
+    pathspec = ("--", ".", ":(exclude).devlyn")
+    worktree = _git_bytes(work, "diff", "--no-ext-diff", "--no-textconv", "--binary", "HEAD", *pathspec)
+    index = _git_bytes(work, "diff", "--cached", "--no-ext-diff", "--no-textconv", "--binary", "HEAD", *pathspec)
+    entries, error = git_status_entries(work)
+    if error:
+        raise ValueError(f"git status failed: {error}")
+    dirty = sorted({path for status, path in entries if status != "??" and not is_devlyn_path(path)})
+    untracked = []
+    for status, path in entries:
+        if status != "??" or is_devlyn_path(path):
+            continue
+        target = work / path
+        info = target.lstat()
+        if stat.S_ISLNK(info.st_mode):
+            kind, raw = "symlink", os.fsencode(os.readlink(target))
+        else:
+            kind, raw = "file", target.read_bytes()
+        untracked.append([path, kind, oct(stat.S_IMODE(info.st_mode)), hashlib.sha256(raw).hexdigest()])
+    untracked.sort()
+    source = state.get("source") if isinstance(state.get("source"), dict) else {}
+    plan = (state.get("phases") or {}).get("plan")
+    baseline_sha = _file_sha256(devlyn_dir / "untracked.baseline")
+    document = {
+        "head": head,
+        "worktree_diff_sha256": hashlib.sha256(worktree).hexdigest(),
+        "index_diff_sha256": hashlib.sha256(index).hexdigest(),
+        "untracked": untracked,
+        "inputs": {
+            "untracked_baseline": baseline_sha,
+            "external_diff": _file_sha256(devlyn_dir / "external-diff.patch"),
+            "risk_probes_digest": state.get("risk_probes_digest"),
+            "plan_output_sha256": plan.get("output_sha256") if isinstance(plan, dict) else None,
+            "source": {key: source.get(key) for key in ("spec_sha256", "criteria_sha256", "goal_sha256")},
+        },
+    }
+    digest = hashlib.sha256(
+        json.dumps(document, sort_keys=True, separators=(",", ":")).encode("utf-8", "surrogateescape")
+    ).hexdigest()
+    problems = []
+    if dirty or worktree or index:
+        problems.append("tracked or staged changes: " + ", ".join(dirty or ["(index)"]))
+    baseline, _baseline_error = load_untracked_baseline(devlyn_dir)
+    residue = sorted({row[0] for row in untracked} - baseline)
+    if residue:
+        problems.append("untracked files outside the PHASE 0 baseline: " + ", ".join(residue))
+    if "untracked_baseline_sha256" in state and state["untracked_baseline_sha256"] != baseline_sha:
+        problems.append(".devlyn/untracked.baseline differs from its bound digest")
+    verify = open_verify_span(state)
+    if verify is not None and head != verify["pre_sha"]:
+        problems.append(f"HEAD {head} differs from the VERIFY span's pre_sha {verify['pre_sha']}")
+    return document, digest, problems
+
+
+def _seal_identity(state: dict) -> tuple[str | None, int | None]:
+    verify = open_verify_span(state)
+    return state.get("run_id"), verify.get("round") if verify else None
+
+
+def write_open_seal(work: Path, devlyn_dir: Path, state: dict) -> None:
+    """Record the pre-execution snapshot for the open VERIFY round (no-op outside one)."""
+    run_id, round_ = _seal_identity(state)
+    if round_ is None:
+        return
+    record: dict = {"schema": 1, "run_id": run_id, "round": round_, "seal": None}
+    try:
+        document, digest, problems = source_snapshot(work, devlyn_dir, state)
+        record.update(snapshot=document, digest=digest, problems=problems)
+    except (OSError, ValueError) as exc:
+        record.update(snapshot=None, digest=None, problems=[f"snapshot failed: {exc}"])
+    (devlyn_dir / SEAL_NAME).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def run_seal(work: Path, devlyn_dir: Path) -> int:
+    """Seal the round when the source equals its pre-execution snapshot.
+
+    Normal mode also requires that snapshot to be clean. A refusal leaves the
+    seal null and appends one CRITICAL `scope.unsealed-source` finding, which the
+    merge routes to repair like any other binding MECHANICAL finding.
+    """
+    state = read_state(devlyn_dir)
+    run_id, round_ = _seal_identity(state)
+    if round_ is None:
+        print("[spec-verify --seal] no open VERIFY span with a recorded pre_sha", file=sys.stderr)
+        return 2
+    seal_path = devlyn_dir / SEAL_NAME
+    try:
+        record = loads_strict_json(seal_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        print(f"[spec-verify --seal] {SEAL_NAME} is unreadable: {exc}", file=sys.stderr)
+        return 2
+    if not isinstance(record, dict) or (record.get("run_id"), record.get("round")) != (run_id, round_):
+        print(f"[spec-verify --seal] {SEAL_NAME} does not belong to run {run_id} round {round_}", file=sys.stderr)
+        return 2
+    problems = list(record.get("problems") or []) if state.get("mode") != "verify-only" else []
+    if record.get("digest") is None:
+        problems = list(record.get("problems") or ["snapshot missing"])
+    else:
+        try:
+            _document, digest, _now = source_snapshot(work, devlyn_dir, state)
+        except (OSError, ValueError) as exc:
+            digest, problems = None, problems + [f"snapshot failed: {exc}"]
+        if digest is not None and digest != record["digest"]:
+            problems.append("source changed after the MECHANICAL snapshot")
+    if problems:
+        record["seal"] = None
+        seal_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        findings_path = devlyn_dir / FINDINGS_NAME
+        count = sum(1 for line in findings_path.read_text(encoding="utf-8").splitlines() if line.strip()) \
+            if findings_path.is_file() else 0
+        with findings_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(scope_finding(
+                count + 1, "scope.unsealed-source",
+                "MECHANICAL source cannot be sealed: " + "; ".join(problems),
+                ".devlyn/" + SEAL_NAME,
+                "Commit every deliverable through the scoped checkpoint, remove run-owned "
+                "artifacts and leave tracked files untouched after the MECHANICAL run, then rerun "
+                "MECHANICAL. Never widen the authorized surface or edit the baseline.",
+            )) + "\n")
+        print("[spec-verify --seal] refused: " + "; ".join(problems), file=sys.stderr)
+        return 1
+    record["seal"] = {"digest": record["digest"], "head": record["snapshot"]["head"]}
+    seal_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (devlyn_dir / FINDINGS_NAME).touch()  # A sealed round with no findings still has its carrier.
+    print(f"[spec-verify --seal] sealed {record['digest']}", file=sys.stderr)
     return 0
 
 
@@ -1735,7 +1874,7 @@ def run_check_mode(md_path: Path) -> int:
     if not section_found:
         # Sentinel absent entirely — opt-in nature preserved for ideate (a
         # spec without machine verification is still valid; it just won't
-        # activate the BUILD_GATE gate).
+        # activate the MECHANICAL literal check).
         return 0
     if block is None:
         print(
@@ -1776,6 +1915,162 @@ def run_check_expected_mode(expected_path: Path) -> int:
     if sibling_err:
         print(f"[spec-verify --check-expected] {expected_path}: shape error: {sibling_err}", file=sys.stderr)
         return 2
+    return 0
+
+
+def seal_self_test(script_path: str) -> int:
+    """`--seal` seals only the source MECHANICAL ran on, and only a clean one in normal mode."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        devlyn = root / ".devlyn"
+        devlyn.mkdir()
+
+        def git(*args: str) -> str:
+            return subprocess.run(
+                ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+                cwd=root, check=True, capture_output=True, text=True, encoding="utf-8",
+            ).stdout.strip()
+
+        (root / ".gitignore").write_text(".devlyn/\n", encoding="utf-8")
+        (root / "a.txt").write_text("base\n", encoding="utf-8")
+        spec = root / "spec.md"
+        spec.write_text(
+            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n"
+            '{"verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}]}\n```\n',
+            encoding="utf-8",
+        )
+        git("init", "-q")
+        git("add", "-A")
+        git("commit", "-q", "-m", "base")
+        base = git("rev-parse", "HEAD")
+        (root / "keep.local").write_text("user file\n", encoding="utf-8")
+        os.symlink("keep.local", root / "keep.link")
+        (devlyn / "plan.md").write_text(
+            "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## Files\n\n```json\n"
+            '{"authorized_surface": ["a.txt"]}\n```\n', encoding="utf-8",
+        )
+        if run_write_untracked_baseline(root, devlyn) != 0:
+            print("seal fixture: baseline write failed", file=sys.stderr)
+            return 1
+        baseline_sha = hashlib.sha256((devlyn / "untracked.baseline").read_bytes()).hexdigest()
+
+        def state(mode: str = "spec", pre_sha: str | None = None) -> None:
+            (devlyn / "pipeline.state.json").write_text(json.dumps({
+                "run_id": "rs-seal", "mode": mode, "base_ref": {"sha": base},
+                "source": {"type": "spec", "spec_path": str(spec)},
+                "untracked_baseline_sha256": baseline_sha,
+                "phases": {"verify": {"round": 1, "started_at": "2026-10-03T00:00:00.000Z",
+                                      "completed_at": None, "pre_sha": pre_sha or git("rev-parse", "HEAD")}},
+            }), encoding="utf-8")
+
+        def mechanical() -> subprocess.CompletedProcess:
+            return subprocess.run([sys.executable, script_path], cwd=root,
+                                  capture_output=True, text=True, encoding="utf-8")
+
+        def seal() -> tuple[int, dict, str]:
+            proc = subprocess.run([sys.executable, script_path, "--seal"], cwd=root,
+                                  capture_output=True, text=True, encoding="utf-8")
+            record = loads_strict_json((devlyn / SEAL_NAME).read_text(encoding="utf-8"))
+            findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
+            return proc.returncode, record, findings
+
+        def refused(label: str, needle: str) -> bool:
+            rc, record, findings = seal()
+            if rc != 1 or record["seal"] is not None or "scope.unsealed-source" not in findings or needle not in findings:
+                print(f"seal accepted or misreported {label}: rc={rc} {record} {findings}", file=sys.stderr)
+                return False
+            return True
+
+        state()
+        if mechanical().returncode != 0:
+            print("seal fixture: clean MECHANICAL run failed", file=sys.stderr)
+            return 1
+        rc, record, findings = seal()
+        if rc != 0 or record["seal"] != {"digest": record["digest"], "head": base} or record["problems"] or findings.strip():
+            print(f"clean source was not sealed: rc={rc} {record} {findings!r}", file=sys.stderr)
+            return 1
+
+        # Run-owned artifacts made after the snapshot and removed before --seal leave it sealable.
+        mechanical()
+        (root / "coverage.out").write_text("artifact\n", encoding="utf-8")
+        (root / "coverage.out").unlink()
+        if seal()[0] != 0:
+            print("a removed run artifact blocked the seal", file=sys.stderr)
+            return 1
+
+        mechanical()
+        (root / "residue.txt").write_text("left behind\n", encoding="utf-8")
+        if not refused("residue left after the snapshot", "source changed after the MECHANICAL snapshot"):
+            return 1
+        (root / "residue.txt").unlink()
+
+        mechanical()
+        (root / "a.txt").write_text("edited after MECHANICAL\n", encoding="utf-8")
+        if not refused("a tracked edit after the snapshot", "source changed after the MECHANICAL snapshot"):
+            return 1
+        git("checkout", "--", "a.txt")
+
+        os.unlink(root / "keep.link")
+        os.symlink("a.txt", root / "keep.link")
+        mechanical()
+        if seal()[0] != 0:
+            print("a retargeted baseline symlink before MECHANICAL blocked an unchanged seal", file=sys.stderr)
+            return 1
+        mechanical()
+        os.unlink(root / "keep.link")
+        os.symlink("keep.local", root / "keep.link")
+        if not refused("a symlink retargeted after the snapshot", "source changed after the MECHANICAL snapshot"):
+            return 1
+
+        (root / "residue.txt").write_text("unclean before MECHANICAL\n", encoding="utf-8")
+        mechanical()
+        if not refused("residue present at the snapshot", "untracked files outside the PHASE 0 baseline: residue.txt"):
+            return 1
+        (root / "residue.txt").unlink()
+
+        (root / "a.txt").write_text("staged\n", encoding="utf-8")
+        git("add", "a.txt")
+        mechanical()
+        if not refused("a staged change", "tracked or staged changes: a.txt"):
+            return 1
+        git("reset", "-q", "--hard", base)
+
+        original_baseline = (devlyn / "untracked.baseline").read_bytes()
+        (devlyn / "untracked.baseline").write_bytes(original_baseline + b"residue.txt\n")
+        mechanical()
+        if not refused("an edited baseline", "untracked.baseline differs from its bound digest"):
+            return 1
+        (devlyn / "untracked.baseline").write_bytes(original_baseline)
+
+        state(pre_sha=base)
+        (root / "a.txt").write_text("committed after VERIFY opened\n", encoding="utf-8")
+        git("commit", "-q", "-am", "late")
+        mechanical()
+        if not refused("HEAD away from pre_sha", "differs from the VERIFY span's pre_sha"):
+            return 1
+        git("reset", "-q", "--hard", base)
+
+        # verify-only reviews a supplied tree as found; only change after the snapshot refuses.
+        (root / "a.txt").write_text("dirty under review\n", encoding="utf-8")
+        state(mode="verify-only")
+        mechanical()
+        if seal()[0] != 0:
+            print("verify-only refused an unchanged dirty tree", file=sys.stderr)
+            return 1
+        mechanical()
+        (root / "a.txt").write_text("changed during review\n", encoding="utf-8")
+        if not refused("a verify-only change after the snapshot", "source changed after the MECHANICAL snapshot"):
+            return 1
+        git("checkout", "--", "a.txt")
+
+        (devlyn / SEAL_NAME).unlink()
+        (devlyn / "pipeline.state.json").write_text(json.dumps({"run_id": "rs-seal", "phases": {}}), encoding="utf-8")
+        mechanical()
+        no_span = subprocess.run([sys.executable, script_path, "--seal"], cwd=root,
+                                 capture_output=True, text=True, encoding="utf-8")
+        if (devlyn / SEAL_NAME).exists() or no_span.returncode != 2:
+            print("a run with no open VERIFY span wrote or accepted a seal", file=sys.stderr)
+            return 1
     return 0
 
 
@@ -2004,7 +2299,7 @@ def run_self_test() -> int:
         (timeout_run_devlyn / "pipeline.state.json").write_text(json.dumps({
             "run_id": "rs-timeout-run",
             "source": {"type": "spec", "spec_path": str(timeout_run_spec)},
-            "phases": {"build_gate": {"round": 2}},
+            "phases": {"verify": {"round": 2}},
         }), encoding="utf-8")
         timeout_run = subprocess.run(
             [sys.executable, script_path],
@@ -2022,7 +2317,7 @@ def run_self_test() -> int:
         timeout_results = timeout_document["commands"]
         timeout_findings = [
             loads_strict_json(line)
-            for line in (timeout_run_devlyn / output_findings_name()).read_text(encoding="utf-8").splitlines()
+            for line in (timeout_run_devlyn / FINDINGS_NAME).read_text(encoding="utf-8").splitlines()
             if line.strip()
         ]
         if (
@@ -2039,7 +2334,7 @@ def run_self_test() -> int:
             return 1
         timeout_carrier = timeout_document.get("process_evidence") or {}
         timeout_manifest_path = (
-            ".devlyn/process-evidence/rs-timeout-run/build_gate/round-2/manifest.json"
+            ".devlyn/process-evidence/rs-timeout-run/verify/round-2/manifest.json"
         )
         timeout_manifest = loads_strict_json(
             (timeout_run_root / timeout_manifest_path).read_text(encoding="utf-8")
@@ -2057,7 +2352,7 @@ def run_self_test() -> int:
                 for stream in ("stdout", "stderr")
             )
         ):
-            print("literal commands did not emit sealed BUILD_GATE evidence", file=sys.stderr)
+            print("literal commands did not emit sealed VERIFY MECHANICAL evidence", file=sys.stderr)
             print(timeout_document, file=sys.stderr)
             return 1
         timeout_finding = timeout_findings[0] if timeout_findings else {}
@@ -2082,59 +2377,6 @@ def run_self_test() -> int:
             print(timeout_run.stderr, file=sys.stderr)
             return 1
 
-        runner_env_root = work / "runner-env-isolation"
-        runner_env_root.mkdir()
-        runner_env_devlyn = runner_env_root / ".devlyn"
-        runner_env_devlyn.mkdir()
-        runner_env_spec = runner_env_root / "spec.md"
-        runner_env_spec.write_text(
-            "# Runner environment isolation\n\n<!-- devlyn:verification -->\n"
-            "## Verification\n\n```json\n"
-            + json.dumps({
-                "verification_commands": [{
-                    "cmd": (
-                        "python3 -c \"import os, sys; sys.exit(any(name in os.environ "
-                        "for name in ('SPEC_VERIFY_PHASE', 'SPEC_VERIFY_FINDINGS_FILE', "
-                        "'SPEC_VERIFY_FINDING_PREFIX')))\""
-                    )
-                }]
-            })
-            + "\n```\n",
-            encoding="utf-8",
-        )
-        (runner_env_devlyn / "pipeline.state.json").write_text(json.dumps({
-            "run_id": "rs-runner-env",
-            "source": {"type": "spec", "spec_path": str(runner_env_spec)},
-            "phases": {"verify": {"round": 3}},
-        }), encoding="utf-8")
-        runner_env = os.environ.copy()
-        runner_env.update({
-            "SPEC_VERIFY_PHASE": "verify_mechanical",
-            "SPEC_VERIFY_FINDINGS_FILE": "runner-env.findings.jsonl",
-            "SPEC_VERIFY_FINDING_PREFIX": "RUNNER-ENV",
-        })
-        runner_env_run = subprocess.run(
-            [sys.executable, script_path],
-            cwd=runner_env_root,
-            env=runner_env,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        )
-        runner_env_document = loads_strict_json(
-            (runner_env_devlyn / "spec-verify.results.json").read_text(encoding="utf-8")
-        )
-        runner_env_results = runner_env_document["commands"]
-        if runner_env_run.returncode != 0 or not runner_env_results[0].get("pass"):
-            print("runner-directed environment leaked into a verification command", file=sys.stderr)
-            print(runner_env_run.stderr, file=sys.stderr)
-            return 1
-        if runner_env_document.get("process_evidence", {}).get("manifest", {}).get("path") != (
-            ".devlyn/process-evidence/rs-runner-env/verify/round-3/manifest.json"
-        ):
-            print("VERIFY MECHANICAL evidence used the wrong phase identity", file=sys.stderr)
-            print(runner_env_document, file=sys.stderr)
-            return 1
         env = os.environ.copy()
         env["BENCH_WORKDIR"] = str(work)
         validate_without_digest = subprocess.run(
@@ -2171,7 +2413,7 @@ def run_self_test() -> int:
             "source": {"type": "spec", "spec_path": str(spec_md)},
             "risk_profile": {"risk_probes_enabled": True},
             "risk_probes_digest": risk_digest,
-            "phases": {"build_gate": {"round": 4}},
+            "phases": {"verify": {"round": 4}},
         }), encoding="utf-8")
         good = subprocess.run(
             [sys.executable, script_path, "--include-risk-probes"],
@@ -2194,7 +2436,7 @@ def run_self_test() -> int:
             else {}
         )
         if (
-            good_manifest_path != ".devlyn/process-evidence/rs-risk-probes/build_gate/round-4/manifest.json"
+            good_manifest_path != ".devlyn/process-evidence/rs-risk-probes/verify/round-4/manifest.json"
             or [entry.get("id") for entry in good_manifest.get("entries", [])] != [
                 "verification-command-0001", "risk-probe-0002",
             ]
@@ -2215,7 +2457,7 @@ def run_self_test() -> int:
         if mutated_script.returncode == 0:
             print("--include-risk-probes accepted mutated probe script bytes", file=sys.stderr)
             return 1
-        integrity_findings = (devlyn / output_findings_name()).read_text(encoding="utf-8")
+        integrity_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8")
         if "correctness.risk-probe-integrity" not in integrity_findings:
             print("mutated probe script did not emit correctness.risk-probe-integrity", file=sys.stderr)
             print(integrity_findings, file=sys.stderr)
@@ -2236,7 +2478,7 @@ def run_self_test() -> int:
         if mutated_jsonl.returncode == 0:
             print("--include-risk-probes accepted mutated risk-probes.jsonl bytes", file=sys.stderr)
             return 1
-        integrity_findings = (devlyn / output_findings_name()).read_text(encoding="utf-8")
+        integrity_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8")
         if "correctness.risk-probe-integrity" not in integrity_findings:
             print("mutated risk-probes.jsonl did not emit correctness.risk-probe-integrity", file=sys.stderr)
             print(integrity_findings, file=sys.stderr)
@@ -2258,7 +2500,7 @@ def run_self_test() -> int:
         if missing_digest.returncode == 0:
             print("--include-risk-probes accepted enabled risk probes with missing digest", file=sys.stderr)
             return 1
-        integrity_findings = (devlyn / output_findings_name()).read_text(encoding="utf-8")
+        integrity_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8")
         if "correctness.risk-probe-integrity" not in integrity_findings:
             print("missing risk_probes_digest did not emit correctness.risk-probe-integrity", file=sys.stderr)
             print(integrity_findings, file=sys.stderr)
@@ -2919,7 +3161,7 @@ def run_self_test() -> int:
             text=True,
             encoding="utf-8",
         )
-        external_diff_findings_path = external_diff_devlyn / output_findings_name()
+        external_diff_findings_path = external_diff_devlyn / FINDINGS_NAME
         external_diff_free_form_findings = (
             external_diff_findings_path.read_text(encoding="utf-8")
             if external_diff_findings_path.is_file()
@@ -3031,15 +3273,14 @@ def run_self_test() -> int:
         generated_raw = generated_criteria.read_bytes()
         generated_criteria.unlink()
         missing_source_marker = generated_user / "missing-source-command-ran"
-        for pointer, bench, phase in (
-            ({}, False, "build_gate"),
-            ({"criteria_path": None}, False, "build_gate"),
-            ({"criteria_path": ""}, False, "build_gate"),
-            ({"criteria_path": ".devlyn/criteria.generated.md"}, False, "build_gate"),
-            ({"criteria_path": str(generated_criteria)}, False, "build_gate"),
-            ({"criteria_path": str(generated_user)}, False, "build_gate"),
-            ({"criteria_path": str(generated_criteria)}, True, "build_gate"),
-            ({"criteria_path": str(generated_criteria)}, False, "verify_mechanical"),
+        for pointer, bench in (
+            ({}, False),
+            ({"criteria_path": None}, False),
+            ({"criteria_path": ""}, False),
+            ({"criteria_path": ".devlyn/criteria.generated.md"}, False),
+            ({"criteria_path": str(generated_criteria)}, False),
+            ({"criteria_path": str(generated_user)}, False),
+            ({"criteria_path": str(generated_criteria)}, True),
         ):
             (generated_devlyn / "pipeline.state.json").write_text(json.dumps({
                 "source": {"type": "generated", "criteria_sha256": hashlib.sha256(generated_raw).hexdigest(), **pointer},
@@ -3049,7 +3290,7 @@ def run_self_test() -> int:
                 "verification_commands": [{"cmd": "printf unexpected > missing-source-command-ran"}],
             }), encoding="utf-8")
             (generated_devlyn / "spec-verify.results.json").unlink(missing_ok=True)
-            missing_source_env = dict(os.environ, SPEC_VERIFY_PHASE=phase)
+            missing_source_env = dict(os.environ)
             if bench:
                 missing_source_env["BENCH_WORKDIR"] = str(generated_user)
             missing_source_run = subprocess.run(
@@ -3062,18 +3303,18 @@ def run_self_test() -> int:
                 or "source.criteria_path" not in missing_source_run.stderr
                 or f"declared path: {pointer.get('criteria_path')!r}" not in missing_source_run.stderr
             ):
-                print(f"missing generated source was not rejected: {pointer}, {bench}, {phase}: {missing_source_run.stderr}", file=sys.stderr)
+                print(f"missing generated source was not rejected: {pointer}, {bench}: {missing_source_run.stderr}", file=sys.stderr)
                 return 1
             missing_findings = [loads_strict_json(line) for line in
-                                (generated_devlyn / output_findings_name()).read_text(encoding="utf-8").splitlines()]
+                                (generated_devlyn / FINDINGS_NAME).read_text(encoding="utf-8").splitlines()]
             if (
                 len(missing_findings) != 1
                 or missing_findings[0]["rule_id"] != "correctness.spec-verify-malformed"
                 or missing_findings[0]["severity"] != "CRITICAL"
                 or missing_findings[0]["file"] != ".devlyn/pipeline.state.json"
-                or missing_findings[0]["phase"] != phase
+                or missing_findings[0]["phase"] != MECHANICAL_PHASE
                 or missing_source_marker.exists()
-                or (generated_devlyn / "spec-verify.results.json").exists() != (phase == "build_gate")
+                or (generated_devlyn / "spec-verify.results.json").exists()
             ):
                 print(f"missing generated source lost its finding or executed a stale command: {missing_findings}", file=sys.stderr)
                 return 1
@@ -3153,7 +3394,7 @@ def run_self_test() -> int:
                   "stdout_not_contains": ["bad"]}]}, None),
             ):
                 inline_marker.unlink(missing_ok=True)
-                (generated_devlyn / output_findings_name()).unlink(missing_ok=True)
+                (generated_devlyn / FINDINGS_NAME).unlink(missing_ok=True)
                 generated_criteria.write_text(
                     "# Inline constraints\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n"
                     + json.dumps(contract) + "\n```\n", encoding="utf-8",
@@ -3186,7 +3427,7 @@ def run_self_test() -> int:
                 else:
                     assert inline_marker.exists(), "valid inline output guard was not executed"
                     assert "correctness.spec-literal-mismatch" in (
-                        generated_devlyn / output_findings_name()
+                        generated_devlyn / FINDINGS_NAME
                     ).read_text(encoding="utf-8")
 
         generated_criteria.write_text(
@@ -3308,16 +3549,14 @@ def run_self_test() -> int:
                 return 1
             case_findings = [
                 loads_strict_json(line) for line in
-                (case_devlyn / output_findings_name()).read_text(encoding="utf-8").splitlines()
+                (case_devlyn / FINDINGS_NAME).read_text(encoding="utf-8").splitlines()
             ]
             if [finding["rule_id"] for finding in case_findings] != ([expected_rule] if expected_rule else []):
                 print(f"{name}: unexpected contract findings: {case_findings}", file=sys.stderr)
                 return 1
             case_results = case_devlyn / "spec-verify.results.json"
             if expected_rule == "correctness.spec-verify-malformed":
-                rejected_results = loads_strict_json(case_results.read_text(encoding="utf-8"))
-                if (rejected_results["commands"] != [] or rejected_results["process_evidence"] is not None
-                    or "preflight_failure" not in rejected_results):
+                if case_results.exists():
                     print(f"{name}: malformed contract reached command execution", file=sys.stderr)
                     return 1
             elif (
@@ -3448,35 +3687,33 @@ def run_self_test() -> int:
 
         bench_marker = work / "bench-command-ran"
         bench_command = {"cmd": "printf bad > bench-command-ran; printf bad"}
-        for phase in ("build_gate", "verify_mechanical"):
-            for carrier, diagnostic in (
-                ({"verification_commands": [{**bench_command, "stdout_not_contians": ["bad"]}]}, "unknown key(s): stdout_not_contians"),
-                ({"verification_commands": [{**bench_command, "contract_refs": [""]}]}, "contract_refs must be a list of non-empty strings"),
-                ({"verification_commands": [bench_command], "required_files": ["missing.txt"]}, "unsupported inline key(s): required_files"),
-                ({"verification_commands": [bench_command], "pure_design": True}, "requires an explicit empty verification_commands list"),
-                ({"verification_commands": [], "pure_design": True}, "must contain at least one entry"),
+        for carrier, diagnostic in (
+            ({"verification_commands": [{**bench_command, "stdout_not_contians": ["bad"]}]}, "unknown key(s): stdout_not_contians"),
+            ({"verification_commands": [{**bench_command, "contract_refs": [""]}]}, "contract_refs must be a list of non-empty strings"),
+            ({"verification_commands": [bench_command], "required_files": ["missing.txt"]}, "unsupported inline key(s): required_files"),
+            ({"verification_commands": [bench_command], "pure_design": True}, "requires an explicit empty verification_commands list"),
+            ({"verification_commands": [], "pure_design": True}, "must contain at least one entry"),
+        ):
+            (devlyn / "spec-verify.json").write_text(json.dumps(carrier), encoding="utf-8")
+            old_bench_results = (devlyn / "spec-verify.results.json").read_bytes()
+            rejected_bench = subprocess.run(
+                [sys.executable, script_path], cwd=work,
+                env=env,
+                capture_output=True, text=True, encoding="utf-8",
+            )
+            rejected_findings = [loads_strict_json(line) for line in
+                                 (devlyn / FINDINGS_NAME).read_text(encoding="utf-8").splitlines()]
+            if (
+                rejected_bench.returncode != 1 or diagnostic not in rejected_bench.stderr
+                or bench_marker.exists()
+                or (devlyn / "spec-verify.results.json").read_bytes() != old_bench_results
+                or len(rejected_findings) != 1
+                or rejected_findings[0]["rule_id"] != "correctness.spec-verify-malformed"
+                or rejected_findings[0]["severity"] != "CRITICAL"
+                or rejected_findings[0]["phase"] != MECHANICAL_PHASE
             ):
-                (devlyn / "spec-verify.json").write_text(json.dumps(carrier), encoding="utf-8")
-                old_bench_results = (devlyn / "spec-verify.results.json").read_bytes()
-                rejected_bench = subprocess.run(
-                    [sys.executable, script_path], cwd=work,
-                    env={**env, "SPEC_VERIFY_PHASE": phase},
-                    capture_output=True, text=True, encoding="utf-8",
-                )
-                rejected_findings = [loads_strict_json(line) for line in
-                                     (devlyn / output_findings_name()).read_text(encoding="utf-8").splitlines()]
-                if (
-                    rejected_bench.returncode != 1 or diagnostic not in rejected_bench.stderr
-                    or bench_marker.exists()
-                    or (phase == "verify_mechanical" and
-                        (devlyn / "spec-verify.results.json").read_bytes() != old_bench_results)
-                    or len(rejected_findings) != 1
-                    or rejected_findings[0]["rule_id"] != "correctness.spec-verify-malformed"
-                    or rejected_findings[0]["severity"] != "CRITICAL"
-                    or rejected_findings[0]["phase"] != phase
-                ):
-                    print(f"benchmark {phase} failed closed incorrectly for {carrier}: {rejected_bench.stderr}", file=sys.stderr)
-                    return 1
+                print(f"benchmark failed closed incorrectly for {carrier}: {rejected_bench.stderr}", file=sys.stderr)
+                return 1
 
         verify_output = work / "verify-output"
         verify_output.mkdir()
@@ -3492,16 +3729,9 @@ def run_self_test() -> int:
         (verify_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(verify_spec)}
         }), encoding="utf-8")
-        verify_env = os.environ.copy()
-        verify_env.update({
-            "SPEC_VERIFY_PHASE": "verify_mechanical",
-            "SPEC_VERIFY_FINDINGS_FILE": "verify-mechanical.findings.jsonl",
-            "SPEC_VERIFY_FINDING_PREFIX": "VERIFY-MECH",
-        })
         verify_output_run = subprocess.run(
             [sys.executable, script_path],
             cwd=verify_output,
-            env=verify_env,
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -3510,7 +3740,7 @@ def run_self_test() -> int:
             print("VERIFY output-mode failing command was accepted", file=sys.stderr)
             return 1
         verify_findings = (verify_devlyn / "verify-mechanical.findings.jsonl").read_text(encoding="utf-8")
-        if '"phase": "verify_mechanical"' not in verify_findings or "VERIFY-MECH-" not in verify_findings:
+        if '"phase": "verify"' not in verify_findings or "VERIFY-MECH-" not in verify_findings:
             print("VERIFY output-mode did not route findings to verify-mechanical", file=sys.stderr)
             return 1
 
@@ -3570,7 +3800,7 @@ def run_self_test() -> int:
         if contract_run.returncode == 0:
             print("expected contract violations were accepted", file=sys.stderr)
             return 1
-        findings_text = (contract_devlyn / output_findings_name()).read_text(encoding="utf-8")
+        findings_text = (contract_devlyn / FINDINGS_NAME).read_text(encoding="utf-8")
         for rule_id in (
             "correctness.forbidden-pattern",
             "correctness.required-file-missing",
@@ -4191,7 +4421,7 @@ def run_self_test() -> int:
             ["git", "diff", "--binary", "--src-prefix=a/", "--dst-prefix=b/", "HEAD"], cwd=literal_root,
         ) == literal_patch
 
-        # iter-0046: PLAN-declared authorized_surface enforced at BUILD_GATE.
+        # iter-0046: PLAN-declared authorized_surface enforced by normal-mode VERIFY MECHANICAL.
         scope_root = work / "scope-gate"
         scope_root.mkdir()
         scope_devlyn = scope_root / ".devlyn"
@@ -4246,19 +4476,17 @@ def run_self_test() -> int:
             print("--write-untracked-baseline wrote wrong content", file=sys.stderr)
             print(repr(baseline_lines), file=sys.stderr)
             return 1
-        scope_findings_path = scope_devlyn / output_findings_name()
-        scope_build_gate_env = os.environ.copy()
-        scope_build_gate_env["SPEC_VERIFY_PHASE"] = "build_gate"
+        scope_findings_path = scope_devlyn / FINDINGS_NAME
 
         # Test 1: no .devlyn/plan.md at all -> fail-closed CRITICAL, not a no-op.
         (scope_root / "bin" / "cli.js").write_text("module.exports = { ok: true };\n", encoding="utf-8")
         missing_plan_run = subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            [sys.executable, script_path], cwd=scope_root,
             capture_output=True, text=True,
             encoding="utf-8",
         )
         if missing_plan_run.returncode == 0:
-            print("BUILD_GATE accepted a run with no plan.md", file=sys.stderr)
+            print("MECHANICAL accepted a run with no plan.md", file=sys.stderr)
             return 1
         if "scope.authorized-surface-malformed" not in scope_findings_path.read_text(encoding="utf-8"):
             print("missing plan.md did not emit scope.authorized-surface-malformed", file=sys.stderr)
@@ -4270,12 +4498,12 @@ def run_self_test() -> int:
             encoding="utf-8",
         )
         malformed_block_run = subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            [sys.executable, script_path], cwd=scope_root,
             capture_output=True, text=True,
             encoding="utf-8",
         )
         if malformed_block_run.returncode == 0:
-            print("BUILD_GATE accepted plan.md with no authorized_surface block", file=sys.stderr)
+            print("MECHANICAL accepted plan.md with no authorized_surface block", file=sys.stderr)
             return 1
         if "scope.authorized-surface-malformed" not in scope_findings_path.read_text(encoding="utf-8"):
             print("missing authorized_surface block did not emit scope.authorized-surface-malformed", file=sys.stderr)
@@ -4296,8 +4524,8 @@ def run_self_test() -> int:
                 + json.dumps({"authorized_surface": [entry]}) + "\n```\n",
                 encoding="utf-8",
             )
-            brace_build_gate = subprocess.run(
-                [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            brace_mechanical = subprocess.run(
+                [sys.executable, script_path], cwd=scope_root,
                 capture_output=True, text=True,
                 encoding="utf-8",
             )
@@ -4308,12 +4536,12 @@ def run_self_test() -> int:
             )
             findings_text = scope_findings_path.read_text(encoding="utf-8")
             if (
-                brace_build_gate.returncode == 0
+                brace_mechanical.returncode == 0
                 or brace_print_surface.returncode == 0
                 or "scope.authorized-surface-malformed" not in findings_text
                 or "supported form" not in findings_text
                 or "supported form" not in brace_print_surface.stderr
-                or "Traceback" in brace_build_gate.stderr + brace_print_surface.stderr
+                or "Traceback" in brace_mechanical.stderr + brace_print_surface.stderr
             ):
                 print(f"malformed brace glob escaped the authorized-surface carrier: {entry}", file=sys.stderr)
                 return 1
@@ -4347,12 +4575,12 @@ def run_self_test() -> int:
             return 1
         (scope_devlyn / "untracked.baseline").unlink()
         missing_baseline_run = subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            [sys.executable, script_path], cwd=scope_root,
             capture_output=True, text=True,
             encoding="utf-8",
         )
         if missing_baseline_run.returncode == 0:
-            print("BUILD_GATE accepted missing .devlyn/untracked.baseline", file=sys.stderr)
+            print("MECHANICAL accepted missing .devlyn/untracked.baseline", file=sys.stderr)
             return 1
         if "untracked.baseline" not in scope_findings_path.read_text(encoding="utf-8"):
             print("missing untracked baseline did not emit a scope finding", file=sys.stderr)
@@ -4366,7 +4594,7 @@ def run_self_test() -> int:
             print("--write-untracked-baseline re-run failed", file=sys.stderr)
             return 1
         in_scope_run = subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            [sys.executable, script_path], cwd=scope_root,
             capture_output=True, text=True,
             encoding="utf-8",
         )
@@ -4385,7 +4613,7 @@ def run_self_test() -> int:
         (scope_root / "data" / "usage-stats.json").write_text('{"leaked": true}\n', encoding="utf-8")
         (scope_root / "data" / "scratch.json").write_text('{"untracked": true}\n', encoding="utf-8")
         out_of_scope_run = subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            [sys.executable, script_path], cwd=scope_root,
             capture_output=True, text=True,
             encoding="utf-8",
         )
@@ -4423,7 +4651,7 @@ def run_self_test() -> int:
         # (directory-prefix boundary, not a bare string-prefix match).
         (scope_root / "lib2" / "keep.js").write_text("module.exports = { touched: true };\n", encoding="utf-8")
         subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, env=scope_build_gate_env,
+            [sys.executable, script_path], cwd=scope_root,
             capture_output=True, text=True,
             encoding="utf-8",
         )
@@ -4435,27 +4663,24 @@ def run_self_test() -> int:
             print("lib/** incorrectly matched lib2/keep.js (directory-prefix boundary bug)", file=sys.stderr)
             return 1
 
-        # Test 6: VERIFY MECHANICAL (post-CLEANUP re-check) must never run this
-        # gate, even with plan.md entirely absent -- CLEANUP's own allowlist
-        # licenses paths PLAN never declared, so re-checking here would
-        # false-positive on CLEANUP's own sanctioned changes.
+        # Test 6: verify-only reviews a supplied diff with no PLAN, so it never
+        # runs this gate, even with plan.md entirely absent.
         (scope_devlyn / "plan.md").unlink()
-        verify_mech_env = os.environ.copy()
-        verify_mech_env.update({
-            "SPEC_VERIFY_PHASE": "verify_mechanical",
-            "SPEC_VERIFY_FINDINGS_FILE": "verify-mechanical.findings.jsonl",
-            "SPEC_VERIFY_FINDING_PREFIX": "VERIFY-MECH",
-        })
+        scope_state = loads_strict_json((scope_devlyn / "pipeline.state.json").read_text(encoding="utf-8"))
+        (scope_devlyn / "pipeline.state.json").write_text(
+            json.dumps({**scope_state, "mode": "verify-only"}), encoding="utf-8",
+        )
         subprocess.run(
-            [sys.executable, script_path], cwd=scope_root, env=verify_mech_env,
+            [sys.executable, script_path], cwd=scope_root,
             capture_output=True, text=True,
             encoding="utf-8",
         )
-        verify_mech_findings = (scope_devlyn / "verify-mechanical.findings.jsonl").read_text(encoding="utf-8")
+        verify_mech_findings = scope_findings_path.read_text(encoding="utf-8")
         if "scope." in verify_mech_findings:
-            print("VERIFY MECHANICAL ran the BUILD_GATE-only authorized_surface gate", file=sys.stderr)
+            print("verify-only MECHANICAL ran the PLAN authorized_surface gate", file=sys.stderr)
             print(verify_mech_findings, file=sys.stderr)
             return 1
+        (scope_devlyn / "pipeline.state.json").write_text(json.dumps(scope_state), encoding="utf-8")
 
         # Test 7: shape validation rejects absolute paths, `..`, duplicates, and malformed braces.
         for bad_surface in (
@@ -4477,7 +4702,7 @@ def run_self_test() -> int:
         # same as heading text/language (iter-0049) -- any ATX level 1-6 must
         # be accepted, not just H2. Reproduces the real iter-0047 claude-small
         # compliance-cell defect (`# Files to touch` H1 was rejected as
-        # malformed, burning a BUILD_GATE fix-loop round).
+        # malformed, burning a repair round).
         for heading_prefix in ("#", "###"):
             h_level_text = (
                 f"<!-- devlyn:authorized-surface -->\n{heading_prefix} Files to touch\n\n"
@@ -4516,7 +4741,7 @@ def run_self_test() -> int:
         if not found or block is None or loads_strict_json(block) != {"authorized_surface": ["bin/cli.js"]}:
             print("extract_authorized_surface_block mis-parsed the mixed H2/H1 section-boundary shape", file=sys.stderr)
             return 1
-    return 0
+    return seal_self_test(script_path)
 
 
 def main() -> int:
@@ -4524,7 +4749,7 @@ def main() -> int:
         print(
             "usage: spec-verify-check.py [-h | --help | --include-risk-probes | "
             "--validate-risk-probes | --print-risk-probes-digest | "
-            "--print-authorized-surface | --write-untracked-baseline | "
+            "--print-authorized-surface | --write-untracked-baseline | --seal | "
             "--check <markdown-path> | --check-expected <json-path> | --self-test]"
         )
         return 0
@@ -4533,6 +4758,10 @@ def main() -> int:
     print_risk_probes_digest = False
     print_authorized_surface = False
     write_untracked_baseline = False
+    seal = False
+    if "--seal" in sys.argv[1:]:
+        seal = True
+        sys.argv = [arg for arg in sys.argv if arg != "--seal"]
     if "--include-risk-probes" in sys.argv[1:]:
         include_risk_probes = True
         sys.argv = [arg for arg in sys.argv if arg != "--include-risk-probes"]
@@ -4572,6 +4801,12 @@ def main() -> int:
     work = Path(os.environ.get("BENCH_WORKDIR") or os.getcwd())
     devlyn_dir = work / ".devlyn"
     spec_path = devlyn_dir / "spec-verify.json"
+
+    if seal:
+        if include_risk_probes or validate_risk_probes_only or print_risk_probes_digest or print_authorized_surface or write_untracked_baseline:
+            print("usage: spec-verify-check.py --seal", file=sys.stderr)
+            return 2
+        return run_seal(work, devlyn_dir)
 
     if print_risk_probes_digest:
         if include_risk_probes or validate_risk_probes_only or print_authorized_surface or write_untracked_baseline or len(sys.argv) != 1:
@@ -4621,38 +4856,8 @@ def main() -> int:
     trust_bench_staged = bench_mode and pre_staged
     src_type, source_md = read_source(work, devlyn_dir)
     state = read_state(devlyn_dir)
-
-    def reject_preflight() -> int:
-        # A completed rejection is not an interrupted checker. Preserve actual
-        # earlier gate observations without inventing an executed command.
-        if validate_risk_probes_only or output_phase() != "build_gate":
-            return 1
-        runner = process_evidence_module()
-        phase, run_id, round_, relative = mechanical_evidence_identity(state, runner)
-        carrier = None
-        try:
-            if os.path.lexists(work / relative):
-                carrier = runner.validate_manifest(
-                    work, relative, run_id, phase, round_, require_expectations=False,
-                )
-            findings = devlyn_dir / output_findings_name()
-            result = {
-                "commands": runner.bound_carrier_summary_commands(work, carrier) if carrier else [],
-                "process_evidence": carrier,
-                "preflight_failure": {
-                    "run_id": run_id, "phase": phase, "round": round_,
-                    "findings": {
-                        "path": findings.relative_to(work).as_posix(),
-                        "sha256": hashlib.sha256(findings.read_bytes()).hexdigest(),
-                    },
-                },
-            }
-            (devlyn_dir / "spec-verify.results.json").write_text(
-                json.dumps(result, indent=2) + "\n", encoding="utf-8",
-            )
-        except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
-            print(f"[spec-verify] rejection evidence could not be finalized: {exc}", file=sys.stderr)
-        return 1
+    if not validate_risk_probes_only:
+        write_open_seal(work, devlyn_dir, state)
 
     external_diff = devlyn_dir / "external-diff.patch"
     if external_diff.is_file() and state.get("mode") != "verify-only":
@@ -4671,12 +4876,12 @@ def main() -> int:
                 "intentionally verifying an external patch."
             ),
         )
-        return reject_preflight()
+        return 1
     integrity_error = source_integrity_error(src_type, state, source_md)
     if integrity_error:
         print(f"[spec-verify] carrier malformed: {integrity_error}", file=sys.stderr)
         write_malformed_finding(devlyn_dir, integrity_error, source_md)
-        return reject_preflight()
+        return 1
     expected_data: dict | None = None
     expected_path: Path | None = None
     contract_found = False
@@ -4687,7 +4892,7 @@ def main() -> int:
         if risk_error:
             print(f"[spec-verify] risk probes malformed: {risk_error}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, risk_error, devlyn_dir / "risk-probes.jsonl")
-            return reject_preflight()
+            return 1
         print("[spec-verify] risk probes valid", file=sys.stderr)
         return 0
     if source_md is not None and not trust_bench_staged:
@@ -4698,7 +4903,7 @@ def main() -> int:
             if expected_error is not None:
                 print(f"[spec-verify] carrier malformed: {expected_error}", file=sys.stderr)
                 write_malformed_finding(devlyn_dir, expected_error, expected_path)
-                return reject_preflight()
+                return 1
             if contract_found:
                 error = None
             else:
@@ -4708,7 +4913,7 @@ def main() -> int:
         if error is not None:
             print(f"[spec-verify] carrier malformed: {error}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, error, source_md)
-            return reject_preflight()
+            return 1
         if not contract_found:
             if src_type == "generated":
                 msg = (
@@ -4718,7 +4923,7 @@ def main() -> int:
                 )
                 print(f"[spec-verify] {msg}", file=sys.stderr)
                 write_malformed_finding(devlyn_dir, msg, source_md)
-                return reject_preflight()
+                return 1
             # source.type=="spec", no block in spec markdown.
             if not bench_mode:
                 # Real-user handwritten spec: silent no-op. Drop any stale
@@ -4761,19 +4966,19 @@ def main() -> int:
         if shape_err:
             print(f"[spec-verify] error: {spec_path}: {shape_err}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, f"{spec_path}: {shape_err}", None)
-            return reject_preflight()
+            return 1
         commands = list(spec["verification_commands"])
     if include_risk_probes:
         risk_state_error = risk_probes_state_error(state)
         if risk_state_error:
             print(f"[spec-verify] risk probes malformed: {risk_state_error}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, risk_state_error, Path("pipeline.state.json"))
-            return reject_preflight()
+            return 1
         integrity_error = risk_probe_integrity_error(state, devlyn_dir)
         if integrity_error:
             print(f"[spec-verify] risk probes integrity failed: {integrity_error}", file=sys.stderr)
             write_risk_probe_integrity_finding(devlyn_dir, integrity_error)
-            return reject_preflight()
+            return 1
         risk_probes, risk_error = load_risk_probes(
             devlyn_dir,
             source_md,
@@ -4782,12 +4987,12 @@ def main() -> int:
         if risk_error:
             print(f"[spec-verify] risk probes malformed: {risk_error}", file=sys.stderr)
             write_malformed_finding(devlyn_dir, risk_error, devlyn_dir / "risk-probes.jsonl")
-            return reject_preflight()
+            return 1
         commands.extend(risk_probes)
 
     devlyn_dir.mkdir(parents=True, exist_ok=True)
     results_path = devlyn_dir / "spec-verify.results.json"
-    findings_path = devlyn_dir / output_findings_name()
+    findings_path = devlyn_dir / FINDINGS_NAME
 
     results: list[dict] = []
     findings: list[dict] = []
@@ -4842,7 +5047,7 @@ def main() -> int:
                 "reason": "process_evidence_invalid",
             })
             findings.append({
-                "id": f"{output_finding_prefix()}-{finding_seq:04d}",
+                "id": f"{FINDING_PREFIX}-{finding_seq:04d}",
                 "rule_id": "invariant.process-evidence-invalid",
                 "level": "error",
                 "severity": "CRITICAL",
@@ -4850,7 +5055,7 @@ def main() -> int:
                 "message": f"MECHANICAL process evidence is invalid: {exc}.",
                 "file": manifest_relative,
                 "line": 1,
-                "phase": output_phase(),
+                "phase": MECHANICAL_PHASE,
                 "criterion_ref": "process-evidence://mechanical",
                 "fix_hint": (
                     "Preserve the existing manifest and raw streams, then fix the "
@@ -4910,7 +5115,7 @@ def main() -> int:
 
         if outcome["kind"] == "timeout":
             findings.append({
-                "id": f"{output_finding_prefix()}-{finding_seq:04d}",
+                "id": f"{FINDING_PREFIX}-{finding_seq:04d}",
                 "rule_id": "correctness.verification-timeout",
                 "level": "error",
                 "severity": "CRITICAL",
@@ -4921,7 +5126,7 @@ def main() -> int:
                 ),
                 "file": file_ref,
                 "line": 1,
-                "phase": output_phase(),
+                "phase": MECHANICAL_PHASE,
                 "criterion_ref": criterion_ref,
                 "fix_hint": (
                     f"Command `{cmd}` exceeded its {timeout_sec}s timeout_sec budget. "
@@ -4977,7 +5182,7 @@ def main() -> int:
             )
 
         findings.append({
-            "id": f"{output_finding_prefix()}-{finding_seq:04d}",
+            "id": f"{FINDING_PREFIX}-{finding_seq:04d}",
             "rule_id": rule_id,
             "level": "error",
             "severity": "CRITICAL",
@@ -4985,7 +5190,7 @@ def main() -> int:
             "message": msg,
             "file": file_ref,
             "line": 1,
-            "phase": output_phase(),
+            "phase": MECHANICAL_PHASE,
             "criterion_ref": criterion_ref,
             "fix_hint": fix_hint,
             "blocking": True,
@@ -5004,7 +5209,7 @@ def main() -> int:
     findings.extend(expected_findings)
 
     base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
-    if output_phase() == "build_gate" and base_sha:
+    if state.get("mode") != "verify-only" and base_sha:
         surface_findings, finding_seq = authorized_surface_findings(
             work, devlyn_dir, state, finding_seq,
         )
@@ -5021,7 +5226,7 @@ def main() -> int:
         except (runner.EvidenceError, OSError, UnicodeError, ValueError) as exc:
             evidence_error = str(exc)
             findings.append({
-                "id": f"{output_finding_prefix()}-{finding_seq:04d}",
+                "id": f"{FINDING_PREFIX}-{finding_seq:04d}",
                 "rule_id": "invariant.process-evidence-invalid",
                 "level": "error",
                 "severity": "CRITICAL",
@@ -5029,7 +5234,7 @@ def main() -> int:
                 "message": f"MECHANICAL process evidence validation failed: {exc}.",
                 "file": manifest_relative,
                 "line": 1,
-                "phase": output_phase(),
+                "phase": MECHANICAL_PHASE,
                 "criterion_ref": "process-evidence://mechanical",
                 "fix_hint": (
                     "Preserve the manifest and raw streams, then correct the "
@@ -5045,9 +5250,9 @@ def main() -> int:
         "process_evidence": evidence_carrier,
     }, indent=2) + "\n", encoding="utf-8")
 
-    # Append findings (jsonl). BUILD_GATE merge step concatenates this onto
-    # build_gate.findings.jsonl; never overwrite the orchestrator's own gate
-    # findings. Truncate this file each run since it is a per-round artifact.
+    # Findings (jsonl). The owner appends its language/browser gate findings
+    # after this run, and `--seal` appends a refusal; truncate here since this
+    # run opens the round's MECHANICAL findings.
     with findings_path.open("w", encoding="utf-8") as fh:
         for f in findings:
             fh.write(json.dumps(f) + "\n")
