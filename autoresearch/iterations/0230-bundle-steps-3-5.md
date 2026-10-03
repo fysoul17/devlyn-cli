@@ -137,15 +137,15 @@ The comparison meters key on obligations, not phase names (0225:137). `experimen
 
 ## PR-3 result (2026-10-03)
 
-PR #159 (`candidate/bundle-step3`, commits 363c11b1 + 0a522619): 61 files, both skill trees, net ≈ −2,900 lines per tree. Lint, test-windows-portability (72 OK), every `_shared` self-test and the rewritten test-owner-phases pass; CI POSIX and Windows.
+PR #159 (`candidate/bundle-step3`, commits 363c11b1 + 0a522619): 64 paths; each skill tree +1,682 / −4,220 (net −2,538). Lint, test-windows-portability (72 OK), every `_shared` self-test and the rewritten test-owner-phases pass; CI POSIX and Windows.
 
-**Review.** Astra ultra v1 REVISE (5) → v2 REVISE (4) → v3 REVISE (4) → v4 SHIP. A five-lens Claude review with two refuters per finding confirmed 10 findings (6 distinct), all fixed. New guards were mutation-checked: each fixture fails with its guard removed.
+**Review.** Astra ultra v1 REVISE (5) → v2 REVISE (4) → v3 REVISE (4) → v4 SHIP. A five-lens Claude review with two refuters per finding confirmed 10 findings (6 distinct), all fixed. Mutation checks run: Astra's 18 G2 lint-deletion mutations, and root's removal of each new seal guard (comparison, `--ignore-submodules=none`, staged carrier, nested-tree digest, traversal onerror, linked-directory hashing, snapshot owner check); every one fails its fixture.
 
 **Refinements of the converged design, with the named delta for each:**
 - **Scope runs on the snapshot tree before any command** (not after cleanup). Delta: Astra v1 showed a literal's run artifact produced a CRITICAL scope finding that persisted after cleanup removed it. The sealed tree must equal the snapshot, so the scope-checked tree is the final tree.
 - **The snapshot is retaken once after staging, before the first command**, by the process that claimed it (O_EXCL + owner nonce). Delta: Astra v2 showed the staged `spec-verify.json` is authoritative in benchmark mode. Staging rewrites it after the opening snapshot.
-- **Normal mode counts a PHASE 0 baseline entry by path and kind, not bytes. A nested repo or worktree (`?? dir/`) counts by path.** Delta: the Claude review reproduced two failures. A user's nested repo crashed the snapshot. A check that rewrites a pre-existing untracked cache made every round unsealable, and the owner may not touch baseline files. Verify-only still hashes every byte, nested trees included.
-- **Only the dispatch record binds the seal file, so it is current-round only.** Delta: `source-seal.json` is not round-scoped.
+- **Normal mode counts a PHASE 0 baseline entry by path and kind, not bytes. A nested repo or worktree (`?? dir/`) counts by path.** Delta: the Claude review reproduced two failures. A user's nested repo crashed the snapshot. A check that rewrites a pre-existing untracked cache made every round unsealable, and the owner may not touch baseline files. Verify-only still hashes every covered untracked byte, including nested-tree contents (ignored paths and nested `.git` directories excepted).
+- **Dispatch binds the seal for merge; current VERIFY state binds it for archive and acceptance. Its binding is excluded from history** because the filename is reused each round.
 - **G2 (binding language/browser gates) is lint-pinned, with no gate inventory script.** Astra accepted this delta: BUILD_GATE never had a mechanical inventory either.
 
 **Pre-existing, unchanged:** with no verification contract at all, the main run returns before its commands. The seal and the finish gate still catch untracked and tracked leaks.
