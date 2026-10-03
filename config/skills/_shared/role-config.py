@@ -163,26 +163,22 @@ def resolve(work, default_engine, *, flag_engine=None, run_input=None, no_pair=F
                           "channel": channel(entry["engine"], role)}
         if role != "pair_judge" or not no_pair:
             validate_channel(selected[role], role)
+    # An inherited primary (no judge role) on an engine without a scripted judge route, such as an omp
+    # executor, goes to the first available scripted route; the engine stays the worker.
+    inherited = selected["primary_judge"]
+    if inherited["source"] not in ("role-config", "engines.json.roles") and inherited["engine"] not in JUDGE_ROUTES:
+        pinned_pair = None if no_pair else selected.get("pair_judge", {}).get("engine")
+        routed = next((engine for engine in JUDGE_ROUTES if engine != pinned_pair and available(engine)), None)
+        if routed:
+            selected["primary_judge"] = {**inherited, "engine": routed, "source": f"judge-route-default({inherited['engine']})",
+                                         "channel": channel(routed, "primary_judge")}
     primary = selected["primary_judge"]["engine"]
     adapter(primary, judge=True, shared=shared)
-    # verify-judges.py scripts only these seats and cannot learn a judge's inherited model;
-    # fail at freeze, before any phase runs.
-    for role in ("primary_judge", "pair_judge"):
-        entry = selected.get(role, {})
-        if for_status or (role == "pair_judge" and no_pair):
-            continue
-        if entry.get("engine") not in (None, *JUDGE_ROUTES):
-            fail(f"{role}/{entry['engine']}: no scripted VERIFY judge route; select claude or codex for this seat",
-                 f"judge-route-unsupported:{entry['engine']}")
-        if entry.get("effort_requested") and not entry.get("model_requested"):
-            fail(f"{role}/{entry['engine']}: a judge effort needs an explicit judge model to validate against",
-                 "unsupported-role-option")
     if not no_pair and "pair_judge" in selected and selected["pair_judge"]["engine"] == primary:
         fail("explicit pair_judge must be a different engine from primary_judge")
     if "pair_judge" not in selected:
         choices = project.get("pair_judge_priority", ["codex" if primary == "claude" else "claude"])
-        other = next((engine for engine in choices if engine != primary and engine in JUDGE_ROUTES
-                      and available(engine)), None)
+        other = next((engine for engine in choices if engine != primary and available(engine)), None)
         if other:
             adapter(other, judge=True, shared=shared)
         elif not no_pair and "pair_judge_priority" in project:
@@ -196,6 +192,18 @@ def resolve(work, default_engine, *, flag_engine=None, run_input=None, no_pair=F
                                   "channel": channel(other, "pair_judge") if other else None}
         if for_status:
             selected["pair_judge"]["priority_requested"] = choices
+    # verify-judges.py scripts only these seats and cannot learn a judge's inherited model;
+    # fail at freeze, before any phase runs.
+    for role in ("primary_judge", "pair_judge"):
+        entry = selected[role]
+        if for_status or (role == "pair_judge" and no_pair):
+            continue
+        if entry["engine"] not in (None, *JUDGE_ROUTES):
+            fail(f"{role}/{entry['engine']}: no scripted VERIFY judge route; select claude or codex for this seat",
+                 f"judge-route-unsupported:{entry['engine']}")
+        if entry["effort_requested"] and not entry["model_requested"]:
+            fail(f"{role}/{entry['engine']}: a judge effort needs an explicit judge model to validate against",
+                 "unsupported-role-option")
     selected["pair_judge"]["skipped_reason"] = "user_no_pair" if no_pair else (
         "auto_pair_other_engine_unavailable" if selected["pair_judge"]["engine"] is None and "pair_judge_priority" not in project else None)
     if for_status:
@@ -369,17 +377,28 @@ def self_test():
         base = resolve(work, "codex", available=lambda e: True)
         assert [base["roles"][r]["engine"] for r in ROLES] == ["codex", "codex", "claude"]
         assert resolve(work, "claude", available=lambda e: True)["roles"]["primary_judge"]["channel"] == "claude-CLI"
-        # An omp orchestrator's default judge, or a grok pair pin, stops at freeze rather than after every phase.
-        for kwargs in ({"default_engine": "omp"}, {"default_engine": "claude", "run_input": {
-                "value": {"roles": {"pair_judge": {"engine": "grok"}}}, "path": "fixture", "sha256": "fixture"}}):
-            default = kwargs.pop("default_engine")
+        # An omp executor keeps the worker seat; its inherited primary goes to an available scripted route.
+        for kwargs, installed, judges in (({"default_engine": "omp"}, {"claude", "codex"}, ["claude", "codex"]),
+                                          ({"default_engine": "claude", "flag_engine": "omp"}, {"codex"}, ["codex", None]),
+                                          ({"default_engine": "omp", "run_input": {"value": {"roles": {"pair_judge": {"engine": "claude"}}},
+                                                                                  "path": "fixture", "sha256": "fixture"}},
+                                           {"claude", "codex"}, ["codex", "claude"])):
+            routed = resolve(work, available=lambda e: e in installed, **kwargs)["roles"]
+            assert routed["worker"]["engine"] == "omp" and routed["primary_judge"]["source"].startswith("judge-route-default(omp)")
+            assert [routed[r]["engine"] for r in ("primary_judge", "pair_judge")] == judges, routed
+        # An explicit unscripted judge seat, or an inherited one with no scripted route installed, stops at freeze.
+        for kwargs in ({"default_engine": "omp", "available": lambda e: e == "omp"},
+                       {"default_engine": "claude", "available": lambda e: True, "run_input": {
+                           "value": {"roles": {"primary_judge": {"engine": "omp"}}}, "path": "fixture", "sha256": "fixture"}},
+                       {"default_engine": "claude", "available": lambda e: True, "run_input": {
+                           "value": {"roles": {"pair_judge": {"engine": "grok"}}}, "path": "fixture", "sha256": "fixture"}}):
             try:
-                resolve(work, default, available=lambda e: True, **kwargs)
+                resolve(work, **kwargs)
             except ValueError as exc:
                 assert "judge-route-unsupported" in str(exc), exc
             else:
                 raise AssertionError("an unscripted judge seat survived role freeze")
-        assert resolve(work, "omp", available=lambda e: True, for_status=True)["roles"]["primary_judge"]["engine"] == "omp"
+        assert resolve(work, "omp", available=lambda e: e == "omp", for_status=True)["roles"]["primary_judge"]["engine"] == "omp"
         try:
             resolve(work, "claude", available=lambda e: True, run_input={
                 "value": {"roles": {"primary_judge": {"engine": "claude", "effort": "high"}}}, "path": "fixture", "sha256": "fixture"})
@@ -457,6 +476,19 @@ def self_test():
         else:
             raise AssertionError("explicit priority silently became solo")
         assert resolve(work, "claude", no_pair=True, available=lambda engine: False)["roles"]["pair_judge"]["skipped_reason"] == "user_no_pair"
+        # An installed but unscripted priority engine is unsupported, not unavailable; a missing one is skipped.
+        for priority, installed in ((["grok"], {"grok"}), (["grok", "codex"], {"grok", "codex"})):
+            path.write_bytes(encoded({"pair_judge_priority": priority}))
+            try:
+                resolve(work, "claude", available=lambda engine: engine in installed)
+            except ValueError as exc:
+                assert "BLOCKED:judge-route-unsupported:grok" in str(exc), exc
+            else:
+                raise AssertionError("an installed unscripted priority engine survived role freeze")
+            assert resolve(work, "claude", no_pair=True, available=lambda engine: engine in installed)["roles"]["pair_judge"]["skipped_reason"] == "user_no_pair"
+            assert resolve(work, "claude", for_status=True, available=lambda engine: engine in installed)["roles"]["pair_judge"]["engine"] == "grok"
+        assert resolve(work, "claude", available=lambda engine: engine == "codex")["roles"]["pair_judge"]["engine"] == "codex"
+        path.write_bytes(encoded({"executor": "claude", "pair_judge_priority": ["codex"]}))
         status = resolve(work, "claude", available=lambda engine: False, for_status=True)
         assert status["roles"]["pair_judge"]["engine"] is None
         assert status["roles"]["pair_judge"]["priority_requested"] == ["codex"]
