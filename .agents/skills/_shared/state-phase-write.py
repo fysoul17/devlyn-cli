@@ -1630,7 +1630,8 @@ def append_phase_history(entry: dict, phase: str) -> None:
             "invocation_receipt",
         ) + (("role_argv",) if "role_argv" in entry else ())
     elif phase == "verify":
-        fields = ("started_at", "verdict", "completed_at", "duration_ms", "round", "engine", "role_evidence")
+        fields = ("started_at", "verdict", "completed_at", "duration_ms", "round", "engine", "role_evidence",
+                  "executions", "dispatch", "pair_trigger", "judge_durations_ms", "sub_verdicts", "merged")
     else:
         fields = ("started_at", "verdict", "completed_at", "duration_ms")
     history.append({field: entry.get(field) for field in fields})
@@ -1924,7 +1925,10 @@ def do_spawn(state: dict, phase: str, round_: int, triggered_by: str | None,
     entry["sub_verdicts"] = None
     if phase == "verify":
         entry["judge_durations_ms"] = None
-        entry.pop("role_evidence", None)
+        for field in ("role_evidence", "executions", "dispatch", "pair_trigger", "merged", "coverage_failed"):
+            entry.pop(field, None)
+        if isinstance(state.get("verify"), dict):
+            state["verify"]["pair_trigger"] = None
     if engine is not None:
         entry["engine"] = engine
     elif (
@@ -3973,8 +3977,16 @@ def self_test() -> int:
             assert "owned by verify-merge-findings.py" in str(e)
         else:
             raise AssertionError("complete() must reject an explicit --verdict for VERIFY")
+        trigger = {"eligible": True, "reasons": ["pair.default"], "skipped_reason": None}
+        dispatch = {"path": ".devlyn/verify-judge.r0.dispatch.json", "sha256": "0" * 64, "bytes": 1}
+        state["verify"] = {"coverage_failed": False, "pair_trigger": trigger}
+        state["phases"]["verify"].update(pair_trigger=trigger, dispatch=dispatch, merged={"verdict": "PASS"},
+                                         executions={"pair_judge": dispatch}, coverage_failed=False)
         do_spawn(state, "verify", 0, None, None, None, None)
-        assert state["phases"]["verify"]["judge_durations_ms"] is None
+        respawned = state["phases"]["verify"]
+        assert respawned["judge_durations_ms"] is None and state["verify"]["pair_trigger"] is None
+        assert not {"pair_trigger", "dispatch", "merged", "executions", "coverage_failed"} & set(respawned)
+        assert respawned["history"][-1]["dispatch"] == dispatch and respawned["history"][-1]["pair_trigger"] == trigger
 
         # Non-VERIFY phases require --verdict explicitly; complete() must not
         # silently accept an unset verdict the way VERIFY's omit-to-preserve

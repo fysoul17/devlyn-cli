@@ -9,6 +9,10 @@ Certification status: the pair-judge seat is wired, reachable, and probe-capable
 
 ## Invocation
 
+`/devlyn-resolve` does not script this seat: `verify-judges.py` stops with
+`BLOCKED:judge-route-unsupported:grok`. The recipe below documents the measured
+isolation contract for a future scripted route.
+
 **Availability probe**: `command -v grok >/dev/null 2>&1`; record
 `grok --version` as evidence. The probe is necessary, not sufficient: auth or
 wrapper failures after it passes are the same fail-closed availability class as
@@ -86,15 +90,4 @@ It admits the bare anchor and anchor-plus-argv, and vetoes any character that
 could start a second command, so `verify.md`'s bounded input variations survive
 while chaining does not. The hook fails open, so the collector rejection remains
 the fail-closed floor: treat it as `BLOCKED` for
-`verify.pair.emission-contract`, never PASS. After a non-timeout spawn, run:
-
-```bash
-python3 "$DEVLYN_SHARED_DIR/collect-codex-findings.py" \
-  --devlyn-dir "$REPO/.devlyn" \
-  --stdout-file grok-judge.stdout
-```
-
-On exit 124, write `.devlyn/verify.pair.timeout.json` with
-`{"engine": "grok", "budget_seconds": 600}` before merge. A budget abort can
-leave the stream truncated before its terminal `result` record; that capture
-stays `TIMEOUT` at merge, never a pair PASS.
+`verify.pair.emission-contract`, never PASS.
