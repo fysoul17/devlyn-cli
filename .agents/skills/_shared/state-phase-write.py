@@ -379,7 +379,7 @@ def render_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, v
             return []
         try:
             return read_jsonl(path)
-        except (SystemExit, ValueError, UnicodeError) as exc:
+        except (SystemExit, OSError, ValueError, UnicodeError) as exc:
             notes.append(f"- {path.name} unreadable: {exc}")
             return []
 
@@ -427,8 +427,14 @@ def render_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, v
     if plan_error is not None:
         notes.append(f"- bound PLAN no longer verifies: {plan_error}")
     if state.get("complexity") == "large":
-        criteria = read_regular(devlyn / "criteria.generated.md", "generated criteria")
-        if hashlib.sha256(criteria).hexdigest() != (state.get("source") or {}).get("criteria_sha256"):
+        try:
+            criteria = read_regular(devlyn / "criteria.generated.md", "generated criteria")
+        except (SystemExit, OSError) as exc:
+            criteria = None
+            notes.append(f"- generated criteria unavailable ({exc}); assumptions omitted")
+        if criteria is None:
+            pass
+        elif hashlib.sha256(criteria).hexdigest() != (state.get("source") or {}).get("criteria_sha256"):
             notes.append("- generated criteria changed after freeze; assumptions omitted")
         else:
             text = criteria.decode("utf-8").splitlines()
@@ -1622,6 +1628,19 @@ def final_report_self_test() -> None:
         (follow_devlyn / "criteria.generated.md").write_bytes(criteria_bytes.decode().encode("utf-16"))
         assert "assumptions omitted" in render_final_report(changed, follow_devlyn, follow_work, "PASS", None)
         (follow_devlyn / "criteria.generated.md").write_bytes(criteria_bytes)
+        (follow_devlyn / "criteria.generated.md").rename(follow_devlyn / "criteria.off")
+        assert "generated criteria unavailable" in render_final_report(follow, follow_devlyn, follow_work, "PASS", None)
+        (follow_devlyn / "criteria.off").rename(follow_devlyn / "criteria.generated.md")
+        if os.name != "nt":
+            unreadable = matrix[0][1][1] / "verify-merged.findings.jsonl"
+            unreadable.write_bytes(b"{}\n")
+            unreadable.chmod(0)
+            if not os.access(unreadable, os.R_OK):
+                pass_state = read_state(matrix[0][1][1] / "pipeline.state.json")
+                assert "verify-merged.findings.jsonl unreadable" in render_final_report(
+                    pass_state, matrix[0][1][1], matrix[0][1][0], "PASS", None)
+            unreadable.chmod(0o600)
+            unreadable.unlink()
         pass_block = json.dumps({"run_id": "rs-final-pass", "round": 0, "skips": [{"gate": "lint", "reason": "no linter"}]})
         old_block = json.dumps({"run_id": "rs-older", "round": 0, "skips": [{"gate": "tests", "reason": "old"}]})
         (matrix[0][1][1] / "mechanical.log.md").write_text(
