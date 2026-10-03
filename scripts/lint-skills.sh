@@ -87,6 +87,7 @@ devlyn-resolve/references/state-schema.md
 devlyn-resolve/references/task-completion.md
 devlyn-resolve/references/outer-loop.md
 devlyn-resolve/references/free-form-mode.md
+devlyn-resolve/references/risk-probes.md
 devlyn-resolve/references/phases/plan.md
 devlyn-resolve/references/phases/probe-derive.md
 devlyn-resolve/references/phases/implement.md
@@ -673,14 +674,15 @@ for tree in config/skills .agents/skills; do
     || ! grep -Fq 'operation=<filesystem|subprocess|loopback|pty|network|tool>' "$phase" \
     || ! grep -Fq 'A required tool is a denial with operation `tool` only if a parent probe confirms' "$phase" \
     || ! grep -Fq 'Gates the spec, base-ref configuration or scripts, or CI require are binding.' "$phase" \
-    || ! grep -Fq 'Only a gate that detection inferred on its own, and that genuinely does not apply, may SKIP; log the SKIP in `.devlyn/mechanical.log.md` and list it in the final report.' "$phase" \
+    || ! grep -Fq 'Only a gate that detection inferred on its own, and that genuinely does not apply, may SKIP. Record this round'"'"'s skips in `.devlyn/mechanical.log.md` as one marked block, which the final report lists:' "$phase" \
+    || ! grep -Fq '<!-- devlyn:mechanical-skips -->' "$phase" \
     || ! grep -Fq '3. **Browser** (only when diff touches `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `page.*`, `layout.*`, `route.*`, `*.css`, `*.html`)' "$phase" \
     || ! grep -Fq 'Each failed check → finding, severity `HIGH`, rule `correctness.browser-flow-failed`.' "$phase" \
     || ! grep -Fq 'Each failing test → finding, severity `HIGH`, rule `correctness.test-failure`.' "$phase" \
     || ! grep -Fq 'Each error → one finding, severity `HIGH`, rule `correctness.type-check`.' "$phase" \
     || ! grep -Fq 'Commands the spec, repo or CI require stay binding; only a genuinely inapplicable inferred check may SKIP, visibly.' "$skill" \
     || ! grep -Fq 'for web-surface diffs, the browser tier' "$skill" \
-    || ! grep -Fq 'with any visibly skipped inferred gate' "$skill" \
+    || ! grep -Fq 'skipped inferred gates from the marked block in `mechanical.log.md`' "$tree/devlyn-resolve/references/state-schema.md" \
     || ! grep -Fq '`python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --seal`' "$phase" \
     || grep -Eq 'SURFACE_CLOSE|BUILD_GATE|PHASE 4: CLEANUP|--bypass|implement_passed_sha|cleanup\.post_sha' "$skill" "$tree"/devlyn-resolve/references/*.md "$tree"/devlyn-resolve/references/phases/*.md \
     || [ -e "$tree/devlyn-resolve/references/phases/build-gate.md" ] \
@@ -842,7 +844,7 @@ if ! grep -Fq '"asserts_named_stream_output"' config/skills/_shared/spec-verify-
   || ! grep -Fq 'stdout_stderr_contract without stream evidence was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '`stdout_stderr_contract`: `asserts_named_stream_output`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
   || ! grep -Fq '`error_contract`: `asserts_error_payload_or_stderr`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`asserts_nonzero_or_exit_2`' config/skills/devlyn-resolve/SKILL.md; then
+  || ! grep -Fq '`asserts_nonzero_or_exit_2`' config/skills/devlyn-resolve/references/risk-probes.md; then
   bad "risk-probe error/stdout-stderr tags must require concrete tag_evidence markers in validator and prompt contract"
 fi
 if ! grep -Fq '"http_error_contract"' config/skills/_shared/spec-verify-check.py \
@@ -851,7 +853,7 @@ if ! grep -Fq '"http_error_contract"' config/skills/_shared/spec-verify-check.py
   || ! grep -Fq 'exact error body shape_contract without exact object evidence was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'exact error body shape_contract with exact object evidence was rejected' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '`http_error_contract`: `asserts_http_error_status`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`http_error_contract` must include `asserts_http_error_status`' config/skills/devlyn-resolve/SKILL.md; then
+  || ! grep -Fq '`http_error_contract` must include `asserts_http_error_status`' config/skills/devlyn-resolve/references/risk-probes.md; then
   bad "risk-probe HTTP error contracts must require concrete status and payload markers"
 fi
 if ! grep -Fq '"uses_visible_input_key_names"' config/skills/_shared/spec-verify-check.py \
@@ -864,8 +866,8 @@ if ! grep -Fq '"uses_visible_input_key_names"' config/skills/_shared/spec-verify
   || ! grep -Fq 'shape_contract with exact key evidence was rejected' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '`shape_contract` when the visible text names exact keys' config/skills/devlyn-resolve/references/phases/probe-derive.md \
   || ! grep -Fq 'visible_text_names_exact_json_error_object' config/skills/devlyn-resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`shape_contract` must' config/skills/devlyn-resolve/SKILL.md \
-  || ! grep -Fq 'visible_text_names_exact_json_error_object' config/skills/devlyn-resolve/SKILL.md; then
+  || ! grep -Fq '`shape_contract` must' config/skills/devlyn-resolve/references/risk-probes.md \
+  || ! grep -Fq 'visible_text_names_exact_json_error_object' config/skills/devlyn-resolve/references/risk-probes.md; then
   bad "risk-probe shape contracts must require exact visible input/output key evidence unconditionally, and asserts_exact_error_object when the probe claims the visible text names an exact JSON error object"
 fi
 if ! grep -Fq '"auth_signature_contract"' config/skills/_shared/spec-verify-check.py \
@@ -874,20 +876,20 @@ if ! grep -Fq '"auth_signature_contract"' config/skills/_shared/spec-verify-chec
   || ! grep -Fq 'duplicate_id_rejected_regardless_of_body' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '`auth_signature_contract`: `asserts_signature_over_exact_bytes`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
   || ! grep -Fq '`idempotency_replay`: `first_delivery_then_duplicate`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`auth_signature_contract` must include `asserts_signature_over_exact_bytes`' config/skills/devlyn-resolve/SKILL.md; then
+  || ! grep -Fq '`auth_signature_contract` must include `asserts_signature_over_exact_bytes`' config/skills/devlyn-resolve/references/risk-probes.md; then
   bad "risk-probe webhook/signature/replay contracts must require concrete auth_signature_contract and idempotency_replay tags"
 fi
 if ! grep -Fq '"concurrent_state_consistency"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'overlapping_mutations_exercised' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '`concurrent_state_consistency`: `overlapping_mutations_exercised`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`concurrent_state_consistency` must' config/skills/devlyn-resolve/SKILL.md; then
+  || ! grep -Fq '`concurrent_state_consistency` must' config/skills/devlyn-resolve/references/risk-probes.md; then
   bad "risk-probe concurrent state contracts must require concrete concurrent_state_consistency markers"
 fi
 if ! grep -Fq '"atomic_batch_state"' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'mixed_valid_invalid_batch' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'atomic_batch_state without success-order evidence was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '`atomic_batch_state`: `mixed_valid_invalid_batch`' config/skills/devlyn-resolve/references/phases/probe-derive.md \
-  || ! grep -Fq '`atomic_batch_state` must include `mixed_valid_invalid_batch`' config/skills/devlyn-resolve/SKILL.md; then
+  || ! grep -Fq '`atomic_batch_state` must include `mixed_valid_invalid_batch`' config/skills/devlyn-resolve/references/risk-probes.md; then
   bad "risk-probe atomic batch contracts must require concrete mixed-failure and success-order markers"
 fi
 

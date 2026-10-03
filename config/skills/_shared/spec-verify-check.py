@@ -1654,16 +1654,6 @@ def run_print_authorized_surface(work: Path, devlyn_dir: Path) -> int:
     return 0
 
 
-def run_print_risk_probes_digest(devlyn_dir: Path) -> int:
-    digest, error = risk_probes_digest(devlyn_dir)
-    if error:
-        print(f"[spec-verify --print-risk-probes-digest] {error}", file=sys.stderr)
-        return 2
-    assert digest is not None
-    print(digest)
-    return 0
-
-
 def run_write_untracked_baseline(work: Path, devlyn_dir: Path) -> int:
     """PHASE 0 writer for `.devlyn/untracked.baseline`. Shares
     git_status_entries with the MECHANICAL reader so writer and comparer can
@@ -2656,22 +2646,9 @@ def run_self_test() -> int:
             print("--validate-risk-probes rejected valid probes without digest", file=sys.stderr)
             print(validate_without_digest.stderr, file=sys.stderr)
             return 1
-        digest_run = subprocess.run(
-            [sys.executable, script_path, "--print-risk-probes-digest"],
-            cwd=work,
-            env=env,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        )
-        if digest_run.returncode != 0:
-            print("--print-risk-probes-digest rejected valid probes", file=sys.stderr)
-            print(digest_run.stderr, file=sys.stderr)
-            return 1
-        risk_digest = digest_run.stdout.strip()
-        if not re.fullmatch(r"[0-9a-f]{64}", risk_digest):
-            print("--print-risk-probes-digest printed a non-sha256 digest", file=sys.stderr)
-            print(repr(digest_run.stdout), file=sys.stderr)
+        risk_digest, digest_error = risk_probes_digest(devlyn)
+        if digest_error or not re.fullmatch(r"[0-9a-f]{64}", risk_digest or ""):
+            print(f"risk_probes_digest rejected valid probes: {digest_error} {risk_digest!r}", file=sys.stderr)
             return 1
         (devlyn / "pipeline.state.json").write_text(json.dumps({
             "run_id": "rs-risk-probes",
@@ -2772,21 +2749,9 @@ def run_self_test() -> int:
             return 1
 
         (devlyn / "risk-probes.jsonl").unlink()
-        missing_jsonl_digest = subprocess.run(
-            [sys.executable, script_path, "--print-risk-probes-digest"],
-            cwd=work,
-            env=env,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        )
-        if missing_jsonl_digest.returncode != 2:
-            print("--print-risk-probes-digest accepted missing risk-probes.jsonl", file=sys.stderr)
-            print(missing_jsonl_digest.stderr, file=sys.stderr)
-            return 1
-        if "missing .devlyn/risk-probes.jsonl" not in missing_jsonl_digest.stderr:
-            print("missing risk-probes.jsonl digest mode had the wrong error", file=sys.stderr)
-            print(missing_jsonl_digest.stderr, file=sys.stderr)
+        _digest, missing_jsonl_error = risk_probes_digest(devlyn)
+        if "missing .devlyn/risk-probes.jsonl" not in (missing_jsonl_error or ""):
+            print(f"risk_probes_digest accepted missing risk-probes.jsonl: {missing_jsonl_error}", file=sys.stderr)
             return 1
         (devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(spec_md)},
@@ -3022,21 +2987,9 @@ def run_self_test() -> int:
             print("missing risk probe script had the wrong error", file=sys.stderr)
             print(missing_script_probe.stderr, file=sys.stderr)
             return 1
-        missing_script_digest = subprocess.run(
-            [sys.executable, script_path, "--print-risk-probes-digest"],
-            cwd=work,
-            env=env,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        )
-        if missing_script_digest.returncode != 2:
-            print("--print-risk-probes-digest accepted a missing referenced script", file=sys.stderr)
-            print(missing_script_digest.stderr, file=sys.stderr)
-            return 1
-        if "referenced probe script is missing" not in missing_script_digest.stderr:
-            print("missing script digest mode had the wrong error", file=sys.stderr)
-            print(missing_script_digest.stderr, file=sys.stderr)
+        _digest, missing_script_error = risk_probes_digest(devlyn)
+        if "referenced probe script is missing" not in (missing_script_error or ""):
+            print(f"risk_probes_digest accepted a missing referenced script: {missing_script_error}", file=sys.stderr)
             return 1
 
         for bad_form in (
@@ -3059,25 +3012,17 @@ def run_self_test() -> int:
                 text=True,
                 encoding="utf-8",
             )
-            bad_ref_digest = subprocess.run(
-                [sys.executable, script_path, "--print-risk-probes-digest"],
-                cwd=work,
-                env=env,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            )
+            _digest, bad_ref_error = risk_probes_digest(devlyn)
             unrecognized = unrecognized_risk_probe_reference(f"python3 {bad_form}")
             expected_error = f"risk-probes[0].cmd has {unrecognized}"
             if (
                 bad_ref_probe.returncode == 0
                 or expected_error not in bad_ref_probe.stderr
-                or bad_ref_digest.returncode == 0
-                or expected_error not in bad_ref_digest.stderr
+                or expected_error not in (bad_ref_error or "")
             ):
                 print(f"bad probe script reference was not rejected: {bad_form}", file=sys.stderr)
                 print(bad_ref_probe.stderr, file=sys.stderr)
-                print(bad_ref_digest.stderr, file=sys.stderr)
+                print(bad_ref_error, file=sys.stderr)
                 return 1
 
         (probes_dir / "Phidden.py").write_text("print('benchmark/auto-resolve/fixtures')\n", encoding="utf-8")
@@ -5013,14 +4958,13 @@ def main() -> int:
     if "--help" in sys.argv[1:] or "-h" in sys.argv[1:]:
         print(
             "usage: spec-verify-check.py [-h | --help | --include-risk-probes | "
-            "--validate-risk-probes | --print-risk-probes-digest | "
+            "--validate-risk-probes | "
             "--print-authorized-surface | --write-untracked-baseline | --seal | "
             "--check <markdown-path> | --check-expected <json-path> | --self-test]"
         )
         return 0
     include_risk_probes = False
     validate_risk_probes_only = False
-    print_risk_probes_digest = False
     print_authorized_surface = False
     write_untracked_baseline = False
     seal = False
@@ -5033,9 +4977,6 @@ def main() -> int:
     if "--validate-risk-probes" in sys.argv[1:]:
         validate_risk_probes_only = True
         sys.argv = [arg for arg in sys.argv if arg != "--validate-risk-probes"]
-    if "--print-risk-probes-digest" in sys.argv[1:]:
-        print_risk_probes_digest = True
-        sys.argv = [arg for arg in sys.argv if arg != "--print-risk-probes-digest"]
     if "--print-authorized-surface" in sys.argv[1:]:
         print_authorized_surface = True
         sys.argv = [arg for arg in sys.argv if arg != "--print-authorized-surface"]
@@ -5068,16 +5009,10 @@ def main() -> int:
     spec_path = devlyn_dir / "spec-verify.json"
 
     if seal:
-        if include_risk_probes or validate_risk_probes_only or print_risk_probes_digest or print_authorized_surface or write_untracked_baseline:
+        if include_risk_probes or validate_risk_probes_only or print_authorized_surface or write_untracked_baseline:
             print("usage: spec-verify-check.py --seal", file=sys.stderr)
             return 2
         return run_seal(work, devlyn_dir)
-
-    if print_risk_probes_digest:
-        if include_risk_probes or validate_risk_probes_only or print_authorized_surface or write_untracked_baseline or len(sys.argv) != 1:
-            print("usage: spec-verify-check.py --print-risk-probes-digest", file=sys.stderr)
-            return 2
-        return run_print_risk_probes_digest(devlyn_dir)
 
     if print_authorized_surface:
         if include_risk_probes or validate_risk_probes_only or write_untracked_baseline or len(sys.argv) != 1:

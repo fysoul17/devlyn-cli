@@ -71,7 +71,7 @@ Each model-invoked phase routes to an engine and prepends the per-engine adapter
 
 - PLAN runs in the owner context; VERIFY MECHANICAL runs orchestrator commands with no separate model. The selected IMPLEMENT worker also owns code/doc upkeep before its final checkpoint. IMPLEMENT and the VERIFY judges still require fresh workers. If the current CLI cannot spawn a required worker, write the current phase verdict as `"BLOCKED"` and report `BLOCKED:fresh-context-unavailable` with the failed spawn command; do not continue with ad-hoc same-context execution.
 - Claude Code model-invoked phases other than VERIFY: spawn `Agent` (`mode: "bypassPermissions"`); prompt = adapter-header + canonical-body + task-context.
-- Codex CLI model-invoked phases: shell out via `bash "$CODEX_MONITORED_PATH"` with the same compounded prompt. Each `codex exec` child is a new session/fresh context. Write the compounded prompt to a file and set `DEVLYN_CODEX_PROMPT_FILE` with sole prompt argument `-`; the wrapper snapshots exact stdin bytes, seals transport evidence and emits a heartbeat. Without file transport stdin remains DEVNULL. No MCP. The wrapper call is foreground-blocking — never a background shell (`run_in_background`, `&`, `nohup`), never end your message while it runs: headless print-mode wind-down kills backgrounded children (0-byte delivery); the heartbeat is the observability channel.
+- Codex CLI model-invoked phases: shell out via `bash "$CODEX_MONITORED_PATH"` with the same compounded prompt. Each `codex exec` child is a new session/fresh context. Write the compounded prompt to a file and set `DEVLYN_CODEX_PROMPT_FILE` with sole prompt argument `-`; the wrapper snapshots exact stdin bytes, seals transport evidence and emits a heartbeat. Without file transport stdin remains DEVNULL. No MCP. The wrapper call is foreground-blocking — never a background shell (`run_in_background`, `&`, `nohup`), never end your message while it runs: headless print-mode wind-down kills backgrounded children (0-byte delivery). Make it one foreground call whose host timeout exceeds the phase budget; set `CODEX_MONITORED_TIMEOUT_SEC` to that budget so the wrapper cancels its own process group and exits 124. Do not read heartbeat, status or log files while it runs. If the host returns before the wrapper exits, wait again with the host's maximum wait and make no other call. This saves owner turns; whether a host can still continue early is unverified.
 - oh-my-pi model-invoked phases other than VERIFY: spawn the native `task` tool with a fresh `context` containing adapter-header + canonical-body + task-context. Capture the task result into `.devlyn/<phase>.stdout` and any tool error into `.devlyn/<phase>.stderr` before updating state. If the `task` tool is unavailable for an omp-routed phase, write the current phase verdict as `"BLOCKED"` and report `BLOCKED:fresh-context-unavailable`; do not fall back to same-context execution or a nested `omp -p` subprocess.
 - Default engine: Claude when the orchestrator has Claude Code’s native `Agent`; otherwise its own fresh worker. PLAN is orchestrator-fixed and never inherits `--engine`, an executor pin, or `state.engine`. VERIFY MECHANICAL runs orchestrator commands; probes retain their existing routes. `_shared/engine-preflight.md#role-resolution` defines the single resolver and explicit `--role-config` / project role precedence. Absent profiles preserve legacy `--engine` / executor / default behavior, except that an inherited primary judge on an engine with no scripted judge route (omp) goes to the first available of claude, codex other than an explicit pair seat; VERIFY primary may be independently selected. Configured role/priority pins and flags fail closed on unavailable engine or failed authentication, including failures discovered at dispatch. Unconfigured automatic VERIFY selects an available OTHER engine.
 - The `--engine` flag does not disable default pairing: the second judge uses the OTHER engine by default when available.
@@ -97,7 +97,7 @@ For every direct complete→spawn handoff, call `state-phase-write.py ... --phas
 
 ## PHASE 0: PARSE + CLASSIFY + ROUTE
 
-Outer-owner boundary: before normal task writes, follow `references/task-completion.md` for prospective task-branch ownership (own linked worktree) and `references/outer-loop.md` for owner-input commits. Existing branches cannot be retroactively adopted. Verify-only does not allocate or publish; phase workers never own delivery.
+Outer-owner boundary: a full run starts only from committed owner inputs; whenever this session commits owner inputs, drains a queue or completes delivery, follow `references/outer-loop.md`. Before normal task writes, read `references/task-completion.md` only if this session has not allocated its own task branch (own linked worktree); existing branches cannot be retroactively adopted. Verify-only does not allocate or publish; phase workers never own delivery.
 
 1. Run the bootstrap once with the exact tokenized `<pipeline_config>` and this orchestrator's default engine from `<engine_routing>`:
 
@@ -105,15 +105,19 @@ Outer-owner boundary: before normal task writes, follow `references/task-complet
    DEVLYN_DEFAULT_ENGINE="<current-cli-default>" python3 "$DEVLYN_SHARED_DIR/resolve-bootstrap.py" <pipeline_config tokens>
    ```
 
-   Read its sole JSON result. On `ok:false`, halt on its exact report-level `blocked` string and show `detail`; init failures create no phase verdict; crashes can leave owned residue, which bootstrap preserves and refuses to replace. Admission refusals require continuing the existing run through its owning session or starting in a distinct worktree. Never autoarchive to defeat a refusal; explicit manual archive is recovery only after the operator establishes that prior writers stopped. Valid completed runs still autoarchive normally, but a completed final report does not prove every interactive writer exited. On success, the script has atomically initialized the schema-v3 skeleton (`pair_verify: true` only when `--pair-verify` was passed), stamped the null-safe Claude session id, persisted exact-byte Goal/spec identity, staged spec verification inputs, and captured the verify-only external diff. It validates only flags needed for those init fields, including mode exclusivity, `--max-rounds`, and `--pair-verify`/`--no-pair`; `--pair-verify` and `--no-pair` are mutually exclusive. Free-form init sets `state.source.type = "generated"`. Spec staging validates supported `complexity` frontmatter (including sibling spec `complexity` frontmatter). It stages and validates an explicit `--role-config` object into state with its path/digest, but does not resolve roles, write the untracked baseline, classify complexity/risk or announce. `state.engine` is the raw `--engine` value with `engine_source: "flag"`, otherwise the passed `DEVLYN_DEFAULT_ENGINE` with `engine_source: "default"`; step 2 resolves and replaces both fields.
+   Read its sole JSON result. On `ok:false`, halt on its exact report-level `blocked` string and show `detail`; init failures create no phase verdict; crashes can leave owned residue, which bootstrap preserves and refuses to replace. Admission refusals require continuing the existing run through its owning session or starting in a distinct worktree. Never autoarchive to defeat a refusal; explicit manual archive is recovery only after the operator establishes that prior writers stopped. Valid completed runs still autoarchive normally, but a completed final report does not prove every interactive writer exited. On success, the script has atomically initialized the schema-v3 skeleton (`pair_verify: true` only when `--pair-verify` was passed; `risk_profile` records `--risk-probes`, `--no-risk-probes` and `--no-pair`), stamped the null-safe Claude session id, persisted exact-byte Goal/spec identity, staged spec verification inputs, and captured the verify-only external diff. `--pair-verify` and `--no-pair` are mutually exclusive, as are `--risk-probes` and `--no-risk-probes`. Free-form init sets `state.source.type = "generated"`. Spec staging validates supported `complexity` frontmatter (including sibling spec `complexity` frontmatter); an explicit `--role-config` object is staged with its path/digest. `state.engine` is the raw `--engine` value with `engine_source: "flag"`, otherwise the passed `DEVLYN_DEFAULT_ENGINE` with `engine_source: "default"`; step 4 resolves and replaces both fields.
 
-2. Engine pre-flight: follow `_shared/engine-preflight.md`. Freeze the shared resolver once before any phase with `python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --freeze-roles --default-engine "<current-cli-default>"`. It validates project/per-run roles and records `state.role_resolution`; legacy `state.engine`/`engine_source` remain the executor. Repeated reads return the same snapshot, never changed project settings. Keep availability/auth checks before each selected dispatch; explicit unavailable routes fail closed. These PHASE0 failures are report-level `BLOCKED:<reason>`; phase verdict carriers remain bare enums.
+2. Write `.devlyn/untracked.baseline`: `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --write-untracked-baseline`. The first phase spawn binds its digest; MECHANICAL seals only against those bytes.
 
-3. Write `.devlyn/untracked.baseline`: `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --write-untracked-baseline`. The first phase spawn binds its digest; MECHANICAL seals only against those bytes.
+3. Classify. Read the Goal/spec through `state.source`. For free-form mode, run the deterministic classifier in `references/free-form-mode.md`; zero-scope-signal goals halt with `BLOCKED:large-needs-ideation`; otherwise write the selected branch's `.devlyn/criteria.generated.md` (the Large `## Assumptions`/recommendation obligations remain). From the user goal plus spec/criteria text, name one concise reason per matching high-risk category: auth/authz, permissions, security, token/session, payment/money/billing/invoice/pricing/tax/ledger, persistence/data mutation/deletion/migration, idempotency/replay/duplicate, API/webhook/raw-body/signature, allocation/scheduling/inventory/rollback/transaction, or explicit error-priority/output-shape contracts.
 
-4. Read the Goal/spec through `state.source`. For free-form mode, run the deterministic classifier in `references/free-form-mode.md`. Zero-scope-signal goals halt with `BLOCKED:large-needs-ideation`. Follow the selected branch to write the trivial/medium/large body of `.devlyn/criteria.generated.md`, then set `state.complexity` and its raw-byte `criteria_sha256`. The Large `## Assumptions`/recommendation/final-report obligations remain unchanged.
+4. Freeze roles and classification once, before any phase:
 
-   Compute `state.risk_profile` from the user goal plus spec/criteria text. Mark `high_risk: true` for auth/authz, permissions, security, token/session, payment/money/billing/invoice/pricing/tax/ledger, persistence/data mutation/deletion/migration, idempotency/replay/duplicate, API/webhook/raw-body/signature, allocation/scheduling/inventory/rollback/transaction, or explicit error-priority/output-shape contracts. Explicit `--risk-probes` sets both probe booleans true. Otherwise an automatic high-risk route enables probes only when the legacy executor’s OTHER engine (legacy pair priority/complement, independent of VERIFY profiles) is available and `--no-risk-probes` is absent; if unavailable, keep probes disabled and append `auto-risk-probes skipped: <engine>-unavailable`. `--no-pair` sets `pair_default_enabled: false`. Preserve strict boolean/list types and concise string reasons.
+   ```bash
+   python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --freeze-roles --default-engine "<current-cli-default>" [--complexity <trivial|medium|large>] [--high-risk-reason "<reason>"]...
+   ```
+
+   `--complexity` is required for free-form and refused otherwise. The writer resolves roles per `_shared/engine-preflight.md` into `state.role_resolution` (legacy `state.engine`/`engine_source` remain the executor), binds `source.criteria_sha256` from the criteria bytes, and records `risk_profile.high_risk`/`reasons`. An automatic high-risk run (no explicit probe flag, not verify-only) enables probes only when the legacy executor's OTHER engine is available; otherwise it appends `auto-risk-probes skipped: <engine>-unavailable`. An identical repeat returns the same snapshot; a differing one is refused. Keep availability/auth checks before each selected dispatch; explicit unavailable routes fail closed. PHASE 0 failures are report-level `BLOCKED:<reason>`; phase verdict carriers remain bare enums.
 
 5. Announce one line: `resolve starting — run <run_id> — engine <engine> — mode <mode> — complexity <complexity-or-na> — pair <on|solo:auto_pair_other_engine_unavailable|disabled> — risk_probes <on|off>`.
 
@@ -140,93 +144,9 @@ After return:
 
 ## PHASE 1.5: RISK_PROBES
 
-Skip unless `--risk-probes` is set OR `state.risk_profile.risk_probes_enabled`
-is true. This phase is findings-as-executable-checks, not a second plan and not
-debate. When it runs, the OTHER engine is required: if unavailable, halt with
-`BLOCKED:<engine>-unavailable` plus setup guidance;
-do not silently continue without probes. Reaching this halt means the route was
-explicitly requested (`--risk-probes`) — an auto high-risk escalation toward an
-unavailable OTHER engine was already gated off in PHASE 0 by leaving
-`risk_probes_enabled: false`, so a single-engine high-risk run proceeds solo here.
+Runs only when `state.risk_profile.risk_probes_enabled` is true; then read and follow `references/risk-probes.md`. The OTHER engine is required: an explicit `--risk-probes` route whose engine is unavailable halts with `BLOCKED:<engine>-unavailable` plus setup guidance (an automatic route toward an unavailable engine was already left disabled at freeze).
 
-Engine: OTHER engine from the legacy executor and legacy pair priority/complement; worker/VERIFY profiles do not reroute probes. Prompt body:
-`references/phases/probe-derive.md`.
-
-Inputs: source spec/criteria, `.devlyn/plan.md`, and repo read/search. Forbidden:
-`spec.expected.json`, `.devlyn/spec-verify.json`, `BENCH_FIXTURE_DIR`, hidden
-fixture/verifier paths, previous findings, and harness docs unless excerpted.
-
-Output: `.devlyn/risk-probes.jsonl`, 1 to 3 JSONL entries. Each entry must be
-one verification command shape plus `id`, `derived_from`, `tags`, and
-`tag_evidence`, where `derived_from` is an exact substring of the visible
-`## Verification` bullet the command directly exercises. `tag_evidence` must be
-a JSON object keyed by tag, with marker arrays as values; a top-level array or
-tag-only probe is malformed. `ordering_inversion` must include
-`input_order_would_choose_wrong_winner` and `asserts_processing_order_result`;
-`prior_consumption` must include `same_resource_consumed_first` and
-`later_entity_fails_or_reroutes`; `stdout_stderr_contract` must include
-`asserts_named_stream_output`; `error_contract` must include
-`asserts_error_payload_or_stderr` and `asserts_nonzero_or_exit_2`.
-`http_error_contract` must include `asserts_http_error_status` and
-`asserts_error_payload_body`.
-`auth_signature_contract` must include `asserts_signature_over_exact_bytes` and
-`asserts_tampered_or_missing_signature_rejected`; `idempotency_replay` must
-include `first_delivery_then_duplicate` and
-`duplicate_id_rejected_regardless_of_body`; `concurrent_state_consistency` must
-include `overlapping_mutations_exercised`,
-`all_successful_responses_reflected`, and `distinct_identifiers_asserted`;
-`atomic_batch_state` must include `mixed_valid_invalid_batch`,
-`asserts_store_unchanged_after_failure`, and
-`asserts_success_order_and_distinct_ids`.
-When visible text names exact keys, fields, row shapes, JSON objects, response
-bodies, stdout/stderr objects, or exact error bodies, `shape_contract` must
-include `uses_visible_input_key_names`, `asserts_visible_output_key_names`, and
-`asserts_no_unexpected_output_keys`; exact JSON error objects/bodies must also
-include `visible_text_names_exact_json_error_object` and
-`asserts_exact_error_object`. Cart/pricing success probes should use
-`shape_contract` unless they satisfy the `ordering_inversion` markers. The probe
-command must not reference external network URLs; use only worktree-local or
-localhost resources.
-For high-complexity specs with multiple behavior bullets, at least one probe
-must be compound: it must exercise two or more visible verification bullets in a
-single command. Empty output is invalid when `--risk-probes` is set.
-
-State write: `phases.probe_derive.{started_at, verdict, completed_at, duration_ms, artifacts}`.
-
-Invocation contract when OTHER engine is Codex:
-
-- Invoke Codex only through the monitored wrapper path in `CODEX_MONITORED_PATH`
-  resolved from `DEVLYN_SHARED_DIR`:
-  `DEVLYN_CODEX_PROMPT_FILE="<probe-prompt-file>" CODEX_MONITORED_ISOLATED=1 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s workspace-write -c sandbox_workspace_write.network_access=false -c model_reasoning_effort=high -`.
-  Append `-c sandbox_workspace_write.network_access=true` only when a probe's visible Verification command requires a localhost service (for example, a DB test harness); never as a default.
-  Isolation keeps user config, AGENTS.md, hooks, and project rules
-  from adding hidden context, tool calls, or transcript side effects.
-- Do not run `codex`, `codex exec`, `/Users/.../codex`, or a plugin-provided
-  Codex binary directly. A raw Codex child can outlive the phase and makes the
-  run invalid even if `.devlyn/risk-probes.jsonl` is written.
-- Capture wrapper stdout/stderr to `.devlyn/probe-derive.stdout` and
-  `.devlyn/probe-derive.stderr`; branch on the wrapper exit code before
-  validating `.devlyn/risk-probes.jsonl`.
-
-After return:
-1. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --validate-risk-probes`
-   for the artifact boundary before IMPLEMENT; malformed probes halt with
-   `BLOCKED:probe-derive-malformed`.
-2. Compute `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --print-risk-probes-digest` and write the result to top-level `state.risk_probes_digest`:
-   ```bash
-   RISK_PROBES_DIGEST="$(python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --print-risk-probes-digest)"
-   python3 - "$RISK_PROBES_DIGEST" <<'PY'
-   import json, pathlib, sys
-   path = pathlib.Path(".devlyn/pipeline.state.json")
-   state = json.loads(path.read_text())
-   state["risk_probes_digest"] = sys.argv[1]
-   path.write_text(json.dumps(state, indent=2) + "\n")
-   PY
-   ```
-   Any later legitimate probe regeneration is orchestrator-only and repeats validate plus digest-write.
-3. IMPLEMENT receives `.devlyn/plan.md` plus `.devlyn/risk-probes.jsonl` as
-   concrete acceptance obligations. It must not receive the producer engine's
-   commentary or any mention of pair/critic/debate.
+After return, complete PROBE_DERIVE through the normal transition to IMPLEMENT. A passing completion validates `.devlyn/risk-probes.jsonl` with `spec-verify-check.py --validate-risk-probes` and binds `state.risk_probes_digest` under the state lock; malformed probes refuse the completion with `BLOCKED:probe-derive-malformed` (complete BLOCKED and halt). IMPLEMENT receives `.devlyn/plan.md` plus `.devlyn/risk-probes.jsonl` as concrete acceptance obligations, never the producer engine's commentary or any mention of pair/critic/debate.
 
 ## PHASE 2: IMPLEMENT
 
@@ -266,11 +186,11 @@ expectation-mismatched carrier blocks the checkpoint.
 1. `git diff --stat` — empty diff → halt with `BLOCKED:implement-empty`.
 2. Checkpoint (**scoped staging** — this exact shape everywhere a pipeline commit is made): `bash -o pipefail -c 'python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --print-authorized-surface | git add --pathspec-from-file=- --pathspec-file-nul' && git commit -m "chore(pipeline): implement"`. Every deliverable, including new files, must be in this commit: MECHANICAL seals only a clean tree.
 
-**Phase-gated path** (plan.md has `## Execution phases` with >1 phase): definitions are the contract in plan.md; progress is routing truth in `state.phases.implement.exec = { total, current, statuses, commits }` — never route on plan.md checkbox parsing. For each phase k = 1..N:
+**Phase-gated path** (plan.md has two or more `### Phase <k>` blocks): definitions are the contract in plan.md; progress is routing truth in `state.phases.implement.exec = { total, current, statuses }`, which the writer creates at the first IMPLEMENT spawn and advances on each passing phase. For each phase k = 1..N:
 1. Spawn IMPLEMENT with the standard prompt plus: this phase's plan.md block only, the current worktree as the working base (overrides the body's `base_ref.sha` framing after phase 1), a `git diff <base_ref.sha>...HEAD --stat` summary, and the prior phase's gate output.
 2. After return: run the phase's `gate:` commands directly — deterministic, exit-code truth, no LLM judgment.
-3. Gate PASS → scoped-staging checkpoint with message `chore(pipeline): implement phase <k>/<N>`, write `exec.statuses[k-1] = "PASS"` + commit sha, advance `exec.current`, tick the plan.md checkbox mirror (display only).
-4. Gate FAIL → no commit. Persist `exec.statuses[k-1] = "FAIL"`, retain `exec.current`, and request IMPLEMENT admission with a fresh invocation round and null trigger. The writer charges the shared repair budget on admission. On budget refusal, close the still-open IMPLEMENT span with `--verdict FAIL`, then report `BLOCKED:repair-budget-exhausted` with the gate output, origin and counters.
+3. Gate PASS → scoped-staging checkpoint with message `chore(pipeline): implement phase <k>/<N>`, then complete IMPLEMENT `PASS` (the writer marks the phase and advances `exec.current`; the next phase spawns uncharged with the next round).
+4. Gate FAIL → no commit. Complete IMPLEMENT `FAIL` (the writer records the phase's FAIL and keeps `exec.current`), and request IMPLEMENT admission with a fresh invocation round and null trigger. The writer charges the shared repair budget on admission. On budget refusal, close the still-open IMPLEMENT span with `--verdict FAIL`, then report `BLOCKED:repair-budget-exhausted` with the gate output, origin and counters.
 
 After the final phase's gate PASS: `git diff <base_ref.sha>...HEAD --stat` — empty → halt with `BLOCKED:implement-empty`; otherwise continue to VERIFY (phase commits already checkpoint the work — no extra commit).
 
@@ -321,15 +241,17 @@ Open the `final_report` span through the predecessor's `state-phase-write.py --d
 
 2. **FINISH GATE** — run `python3 "$DEVLYN_SHARED_DIR/finish-gate.py"`; branch only on exit code: 0 → clean; 1 or 2 → `BLOCKED:finish-gate-unclean`, and report the `.devlyn/finish-gate.findings.jsonl` listing, including reverted paths. Offenders exit 2 even when every revert succeeded — a silent revert must never ride an exit-0 pass.
 
-3. **Terminal verdict** — derive from `state.phases.{plan, implement, verify}.verdict` per the precedence rules in `references/state-schema.md#terminal-verdict`. Verify-only mode short-circuits to `state.phases.verify.verdict`.
+3. **Terminal verdict and report** — after the finish gate, complete the span; the writer derives the verdict, renders `.devlyn/final-report.md`, binds its bytes and prints it:
 
-4. **Render report to `.devlyn/final-report.md` before completion** — first line exactly `<!-- devlyn:final-report run_id=<current state.run_id> -->`, once only, followed by a nonempty report body. Sections: header (run_id, engine, mode, verdict, wall-time), per-phase summary (including owner PLAN reasoning and MECHANICAL as orchestrator commands with no separate model, with any visibly skipped inferred gate; code/doc upkeep is included in IMPLEMENT cost), pair/risk-probe status, findings table (verify + finish-gate findings), follow-up notes (any large-mode `## Assumptions` block, any pair-judge TIMEOUT (headline: solo verdict after pair TIMEOUT), any `--no-pair` / `--no-risk-probes` opt-out, and any engine setup guidance after BLOCKED). User-facing text may follow archive; it cannot substitute for this file.
+   ```bash
+   python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --phase final_report complete [--verdict BLOCKED:<reason>] [--detail "<failed command or guidance>"]
+   ```
 
-5. Complete the span with `state-phase-write.py --devlyn-dir .devlyn --phase final_report complete --verdict <terminal verdict> --log-file .devlyn/final-report.md` BEFORE archive runs (archive prune skips runs whose `final_report.verdict` is null). The writer validates the canonical nonsymlink regular file, current run marker and nonempty body, then binds its exact bytes; validation failure leaves the phase open. Never hand-edit lifecycle fields in `pipeline.state.json` (`references/state-schema.md` § Write protocol).
+   Complete before archive (archive prune skips runs whose `final_report.verdict` is null). Precedence: finish-gate exit 1/2 → `BLOCKED:finish-gate-unclean`; a BLOCKED phase → the reason its bound evidence records (MECHANICAL capability denial → `BLOCKED:build-env-underprovisioned`; a blocked judge seat → its dispatch reason); refused repair admission with exhausted counters → VERIFY `NEEDS_WORK` or phase-gate `BLOCKED:repair-budget-exhausted`; verify-only → the VERIFY verdict; otherwise VERIFY `PASS`/`PASS_WITH_ISSUES`. Pass `--verdict BLOCKED:<reason>` only for a halt that state does not represent (for example `plan-empty`, `implement-empty`, `fresh-context-unavailable`, an IMPLEMENT/probe engine unavailable); a supplied verdict that contradicts the evidence, or an evidence-only reason without its evidence, is refused and nothing is written. Never write the report or lifecycle fields by hand.
 
-6. **Archive** — invoke the deterministic script: `python3 "$DEVLYN_SHARED_DIR/archive_run.py"`. The script reads `run_id` from `.devlyn/pipeline.state.json`, moves the static per-run artifact set (`PER_RUN_PATTERNS` remains the single ownership list) plus every state-bound process-evidence manifest/raw stream into `.devlyn/runs/<run_id>/`, preserves evidence-relative layout, and rehashes bound bytes before any move. An unsafe/missing/altered evidence path or destination collision reports archive failure without changing the already-derived product verdict. It then best-effort prunes to the last 10 completed runs. Archive must run; running this step as deterministic-script-not-prose ensures the move actually happens (iter-0033a Smoke 3 caught a case where the agent claimed archive ran without moving the files).
+4. **Archive** — invoke the deterministic script: `python3 "$DEVLYN_SHARED_DIR/archive_run.py"`. The script reads `run_id` from `.devlyn/pipeline.state.json`, moves the static per-run artifact set (`PER_RUN_PATTERNS` remains the single ownership list) plus every state-bound process-evidence manifest/raw stream into `.devlyn/runs/<run_id>/`, preserves evidence-relative layout, and rehashes bound bytes before any move. An unsafe/missing/altered evidence path or destination collision reports archive failure without changing the already-derived product verdict. It then best-effort prunes to the last 10 completed runs. Archive must run; running this step as deterministic-script-not-prose ensures the move actually happens (iter-0033a Smoke 3 caught a case where the agent claimed archive ran without moving the files).
 
-After successful normal-run archive, return to the outer owner for `references/task-completion.md`. A queue owner first commits its terminal queue transition, then completes once. Honor local-only/no-push; report delivery pending/failure separately from the archived product verdict. This is outside the phase graph.
+After archive, relay the printed report byte for byte as the final user-facing report; other text may follow it but cannot substitute for it. After successful normal-run archive, return to the outer owner for `references/task-completion.md`. A queue owner first commits its terminal queue transition, then completes once. Honor local-only/no-push; report delivery pending/failure separately from the archived product verdict. This is outside the phase graph.
 
 ## State management
 

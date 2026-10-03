@@ -136,27 +136,8 @@ def terminal_halt_witness(phases: dict[str, object]) -> tuple[str, str] | None:
 
 
 def exhausted_origin(state: dict[str, object]) -> str | None:
-    writer = runpy.run_path(str(pathlib.Path(__file__).with_name("state-phase-write.py")))
-    predecessor = writer["repair_predecessor"](state)
-    if predecessor is None:
-        return None
-    name, entry = predecessor
-    if entry.get("completed_at") is None:
-        return None
-    if name == "verify":
-        merged = entry.get("merged")
-        return "verify" if entry.get("verdict") == "NEEDS_WORK" and isinstance(merged, dict) and merged.get("verdict") == "NEEDS_WORK" else None
-    if name == "cleanup":
-        return name if entry.get("verdict") == "FAIL" and entry.get("execution_kind") == "orchestrator_commands" else None
-    if name == "build_gate":
-        return name if entry.get("verdict") == "FAIL" else None
-    progress = entry.get("exec")
-    if not writer["valid_phase_gate_progress"](progress):
-        return None
-    if (entry.get("verdict") == "FAIL"
-        and progress["statuses"][progress["current"] - 1] == "FAIL"):
-        return "phase_gate"
-    return None
+    # The writer derives the same origin when it renders the terminal verdict.
+    return runpy.run_path(str(pathlib.Path(__file__).with_name("state-phase-write.py")))["exhausted_origin"](state)
 
 
 def classify_state_bytes(
