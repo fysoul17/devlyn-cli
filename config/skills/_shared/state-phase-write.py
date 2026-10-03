@@ -53,6 +53,7 @@ WORKER_SESSION_ARTIFACT_PHASES = {"plan": "plan", "implement": "implement"}
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PLAN_MAX_DISPATCHES = 2
 PHASE_HEADING_RE = re.compile(r"^###[ \t]+Phase[ \t]+[0-9]+")
+FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 PLAN_SPAWN_RECEIPT_FIELDS = (
     "round", "started_at", "triggered_by", "engine", "model_requested", "prompt_sha256",
 )
@@ -402,13 +403,14 @@ def render_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, v
     notes = []
     if state.get("complexity") == "large":
         criteria = read_regular(devlyn / "criteria.generated.md", "generated criteria")
-        text = criteria.decode("utf-8").splitlines()
-        start = next((i for i, line in enumerate(text) if line.strip() == "## Assumptions"), None)
         if hashlib.sha256(criteria).hexdigest() != (state.get("source") or {}).get("criteria_sha256"):
             notes.append("- generated criteria changed after freeze; assumptions omitted")
-        elif start is not None:
-            end = next((i for i in range(start + 1, len(text)) if text[i].startswith("## ")), len(text))
-            notes += ["Assumptions for user review (recommend: /devlyn-ideate first):", *text[start + 1:end]]
+        else:
+            text = criteria.decode("utf-8").splitlines()
+            start = next((i for i, line in enumerate(text) if line.strip() == "## Assumptions"), None)
+            if start is not None:
+                end = next((i for i in range(start + 1, len(text)) if text[i].startswith("## ")), len(text))
+                notes += ["Assumptions for user review (recommend: /devlyn-ideate first):", *text[start + 1:end]]
     if current_verify and (verify.get("sub_verdicts") or {}).get("pair_judge") == "TIMEOUT":
         notes.append("- solo verdict after pair TIMEOUT")
     if profile.get("pair_default_enabled") is False:
@@ -484,11 +486,13 @@ def execution_phase_count(plan_bytes: bytes) -> int:
     """Count `### Phase <k>` headings under `## Execution phases`, outside fenced examples."""
     count, in_section, fence = 0, False, None
     for line in plan_bytes.decode("utf-8", "replace").splitlines():
-        marker = line.lstrip()[:3]
+        match = FENCE_RE.match(line)
         if fence is not None:
-            fence = None if marker == fence else fence
-        elif marker in ("```", "~~~"):
-            fence = marker
+            # A fence closes only with the same character, at least as long, and nothing after it.
+            if match and match.group(1)[0] == fence[0] and len(match.group(1)) >= len(fence) and not line[match.end():].strip():
+                fence = None
+        elif match:
+            fence = match.group(1)
         elif line.startswith("## "):
             in_section = line[3:].strip() == "Execution phases"
         elif in_section and PHASE_HEADING_RE.match(line):
@@ -1564,6 +1568,9 @@ def final_report_self_test() -> None:
         changed["source"]["criteria_sha256"] = "0" * 64
         changed_report = render_final_report(changed, follow_devlyn, follow_work, "PASS", None)
         assert "assumptions omitted" in changed_report and "narrowed to the CLI only" not in changed_report
+        (follow_devlyn / "criteria.generated.md").write_bytes(criteria_bytes.decode().encode("utf-16"))
+        assert "assumptions omitted" in render_final_report(changed, follow_devlyn, follow_work, "PASS", None)
+        (follow_devlyn / "criteria.generated.md").write_bytes(criteria_bytes)
         pass_block = json.dumps({"run_id": "rs-final-pass", "round": 0, "skips": [{"gate": "lint", "reason": "no linter"}]})
         old_block = json.dumps({"run_id": "rs-older", "round": 0, "skips": [{"gate": "tests", "reason": "old"}]})
         (matrix[0][1][1] / "mechanical.log.md").write_text(
@@ -2608,6 +2615,9 @@ def self_test() -> int:
         example = b"## Acceptance\n```md\n### Phase 1 \xe2\x80\x94 a\n### Phase 2 \xe2\x80\x94 b\n```\n### Phase 3 \xe2\x80\x94 c\n"
         assert execution_phase_count(example) == 0
         assert execution_phase_count(b"## Execution phases\n~~~\n### Phase 1\n~~~\n### Phase 2 \xe2\x80\x94 x\n## Risks\n### Phase 3\n") == 1
+        assert execution_phase_count(b"````md\n```\n## Execution phases\n### Phase 1\n### Phase 2\n````\n") == 0
+        assert execution_phase_count(b"```\n``` not a close\n## Execution phases\n### Phase 1\n### Phase 2\n```\n") == 0
+        assert execution_phase_count(b"```\n~~~\n## Execution phases\n### Phase 1\n### Phase 2\n```\n") == 0
         (devlyn / "plan.md").write_bytes(example + b"## Execution phases\n### Phase 1 \xe2\x80\x94 only\n")
         examples = {"phases": {}}
         do_spawn(examples, "implement", 0, None, "claude", None, devlyn=devlyn)

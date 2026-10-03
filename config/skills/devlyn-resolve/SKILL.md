@@ -160,7 +160,7 @@ For every Codex-routed IMPLEMENT spawn, write this round's task context to `.dev
 python3 "$DEVLYN_SHARED_DIR/phase-prompt-render.py" --adapter "$DEVLYN_SHARED_DIR/adapters/codex.md" --canonical-body "$DEVLYN_SKILL_DIR/references/phases/implement.md" --task-context .devlyn/implement.task-context --output .devlyn/implement.prompt.<round>
 ```
 
-After the span opens, invoke only through the wrapper with the active state identity; when a worker profile applies, its validated `role-config.py` model/effort options replace `-m <model_requested>`:
+After the span opens, invoke only through the wrapper with the active state identity. Add the validated `role-config.py` options before the final `-`; only an option list that names a model replaces `-m <model_requested>`:
 
 ```bash
 DEVLYN_INVOCATION_RUN_ID=<run_id> DEVLYN_INVOCATION_PHASE=implement DEVLYN_INVOCATION_ROUND=<round> DEVLYN_INVOCATION_WORKDIR="$PWD" DEVLYN_INVOCATION_PROMPT_FILE=.devlyn/implement.prompt.<round> DEVLYN_INVOCATION_SESSION_FILE=.devlyn/implement.worker-session.<round>.jsonl DEVLYN_INVOCATION_RECEIPT=.devlyn/implement.invocation.<round>.json DEVLYN_CODEX_PROMPT_FILE=.devlyn/implement.prompt.<round> bash "$CODEX_MONITORED_PATH" -C "$PWD" -s workspace-write --json -m <model_requested> -c sandbox_workspace_write.network_access=false - > .devlyn/implement.worker-session.<round>.jsonl
