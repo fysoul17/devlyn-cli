@@ -562,6 +562,11 @@ def collect_judges(devlyn: pathlib.Path) -> dict[str, Any]:
     # A record for another run, round or span is never published here.
     if recorded != identity:
         raise SystemExit("BLOCKED:verify-state-changed: dispatch record differs from the open VERIFY span")
+    if verify.get("pre_sha"):
+        seal = devlyn / "source-seal.json"
+        current_seal = hashlib.sha256(seal.read_bytes()).hexdigest() if seal.is_file() else None
+        if record.get("source_seal_sha256") != current_seal:
+            return invalid("MECHANICAL source seal changed after the dispatch decision")
     try:
         collected["dispatch"] = seal_file(devlyn / name)
     except ValueError as exc:

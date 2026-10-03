@@ -18,6 +18,8 @@ import time
 
 SCHEMA_VERSION = "1.0"
 PHASES = {"implement", "verify"}
+# Archived runs bound BUILD_GATE carriers: they are still read and rehashed, never written.
+RETIRED_PHASES = {"build_gate"}
 # `tool`: a required tool proven absent whose supply the task prohibits (resolve VERIFY MECHANICAL).
 CAPABILITIES = {"filesystem", "subprocess", "loopback", "pty", "network", "tool"}
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -86,7 +88,7 @@ def _string_list(value: object, label: str) -> list[str]:
     return list(value)
 
 
-def normalize_obligation(value: object, phase: str | None = None) -> dict:
+def normalize_obligation(value: object, phase: str | None = None, *, retired_ok: bool = False) -> dict:
     if not isinstance(value, dict):
         raise EvidenceError("process_evidence entry must be an object")
     unknown = sorted(set(value) - OBLIGATION_KEYS)
@@ -96,7 +98,7 @@ def normalize_obligation(value: object, phase: str | None = None) -> dict:
     if not isinstance(evidence_id, str) or ID_RE.fullmatch(evidence_id) is None:
         raise EvidenceError("process_evidence id must be a safe non-empty path component")
     declared_phase = value.get("phase")
-    if declared_phase not in PHASES:
+    if declared_phase not in PHASES and not (retired_ok and declared_phase in RETIRED_PHASES):
         raise EvidenceError(f"process_evidence[{evidence_id}].phase is invalid")
     if phase is not None and declared_phase != phase:
         raise EvidenceError(
@@ -457,7 +459,7 @@ def validate_manifest(
             **({"cmd": execution["command"]} if execution["command"] is not None else
                {"argv": execution["argv"]}),
             **(expectation if isinstance(expectation, dict) else {}),
-        }, phase)
+        }, phase, retired_ok=True)
         if execution != _execution(normalized) or expectation != _expectation(normalized):
             raise EvidenceError(f"{label} execution or expectation is non-canonical")
         if evidence_id in declared and normalized != declared[evidence_id]:
@@ -872,6 +874,25 @@ def self_test() -> int:
             assert "phase is invalid" in str(exc)
         else:
             raise AssertionError("a retired build_gate obligation was accepted")
+        # An archived run's BUILD_GATE carrier (written before the phase retired) still rehashes.
+        retired_state = {"run_id": "rs-retired", "phases": {"build_gate": {"round": 0}}}
+        retired_rel = manifest_relative_path(retired_state, "build_gate")
+        PHASES.add("build_gate")
+        try:
+            capture_process(work, work / retired_rel, "rs-retired", "build_gate", 0,
+                            normalize_obligation({"id": "old", "phase": "build_gate", "cmd": "true"}, "build_gate"))
+        finally:
+            PHASES.discard("build_gate")
+        retired_carrier = validate_manifest(work, retired_rel, "rs-retired", "build_gate", 0,
+                                            require_expectations=False)
+        validate_bound_carrier(work, retired_carrier)
+        try:
+            capture_process(work, work / retired_rel, "rs-retired", "build_gate", 0,
+                            {"id": "new", "phase": "build_gate", "cmd": "true"})
+        except EvidenceError as exc:
+            assert "phase is invalid" in str(exc)
+        else:
+            raise AssertionError("a new build_gate entry was written")
         denied_carrier = validate_manifest(
             work, manifest_rel, state["run_id"], "verify", 0,
             require_expectations=False,

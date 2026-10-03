@@ -672,9 +672,17 @@ for tree in config/skills .agents/skills; do
     || ! grep -Fq 'durability-enforce --round <n>`' "$skill" \
     || ! grep -Fq 'operation=<filesystem|subprocess|loopback|pty|network|tool>' "$phase" \
     || ! grep -Fq 'A required tool is a denial with operation `tool` only if a parent probe confirms' "$phase" \
-    || ! grep -Fq 'Only a gate that detection inferred on its own, and that genuinely does not apply, may SKIP' "$phase" \
+    || ! grep -Fq 'Gates the spec, base-ref configuration or scripts, or CI require are binding.' "$phase" \
+    || ! grep -Fq 'Only a gate that detection inferred on its own, and that genuinely does not apply, may SKIP; log the SKIP in `.devlyn/mechanical.log.md` and list it in the final report.' "$phase" \
+    || ! grep -Fq '3. **Browser** (only when diff touches `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `page.*`, `layout.*`, `route.*`, `*.css`, `*.html`)' "$phase" \
+    || ! grep -Fq 'Each failed check → finding, severity `HIGH`, rule `correctness.browser-flow-failed`.' "$phase" \
+    || ! grep -Fq 'Each failing test → finding, severity `HIGH`, rule `correctness.test-failure`.' "$phase" \
+    || ! grep -Fq 'Each error → one finding, severity `HIGH`, rule `correctness.type-check`.' "$phase" \
+    || ! grep -Fq 'Commands the spec, repo or CI require stay binding; only a genuinely inapplicable inferred check may SKIP, visibly.' "$skill" \
+    || ! grep -Fq 'for web-surface diffs, the browser tier' "$skill" \
+    || ! grep -Fq 'with any visibly skipped inferred gate' "$skill" \
     || ! grep -Fq '`python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --seal`' "$phase" \
-    || grep -Eq 'SURFACE_CLOSE|BUILD_GATE|PHASE 4: CLEANUP|--bypass|implement_passed_sha' "$skill" "$tree"/devlyn-resolve/references/phases/*.md \
+    || grep -Eq 'SURFACE_CLOSE|BUILD_GATE|PHASE 4: CLEANUP|--bypass|implement_passed_sha|cleanup\.post_sha' "$skill" "$tree"/devlyn-resolve/references/*.md "$tree"/devlyn-resolve/references/phases/*.md \
     || [ -e "$tree/devlyn-resolve/references/phases/build-gate.md" ] \
     || [ -e "$tree/devlyn-resolve/references/phases/cleanup.md" ] \
     || [ -e "$tree/devlyn-resolve/references/phases/surface-close.md" ]; then

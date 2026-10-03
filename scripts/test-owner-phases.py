@@ -65,6 +65,11 @@ class OwnerPhases(unittest.TestCase):
         return subprocess.run([sys.executable, str(SHARED / "spec-verify-check.py"), *args],
                               cwd=self.work, env=ENV, capture_output=True, text=True)
 
+    def mechanical(self):
+        """One MECHANICAL run in a fresh round: VERIFY spawn clears the round's seal."""
+        (self.devlyn / "source-seal.json").unlink(missing_ok=True)
+        return self.checker()
+
     def assert_owner(self, phase):
         entry = self.state()["phases"][phase]
         self.assertEqual(entry["execution_kind"], "orchestrator_context")
@@ -154,14 +159,14 @@ class OwnerPhases(unittest.TestCase):
             (lambda: (self.work / "outside-plan.txt").write_text("leak"),
              lambda: (self.work / "outside-plan.txt").unlink()),
         ):
-            self.assertEqual(self.checker().returncode, 0)
+            self.assertEqual(self.mechanical().returncode, 0)
             mutate()
             refused = self.checker("--seal")
             self.assertEqual(refused.returncode, 1, refused.stderr)
             self.assertIsNone(json.loads((self.devlyn / "source-seal.json").read_text())["seal"])
             self.assertIn("scope.unsealed-source", (self.devlyn / "verify-mechanical.findings.jsonl").read_text())
             restore()
-        self.assertEqual(self.checker().returncode, 0)
+        self.assertEqual(self.mechanical().returncode, 0)
         (self.work / "coverage.out").write_text("run artifact removed before sealing\n")
         (self.work / "coverage.out").unlink()
         sealed = self.checker("--seal")
@@ -173,10 +178,10 @@ class OwnerPhases(unittest.TestCase):
         (self.devlyn / "untracked.baseline").write_text("user-existing.txt\n")
         self.implemented()
         (self.work / "outside-plan.txt").write_text("created before MECHANICAL")
-        self.checker()
+        self.mechanical()
         self.assertEqual(self.checker("--seal").returncode, 1)
         (self.work / "outside-plan.txt").unlink()
-        self.assertEqual(self.checker().returncode, 0)
+        self.assertEqual(self.mechanical().returncode, 0)
         self.assertEqual(self.checker("--seal").returncode, 0)
         self.assertEqual((self.work / "user-existing.txt").read_text(), "preserve")
 
@@ -233,6 +238,48 @@ class OwnerPhases(unittest.TestCase):
         (self.devlyn / "final-report.md").write_text(
             "<!-- devlyn:final-report run_id=rs-owner-test -->\n# Repair budget exhausted\n")
         self.cli("final_report", "complete", "--verdict", "NEEDS_WORK",
+                 "--log-file", ".devlyn/final-report.md")
+        archived = subprocess.run([sys.executable, str(SHARED / "archive_run.py"), "--devlyn-dir", ".devlyn"],
+                                  cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertEqual(archived.returncode, 0, archived.stderr)
+        checked = subprocess.run([sys.executable, str(SHARED / "terminal-claim-check.py")],
+                                 cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
+
+    def test_required_tool_denial_blocks_without_judges_or_repair(self):
+        subprocess.run([sys.executable, str(SHARED / "state-phase-write.py"), "--devlyn-dir", ".devlyn",
+                        "--freeze-roles", "--default-engine", "claude"], cwd=self.work, env=ENV, check=True,
+                       capture_output=True)
+        self.implemented()
+        self.assertEqual(self.mechanical().returncode, 0)
+        # A required tool proven absent with prohibited supply is recorded as a `tool` denial.
+        runner = runpy.run_path(str(SHARED / "process-evidence.py"))
+        state = self.state()
+        manifest = runner["manifest_relative_path"](state, "verify")
+        obligation = runner["normalize_obligation"]({"id": "required-tool-tsc", "phase": "verify", "cmd": "tsc --noEmit"})
+        runner["record_capability_denial"](self.work, self.work / manifest, state["run_id"], "verify", 0, obligation,
+                                           "tool", b"tsc absent; the task prohibits installing it")
+        carrier = runner["validate_manifest"](self.work, manifest, state["run_id"], "verify", 0,
+                                              require_expectations=False)
+        (self.devlyn / "spec-verify.results.json").write_text(json.dumps({
+            "commands": runner["bound_carrier_summary_commands"](self.work, carrier), "process_evidence": carrier}))
+        (self.devlyn / "verify-mechanical.findings.jsonl").write_text("")
+        self.assertEqual(self.checker("--seal").returncode, 0)
+        judged = subprocess.run([sys.executable, str(SHARED / "verify-judges.py"), "--devlyn-dir", str(self.devlyn)],
+                                cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertEqual(json.loads(judged.stdout)["verdict"], "BLOCKED", judged.stdout + judged.stderr)
+        record = json.loads((self.devlyn / "verify-judge.r0.dispatch.json").read_text())
+        self.assertEqual({role: entry["reason"] for role, entry in record["roles"].items()},
+                         {"primary_judge": "mechanical_blocker", "pair_judge": "mechanical_blocker"})
+        self.assertFalse(list(self.devlyn.glob("*-judge.r0.prompt")))
+        self.cli("verify", "transition", "--next-phase", "implement", "--next-round", "1",
+                 "--next-triggered-by", "verify", "--next-engine", "claude", error="repair-edge-invalid")
+        self.assertEqual(self.state()["rounds"]["global"], 0)
+        self.cli("verify", "complete")
+        self.cli("final_report", "spawn", "--round", "0")
+        (self.devlyn / "final-report.md").write_text(
+            "<!-- devlyn:final-report run_id=rs-owner-test -->\n# BLOCKED: required tool tsc is unavailable\n")
+        self.cli("final_report", "complete", "--verdict", "BLOCKED:build-env-underprovisioned",
                  "--log-file", ".devlyn/final-report.md")
         archived = subprocess.run([sys.executable, str(SHARED / "archive_run.py"), "--devlyn-dir", ".devlyn"],
                                   cwd=self.work, env=ENV, capture_output=True, text=True)

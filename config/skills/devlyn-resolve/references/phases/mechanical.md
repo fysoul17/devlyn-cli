@@ -15,7 +15,9 @@ required operation before the command can produce product output:
 1. Preserve the exact original command, denied operation, and raw denial through
    the shared `process-evidence.py` manifest for this VERIFY run/round. Use
    its `capability_denied` classification; a matching stderr phrase is never
-   sufficient classification.
+   sufficient classification. For a gate command, load the module with
+   `runpy.run_path` and call `record_capability_denial(work, work / manifest_relative_path(state, "verify"), state["run_id"], "verify", round_, {"id": "<gate-id>", "phase": "verify", "cmd": "<exact command>"}, "<operation>", <raw denial bytes>)`,
+   then refresh the results as described below.
 2. Stop with `BLOCKED:build-env-underprovisioned`, citing
    `operation=<filesystem|subprocess|loopback|pty|network|tool>`, the command, and the
    manifest path plus evidence id.

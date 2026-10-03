@@ -78,8 +78,10 @@ or full resolve run is needed to deliver a direct task.
 For full resolve, use only its intended successfully archived normal run:
 
 ```json
-{"kind":"pipeline","task":"<task identity>","source_sha":"<cleanup.post_sha>","run_id":"<exact archived run_id>"}
+{"kind":"pipeline","task":"<task identity>","source_sha":"<sealed head>","run_id":"<exact archived run_id>"}
 ```
+
+`<sealed head>` is `seal.head` in the archived `.devlyn/runs/<run_id>/source-seal.json`, the commit VERIFY MECHANICAL checked.
 
 Terminal CLEAN alone is insufficient. Successful VERIFY and terminal precedence,
 the run-bound report/digest, clean finish summary and required evidence must

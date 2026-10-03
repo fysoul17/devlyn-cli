@@ -93,6 +93,7 @@ import json
 import hashlib
 import os
 import re
+import secrets
 import stat
 import subprocess
 import sys
@@ -1419,7 +1420,7 @@ def is_devlyn_path(path: str) -> bool:
 
 def git_status_entries(work: Path) -> tuple[list[tuple[str, str]], str | None]:
     proc = subprocess.run(
-        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none"],
         cwd=str(work),
         capture_output=True,
     )
@@ -1702,6 +1703,23 @@ def _file_sha256(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
 
 
+def _entry_sha256(path: Path) -> str:
+    """Digest one untracked entry: link text for a symlink, streamed bytes for a regular file.
+
+    Any other type (FIFO, socket, device) would block or lie, so it fails the snapshot.
+    """
+    info = path.lstat()
+    if stat.S_ISLNK(info.st_mode):
+        return hashlib.sha256(os.fsencode(os.readlink(path))).hexdigest()
+    if not stat.S_ISREG(info.st_mode):
+        raise ValueError(f"unsupported file type in the snapshot: {path}")
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def open_verify_span(state: dict) -> dict | None:
     """The VERIFY span the writer opened with a recorded `pre_sha`, else None."""
     verify = (state.get("phases") or {}).get("verify")
@@ -1715,47 +1733,76 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
     """Snapshot the source a MECHANICAL round reviews.
 
     Returns (document, digest, problems). The digest covers HEAD, tracked and
-    staged changes, every nonignored untracked file outside `.devlyn/` (bytes,
-    or link text for a symlink, plus mode), the PHASE 0 baseline and external
-    diff bytes, and the state-bound source, PLAN and probe digests. Problems
+    staged changes (submodule content included) and their status entries, every
+    nonignored untracked file outside `.devlyn/` (bytes, or link text for a
+    symlink, plus mode; in normal mode a PHASE 0 baseline entry is the user's
+    and counts by path and kind only, and a nested repository or worktree, which
+    Git reports as one directory entry, by path only), and the current bytes of every
+    verification input wherever it lives: the source spec or criteria and goal,
+    the sibling `spec.expected.json`, PLAN, risk probes with their scripts, the
+    PHASE 0 baseline and the external diff. Problems
     name what keeps a normal-mode tree from being sealable: tracked or staged
     changes, untracked files outside the baseline, a baseline that differs from
     its bound digest, or HEAD away from the VERIFY span's `pre_sha`.
     """
     head = _git_bytes(work, "rev-parse", "HEAD").decode().strip()
     pathspec = ("--", ".", ":(exclude).devlyn")
-    worktree = _git_bytes(work, "diff", "--no-ext-diff", "--no-textconv", "--binary", "HEAD", *pathspec)
-    index = _git_bytes(work, "diff", "--cached", "--no-ext-diff", "--no-textconv", "--binary", "HEAD", *pathspec)
+    diff = ("diff", "--no-ext-diff", "--no-textconv", "--binary", "--submodule=diff", "--ignore-submodules=none")
+    worktree = _git_bytes(work, *diff, "HEAD", *pathspec)
+    index = _git_bytes(work, *diff, "--cached", "HEAD", *pathspec)
     entries, error = git_status_entries(work)
     if error:
         raise ValueError(f"git status failed: {error}")
-    dirty = sorted({path for status, path in entries if status != "??" and not is_devlyn_path(path)})
+    tracked = sorted([path, status] for status, path in entries if status != "??" and not is_devlyn_path(path))
+    dirty = sorted({path for path, _status in tracked})
+    baseline, _baseline_error = load_untracked_baseline(devlyn_dir)
+    verify_only = state.get("mode") == "verify-only"
     untracked = []
     for status, path in entries:
         if status != "??" or is_devlyn_path(path):
             continue
         target = work / path
         info = target.lstat()
-        if stat.S_ISLNK(info.st_mode):
-            kind, raw = "symlink", os.fsencode(os.readlink(target))
-        else:
-            kind, raw = "file", target.read_bytes()
-        untracked.append([path, kind, oct(stat.S_IMODE(info.st_mode)), hashlib.sha256(raw).hexdigest()])
+        if path.endswith("/"):
+            # A nested repository or worktree: the user's in normal mode, reviewed content in verify-only.
+            untracked.append([path, "directory", None, _tree_sha256(target) if verify_only else None])
+            continue
+        kind = "symlink" if stat.S_ISLNK(info.st_mode) else "file"
+        if not verify_only and path in baseline:
+            untracked.append([path, kind, None, None])
+            continue
+        untracked.append([path, kind, oct(stat.S_IMODE(info.st_mode)), _entry_sha256(target)])
     untracked.sort()
     source = state.get("source") if isinstance(state.get("source"), dict) else {}
-    plan = (state.get("phases") or {}).get("plan")
+
+    def input_sha256(path_text: object) -> str | None:
+        if not isinstance(path_text, str) or not path_text:
+            return None
+        path = Path(path_text)
+        return _file_sha256(path if path.is_absolute() else work / path)
+
+    spec_path = source.get("spec_path")
+    probes = None
+    if (devlyn_dir / "risk-probes.jsonl").is_file():
+        probes_digest, probes_error = risk_probes_digest(devlyn_dir)
+        probes = probes_digest or f"invalid: {probes_error}"
     baseline_sha = _file_sha256(devlyn_dir / "untracked.baseline")
     document = {
         "head": head,
         "worktree_diff_sha256": hashlib.sha256(worktree).hexdigest(),
         "index_diff_sha256": hashlib.sha256(index).hexdigest(),
+        "status": tracked,
         "untracked": untracked,
         "inputs": {
+            "spec": input_sha256(spec_path),
+            "spec_expected": input_sha256(str(Path(spec_path).with_name("spec.expected.json"))) if isinstance(spec_path, str) and spec_path else None,
+            "criteria": input_sha256(source.get("criteria_path")),
+            "goal": input_sha256(source.get("goal_path")),
+            "plan": _file_sha256(devlyn_dir / "plan.md"),
+            "staged_commands": _file_sha256(devlyn_dir / "spec-verify.json"),
+            "risk_probes": probes,
             "untracked_baseline": baseline_sha,
             "external_diff": _file_sha256(devlyn_dir / "external-diff.patch"),
-            "risk_probes_digest": state.get("risk_probes_digest"),
-            "plan_output_sha256": plan.get("output_sha256") if isinstance(plan, dict) else None,
-            "source": {key: source.get(key) for key in ("spec_sha256", "criteria_sha256", "goal_sha256")},
         },
     }
     digest = hashlib.sha256(
@@ -1764,7 +1811,6 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
     problems = []
     if dirty or worktree or index:
         problems.append("tracked or staged changes: " + ", ".join(dirty or ["(index)"]))
-    baseline, _baseline_error = load_untracked_baseline(devlyn_dir)
     residue = sorted({row[0] for row in untracked} - baseline)
     if residue:
         problems.append("untracked files outside the PHASE 0 baseline: " + ", ".join(residue))
@@ -1776,23 +1822,101 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
     return document, digest, problems
 
 
+def _tree_sha256(root: Path) -> str:
+    """Digest every entry under a directory (paths, modes, bytes or link text), skipping `.git`.
+
+    Symlinks, including ones to directories, count by link text and are never followed;
+    an unreadable subtree fails the snapshot instead of silently dropping out of it.
+    """
+    def fail(error: OSError) -> None:
+        raise error
+
+    digest = hashlib.sha256()
+    for current, dirs, files in os.walk(root, followlinks=False, onerror=fail):
+        linked = [name for name in dirs if (Path(current) / name).is_symlink()]
+        dirs[:] = sorted(name for name in dirs if name != ".git" and name not in linked)
+        for name in sorted(files + linked):
+            path = Path(current) / name
+            digest.update(os.fsencode(str(path.relative_to(root))) + b"\0"
+                          + oct(path.lstat().st_mode).encode() + b"\0" + _entry_sha256(path).encode())
+    return digest.hexdigest()
+
+
+def snapshot_changes(before: dict, after: dict) -> list[str]:
+    """Name what differs between two snapshots so a refusal points at the paths."""
+    changes = [key.removesuffix("_sha256").replace("_", " ")
+               for key in ("head", "worktree_diff_sha256", "index_diff_sha256") if before.get(key) != after.get(key)]
+    for name in ("status", "untracked"):
+        old = {row[0]: row for row in before.get(name) or []}
+        new = {row[0]: row for row in after.get(name) or []}
+        changes += [f"{name} {path}" for path in sorted(set(old) | set(new)) if old.get(path) != new.get(path)]
+    old_inputs, new_inputs = before.get("inputs") or {}, after.get("inputs") or {}
+    changes += [f"input {key}" for key in sorted(set(old_inputs) | set(new_inputs))
+                if old_inputs.get(key) != new_inputs.get(key)]
+    return changes
+
+
 def _seal_identity(state: dict) -> tuple[str | None, int | None]:
     verify = open_verify_span(state)
     return state.get("run_id"), verify.get("round") if verify else None
 
 
-def write_open_seal(work: Path, devlyn_dir: Path, state: dict) -> None:
-    """Record the pre-execution snapshot for the open VERIFY round (no-op outside one)."""
+_OPENED_BY: str | None = None
+
+
+def write_open_seal(work: Path, devlyn_dir: Path, state: dict) -> str | None:
+    """Record the pre-execution snapshot for the open VERIFY round (no-op outside one).
+
+    A round has exactly one snapshot: VERIFY spawn clears the file, and a second
+    MECHANICAL run in the same round is refused rather than replacing evidence.
+    """
     run_id, round_ = _seal_identity(state)
     if round_ is None:
-        return
-    record: dict = {"schema": 1, "run_id": run_id, "round": round_, "seal": None}
+        return None
+    global _OPENED_BY
+    seal_path = devlyn_dir / SEAL_NAME
+    try:
+        handle = os.open(seal_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    except FileExistsError:
+        return (f"{SEAL_NAME} already exists for this VERIFY round; MECHANICAL runs once per round — "
+                "open a new VERIFY round instead of rerunning it")
+    os.close(handle)
+    _OPENED_BY = secrets.token_hex(16)
+    _write_snapshot_record(work, devlyn_dir, state, run_id, round_)
+    return None
+
+
+def _write_snapshot_record(work: Path, devlyn_dir: Path, state: dict, run_id: str | None, round_: int) -> None:
+    record: dict = {"schema": 1, "run_id": run_id, "round": round_, "opened_by": _OPENED_BY, "seal": None}
     try:
         document, digest, problems = source_snapshot(work, devlyn_dir, state)
         record.update(snapshot=document, digest=digest, problems=problems)
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, MemoryError) as exc:
         record.update(snapshot=None, digest=None, problems=[f"snapshot failed: {exc}"])
-    (devlyn_dir / SEAL_NAME).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    seal_path = devlyn_dir / SEAL_NAME
+    temporary = seal_path.with_name(SEAL_NAME + f".{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(temporary, seal_path)
+
+
+def refresh_open_seal(work: Path, devlyn_dir: Path, state: dict) -> str | None:
+    """Retake this process's own snapshot after staging, before the first command runs.
+
+    Staging rewrites `.devlyn/spec-verify.json` (an authoritative carrier in benchmark
+    mode), so the round's snapshot is final only once staging is done; no command has
+    executed yet.
+    """
+    run_id, round_ = _seal_identity(state)
+    if round_ is None or _OPENED_BY is None:
+        return None
+    try:
+        record = loads_strict_json((devlyn_dir / SEAL_NAME).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return f"{SEAL_NAME} vanished before the first command: {exc}"
+    if not isinstance(record, dict) or record.get("opened_by") != _OPENED_BY or record.get("seal") is not None:
+        return f"{SEAL_NAME} is no longer this MECHANICAL run's open snapshot"
+    _write_snapshot_record(work, devlyn_dir, state, run_id, round_)
+    return None
 
 
 def run_seal(work: Path, devlyn_dir: Path) -> int:
@@ -1821,11 +1945,12 @@ def run_seal(work: Path, devlyn_dir: Path) -> int:
         problems = list(record.get("problems") or ["snapshot missing"])
     else:
         try:
-            _document, digest, _now = source_snapshot(work, devlyn_dir, state)
-        except (OSError, ValueError) as exc:
+            document, digest, _now = source_snapshot(work, devlyn_dir, state)
+        except (OSError, ValueError, MemoryError) as exc:
             digest, problems = None, problems + [f"snapshot failed: {exc}"]
         if digest is not None and digest != record["digest"]:
-            problems.append("source changed after the MECHANICAL snapshot")
+            changed = snapshot_changes(record.get("snapshot") or {}, document)
+            problems.append("source changed after the MECHANICAL snapshot: " + ", ".join(changed or ["(digest)"]))
     if problems:
         record["seal"] = None
         seal_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -1920,10 +2045,12 @@ def run_check_expected_mode(expected_path: Path) -> int:
 
 def seal_self_test(script_path: str) -> int:
     """`--seal` seals only the source MECHANICAL ran on, and only a clean one in normal mode."""
+    import shutil
+
     with tempfile.TemporaryDirectory() as tmp:
-        root = Path(tmp)
+        root = Path(tmp) / "work"
         devlyn = root / ".devlyn"
-        devlyn.mkdir()
+        devlyn.mkdir(parents=True)
 
         def git(*args: str) -> str:
             return subprocess.run(
@@ -1933,18 +2060,27 @@ def seal_self_test(script_path: str) -> int:
 
         (root / ".gitignore").write_text(".devlyn/\n", encoding="utf-8")
         (root / "a.txt").write_text("base\n", encoding="utf-8")
-        spec = root / "spec.md"
-        spec.write_text(
-            "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n```json\n"
-            '{"verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}]}\n```\n',
-            encoding="utf-8",
-        )
+        # The spec and its sibling expected file live outside the worktree: Git cannot see them,
+        # so only the snapshot's own input hashes can.
+        outside = Path(tempfile.mkdtemp(dir=tmp))
+        spec = outside / "spec.md"
+        spec.write_text("# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- prints ok\n", encoding="utf-8")
+        expected = outside / "spec.expected.json"
+        expected.write_text(json.dumps({"verification_commands": [
+            {"cmd": "printf ok && printf artifact > coverage.out", "stdout_contains": ["ok"]}]}), encoding="utf-8")
         git("init", "-q")
         git("add", "-A")
         git("commit", "-q", "-m", "base")
         base = git("rev-parse", "HEAD")
         (root / "keep.local").write_text("user file\n", encoding="utf-8")
         os.symlink("keep.local", root / "keep.link")
+        # A user's nested repository is one `?? vendor/lib/` directory entry to the outer Git.
+        nested = root / "vendor" / "lib"
+        nested.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q"], cwd=nested, check=True)
+        (nested / "lib.txt").write_text("vendored\n", encoding="utf-8")
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "add", "-A"], cwd=nested, check=True)
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "v"], cwd=nested, check=True)
         (devlyn / "plan.md").write_text(
             "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## Files\n\n```json\n"
             '{"authorized_surface": ["a.txt"]}\n```\n', encoding="utf-8",
@@ -1963,12 +2099,18 @@ def seal_self_test(script_path: str) -> int:
                                       "completed_at": None, "pre_sha": pre_sha or git("rev-parse", "HEAD")}},
             }), encoding="utf-8")
 
-        def mechanical() -> subprocess.CompletedProcess:
-            return subprocess.run([sys.executable, script_path], cwd=root,
-                                  capture_output=True, text=True, encoding="utf-8")
+        def mechanical(clean: bool = True) -> subprocess.CompletedProcess:
+            """One MECHANICAL round: fresh round (VERIFY spawn clears the seal), run, owner cleanup."""
+            (devlyn / SEAL_NAME).unlink(missing_ok=True)
+            shutil.rmtree(devlyn / "process-evidence", ignore_errors=True)
+            run = subprocess.run([sys.executable, script_path], cwd=root, timeout=120,
+                                 capture_output=True, text=True, encoding="utf-8")
+            if clean:
+                (root / "coverage.out").unlink(missing_ok=True)
+            return run
 
         def seal() -> tuple[int, dict, str]:
-            proc = subprocess.run([sys.executable, script_path, "--seal"], cwd=root,
+            proc = subprocess.run([sys.executable, script_path, "--seal"], cwd=root, timeout=120,
                                   capture_output=True, text=True, encoding="utf-8")
             record = loads_strict_json((devlyn / SEAL_NAME).read_text(encoding="utf-8"))
             findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
@@ -1982,13 +2124,40 @@ def seal_self_test(script_path: str) -> int:
             return True
 
         state()
-        if mechanical().returncode != 0:
-            print("seal fixture: clean MECHANICAL run failed", file=sys.stderr)
+        first = mechanical(clean=False)
+        if first.returncode != 0 or not (root / "coverage.out").is_file():
+            print(f"seal fixture: clean MECHANICAL run failed: {first.stderr}", file=sys.stderr)
             return 1
+        # Only the process that opened the round may retake its snapshot.
+        global _OPENED_BY
+        saved_owner = _OPENED_BY
+        _OPENED_BY = "another-process"
+        foreign = refresh_open_seal(root, devlyn, read_state(devlyn))
+        _OPENED_BY = saved_owner
+        if foreign is None or "no longer this MECHANICAL run's open snapshot" not in foreign:
+            print(f"a foreign process retook the round's snapshot: {foreign}", file=sys.stderr)
+            return 1
+        opened = (devlyn / SEAL_NAME).read_bytes()
+        rerun = subprocess.run([sys.executable, script_path], cwd=root, capture_output=True, text=True, encoding="utf-8")
+        if rerun.returncode != 2 or "runs once per round" not in rerun.stderr or (devlyn / SEAL_NAME).read_bytes() != opened:
+            print(f"a second MECHANICAL run replaced the round's snapshot: {rerun.stderr}", file=sys.stderr)
+            return 1
+        # The literal's artifact appeared after the snapshot; scope never saw it, cleanup removes it.
+        if not refused("a run artifact left in place", "source changed after the MECHANICAL snapshot"):
+            return 1
+        (root / "coverage.out").unlink()
         rc, record, findings = seal()
-        if rc != 0 or record["seal"] != {"digest": record["digest"], "head": base} or record["problems"] or findings.strip():
-            print(f"clean source was not sealed: rc={rc} {record} {findings!r}", file=sys.stderr)
+        if (rc != 0 or record["seal"] != {"digest": record["digest"], "head": base} or record["problems"]
+                or "scope." in findings.replace("scope.unsealed-source", "")):
+            print(f"clean source was not sealed after cleanup: rc={rc} {record} {findings!r}", file=sys.stderr)
             return 1
+        for label, target in (("the external expected file", expected), ("the external spec", spec),
+                              ("PLAN inside .devlyn", devlyn / "plan.md")):
+            original = target.read_bytes()
+            target.write_bytes(original + b"\n")
+            if not refused(f"a change to {label} after sealing", "source changed after the MECHANICAL snapshot"):
+                return 1
+            target.write_bytes(original)
 
         # Run-owned artifacts made after the snapshot and removed before --seal leave it sealable.
         mechanical()
@@ -2016,11 +2185,30 @@ def seal_self_test(script_path: str) -> int:
         if seal()[0] != 0:
             print("a retargeted baseline symlink before MECHANICAL blocked an unchanged seal", file=sys.stderr)
             return 1
+        # In normal mode baseline entries are the user's: a check that rewrites one is no source change.
         mechanical()
         os.unlink(root / "keep.link")
         os.symlink("keep.local", root / "keep.link")
-        if not refused("a symlink retargeted after the snapshot", "source changed after the MECHANICAL snapshot"):
+        (root / "keep.local").write_text("rewritten by a tool\n", encoding="utf-8")
+        if seal()[0] != 0:
+            print("a rewritten baseline entry blocked a normal-mode seal", file=sys.stderr)
             return 1
+        (root / "keep.local").write_text("user file\n", encoding="utf-8")
+        mechanical()
+        git("commit", "-q", "--allow-empty", "-m", "committed after the snapshot")
+        if not refused("a commit after the snapshot", "source changed after the MECHANICAL snapshot: head"):
+            return 1
+        git("reset", "-q", "--hard", base)
+        mechanical()
+        os.chmod(root / "a.txt", 0o755)
+        if not refused("a mode change after the snapshot", "worktree diff"):
+            return 1
+        os.chmod(root / "a.txt", 0o644)
+        mechanical()
+        (devlyn / "risk-probes.jsonl").write_text('{"id": "P1"}\n', encoding="utf-8")
+        if not refused("probes added after the snapshot", "input risk_probes"):
+            return 1
+        (devlyn / "risk-probes.jsonl").unlink()
 
         (root / "residue.txt").write_text("unclean before MECHANICAL\n", encoding="utf-8")
         mechanical()
@@ -2062,6 +2250,83 @@ def seal_self_test(script_path: str) -> int:
         if not refused("a verify-only change after the snapshot", "source changed after the MECHANICAL snapshot"):
             return 1
         git("checkout", "--", "a.txt")
+        mechanical()
+        (root / "keep.local").write_text("changed during review\n", encoding="utf-8")
+        if not refused("a verify-only untracked change after the snapshot", "untracked keep.local"):
+            return 1
+        (root / "keep.local").write_text("user file\n", encoding="utf-8")
+        mechanical()
+        (nested / "lib.txt").write_text("changed inside the nested repository\n", encoding="utf-8")
+        if not refused("a verify-only change inside a nested repository", "untracked vendor/lib/"):
+            return 1
+        (nested / "lib.txt").write_text("vendored\n", encoding="utf-8")
+        (nested / "releases" / "a").mkdir(parents=True)
+        (nested / "releases" / "b").mkdir()
+        os.symlink("releases/a", nested / "current")
+        mechanical()
+        os.unlink(nested / "current")
+        os.symlink("releases/b", nested / "current")
+        if not refused("a directory symlink retargeted inside a nested repository", "untracked vendor/lib/"):
+            return 1
+        if os.name != "nt":
+            os.mkfifo(nested / "pipe")
+            mechanical()
+            if not refused("a FIFO inside a reviewed nested repository", "unsupported file type"):
+                return 1
+            os.unlink(nested / "pipe")
+            if os.geteuid() != 0:
+                hidden = nested / "hidden"
+                hidden.mkdir()
+                (hidden / "secret.txt").write_text("known path\n", encoding="utf-8")
+                hidden.chmod(0o311)
+                try:
+                    mechanical()
+                    if not refused("an unlistable subtree inside a reviewed nested repository", "snapshot failed"):
+                        return 1
+                finally:
+                    hidden.chmod(0o755)
+                shutil.rmtree(hidden)
+
+        # Submodule content belongs to the tracked tree: residue inside it after the snapshot refuses.
+        sub_source = Path(tempfile.mkdtemp(dir=tmp))
+        subprocess.run(["git", "init", "-q"], cwd=sub_source, check=True)
+        (sub_source / "s.txt").write_text("sub\n", encoding="utf-8")
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "add", "-A"], cwd=sub_source, check=True)
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "s"], cwd=sub_source, check=True)
+        git("-c", "protocol.file.allow=always", "submodule", "add", "-q", str(sub_source), "sub")
+        git("commit", "-qm", "add submodule")
+        state()
+        mechanical()
+        sub_rc, sub_record, _sub_findings = seal()
+        if sub_rc != 0:
+            print(f"a clean tree with a submodule was not sealed: {sub_record}", file=sys.stderr)
+            return 1
+        mechanical()
+        (root / "sub" / "residue.out").write_text("left inside the submodule\n", encoding="utf-8")
+        if not refused("residue inside a submodule after the snapshot", "status sub"):
+            return 1
+        (root / "sub" / "residue.out").unlink()
+        git("config", "submodule.sub.ignore", "all")
+        mechanical()
+        (root / "sub" / "s.txt").write_text("edited under an ignore setting\n", encoding="utf-8")
+        if not refused("a submodule edit hidden by submodule.<name>.ignore", "status sub"):
+            return 1
+        subprocess.run(["git", "checkout", "--", "s.txt"], cwd=root / "sub", check=True)
+        # A benchmark's pre-staged carrier is the executed contract; changing it afterwards refuses.
+        (devlyn / SEAL_NAME).unlink(missing_ok=True)
+        shutil.rmtree(devlyn / "process-evidence", ignore_errors=True)
+        (devlyn / "spec-verify.json").write_text(json.dumps({"verification_commands": [{"cmd": "printf ok"}]}),
+                                                 encoding="utf-8")
+        bench = subprocess.run([sys.executable, script_path], cwd=root, capture_output=True, text=True,
+                               encoding="utf-8", env={**os.environ, "BENCH_WORKDIR": str(root)})
+        bench_record = loads_strict_json((devlyn / SEAL_NAME).read_text(encoding="utf-8"))
+        if bench_record["snapshot"]["inputs"]["staged_commands"] is None:
+            print(f"benchmark MECHANICAL snapshot omitted its carrier: {bench.stderr}", file=sys.stderr)
+            return 1
+        (devlyn / "spec-verify.json").write_text(json.dumps({"verification_commands": [{"cmd": "exit 7"}]}),
+                                                 encoding="utf-8")
+        if not refused("a benchmark carrier changed after execution", "input staged_commands"):
+            return 1
 
         (devlyn / SEAL_NAME).unlink()
         (devlyn / "pipeline.state.json").write_text(json.dumps({"run_id": "rs-seal", "phases": {}}), encoding="utf-8")
@@ -4857,7 +5122,19 @@ def main() -> int:
     src_type, source_md = read_source(work, devlyn_dir)
     state = read_state(devlyn_dir)
     if not validate_risk_probes_only:
-        write_open_seal(work, devlyn_dir, state)
+        seal_error = write_open_seal(work, devlyn_dir, state)
+        if seal_error:
+            print(f"[spec-verify] {seal_error}", file=sys.stderr)
+            return 2
+        # Scope is judged on the snapshot tree, before any command can add artifacts;
+        # `--seal` later requires the final tree to equal that snapshot.
+        base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
+        scope_findings = (
+            authorized_surface_findings(work, devlyn_dir, state, 1)[0]
+            if state.get("mode") != "verify-only" and base_sha else []
+        )
+    else:
+        scope_findings = []
 
     external_diff = devlyn_dir / "external-diff.patch"
     if external_diff.is_file() and state.get("mode") != "verify-only":
@@ -4931,6 +5208,10 @@ def main() -> int:
                 # run's gate.
                 if spec_path.exists():
                     spec_path.unlink()
+                    seal_error = refresh_open_seal(work, devlyn_dir, state)
+                    if seal_error:
+                        print(f"[spec-verify] {seal_error}", file=sys.stderr)
+                        return 2
                 return 0
             # Benchmark mode with no source block AND no pre-staged file
             # (rare — fixture mis-config) falls through to the no-pre-staged
@@ -4943,6 +5224,10 @@ def main() -> int:
     # file is benchmark mode (run-fixture.sh staged it).
     if source_md is None and not bench_mode and spec_path.exists():
         spec_path.unlink()
+        seal_error = refresh_open_seal(work, devlyn_dir, state)
+        if seal_error:
+            print(f"[spec-verify] {seal_error}", file=sys.stderr)
+            return 2
         return 0
 
     commands: list[dict] = []
@@ -4991,6 +5276,10 @@ def main() -> int:
         commands.extend(risk_probes)
 
     devlyn_dir.mkdir(parents=True, exist_ok=True)
+    seal_error = refresh_open_seal(work, devlyn_dir, state)
+    if seal_error:
+        print(f"[spec-verify] {seal_error}", file=sys.stderr)
+        return 2
     results_path = devlyn_dir / "spec-verify.results.json"
     findings_path = devlyn_dir / FINDINGS_NAME
 
@@ -5208,12 +5497,9 @@ def main() -> int:
     )
     findings.extend(expected_findings)
 
-    base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
-    if state.get("mode") != "verify-only" and base_sha:
-        surface_findings, finding_seq = authorized_surface_findings(
-            work, devlyn_dir, state, finding_seq,
-        )
-        findings.extend(surface_findings)
+    for finding in scope_findings:
+        findings.append({**finding, "id": f"{FINDING_PREFIX}-{finding_seq:04d}"})
+        finding_seq += 1
 
     evidence_carrier = None
     if evidence_error is None and obligations:

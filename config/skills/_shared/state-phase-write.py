@@ -25,7 +25,6 @@ from __future__ import annotations
 import argparse
 import copy
 import datetime
-import difflib
 import hashlib
 import importlib.util
 import json
