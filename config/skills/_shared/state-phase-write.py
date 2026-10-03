@@ -9,8 +9,8 @@ Usage:
     python3 state-phase-write.py --devlyn-dir .devlyn --phase implement complete \
         --verdict PASS [--findings-file <path>] [--log-file <path>] \
         [--engine claude] [--model <requested-id>] [--engine-session-log <path>]
-    python3 state-phase-write.py --devlyn-dir .devlyn --phase plan transition \
-        --verdict PASS --next-phase implement --next-round 0 --next-engine claude
+    python3 state-phase-write.py --devlyn-dir .devlyn --phase implement transition \
+        --verdict PASS --next-phase verify --next-round 0 --next-engine claude
 
 references/state-schema.md#write-protocol is the contract this implements.
 A prior hand-edited fix-loop respawn left `started_at` at its original round's
@@ -42,11 +42,12 @@ FINAL_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED"}
 VALID_TRIGGERS = {"verify"}
 SPAWN_TRIGGERS = VALID_TRIGGERS | {"plan"}
 PHASE_NAMES = {"plan", "probe_derive", "implement", "verify", "final_report"}
+# Worker phases (PROBE_DERIVE, IMPLEMENT) open only by complete → render → standalone spawn.
 LEGAL_TRANSITIONS = {
-    "plan": {"probe_derive", "implement", "final_report"},
-    "probe_derive": {"implement", "final_report"},
-    "implement": {"implement", "verify", "final_report"},
-    "verify": {"implement", "final_report"},
+    "plan": {"final_report"},
+    "probe_derive": {"final_report"},
+    "implement": {"verify", "final_report"},
+    "verify": {"final_report"},
     "final_report": set(),
 }
 WORKER_SESSION_ARTIFACT_PHASES = {"plan": "plan", "implement": "implement"}
@@ -401,7 +402,8 @@ def render_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, v
         note = {"plan": "owner context",
                 "verify": "MECHANICAL: orchestrator commands, no separate model"}.get(name, entry.get("engine"))
         if name == "implement" and valid_phase_gate_progress(entry.get("exec")):
-            note = f"{note}; phase {entry['exec']['current']}/{entry['exec']['total']}"
+            passed = sum(status == "PASS" for status in entry["exec"]["statuses"])
+            note = f"{note}; {passed}/{entry['exec']['total']} phases passed"
         if name == "verify" and skips:
             note += "; skipped: " + ", ".join(f"{s['gate']} ({s['reason']})" for s in skips)
         count = len(findings) if name == "verify" and isinstance(merged, dict) else None
@@ -452,8 +454,6 @@ def render_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, v
         engine = verdict.removeprefix("BLOCKED:").removesuffix("-unavailable")
         if (pathlib.Path(__file__).with_name("adapters") / f"{engine}.md").is_file():
             notes.append(f"- setup: install and authenticate {engine}, then rerun")
-    if (state.get("verify") or {}).get("coverage_failed"):
-        notes.append(f"- coverage_failed: {state['verify']['coverage_failed']}")
     if detail:
         notes.append(f"- detail: {detail}")
     if notes:
@@ -892,6 +892,14 @@ def freeze_classification(state: dict, work: pathlib.Path, complexity: str | Non
     if criteria.is_symlink() or not criteria.is_file():
         raise ValueError("BLOCKED:invalid-classification: free-form freeze needs the regular file "
                          ".devlyn/criteria.generated.md")
+    # A malformed or missing verification carrier is an input error now, not a product finding in VERIFY.
+    checker = pathlib.Path(__file__).with_name("spec-verify-check.py")
+    carrier = subprocess.run([sys.executable, str(checker), "--check", str(criteria)],
+                             capture_output=True, text=True, encoding="utf-8")
+    found = runpy.run_path(str(checker))["extract_verification_block"](criteria.read_text(encoding="utf-8"))[1]
+    if carrier.returncode != 0 or found is None:
+        raise ValueError("BLOCKED:invalid-classification: generated criteria need a valid verification json block: "
+                         + (carrier.stderr.strip() or "no fenced json block under <!-- devlyn:verification -->"))
     return hashlib.sha256(criteria.read_bytes()).hexdigest()
 
 
@@ -1678,6 +1686,8 @@ def final_report_self_test() -> None:
             if name == "judge-unavailable":
                 assert "setup: install and authenticate codex" in report, report
                 assert "- pair: blocked: BLOCKED:codex-unavailable" in report, report
+            if name == "gate-exhausted":
+                assert "0/2 phases passed" in report, report
             if name == "findings-unreadable":
                 assert "verify-merged.findings.jsonl unreadable" in report, report
             if name == "plan-tampered":
@@ -1789,13 +1799,16 @@ def repair_admission_self_test() -> None:
         transition_state["phases"]["implement"]["exec"] = {
             "total": 2, "current": 1, "statuses": [None, None],
         }
-        transitioned = do_transition(
-            transition_state, "implement", "implement", "FAIL", None, None,
-            None, None, None, pathlib.Path(tmp), 1, None, None, None,
-        )
+        for worker in ("implement", "probe_derive"):
+            try:
+                do_transition(transition_state, "implement" if worker == "implement" else "plan", worker, "FAIL",
+                              None, None, None, None, None, pathlib.Path(tmp), 1, None, None, None)
+            except SystemExit as exc:
+                assert "illegal phase transition" in str(exc), exc
+            else:
+                raise AssertionError(f"a transition opened worker phase {worker}")
         assert transition_state["rounds"]["global"] == 0
-        assert transitioned["rounds"]["global"] == 1
-        assert transitioned["phases"]["implement"]["exec"]["statuses"][0] == "FAIL"
+        assert transition_state["phases"]["implement"]["completed_at"] is None
     print("PASS repair admission: verify and phase-gate origins, trigger/counter/round refusal, phased invocation and last repair")
 
 
@@ -1861,18 +1874,24 @@ def freeze_classification_self_test() -> None:
         (work / "elsewhere.md").write_text("# C\n", encoding="utf-8")
         criteria.symlink_to(work / "elsewhere.md")
         refused(state, work, "regular file", complexity="medium", available=both)
-        criteria.unlink(); criteria.write_bytes(b"# Criteria\n")
+        criteria.unlink()
+        criteria.write_bytes(b"# Criteria\n")
+        refused(state, work, "valid verification json block", complexity="medium", available=both)
+        criteria.write_bytes(b"# Criteria\n\n<!-- devlyn:verification -->\n## Verification\n\n- ok\n")
+        refused(state, work, "valid verification json block", complexity="medium", available=both)
+        valid = b'# Criteria\n\n<!-- devlyn:verification -->\n## Verification\n\n- ok\n\n```json\n{"verification_commands": [{"cmd": "true"}]}\n```\n'
+        criteria.write_bytes(valid)
         refused(state, work, "invalid high-risk reason", complexity="medium", high_risk_reasons=["auth", "auth"])
         refused(state, work, "invalid high-risk reason", complexity="medium",
                 high_risk_reasons=["auto-risk-probes skipped: codex-unavailable"])
         frozen = freeze_roles(state, work, "claude", complexity="medium", high_risk_reasons=["auth"], available=both)
-        assert state["complexity"] == "medium" and state["source"]["criteria_sha256"] == hashlib.sha256(b"# Criteria\n").hexdigest()
+        assert state["complexity"] == "medium" and state["source"]["criteria_sha256"] == hashlib.sha256(valid).hexdigest()
         assert state["risk_profile"] == {"high_risk": True, "reasons": ["auth"], "risk_probes_enabled": True,
                                          "risk_probes_explicit": False, "pair_default_enabled": True}, state["risk_profile"]
         assert freeze_roles(state, work, "claude", complexity="medium", high_risk_reasons=["auth"], available=both) == frozen
         refused(state, work, "differs from the frozen classification", complexity="large", high_risk_reasons=["auth"])
         refused(state, work, "differs from the frozen classification", complexity="medium", high_risk_reasons=[])
-        criteria.write_bytes(b"# Changed\n")
+        criteria.write_bytes(valid.replace(b"- ok", b"- changed"))
         refused(state, work, "differs from the frozen classification", complexity="medium", high_risk_reasons=["auth"])
 
         # The skip reason belongs only to an automatic high-risk run whose OTHER engine is absent.
@@ -2105,10 +2124,7 @@ def self_test() -> int:
         assert set(plan1["history"][0]) == set(PLAN_RECEIPT_FIELDS)
         assert plan1["history"][0]["prompt_sha256"] == digest0
         assert plan1["prompt_sha256"] == digest1
-        result = plan_cli(
-            "transition", "--verdict", "PASS", "--next-phase", "implement",
-            "--next-round", "0", "--next-engine", "claude",
-        )
+        result = plan_cli("complete", "--verdict", "PASS")
         assert result.returncode == 0, result.stderr
         for supplied_round in (0, 1, 2):
             assert_plan_rejected_unchanged(
@@ -2132,10 +2148,7 @@ def self_test() -> int:
         write_state(state_path, {"version": "3.0", "phases": {}})
         result = plan_cli(*required_spawn)
         assert result.returncode == 0, result.stderr
-        result = plan_cli(
-            "transition", "--verdict", "PASS", "--next-phase", "implement",
-            "--next-round", "0", "--next-engine", "claude",
-        )
+        result = plan_cli("complete", "--verdict", "PASS")
         assert result.returncode == 0, result.stderr
         sealed_plan_state = read_state(state_path)
         assert sealed_plan_state["phases"]["plan"]["output_sha256"] == hashlib.sha256(
@@ -2427,7 +2440,7 @@ def self_test() -> int:
 
         try:
             do_transition(
-                transition_state, "plan", "implement", "PASS", None, None, None, None, None, devlyn, 0, None, "claude", None, between=fail_between_halves,
+                transition_state, "plan", "final_report", "PASS", None, None, None, None, None, devlyn, 0, None, None, None, between=fail_between_halves,
             )
         except RuntimeError as exc:
             assert str(exc) == "forced transition failure"
@@ -2447,8 +2460,8 @@ def self_test() -> int:
         attestation_before = state_path.read_bytes()
         try:
             do_transition(
-                attestation_state, "plan", "implement", "PASS", None, None, None, None, str(attestation_log), devlyn,
-                0, None, "claude", None,
+                attestation_state, "plan", "final_report", "PASS", None, None, None, None, str(attestation_log), devlyn,
+                0, None, None, None,
             )
         except SystemExit as exc:
             assert "BLOCKED:model-attestation-mismatch" in str(exc)
@@ -2469,13 +2482,13 @@ def self_test() -> int:
         print("PASS self-test transition legal-edge guard: illegal edge left state unchanged")
 
         transitioned = do_transition(
-            transition_state, "plan", "implement", "PASS", None, None, None, None, None, devlyn, 0, None, "claude", None,
+            transition_state, "plan", "final_report", "PASS", None, None, None, None, None, devlyn, 0, None, None, None,
         )
         write_state(state_path, transitioned)
         assert transitioned["phases"]["plan"]["verdict"] == "PASS"
         assert transitioned["phases"]["plan"]["completed_at"] is not None
-        assert transitioned["phases"]["implement"]["started_at"] is not None
-        assert transitioned["phases"]["implement"]["verdict"] is None
+        assert transitioned["phases"]["final_report"]["started_at"] is not None
+        assert transitioned["phases"]["final_report"]["verdict"] is None
         print("PASS self-test transition happy path: complete + spawn committed together")
 
         cli_state = {
@@ -2496,8 +2509,8 @@ def self_test() -> int:
             [
                 sys.executable, str(pathlib.Path(__file__).resolve()),
                 "--devlyn-dir", str(devlyn), "--phase", "plan", "transition",
-                "--verdict", "PASS", "--next-phase", "implement",
-                "--next-round", "0", "--next-engine", "claude",
+                "--verdict", "PASS", "--next-phase", "final_report",
+                "--next-round", "0",
             ],
             capture_output=True, text=True,
             encoding="utf-8",
@@ -2506,12 +2519,12 @@ def self_test() -> int:
         cli_receipt = loads_strict_json(cli_transition.stdout)
         assert cli_receipt["completed_phase"] == "plan"
         assert cli_receipt["completed_verdict"] == "PASS"
-        assert cli_receipt["next_phase"] == "implement"
+        assert cli_receipt["next_phase"] == "final_report"
         assert cli_receipt["state_sha256"] == hashlib.sha256(state_path.read_bytes()).hexdigest()
         print("PASS self-test transition CLI: machine-only JSON receipt")
 
         open_next = copy.deepcopy(transition_state)
-        open_next["phases"]["implement"] = {
+        open_next["phases"]["final_report"] = {
             "started_at": "2026-01-01T00:00:01.000Z",
             "completed_at": None,
             "duration_ms": None,
@@ -2523,7 +2536,7 @@ def self_test() -> int:
         open_next_before = state_path.read_bytes()
         try:
             do_transition(
-                open_next, "plan", "implement", "PASS", None, None, None, None, None, devlyn, 1, None, "claude", None,
+                open_next, "plan", "final_report", "PASS", None, None, None, None, None, devlyn, 0, None, None, None,
             )
         except SystemExit as exc:
             assert "open span" in str(exc) and "complete it before respawn" in str(exc)
@@ -3313,8 +3326,8 @@ def self_test() -> int:
                 "plan", "transition", *blocked_args, "--next-phase", next_phase,
                 "--next-round", "0", "--next-engine", "claude",
             )
-            assert result.returncode == 1, result.stderr
-            assert "Codex invocation exited 1" in result.stderr
+            assert result.returncode in (1, 2), result.stderr
+            assert ("Codex invocation exited 1" if next_phase == "final_report" else "illegal phase transition") in result.stderr
             assert receipt_state_path.read_bytes() == open_plan_bytes
         plan_path.write_text("{", encoding="utf-8")
         result = receipt_cli("plan", "complete", *blocked_args)
@@ -3343,7 +3356,7 @@ def self_test() -> int:
                 "--next-round", "0", "--next-engine", "claude",
             )
             assert result.returncode == 1, result.stderr
-            assert "BLOCKED:plan-output-missing" in result.stderr
+            assert "illegal phase transition" in result.stderr
             assert receipt_state_path.read_bytes() == open_plan_bytes
         result = receipt_cli(
             "plan", "transition", *blocked_args, "--next-phase", "final_report",

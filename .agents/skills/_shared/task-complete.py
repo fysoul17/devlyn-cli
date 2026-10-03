@@ -344,6 +344,10 @@ def bind_acceptance(receipt, path, supplied):
                 require(file_record(source_file)["sha256"] == bound_digest, "source contract differs from run binding")
                 source_path = Path(source[key])
                 expected = str(source_path.with_name("spec.expected.json") if key == "spec_path" else source_path.with_suffix(".expected.json"))
+                if key == "spec_path" and "expected_sha256" in source:
+                    contract = safe_path(work, expected)
+                    bound = file_record(contract)["sha256"] if contract.exists() else None
+                    require(bound == source["expected_sha256"], "verification contract differs from run binding")
                 if safe_path(work, expected).exists():
                     paths.append(expected)
     else:
@@ -1173,7 +1177,7 @@ class CompletionTests(unittest.TestCase):
             with self.assertRaisesRegex(CompletionError, "cannot parse mount table"):
                 scratch_mounts()
 
-    def accept(self, pipeline=False, queue=False, spec_expected=None, spec_name="spec.md"):
+    def accept(self, pipeline=False, queue=False, spec_expected=None, spec_name="spec.md", expected_binding=None):
         if spec_expected is not None:
             (self.task / spec_name).write_text("# Fixture\nProduct contains accepted bytes.\n", encoding="utf-8")
             (self.task / "spec.expected.json").write_text(json.dumps(spec_expected), encoding="utf-8")
@@ -1208,6 +1212,8 @@ class CompletionTests(unittest.TestCase):
             if spec_expected is not None:
                 self.state["mode"] = "spec"
                 self.state["source"] = {"type": "spec", "spec_path": spec_name, "spec_sha256": hashlib.sha256((self.task / spec_name).read_bytes()).hexdigest()}
+                if expected_binding is not None:
+                    self.state["source"]["expected_sha256"] = expected_binding
             (archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
             (archive / "finish-gate.summary.json").write_text(json.dumps({"mode": self.state["mode"], "exit": 0, "offenders": 0, "checked": 1}), encoding="utf-8")
             (archive / "verify-merge.summary.json").write_text(json.dumps({"verdict": "PASS"}), encoding="utf-8")
@@ -1958,6 +1964,12 @@ class CompletionTests(unittest.TestCase):
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertIn("spec.expected.json", receipt["files"])
         self.assertEqual((self.receipt.parent / "custody/spec.expected.json").read_bytes(), (self.task / "spec.expected.json").read_bytes())
+
+    def test_named_spec_publishes_only_the_bound_contract(self):
+        self.allocate(); self.accept(pipeline=True, spec_expected={"pure_design": True}, spec_name="X.md", expected_binding="0" * 64)
+        _, r = self.complete(success=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("verification contract differs from run binding", json.loads(r.stdout)["reason"])
 
     def test_named_spec_missing_required_process_evidence(self):
         expected = {"process_evidence": [{"id": "red-first", "phase": "implement", "argv": [sys.executable, "-c", "print('red')"], "exit_code": 0, "timeout_sec": 10}]}

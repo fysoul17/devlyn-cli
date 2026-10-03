@@ -84,11 +84,19 @@ PER_RUN_PATTERNS = (
     # Phase-owned prompt, context, raw-stream, event, and retry carriers use
     # a phase prefix. Keep the ownership surface here so bootstrap and final
     # archive cannot drift onto separate cleanup lists.
+    # Retired SURFACE_CLOSE, BUILD_GATE and CLEANUP artifacts stay owned so a run
+    # completed before the upgrade still archives whole.
+    "closure-durability.round-*.json",
+    "surface-close.input.patch",
+    "surface-close.output.json",
+    "verify.primary.timeout.json",
+    "verify.pair.timeout.json",
 )
 PER_RUN_PATTERNS += tuple(
     f"{phase}.{suffix}"
     for phase in (
         "plan", "probe-derive", "implement", "verify", "final-report", "finish-gate",
+        "surface-close", "build_gate", "build-gate", "cleanup",
     )
     for suffix in (
         "task-context", "prompt", "stdout", "stderr", "events.jsonl",
@@ -735,6 +743,14 @@ def self_test() -> int:
             "implement.stderr",
             "implement.events.jsonl",
             "implement.retry.1.stdout",
+            # Artifacts of retired phases left by a run completed before the upgrade.
+            "surface-close.input.patch",
+            "surface-close.output.json",
+            "surface-close.stdout",
+            "build_gate.stdout",
+            "cleanup.stdout",
+            "closure-durability.round-1.json",
+            "verify.primary.timeout.json",
         ):
             (devlyn / name).write_text("{}\n", encoding="utf-8")
         (devlyn / "probes").mkdir()
@@ -815,6 +831,13 @@ def self_test() -> int:
             "implement.stderr",
             "implement.events.jsonl",
             "implement.retry.1.stdout",
+            "surface-close.input.patch",
+            "surface-close.output.json",
+            "surface-close.stdout",
+            "build_gate.stdout",
+            "cleanup.stdout",
+            "closure-durability.round-1.json",
+            "verify.primary.timeout.json",
             f"process-evidence/{run_id}/verify/round-2/manifest.json",
             f"process-evidence/{run_id}/verify/round-2/mechanical-0.stdout",
             f"process-evidence/{run_id}/verify/round-2/mechanical-0.stderr",

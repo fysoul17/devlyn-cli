@@ -84,11 +84,11 @@ PLAN  →  IMPLEMENT  →  VERIFY (MECHANICAL gate, then fresh findings-only jud
 ```
 
 - **PLAN** runs in the owner context and freezes requirements, verification and the authorized file surface before implementation.
-- **VERIFY MECHANICAL** runs once per round in the owner context without another model invocation, using your project's real compilers, typecheckers, linters, and `spec-verify-check.py` (verification commands literal-match), then seals the exact source it checked. Auto-detects Next.js, Rust, Go, Solidity, Expo, Swift, and Dockerfiles. Browser flows route through Chrome MCP → Playwright → curl tier.
+- **VERIFY MECHANICAL** runs once per round in the owner context without another model invocation, using your project's real compilers, typecheckers, linters, and `spec-verify-check.py` (verification commands literal-match), then seals the exact source it checked. Auto-detects Node, Python, Go and Rust projects. Browser flows route through Chrome MCP → Playwright → curl tier.
 - **VERIFY** runs in a fresh subagent context with no code-mutation tools — findings only, structurally independent.
 - Git checkpoints at every phase for safe rollback. Fix-loop budget shared across VERIFY repairs and phase-gate retries (`--max-rounds N`, default 4).
 
-Common flags: `--engine claude|codex|omp` (default: the orchestrator-supported default), `--role-config <path>` (one-run worker/judge profiles, see below), `--pair-verify` (force pair-mode JUDGE in VERIFY), `--no-pair` (intentional solo VERIFY), `--risk-probes` / `--no-risk-probes`, `--perf` (per-phase timing).
+Common flags: `--engine claude|codex|omp` (default: the orchestrator-supported default), `--role-config <path>` (one-run worker/judge profiles, see below), `--pair-verify` (force pair-mode JUDGE in VERIFY), `--no-pair` (intentional solo VERIFY), `--risk-probes` / `--no-risk-probes`.
 `--pair-verify` and `--no-pair` are mutually exclusive; using both stops with `BLOCKED:invalid-flags`.
 
 Each task gets its own linked worktree; accepted tasks default to scoped commit → push → PR

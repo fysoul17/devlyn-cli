@@ -193,6 +193,10 @@ def _source_expected_path(work: pathlib.Path, state: dict) -> pathlib.Path | Non
         expected.resolve().relative_to(work.resolve())
     except (OSError, ValueError) as exc:
         raise EvidenceError("source expected contract escapes the worktree") from exc
+    if "expected_sha256" in source:
+        actual = _sha256(expected.read_bytes()) if expected.is_file() else None
+        if actual != source["expected_sha256"]:
+            raise EvidenceError("source expected contract differs from its bootstrap binding")
     return expected if expected.is_file() else None
 
 
@@ -944,6 +948,15 @@ def self_test() -> int:
                                    "record-capability-denial", "--phase", "implement", "--id", "x", "--cmd", "tsc",
                                    "--operation", "tool", "--detail", "absent"], capture_output=True, text=True)
         assert rejected.returncode == 2 and "only --phase verify" in rejected.stderr
+        (work / "spec.md").write_text("# Spec\n", encoding="utf-8")
+        (work / "spec.expected.json").write_text('{"process_evidence": []}', encoding="utf-8")
+        for recorded in ("0" * 64, None):
+            try:
+                declared_obligations(work, {"source": {"type": "spec", "spec_path": "spec.md", "expected_sha256": recorded}}, "verify")
+            except EvidenceError as exc:
+                assert "differs from its bootstrap binding" in str(exc), exc
+            else:
+                raise AssertionError("an unbound verification contract declared obligations")
         print("PASS undeclared VERIFY gate denial: absent results surface, existing fields and entries retained")
     return 0
 

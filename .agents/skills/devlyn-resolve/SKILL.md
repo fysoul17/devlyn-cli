@@ -117,7 +117,7 @@ Outer-owner boundary: a full run starts only from committed owner inputs; whenev
    python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --freeze-roles --default-engine "<current-cli-default>" [--complexity <trivial|medium|large>] [--high-risk-reason "<reason>"]...
    ```
 
-   `--complexity` is required for free-form and refused otherwise. The writer resolves roles per `_shared/engine-preflight.md` into `state.role_resolution` (legacy `state.engine`/`engine_source` remain the executor), binds `source.criteria_sha256` from the criteria bytes, and records `risk_profile.high_risk`/`reasons`. An automatic high-risk run (no explicit probe flag, not verify-only) enables probes only when the legacy executor's OTHER engine is available; otherwise it appends `auto-risk-probes skipped: <engine>-unavailable`. An identical repeat returns the same snapshot; a differing one is refused. Keep availability/auth checks before each selected dispatch; explicit unavailable routes fail closed. PHASE 0 failures are report-level `BLOCKED:<reason>`; phase verdict carriers remain bare enums.
+   `--complexity` is required for free-form and refused otherwise. The writer resolves roles per `_shared/engine-preflight.md` into `state.role_resolution` (legacy `state.engine`/`engine_source` remain the executor), binds `source.criteria_sha256` from the criteria bytes, and records `risk_profile.high_risk`/`reasons`. An automatic high-risk run (no explicit probe flag, not verify-only) enables probes only when the legacy executor's OTHER engine is available; otherwise it appends `auto-risk-probes skipped: <engine>-unavailable`. An identical repeat returns the same snapshot; a differing one is refused. Keep availability/auth checks before each selected dispatch; explicit unavailable routes fail closed. PHASE 0 failures are report-level `BLOCKED:<reason>`; phase verdict carriers remain bare enums. Once bootstrap has initialized state, close such a halt like any other: standalone FINAL_REPORT spawn, the finish gate, `complete --verdict BLOCKED:<reason>`, archive.
 
 5. Announce one line: `resolve starting — run <run_id> — engine <engine> — mode <mode> — complexity <complexity-or-na> — pair <on|solo:auto_pair_other_engine_unavailable|disabled> — risk_probes <on|off>`.
 
@@ -159,7 +159,7 @@ Every IMPLEMENT span opens in this order: complete the predecessor, render the p
 python3 "$DEVLYN_SHARED_DIR/phase-prompt-render.py" --devlyn-dir .devlyn --phase implement --engine <engine> --round <round>
 ```
 
-A renderer refusal (`BLOCKED:phase-input-invalid:<kind>:<detail>`) leaves the predecessor completed and the worker phase unopened: open FINAL_REPORT with standalone spawn and complete it with `--verdict BLOCKED:phase-input-invalid --detail "<message>"` — or without `--verdict` when the repair budget is exhausted, because the writer then derives `NEEDS_WORK` or `BLOCKED:repair-budget-exhausted`.
+A renderer refusal (`BLOCKED:phase-input-invalid:<kind>:<detail>`) leaves the predecessor completed and the worker phase unopened: open FINAL_REPORT with standalone spawn and complete it with `--verdict BLOCKED:phase-input-invalid --detail "<message>"` — or without `--verdict` when the writer derives the verdict itself (an exhausted repair budget gives `NEEDS_WORK` or `BLOCKED:repair-budget-exhausted`; finish-gate offenders give `BLOCKED:finish-gate-unclean`); a refused `--verdict` names the derived one.
 
 For Codex, after the span opens, invoke only through the wrapper with the active state identity. Add the validated `role-config.py` options before the final `-`; only an option list that names a model replaces `-m <model_requested>`:
 
@@ -190,12 +190,12 @@ expectation-mismatched carrier blocks the checkpoint.
 **Phase-gated path** (plan.md's `## Execution phases` section has two or more `### Phase <k>` headings outside fenced blocks): definitions are the contract in plan.md; progress is routing truth in `state.phases.implement.exec = { total, current, statuses }`, which the writer creates at the first IMPLEMENT spawn and advances on each passing phase. For each phase k = 1..N:
 1. Render and spawn IMPLEMENT; the prompt's `metadata.exec` names the current phase, and the worker implements that phase in the current worktree and reruns its `gate:` line.
 2. After return: run the phase's `gate:` commands directly — deterministic, exit-code truth, no LLM judgment.
-3. Gate PASS → scoped-staging checkpoint with message `chore(pipeline): implement phase <k>/<N>`, then complete IMPLEMENT `PASS` (the writer marks the phase and advances `exec.current`); the next phase renders and spawns uncharged with the next round.
+3. Gate PASS → scoped-staging checkpoint with message `chore(pipeline): implement phase <k>/<N>`. For a phase before the last, complete IMPLEMENT `PASS` (the writer marks the phase and advances `exec.current`); the next phase renders and spawns uncharged with the next round. The last phase is handled below.
 4. Gate FAIL → no commit. Complete IMPLEMENT `FAIL` (the writer records the phase's FAIL and keeps `exec.current`), then render and request IMPLEMENT admission with a fresh invocation round and null trigger. The writer charges the shared repair budget on admission. A refused spawn leaves the FAIL completion as the last span; report `BLOCKED:repair-budget-exhausted` with the gate output, origin and counters.
 
-After the final phase's gate PASS: `git diff <base_ref.sha>...HEAD --stat` — empty → halt with `BLOCKED:implement-empty`; otherwise continue to VERIFY (phase commits already checkpoint the work — no extra commit).
+After the final phase's gate PASS and checkpoint: `git diff <base_ref.sha>...HEAD --stat` — empty → complete IMPLEMENT and halt with `BLOCKED:implement-empty`; otherwise open VERIFY with the IMPLEMENT → VERIFY `transition`, which completes the last phase `PASS` (phase commits already checkpoint the work — no extra commit).
 
-**Post-fix checkpoint:** after a budget-admitted VERIFY repair IMPLEMENT returns, scoped-stage the authorized surface and commit `chore(pipeline): implement fix round <n>`, where `<n>` is the IMPLEMENT invocation round; run `python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --phase implement durability-enforce --round <n>`. It records the clean fix commit and the triggering merged findings; fresh VERIFY re-entry rechecks that receipt before VERIFY artifact clearing or phase spawn, and MECHANICAL runs again on the new source — earlier green checks are never reused.
+**Post-fix checkpoint:** after a budget-admitted VERIFY repair IMPLEMENT returns, scoped-stage the authorized surface and commit with `git commit --allow-empty -m "chore(pipeline): implement fix round <n>"`, where `<n>` is the IMPLEMENT invocation round (empty when the repair only removed out-of-surface changes); run `python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --phase implement durability-enforce --round <n>`. It records the clean fix commit and the triggering merged findings; fresh VERIFY re-entry rechecks that receipt before VERIFY artifact clearing or phase spawn, and MECHANICAL runs again on the new source — earlier green checks are never reused.
 
 ## PHASE 5: VERIFY (MECHANICAL, then fresh findings-only judges)
 
@@ -236,7 +236,7 @@ Branch:
 
 ## PHASE 6: FINAL REPORT + ARCHIVE
 
-Open the `final_report` span through the predecessor's `state-phase-write.py --devlyn-dir .devlyn --phase <predecessor> transition --next-phase final_report --next-round 0 …` on a direct handoff. A refused repair spawn, a renderer refusal and other halts after a completed phase use standalone FINAL_REPORT spawn (round zero) only if unopened; the predecessor is already complete, so do not complete twice.
+Open the `final_report` span through the predecessor's `state-phase-write.py --devlyn-dir .devlyn --phase <predecessor> transition --next-phase final_report --next-round 0 …` on a direct handoff. Any other halt after bootstrap — a refused repair spawn, a renderer refusal, a PHASE 0 halt — uses standalone FINAL_REPORT spawn (round zero) only if unopened; a completed predecessor is never completed twice.
 
 1. Kill any dev server MECHANICAL left running.
 

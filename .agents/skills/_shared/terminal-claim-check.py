@@ -41,6 +41,8 @@ HALT_WITNESS_PHASES = {
     "risk-halt": "plan",
     "implement-empty": "implement",
 }
+# Halts PHASE 0 reports after bootstrap initialized state, before any phase opens.
+PHASE0_HALTS = {"large-needs-ideation", "invalid-classification", "invalid-engine-config"}
 
 
 @dataclass(frozen=True)
@@ -117,15 +119,23 @@ def terminal_halt_witness(phases: dict[str, object]) -> tuple[str, str] | None:
     if not isinstance(verdict, str) or not verdict.startswith("BLOCKED:"):
         return None
     reason = verdict.removeprefix("BLOCKED:")
+    engine_unavailable = reason.endswith("-unavailable") and reason.removesuffix("-unavailable") in ADAPTER_ENGINES
+    reached = [name for name in WORK_PHASE_ORDER if phases.get(name) is not None]
+    if not reached:
+        phase0 = reason in PHASE0_HALTS or reason.startswith("judge-route-unsupported:") or engine_unavailable
+        return ("phase0", reason) if phase0 else None
     target = HALT_WITNESS_PHASES.get(reason)
-    # A worker that never started (no fresh context, its engine, or its rendered prompt input)
-    # halts at the last phase reached.
+    # The last reached phase witnesses its own halt when it completed BLOCKED (malformed probes, a worker
+    # attestation failure), or when the next worker never started (no fresh context, its engine, or its
+    # rendered prompt input), or when the finish gate found offenders before VERIFY.
+    last = phases.get(reached[-1])
     if target is None and (
-        reason in {"fresh-context-unavailable", "phase-input-invalid"}
-        or (reason.endswith("-unavailable") and reason.removesuffix("-unavailable") in ADAPTER_ENGINES)
+        # Retired phases keep their archived classification; only current work phases self-witness.
+        (reached[-1] in {"plan", "probe_derive", "implement"} and isinstance(last, dict) and last.get("verdict") == "BLOCKED"
+         and re.fullmatch(r"[a-z0-9-]+", reason) and (engine_unavailable or not reason.endswith("-unavailable")))
+        or reason in {"fresh-context-unavailable", "phase-input-invalid", "finish-gate-unclean"} or engine_unavailable
     ):
-        reached = [name for name in WORK_PHASE_ORDER if phases.get(name) is not None]
-        target = reached[-1] if reached else None
+        target = reached[-1]
     if target is None:
         return None
     phase = phases.get(target)
@@ -677,6 +687,9 @@ def self_test() -> int:
             ("fresh-context-unavailable", "implement", "BLOCKED"),
             ("codex-unavailable", "plan", "BLOCKED"),
             ("phase-input-invalid", "plan", "PASS"),
+            ("probe-derive-malformed", "probe_derive", "BLOCKED"),
+            ("model-attestation-failed", "implement", "BLOCKED"),
+            ("finish-gate-unclean", "implement", "PASS"),
         )
         for reason, halt_phase, phase_verdict in witness_rows:
             root = base / f"witness-{reason}"
@@ -699,6 +712,19 @@ def self_test() -> int:
                     assert terminal_halt_witness(claimed) is None, invented
             write_archived_state(root, state)
             assert classify(root).status == "CLEAN"
+            tests += 1
+
+        # PHASE 0 halts after bootstrap: no phase opened, the report alone closes the run.
+        for reason, clean in (("large-needs-ideation", True), ("invalid-classification", True),
+                              ("judge-route-unsupported:omp", True), ("codex-unavailable", True),
+                              ("plan-empty", False), ("invented-halt", False)):
+            root = base / f"phase0-{reason.replace(':', '-')}"
+            phases = {name: None for name in PHASE_ORDER}
+            phases["final_report"] = {"started_at": "2026-07-20T00:00:00Z", "completed_at": "2026-07-20T00:01:00Z",
+                                      "verdict": f"BLOCKED:{reason}"}
+            assert (terminal_halt_witness(phases) == ("phase0", reason)) is clean, reason
+            write_archived_state(root, {"run_id": f"phase0-{reason.replace(':', '-')}", "phases": phases})
+            assert (classify(root).status == "CLEAN") is clean, reason
             tests += 1
 
         root = base / "rolled-back-not-witness"

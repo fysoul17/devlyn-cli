@@ -22,7 +22,7 @@ sys.dont_write_bytecode = True
 VALUE_FLAGS = {
     "--max-rounds", "--engine", "--spec", "--verify-only", "--goal-file", "--role-config",
 }
-BOOL_FLAGS = {"--pair-verify", "--no-pair", "--risk-probes", "--no-risk-probes", "--perf"}
+BOOL_FLAGS = {"--pair-verify", "--no-pair", "--risk-probes", "--no-risk-probes"}
 PHASE_NAMES = ("plan", "probe_derive", "implement", "verify", "final_report")
 
 
@@ -151,6 +151,8 @@ def parse_flags(argv: list[str]) -> dict:
         block("BLOCKED:invalid-flags", "--goal-file is mutually exclusive with an inline goal")
     if "--verify-only" in values and "--spec" not in values:
         block("BLOCKED:invalid-flags", "--verify-only requires --spec")
+    if "--verify-only" in values and "--risk-probes" in switches:
+        block("BLOCKED:invalid-flags", "--risk-probes needs PHASE 1.5, which --verify-only skips")
     if "--spec" in values and positional:
         block("BLOCKED:invalid-flags", "--spec is mutually exclusive with an inline goal")
 
@@ -278,10 +280,12 @@ def init_spec_source(
         if error:
             block("BLOCKED:invalid-flags", error)
     staged_path = staging_dir / "spec-verify.json"
+    sibling = path.with_name("spec.expected.json")
     return ({
         "type": "spec",
         "spec_path": raw_path,
         "spec_sha256": sha256(raw),
+        "expected_sha256": sha256(sibling.read_bytes()) if sibling.is_file() else None,
         "criteria_path": None,
         "criteria_sha256": None,
     }, staged_path.read_bytes() if staged_path.is_file() else None)
@@ -395,6 +399,7 @@ def bootstrap(
                 "type": "generated",
                 "spec_path": None,
                 "spec_sha256": None,
+                "expected_sha256": None,
                 "goal_path": ".devlyn/goal.raw.txt",
                 "goal_sha256": sha256(raw_goal),
                 "criteria_path": ".devlyn/criteria.generated.md",
@@ -449,6 +454,7 @@ def bootstrap(
             "base_ref": {
                 "branch": base_branch(cwd),
                 "sha": git_text(cwd, "rev-parse", "HEAD"),
+                "excludes_sha256": load_spec_helper(shared_dir).exclude_rules_digest(cwd),
             },
             "rounds": {"max_rounds": parsed["max_rounds"], "global": 0},
             "untracked_baseline_sha256": None,
@@ -997,6 +1003,7 @@ def self_test() -> int:
             "base_ref": {
                 "branch": base_branch(work),
                 "sha": git_text(work, "rev-parse", "HEAD"),
+                "excludes_sha256": load_spec_helper(script_shared).exclude_rules_digest(work),
             },
             "rounds": {"max_rounds": 4, "global": 0},
             "untracked_baseline_sha256": None,
@@ -1004,6 +1011,7 @@ def self_test() -> int:
                 "type": "generated",
                 "spec_path": None,
                 "spec_sha256": None,
+                "expected_sha256": None,
                 "goal_path": ".devlyn/goal.raw.txt",
                 "goal_sha256": sha256(b"fix app.py failing test"),
                 "criteria_path": ".devlyn/criteria.generated.md",
@@ -1073,6 +1081,8 @@ def self_test() -> int:
             ["--max-rounds", "x", "fix", "app.py"],
             ["--max-rounds"],
             ["--bypass", "build-gate,cleanup", "fix", "app.py"],
+            ["--perf", "fix", "app.py"],
+            ["--risk-probes", "--verify-only", "patch", "--spec", "spec.md"],
             ["--risk-probes", "--no-risk-probes", "fix", "app.py"],
             ["--bypass"],
             ["--unknown", "fix", "app.py"],

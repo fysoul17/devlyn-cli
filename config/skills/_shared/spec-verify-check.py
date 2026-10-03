@@ -1033,6 +1033,17 @@ def source_integrity_error(src_type: str | None, state: dict, source_md: Path | 
         return f"could not read {source_md} for source integrity check: {exc}"
     if expected != actual:
         return f"{qualified} mismatch for {source_md}: expected {expected}, actual {actual}."
+    return expected_contract_error(src, source_md) if src_type == "spec" else None
+
+
+def expected_contract_error(src: dict, spec_md: Path) -> str | None:
+    """A sibling spec.expected.json must still be the bytes bootstrap bound (or still absent)."""
+    if "expected_sha256" not in src:
+        return None  # a state from before the binding existed
+    sibling = spec_md.with_name("spec.expected.json")
+    actual = _file_sha256(sibling)
+    if actual != src["expected_sha256"]:
+        return f"source.expected_sha256 mismatch for {sibling}: expected {src['expected_sha256']}, actual {actual}."
     return None
 
 
@@ -1735,6 +1746,24 @@ def _file_sha256(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
 
 
+def hidden_index_entries(work: Path) -> list[str]:
+    """Tracked paths whose skip-worktree or assume-unchanged flag hides changes from diff and status."""
+    listing = _git_bytes(work, "ls-files", "-v", "-z").decode("utf-8", "surrogateescape")
+    return sorted(item[2:] for item in listing.split("\0") if len(item) > 2 and (item[0] == "S" or item[0].islower()))
+
+
+def exclude_rules_digest(work: Path) -> str:
+    """Digest of the local ignore rules Git honours beyond committed .gitignore files."""
+    info = Path(_git_bytes(work, "rev-parse", "--git-path", "info/exclude").decode("utf-8", "surrogateescape").strip())
+    configured = subprocess.run(["git", "config", "--get", "core.excludesFile"], cwd=str(work),
+                                capture_output=True, text=True).stdout.strip()
+    default = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "git" / "ignore"
+    excludes = Path(os.path.expanduser(configured)) if configured else default
+    record = {"info_exclude": _file_sha256(info if info.is_absolute() else work / info),
+              "excludes_file": configured or None, "excludes_file_sha256": _file_sha256(excludes)}
+    return hashlib.sha256(json.dumps(record, sort_keys=True).encode("utf-8")).hexdigest()
+
+
 def _entry_sha256(path: Path) -> str:
     """Digest one untracked entry: link text for a symlink, streamed bytes for a regular file.
 
@@ -1848,6 +1877,12 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
         problems.append("untracked files outside the PHASE 0 baseline: " + ", ".join(residue))
     if "untracked_baseline_sha256" in state and state["untracked_baseline_sha256"] != baseline_sha:
         problems.append(".devlyn/untracked.baseline differs from its bound digest")
+    hidden = hidden_index_entries(work)
+    if hidden:
+        problems.append("index flags hide worktree changes (skip-worktree/assume-unchanged): " + ", ".join(hidden))
+    bound_rules = (state.get("base_ref") or {}).get("excludes_sha256")
+    if bound_rules is not None and bound_rules != exclude_rules_digest(work):
+        problems.append("local Git ignore rules changed since bootstrap")
     verify = open_verify_span(state)
     if verify is not None and head != verify["pre_sha"]:
         problems.append(f"HEAD {head} differs from the VERIFY span's pre_sha {verify['pre_sha']}")
@@ -4993,7 +5028,7 @@ def run_self_test() -> int:
         if not found or block is None or loads_strict_json(block) != {"authorized_surface": ["bin/cli.js"]}:
             print("extract_authorized_surface_block mis-parsed the mixed H2/H1 section-boundary shape", file=sys.stderr)
             return 1
-    return seal_self_test(script_path) or defect_witness_self_test(script_path)
+    return seal_self_test(script_path) or defect_witness_self_test(script_path) or binding_self_test(script_path)
 
 
 # A generic store CLI: each defect below is one class the four witness tags exist to catch.
@@ -5078,6 +5113,90 @@ print("cleanup ok" if code == 3 and not (scratch / "job.scratch").exists() else 
 shutil.rmtree(scratch, ignore_errors=True)
 """,
 }
+
+
+def binding_self_test(script_path: str) -> int:
+    """A changed verification contract, hidden index flags or changed local ignore rules never seal."""
+    import shutil
+
+    script_path = str(Path(script_path).resolve())
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "work"
+        devlyn = root / ".devlyn"
+        devlyn.mkdir(parents=True)
+
+        def git(*args: str) -> str:
+            return subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=root,
+                                  check=True, capture_output=True, text=True, encoding="utf-8").stdout.strip()
+
+        outside = Path(tmp) / "spec"
+        outside.mkdir()
+        spec, expected = outside / "spec.md", outside / "spec.expected.json"
+        spec.write_bytes(b"# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- prints ok\n")
+        contract = json.dumps({"verification_commands": [{"cmd": "printf ok", "stdout_contains": ["ok"]}]}).encode()
+        expected.write_bytes(contract)
+        (root / ".gitignore").write_bytes(b".devlyn/\n")
+        (root / "a.txt").write_bytes(b"base\n")
+        git("init", "-q"); git("add", "-A"); git("commit", "-q", "-m", "base")
+        (devlyn / "plan.md").write_bytes(b'<!-- devlyn:authorized-surface -->\n## Files\n```json\n{"authorized_surface": ["a.txt"]}\n```\n')
+        if run_write_untracked_baseline(root, devlyn) != 0:
+            return 1
+        (devlyn / "pipeline.state.json").write_bytes(json.dumps({
+            "run_id": "rs-binding", "mode": "spec",
+            "base_ref": {"sha": git("rev-parse", "HEAD"), "excludes_sha256": exclude_rules_digest(root)},
+            "source": {"type": "spec", "spec_path": str(spec), "spec_sha256": hashlib.sha256(spec.read_bytes()).hexdigest(),
+                       "expected_sha256": hashlib.sha256(contract).hexdigest()},
+            "untracked_baseline_sha256": hashlib.sha256((devlyn / "untracked.baseline").read_bytes()).hexdigest(),
+            "phases": {"verify": {"round": 0, "started_at": "2026-10-03T00:00:00.000Z", "completed_at": None,
+                                  "pre_sha": git("rev-parse", "HEAD")}},
+        }).encode())
+
+        def mechanical() -> subprocess.CompletedProcess:
+            (devlyn / SEAL_NAME).unlink(missing_ok=True)
+            shutil.rmtree(devlyn / "process-evidence", ignore_errors=True)
+            return subprocess.run([sys.executable, script_path], cwd=root, capture_output=True, text=True, encoding="utf-8")
+
+        def sealed() -> tuple[int, str]:
+            proc = subprocess.run([sys.executable, script_path, "--seal"], cwd=root, capture_output=True, text=True,
+                                  encoding="utf-8")
+            findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
+            return proc.returncode, findings
+
+        if mechanical().returncode != 0 or sealed()[0] != 0:
+            print("binding fixture: the clean run did not seal", file=sys.stderr)
+            return 1
+        expected.write_bytes(json.dumps({"verification_commands": [{"cmd": "true"}]}).encode())
+        changed = mechanical()
+        if changed.returncode == 0 or "source.expected_sha256 mismatch" not in changed.stderr:
+            print(f"a changed verification contract was used: {changed.stderr}", file=sys.stderr)
+            return 1
+        expected.write_bytes(contract)
+        git("update-index", "--skip-worktree", "a.txt")
+        (root / "a.txt").write_bytes(b"hidden change\n")
+        mechanical()
+        rc, findings = sealed()
+        if rc != 1 or "index flags hide worktree changes" not in findings:
+            print(f"a skip-worktree change sealed: rc={rc} {findings}", file=sys.stderr)
+            return 1
+        git("update-index", "--no-skip-worktree", "a.txt")
+        git("checkout", "--", "a.txt")
+        exclude = Path(git("rev-parse", "--git-path", "info/exclude"))
+        exclude = exclude if exclude.is_absolute() else root / exclude
+        exclude.parent.mkdir(parents=True, exist_ok=True)
+        with exclude.open("a", encoding="utf-8") as handle:
+            handle.write("\nhelper.py\n")
+        mechanical()
+        rc, findings = sealed()
+        if rc != 1 or "local Git ignore rules changed since bootstrap" not in findings:
+            print(f"changed ignore rules sealed: rc={rc} {findings}", file=sys.stderr)
+            return 1
+    print("PASS bindings: a changed contract, hidden index flags or changed ignore rules never seal")
+    return 0
+
+
+def mechanical_round(state: dict) -> bool:
+    verify = (state.get("phases") or {}).get("verify") if isinstance(state, dict) else None
+    return isinstance(verify, dict) and bool(verify.get("started_at")) and verify.get("completed_at") is None
 
 
 def defect_witness_self_test(script_path: str) -> int:
@@ -5386,16 +5505,18 @@ def main() -> int:
                 return 1
             # source.type=="spec", no block in spec markdown.
             if not bench_mode:
-                # Real-user handwritten spec: silent no-op. Drop any stale
-                # pre-staged file so a killed prior run cannot poison this
-                # run's gate.
+                # Real-user handwritten spec: drop any stale pre-staged file so a
+                # killed prior run cannot poison this run's gate. Outside a VERIFY
+                # round this is a silent no-op; inside one, MECHANICAL still emits
+                # its empty results and findings for the judges.
                 if spec_path.exists():
                     spec_path.unlink()
                     seal_error = refresh_open_seal(work, devlyn_dir, state)
                     if seal_error:
                         print(f"[spec-verify] {seal_error}", file=sys.stderr)
                         return 2
-                return 0
+                if not mechanical_round(state):
+                    return 0
             # Benchmark mode with no source block AND no pre-staged file
             # (rare — fixture mis-config) falls through to the no-pre-staged
             # silent no-op branch below.
@@ -5415,10 +5536,10 @@ def main() -> int:
 
     commands: list[dict] = []
     if not spec_path.exists():
-        # A declared pure-design contract continues through probes/results.
-        # Missing handwritten/benchmark contracts remain an opt-in no-op;
-        # missing generated contracts were rejected above.
-        if not contract_found:
+        # A declared pure-design contract continues through probes/results, and so does
+        # a VERIFY round without any contract; elsewhere a missing handwritten/benchmark
+        # contract stays an opt-in no-op. Missing generated contracts were rejected above.
+        if not contract_found and not mechanical_round(state):
             return 0
     else:
         try:

@@ -90,6 +90,9 @@ def build_verify_snapshot(devlyn: pathlib.Path, state: dict) -> bytes:
     if not generated:
         spec_path = pathlib.Path(source["spec_path"])
         sibling = (spec_path if spec_path.is_absolute() else work / spec_path).with_name("spec.expected.json")
+        bound_error = check["expected_contract_error"](source, spec_path if spec_path.is_absolute() else work / spec_path)
+        if bound_error:
+            raise invalid("expected", bound_error)
         if sibling.exists():
             _data, error = check["load_expected_contract"](sibling)
             if error:
@@ -562,6 +565,9 @@ def verify_self_test() -> None:
                                                        goal_path="spec.md", goal_sha256="0" * 64))
         rejected("base", lambda s: s["base_ref"].update(sha="abc"))
         rejected("expected", lambda s: (work / "spec.expected.json").write_text("{"),
+                 lambda: (work / "spec.expected.json").unlink())
+        rejected("expected", lambda s: s["source"].update(expected_sha256="0" * 64))
+        rejected("expected", lambda s: ((work / "spec.expected.json").write_bytes(b"{}"), s["source"].update(expected_sha256=None)),
                  lambda: (work / "spec.expected.json").unlink())
         rejected("diff", lambda s: (devlyn / "external-diff.patch").write_text(""),
                  lambda: (devlyn / "external-diff.patch").unlink())
