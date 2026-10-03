@@ -859,6 +859,11 @@ function install(targets, global) {
     else installClaudeCore();
   }
   log(`\n✅ devlyn ${PKG.version} installed`, 'green');
+  // Global installs never edit user settings, but /devlyn-resolve needs long foreground Bash calls.
+  if (global && targets.includes('claude')) {
+    log('Claude Code: unless your settings already allow it, add "env": {"BASH_MAX_TIMEOUT_MS": "3600000"} '
+      + 'to ~/.claude/settings.json and restart; /devlyn-resolve runs foreground commands longer than the default limit.', 'yellow');
+  }
   noticeGlobalDrift(roots);
   return roots;
 }

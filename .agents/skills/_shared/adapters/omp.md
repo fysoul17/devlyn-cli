@@ -14,4 +14,4 @@ Each native `task` tool invocation with a fresh `context` is a fresh phase worke
 
 ## Invocation
 
-VERIFY judge seats are not scripted for omp: `verify-judges.py` stops with `BLOCKED:judge-route-unsupported:omp`; configure a claude or codex judge role.
+VERIFY judge seats are not scripted for omp: an omp executor's inherited primary judge goes to the first available of claude, codex other than an explicit pair seat; an explicit omp judge role, or neither installed, stops with `BLOCKED:judge-route-unsupported:omp`.

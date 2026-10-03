@@ -419,6 +419,12 @@ PY
       else
         bad "project installs must ignore their local markers"
       fi
+      if grep -Fq '"BASH_MAX_TIMEOUT_MS": "3600000"' "$tmp_install_marker/global.log" \
+         && [ ! -e "$marker_home/.claude/settings.json" ]; then
+        ok "global Claude install leaves user settings untouched and names the Bash max it needs"
+      else
+        bad "global Claude install must not write user settings and must name the Bash max it needs"
+      fi
     else
       bad "completed installs must write the exact per-root marker"
     fi
