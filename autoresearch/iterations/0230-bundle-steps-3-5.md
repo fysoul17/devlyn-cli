@@ -1,6 +1,6 @@
 # 0230 — develop the held 0225 bundle: steps 3–5 on the ported candidate
 
-2026-10-03. **Status: DESIGN CONVERGED (Astra R1).** Development only. Nothing ships, and no resolve run happens under this record.
+2026-10-03. **Status: PR-3 and PR-4 merged into the bundle; PR-5 next.** Development only. Nothing ships, and no resolve run happens under this record.
 
 **Owner direction (2026-10-03):** "묶음 개발 재개해 줘. astra ultra 와 나중에 검수/검증까지 확실하게" — after [0229](0229-verify-existing-behavior-rescreen.md) PASS readmitted 22616b57 + F + G + H, prepare 0225 steps 3–5, with a thorough Astra ultra review at the end. Per [0226](0226-verify-recall-screen.md):83, a live comparison of the bundle needs its own registration and the owner's approval to run resolve. Per [0225](0225-resolve-cost-cuts.md) "Release", steps 2–5 ship only as a bundle adopted in both configs.
 
@@ -151,3 +151,31 @@ PR #159 (`candidate/bundle-step3`, commits 363c11b1 + 0a522619): 64 paths; each 
 **Pre-existing, unchanged:** with no verification contract at all, the main run returns before its commands. The seal and the finish gate still catch untracked and tracked leaks.
 
 **Follow-up for the live-comparison registration:** benchmark/ceiling scripts key on `phases.build_gate`/`cleanup` for historical cohorts. Comparison meters must key on obligations (0225:137).
+
+## PR-4 result (2026-10-03)
+
+PR #161 (`candidate/bundle-step4`, commits e6434e3d + a787b1c0 + 99bab57e), merged into the bundle as `ea14d7fe`. Each skill tree changes +1,037 / −404:
+- **Scripts (`_shared`):** +896 / −246. Of that, the self-tests are +474 / −191 and product code is +422 / −55.
+- **Docs (`devlyn-resolve`):** +141 / −158.
+
+Lint, test-owner-phases, test-windows-portability and the touched self-tests pass at 99bab57e (root runs, reported in the v3 prompt). PR #161 CI passes on POSIX and Windows (Actions run 37112152416).
+
+**What the scripts now own.**
+- **Bootstrap:** records the `--risk-probes`, `--no-risk-probes` and `--no-pair` fields.
+- **Freeze:** binds complexity, criteria bytes, high-risk reasons and the automatic-probe decision. Verify-only never auto-enables probes, because MECHANICAL would then require a probe file that verify-only can never produce.
+- **Probe derive:** a PASS binds the probe digest.
+- **Phase-gated progress:** the writer counts `### Phase <k>` headings within `## Execution phases`, excluding fenced content.
+- **Final report:** `final_report complete` derives the verdict from recorded state and evidence, requires a supplied `BLOCKED:<reason>` when it cannot derive the halt reason, and renders the report.
+- **Denial CLI:** refreshes the results carrier.
+
+**Kept as owner prose until PR-5:** the small-surface demotion. It is the one locked owner edit left.
+
+**Review.**
+- **Astra ultra:** R0 REVISE (8), v1 REVISE (5), v2 REVISE (3), v3 SHIP.
+- **Five-lens Claude review** (workflow `wf_2dfb3815-3bf`; the script gave each finding two refuters): 27 confirmed findings, about 15 distinct. The v2 prompt lists the fixes, and Astra v2/v3 found no incorrect fix beyond the three v2 findings, which v3 closed.
+- **Regression it caught:** halts before IMPLEMENT got `finish-gate-unclean`, because the real finish gate is malformed without a usable PLAN surface. That made TCC's plan-empty witness unreachable. Now exit 2 always decides, while exit 1 decides only once IMPLEMENT has started. The finish gate also keeps its first result, so a rerun after automatic reverts cannot launder a clean pass.
+- **Mutation checks:** root's guard-removal run killed all 36 listed mutations (v2 prompt), and 4 more for the v2 fixes (three fence conditions, the changed-criteria order). This is a listed set, not an exhaustive inventory of every guard.
+
+**Honest limits.**
+- The Codex foreground, timeout and maximum-wait recipe is a mitigation; a delayed-child host test is still open.
+- Product code grew by about 370 lines. In return, the moved state writes and the report rendering became script-enforced. The small-surface demotion remains an owner edit, and halts without a derivable reason still need a supplied reason. Per skill tree, `SKILL.md` shrank by 78 lines; the resolve docs overall shrank by 17.
