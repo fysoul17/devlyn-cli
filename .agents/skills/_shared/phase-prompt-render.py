@@ -33,14 +33,40 @@ def frame(name: str, payload: bytes) -> bytes:
     return name.encode("ascii") + b" " + str(len(payload)).encode("ascii") + b"\n" + payload + b"\n"
 
 
+SHARED = pathlib.Path(__file__).resolve().parent
+SKILL = SHARED.parent / "devlyn-resolve"
+# phase → (prompt header, canonical body, output stem, phase-specific frame)
+WORKER_PHASES = {
+    "implement": (b"IMPLEMENT/1\n", "implement.md", "implement.prompt", "findings"),
+    "probe_derive": (b"PROBE_DERIVE/1\n", "probe-derive.md", "probe-derive.prompt", "requirements"),
+}
+
+
+def phase_body(name: str, prefix: str, kind: str) -> bytes:
+    body = SKILL / "references" / "phases" / name
+    if not body.is_file():
+        raise SystemExit(f"BLOCKED:{prefix}:{kind}:{name} is not installed beside the renderer")
+    return body.read_bytes()
+
+
 def verify_body() -> bytes:
-    skills = pathlib.Path(__file__).resolve().parent.parent
-    bodies = [skills / name / "references" / "phases" / "verify.md"
-              for name in ("devlyn-resolve",)]
-    bodies = [path for path in bodies if path.is_file()]
-    if len(bodies) != 1:
-        raise SystemExit("BLOCKED:verify-input-invalid:rubric:verify.md is not uniquely installed")
-    return bodies[0].read_bytes()
+    return phase_body("verify.md", "verify-input-invalid", "rubric")
+
+
+def hashed(work: pathlib.Path, prefix: str, kind: str, relative: object, recorded: object) -> bytes:
+    """Read a state-recorded source file and refuse bytes that differ from its recorded sha256."""
+    if not isinstance(relative, str) or not relative or not isinstance(recorded, str) \
+            or re.fullmatch(r"[0-9a-f]{64}", recorded) is None:
+        raise SystemExit(f"BLOCKED:{prefix}:{kind}:state records no path and sha256")
+    path = pathlib.Path(relative)
+    path = path if path.is_absolute() else work / path
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise SystemExit(f"BLOCKED:{prefix}:{kind}:{relative} is unreadable: {exc}") from exc
+    if hashlib.sha256(raw).hexdigest() != recorded:
+        raise SystemExit(f"BLOCKED:{prefix}:{kind}:{relative} does not match its recorded sha256")
+    return raw
 
 
 def build_verify_snapshot(devlyn: pathlib.Path, state: dict) -> bytes:
@@ -51,27 +77,14 @@ def build_verify_snapshot(devlyn: pathlib.Path, state: dict) -> bytes:
     def invalid(kind: str, detail: str) -> SystemExit:
         return SystemExit(f"BLOCKED:verify-input-invalid:{kind}:{detail}")
 
-    def hashed(kind: str, relative: object, recorded: object) -> bytes:
-        if not isinstance(relative, str) or not relative or not isinstance(recorded, str) \
-                or re.fullmatch(r"[0-9a-f]{64}", recorded) is None:
-            raise invalid(kind, "state records no path and sha256")
-        path = pathlib.Path(relative)
-        path = path if path.is_absolute() else work / path
-        try:
-            raw = path.read_bytes()
-        except OSError as exc:
-            raise invalid(kind, f"{relative} is unreadable: {exc}") from exc
-        if hashlib.sha256(raw).hexdigest() != recorded:
-            raise invalid(kind, f"{relative} does not match its recorded sha256")
-        return raw
-
     source = state.get("source") if isinstance(state.get("source"), dict) else {}
     generated = source.get("type") == "generated"
     if source.get("type") not in {"generated", "spec"}:
         raise invalid("contract", "state.source.type must be spec or generated")
     field = "criteria" if generated else "spec"
-    contract = hashed("contract", source.get(field + "_path"), source.get(field + "_sha256"))
-    goal = hashed("goal", source.get("goal_path"), source.get("goal_sha256")) if generated else b""
+    contract = hashed(work, "verify-input-invalid", "contract", source.get(field + "_path"), source.get(field + "_sha256"))
+    goal = (hashed(work, "verify-input-invalid", "goal", source.get("goal_path"), source.get("goal_sha256"))
+            if generated else b"")
     expected = b""
     if not generated:
         spec_path = pathlib.Path(source["spec_path"])
@@ -122,6 +135,99 @@ def build_verify_snapshot(devlyn: pathlib.Path, state: dict) -> bytes:
     return b"".join(frame(name, payloads[name]) for name in SNAPSHOT_FRAMES)
 
 
+def render_worker(devlyn: pathlib.Path, phase: str, engine: str, round_: int) -> tuple[bytes, pathlib.Path]:
+    """Exact worker prompt bytes from state: the owner adds no text of its own."""
+    header, body_name, stem, extra = WORKER_PHASES[phase]
+    work = devlyn.resolve().parent
+    writer = runpy.run_path(str(SHARED / "state-phase-write.py"))
+
+    def invalid(kind: str, detail: str) -> SystemExit:
+        return SystemExit(f"BLOCKED:phase-input-invalid:{kind}:{detail}")
+
+    try:
+        state = writer["read_state"](devlyn / "pipeline.state.json")
+    except (OSError, ValueError, SystemExit) as exc:
+        raise invalid("state", str(exc)) from exc
+    phases = state.get("phases") if isinstance(state.get("phases"), dict) else {}
+    plan = phases.get("plan")
+    if not isinstance(plan, dict) or plan.get("completed_at") is None or plan.get("verdict") not in {"PASS", "PASS_WITH_ISSUES"}:
+        raise invalid("plan", "PLAN must complete with a passing verdict before a worker prompt renders")
+    try:
+        writer["validate_plan_output"](state, devlyn, phase)
+    except SystemExit as exc:
+        raise invalid("plan", str(exc)) from exc
+    adapter = SHARED / "adapters" / f"{engine}.md"
+    if not adapter.is_file():
+        raise invalid("adapter", f"no adapter for engine {engine!r}")
+    source = state.get("source") if isinstance(state.get("source"), dict) else {}
+    generated = source.get("type") == "generated"
+    field = "criteria" if generated else "spec"
+    contract = hashed(work, "phase-input-invalid", "contract", source.get(field + "_path"), source.get(field + "_sha256"))
+    goal = (hashed(work, "phase-input-invalid", "goal", source.get("goal_path"), source.get("goal_sha256"))
+            if generated else b"")
+    metadata = {
+        "run_id": state.get("run_id"), "phase": phase, "round": round_, "workdir": str(work), "mode": state.get("mode"),
+        "base_sha": (state.get("base_ref") or {}).get("sha"),
+        "source": {"type": source.get("type"), "contract": source.get(field + "_path"),
+                   "goal": source.get("goal_path") if generated else None},
+        "bindings": {"DEVLYN_SKILL_DIR": str(SKILL), "DEVLYN_SHARED_DIR": str(SHARED),
+                     "CODEX_MONITORED_PATH": str(SHARED / "codex-monitored.sh")},
+    }
+    if phase == "probe_derive":
+        check = runpy.run_path(str(SHARED / "spec-verify-check.py"))
+        contract_path = pathlib.Path(source[field + "_path"])
+        try:
+            requirements, error = check["resolve_required_risk_probe_requirements"](
+                contract_path if contract_path.is_absolute() else work / contract_path)
+        except (OSError, UnicodeError) as exc:
+            requirements, error = None, str(exc)
+        if error:
+            raise invalid("requirements", error)
+        payload = json.dumps(requirements, sort_keys=True).encode("utf-8")
+    else:
+        implement = phases.get("implement") if isinstance(phases.get("implement"), dict) else None
+        progress = implement.get("exec") if implement else None
+        total = writer["execution_phase_count"]((devlyn / "plan.md").read_bytes())
+        if writer["valid_phase_gate_progress"](progress):
+            metadata["exec"] = {"current": progress["current"], "total": progress["total"]}
+        elif implement is None and total >= 2:
+            metadata["exec"] = {"current": 1, "total": total}
+        predecessor = writer["repair_predecessor"](state)
+        name, entry = predecessor if predecessor else (None, {})
+        merged = entry.get("merged") if name == "verify" else None
+        payload = b""
+        metadata["repair_of"] = None
+        if name == "verify" and entry.get("verdict") == "NEEDS_WORK" and isinstance(merged, dict):
+            findings = work / str(merged.get("findings_file") or "")
+            if findings.is_symlink() or not findings.is_file():
+                raise invalid("findings", "the merged VERIFY findings file is missing or not a regular file")
+            payload, metadata["repair_of"] = findings.read_bytes(), "verify"
+        elif name == "implement" and entry.get("verdict") == "FAIL" and "exec" in metadata:
+            metadata["repair_of"] = "phase_gate"
+    frames = {"adapter": project_adapter(adapter.read_bytes()), "body": phase_body(body_name, "phase-input-invalid", "body"),
+              "metadata": json.dumps(metadata, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+              "contract": contract, "goal": goal, extra: payload}
+    prompt = header + b"".join(frame(name, frames[name]) for name in ("adapter", "body", "metadata", "contract", "goal", extra))
+    return prompt, devlyn / f"{stem}.{round_}"
+
+
+def write_atomic(output: pathlib.Path, rendered: bytes) -> str:
+    if not output.parent.is_dir():
+        raise SystemExit(f"error: prompt output parent is not a directory: {output.parent}")
+    fd, temporary = tempfile.mkstemp(dir=output.parent, prefix=output.name + ".tmp.")
+    temporary_path = pathlib.Path(temporary)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(rendered)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary_path.replace(output)
+    except BaseException:
+        temporary_path.unlink(missing_ok=True)
+        raise
+    return hashlib.sha256(rendered).hexdigest()
+
+
 def render_verify(role: str, engine: str, snapshot: bytes) -> bytes:
     """Exact judge prompt bytes: projected adapter, rubric, role, shared snapshot."""
     if role not in {"primary_judge", "pair_judge"}:
@@ -151,21 +257,6 @@ def prompt_frames(prompt: bytes) -> dict[str, bytes]:
     return frames
 
 
-def validate_plan_context(task_context: pathlib.Path, content: bytes) -> None:
-    if task_context.name != "plan.task-context":
-        return
-    working_directory = pathlib.Path.cwd()
-    expected = (
-        b"Working directory: "
-        + os.fsencode(working_directory)
-        + b"\nPlan output: "
-        + os.fsencode(working_directory / ".devlyn" / "plan.md")
-        + b"\n"
-    )
-    if not content.startswith(expected):
-        raise SystemExit("error: invalid PLAN task-context header")
-
-
 def render_prompt(
     adapter: pathlib.Path,
     canonical_body: pathlib.Path,
@@ -178,24 +269,8 @@ def render_prompt(
         context_bytes = task_context.read_bytes()
     except OSError as exc:
         raise SystemExit(f"error: prompt input unreadable: {exc}") from exc
-    projected_adapter = project_adapter(adapter_bytes)
-    validate_plan_context(task_context, context_bytes)
-    rendered = projected_adapter + body_bytes + context_bytes
-    rendered = rendered.rstrip(b"\n")
-    if not output.parent.is_dir():
-        raise SystemExit(f"error: prompt output parent is not a directory: {output.parent}")
-    fd, temporary = tempfile.mkstemp(dir=output.parent, prefix=output.name + ".tmp.")
-    temporary_path = pathlib.Path(temporary)
-    try:
-        with os.fdopen(fd, "wb") as handle:
-            handle.write(rendered)
-            handle.flush()
-            os.fsync(handle.fileno())
-        temporary_path.replace(output)
-    except BaseException:
-        temporary_path.unlink(missing_ok=True)
-        raise
-    return hashlib.sha256(rendered).hexdigest()
+    rendered = (project_adapter(adapter_bytes) + body_bytes + context_bytes).rstrip(b"\n")
+    return write_atomic(output, rendered)
 
 
 def self_test() -> int:
@@ -203,7 +278,7 @@ def self_test() -> int:
         root = pathlib.Path(raw)
         adapter = root / "adapter.md"
         body = root / "plan.md"
-        context = root / "plan.task-context"
+        context = root / "task-context"
         output = root / ".devlyn" / "plan.prompt"
         output.parent.mkdir()
         original_directory = pathlib.Path.cwd()
@@ -262,26 +337,125 @@ def self_test() -> int:
                 assert digest == hashlib.sha256(written).hexdigest()
                 assert written == expected
 
-            invalid_contexts = (
-                b"context-without-header",
-                b"Working directory: relative\nPlan output: relative/.devlyn/plan.md\n",
-                b"Working directory: /mismatch\nPlan output: /mismatch/.devlyn/plan.md\n",
-            )
-            for invalid_context in invalid_contexts:
-                context.write_bytes(invalid_context)
-                output.write_bytes(b"unchanged")
-                try:
-                    render_prompt(adapter, body, context, output)
-                except SystemExit:
-                    pass
-                else:
-                    raise AssertionError("invalid PLAN task-context header accepted")
-                assert output.read_bytes() == b"unchanged"
         finally:
             os.chdir(original_directory)
     verify_self_test()
-    print("SELFTEST PASS: projected exact bytes + PLAN context validation + VERIFY snapshot guards")
+    worker_self_test()
+    print("SELFTEST PASS: projected exact bytes + VERIFY snapshot guards + worker prompts from state")
     return 0
+
+
+def split_frames(prompt: bytes, header: bytes, names: tuple[str, ...]) -> dict[str, bytes]:
+    assert prompt.startswith(header), prompt[:40]
+    frames, offset = {}, len(header)
+    for name in names:
+        end = prompt.index(b"\n", offset)
+        label, _, length = prompt[offset:end].partition(b" ")
+        assert label == name.encode("ascii"), (label, name)
+        start = end + 1
+        frames[name], offset = prompt[start:start + int(length)], start + int(length) + 1
+    assert offset == len(prompt)
+    return frames
+
+
+def worker_self_test() -> None:
+    writer = runpy.run_path(str(SHARED / "state-phase-write.py"))
+    with tempfile.TemporaryDirectory(prefix="phase-prompt-render-worker-") as raw:
+        work = pathlib.Path(raw).resolve()
+        devlyn = work / ".devlyn"
+        devlyn.mkdir()
+        contract = b"# Spec\r\n\n<!-- devlyn:verification -->\n## Verification\n\n- prints ok \xff\n"
+        (work / "spec.md").write_bytes(contract)
+        plan = b'<!-- devlyn:authorized-surface -->\n```json\n{"authorized_surface": ["app.py"]}\n```\n'
+        (devlyn / "plan.md").write_bytes(plan)
+        stamp = "2026-10-03T00:00:00.000Z"
+        state = {"version": "3.0", "run_id": "rs-render", "mode": "spec", "base_ref": {"sha": "a" * 40},
+                 "source": {"type": "spec", "spec_path": "spec.md", "spec_sha256": hashlib.sha256(contract).hexdigest()},
+                 "rounds": {"global": 0, "max_rounds": 4},
+                 "phases": {"plan": {"started_at": stamp, "completed_at": stamp, "round": 0, "verdict": "PASS",
+                                     "output_sha256": hashlib.sha256(plan).hexdigest()},
+                            "probe_derive": None, "implement": None, "verify": None, "final_report": None}}
+
+        def save(value):
+            writer["write_state"](devlyn / "pipeline.state.json", value)
+
+        names = ("adapter", "body", "metadata", "contract", "goal")
+        save(state)
+        prompt, output = render_worker(devlyn, "implement", "codex", 0)
+        frames = split_frames(prompt, b"IMPLEMENT/1\n", names + ("findings",))
+        metadata = json.loads(frames["metadata"])
+        assert output == devlyn / "implement.prompt.0" and frames["contract"] == contract and frames["goal"] == b""
+        assert frames["body"] == (SKILL / "references/phases/implement.md").read_bytes() and frames["findings"] == b""
+        assert frames["adapter"] == project_adapter((SHARED / "adapters/codex.md").read_bytes())
+        assert metadata["bindings"] == {"DEVLYN_SKILL_DIR": str(SKILL), "DEVLYN_SHARED_DIR": str(SHARED),
+                                        "CODEX_MONITORED_PATH": str(SHARED / "codex-monitored.sh")}
+        assert "exec" not in metadata and metadata["repair_of"] is None and render_worker(devlyn, "implement", "codex", 0)[0] == prompt
+
+        # Phase-gated plans frame the current phase; a VERIFY repair frames the merged findings.
+        phased = plan + b"## Execution phases\n### Phase 1 \xe2\x80\x94 a\n### Phase 2 \xe2\x80\x94 b\n"
+        (devlyn / "plan.md").write_bytes(phased)
+        gated = json.loads(json.dumps(state))
+        gated["phases"]["plan"]["output_sha256"] = hashlib.sha256(phased).hexdigest()
+        save(gated)
+        assert json.loads(split_frames(render_worker(devlyn, "implement", "codex", 0)[0], b"IMPLEMENT/1\n",
+                                       names + ("findings",))["metadata"])["exec"] == {"current": 1, "total": 2}
+        repair = json.loads(json.dumps(gated))
+        repair["phases"]["implement"] = {"started_at": stamp, "completed_at": stamp, "round": 0, "verdict": "PASS",
+                                         "exec": {"total": 2, "current": 2, "statuses": ["PASS", "PASS"]}}
+        repair["phases"]["verify"] = {"started_at": stamp, "completed_at": stamp, "round": 0, "verdict": "NEEDS_WORK",
+                                      "merged": {"verdict": "NEEDS_WORK", "findings_file": ".devlyn/verify-merged.findings.jsonl"}}
+        save(repair)
+        merged = b'{"id":"F1","severity":"HIGH"}\n'
+        (devlyn / "verify-merged.findings.jsonl").write_bytes(merged)
+        repaired = split_frames(render_worker(devlyn, "implement", "codex", 1)[0], b"IMPLEMENT/1\n", names + ("findings",))
+        assert repaired["findings"] == merged and json.loads(repaired["metadata"])["repair_of"] == "verify"
+        assert json.loads(repaired["metadata"])["exec"] == {"current": 2, "total": 2}
+
+        def refused(kind, value, phase="implement", engine="codex"):
+            save(value)
+            output_path = devlyn / ("implement.prompt.9" if phase == "implement" else "probe-derive.prompt.9")
+            output_path.write_bytes(b"unchanged")
+            try:
+                prompt_bytes, target = render_worker(devlyn, phase, engine, 9)
+                write_atomic(target, prompt_bytes)
+            except SystemExit as exc:
+                assert str(exc).startswith(f"BLOCKED:phase-input-invalid:{kind}:"), exc
+            else:
+                raise AssertionError(f"{kind} input accepted")
+            assert output_path.read_bytes() == b"unchanged", kind
+
+        (devlyn / "verify-merged.findings.jsonl").unlink()
+        refused("findings", repair)
+        refused("adapter", gated, engine="nonexistent")
+        open_plan = json.loads(json.dumps(gated)); open_plan["phases"]["plan"]["completed_at"] = None
+        refused("plan", open_plan)
+        (devlyn / "plan.md").write_bytes(phased + b"widened\n")
+        refused("plan", gated)
+        (devlyn / "plan.md").write_bytes(phased)
+        tampered = json.loads(json.dumps(gated)); tampered["source"]["spec_sha256"] = "0" * 64
+        refused("contract", tampered)
+        unreadable = json.loads(json.dumps(gated)); unreadable["source"]["spec_path"] = "missing.md"
+        refused("contract", unreadable, phase="probe_derive")
+        refused("requirements", gated, phase="probe_derive")  # the requirement resolver needs UTF-8 text
+        requirement = {"tag": "fixture_cleanup", "derived_from": "prints ok"}
+        criteria = ("# C\r\n\n<!-- devlyn:verification -->\n## Verification\n\n- prints ok\n\n```json\n"
+                    + json.dumps({"verification_commands": [{"cmd": "true"}], "required_risk_probe_requirements": [requirement]})
+                    + "\n```\n").encode("utf-8")
+        (devlyn / "criteria.generated.md").write_bytes(criteria)
+        (devlyn / "goal.raw.txt").write_bytes(b"goal")
+        generated = json.loads(json.dumps(gated))
+        generated.update(mode="free-form", source={"type": "generated", "criteria_path": ".devlyn/criteria.generated.md",
+                                                   "criteria_sha256": hashlib.sha256(criteria).hexdigest(),
+                                                   "goal_path": ".devlyn/goal.raw.txt", "goal_sha256": "0" * 64})
+        refused("goal", generated)
+        generated["source"]["goal_sha256"] = hashlib.sha256(b"goal").hexdigest()
+        save(generated)
+        assert split_frames(render_worker(devlyn, "implement", "codex", 0)[0], b"IMPLEMENT/1\n",
+                            names + ("findings",))["goal"] == b"goal"
+        probe, probe_output = render_worker(devlyn, "probe_derive", "claude", 0)
+        probe_frames = split_frames(probe, b"PROBE_DERIVE/1\n", names + ("requirements",))
+        assert probe_output == devlyn / "probe-derive.prompt.0" and json.loads(probe_frames["requirements"]) == [requirement]
+        assert probe_frames["contract"] == criteria and probe_frames["body"] == (SKILL / "references/phases/probe-derive.md").read_bytes()
 
 
 def verify_self_test() -> None:
@@ -359,12 +533,24 @@ def main() -> int:
     parser.add_argument("--canonical-body", type=pathlib.Path)
     parser.add_argument("--task-context", type=pathlib.Path)
     parser.add_argument("--output", type=pathlib.Path)
+    parser.add_argument("--devlyn-dir", type=pathlib.Path)
+    parser.add_argument("--phase", choices=sorted(WORKER_PHASES))
+    parser.add_argument("--engine")
+    parser.add_argument("--round", type=int)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
+    generic = (args.adapter, args.canonical_body, args.task_context, args.output)
+    worker = (args.devlyn_dir, args.phase, args.engine, args.round)
     if args.self_test:
-        if any((args.adapter, args.canonical_body, args.task_context, args.output)):
+        if any(generic) or any(value is not None for value in worker):
             parser.error("render paths are not allowed with --self-test")
         return self_test()
+    if any(value is not None for value in worker):
+        if any(generic) or any(value is None for value in worker) or args.round < 0:
+            parser.error("worker mode takes exactly --devlyn-dir, --phase, --engine and a non-negative --round")
+        prompt, output = render_worker(args.devlyn_dir, args.phase, args.engine, args.round)
+        print(write_atomic(output, prompt))
+        return 0
     if not all((args.adapter, args.canonical_body, args.task_context, args.output)):
         parser.error(
             "--adapter, --canonical-body, --task-context, and --output are required"

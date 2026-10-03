@@ -819,6 +819,26 @@ def bind_worker_role_argv(state, phase, entry, devlyn, receipt):
 
 COMPLEXITIES = ("trivial", "medium", "large")
 AUTO_PROBE_PREFIX = "auto-risk-probes "
+# Writer-recorded reasons; callers may not supply them and repeats ignore them.
+DECLARED_REASON = "declared-risk-probe-requirements"
+
+
+def writer_reason(reason: str) -> bool:
+    return reason.startswith(AUTO_PROBE_PREFIX) or reason == DECLARED_REASON
+
+
+def declares_probe_requirements(state: dict, work: pathlib.Path) -> bool:
+    """Whether the source contract declares `required_risk_probe_requirements` (validated)."""
+    source = state.get("source") if isinstance(state.get("source"), dict) else {}
+    relative = source.get("criteria_path") if source.get("type") == "generated" else source.get("spec_path")
+    if not isinstance(relative, str) or not relative:
+        return False
+    path = pathlib.Path(relative)
+    resolver = runpy.run_path(str(pathlib.Path(__file__).with_name("spec-verify-check.py")))
+    requirements, error = resolver["resolve_required_risk_probe_requirements"](path if path.is_absolute() else work / path)
+    if error:
+        raise ValueError(f"BLOCKED:invalid-classification: {error}")
+    return bool(requirements)
 
 
 def freeze_classification(state: dict, work: pathlib.Path, complexity: str | None,
@@ -833,7 +853,7 @@ def freeze_classification(state: dict, work: pathlib.Path, complexity: str | Non
         raise ValueError("BLOCKED:invalid-classification: --complexity applies only to free-form runs")
     for reason in reasons:
         if (not isinstance(reason, str) or not reason.strip() or "\n" in reason
-                or reason.startswith(AUTO_PROBE_PREFIX) or reasons.count(reason) > 1):
+                or writer_reason(reason) or reasons.count(reason) > 1):
             raise ValueError(f"BLOCKED:invalid-classification: invalid high-risk reason {reason!r}")
     if not generated:
         return None
@@ -852,7 +872,7 @@ def freeze_roles(state: dict, work: pathlib.Path, default_engine: str, *, comple
     existing = helper["snapshot"](state)
     if existing is not None:
         profile = state.get("risk_profile") or {}
-        frozen_reasons = [r for r in profile.get("reasons", []) if not r.startswith(AUTO_PROBE_PREFIX)]
+        frozen_reasons = [r for r in profile.get("reasons", []) if not writer_reason(r)]
         if (state.get("complexity") != complexity or frozen_reasons != reasons
                 or (criteria_sha256 is not None and state["source"].get("criteria_sha256") != criteria_sha256)):
             raise ValueError("BLOCKED:invalid-classification: a repeated freeze differs from the frozen classification")
@@ -860,6 +880,7 @@ def freeze_roles(state: dict, work: pathlib.Path, default_engine: str, *, comple
     if any(isinstance(entry, dict) and entry.get("started_at") for entry in state.get("phases", {}).values()):
         raise ValueError("BLOCKED:invalid-engine-config: roles must be frozen before phase dispatch")
     available = available or (lambda engine: shutil.which(engine) is not None)
+    declared = declares_probe_requirements(state, work)
     profile = copy.deepcopy(state.get("risk_profile") or {})
     resolved = helper["resolve"](
         work, default_engine,
@@ -868,6 +889,7 @@ def freeze_roles(state: dict, work: pathlib.Path, default_engine: str, *, comple
         no_pair=profile.get("pair_default_enabled") is False,
         available=available,
     )
+    reasons = reasons + [DECLARED_REASON] * declared
     profile["high_risk"], profile["reasons"] = bool(reasons), list(reasons)
     if reasons and profile.get("risk_probes_explicit") is False and state.get("mode") != "verify-only":
         # Probes route to the legacy executor's OTHER engine; VERIFY profiles never reroute them.
@@ -1361,7 +1383,6 @@ def do_transition(
     next_engine: str | None,
     next_model: str | None,
     *,
-    next_prompt_sha256: str | None = None,
     between=None,
     work: pathlib.Path | None = None,
 ) -> dict:
@@ -1388,7 +1409,6 @@ def do_transition(
         candidate, next_phase, next_round, next_triggered_by,
         next_engine, next_model,
         source_phase=phase,
-        prompt_sha256=next_prompt_sha256,
         devlyn=devlyn,
         work=work,
     )
@@ -1541,6 +1561,8 @@ def final_report_self_test() -> None:
              ["--verdict", "BLOCKED:implement-empty"], "BLOCKED:implement-empty"),
             ("followups", fixture(tmp, "followups", mode="free-form", phases={
                 "implement": span("PASS"), "verify": verify_pass()}), [], "PASS"),
+            ("render-refused", fixture(tmp, "render-refused"),
+             ["--verdict", "BLOCKED:phase-input-invalid", "--detail", "contract sha mismatch"], "BLOCKED:phase-input-invalid"),
         ]
         plan_empty_devlyn = matrix[8][1][1]
         (plan_empty_devlyn / "plan.md").write_bytes(b"# PLAN\n")
@@ -1629,7 +1651,7 @@ def final_report_self_test() -> None:
         archived = subprocess.run([sys.executable, str(archive), "--devlyn-dir", ".devlyn"],
                                   cwd=work, capture_output=True, text=True, encoding="utf-8")
         assert archived.returncode == 1 and "error: archive blocked:" in archived.stderr, archived
-    print("PASS final report: evidence-derived verdict matrix (13) agrees with archive and TCC; refusals preserve state")
+    print("PASS final report: evidence-derived verdict matrix (14) agrees with archive and TCC; refusals preserve state")
 
 
 def repair_admission_self_test() -> None:
@@ -1830,7 +1852,40 @@ def freeze_classification_self_test() -> None:
         freeze_roles(state, work, "claude", high_risk_reasons=["migration"], available=lambda engine: engine == "codex")
         assert state["role_resolution"]["roles"]["pair_judge"]["engine"] == "codex"
         assert state["risk_profile"]["reasons"] == ["migration", "auto-risk-probes skipped: claude-unavailable"]
-    print("PASS freeze classification: complexity/criteria binding, auto-probe selection, repeat refusal")
+        # Declared probe requirements mark the run high risk under the same automatic gating.
+        (devlyn / "engines.json").unlink()
+
+        def declaring(requirements):
+            block = {"verification_commands": [{"cmd": "true"}], "required_risk_probe_requirements": requirements}
+            return ("# C\n\n<!-- devlyn:verification -->\n## Verification\n\n- a write releases the lock\n\n```json\n"
+                    + json.dumps(block) + "\n```\n").encode("utf-8")
+
+        declared = [{"tag": "release_recovery", "derived_from": "a write releases the lock"}]
+        criteria.write_bytes(declaring(declared))
+        state = fresh()
+        freeze_roles(state, work, "claude", complexity="medium", available=both)
+        assert state["risk_profile"]["high_risk"] is True and state["risk_profile"]["risk_probes_enabled"] is True
+        assert state["risk_profile"]["reasons"] == [DECLARED_REASON]
+        assert freeze_roles(state, work, "claude", complexity="medium", available=both)["roles"]
+        refused(state, work, "invalid high-risk reason", complexity="medium", high_risk_reasons=[DECLARED_REASON])
+        state = fresh(explicit=True, enabled=False)
+        freeze_roles(state, work, "claude", complexity="medium", available=both)
+        assert state["risk_profile"]["reasons"] == [DECLARED_REASON] and state["risk_profile"]["risk_probes_enabled"] is False
+        state = fresh()
+        freeze_roles(state, work, "claude", complexity="medium", available=only_claude)
+        assert state["risk_profile"]["reasons"] == [DECLARED_REASON, "auto-risk-probes skipped: codex-unavailable"]
+        (work / "spec.md").write_bytes(declaring(declared))
+        state = fresh(mode="verify-only")
+        state["source"]["spec_path"] = "spec.md"
+        freeze_roles(state, work, "claude", available=both)
+        assert state["risk_profile"]["high_risk"] is True and state["risk_profile"]["risk_probes_enabled"] is False
+        criteria.write_bytes(declaring([{**declared[0], "extra": 1}]))
+        refused(fresh(), work, "unknown key(s): extra", complexity="medium", available=both)
+        criteria.write_bytes(declaring([]))
+        state = fresh()
+        freeze_roles(state, work, "claude", complexity="medium", available=both)
+        assert state["risk_profile"]["high_risk"] is False and state["risk_profile"]["reasons"] == []
+    print("PASS freeze classification: complexity/criteria binding, auto-probe selection, declared requirements, repeat refusal")
 
 
 def self_test() -> int:
@@ -1994,16 +2049,6 @@ def self_test() -> int:
         assert set(plan1["history"][0]) == set(PLAN_RECEIPT_FIELDS)
         assert plan1["history"][0]["prompt_sha256"] == digest0
         assert plan1["prompt_sha256"] == digest1
-        guard_error = (
-            "error: phases.plan complete with PASS or PASS_WITH_ISSUES requires "
-            "--phase plan transition --verdict <verdict> --next-phase <phase>"
-        )
-        assert_plan_rejected_unchanged(
-            guard_error, "complete", "--verdict", "PASS",
-        )
-        assert_plan_rejected_unchanged(
-            guard_error, "complete", "--verdict", "PASS_WITH_ISSUES",
-        )
         result = plan_cli(
             "transition", "--verdict", "PASS", "--next-phase", "implement",
             "--next-round", "0", "--next-engine", "claude",
@@ -2097,7 +2142,6 @@ def self_test() -> int:
         )
         assert result.returncode == 1, result.stderr
         assert "BLOCKED:model-attestation-failed" in result.stderr
-        assert guard_error not in result.stderr
         attestation_blocked = read_state(state_path)["phases"]["plan"]
         assert attestation_blocked["verdict"] == "BLOCKED"
         assert attestation_blocked["completed_at"] is not None
@@ -3504,7 +3548,6 @@ def _main_unlocked() -> int:
     transition_p.add_argument("--next-phase", choices=sorted(PHASE_NAMES), required=True)
     transition_p.add_argument("--next-round", type=int, required=True)
     transition_p.add_argument("--next-triggered-by", choices=sorted(SPAWN_TRIGGERS), default=None)
-    transition_p.add_argument("--next-prompt-sha256", default=None)
     transition_p.add_argument("--next-engine", default=None)
     transition_p.add_argument("--next-model", default=None)
 
@@ -3568,7 +3611,6 @@ def _main_unlocked() -> int:
                 args.findings_file, args.log_file, args.engine, args.model,
                 args.engine_session_log, devlyn, args.next_round,
                 args.next_triggered_by, args.next_engine, args.next_model,
-                next_prompt_sha256=args.next_prompt_sha256,
                 work=work,
             )
         write_state(state_path, state)
@@ -3599,14 +3641,6 @@ def _main_unlocked() -> int:
             args.log_file, args.engine, args.model, args.engine_session_log, devlyn,
             work, detail=args.detail,
         )
-        if (
-            args.phase == "plan"
-            and state["phases"]["plan"]["verdict"] in {"PASS", "PASS_WITH_ISSUES"}
-        ):
-            raise SystemExit(
-                "error: phases.plan complete with PASS or PASS_WITH_ISSUES requires "
-                "--phase plan transition --verdict <verdict> --next-phase <phase>"
-            )
 
     if args.event not in {"spawn", "transition"}:
         write_state(state_path, state)

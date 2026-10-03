@@ -1294,6 +1294,18 @@ print(payload, file=sys.stderr)
         error = run([sys.executable, '-X', 'utf8=0', self.bounded, '5', '--stdin-file', self.work / '없는 파일', '--', sys.executable, '-c', 'raise AssertionError()'], env=env, code=2)
         self.assertIn('없는 파일'.encode(), error.stderr)
 
+    def test_defect_witness_probes_run_natively(self):
+        # Hardlink alias, exclusive create and scratch cleanup probes through MECHANICAL on this OS.
+        program = ('import pathlib, runpy, sys\nchecker = pathlib.Path(sys.argv[1]) / "spec-verify-check.py"\n'
+                   'sys.exit(runpy.run_path(str(checker))["defect_witness_self_test"](str(checker)))\n')
+        result = run([sys.executable, '-c', program, self.shared], timeout=600)
+        self.assertIn(b'PASS defect witnesses', result.stdout)
+
+    def test_worker_prompt_render_exact_bytes_natively(self):
+        # CRLF and non-UTF-8 contract bytes reach the rendered worker prompt unchanged.
+        result = run([sys.executable, self.shared / 'phase-prompt-render.py', '--self-test'], timeout=300)
+        self.assertIn(b'worker prompts from state', result.stdout)
+
     def test_bootstrap_and_completion_native_locks(self):
         repo = self.work / 'repo'; repo.mkdir()
         run(['git', 'init', '-q', repo])

@@ -7,9 +7,14 @@ You execute the plan. Constrained design judgment within PLAN's invariants — w
 </role>
 
 <input>
-- Plan: `.devlyn/plan.md` (file list + risks + acceptance restatement).
-- Source: `pipeline.state.json:source.spec_path` or `criteria_path`.
-- Codebase at `state.base_ref.sha`.
+Your prompt is rendered from state; it carries no other instructions.
+- `metadata` frame: run, phase, round, `workdir`, and `bindings`. Set DEVLYN_SKILL_DIR, DEVLYN_SHARED_DIR and CODEX_MONITORED_PATH from `bindings`, never from your inherited environment.
+- `contract` frame: the exact spec or generated-criteria bytes; the `goal` frame holds the raw goal for free-form runs.
+- Plan: `.devlyn/plan.md` (file list, risks, and execution phases when present).
+- Probes: when `.devlyn/risk-probes.jsonl` exists, every probe is an acceptance obligation.
+- Codebase: the current worktree at `metadata.workdir`; after an earlier phase or round it already holds those commits.
+- `metadata.exec` (phase-gated runs): implement only `### Phase <exec.current>` under plan.md's `## Execution phases`, then run that phase's `gate:` commands.
+- `metadata.repair_of`: `verify` means fix every finding in the `findings` frame within the authorized surface (`exec` does not narrow it); `phase_gate` means redo the current phase until its gate passes.
 </input>
 
 <output>
@@ -39,5 +44,3 @@ Codex-routed phases receive the inlined excerpt:
 </runtime_principles>
 
 Before declaring the phase complete, re-read each Requirement and confirm your reply cites the file:line that satisfies it.
-
-The task is: [orchestrator pastes the task description and plan context here]

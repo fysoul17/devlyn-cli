@@ -118,8 +118,10 @@ def terminal_halt_witness(phases: dict[str, object]) -> tuple[str, str] | None:
         return None
     reason = verdict.removeprefix("BLOCKED:")
     target = HALT_WITNESS_PHASES.get(reason)
+    # A worker that never started (no fresh context, its engine, or its rendered prompt input)
+    # halts at the last phase reached.
     if target is None and (
-        reason == "fresh-context-unavailable"
+        reason in {"fresh-context-unavailable", "phase-input-invalid"}
         or (reason.endswith("-unavailable") and reason.removesuffix("-unavailable") in ADAPTER_ENGINES)
     ):
         reached = [name for name in WORK_PHASE_ORDER if phases.get(name) is not None]
@@ -674,6 +676,7 @@ def self_test() -> int:
             ("implement-empty", "implement", "PASS"),
             ("fresh-context-unavailable", "implement", "BLOCKED"),
             ("codex-unavailable", "plan", "BLOCKED"),
+            ("phase-input-invalid", "plan", "PASS"),
         )
         for reason, halt_phase, phase_verdict in witness_rows:
             root = base / f"witness-{reason}"
@@ -690,8 +693,8 @@ def self_test() -> int:
             }
             state = {"run_id": f"witness-{reason}", "phases": phases}
             assert terminal_halt_witness(phases) == (halt_phase, reason)
-            if reason == "codex-unavailable":
-                for invented in ("required-tools-unavailable", "invented-unavailable"):
+            if reason in {"codex-unavailable", "phase-input-invalid"}:
+                for invented in ("required-tools-unavailable", "invented-unavailable", "phase-input-invalid:contract"):
                     claimed = {**phases, "final_report": {**phases["final_report"], "verdict": f"BLOCKED:{invented}"}}
                     assert terminal_halt_witness(claimed) is None, invented
             write_archived_state(root, state)

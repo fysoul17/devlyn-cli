@@ -100,8 +100,66 @@ class OwnerPhases(unittest.TestCase):
         """Stand in for the merge: VERIFY round closes NEEDS_WORK with merged findings."""
         (self.devlyn / "verify-merged.findings.jsonl").write_text('{"id": "VERIFY-0001", "severity": "HIGH"}\n')
         state = self.state()
-        state["phases"]["verify"].update(verdict="NEEDS_WORK", merged={"verdict": "NEEDS_WORK"})
+        state["phases"]["verify"].update(verdict="NEEDS_WORK", merged={
+            "verdict": "NEEDS_WORK", "findings_file": ".devlyn/verify-merged.findings.jsonl"})
         self.save(state)
+
+    def with_spec(self, text=b"# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- prints ok\n"):
+        (self.devlyn / "spec.md").write_bytes(text)
+        state = self.state()
+        state["source"] = {"type": "spec", "spec_path": ".devlyn/spec.md", "spec_sha256": hashlib.sha256(text).hexdigest()}
+        self.save(state)
+
+    def render(self, phase, round_):
+        result = subprocess.run([sys.executable, str(SHARED / "phase-prompt-render.py"), "--devlyn-dir", ".devlyn",
+                                 "--phase", phase, "--engine", "claude", "--round", str(round_)],
+                                cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.strip()
+
+    def test_complete_render_spawn_sequence(self):
+        """Every edge into IMPLEMENT completes its predecessor, renders, then spawns."""
+        self.with_spec()
+        self.plan()
+        self.cli("plan", "complete", "--verdict", "PASS")
+        completed = self.state()
+        digest = self.render("implement", 0)
+        self.assertEqual(self.render("implement", 0), digest)  # an interrupted render reruns without effect
+        self.assertEqual(self.state(), completed)
+        self.assertIsNone(completed["phases"].get("implement"))
+        self.cli("implement", "spawn", "--round", "0", "--engine", "claude", "--prompt-sha256", digest)
+        self.assertEqual((self.state()["phases"]["implement"]["round"], self.state()["rounds"]["global"]), (0, 0))
+        (self.work / "source.txt").write_text("implemented\n")
+        self.git("commit", "-qam", "chore(pipeline): implement")
+        self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
+                 "--next-round", "0", "--next-engine", "claude")
+        self.needs_work()
+        self.cli("verify", "complete")
+        closed = self.state()
+        repair = self.render("implement", 1)
+        self.assertEqual(self.render("implement", 1), repair)
+        self.assertEqual(self.state(), closed)
+        self.cli("implement", "spawn", "--round", "1", "--triggered-by", "verify", "--engine", "claude",
+                 "--prompt-sha256", repair)
+        self.assertEqual(self.state()["rounds"]["global"], 1)
+        self.cli("implement", "spawn", "--round", "1", "--triggered-by", "verify", "--engine", "claude",
+                 "--prompt-sha256", repair, error="error")
+        self.assertEqual(self.state()["rounds"]["global"], 1)
+
+    def test_probe_derive_completes_before_render(self):
+        self.with_spec()
+        self.plan()
+        self.cli("plan", "transition", "--verdict", "PASS", "--next-phase", "probe_derive",
+                 "--next-round", "0", "--next-engine", "codex")
+        probe = {"id": "P1", "cmd": "python3 -c \"print('ok')\"", "exit_code": 0, "stdout_contains": ["ok"],
+                 "derived_from": "prints ok", "tags": ["fixture_cleanup"],
+                 "tag_evidence": {"fixture_cleanup": ["exercises_failure_or_timeout_exit", "asserts_created_artifacts_absent"]}}
+        (self.devlyn / "risk-probes.jsonl").write_text(json.dumps(probe) + "\n")
+        self.cli("probe_derive", "complete", "--verdict", "PASS")
+        self.assertTrue(self.state()["risk_probes_digest"])
+        digest = self.render("implement", 0)
+        self.cli("implement", "spawn", "--round", "0", "--engine", "claude", "--prompt-sha256", digest)
+        self.assertEqual(self.state()["rounds"]["global"], 0)
 
     def test_plan_digest_and_atomic_handoff(self):
         self.plan()

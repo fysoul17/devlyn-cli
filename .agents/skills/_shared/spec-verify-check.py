@@ -249,6 +249,10 @@ RISK_PROBE_TAGS = {
     "concurrent_state_consistency",
     "atomic_batch_state",
     "shape_contract",
+    "release_recovery",
+    "physical_alias",
+    "fixture_cleanup",
+    "temp_file_preservation",
 }
 RISK_PROBE_REQUIRED_EVIDENCE = {
     "ordering_inversion": {
@@ -300,6 +304,24 @@ RISK_PROBE_REQUIRED_EVIDENCE = {
         "mixed_valid_invalid_batch",
         "asserts_store_unchanged_after_failure",
         "asserts_success_order_and_distinct_ids",
+    },
+    "release_recovery": {
+        "failure_injected_after_acquire_or_publish",
+        "asserts_resource_released_or_restored_after_failure",
+        "asserts_next_operation_succeeds_after_failure",
+    },
+    "physical_alias": {
+        "same_target_reached_through_distinct_paths",
+        "asserts_alias_resolved_to_one_physical_target",
+    },
+    "fixture_cleanup": {
+        "exercises_failure_or_timeout_exit",
+        "asserts_created_artifacts_absent",
+    },
+    "temp_file_preservation": {
+        "preexisting_file_at_colliding_path",
+        "exclusive_create_collision_exercised",
+        "asserts_preexisting_bytes_unchanged",
     },
 }
 SHAPE_CONTRACT_REQUIRED_EVIDENCE = {
@@ -669,12 +691,12 @@ def validate_expected_shape(data) -> str | None:
 
 def validate_inline_shape(data: object) -> str | None:
     if isinstance(data, dict):
-        unknown = sorted(set(data) - {"verification_commands", "pure_design"})
+        unknown = sorted(set(data) - {"verification_commands", "pure_design", "required_risk_probe_requirements"})
         if unknown:
             return (
                 f"unsupported inline key(s): {', '.join(unknown)}; inline carriers "
-                "support only verification_commands and pure_design. Encode these checks as commands, "
-                "or use a real spec with sibling spec.expected.json."
+                "support only verification_commands, pure_design and required_risk_probe_requirements. "
+                "Encode these checks as commands, or use a real spec with sibling spec.expected.json."
             )
     error = validate_expected_shape(data)
     if error:
@@ -797,6 +819,9 @@ def validate_required_risk_probe_requirement(
 ) -> str | None:
     if not isinstance(requirement, dict):
         return f"required_risk_probe_requirements[{index}] must be a JSON object"
+    unknown = sorted(set(requirement) - {"tag", "derived_from"})
+    if unknown:
+        return f"required_risk_probe_requirements[{index}] unknown key(s): {', '.join(unknown)}"
     tag = requirement.get("tag")
     if not isinstance(tag, str) or tag not in RISK_PROBE_TAGS:
         return (
@@ -4951,7 +4976,205 @@ def run_self_test() -> int:
         if not found or block is None or loads_strict_json(block) != {"authorized_surface": ["bin/cli.js"]}:
             print("extract_authorized_surface_block mis-parsed the mixed H2/H1 section-boundary shape", file=sys.stderr)
             return 1
-    return seal_self_test(script_path)
+    return seal_self_test(script_path) or defect_witness_self_test(script_path)
+
+
+# A generic store CLI: each defect below is one class the four witness tags exist to catch.
+WITNESS_APP = r"""import os, pathlib, sys
+DEFECTS = set(DEFECT_LIST)
+
+def put(store, name, data):
+    store = pathlib.Path(store); lock = store / ".lock"; temp = store / (name + ".tmp")
+    os.close(os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+    try:
+        flags = os.O_CREAT | os.O_WRONLY | (os.O_TRUNC if "preserve" in DEFECTS else os.O_EXCL)
+        fd = os.open(temp, flags)
+        try:
+            with os.fdopen(fd, "w") as handle:
+                handle.write(data)
+            if data == "FAIL":
+                raise RuntimeError("injected failure after acquire")
+            os.replace(temp, store / name)
+        except BaseException:
+            temp.unlink(missing_ok=True)
+            raise
+    except BaseException:
+        if "release" not in DEFECTS:
+            lock.unlink()
+        raise
+    lock.unlink()
+
+def same(first, second):
+    if "alias" in DEFECTS:
+        return os.path.normcase(os.path.abspath(first)) == os.path.normcase(os.path.abspath(second))
+    return os.path.samefile(first, second)
+
+def job(work):
+    scratch = pathlib.Path(work) / "job.scratch"
+    scratch.write_text("partial")
+    try:
+        raise SystemExit(3)
+    finally:
+        if "cleanup" not in DEFECTS:
+            scratch.unlink(missing_ok=True)
+
+command, *args = sys.argv[1:]
+if command == "put":
+    try:
+        put(*args)
+    except (OSError, RuntimeError) as exc:
+        sys.exit(f"put failed: {exc}")
+elif command == "same":
+    print("SAME" if same(*args) else "DIFFERENT")
+else:
+    job(*args)
+"""
+
+# Each probe runs the app as a subprocess in its own scratch directory and reports every check,
+# so one failing mechanism never hides another.
+WITNESS_PROBES = {
+    "P1": r"""import os, pathlib, shutil, subprocess, sys
+scratch = pathlib.Path(".devlyn/probe-scratch/P1"); shutil.rmtree(scratch, ignore_errors=True)
+first, second = scratch / "a", scratch / "b"; first.mkdir(parents=True); second.mkdir()
+app = lambda *a: subprocess.run([sys.executable, "app.py", *map(str, a)], capture_output=True, text=True)
+failed = app("put", first, "x", "FAIL")
+release = failed.returncode != 0 and not (first / ".lock").exists() and app("put", first, "y", "ok").returncode == 0
+(second / "z.tmp").write_bytes(b"keep")
+collided = app("put", second, "z", "ok")
+preserve = collided.returncode != 0 and (second / "z.tmp").read_bytes() == b"keep" and not (second / "z").exists()
+print("release ok" if release else "release FAIL"); print("preserve ok" if preserve else "preserve FAIL")
+shutil.rmtree(scratch, ignore_errors=True)
+""",
+    "P2": r"""import os, pathlib, shutil, subprocess, sys
+scratch = pathlib.Path(".devlyn/probe-scratch/P2"); shutil.rmtree(scratch, ignore_errors=True); scratch.mkdir(parents=True)
+(scratch / "target.txt").write_text("t"); (scratch / "other.txt").write_text("o")
+os.link(scratch / "target.txt", scratch / "alias.txt")
+same = lambda a, b: subprocess.run([sys.executable, "app.py", "same", str(a), str(b)], capture_output=True, text=True).stdout.strip()
+alias = same(scratch / "target.txt", scratch / "alias.txt") == "SAME" and same(scratch / "target.txt", scratch / "other.txt") == "DIFFERENT"
+print("alias ok" if alias else "alias FAIL")
+shutil.rmtree(scratch, ignore_errors=True)
+""",
+    "P3": r"""import pathlib, shutil, subprocess, sys
+scratch = pathlib.Path(".devlyn/probe-scratch/P3"); shutil.rmtree(scratch, ignore_errors=True); scratch.mkdir(parents=True)
+code = subprocess.run([sys.executable, "app.py", "job", str(scratch)], capture_output=True, text=True).returncode
+print("cleanup ok" if code == 3 and not (scratch / "job.scratch").exists() else "cleanup FAIL")
+shutil.rmtree(scratch, ignore_errors=True)
+""",
+}
+
+
+def defect_witness_self_test(script_path: str) -> int:
+    """Each witness tag catches its defect class through MECHANICAL; the fixed build passes and seals."""
+    import shutil
+
+    script_path = str(Path(script_path).resolve())
+    witness_markers = {
+        "release_recovery": {"failure_injected_after_acquire_or_publish",
+                             "asserts_resource_released_or_restored_after_failure",
+                             "asserts_next_operation_succeeds_after_failure"},
+        "physical_alias": {"same_target_reached_through_distinct_paths", "asserts_alias_resolved_to_one_physical_target"},
+        "fixture_cleanup": {"exercises_failure_or_timeout_exit", "asserts_created_artifacts_absent"},
+        "temp_file_preservation": {"preexisting_file_at_colliding_path", "exclusive_create_collision_exercised",
+                                   "asserts_preexisting_bytes_unchanged"},
+    }
+    for tag, markers_required in witness_markers.items():
+        if RISK_PROBE_REQUIRED_EVIDENCE.get(tag) != markers_required:
+            print(f"{tag} marker contract drifted: {RISK_PROBE_REQUIRED_EVIDENCE.get(tag)}", file=sys.stderr)
+            return 1
+        for missing in sorted(markers_required):
+            probe = {"id": "W", "derived_from": "prints ok", "cmd": "true", "tags": [tag],
+                     "tag_evidence": {tag: sorted(RISK_PROBE_REQUIRED_EVIDENCE[tag] - {missing})}}
+            error = validate_risk_probe(probe, 0, "- prints ok", Path.cwd())
+            if not error or missing not in error:
+                print(f"{tag} without {missing} was accepted: {error}", file=sys.stderr)
+                return 1
+
+    bullets = {
+        "P1": "a failed or colliding write releases the store lock and leaves existing files untouched",
+        "P2": "two paths that reach one file are reported as the same target",
+        "P3": "a failing job removes the scratch files it created",
+    }
+    markers = {"P1": ["release ok", "preserve ok"], "P2": ["alias ok"], "P3": ["cleanup ok"]}
+    tags = {"P1": ["release_recovery", "temp_file_preservation"], "P2": ["physical_alias"], "P3": ["fixture_cleanup"]}
+    python = f'"{sys.executable}"'
+    expected_failures = {(): {}, ("release",): {"P1": "release ok"}, ("preserve",): {"P1": "preserve ok"},
+                         ("alias",): {"P2": "alias ok"}, ("cleanup",): {"P3": "cleanup ok"},
+                         ("release", "preserve", "alias", "cleanup"): {"P1": "release ok", "P2": "alias ok", "P3": "cleanup ok"}}
+    with tempfile.TemporaryDirectory() as tmp:
+        for defects, failures in expected_failures.items():
+            root = Path(tmp) / ("build-" + ("-".join(defects) or "fixed"))
+            devlyn = root / ".devlyn"
+            (devlyn / "probes").mkdir(parents=True)
+
+            def git(*args: str) -> str:
+                return subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=root,
+                                      check=True, capture_output=True, text=True, encoding="utf-8").stdout.strip()
+
+            block = {"verification_commands": [{"cmd": f"{python} app.py same app.py app.py", "stdout_contains": ["SAME"]}],
+                     "required_risk_probe_requirements": [{"tag": tag, "derived_from": bullets[pid]}
+                                                          for pid in bullets for tag in tags[pid]]}
+            (root / "spec.md").write_bytes((
+                "# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n"
+                + "".join(f"- {bullet}\n" for bullet in bullets.values())
+                + "\n```json\n" + json.dumps(block) + "\n```\n").encode("utf-8"))
+            (root / ".gitignore").write_bytes(b".devlyn/\n")
+            (root / "app.py").write_bytes(b"# placeholder\n")
+            git("init", "-q"); git("add", "-A"); git("commit", "-q", "-m", "base")
+            base = git("rev-parse", "HEAD")
+            (root / "app.py").write_bytes(WITNESS_APP.replace("DEFECT_LIST", repr(sorted(defects))).encode("utf-8"))
+            git("commit", "-q", "-am", "build")
+            (devlyn / "plan.md").write_bytes(
+                b'# PLAN\n\n<!-- devlyn:authorized-surface -->\n## Files\n\n```json\n{"authorized_surface": ["app.py"]}\n```\n')
+            probes = []
+            for pid, script in WITNESS_PROBES.items():
+                (devlyn / "probes" / f"{pid}.py").write_bytes(script.encode("utf-8"))
+                probes.append({"id": pid, "derived_from": bullets[pid], "cmd": f"{python} .devlyn/probes/{pid}.py",
+                               "exit_code": 0, "stdout_contains": markers[pid], "tags": tags[pid],
+                               "tag_evidence": {tag: sorted(RISK_PROBE_REQUIRED_EVIDENCE[tag]) for tag in tags[pid]}})
+            (devlyn / "risk-probes.jsonl").write_bytes("".join(json.dumps(item) + "\n" for item in probes).encode("utf-8"))
+            if run_write_untracked_baseline(root, devlyn) != 0:
+                print("witness fixture: baseline write failed", file=sys.stderr)
+                return 1
+            digest, error = risk_probes_digest(devlyn)
+            if error:
+                print(f"witness fixture: probes do not digest: {error}", file=sys.stderr)
+                return 1
+            (devlyn / "pipeline.state.json").write_bytes(json.dumps({
+                "run_id": "rs-witness", "mode": "spec", "base_ref": {"sha": base},
+                "source": {"type": "spec", "spec_path": "spec.md",
+                           "spec_sha256": hashlib.sha256((root / "spec.md").read_bytes()).hexdigest()},
+                "risk_profile": {"high_risk": True, "reasons": ["declared-risk-probe-requirements"],
+                                 "risk_probes_enabled": True, "risk_probes_explicit": False, "pair_default_enabled": True},
+                "risk_probes_digest": digest,
+                "untracked_baseline_sha256": hashlib.sha256((devlyn / "untracked.baseline").read_bytes()).hexdigest(),
+                "phases": {"verify": {"round": 0, "started_at": "2026-10-03T00:00:00.000Z",
+                                      "completed_at": None, "pre_sha": git("rev-parse", "HEAD")}},
+            }).encode("utf-8"))
+            run = subprocess.run([sys.executable, script_path, "--include-risk-probes"], cwd=root, timeout=300,
+                                 capture_output=True, text=True, encoding="utf-8")
+            findings = [loads_strict_json(line) for line in (devlyn / FINDINGS_NAME).read_text(encoding="utf-8").splitlines()
+                        if line.strip()] if (devlyn / FINDINGS_NAME).is_file() else []
+            probe_failures = [item for item in findings if item.get("rule_id") == "correctness.risk-probe-failed"]
+            failed = {str(item.get("criterion_ref")).removeprefix("risk-probe:"): item for item in probe_failures}
+            label = "+".join(defects) or "fixed"
+            if set(failed) != set(failures) or any(item.get("severity") != "CRITICAL" for item in failed.values()) \
+                    or any(failures[pid] not in failed[pid].get("message", "") for pid in failures) \
+                    or (run.returncode == 0) != (not failures) or len(probe_failures) != len(failed):
+                print(f"witness {label}: wrong probe outcome rc={run.returncode} failed={sorted(failed)} "
+                      f"expected={sorted(failures)} findings={findings} stderr={run.stderr[-2000:]}", file=sys.stderr)
+                return 1
+            if not failures:
+                sealed = subprocess.run([sys.executable, script_path, "--seal"], cwd=root, timeout=120,
+                                        capture_output=True, text=True, encoding="utf-8")
+                if sealed.returncode != 0:
+                    print(f"witness fixed build did not seal: {sealed.stderr} {sealed.stdout}", file=sys.stderr)
+                    return 1
+            if (devlyn / "probe-scratch").exists() and any((devlyn / "probe-scratch").iterdir()):
+                print(f"witness {label}: probe scratch left behind", file=sys.stderr)
+                return 1
+            shutil.rmtree(root, ignore_errors=True)
+    print("PASS defect witnesses: each tag catches its defect through MECHANICAL; the fixed build passes and seals")
+    return 0
 
 
 def main() -> int:

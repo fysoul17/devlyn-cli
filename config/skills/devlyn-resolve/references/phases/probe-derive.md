@@ -8,24 +8,25 @@ second planner, critic essay, or debate participant. Your output is JSONL only.
 </role>
 
 <input>
-- Source spec or generated criteria.
+- The `contract` frame: the exact source spec or generated-criteria bytes
+  (`goal` holds the raw goal for free-form runs); `metadata.bindings` give the
+  path bindings.
 - `.devlyn/plan.md`.
 - Codebase read/search at `state.base_ref.sha`.
-- If the spec declares `required_risk_probe_requirements` (a language-neutral
-  `{tag, derived_from}` obligation list — see `_shared/expected.schema.json`),
-  the orchestrator pastes just that array into this prompt, never the rest of
-  `spec.expected.json`. Every `derived_from` value is already an exact
-  substring of the visible `## Verification` text you read directly, so this
-  exposes nothing hidden. Emit at least one probe per declared entry whose
-  `tags` includes that `tag` and whose `derived_from` matches the declared
-  value verbatim — VERIFY MECHANICAL checks this coverage.
+- The `requirements` frame: the declared `required_risk_probe_requirements`
+  array (language-neutral `{tag, derived_from}` obligations, `[]` when none —
+  see `_shared/expected.schema.json`), never the rest of `spec.expected.json`.
+  Every `derived_from` value is already an exact substring of the visible
+  `## Verification` text, so this exposes nothing hidden. Emit at least one
+  probe per entry whose `tags` includes that `tag` and whose `derived_from`
+  matches the declared value verbatim — VERIFY MECHANICAL checks this coverage.
 </input>
 
 <forbidden_input>
 Do not read `spec.expected.json`, `.devlyn/spec-verify.json`,
 `BENCH_FIXTURE_DIR`, benchmark fixture/verifier paths, `.devlyn/*.findings.jsonl`,
 `.claude/skills`, `.codex/skills`, `.agents/skills`, `CLAUDE.md`, `AGENTS.md`, or other harness
-docs unless the orchestrator pasted a specific excerpt into the prompt.
+docs.
 </forbidden_input>
 
 <task>
@@ -125,7 +126,8 @@ Rules:
   `rollback_state`, `positive_remaining`, `stdout_stderr_contract`,
   `error_contract`, `http_error_contract`, `auth_signature_contract`,
   `idempotency_replay`, `concurrent_state_consistency`,
-  `atomic_batch_state`, `shape_contract`.
+  `atomic_batch_state`, `shape_contract`, `release_recovery`,
+  `physical_alias`, `fixture_cleanup`, `temp_file_preservation`.
 - `tag_evidence` is required and must be a JSON object keyed by tag, never a
   top-level array. For these tags, include every listed evidence marker in the
   tag's array and make the command actually exercise it:
@@ -157,6 +159,16 @@ Rules:
   - `atomic_batch_state`: `mixed_valid_invalid_batch`,
     `asserts_store_unchanged_after_failure`,
     `asserts_success_order_and_distinct_ids`.
+  - `release_recovery`: `failure_injected_after_acquire_or_publish`,
+    `asserts_resource_released_or_restored_after_failure`,
+    `asserts_next_operation_succeeds_after_failure`.
+  - `physical_alias`: `same_target_reached_through_distinct_paths`,
+    `asserts_alias_resolved_to_one_physical_target`.
+  - `fixture_cleanup`: `exercises_failure_or_timeout_exit`,
+    `asserts_created_artifacts_absent`.
+  - `temp_file_preservation`: `preexisting_file_at_colliding_path`,
+    `exclusive_create_collision_exercised`,
+    `asserts_preexisting_bytes_unchanged`.
   - `shape_contract` when the visible text names exact keys, fields, row
     shapes, JSON objects, response bodies, stdout/stderr objects, or exact error
     bodies: `uses_visible_input_key_names`,
