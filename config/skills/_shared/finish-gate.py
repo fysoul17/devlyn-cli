@@ -216,6 +216,15 @@ def revert_offender(work: pathlib.Path, base_sha: str, path: str) -> tuple[bool,
 def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
     state_path = devlyn_dir / "pipeline.state.json"
     findings_path = devlyn_dir / FINDINGS_NAME
+    summary_path = devlyn_dir / SUMMARY_NAME
+    if summary_path.exists() or summary_path.is_symlink():
+        # The first result stands for the run: a rerun after its automatic reverts would report clean.
+        try:
+            recorded = json.loads(summary_path.read_text(encoding="utf-8")).get("exit")
+        except (OSError, ValueError, AttributeError):
+            recorded = None
+        sys.stderr.write("finish-gate: this run already has a result; it stands\n")
+        return recorded if recorded in (0, 1, 2) else 1
     try:
         state = read_state(state_path)
         findings_path.unlink(missing_ok=True)
@@ -368,6 +377,11 @@ def self_test() -> int:
             "mode": "full", "checked": 1, "offenders": 1,
             "reverted": 1, "revert_failed": 0, "exit": 2,
         })
+
+        # A rerun keeps the first result; the reverted tree must not launder into a clean pass.
+        first_summary = (devlyn / SUMMARY_NAME).read_bytes()
+        assert checked_run_gate(work, devlyn) == 2
+        assert (devlyn / SUMMARY_NAME).read_bytes() == first_summary and read_findings(devlyn) == findings
 
         work, devlyn, _base = make_fixture(root, "added-file")
         write_text(work / "runtime.txt", "late\n")

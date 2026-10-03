@@ -10,7 +10,7 @@ $ARGUMENTS
 </pipeline_config>
 
 <orchestrator_context>
-Long-horizon agentic work; context auto-compacts. State lives in `.devlyn/pipeline.state.json` — the single authoritative verdict source. Schemas in `references/state-schema.md`. Best at `xhigh` effort.
+Long-horizon agentic work; context auto-compacts. State lives in `.devlyn/pipeline.state.json` — the single authoritative verdict source. Best at `xhigh` effort.
 </orchestrator_context>
 
 <autonomy_contract>
@@ -140,7 +140,7 @@ Keep the file list/authorized surface, risks and verbatim verification requireme
 After return:
 1. If `.devlyn/plan.md` lists zero files → halt with verdict `BLOCKED:plan-empty`.
 2. If the plan exceeds the authorized scope, the sole correction is owner round 1 with `--triggered-by plan`, before implementation starts. Narrow to the original authorization, complete and bind the new output; a second failed plan halts. No worker dispatch or new permission is implied.
-3. After any re-spawn above, if `state.risk_profile.risk_probes_enabled == true` and `state.risk_profile.risk_probes_explicit == false`, parse the `authorized_surface` array from the JSON block under `<!-- devlyn:authorized-surface -->`. For a well-formed string array, compute `probe_scale_small := len(authorized_surface) <= 2 AND no entry ends in "/**"`. If true, set `risk_probes_enabled = false`, leave `high_risk` unchanged, and append `auto-risk-probes demoted: plan surface small (<n> paths)` to `reasons` using the actual length. A missing or malformed block leaves probe state unchanged; VERIFY MECHANICAL owns its malformed-block failure.
+3. Until PR-5 deletes it, this demotion is the one owner state edit, made under the state lock as `references/state-schema.md` § Write protocol describes. After any re-spawn above, if `state.risk_profile.risk_probes_enabled == true` and `state.risk_profile.risk_probes_explicit == false`, parse the `authorized_surface` array from the JSON block under `<!-- devlyn:authorized-surface -->`. For a well-formed string array, compute `probe_scale_small := len(authorized_surface) <= 2 AND no entry ends in "/**"`. If true, set `risk_probes_enabled = false`, leave `high_risk` unchanged, and append `auto-risk-probes demoted: plan surface small (<n> paths)` to `reasons` using the actual length. A missing or malformed block leaves probe state unchanged; VERIFY MECHANICAL owns its malformed-block failure.
 
 ## PHASE 1.5: RISK_PROBES
 
@@ -154,19 +154,19 @@ Skip in verify-only mode. Constrained design judgment within PLAN's invariants. 
 
 Engine/model/effort: frozen `role_resolution.roles.worker`, including code/doc upkeep within this same invocation before its final checks; obtain validated argv additions using `role-config.py --state .devlyn/pipeline.state.json --role worker --resolved-model <existing-exact-phase-model>`. Prompt body: `references/phases/implement.md`.
 
-For every Codex-routed IMPLEMENT spawn, render the exact
-prompt to `.devlyn/<phase>.prompt.<round>`, pass its SHA-256 to `state-phase-write.py
-spawn --prompt-sha256`, and invoke only through `codex-monitored.sh` with these
-seven variables set to the active state identity:
-`DEVLYN_INVOCATION_{RUN_ID,PHASE,ROUND,WORKDIR,PROMPT_FILE,SESSION_FILE,RECEIPT}`.
-Set `DEVLYN_CODEX_PROMPT_FILE` to that same prompt file and pass sole prompt `-`; retain its generated `.transport.json` carrier.
-The session and receipt paths are `.devlyn/<phase>.worker-session.<round>.jsonl`
-and `.devlyn/<phase>.invocation.<round>.json`. These three paths are round-scoped
-so a retry cannot overwrite earlier prompt/session evidence. Every invocation
-must include `--json -m <model_requested>` and `-c sandbox_workspace_write.network_access=<true|false>`: exactly
-`false` for IMPLEMENT, so
-user configuration cannot silently change the phase capability. Redirect wrapper stdout directly
-to that session path. The wrapper rejects bypass/yolo flags and any sandbox other
+For every Codex-routed IMPLEMENT spawn, write this round's task context to `.devlyn/implement.task-context`, then render the prompt; the renderer prints its SHA-256, which the opening `spawn --prompt-sha256` or `transition --next-prompt-sha256` takes:
+
+```bash
+python3 "$DEVLYN_SHARED_DIR/phase-prompt-render.py" --adapter "$DEVLYN_SHARED_DIR/adapters/codex.md" --canonical-body "$DEVLYN_SKILL_DIR/references/phases/implement.md" --task-context .devlyn/implement.task-context --output .devlyn/implement.prompt.<round>
+```
+
+After the span opens, invoke only through the wrapper with the active state identity; when a worker profile applies, its validated `role-config.py` model/effort options replace `-m <model_requested>`:
+
+```bash
+DEVLYN_INVOCATION_RUN_ID=<run_id> DEVLYN_INVOCATION_PHASE=implement DEVLYN_INVOCATION_ROUND=<round> DEVLYN_INVOCATION_WORKDIR="$PWD" DEVLYN_INVOCATION_PROMPT_FILE=.devlyn/implement.prompt.<round> DEVLYN_INVOCATION_SESSION_FILE=.devlyn/implement.worker-session.<round>.jsonl DEVLYN_INVOCATION_RECEIPT=.devlyn/implement.invocation.<round>.json DEVLYN_CODEX_PROMPT_FILE=.devlyn/implement.prompt.<round> bash "$CODEX_MONITORED_PATH" -C "$PWD" -s workspace-write --json -m <model_requested> -c sandbox_workspace_write.network_access=false - > .devlyn/implement.worker-session.<round>.jsonl
+```
+
+Retain the generated `.transport.json` carrier. The prompt, session and receipt paths are round-scoped so a retry cannot overwrite earlier evidence; network access is exactly `false` so user configuration cannot change the phase capability. The wrapper rejects bypass/yolo flags and any sandbox other
 than `workspace-write`. The receipt seals the requested model, sandbox, phase-scoped
 network capability, prompt, terminal exit, and session digest; completion passes the
 same canonical session via `--engine-session-log`. A missing/mismatched receipt
@@ -186,7 +186,7 @@ expectation-mismatched carrier blocks the checkpoint.
 1. `git diff --stat` — empty diff → halt with `BLOCKED:implement-empty`.
 2. Checkpoint (**scoped staging** — this exact shape everywhere a pipeline commit is made): `bash -o pipefail -c 'python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --print-authorized-surface | git add --pathspec-from-file=- --pathspec-file-nul' && git commit -m "chore(pipeline): implement"`. Every deliverable, including new files, must be in this commit: MECHANICAL seals only a clean tree.
 
-**Phase-gated path** (plan.md has two or more `### Phase <k>` blocks): definitions are the contract in plan.md; progress is routing truth in `state.phases.implement.exec = { total, current, statuses }`, which the writer creates at the first IMPLEMENT spawn and advances on each passing phase. For each phase k = 1..N:
+**Phase-gated path** (plan.md's `## Execution phases` section has two or more `### Phase <k>` headings outside fenced blocks): definitions are the contract in plan.md; progress is routing truth in `state.phases.implement.exec = { total, current, statuses }`, which the writer creates at the first IMPLEMENT spawn and advances on each passing phase. For each phase k = 1..N:
 1. Spawn IMPLEMENT with the standard prompt plus: this phase's plan.md block only, the current worktree as the working base (overrides the body's `base_ref.sha` framing after phase 1), a `git diff <base_ref.sha>...HEAD --stat` summary, and the prior phase's gate output.
 2. After return: run the phase's `gate:` commands directly — deterministic, exit-code truth, no LLM judgment.
 3. Gate PASS → scoped-staging checkpoint with message `chore(pipeline): implement phase <k>/<N>`, then complete IMPLEMENT `PASS` (the writer marks the phase and advances `exec.current`; the next phase spawns uncharged with the next round).
@@ -239,7 +239,7 @@ Open the `final_report` span through the predecessor's `state-phase-write.py --d
 
 1. Kill any dev server MECHANICAL left running.
 
-2. **FINISH GATE** — run `python3 "$DEVLYN_SHARED_DIR/finish-gate.py"`; branch only on exit code: 0 → clean; 1 or 2 → `BLOCKED:finish-gate-unclean`, and report the `.devlyn/finish-gate.findings.jsonl` listing, including reverted paths. Offenders exit 2 even when every revert succeeded — a silent revert must never ride an exit-0 pass.
+2. **FINISH GATE** — run `python3 "$DEVLYN_SHARED_DIR/finish-gate.py"` once (a rerun returns the run's first result); branch only on exit code: 0 → clean; 2, or 1 after IMPLEMENT started → `BLOCKED:finish-gate-unclean`, and report the `.devlyn/finish-gate.findings.jsonl` listing, including reverted paths. Offenders exit 2 even when every revert succeeded — a silent revert must never ride an exit-0 pass.
 
 3. **Terminal verdict and report** — after the finish gate, complete the span; the writer derives the verdict, renders `.devlyn/final-report.md`, binds its bytes and prints it:
 
@@ -247,7 +247,7 @@ Open the `final_report` span through the predecessor's `state-phase-write.py --d
    python3 "$DEVLYN_SHARED_DIR/state-phase-write.py" --devlyn-dir .devlyn --phase final_report complete [--verdict BLOCKED:<reason>] [--detail "<failed command or guidance>"]
    ```
 
-   Complete before archive (archive prune skips runs whose `final_report.verdict` is null). Precedence: finish-gate exit 1/2 → `BLOCKED:finish-gate-unclean`; a BLOCKED phase → the reason its bound evidence records (MECHANICAL capability denial → `BLOCKED:build-env-underprovisioned`; a blocked judge seat → its dispatch reason); refused repair admission with exhausted counters → VERIFY `NEEDS_WORK` or phase-gate `BLOCKED:repair-budget-exhausted`; verify-only → the VERIFY verdict; otherwise VERIFY `PASS`/`PASS_WITH_ISSUES`. Pass `--verdict BLOCKED:<reason>` only for a halt that state does not represent (for example `plan-empty`, `implement-empty`, `fresh-context-unavailable`, an IMPLEMENT/probe engine unavailable); a supplied verdict that contradicts the evidence, or an evidence-only reason without its evidence, is refused and nothing is written. Never write the report or lifecycle fields by hand.
+   Complete before archive (archive prune skips runs whose `final_report.verdict` is null). Precedence: finish-gate offenders (exit 2), or a malformed gate (exit 1) after IMPLEMENT started → `BLOCKED:finish-gate-unclean`; a BLOCKED phase → the reason its bound evidence records (MECHANICAL capability denial → `BLOCKED:build-env-underprovisioned`; a blocked judge seat → its dispatch reason); refused repair admission with exhausted counters → VERIFY `NEEDS_WORK` or phase-gate `BLOCKED:repair-budget-exhausted`; verify-only → the VERIFY verdict; otherwise VERIFY `PASS`/`PASS_WITH_ISSUES`. Pass `--verdict BLOCKED:<reason>` whenever the writer cannot derive the reason: a BLOCKED phase without a denial or blocked seat (judge timeout or invalid output, `probe-derive-malformed`, a worker BLOCKED), or a halt that state does not record (`plan-empty`, `implement-empty`, `fresh-context-unavailable`, an IMPLEMENT/probe engine unavailable, including before a repair span opens). A supplied verdict that contradicts the evidence, or an evidence-only reason without its evidence, is refused and nothing is written. Never write the report or lifecycle fields by hand.
 
 4. **Archive** — invoke the deterministic script: `python3 "$DEVLYN_SHARED_DIR/archive_run.py"`. The script reads `run_id` from `.devlyn/pipeline.state.json`, moves the static per-run artifact set (`PER_RUN_PATTERNS` remains the single ownership list) plus every state-bound process-evidence manifest/raw stream into `.devlyn/runs/<run_id>/`, preserves evidence-relative layout, and rehashes bound bytes before any move. An unsafe/missing/altered evidence path or destination collision reports archive failure without changing the already-derived product verdict. It then best-effort prunes to the last 10 completed runs. Archive must run; running this step as deterministic-script-not-prose ensures the move actually happens (iter-0033a Smoke 3 caught a case where the agent claimed archive ran without moving the files).
 
@@ -255,4 +255,4 @@ After archive, relay the printed report byte for byte as the final user-facing r
 
 ## State management
 
-`.devlyn/pipeline.state.json` is the single authoritative verdict source. Branch on `state.phases.<name>.verdict` directly; never parse `.devlyn/*.findings.jsonl` for routing decisions. Schema and write protocol: `references/state-schema.md`. Every "State write: `phases.X.{...}`" note above describes the resulting shape only — the orchestrator writes it via initial `spawn`, atomic `transition` for direct handoffs, or terminal `complete`; re-entry preserves the prior lifecycle in `history[]` (`references/state-schema.md#write-protocol`). Phase workers never edit `pipeline.state.json` directly.
+`.devlyn/pipeline.state.json` is the single authoritative verdict source. Branch on `state.phases.<name>.verdict` directly; never parse `.devlyn/*.findings.jsonl` for routing decisions. Every "State write: `phases.X.{...}`" note above describes the resulting shape only — the orchestrator writes it via initial `spawn`, atomic `transition` for direct handoffs, or terminal `complete`; re-entry preserves the prior lifecycle in `history[]`. Phase workers never edit `pipeline.state.json` directly.

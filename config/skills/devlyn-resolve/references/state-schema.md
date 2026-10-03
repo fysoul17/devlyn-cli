@@ -102,7 +102,7 @@ Each entry under `phases.<name>` (for `plan`, `probe_derive`, `implement`, `veri
 
 ## Write protocol
 
-Every non-self-test writer command, including role freezing, holds `.devlyn/pipeline.state.lock` before state read through final write or artifact clearing. `verify-merge-findings.py --write-state` holds the same lock across judge collection, merge and state write, once per VERIFY round (a second call refuses without writing); `verify-judges.py` reads state under it and releases it before invoking the merge. Callers never take the lock or edit state between writer commands. No nested lock or unlocked fallback.
+Every non-self-test writer command, including role freezing, holds `.devlyn/pipeline.state.lock` before state read through final write or artifact clearing. `verify-merge-findings.py --write-state` holds the same lock across judge collection, merge and state write, once per VERIFY round (a second call refuses without writing); `verify-judges.py` reads state under it and releases it before invoking the merge. Callers never take the lock or edit state between writer commands, except the PHASE 1 small-surface probe demotion until PR-5 deletes it: one Python command acquires `platform-support.py` `file_lock(.devlyn/pipeline.state.lock, blocking=True)`, rereads state, applies the demotion, atomically replaces state and releases before the next writer command. No nested lock or unlocked fallback.
 
 Phase lifecycle (`started_at`/`completed_at`/`duration_ms`/`round`/`triggered_by`/`verdict`) is written by a deterministic script, never hand-edited JSON — a prior hand-edited fix-loop respawn left `started_at` stale, corrupting cross-phase ordering because `completed_at`/`round`/`triggered_by` advanced to the new round while `started_at` didn't. Phase workers report their verdict and artifact paths in their reply; they never edit `pipeline.state.json` themselves.
 
@@ -115,13 +115,13 @@ Phase lifecycle (`started_at`/`completed_at`/`duration_ms`/`round`/`triggered_by
 
 The writer derives it; the caller never chooses it. Precedence:
 
-1. `.devlyn/finish-gate.summary.json` exit 1 or 2 → `BLOCKED:finish-gate-unclean` (a missing summary refuses completion).
+1. `.devlyn/finish-gate.summary.json` exit 2, or exit 1 once IMPLEMENT has started → `BLOCKED:finish-gate-unclean` (a missing summary refuses completion). Before IMPLEMENT a malformed gate (no usable PLAN surface) does not displace the halt's reason. The gate keeps its first result for the run.
 2. A current `BLOCKED` phase verdict → the reason its current-round, state-bound evidence records, rehashed: a MECHANICAL capability denial in the bound VERIFY carrier → `BLOCKED:build-env-underprovisioned`; a blocked judge seat in the bound dispatch record → that seat's `BLOCKED:<reason>`. Findings and log prose are never routing inputs.
-3. A current failing repair predecessor whose admission was refused with exhausted counters (`rounds.global == max_rounds`): VERIFY `NEEDS_WORK` (MECHANICAL failures included) → `NEEDS_WORK`; phase-gate IMPLEMENT FAIL → `BLOCKED:repair-budget-exhausted`. With budget remaining, completion is refused.
+3. A current failing repair predecessor whose admission was refused with exhausted counters (`rounds.global == max_rounds`): VERIFY `NEEDS_WORK` (MECHANICAL failures included) → `NEEDS_WORK`; phase-gate IMPLEMENT FAIL → `BLOCKED:repair-budget-exhausted`. With budget remaining, completion needs a supplied halt reason.
 4. Verify-only mode → the current VERIFY verdict.
 5. Current VERIFY `PASS_WITH_ISSUES` or `PASS` → that verdict.
 
-`--verdict BLOCKED:<reason>` is accepted only when none of these decides (a halt that state does not represent) and never names `finish-gate-unclean`, `build-env-underprovisioned` or `repair-budget-exhausted`; when evidence decides, a different supplied verdict is refused.
+`--verdict BLOCKED:<reason>` is accepted only when none of these decides — a BLOCKED phase without a derivable reason, or a halt that state does not record — and its label (text before any `:`) never names `finish-gate-unclean`, `build-env-underprovisioned` or `repair-budget-exhausted`; when evidence decides, a different supplied verdict is refused.
 
 ## Final-report shape
 

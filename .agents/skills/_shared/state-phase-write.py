@@ -52,7 +52,7 @@ LEGAL_TRANSITIONS = {
 WORKER_SESSION_ARTIFACT_PHASES = {"plan": "plan", "implement": "implement"}
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PLAN_MAX_DISPATCHES = 2
-PHASE_BLOCK_RE = re.compile(rb"^###[ \t]+Phase[ \t]+[0-9]+", re.MULTILINE)
+PHASE_HEADING_RE = re.compile(r"^###[ \t]+Phase[ \t]+[0-9]+")
 PLAN_SPAWN_RECEIPT_FIELDS = (
     "round", "started_at", "triggered_by", "engine", "model_requested", "prompt_sha256",
 )
@@ -231,26 +231,12 @@ def read_jsonl(path: pathlib.Path) -> list[dict]:
     return items
 
 
-def verify_blocked_reason(state: dict, devlyn: pathlib.Path, work: pathlib.Path) -> str | None:
-    """Derive a VERIFY BLOCKED reason from this round's state-bound evidence, rehashed."""
-    verify = state["phases"]["verify"]
-    round_ = verify.get("round")
-    carriers = [item for item in state.get("process_evidence") or []
-                if isinstance(item, dict) and item.get("phase") == "verify" and item.get("round") == round_]
-    if len(carriers) > 1:
-        raise report_invalid("state binds more than one VERIFY evidence carrier for this round")
-    if carriers:
-        module = process_evidence_module()
-        try:
-            outcome = module.bound_carrier_outcome(work, carriers[0])
-        except module.EvidenceError as exc:
-            raise report_invalid(f"bound VERIFY evidence: {exc}") from exc
-        if outcome["verdict"] == "BLOCKED":
-            return "BLOCKED:build-env-underprovisioned"
+def bound_dispatch_roles(verify: dict, devlyn: pathlib.Path) -> dict:
+    """Return the seat decisions of this round's state-bound dispatch record, rehashed."""
     binding = verify.get("dispatch")
     if binding is None:
-        return None
-    expected = f".devlyn/verify-judge.r{round_}.dispatch.json"
+        return {}
+    expected = f".devlyn/verify-judge.r{verify.get('round')}.dispatch.json"
     if not isinstance(binding, dict) or binding.get("path") != expected:
         raise report_invalid("VERIFY dispatch binding is malformed")
     raw = read_regular(devlyn / pathlib.Path(expected).name, "VERIFY dispatch record")
@@ -258,9 +244,28 @@ def verify_blocked_reason(state: dict, devlyn: pathlib.Path, work: pathlib.Path)
         raise report_invalid("VERIFY dispatch record differs from its state binding")
     # The merge checked this record's run/round identity when it bound these exact bytes.
     record = loads_strict_json(raw.decode("utf-8"))
+    roles = record.get("roles") if isinstance(record, dict) else None
+    return {role: entry for role, entry in roles.items() if isinstance(entry, dict)} if isinstance(roles, dict) else {}
+
+
+def verify_blocked_reason(state: dict, devlyn: pathlib.Path, work: pathlib.Path) -> str | None:
+    """Derive a VERIFY BLOCKED reason from this round's state-bound evidence, rehashed."""
+    verify = state["phases"]["verify"]
+    carrier = next((item for item in state.get("process_evidence") or []
+                    if isinstance(item, dict) and item.get("phase") == "verify"
+                    and item.get("round") == verify.get("round")), None)
+    if carrier is not None:
+        module = process_evidence_module()
+        try:
+            outcome = module.bound_carrier_outcome(work, carrier)
+        except module.EvidenceError as exc:
+            raise report_invalid(f"bound VERIFY evidence: {exc}") from exc
+        if outcome["verdict"] == "BLOCKED":
+            return "BLOCKED:build-env-underprovisioned"
+    roles = bound_dispatch_roles(verify, devlyn)
     for role in ("primary_judge", "pair_judge"):
-        entry = (record.get("roles") or {}).get(role) if isinstance(record, dict) else None
-        reason = entry.get("reason") if isinstance(entry, dict) and entry.get("decision") == "blocked" else None
+        entry = roles.get(role) or {}
+        reason = entry.get("reason") if entry.get("decision") == "blocked" else None
         if isinstance(reason, str) and reason.startswith("BLOCKED:") and len(reason) > 8:
             return reason.split(": ", 1)[0]
     return None
@@ -277,8 +282,11 @@ def terminal_verdict(state: dict, devlyn: pathlib.Path, work: pathlib.Path, supp
         raise report_invalid("finish-gate summary has no valid exit")
     blocked = [name for name in REPORT_PHASES
                if isinstance(phases.get(name), dict) and phases[name].get("verdict") == "BLOCKED"]
+    implement = phases.get("implement")
     derived = None
-    if finish["exit"] != 0:
+    # Before IMPLEMENT there is no product change; a malformed gate (no usable PLAN surface) then
+    # does not displace the halt's own reason, while offenders (exit 2) always decide.
+    if finish["exit"] == 2 or (finish["exit"] == 1 and isinstance(implement, dict) and implement.get("started_at")):
         derived = "BLOCKED:finish-gate-unclean"
     elif blocked:
         derived = verify_blocked_reason(state, devlyn, work) if "verify" in blocked else None
@@ -286,10 +294,10 @@ def terminal_verdict(state: dict, devlyn: pathlib.Path, work: pathlib.Path, supp
         origin = exhausted_origin(state) if state.get("mode") != "verify-only" else None
         rounds = state.get("rounds") or {}
         if origin is not None:
-            if not (type(rounds.get("global")) is int and rounds.get("global") == rounds.get("max_rounds")
-                    and rounds["global"] >= 1):
-                raise report_invalid(f"{origin} repair budget remains; request repair admission instead")
-            derived = "NEEDS_WORK" if origin == "verify" else "BLOCKED:repair-budget-exhausted"
+            if type(rounds.get("global")) is int and rounds.get("global") == rounds.get("max_rounds"):
+                derived = "NEEDS_WORK" if origin == "verify" else "BLOCKED:repair-budget-exhausted"
+            elif supplied is None:
+                raise report_invalid(f"{origin} repair budget remains; request repair admission or pass the halt reason")
         else:
             predecessor = repair_predecessor(state)
             verify = phases.get("verify")
@@ -303,8 +311,8 @@ def terminal_verdict(state: dict, devlyn: pathlib.Path, work: pathlib.Path, supp
         return derived
     if supplied is None:
         raise report_invalid("this halt is not represented in state; pass --verdict BLOCKED:<reason>")
-    reason = supplied.removeprefix("BLOCKED:")
-    if not supplied.startswith("BLOCKED:") or not reason or reason in EVIDENCE_ONLY_REASONS:
+    label = supplied.removeprefix("BLOCKED:").split(":", 1)[0].strip()
+    if not supplied.startswith("BLOCKED:") or not label or label in EVIDENCE_ONLY_REASONS:
         raise report_invalid(f"supplied {supplied} is not supported by the recorded evidence")
     return supplied
 
@@ -376,11 +384,9 @@ def render_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, v
         out.append("| " + " | ".join(cell(v) for v in (name, entry.get("verdict"), entry.get("duration_ms"),
                                                         entry.get("round"), entry.get("triggered_by"), count, note)) + " |")
     profile = state.get("risk_profile") or {}
-    trigger = verify.get("pair_trigger") if current_verify else None
-    pair = (state.get("role_resolution") or {}).get("roles", {}).get("pair_judge") or {}
-    pair_status = ("on" if isinstance(trigger, dict) and trigger.get("eligible")
-                   else f"solo: {trigger.get('skipped_reason')}" if isinstance(trigger, dict)
-                   else f"not reached ({pair.get('skipped_reason') or 'pair available'})")
+    seat = bound_dispatch_roles(verify, devlyn).get("pair_judge") if current_verify else None
+    pair_status = ("not reached" if seat is None else "on" if seat.get("decision") == "dispatch"
+                   else f"{seat.get('decision')}: {seat.get('reason')}")
     out += ["", "## Pair and risk probes", "", f"- pair: {pair_status}",
             "- risk_probes: " + ("on" if profile.get("risk_probes_enabled") else "off")
             + (f" ({'; '.join(profile['reasons'])})" if profile.get("reasons") else "")]
@@ -396,11 +402,11 @@ def render_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, v
     notes = []
     if state.get("complexity") == "large":
         criteria = read_regular(devlyn / "criteria.generated.md", "generated criteria")
-        if hashlib.sha256(criteria).hexdigest() != (state.get("source") or {}).get("criteria_sha256"):
-            raise report_invalid("generated criteria differ from source.criteria_sha256")
         text = criteria.decode("utf-8").splitlines()
         start = next((i for i, line in enumerate(text) if line.strip() == "## Assumptions"), None)
-        if start is not None:
+        if hashlib.sha256(criteria).hexdigest() != (state.get("source") or {}).get("criteria_sha256"):
+            notes.append("- generated criteria changed after freeze; assumptions omitted")
+        elif start is not None:
             end = next((i for i in range(start + 1, len(text)) if text[i].startswith("## ")), len(text))
             notes += ["Assumptions for user review (recommend: /devlyn-ideate first):", *text[start + 1:end]]
     if current_verify and (verify.get("sub_verdicts") or {}).get("pair_judge") == "TIMEOUT":
@@ -428,10 +434,12 @@ def write_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, su
     path = devlyn / "final-report.md"
     if path.is_symlink() or (path.exists() and not path.is_file()):
         raise report_invalid("existing final-report.md is not a regular file; nothing was replaced")
+    if not isinstance(state.get("run_id"), str) or not state["run_id"]:
+        raise report_invalid("state.run_id is required for the report marker")
     verdict = terminal_verdict(state, devlyn, work, supplied)
     text = render_final_report(state, devlyn, work, verdict, detail)
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=devlyn, delete=False, suffix=".tmp") as handle:
-        handle.write(text)
+    with tempfile.NamedTemporaryFile("wb", dir=devlyn, delete=False, suffix=".tmp") as handle:
+        handle.write(text.encode("utf-8"))
     os.replace(handle.name, path)
     return verdict, final_report_digest(state, devlyn, str(path))
 
@@ -473,8 +481,19 @@ def invocation_receipt_module():
 
 
 def execution_phase_count(plan_bytes: bytes) -> int:
-    """Phase-gated work is a PLAN with `### Phase <k>` blocks; two or more make IMPLEMENT phase-gated."""
-    return len(PHASE_BLOCK_RE.findall(plan_bytes))
+    """Count `### Phase <k>` headings under `## Execution phases`, outside fenced examples."""
+    count, in_section, fence = 0, False, None
+    for line in plan_bytes.decode("utf-8", "replace").splitlines():
+        marker = line.lstrip()[:3]
+        if fence is not None:
+            fence = None if marker == fence else fence
+        elif marker in ("```", "~~~"):
+            fence = marker
+        elif line.startswith("## "):
+            in_section = line[3:].strip() == "Execution phases"
+        elif in_section and PHASE_HEADING_RE.match(line):
+            count += 1
+    return count
 
 
 def bind_risk_probes(state: dict, devlyn: pathlib.Path | None, work: pathlib.Path | None) -> None:
@@ -815,7 +834,7 @@ def freeze_classification(state: dict, work: pathlib.Path, complexity: str | Non
     if not generated:
         return None
     criteria = work / ".devlyn" / "criteria.generated.md"
-    if source.get("criteria_path") != ".devlyn/criteria.generated.md" or criteria.is_symlink() or not criteria.is_file():
+    if criteria.is_symlink() or not criteria.is_file():
         raise ValueError("BLOCKED:invalid-classification: free-form freeze needs the regular file "
                          ".devlyn/criteria.generated.md")
     return hashlib.sha256(criteria.read_bytes()).hexdigest()
@@ -1165,8 +1184,8 @@ def do_complete(state: dict, phase: str, verdict: str | None,
     if phase != "plan":
         validate_plan_output(state, devlyn, phase)
     if phase == "final_report":
-        if log_file is not None or devlyn is None:
-            raise SystemExit("error: the writer renders .devlyn/final-report.md; omit --log-file")
+        if devlyn is None or any(value is not None for value in (findings_file, log_file, engine, model, engine_session_log)):
+            raise SystemExit("error: the writer renders .devlyn/final-report.md; pass only --verdict/--detail")
         verdict, report_digest = write_final_report(state, devlyn, work or devlyn.resolve().parent, verdict, detail)
         log_file = ".devlyn/final-report.md"
     if phase == "plan" and entry.get("prompt_sha256") is not None:
@@ -1313,7 +1332,7 @@ def do_complete(state: dict, phase: str, verdict: str | None,
     if attestation_error is not None:
         entry["verdict"] = "BLOCKED"
     elif (phase == "implement" and entry["verdict"] in {"PASS", "PASS_WITH_ISSUES"}
-          and entry.get("triggered_by") is None and valid_phase_gate_progress(entry.get("exec"))):
+          and entry.get("triggered_by") != "verify" and valid_phase_gate_progress(entry.get("exec"))):
         # An attested passing phase advances progress; a VERIFY repair round never does.
         progress = entry["exec"]
         progress["statuses"][progress["current"] - 1] = "PASS"
@@ -1393,7 +1412,7 @@ def final_report_self_test() -> None:
                                   "risk_probes_explicit": False, "pair_default_enabled": True},
                  "phases": {"plan": None, "probe_derive": None, "implement": None, "verify": None, "final_report": None}}
         if plan and mode != "verify-only":
-            (devlyn / "plan.md").write_text("# PLAN\n", encoding="utf-8")
+            (devlyn / "plan.md").write_bytes(b"# PLAN\n")
             state["phases"]["plan"] = span("PASS", output_sha256=hashlib.sha256(b"# PLAN\n").hexdigest(),
                                            execution_kind="orchestrator_context")
         state["phases"].update(phases or {})
@@ -1422,10 +1441,26 @@ def final_report_self_test() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         # Refusals change neither state nor an existing report.
         work, devlyn = fixture(tmp, "refusals", phases={"verify": verify_pass()})
-        refused(work, devlyn, "omit --log-file", "--log-file", ".devlyn/final-report.md")
+        for extra in (("--log-file", ".devlyn/final-report.md"), ("--engine", "codex"), ("--model", "m"),
+                      ("--engine-session-log", ".devlyn/x.jsonl"), ("--findings-file", ".devlyn/f.jsonl")):
+            refused(work, devlyn, "pass only --verdict/--detail", *extra)
+            assert not os.path.lexists(devlyn / "final-report.md"), extra
         for invalid in ("FAIL", "BLOCKED:", "unknown"):
             refused(work, devlyn, f"invalid verdict for phases.final_report: {invalid}", "--verdict", invalid)
         refused(work, devlyn, "contradicts the evidence-derived PASS", "--verdict", "BLOCKED:plan-empty")
+        (devlyn / "verify-merged.findings.jsonl").write_text("[1]\n", encoding="utf-8")
+        refused(work, devlyn, "non-object finding")
+        (devlyn / "verify-merged.findings.jsonl").unlink()
+        finish_path = devlyn / "finish-gate.summary.json"
+        finish_path.write_text('{"exit": 3}\n', encoding="utf-8")
+        refused(work, devlyn, "no valid exit")
+        finish_path.write_text('{"exit": 0}\n', encoding="utf-8")
+        state = read_state(devlyn / "pipeline.state.json")
+        state["phases"]["verify"]["dispatch"] = {"path": ".devlyn/elsewhere.json", "sha256": "0" * 64}
+        write_state(devlyn / "pipeline.state.json", state)
+        refused(work, devlyn, "dispatch binding is malformed")
+        del state["phases"]["verify"]["dispatch"]
+        write_state(devlyn / "pipeline.state.json", state)
         outside = work / "outside.md"
         outside.write_text("keep\n", encoding="utf-8")
         report = devlyn / "final-report.md"
@@ -1448,6 +1483,7 @@ def final_report_self_test() -> None:
         refused(work, devlyn, "pass --verdict BLOCKED:<reason>")
         for reason in sorted(EVIDENCE_ONLY_REASONS):
             refused(work, devlyn, "not supported by the recorded evidence", "--verdict", f"BLOCKED:{reason}")
+            refused(work, devlyn, "not supported by the recorded evidence", "--verdict", f"BLOCKED:{reason}: detail")
         work, devlyn = fixture(tmp, "budget-left", rounds=(0, 2), phases={
             "implement": span("PASS"), "verify": span("NEEDS_WORK", merged={"verdict": "NEEDS_WORK"})})
         refused(work, devlyn, "verify repair budget remains")
@@ -1488,15 +1524,46 @@ def final_report_self_test() -> None:
                 "implement": span("PASS"), "verify": verify_pass()}), [], "BLOCKED:finish-gate-unclean"),
             ("denial", denied, [], "BLOCKED:build-env-underprovisioned"),
             ("judge-unavailable", unavailable, [], "BLOCKED:codex-unavailable"),
-            ("plan-empty", fixture(tmp, "plan-empty", phases={"plan": None}), ["--verdict", "BLOCKED:plan-empty"],
+            ("plan-empty", fixture(tmp, "plan-empty", finish=None, phases={"plan": None}), ["--verdict", "BLOCKED:plan-empty"],
              "BLOCKED:plan-empty"),
+            ("finish-malformed", fixture(tmp, "finish-malformed", finish=1, phases={
+                "implement": span("PASS"), "verify": verify_pass()}), [], "BLOCKED:finish-gate-unclean"),
+            ("budget-left-halt", fixture(tmp, "budget-left-halt", rounds=(0, 2), phases={
+                "implement": span("PASS"), "verify": span("NEEDS_WORK", merged={"verdict": "NEEDS_WORK"})}),
+             ["--verdict", "BLOCKED:codex-unavailable"], "BLOCKED:codex-unavailable"),
+            ("stale-findings", fixture(tmp, "stale-findings", rounds=(1, 2), phases={
+                "implement": span("BLOCKED", 1, triggered_by="verify"),
+                "verify": span("NEEDS_WORK", merged={"verdict": "NEEDS_WORK"})}),
+             ["--verdict", "BLOCKED:implement-empty"], "BLOCKED:implement-empty"),
+            ("followups", fixture(tmp, "followups", mode="free-form", phases={
+                "implement": span("PASS"), "verify": verify_pass()}), [], "PASS"),
         ]
-        plan_empty_devlyn = matrix[-1][1][1]
-        (plan_empty_devlyn / "plan.md").write_text("# PLAN\n", encoding="utf-8")
+        plan_empty_devlyn = matrix[8][1][1]
+        (plan_empty_devlyn / "plan.md").write_bytes(b"# PLAN\n")
         plan_empty_state = read_state(plan_empty_devlyn / "pipeline.state.json")
         plan_empty_state["phases"]["plan"] = span("BLOCKED", output_sha256=hashlib.sha256(b"# PLAN\n").hexdigest(),
                                                   execution_kind="orchestrator_context")
         write_state(plan_empty_devlyn / "pipeline.state.json", plan_empty_state)
+        # Before IMPLEMENT the real finish gate is malformed (no usable PLAN surface); the halt keeps its reason.
+        gate = subprocess.run([sys.executable, str(script.with_name("finish-gate.py"))], cwd=matrix[8][1][0],
+                              capture_output=True, text=True, encoding="utf-8")
+        assert gate.returncode == 1, gate
+        (matrix[11][1][1] / "verify-merged.findings.jsonl").write_text(json.dumps({
+            "severity": "HIGH", "rule_id": "stale.round", "file": "a.py", "line": 1, "message": "superseded",
+            "confidence": "high"}) + "\n", encoding="utf-8")
+        follow_work, follow_devlyn = matrix[12][1]
+        criteria_bytes = b"# Criteria\n## Assumptions\n- narrowed to the CLI only\n## Verification\n"
+        (follow_devlyn / "criteria.generated.md").write_bytes(criteria_bytes)
+        follow = read_state(follow_devlyn / "pipeline.state.json")
+        follow.update(complexity="large", source={"type": "generated", "criteria_path": ".devlyn/criteria.generated.md",
+                                                  "criteria_sha256": hashlib.sha256(criteria_bytes).hexdigest()})
+        follow["risk_profile"].update(pair_default_enabled=False, risk_probes_explicit=True)
+        follow["phases"]["verify"]["sub_verdicts"] = {"pair_judge": "TIMEOUT"}
+        write_state(follow_devlyn / "pipeline.state.json", follow)
+        changed = copy.deepcopy(follow)
+        changed["source"]["criteria_sha256"] = "0" * 64
+        changed_report = render_final_report(changed, follow_devlyn, follow_work, "PASS", None)
+        assert "assumptions omitted" in changed_report and "narrowed to the CLI only" not in changed_report
         pass_block = json.dumps({"run_id": "rs-final-pass", "round": 0, "skips": [{"gate": "lint", "reason": "no linter"}]})
         old_block = json.dumps({"run_id": "rs-older", "round": 0, "skips": [{"gate": "tests", "reason": "old"}]})
         (matrix[0][1][1] / "mechanical.log.md").write_text(
@@ -1519,19 +1586,27 @@ def final_report_self_test() -> None:
         for name, (work, devlyn), args, expected in matrix:
             result = cli(work, "complete", *args)
             assert result.returncode == 0, (name, result.stderr)
-            report = (devlyn / "final-report.md").read_text(encoding="utf-8")
-            assert result.stdout == report, name
+            raw_report = (devlyn / "final-report.md").read_bytes()
+            report = raw_report.decode("utf-8")
+            assert result.stdout.replace("\r\n", "\n") == report, name
             state = read_state(devlyn / "pipeline.state.json")
             final = state["phases"]["final_report"]
             assert final["verdict"] == expected, (name, final["verdict"])
             assert f"| {expected} |" in report.splitlines()[5], (name, report)
-            assert final["output_sha256"] == hashlib.sha256(report.encode()).hexdigest(), name
+            assert final["output_sha256"] == hashlib.sha256(raw_report).hexdigest(), name
             if name == "pass":
                 assert "skipped: lint (no linter)" in report and "old" not in report, report
             if name == "finish-unclean":
                 assert "outside \\| surface" in report, report
             if name == "judge-unavailable":
                 assert "setup: install and authenticate codex" in report, report
+                assert "- pair: blocked: BLOCKED:codex-unavailable" in report, report
+            if name == "stale-findings":
+                assert "## Findings\n\nNone." in report and "superseded" not in report, report
+            if name == "followups":
+                for line in ("Assumptions for user review", "- narrowed to the CLI only", "solo verdict after pair TIMEOUT",
+                             "opt-out: --no-pair", "opt-out: --no-risk-probes"):
+                    assert line in report, (line, report)
             archived = subprocess.run([sys.executable, str(archive), "--devlyn-dir", ".devlyn"],
                                       cwd=work, capture_output=True, text=True, encoding="utf-8")
             assert archived.returncode == 0, (name, archived.stderr)
@@ -1547,7 +1622,7 @@ def final_report_self_test() -> None:
         archived = subprocess.run([sys.executable, str(archive), "--devlyn-dir", ".devlyn"],
                                   cwd=work, capture_output=True, text=True, encoding="utf-8")
         assert archived.returncode == 1 and "error: archive blocked:" in archived.stderr, archived
-    print("PASS final report: evidence-derived verdict matrix (9) agrees with archive and TCC; refusals preserve state")
+    print("PASS final report: evidence-derived verdict matrix (13) agrees with archive and TCC; refusals preserve state")
 
 
 def repair_admission_self_test() -> None:
@@ -1643,6 +1718,38 @@ def repair_admission_self_test() -> None:
     print("PASS repair admission: verify and phase-gate origins, trigger/counter/round refusal, phased invocation and last repair")
 
 
+def probe_digest_self_test() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        work = pathlib.Path(tmp); devlyn = work / ".devlyn"; devlyn.mkdir()
+        spec = b"# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- running the tool prints ok\n"
+        (work / "spec.md").write_bytes(spec)
+        probe = {"id": "probe-1", "cmd": "python3 -c \"print('ok')\"", "exit_code": 0, "stdout_contains": ["ok"],
+                 "derived_from": "running the tool prints ok", "tags": ["shape_contract"],
+                 "tag_evidence": {"shape_contract": ["uses_visible_input_key_names", "asserts_visible_output_key_names",
+                                                     "asserts_no_unexpected_output_keys"]}}
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps(probe) + "\n", encoding="utf-8")
+        state = {"run_id": "rs-probe", "mode": "spec", "phases": {},
+                 "source": {"type": "spec", "spec_path": "spec.md", "spec_sha256": hashlib.sha256(spec).hexdigest()},
+                 "risk_profile": {"high_risk": True, "reasons": ["x"], "risk_probes_enabled": True,
+                                  "risk_probes_explicit": True, "pair_default_enabled": True}}
+        write_state(devlyn / "pipeline.state.json", state)
+        do_spawn(state, "probe_derive", 0, None, "codex", None, devlyn=devlyn)
+        before = copy.deepcopy(state)
+        do_complete(state, "probe_derive", "PASS", None, None, None, None, devlyn=devlyn, work=work)
+        expected, _ = runpy.run_path(str(pathlib.Path(__file__).with_name("spec-verify-check.py")))["risk_probes_digest"](devlyn)
+        assert state["risk_probes_digest"] == expected and expected
+        (devlyn / "risk-probes.jsonl").write_text(json.dumps({**probe, "derived_from": "not in the spec"}) + "\n", encoding="utf-8")
+        try:
+            do_complete(before, "probe_derive", "PASS", None, None, None, None, devlyn=devlyn, work=work)
+        except SystemExit as exc:
+            assert str(exc).startswith("BLOCKED:probe-derive-malformed"), exc
+        else:
+            raise AssertionError("malformed probes were bound")
+        assert before.get("risk_probes_digest") is None
+        assert before["phases"]["probe_derive"]["completed_at"] is None
+    print("PASS probe_derive PASS binds the validated probe digest; malformed probes refuse completion")
+
+
 def freeze_classification_self_test() -> None:
     def fresh(mode="free-form", explicit=False, enabled=False, no_pair=False):
         source = ({"type": "generated", "criteria_path": ".devlyn/criteria.generated.md", "criteria_sha256": None}
@@ -1673,7 +1780,7 @@ def freeze_classification_self_test() -> None:
         (work / "elsewhere.md").write_text("# C\n", encoding="utf-8")
         criteria.symlink_to(work / "elsewhere.md")
         refused(state, work, "regular file", complexity="medium", available=both)
-        criteria.unlink(); criteria.write_text("# Criteria\n", encoding="utf-8")
+        criteria.unlink(); criteria.write_bytes(b"# Criteria\n")
         refused(state, work, "invalid high-risk reason", complexity="medium", high_risk_reasons=["auth", "auth"])
         refused(state, work, "invalid high-risk reason", complexity="medium",
                 high_risk_reasons=["auto-risk-probes skipped: codex-unavailable"])
@@ -1684,7 +1791,7 @@ def freeze_classification_self_test() -> None:
         assert freeze_roles(state, work, "claude", complexity="medium", high_risk_reasons=["auth"], available=both) == frozen
         refused(state, work, "differs from the frozen classification", complexity="large", high_risk_reasons=["auth"])
         refused(state, work, "differs from the frozen classification", complexity="medium", high_risk_reasons=[])
-        criteria.write_text("# Changed\n", encoding="utf-8")
+        criteria.write_bytes(b"# Changed\n")
         refused(state, work, "differs from the frozen classification", complexity="medium", high_risk_reasons=["auth"])
 
         # The skip reason belongs only to an automatic high-risk run whose OTHER engine is absent.
@@ -1724,6 +1831,7 @@ def self_test() -> int:
 
     repair_admission_self_test()
     freeze_classification_self_test()
+    probe_digest_self_test()
     final_report_self_test()
     with tempfile.TemporaryDirectory() as tmp:
         work = pathlib.Path(tmp); devlyn = work / ".devlyn"; devlyn.mkdir()
@@ -2446,7 +2554,7 @@ def self_test() -> int:
         # a passing phase advances it, the next phase's spawn keeps it and charges nothing, and
         # nothing spawns after the last phase passes. A single block is not phase-gated.
         write_state(state_path, {"phases": {}, "rounds": {"global": 0, "max_rounds": 4}})
-        (devlyn / "plan.md").write_text("# PLAN\n### Phase 1 — a\n### Phase 2 — b\n### Phase 3 — c\n", encoding="utf-8")
+        (devlyn / "plan.md").write_text("# PLAN\n## Execution phases\n### Phase 1 — a\n### Phase 2 — b\n### Phase 3 — c\n", encoding="utf-8")
         state = read_state(state_path)
         do_spawn(state, "implement", 0, None, "claude", None, devlyn=devlyn)
         assert state["phases"]["implement"]["exec"] == {"total": 3, "current": 1, "statuses": [None, None, None]}
@@ -2466,7 +2574,7 @@ def self_test() -> int:
             raise AssertionError("IMPLEMENT spawned after its last phase passed")
         # A phase-gate FAIL keeps current and its charged repair advances on PASS_WITH_ISSUES;
         # a VERIFY repair round and an attestation failure never advance progress.
-        (devlyn / "plan.md").write_text("# PLAN\n### Phase 1 — a\n### Phase 2 — b\n", encoding="utf-8")
+        (devlyn / "plan.md").write_text("# PLAN\n## Execution phases\n### Phase 1 — a\n### Phase 2 — b\n", encoding="utf-8")
         gated = {"phases": {}, "rounds": {"global": 0, "max_rounds": 4}}
         do_spawn(gated, "implement", 0, None, "claude", None, devlyn=devlyn)
         do_complete(gated, "implement", "FAIL", None, None, None, None)
@@ -2488,10 +2596,22 @@ def self_test() -> int:
         assert failure and attested["phases"]["implement"]["verdict"] == "BLOCKED"
         assert attested["phases"]["implement"]["exec"]["statuses"] == ["PASS", None], "a failed attestation advanced progress"
         bad_session.unlink()
-        (devlyn / "plan.md").write_text("# PLAN\n### Phase 1 — only\n", encoding="utf-8")
+        planned = {"phases": {}, "rounds": {"global": 0, "max_rounds": 4}}
+        do_spawn(planned, "implement", 0, "plan", "claude", None, devlyn=devlyn)
+        do_complete(planned, "implement", "PASS", None, None, None, None)
+        assert planned["phases"]["implement"]["exec"]["statuses"] == ["PASS", None], "a PLAN-triggered phase did not advance"
+        (devlyn / "plan.md").write_text("# PLAN\n## Execution phases\n### Phase 1 — only\n", encoding="utf-8")
         single = {"phases": {}}
         do_spawn(single, "implement", 0, None, "claude", None, devlyn=devlyn)
         assert "exec" not in single["phases"]["implement"]
+        # Only real headings under `## Execution phases` count; fenced examples and other sections never do.
+        example = b"## Acceptance\n```md\n### Phase 1 \xe2\x80\x94 a\n### Phase 2 \xe2\x80\x94 b\n```\n### Phase 3 \xe2\x80\x94 c\n"
+        assert execution_phase_count(example) == 0
+        assert execution_phase_count(b"## Execution phases\n~~~\n### Phase 1\n~~~\n### Phase 2 \xe2\x80\x94 x\n## Risks\n### Phase 3\n") == 1
+        (devlyn / "plan.md").write_bytes(example + b"## Execution phases\n### Phase 1 \xe2\x80\x94 only\n")
+        examples = {"phases": {}}
+        do_spawn(examples, "implement", 0, None, "claude", None, devlyn=devlyn)
+        assert "exec" not in examples["phases"]["implement"]
         (devlyn / "plan.md").unlink()
 
         # Existing history is append-only; a respawn must not clobber prior
@@ -3484,7 +3604,7 @@ def _main_unlocked() -> int:
         sys.stderr.write(attestation_error + "\n")
         return 1
     if args.event == "complete" and args.phase == "final_report":
-        sys.stdout.write((devlyn / "final-report.md").read_text(encoding="utf-8"))
+        sys.stdout.write((devlyn / "final-report.md").read_bytes().decode("utf-8"))
         return 0
     sys.stdout.write(f"ok: phases.{args.phase}.{args.event}\n")
     return 0

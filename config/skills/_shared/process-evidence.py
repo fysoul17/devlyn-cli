@@ -936,6 +936,10 @@ def self_test() -> int:
         second = loads_strict_json(results_path.read_text(encoding="utf-8"))
         assert second["findings"] == ["retained"] and second["commands"][:1] == first["commands"]
         assert [item["id"] for item in bound_carrier_outcome(work, second["process_evidence"])["capability_denials"]] == ["tsc-a", "tsc-b"]
+        manifest_before = (work / first["process_evidence"]["manifest"]["path"]).read_bytes()
+        results_path.write_text("[]", encoding="utf-8")
+        assert deny("tsc-c").returncode == 2
+        assert (work / first["process_evidence"]["manifest"]["path"]).read_bytes() == manifest_before
         rejected = subprocess.run([sys.executable, str(pathlib.Path(__file__).resolve()), "--workdir", str(work),
                                    "record-capability-denial", "--phase", "implement", "--id", "x", "--cmd", "tsc",
                                    "--operation", "tool", "--detail", "absent"], capture_output=True, text=True)
@@ -992,6 +996,12 @@ def main() -> int:
         if args.action == "run":
             entry = capture_process(work, manifest, state["run_id"], phase, round_, obligation)
         else:
+            results_path = devlyn / "spec-verify.results.json"
+            if phase == "verify":
+                # Validate the results carrier before the manifest changes, so a refusal appends nothing.
+                results = _read_json(results_path) if results_path.exists() or results_path.is_symlink() else {}
+                if not isinstance(results, dict):
+                    raise EvidenceError("spec-verify.results.json must contain a JSON object")
             entry = record_capability_denial(
                 work, manifest, state["run_id"], phase, round_, obligation,
                 args.operation, args.detail.encode("utf-8"),
@@ -1000,12 +1010,8 @@ def main() -> int:
                 # The merge reads MECHANICAL evidence from the results carrier; keep it current.
                 carrier = validate_manifest(work, manifest_rel, state["run_id"], phase, round_,
                                             require_expectations=False)
-                results_path = devlyn / "spec-verify.results.json"
-                results = _read_json(results_path) if results_path.is_file() else {}
-                if not isinstance(results, dict):
-                    raise EvidenceError("spec-verify.results.json must contain a JSON object")
                 results.update(commands=bound_carrier_summary_commands(work, carrier), process_evidence=carrier)
-                results_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
+                _atomic_write(results_path, (json.dumps(results, indent=2) + "\n").encode("utf-8"))
         sys.stdout.write(json.dumps({
             "id": entry["id"], "expectation_met": entry["expectation_met"],
             "manifest_path": manifest_rel, "classification": entry["classification"],
