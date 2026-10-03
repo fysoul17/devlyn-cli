@@ -20,7 +20,27 @@ ROLES = ("worker", "primary_judge", "pair_judge")
 SHARED = Path(__file__).resolve().parent
 
 
-def fail(detail, reason="invalid-engine-config"):
+# The refusals this module raises. The writer and terminal-claim-check witness exactly these,
+# so every fail() below names one: a fixed label, `<engine>-unavailable` for an engine with an
+# adapter, or `judge-route-unsupported:<engine>` for an adapter engine without a judge route.
+INVALID, UNSUPPORTED = "invalid-engine-config", "unsupported-role-option"
+ROUTE_UNSUPPORTED = "judge-route-unsupported"
+
+
+def unavailable(engine):
+    return f"{engine}-unavailable"
+
+
+def refusal(reason):
+    """Whether `reason` is one of this module's refusals."""
+    family, _, engine = reason.partition(":")
+    if family == ROUTE_UNSUPPORTED:
+        return engine not in JUDGE_ROUTES and (SHARED / "adapters" / f"{engine}.md").is_file()
+    return reason in {INVALID, UNSUPPORTED} or (
+        reason.endswith("-unavailable") and (SHARED / "adapters" / f"{reason.removesuffix('-unavailable')}.md").is_file())
+
+
+def fail(detail, reason=INVALID):
     raise ValueError(f"BLOCKED:{reason}: {detail}")
 
 
@@ -133,7 +153,7 @@ def validate_channel(entry, role):
     engine = entry["engine"]
     if fields and (engine not in {"codex", "claude"} or (engine == "claude" and role == "worker")):
         fail(f"{role}/{engine}: unsupported explicit {', '.join(fields)}; use a supported Codex role, Claude CLI judge, or engine-only native worker",
-             "unsupported-role-option")
+             UNSUPPORTED)
 
 
 def resolve(work, default_engine, *, flag_engine=None, run_input=None, no_pair=False,
@@ -186,7 +206,7 @@ def resolve(work, default_engine, *, flag_engine=None, run_input=None, no_pair=F
             if not candidates:
                 fail("pair_judge_priority contains no OTHER engine")
             if not for_status:
-                fail(f"pinned OTHER engines unavailable: {', '.join(candidates)}; install/authenticate an engine or explicitly use --no-pair", candidates[0] + "-unavailable")
+                fail(f"pinned OTHER engines unavailable: {', '.join(candidates)}; install/authenticate an engine or explicitly use --no-pair", unavailable(candidates[0]))
         selected["pair_judge"] = {"engine": other, "model_requested": None, "effort_requested": None,
                                   "source": "engines.json" if "pair_judge_priority" in project else "default",
                                   "channel": channel(other, "pair_judge") if other else None}
@@ -200,10 +220,10 @@ def resolve(work, default_engine, *, flag_engine=None, run_input=None, no_pair=F
             continue
         if entry["engine"] not in (None, *JUDGE_ROUTES):
             fail(f"{role}/{entry['engine']}: no scripted VERIFY judge route; select claude or codex for this seat",
-                 f"judge-route-unsupported:{entry['engine']}")
+                 f"{ROUTE_UNSUPPORTED}:{entry['engine']}")
         if entry["effort_requested"] and not entry["model_requested"]:
             fail(f"{role}/{entry['engine']}: a judge effort needs an explicit judge model to validate against",
-                 "unsupported-role-option")
+                 UNSUPPORTED)
     selected["pair_judge"]["skipped_reason"] = "user_no_pair" if no_pair else (
         "auto_pair_other_engine_unavailable" if selected["pair_judge"]["engine"] is None and "pair_judge_priority" not in project else None)
     if for_status:
@@ -270,16 +290,16 @@ def primary_engine(state):
 def native_version(engine):
     binary = shutil.which(engine)
     if binary is None:
-        fail(f"install/authenticate {engine} and retry", f"{engine}-unavailable")
+        fail(f"install/authenticate {engine} and retry", unavailable(engine))
     try:
         proc = subprocess.run(runpy.run_path(Path(__file__).with_name("platform-support.py"))["native_argv"]([binary, "--version"]), capture_output=True, text=True, timeout=20, encoding="utf-8")
     except (OSError, subprocess.SubprocessError) as exc:
-        fail(f"{engine} --version failed: {exc}; install/authenticate the native CLI and retry", f"{engine}-unavailable")
+        fail(f"{engine} --version failed: {exc}; install/authenticate the native CLI and retry", unavailable(engine))
     if proc.returncode != 0:
-        fail(f"{engine} --version exited {proc.returncode}; install/authenticate the native CLI and retry", f"{engine}-unavailable")
+        fail(f"{engine} --version exited {proc.returncode}; install/authenticate the native CLI and retry", unavailable(engine))
     match = re.search(r"\b\d+\.\d+\.\d+\b", proc.stdout)
     if not match:
-        fail(f"{engine} --version did not establish a native version", "unsupported-role-option")
+        fail(f"{engine} --version did not establish a native version", UNSUPPORTED)
     return match[0]
 
 
@@ -293,7 +313,7 @@ def options(entry, role, *, model=None, version=None, cache=None, shared=SHARED)
     detail = f"{role}/{engine}: explicit model/effort unsupported; use a supported exact model or omit the override"
     validate_channel(entry, role)
     if not model:
-        fail(detail + "; resolve the inherited model before validating effort", "unsupported-role-option")
+        fail(detail + "; resolve the inherited model before validating effort", UNSUPPORTED)
     version = version or native_version(engine)
     capability = {"native_version": version, "model": model}
     if engine == "codex":
@@ -311,7 +331,7 @@ def options(entry, role, *, model=None, version=None, cache=None, shared=SHARED)
                 raise ValueError("malformed native effort metadata")
             levels = [item["effort"] for item in advertised]
         except (OSError, UnicodeError, ValueError, TypeError, KeyError) as exc:
-            fail(f"{detail}; refresh native Codex model metadata: {exc}", "unsupported-role-option")
+            fail(f"{detail}; refresh native Codex model metadata: {exc}", UNSUPPORTED)
         capability.update(path=str(path.resolve()), sha256=digest(raw))
     else:
         text = adapter(engine, judge=True, shared=shared)
@@ -319,10 +339,10 @@ def options(entry, role, *, model=None, version=None, cache=None, shared=SHARED)
             matches = re.findall(r"^<!-- devlyn-effort (\S+) (\S+) ([a-z,]+) -->$", text, re.M)
             levels = next((levels.split(",") for ver, selected, levels in matches if ver == version and selected == model), None)
             if levels is None:
-                fail(detail + "; this Claude version/model has no validated adapter effort declaration; omit effort to select only the model", "unsupported-role-option")
+                fail(detail + "; this Claude version/model has no validated adapter effort declaration; omit effort to select only the model", UNSUPPORTED)
         capability.update(path=str(shared / "adapters/claude.md"), sha256=digest(text.encode()))
     if effort is not None and effort not in levels:
-        fail(f"{role}/{engine}/{model}: effort {effort!r} unsupported; supported: {', '.join(levels)}", "unsupported-role-option")
+        fail(f"{role}/{engine}/{model}: effort {effort!r} unsupported; supported: {', '.join(levels)}", UNSUPPORTED)
     args = (["-m" if engine == "codex" else "--model", requested_model] if requested_model else [])
     if effort:
         args += ["-c", "model_reasoning_effort=" + effort] if engine == "codex" else ["--effort", effort]
@@ -565,7 +585,7 @@ def self_test():
             for response, reason in ((FileNotFoundError("fixture"), "codex-unavailable"),
                                      (subprocess.TimeoutExpired(["codex", "--version"], 20), "codex-unavailable"),
                                      (subprocess.CompletedProcess([], 1, "", "failed"), "codex-unavailable"),
-                                     (subprocess.CompletedProcess([], 0, "unparsable", ""), "unsupported-role-option")):
+                                     (subprocess.CompletedProcess([], 0, "unparsable", ""), UNSUPPORTED)):
                 kwargs = {"side_effect": response} if isinstance(response, Exception) else {"return_value": response}
                 with patch.object(subprocess, "run", **kwargs):
                     try:

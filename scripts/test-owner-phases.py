@@ -247,6 +247,23 @@ class OwnerPhases(unittest.TestCase):
         self.assertEqual(state["phases"]["implement"]["exec"]["statuses"], ["PASS", "PASS"])
         self.assertEqual((state["phases"]["verify"]["round"], state["rounds"]["global"]), (1, 0))
 
+    def test_verify_opens_only_over_a_finished_implement(self):
+        """VERIFY never reviews unrun phases or a failed IMPLEMENT (state unchanged on refusal)."""
+        self.with_spec()
+        self.cli("plan", "spawn", "--round", "0")
+        (self.devlyn / "plan.md").write_text(
+            '<!-- devlyn:authorized-surface -->\n# Files\n```json\n{"authorized_surface":["source.txt"]}\n```\n'
+            "## Execution phases\n### Phase 1 \u2014 a\ngate: true\n### Phase 2 \u2014 b\ngate: true\n")
+        self.cli("plan", "complete", "--verdict", "PASS")
+        self.cli("implement", "spawn", "--round", "0", "--engine", "claude",
+                 "--prompt-sha256", self.render("implement", 0))
+        (self.work / "source.txt").write_text("phase 1\n")
+        self.git("commit", "-qam", "chore(pipeline): implement phase 1/2")
+        self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
+                 "--next-round", "0", "--next-engine", "claude", error="verify-admission-invalid")
+        self.cli("implement", "complete", "--verdict", "FAIL")
+        self.cli("verify", "spawn", "--round", "0", error="verify-admission-invalid")
+
     def test_plan_digest_and_atomic_handoff(self):
         self.plan()
         for worker in ("implement", "probe_derive"):  # worker phases open only by complete -> render -> spawn

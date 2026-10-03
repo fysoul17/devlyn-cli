@@ -256,7 +256,7 @@ def load_spec_helper(shared_dir: pathlib.Path):
 
 
 def init_spec_source(
-    cwd: pathlib.Path, staging_dir: pathlib.Path, shared_dir: pathlib.Path, raw_path: str,
+    cwd: pathlib.Path, staging_dir: pathlib.Path, shared_dir: pathlib.Path, raw_path: str, risk_probes: bool = False,
 ) -> tuple[dict, bytes | None]:
     path = pathlib.Path(raw_path)
     path = path if path.is_absolute() else cwd / path
@@ -270,6 +270,9 @@ def init_spec_source(
     helper = shared_dir / "spec-verify-check.py"
     expected = path.with_name("spec.expected.json")
     module = load_spec_helper(shared_dir)
+    if risk_probes and not module.extract_verification_text(raw.decode("utf-8")):
+        block("BLOCKED:invalid-flags", "--risk-probes needs the spec's <!-- devlyn:verification --> section, "
+              "which PROBE_DERIVE derives every probe from")
     if expected.is_file():
         found, _staged, error, _expected_path, _data = module.stage_from_expected(path, staging_dir)
         if not found or error:
@@ -408,7 +411,7 @@ def bootstrap(
         else:
             with tempfile.TemporaryDirectory() as tmp:
                 source, staged_spec = init_spec_source(
-                    cwd, pathlib.Path(tmp), shared_dir, parsed["spec"],
+                    cwd, pathlib.Path(tmp), shared_dir, parsed["spec"], parsed["risk_probes"],
                 )
             outputs[devlyn / "spec-verify.json"] = staged_spec
             if parsed["mode"] == "verify-only":
@@ -1196,6 +1199,15 @@ def self_test() -> int:
         pure_result = bootstrap(["--spec", str(pure_spec.relative_to(work))], work, script_shared)
         assert pure_result["source"]["spec_sha256"] == sha256(pure_spec.read_bytes())
         assert not (work / ".devlyn/spec-verify.json").exists()
+        bare_spec = spec_dir / "bare.md"
+        bare_spec.write_text("# Bare\n\n- no verification section\n", encoding="utf-8")
+        complete_prior(work)
+        try:
+            bootstrap(["--risk-probes", "--spec", str(bare_spec.relative_to(work))], work, script_shared)
+        except BootstrapBlocked as exc:
+            assert exc.reason == "BLOCKED:invalid-flags" and "verification --> section" in str(exc), exc
+        else:
+            raise AssertionError("--risk-probes accepted for a spec PROBE_DERIVE cannot derive from")
         external_patch.write_bytes(b"stale free-form patch\n")
         complete_prior(work)
         bootstrap(["fresh", "goal"], work, script_shared)
