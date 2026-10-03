@@ -1,4 +1,14 @@
-# 0229 PASS (gates R1–R3 and the 64-round screen) — bundle development (steps 2–5) readmitted; next: owner decision
+# 0230 bundle development — steps 2 fixed and 3 merged on `bundle/0225-steps-2-5`; next: PR-4, PR-5, whole-bundle review
+
+2026-10-03 KST. Owner direction: resume bundle development with a thorough Astra ultra review at the end. The record is [0230](iterations/0230-bundle-steps-3-5.md) (converged design, owner decisions U1–U4, PR-3 result). On the bundle branch (never main):
+- PR #157: port of the 0229 candidate onto 4.1.0.
+- PR #158: step-2 follow-up — omp judge auto-assign, grok diagnostic, global Bash-max guidance.
+- PR #159: step 3 — one sealed MECHANICAL gate inside VERIFY. Astra v4 SHIP.
+
+Next: PR-4 (fewer owner turns), then PR-5 (contract-first PLAN, U4 probes, defect-4 witnesses), each through Astra SHIP and CI. Then a whole-bundle review, then a live-comparison registration, whose run needs the owner's approval. Nothing ships. Working notes are in `.devlyn/bundle/` (design inputs, Astra rounds, `pr3-contract.md`).
+
+The 0229 handoff follows unchanged.
+
 
 2026-10-01 KST. Root direct, no resolve. The contract is [0229](iterations/0229-verify-existing-behavior-rescreen.md), which amends [0228](iterations/0228-verify-rubric-rescreen.md) (itself amending [0227](iterations/0227-verify-rescreen.md)) by reference; registered with Astra (gpt-6-astra, ultra) before the H commit and any call. The raw record is `.devlyn/0229/` and `.devlyn/0228/`. 0228 closed at R2 FAIL (Addendum C3, [DIAGNOSIS](experiments/0228/diagnosis/DIAGNOSIS.md)); the owner chose to fix and re-screen (2026-10-01). 0227 closed NOT PASS ([RESULT](experiments/0227/RESULT.md), [DIAGNOSIS](experiments/0227/diagnosis/DIAGNOSIS.md)); its handoff is in git history (last version at `f3835c04`). User decision 2026-09-30 ("1"): fix the rubric where the diagnosis points, test by replay on 0227 material, then re-screen on fresh tasks.
 
