@@ -149,8 +149,10 @@ class OwnerPhases(unittest.TestCase):
     def test_probe_derive_completes_before_render(self):
         self.with_spec()
         self.plan()
-        self.cli("plan", "transition", "--verdict", "PASS", "--next-phase", "probe_derive",
-                 "--next-round", "0", "--next-engine", "codex")
+        self.cli("plan", "complete", "--verdict", "PASS")
+        probe_digest = self.render("probe_derive", 0)
+        self.assertEqual(len(probe_digest), 64)
+        self.cli("probe_derive", "spawn", "--round", "0", "--engine", "codex")
         probe = {"id": "P1", "cmd": "python3 -c \"print('ok')\"", "exit_code": 0, "stdout_contains": ["ok"],
                  "derived_from": "prints ok", "tags": ["fixture_cleanup"],
                  "tag_evidence": {"fixture_cleanup": ["exercises_failure_or_timeout_exit", "asserts_created_artifacts_absent"]}}
@@ -160,6 +162,59 @@ class OwnerPhases(unittest.TestCase):
         digest = self.render("implement", 0)
         self.cli("implement", "spawn", "--round", "0", "--engine", "claude", "--prompt-sha256", digest)
         self.assertEqual(self.state()["rounds"]["global"], 0)
+
+    def refused_render_closes(self, kind):
+        """A renderer refusal leaves IMPLEMENT unopened; FINAL_REPORT, archive and TCC still close the run."""
+        refused = subprocess.run([sys.executable, str(SHARED / "phase-prompt-render.py"), "--devlyn-dir", ".devlyn",
+                                  "--phase", "implement", "--engine", "claude", "--round", "1"],
+                                 cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn(f"BLOCKED:phase-input-invalid:{kind}:", refused.stderr)
+        self.cli("final_report", "spawn", "--round", "0")
+        subprocess.run([sys.executable, str(SHARED / "finish-gate.py")], cwd=self.work, env=ENV, capture_output=True)
+        report = self.cli("final_report", "complete", "--verdict", "BLOCKED:phase-input-invalid",
+                          "--detail", refused.stderr.strip())
+        self.assertEqual(self.state()["phases"]["final_report"]["verdict"], "BLOCKED:phase-input-invalid")
+        for step in ("archive_run.py", "terminal-claim-check.py"):
+            closed = subprocess.run([sys.executable, str(SHARED / step), *(["--devlyn-dir", ".devlyn"] if step == "archive_run.py" else [])],
+                                    cwd=self.work, env=ENV, capture_output=True, text=True)
+            self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+        return report.stdout
+
+    def test_renderer_refusal_on_tampered_plan_closes(self):
+        self.with_spec()
+        self.plan()
+        self.cli("plan", "complete", "--verdict", "PASS")
+        (self.devlyn / "plan.md").write_text("widened after binding\n")
+        report = self.refused_render_closes("plan")
+        self.assertIn("bound PLAN no longer verifies", report)
+
+    def test_probe_render_refusal_closes_before_probe_derive_opens(self):
+        self.with_spec()
+        self.plan()
+        self.cli("plan", "complete", "--verdict", "PASS")
+        (self.devlyn / "spec.md").write_bytes(b"# changed after bootstrap\n")
+        refused = subprocess.run([sys.executable, str(SHARED / "phase-prompt-render.py"), "--devlyn-dir", ".devlyn",
+                                  "--phase", "probe_derive", "--engine", "codex", "--round", "0"],
+                                 cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertIn("BLOCKED:phase-input-invalid:contract:", refused.stderr)
+        self.assertIsNone(self.state()["phases"].get("probe_derive"))
+        self.cli("final_report", "spawn", "--round", "0")
+        subprocess.run([sys.executable, str(SHARED / "finish-gate.py")], cwd=self.work, env=ENV, capture_output=True)
+        self.cli("final_report", "complete", "--verdict", "BLOCKED:phase-input-invalid", "--detail", refused.stderr.strip())
+        for step in ("archive_run.py", "terminal-claim-check.py"):
+            closed = subprocess.run([sys.executable, str(SHARED / step), *(["--devlyn-dir", ".devlyn"] if step == "archive_run.py" else [])],
+                                    cwd=self.work, env=ENV, capture_output=True, text=True)
+            self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+
+    def test_renderer_refusal_on_missing_findings_closes(self):
+        self.with_spec()
+        self.implemented()
+        self.needs_work()
+        self.cli("verify", "complete")
+        (self.devlyn / "verify-merged.findings.jsonl").unlink()
+        report = self.refused_render_closes("findings")
+        self.assertIn("verify-merged.findings.jsonl is missing", report)
 
     def test_plan_digest_and_atomic_handoff(self):
         self.plan()

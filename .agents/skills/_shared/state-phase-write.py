@@ -128,34 +128,38 @@ def write_state(state_path: pathlib.Path, state: dict) -> None:
         raise
 
 
-def validate_plan_output(state: dict, devlyn: pathlib.Path | None, phase: str) -> None:
+def plan_output_error(state: dict, devlyn: pathlib.Path | None, phase: str) -> str | None:
+    """Why the completed PLAN's bound output no longer verifies, or None."""
     plan = (state.get("phases") or {}).get("plan")
     if not isinstance(plan, dict) or plan.get("completed_at") is None:
-        return
+        return None
     expected = plan.get("output_sha256")
     if expected is None and state.get("version") != "3.0":
-        return
+        return None
     if (
         expected is None and "output_sha256" in plan and plan.get("verdict") == "BLOCKED"
         and devlyn is not None and not os.path.lexists(devlyn / "plan.md")
     ):
-        if phase != "final_report":
-            raise SystemExit("BLOCKED:plan-output-missing: only final_report is allowed")
-        return
+        return None if phase == "final_report" else "BLOCKED:plan-output-missing: only final_report is allowed"
     if not isinstance(expected, str) or SHA256_RE.fullmatch(expected) is None:
-        raise SystemExit("BLOCKED:plan-integrity-invalid: phases.plan.output_sha256 is missing")
+        return "BLOCKED:plan-integrity-invalid: phases.plan.output_sha256 is missing"
     if devlyn is None:
-        raise SystemExit("BLOCKED:plan-integrity-invalid: .devlyn is required to rehash PLAN output")
+        return "BLOCKED:plan-integrity-invalid: .devlyn is required to rehash PLAN output"
     plan_path = devlyn / "plan.md"
     try:
         actual = hashlib.sha256(plan_path.read_bytes()).hexdigest()
     except OSError as exc:
-        raise SystemExit(f"BLOCKED:plan-integrity-invalid: cannot read {plan_path}: {exc}") from exc
+        return f"BLOCKED:plan-integrity-invalid: cannot read {plan_path}: {exc}"
     if actual != expected:
-        raise SystemExit(
-            "BLOCKED:plan-integrity-mismatch: "
-            f"expected={expected} actual={actual} path={plan_path}"
-        )
+        return f"BLOCKED:plan-integrity-mismatch: expected={expected} actual={actual} path={plan_path}"
+    return None
+
+
+def validate_plan_output(state: dict, devlyn: pathlib.Path | None, phase: str) -> None:
+    """Work phases refuse a PLAN output that no longer verifies; FINAL_REPORT records it as its verdict."""
+    error = plan_output_error(state, devlyn, phase)
+    if error is not None and phase != "final_report":
+        raise SystemExit(error)
 
 
 def bind_plan_output(state: dict, devlyn: pathlib.Path | None) -> None:
@@ -273,21 +277,27 @@ def verify_blocked_reason(state: dict, devlyn: pathlib.Path, work: pathlib.Path)
 
 
 def terminal_verdict(state: dict, devlyn: pathlib.Path, work: pathlib.Path, supplied: str | None) -> str:
-    """PHASE 6 precedence: finish gate, BLOCKED phase, repair exhaustion, verify-only, VERIFY."""
+    """PHASE 6 precedence: bound PLAN, finish gate, BLOCKED phase, repair exhaustion, verify-only, VERIFY."""
     phases = state.get("phases") or {}
-    try:
-        finish = loads_strict_json(read_regular(devlyn / "finish-gate.summary.json", "finish-gate summary").decode("utf-8"))
-    except SystemExit:
-        raise report_invalid("run finish-gate.py before completing the final report") from None
-    if not isinstance(finish, dict) or type(finish.get("exit")) is not int or finish["exit"] not in (0, 1, 2):
-        raise report_invalid("finish-gate summary has no valid exit")
+    plan_broken = plan_output_error(state, devlyn, "final_report") is not None
+    if plan_broken:
+        finish = {"exit": 0}  # a PLAN that no longer verifies decides; its surface cannot vouch for the gate
+    else:
+        try:
+            finish = loads_strict_json(read_regular(devlyn / "finish-gate.summary.json", "finish-gate summary").decode("utf-8"))
+        except SystemExit:
+            raise report_invalid("run finish-gate.py before completing the final report") from None
+        if not isinstance(finish, dict) or type(finish.get("exit")) is not int or finish["exit"] not in (0, 1, 2):
+            raise report_invalid("finish-gate summary has no valid exit")
     blocked = [name for name in REPORT_PHASES
                if isinstance(phases.get(name), dict) and phases[name].get("verdict") == "BLOCKED"]
     implement = phases.get("implement")
     derived = None
+    if plan_broken:
+        derived = "BLOCKED:phase-input-invalid"
     # Before IMPLEMENT there is no product change; a malformed gate (no usable PLAN surface) then
     # does not displace the halt's own reason, while offenders (exit 2) always decide.
-    if finish["exit"] == 2 or (finish["exit"] == 1 and isinstance(implement, dict) and implement.get("started_at")):
+    elif finish["exit"] == 2 or (finish["exit"] == 1 and isinstance(implement, dict) and implement.get("started_at")):
         derived = "BLOCKED:finish-gate-unclean"
     elif blocked:
         derived = verify_blocked_reason(state, devlyn, work) if "verify" in blocked else None
@@ -360,8 +370,21 @@ def render_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, v
     predecessor = repair_predecessor(state)
     current_verify = predecessor is not None and predecessor[0] == "verify"
     merged = verify.get("merged") if current_verify else None
-    findings = read_jsonl(devlyn / "verify-merged.findings.jsonl") if isinstance(merged, dict) else []
-    finish_findings = read_jsonl(devlyn / "finish-gate.findings.jsonl")
+    notes = []
+
+    def displayed(path: pathlib.Path, required: bool) -> list[dict]:
+        # Findings are report text only; an unreadable file is shown, never a reason to withhold the report.
+        if required and not os.path.lexists(path):
+            notes.append(f"- {path.name} is missing")
+            return []
+        try:
+            return read_jsonl(path)
+        except (SystemExit, ValueError, UnicodeError) as exc:
+            notes.append(f"- {path.name} unreadable: {exc}")
+            return []
+
+    findings = displayed(devlyn / "verify-merged.findings.jsonl", True) if isinstance(merged, dict) else []
+    finish_findings = displayed(devlyn / "finish-gate.findings.jsonl", False)
     skips = mechanical_skips(state, devlyn) if current_verify else []
     started = state.get("started_at")
     wall = round((now_ms() - parse_iso(started)).total_seconds()) if isinstance(started, str) else None
@@ -400,7 +423,9 @@ def render_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, v
                                                     f.get("confidence"))) + " |" for source, f in rows]
     else:
         out.append("None.")
-    notes = []
+    plan_error = plan_output_error(state, devlyn, "final_report")
+    if plan_error is not None:
+        notes.append(f"- bound PLAN no longer verifies: {plan_error}")
     if state.get("complexity") == "large":
         criteria = read_regular(devlyn / "criteria.generated.md", "generated criteria")
         if hashlib.sha256(criteria).hexdigest() != (state.get("source") or {}).get("criteria_sha256"):
@@ -1472,9 +1497,6 @@ def final_report_self_test() -> None:
         for invalid in ("FAIL", "BLOCKED:", "unknown"):
             refused(work, devlyn, f"invalid verdict for phases.final_report: {invalid}", "--verdict", invalid)
         refused(work, devlyn, "contradicts the evidence-derived PASS", "--verdict", "BLOCKED:plan-empty")
-        (devlyn / "verify-merged.findings.jsonl").write_text("[1]\n", encoding="utf-8")
-        refused(work, devlyn, "non-object finding")
-        (devlyn / "verify-merged.findings.jsonl").unlink()
         finish_path = devlyn / "finish-gate.summary.json"
         finish_path.write_text('{"exit": 3}\n', encoding="utf-8")
         refused(work, devlyn, "no valid exit")
@@ -1563,6 +1585,10 @@ def final_report_self_test() -> None:
                 "implement": span("PASS"), "verify": verify_pass()}), [], "PASS"),
             ("render-refused", fixture(tmp, "render-refused"),
              ["--verdict", "BLOCKED:phase-input-invalid", "--detail", "contract sha mismatch"], "BLOCKED:phase-input-invalid"),
+            ("findings-unreadable", fixture(tmp, "findings-unreadable", phases={
+                "implement": span("PASS"), "verify": verify_pass()}), [], "PASS"),
+            ("plan-tampered", fixture(tmp, "plan-tampered", finish=None, phases={
+                "implement": span("PASS"), "verify": verify_pass()}), [], "BLOCKED:phase-input-invalid"),
         ]
         plan_empty_devlyn = matrix[8][1][1]
         (plan_empty_devlyn / "plan.md").write_bytes(b"# PLAN\n")
@@ -1577,6 +1603,9 @@ def final_report_self_test() -> None:
         (matrix[11][1][1] / "verify-merged.findings.jsonl").write_text(json.dumps({
             "severity": "HIGH", "rule_id": "stale.round", "file": "a.py", "line": 1, "message": "superseded",
             "confidence": "high"}) + "\n", encoding="utf-8")
+        # Display-only findings never withhold the report; a PLAN that no longer verifies decides the verdict.
+        (matrix[14][1][1] / "verify-merged.findings.jsonl").write_bytes(b"[1]\n")
+        (matrix[15][1][1] / "plan.md").write_bytes(b"# PLAN\nwidened after binding\n")
         follow_work, follow_devlyn = matrix[12][1]
         criteria_bytes = b"# Criteria\n## Assumptions\n- narrowed to the CLI only\n## Verification\n"
         (follow_devlyn / "criteria.generated.md").write_bytes(criteria_bytes)
@@ -1630,6 +1659,10 @@ def final_report_self_test() -> None:
             if name == "judge-unavailable":
                 assert "setup: install and authenticate codex" in report, report
                 assert "- pair: blocked: BLOCKED:codex-unavailable" in report, report
+            if name == "findings-unreadable":
+                assert "verify-merged.findings.jsonl unreadable" in report, report
+            if name == "plan-tampered":
+                assert "bound PLAN no longer verifies: BLOCKED:plan-integrity-mismatch" in report, report
             if name == "stale-findings":
                 assert "## Findings\n\nNone." in report and "superseded" not in report, report
             if name == "followups":
@@ -1651,7 +1684,7 @@ def final_report_self_test() -> None:
         archived = subprocess.run([sys.executable, str(archive), "--devlyn-dir", ".devlyn"],
                                   cwd=work, capture_output=True, text=True, encoding="utf-8")
         assert archived.returncode == 1 and "error: archive blocked:" in archived.stderr, archived
-    print("PASS final report: evidence-derived verdict matrix (14) agrees with archive and TCC; refusals preserve state")
+    print("PASS final report: evidence-derived verdict matrix (16) agrees with archive and TCC; refusals preserve state")
 
 
 def repair_admission_self_test() -> None:
@@ -1879,6 +1912,10 @@ def freeze_classification_self_test() -> None:
         state["source"]["spec_path"] = "spec.md"
         freeze_roles(state, work, "claude", available=both)
         assert state["risk_profile"]["high_risk"] is True and state["risk_profile"]["risk_probes_enabled"] is False
+        crowded = [{"tag": "fixture_cleanup", "derived_from": "a write releases the lock"}] + [
+            {"tag": "fixture_cleanup", "derived_from": text} for text in ("a write", "releases", "the lock")]
+        criteria.write_bytes(declaring(crowded))
+        refused(fresh(), work, "at most 3 probes", complexity="medium", available=both)
         criteria.write_bytes(declaring([{**declared[0], "extra": 1}]))
         refused(fresh(), work, "unknown key(s): extra", complexity="medium", available=both)
         criteria.write_bytes(declaring([]))
@@ -3309,9 +3346,10 @@ def self_test() -> int:
                     missing_plan_output.chmod(0)
             try:
                 receipt_state_path.write_bytes(absent_transition_bytes)
+                # Bytes at the never-bound path make the PLAN unverifiable: closure derives that, never a bare BLOCKED.
                 result = receipt_cli("final_report", "complete", "--verdict", "BLOCKED")
                 assert result.returncode == 1, (path_kind, result.stderr)
-                assert "BLOCKED:plan-integrity-invalid" in result.stderr
+                assert "contradicts the evidence-derived BLOCKED:phase-input-invalid" in result.stderr
                 assert receipt_state_path.read_bytes() == absent_transition_bytes
                 if path_kind in {"directory", "dangling-symlink"} or (
                     path_kind == "unreadable" and not os.access(missing_plan_output, os.R_OK)
@@ -3354,15 +3392,22 @@ def self_test() -> int:
         assert result.returncode == 1, result.stderr
         assert "BLOCKED:plan-integrity-invalid" in result.stderr
         assert receipt_state_path.read_bytes() == correction_bytes
+        # Work phases still refuse; FINAL_REPORT closes the run as phase-input-invalid and names the failure.
         for changed in (False, True):
             if changed:
                 missing_plan_output.write_bytes(b"altered plan\n")
             receipt_state_path.write_bytes(bound_bytes)
-            result = receipt_cli("final_report", "spawn", "--round", "0")
-            assert result.returncode == 1, result.stderr
-            assert "BLOCKED:plan-integrity-" in result.stderr
+            refused_work = receipt_cli("implement", "spawn", "--round", "0", "--engine", "claude")
+            assert refused_work.returncode == 1 and "BLOCKED:plan-integrity-" in refused_work.stderr, refused_work.stderr
             assert receipt_state_path.read_bytes() == bound_bytes
-        print("PASS iter-0121 BLOCKED output binding rejects deletion/tampering and lost correction output")
+            result = receipt_cli("final_report", "spawn", "--round", "0")
+            assert result.returncode == 0, result.stderr
+            result = receipt_cli("final_report", "complete")
+            assert result.returncode == 0, result.stderr
+            assert read_state(receipt_state_path)["phases"]["final_report"]["verdict"] == "BLOCKED:phase-input-invalid"
+            assert "bound PLAN no longer verifies: BLOCKED:plan-integrity-" in result.stdout
+            (receipt_devlyn / "final-report.md").unlink()
+        print("PASS iter-0121 BLOCKED output binding: work phases refuse deletion/tampering; closure records it")
 
         retained_log.unlink()
         write_state(state_path, {"phases": {}})

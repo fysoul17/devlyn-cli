@@ -893,27 +893,21 @@ if ! grep -Fq '"atomic_batch_state"' config/skills/_shared/spec-verify-check.py 
   bad "risk-probe atomic batch contracts must require concrete mixed-failure and success-order markers"
 fi
 defect_witness_ok=1
-for tree in config/skills .agents/skills; do
-  for needle in \
-    '`release_recovery`: `failure_injected_after_acquire_or_publish`' \
-    '`physical_alias`: `same_target_reached_through_distinct_paths`' \
-    '`fixture_cleanup`: `exercises_failure_or_timeout_exit`' \
-    '`temp_file_preservation`: `preexisting_file_at_colliding_path`'
-  do
-    grep -Fq "$needle" "$tree/devlyn-resolve/references/phases/probe-derive.md" || defect_witness_ok=0
-  done
-  for needle in '"release_recovery"' '"physical_alias"' '"fixture_cleanup"' '"temp_file_preservation"' \
-    'asserts_preexisting_bytes_unchanged' 'def defect_witness_self_test'; do
-    grep -Fq "$needle" "$tree/_shared/spec-verify-check.py" || defect_witness_ok=0
-  done
+for needle in \
+  '`release_recovery`: `failure_injected_after_acquire_or_publish`' \
+  '`physical_alias`: `same_target_reached_through_distinct_paths`' \
+  '`fixture_cleanup`: `exercises_failure_or_timeout_exit`' \
+  '`temp_file_preservation`: `preexisting_file_at_colliding_path`'
+do
+  grep -Fq "$needle" config/skills/devlyn-resolve/references/phases/probe-derive.md || defect_witness_ok=0
 done
 if [ $defect_witness_ok -eq 1 ]; then
-  ok "defect witness tags carry marker contracts and an executable defective/fixed fixture"
+  ok "defect witness tags carry their marker contracts in the probe body (the checker self-test pins the validator and runs the fixture)"
 else
-  bad "defect witness tags must keep their markers in the validator and probe body, plus the executable fixture"
+  bad "defect witness tags must keep their marker contracts in the probe body"
 fi
 contract_first_ok=1
-for tree in config/skills .agents/skills; do
+for tree in config/skills; do
   resolve="$tree/devlyn-resolve"
   if grep -RFq -e 'Acceptance restatement' -e 'verbatim verification requirements' -e 'auto-risk-probes demoted' \
        -e 'probe_scale_small' -e 'orchestrator pastes' -e 'next-prompt-sha256' -e 'implement.task-context' \

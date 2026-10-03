@@ -9,8 +9,8 @@ Inputs: the rendered prompt (contract bytes and declared requirements), `.devlyn
 `spec.expected.json`, `.devlyn/spec-verify.json`, `BENCH_FIXTURE_DIR`, hidden
 fixture/verifier paths, previous findings, and harness docs.
 
-Render the prompt after PROBE_DERIVE opens and pass its bytes unchanged; the
-owner adds no text:
+After PLAN completes and before PROBE_DERIVE opens, render the prompt and pass
+its bytes unchanged; the owner adds no text:
 
 ```bash
 python3 "$DEVLYN_SHARED_DIR/phase-prompt-render.py" --devlyn-dir .devlyn --phase probe_derive --engine <OTHER engine> --round <round>

@@ -44,9 +44,10 @@ WORKER_PHASES = {
 
 def phase_body(name: str, prefix: str, kind: str) -> bytes:
     body = SKILL / "references" / "phases" / name
-    if not body.is_file():
-        raise SystemExit(f"BLOCKED:{prefix}:{kind}:{name} is not installed beside the renderer")
-    return body.read_bytes()
+    try:
+        return body.read_bytes()
+    except OSError as exc:
+        raise SystemExit(f"BLOCKED:{prefix}:{kind}:{name} is unreadable beside the renderer: {exc}") from exc
 
 
 def verify_body() -> bytes:
@@ -156,6 +157,11 @@ def render_worker(devlyn: pathlib.Path, phase: str, engine: str, round_: int) ->
         writer["validate_plan_output"](state, devlyn, phase)
     except SystemExit as exc:
         raise invalid("plan", str(exc)) from exc
+    # The prompt reflects completed state only: render after the predecessor completes, before the phase opens.
+    for name in ("probe_derive", "implement", "verify"):
+        entry = phases.get(name)
+        if isinstance(entry, dict) and entry.get("started_at") and entry.get("completed_at") is None:
+            raise invalid("predecessor", f"phases.{name} is still open; complete it before rendering")
     adapter = SHARED / "adapters" / f"{engine}.md"
     if not adapter.is_file():
         raise invalid("adapter", f"no adapter for engine {engine!r}")
@@ -201,10 +207,17 @@ def render_worker(devlyn: pathlib.Path, phase: str, engine: str, round_: int) ->
             findings = work / str(merged.get("findings_file") or "")
             if findings.is_symlink() or not findings.is_file():
                 raise invalid("findings", "the merged VERIFY findings file is missing or not a regular file")
-            payload, metadata["repair_of"] = findings.read_bytes(), "verify"
+            try:
+                payload, metadata["repair_of"] = findings.read_bytes(), "verify"
+            except OSError as exc:
+                raise invalid("findings", f"the merged VERIFY findings file is unreadable: {exc}") from exc
         elif name == "implement" and entry.get("verdict") == "FAIL" and "exec" in metadata:
             metadata["repair_of"] = "phase_gate"
-    frames = {"adapter": project_adapter(adapter.read_bytes()), "body": phase_body(body_name, "phase-input-invalid", "body"),
+    try:
+        adapter_bytes = adapter.read_bytes()
+    except OSError as exc:
+        raise invalid("adapter", f"{adapter.name} is unreadable: {exc}") from exc
+    frames = {"adapter": project_adapter(adapter_bytes), "body": phase_body(body_name, "phase-input-invalid", "body"),
               "metadata": json.dumps(metadata, sort_keys=True, separators=(",", ":")).encode("utf-8"),
               "contract": contract, "goal": goal, extra: payload}
     prompt = header + b"".join(frame(name, frames[name]) for name in ("adapter", "body", "metadata", "contract", "goal", extra))
@@ -359,6 +372,7 @@ def split_frames(prompt: bytes, header: bytes, names: tuple[str, ...]) -> dict[s
 
 
 def worker_self_test() -> None:
+    global SHARED, SKILL
     writer = runpy.run_path(str(SHARED / "state-phase-write.py"))
     with tempfile.TemporaryDirectory(prefix="phase-prompt-render-worker-") as raw:
         work = pathlib.Path(raw).resolve()
@@ -424,7 +438,41 @@ def worker_self_test() -> None:
                 raise AssertionError(f"{kind} input accepted")
             assert output_path.read_bytes() == b"unchanged", kind
 
-        (devlyn / "verify-merged.findings.jsonl").unlink()
+        for name in ("probe_derive", "implement", "verify"):
+            still_open = json.loads(json.dumps(repair))
+            still_open["phases"][name] = {"started_at": stamp, "completed_at": None, "round": 1, "verdict": None}
+            refused("predecessor", still_open)
+        # Unreadable worker inputs refuse in the same format (POSIX permissions; root reads anyway).
+        merged_file = devlyn / "verify-merged.findings.jsonl"
+        if os.name != "nt":
+            merged_file.chmod(0)
+            if not os.access(merged_file, os.R_OK):
+                refused("findings", repair)
+            merged_file.chmod(0o600)
+            saved = SHARED, SKILL
+            try:
+                fake = work / "fake-skills"
+                (fake / "_shared" / "adapters").mkdir(parents=True)
+                (fake / "devlyn-resolve" / "references" / "phases").mkdir(parents=True)
+                for script in saved[0].glob("*.py"):
+                    (fake / "_shared" / script.name).symlink_to(script)
+                for name in ("implement.md", "probe-derive.md"):
+                    (fake / "devlyn-resolve/references/phases" / name).write_bytes(b"body")
+                adapter_copy = fake / "_shared/adapters/codex.md"
+                adapter_copy.write_bytes(b"# adapter")
+                SHARED, SKILL = fake / "_shared", fake / "devlyn-resolve"
+                adapter_copy.chmod(0)
+                if not os.access(adapter_copy, os.R_OK):
+                    refused("adapter", repair)
+                adapter_copy.chmod(0o600)
+                body_copy = fake / "devlyn-resolve/references/phases/implement.md"
+                body_copy.chmod(0)
+                if not os.access(body_copy, os.R_OK):
+                    refused("body", repair)
+                body_copy.chmod(0o600)
+            finally:
+                SHARED, SKILL = saved
+        merged_file.unlink()
         refused("findings", repair)
         refused("adapter", gated, engine="nonexistent")
         open_plan = json.loads(json.dumps(gated)); open_plan["phases"]["plan"]["completed_at"] = None

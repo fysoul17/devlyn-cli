@@ -665,6 +665,9 @@ def validate_expected_shape(data) -> str | None:
         derived_from = requirement.get("derived_from")
         if not isinstance(derived_from, str) or not derived_from:
             return f"required_risk_probe_requirements[{i}].derived_from must be a non-empty string"
+    cap_error = requirement_cap_error(requirements)
+    if cap_error:
+        return cap_error
     patterns = data.get("forbidden_patterns", [])
     if not isinstance(patterns, list):
         return "forbidden_patterns must be a list"
@@ -814,6 +817,17 @@ def validate_risk_probe(
     return None
 
 
+MAX_RISK_PROBES = 3
+
+
+def requirement_cap_error(requirements: list) -> str | None:
+    bullets = {item.get("derived_from") for item in requirements if isinstance(item, dict)}
+    if len(bullets) > MAX_RISK_PROBES:
+        return (f"required_risk_probe_requirements names {len(bullets)} distinct derived_from bullets; "
+                f"a run derives at most {MAX_RISK_PROBES} probes, one bullet each")
+    return None
+
+
 def validate_required_risk_probe_requirement(
     requirement: object, index: int, verification_text: str,
 ) -> str | None:
@@ -876,6 +890,9 @@ def resolve_required_risk_probe_requirements(
         err = validate_required_risk_probe_requirement(req, i, verification_text)
         if err:
             return ([], err)
+    cap_error = requirement_cap_error(reqs)
+    if cap_error:
+        return ([], cap_error)
     return (reqs, None)
 
 
@@ -912,8 +929,8 @@ def load_risk_probes(
         normalized["_risk_probe"] = True
         normalized["_risk_probe_index"] = index
         probes.append(normalized)
-        if len(probes) > 3:
-            return ([], "risk-probes.jsonl has more than 3 probes")
+        if len(probes) > MAX_RISK_PROBES:
+            return ([], f"risk-probes.jsonl has more than {MAX_RISK_PROBES} probes")
     if require_present and not probes:
         return ([], "risk-probes.jsonl must contain at least one probe")
     if require_present:
@@ -5077,6 +5094,14 @@ def defect_witness_self_test(script_path: str) -> int:
         "temp_file_preservation": {"preexisting_file_at_colliding_path", "exclusive_create_collision_exercised",
                                    "asserts_preexisting_bytes_unchanged"},
     }
+    four = [{"tag": "fixture_cleanup", "derived_from": f"bullet {n}"} for n in range(4)]
+    for shape_error in (validate_expected_shape({"verification_commands": [], "pure_design": True,
+                                                 "required_risk_probe_requirements": four}),
+                        validate_inline_shape({"verification_commands": [{"cmd": "true"}],
+                                               "required_risk_probe_requirements": four})):
+        if not shape_error or "at most 3 probes" not in shape_error:
+            print(f"four distinct required bullets were accepted: {shape_error}", file=sys.stderr)
+            return 1
     for tag, markers_required in witness_markers.items():
         if RISK_PROBE_REQUIRED_EVIDENCE.get(tag) != markers_required:
             print(f"{tag} marker contract drifted: {RISK_PROBE_REQUIRED_EVIDENCE.get(tag)}", file=sys.stderr)
