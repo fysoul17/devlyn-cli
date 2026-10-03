@@ -5,9 +5,16 @@ Findings-as-executable-checks, not a second plan and not debate. The SKILL PHASE
 Engine: OTHER engine from the legacy executor and legacy pair priority/complement; worker/VERIFY profiles do not reroute probes. Prompt body:
 `references/phases/probe-derive.md`.
 
-Inputs: source spec/criteria, `.devlyn/plan.md`, and repo read/search. Forbidden:
+Inputs: the rendered prompt (contract bytes and declared requirements), `.devlyn/plan.md`, and repo read/search. Forbidden:
 `spec.expected.json`, `.devlyn/spec-verify.json`, `BENCH_FIXTURE_DIR`, hidden
-fixture/verifier paths, previous findings, and harness docs unless excerpted.
+fixture/verifier paths, previous findings, and harness docs.
+
+After PLAN completes and before PROBE_DERIVE opens, render the prompt and pass
+its bytes unchanged; the owner adds no text:
+
+```bash
+python3 "$DEVLYN_SHARED_DIR/phase-prompt-render.py" --devlyn-dir .devlyn --phase probe_derive --engine <OTHER engine> --round <round>
+```
 
 Output: `.devlyn/risk-probes.jsonl`, 1 to 3 JSONL entries. Each entry must be
 one verification command shape plus `id`, `derived_from`, `tags`, and
@@ -31,6 +38,9 @@ include `overlapping_mutations_exercised`,
 `atomic_batch_state` must include `mixed_valid_invalid_batch`,
 `asserts_store_unchanged_after_failure`, and
 `asserts_success_order_and_distinct_ids`.
+`release_recovery`, `physical_alias`, `fixture_cleanup` and
+`temp_file_preservation` must include every marker the probe-derive body lists
+for them.
 When visible text names exact keys, fields, row shapes, JSON objects, response
 bodies, stdout/stderr objects, or exact error bodies, `shape_contract` must
 include `uses_visible_input_key_names`, `asserts_visible_output_key_names`, and
@@ -50,7 +60,7 @@ Invocation contract when OTHER engine is Codex:
 
 - Invoke Codex only through the monitored wrapper path in `CODEX_MONITORED_PATH`
   resolved from `DEVLYN_SHARED_DIR`:
-  `DEVLYN_CODEX_PROMPT_FILE="<probe-prompt-file>" CODEX_MONITORED_ISOLATED=1 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s workspace-write -c sandbox_workspace_write.network_access=false -c model_reasoning_effort=high -`.
+  `DEVLYN_CODEX_PROMPT_FILE=".devlyn/probe-derive.prompt.<round>" CODEX_MONITORED_ISOLATED=1 bash "$CODEX_MONITORED_PATH" -C "$PWD" -s workspace-write -c sandbox_workspace_write.network_access=false -c model_reasoning_effort=high -`.
   Append `-c sandbox_workspace_write.network_access=true` only when a probe's visible Verification command requires a localhost service (for example, a DB test harness); never as a default.
   Isolation keeps user config, AGENTS.md, hooks, and project rules
   from adding hidden context, tool calls, or transcript side effects.

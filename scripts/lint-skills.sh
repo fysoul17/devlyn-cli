@@ -892,6 +892,42 @@ if ! grep -Fq '"atomic_batch_state"' config/skills/_shared/spec-verify-check.py 
   || ! grep -Fq '`atomic_batch_state` must include `mixed_valid_invalid_batch`' config/skills/devlyn-resolve/references/risk-probes.md; then
   bad "risk-probe atomic batch contracts must require concrete mixed-failure and success-order markers"
 fi
+defect_witness_ok=1
+for needle in \
+  '`release_recovery`: `failure_injected_after_acquire_or_publish`' \
+  '`physical_alias`: `same_target_reached_through_distinct_paths`' \
+  '`fixture_cleanup`: `exercises_failure_or_timeout_exit`' \
+  '`temp_file_preservation`: `preexisting_file_at_colliding_path`'
+do
+  grep -Fq "$needle" config/skills/devlyn-resolve/references/phases/probe-derive.md || defect_witness_ok=0
+done
+if [ $defect_witness_ok -eq 1 ]; then
+  ok "defect witness tags carry their marker contracts in the probe body (the checker self-test pins the validator and runs the fixture)"
+else
+  bad "defect witness tags must keep their marker contracts in the probe body"
+fi
+contract_first_ok=1
+for tree in config/skills; do
+  resolve="$tree/devlyn-resolve"
+  if grep -RFq -e 'Acceptance restatement' -e 'verbatim verification requirements' -e 'auto-risk-probes demoted' \
+       -e 'probe_scale_small' -e 'orchestrator pastes' -e 'next-prompt-sha256' -e 'implement.task-context' \
+       "$resolve/SKILL.md" "$resolve/references" \
+     || grep -Fq 'validate_plan_context' "$tree/_shared/phase-prompt-render.py" \
+     || grep -Fq -- '--next-prompt-sha256' "$tree/_shared/state-phase-write.py" \
+     || ! grep -Fq '<!-- devlyn:authorized-surface -->' "$resolve/references/phases/plan.md" \
+     || ! grep -Fq 'every phase boundary has at least one runnable gate command' "$resolve/references/phases/plan.md" \
+     || ! grep -Fq 'BLOCKED:plan-empty' "$resolve/SKILL.md" \
+     || ! grep -Fq 'Set DEVLYN_SKILL_DIR, DEVLYN_SHARED_DIR and CODEX_MONITORED_PATH from `bindings`' "$resolve/references/phases/implement.md" \
+     || ! grep -Fq 'phase-prompt-render.py" --devlyn-dir .devlyn --phase implement' "$resolve/SKILL.md" \
+     || ! grep -Fq 'def render_worker' "$tree/_shared/phase-prompt-render.py"; then
+    contract_first_ok=0
+  fi
+done
+if [ $contract_first_ok -eq 1 ]; then
+  ok "contract-first PLAN: no restatements or owner prompt text; the renderer builds worker prompts from state"
+else
+  bad "contract-first PLAN regressed: a restatement, owner-paste or retired route remains, or the renderer route is missing"
+fi
 
 section "Check 6f: ideate validates sibling spec.expected.json"
 expected_check_missing=0

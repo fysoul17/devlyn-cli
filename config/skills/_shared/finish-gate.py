@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import runpy
 import argparse
+import hashlib
 import importlib.util
 import json
 import pathlib
@@ -236,6 +237,11 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
         if not base_sha:
             raise Malformed("pipeline.state.json must include non-empty base_ref.sha")
         ensure_commit(work, base_sha, "base_ref.sha")
+        # Revert only against the surface PLAN bound: a changed plan.md must never decide what to undo.
+        writer = runpy.run_path(str(pathlib.Path(__file__).with_name("state-phase-write.py")))
+        plan_error = writer["plan_output_error"](state, devlyn_dir, "final_report")
+        if plan_error is not None:
+            raise Malformed(f"bound PLAN no longer verifies: {plan_error}", ".devlyn/plan.md")
         surface = load_authorized_surface(devlyn_dir)
         changed = changed_files(work, base_sha)
         devlyn_prefix = devlyn_relative_prefix(work, devlyn_dir)
@@ -382,6 +388,18 @@ def self_test() -> int:
         first_summary = (devlyn / SUMMARY_NAME).read_bytes()
         assert checked_run_gate(work, devlyn) == 2
         assert (devlyn / SUMMARY_NAME).read_bytes() == first_summary and read_findings(devlyn) == findings
+
+        # A PLAN narrowed after binding is malformed for the gate: nothing is reverted.
+        work, devlyn, _base = make_fixture(root, "narrowed-plan")
+        write_text(work / "src" / "app.txt", "changed app\n")
+        bound = (devlyn / "plan.md").read_bytes()
+        write_state(devlyn, {"version": "3.0", "mode": "full", "base_ref": {"sha": _base}, "phases": {"plan": {
+            "started_at": "t", "completed_at": "t", "verdict": "PASS",
+            "output_sha256": hashlib.sha256(bound).hexdigest()}}})
+        (devlyn / "plan.md").write_bytes(bound.replace(b'"src/app.txt"]', b'"notes.txt"]', 1))
+        assert checked_run_gate(work, devlyn) == 1
+        assert (work / "src" / "app.txt").read_text(encoding="utf-8") == "changed app\n"
+        assert "bound PLAN no longer verifies" in read_summary(devlyn)["malformed"]
 
         work, devlyn, _base = make_fixture(root, "added-file")
         write_text(work / "runtime.txt", "late\n")

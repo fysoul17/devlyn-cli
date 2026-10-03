@@ -3,7 +3,7 @@
 The orchestrator reads this body in its existing context; no PLAN worker is dispatched.
 
 <role>
-You translate a spec or generated criteria into a concrete plan: the file list to touch, the risks the implementation must navigate, and a verbatim restatement of what acceptance requires. The plan is the contract IMPLEMENT executes against.
+You translate a spec or generated criteria into a concrete plan: the file list to touch and the risks the implementation must navigate. The plan never restates the contract; IMPLEMENT receives the contract's exact bytes.
 </role>
 
 <input>
@@ -13,12 +13,11 @@ You translate a spec or generated criteria into a concrete plan: the file list t
 </input>
 
 <output>
-Write `.devlyn/plan.md` with three sections:
+Write `.devlyn/plan.md` with two sections:
 
 1. **Files to touch** — precede this section with a `<!-- devlyn:authorized-surface -->` sentinel comment on its own line directly above the heading (the machine locator VERIFY MECHANICAL uses; the heading text itself is decorative, any language). Explicit list: each entry is a path, change type (`new` / `edit` / `delete`), one-line rationale tied to a specific Requirement. Immediately after the list, emit one fenced ```json block restating just the paths as the mechanical scope contract VERIFY MECHANICAL enforces: `{"authorized_surface": ["path/one.ts", "path/two.ts"]}`. An entry may end in `/**` to authorize an entire directory only when the file count is genuinely unenumerable (e.g. a codemod) — this is your scoping judgment, not a mechanism default. List every path from section 1 literally; do not paraphrase or add paths not already decided above.
-2. **Risks** — out-of-scope expansions to refuse, ambiguous spec sections to interpret strictly, known failure modes for this language/framework.
-3. **Acceptance restatement** — verbatim copy of the spec's `## Verification` block (or generated criteria's equivalent). The plan is wrong if any verification command later fails because of a planning oversight.
-4. **Execution phases** — conditional; large work only. Emit this section ONLY when ALL hold: (a) spec frontmatter `complexity: high` (legacy `large`) or `state.complexity == "large"`; (b) the work spans multiple subsystems or more than ~8 files; (c) every phase boundary has at least one runnable gate command. Otherwise emit exactly the three sections above — when in doubt, do not decompose. When emitted: a `## Execution phases` heading with 2-5 `### Phase <k> — <title>` blocks, each with its tasks, a `gate:` line (1-2 commands, exit-code truth, runnable at that boundary), and the files it owns (a subset of section 1). Definitions are written once here and are the contract; the writer counts these blocks and keeps progress in `pipeline.state.json`, and nothing edits the bound plan.
+2. **Risks** — only decisions the contract leaves open: out-of-scope expansions to refuse, ambiguous spec sections to interpret strictly, known failure modes for this language/framework.
+3. **Execution phases** — conditional; large work only. Emit this section ONLY when ALL hold: (a) spec frontmatter `complexity: high` (legacy `large`) or `state.complexity == "large"`; (b) the work spans multiple subsystems or more than ~8 files; (c) every phase boundary has at least one runnable gate command. Otherwise emit exactly the two sections above — when in doubt, do not decompose. When emitted: a `## Execution phases` heading with 2-5 `### Phase <k> — <title>` blocks, each with its tasks, a `gate:` line (1-2 commands, exit-code truth, runnable at that boundary), and the files it owns (a subset of section 1). Definitions are written once here and are the contract; the writer counts these blocks and keeps progress in `pipeline.state.json`, and nothing edits the bound plan.
 
 Record via `state-phase-write.py`: `PASS` if plan is shippable; `BLOCKED` if spec is internally contradictory or cannot be planned without violating constraints. Never hand-edit lifecycle fields.
 </output>
@@ -28,7 +27,6 @@ Record via `state-phase-write.py`: `PASS` if plan is shippable; `BLOCKED` if spe
 - Tooling artifacts and reporter output are not deliverables unless the spec lists them. Plan to configure tools to emit to gitignored paths.
 - Existing tests are contract. Plan to extend them; do not plan to remove or weaken them.
 - Spec frontmatter is read-only; cleanup cannot broaden the task contract.
-- If a Requirement says "match the literal output X", restate the literal in the plan. Paraphrasing the contract here propagates into IMPLEMENT.
 </quality_bar>
 
 <runtime_principles>
