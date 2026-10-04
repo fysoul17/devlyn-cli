@@ -9,10 +9,11 @@ import importlib.util
 import json
 import os
 import pathlib
-import shutil
+import stat
 import subprocess
 import sys
 import tempfile
+import unicodedata
 
 sys.dont_write_bytecode = True
 
@@ -40,15 +41,24 @@ def load_spec_verify():
 SPEC_VERIFY = load_spec_verify()
 
 
-def git(work: pathlib.Path, *args: str) -> subprocess.CompletedProcess[str]:
-    # Paths are literal: a route such as app/[slug]/page.tsx must never glob-match another file.
+def git(work: pathlib.Path, *args: str, text: bool = True) -> subprocess.CompletedProcess:
+    # Paths are literal and verbatim from Git's own output: a route such as app/[slug]/page.tsx never
+    # glob-matches another file and an NFD name is never precomposed into another. Hooks, replace refs
+    # and the commit-graph are worker-writable, so none of them steers what the gate reads or restores.
+    # Findings quote Git's errors in the C locale, and a name that is not UTF-8 never stops the gate midway.
     return subprocess.run(
-        ["git", "--literal-pathspecs", *args],
+        ["git", "--literal-pathspecs", "-c", "core.precomposeunicode=false", "-c", f"core.hooksPath={os.devnull}",
+         "-c", "core.commitGraph=false", *args],
         cwd=str(work),
         capture_output=True,
-        text=True,
-        encoding="utf-8",
+        env={**os.environ, "GIT_NO_REPLACE_OBJECTS": "1", "LC_ALL": "C"},
+        encoding="utf-8" if text else None,
+        errors="surrogateescape" if text else None,
     )
+
+
+def git_detail(proc: subprocess.CompletedProcess) -> str:
+    return proc.stderr.strip() or proc.stdout.strip() or f"git exited {proc.returncode}"
 
 
 def git_check(work: pathlib.Path, *args: str) -> str:
@@ -170,56 +180,101 @@ def changed_files(work: pathlib.Path, base_sha: str, sparse_absences: frozenset[
     return {os.fsdecode(path) for path in raw.split(b"\0") if path}
 
 
-def contract_drift(work: pathlib.Path, state: dict) -> tuple[str, str, str] | None:
-    """A sibling spec.expected.json that is no longer what bootstrap bound: (path, why, action).
+def contract_drift(work: pathlib.Path, state: dict) -> tuple[str, str] | None:
+    """A sibling spec.expected.json that is no longer what bootstrap bound: (path, why).
 
-    It offends wherever PLAN's surface lies, so the next run cannot bind a worker's contract, and
-    only its binding decides the action: "remove" when bootstrap bound its absence, "restore" from
-    base_ref.sha when base holds exactly the bound bytes, otherwise "report". The sibling's own
-    path is the offender (a planted symlink is removed, never followed), and a contract outside the
-    worktree is only reported.
+    It offends wherever PLAN's surface lies, so the next run cannot bind a worker's contract. Its path
+    is spelled lexically from state.source.spec_path, nothing resolved: relative when it lies inside
+    the worktree, else as given.
     """
     source = state.get("source") if isinstance(state.get("source"), dict) else {}
     if source.get("type") != "spec" or not source.get("spec_path"):
         return None
     spec = pathlib.Path(source["spec_path"])
-    spec = spec if spec.is_absolute() else work / spec
-    why = SPEC_VERIFY.expected_contract_error(source, spec)
+    why = SPEC_VERIFY.expected_contract_error(source, spec if spec.is_absolute() else work / spec)
     if why is None:
         return None
     sibling = spec.with_name("spec.expected.json")
+    if sibling.is_absolute() and work in sibling.parents:
+        sibling = sibling.relative_to(work)
+    return (sibling.as_posix(), why)
+
+
+def unsettleable(work: pathlib.Path, path: str) -> str | None:
+    """Why the contract's spelled location may not be the entry bootstrap bound, or None.
+
+    A '..', a location outside the worktree or a parent directory that is a symlink (retargetable,
+    so it can lead to anyone's file) is never acted on; a missing parent only means the leaf is absent.
+    """
+    spelled = pathlib.PurePath(path)
+    if ".." in spelled.parts:
+        return f"its path {path} climbs with '..'"
+    if spelled.is_absolute():
+        return f"it lies outside the worktree at {path}"
+    parent = work
+    for part in spelled.parts[:-1]:
+        parent = parent / part
+        try:
+            if stat.S_ISLNK(parent.lstat().st_mode):
+                return f"its parent directory {parent.relative_to(work).as_posix()} is a symlink"
+        except (FileNotFoundError, NotADirectoryError):
+            return None
+        except OSError as e:
+            return f"its parent directory {parent.relative_to(work).as_posix()} is inaccessible ({e})"
+    return None
+
+
+def is_contract(work: pathlib.Path, path: str, contract: str, fold: bool) -> bool:
+    """Whether Git's `path` is the contract's own directory entry: its parent is the same directory and
+    its name the same, case-folded only where Git ignores case. A separate hardlink stays an offender."""
+    name, contract_name = pathlib.PurePath(path).name, pathlib.PurePath(contract).name
+    if name != contract_name and not (fold and name.casefold() == contract_name.casefold()):
+        return False
     try:
-        path = (sibling.parent.resolve() / sibling.name).relative_to(work.resolve()).as_posix()
-    except ValueError:
-        return (str(sibling), why, "report")
-    bound = source["expected_sha256"]
-    if bound is None:
-        return (path, why, "remove")
-    base_blob = git(work, "rev-parse", "--verify", "--quiet", f"{state['base_ref']['sha']}:{path}")
-    restorable = base_blob.returncode == 0 and hashlib.sha256(
-        subprocess.run(["git", "cat-file", "blob", base_blob.stdout.strip()], cwd=work, capture_output=True).stdout
-    ).hexdigest() == bound
-    return (path, why, "restore" if restorable else "report")
+        return os.path.samefile((work / path).parent, (work / contract).parent)
+    except OSError:
+        return False  # a missing or inaccessible parent is not the contract's
 
 
-def settle_contract(work: pathlib.Path, base_sha: str, path: str, action: str) -> tuple[bool, str | None]:
-    """Return the drifted contract to its binding: absent, or the bound bytes from base."""
-    if action == "report":
-        return (False, "no bytes bootstrap bound exist to restore it")
-    if action == "restore":
-        proc = git(work, "checkout", base_sha, "--", path)
-        return (proc.returncode == 0, proc.stderr.strip() or proc.stdout.strip() or None)
-    # Bootstrap bound the contract's absence, so the run created this one: remove it, index entry
-    # included unless base tracks the path (a sparse absence keeps its index entry).
-    if not path_exists_at_base(work, base_sha, path):
-        proc = git(work, "rm", "-q", "--cached", "--ignore-unmatch", "--", path)
+def settle_contract(work: pathlib.Path, base_sha: str, bound: str | None, baseline: set[str],
+                    path: str) -> tuple[bool, str, str | None]:
+    """Return the drifted contract to its binding, acting only on the entry spelled from spec_path.
+
+    Bound absence means no directory entry, so the run's entry is removed with its index entry; a
+    sparse absence (base tracks the path) gets base's index entry back instead, and an entry the
+    PHASE 0 baseline lists is the user's, so it is only reported. A bound digest is restored from
+    base_ref.sha only when base holds exactly those bytes. Returns (settled, outcome, error detail).
+    """
+    why = unsettleable(work, path)
+    if why is not None:
+        return (False, f"reported only because {why}", None)
+    if bound is not None:
+        blob = git(work, "cat-file", "blob", f"{base_sha}:{path}", text=False)
+        if blob.returncode != 0 or hashlib.sha256(blob.stdout).hexdigest() != bound:
+            return (False, "reported only because base_ref.sha does not hold the bytes bootstrap bound",
+                    blob.stderr.decode("utf-8", "surrogateescape").strip() or None)
+        proc = git(work, "checkout", "--no-recurse-submodules", base_sha, "--", path)
         if proc.returncode != 0:
-            return (False, proc.stderr.strip() or proc.stdout.strip())
+            return (False, "left in place because restoring it failed", git_detail(proc))
+        return (True, "restored to the bytes bootstrap bound", None)
+    entry, error = base_entry(work, base_sha, path)
+    if error is not None:
+        return (False, "left in place because looking it up at base_ref.sha failed", error)
+    if entry is not None:
+        # A sparse absence: base tracks the path, so its index entry returns and only the leaf goes.
+        proc, step = git(work, "reset", "-q", base_sha, "--", path), "restoring base_ref.sha's index entry"
+    elif path in {item.rstrip("/") for item in baseline}:
+        return (False, "reported only because the PHASE 0 baseline lists it as the user's", None)
+    else:
+        proc, step = git(work, "rm", "-q", "--cached", "--ignore-unmatch", "--", path), "removing its index entry"
+    if proc.returncode != 0:
+        return (False, f"left in place because {step} failed", git_detail(proc))
     try:
         remove_worktree_path(work / path)
     except OSError as e:
-        return (False, str(e))
-    return (True, None)
+        return (False, "left in place because removing it failed", str(e))
+    return (True, "removed, as bootstrap bound its absence" + (", with base_ref.sha's index entry restored" if entry else ""),
+            None)
 
 
 def devlyn_relative_prefix(work: pathlib.Path, devlyn_dir: pathlib.Path) -> str:
@@ -236,30 +291,53 @@ def is_under_prefix(path: str, prefix: str) -> bool:
     return path == prefix or path.startswith(f"{prefix}/")
 
 
-def path_exists_at_base(work: pathlib.Path, base_sha: str, path: str) -> bool:
-    return git(work, "cat-file", "-e", f"{base_sha}:{path}").returncode == 0
+def base_entry(work: pathlib.Path, base_sha: str, path: str) -> tuple[tuple[str, str] | None, str | None]:
+    """`path`'s tree entry at base_ref.sha as (mode, oid), or None when base has none; and a failed lookup's error.
+
+    The lookup never needs the entry's object: a gitlink's commit lives in the submodule, not here.
+    """
+    proc = git(work, "ls-tree", "-z", base_sha, "--", path)
+    if proc.returncode != 0:
+        return (None, git_detail(proc))
+    if not proc.stdout:
+        return (None, None)
+    mode, _type, oid = proc.stdout.split("\t", 1)[0].split(" ")
+    return ((mode, oid), None)
 
 
 def remove_worktree_path(path: pathlib.Path) -> None:
-    if path.is_symlink() or path.is_file():
+    # One directory entry, a symlink itself, never recursively: an entry inside a directory has its own finding.
+    if stat.S_ISDIR(path.lstat().st_mode):
+        path.rmdir()
+    else:
         path.unlink()
-    elif path.is_dir():
-        shutil.rmtree(path)
 
 
-def revert_offender(work: pathlib.Path, base_sha: str, path: str) -> tuple[str, str | None]:
+def revert_offender(work: pathlib.Path, base_sha: str, path: str) -> tuple[str, str, str | None]:
     """Undo an out-of-surface change without destroying bytes the run cannot prove it made.
 
     A path present at base_ref.sha is restored: bootstrap required a clean tracked baseline, so
-    its change is the run's. Any other path keeps its worktree bytes, losing only an index entry:
+    its change is the run's. A gitlink gets back only base's pointer in the index; its nested
+    checkout is never moved. Any other path keeps its worktree bytes, losing only an index entry:
     absence from the PHASE 0 baseline does not prove the run created it (an ignore change can
-    reveal a user's file). Returns (status, detail): "reverted", "retained" or "revert-failed".
+    reveal a user's file). Returns (status, outcome, detail): "reverted", "retained" or
+    "revert-failed", what actually happened, and Git's error.
     """
-    if path_exists_at_base(work, base_sha, path):
-        proc = git(work, "checkout", base_sha, "--", path)
-        return ("reverted", None) if proc.returncode == 0 else ("revert-failed", proc.stderr.strip() or proc.stdout.strip())
+    entry, error = base_entry(work, base_sha, path)
+    if error is not None:
+        return ("revert-failed", "left in place because looking it up at base_ref.sha failed", error)
+    if entry is not None:
+        proc = git(work, "checkout", "--no-recurse-submodules", base_sha, "--", path)
+        if proc.returncode != 0:
+            return ("revert-failed", "left in place because restoring it failed", git_detail(proc))
+        if entry[0] == "160000":
+            return ("reverted", "restored to base_ref.sha's pointer in the index only; its nested checkout "
+                                "was left at its current commit", None)
+        return ("reverted", "restored to base_ref.sha", None)
     proc = git(work, "rm", "-q", "--cached", "--ignore-unmatch", "--", path)
-    return ("retained", None) if proc.returncode == 0 else ("revert-failed", proc.stderr.strip() or proc.stdout.strip())
+    if proc.returncode != 0:
+        return ("revert-failed", "left in place because removing its index entry failed", git_detail(proc))
+    return ("retained", "kept in place (only an index entry removed): nothing proves this run created it", None)
 
 
 def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
@@ -311,7 +389,8 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
         return 1
 
     contract = drift[0] if drift is not None else None
-    offenders = sorted(path for path in checked if path != contract and (
+    fold = contract is not None and git(work, "config", "--bool", "core.ignorecase").stdout.strip() == "true"
+    offenders = sorted(path for path in checked if not (contract and is_contract(work, path, contract, fold)) and (
         not SPEC_VERIFY.path_matches_surface(path, surface) or SPEC_VERIFY.unadopted_user_path(path, baseline, surface)))
     if not offenders and drift is None:
         findings_path.unlink(missing_ok=True)
@@ -326,24 +405,20 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
     findings: list[dict] = []
     counts = {"reverted": 0, "retained": 0, "revert-failed": 0}
     if drift is not None:
-        ok, detail = settle_contract(work, base_sha, *drift[::2])
+        ok, outcome, detail = settle_contract(work, base_sha, state["source"]["expected_sha256"], baseline, contract)
         counts["reverted" if ok else "revert-failed"] += 1
-        outcome = {"remove": "removed, as bootstrap bound its absence", "restore": "restored to the bytes bootstrap bound",
-                   "report": "left in place"}[drift[2]]
         findings.append(make_finding(
             1, "scope.finish-contract-drift",
-            f"The run's verification contract is no longer what bootstrap bound: {drift[1]}" + (f" ({detail})" if detail else ""),
+            f"The run's verification contract is no longer what bootstrap bound: {drift[1]} The contract was {outcome}"
+            + (f" ({detail})" if detail else "") + ".",
             contract, status="reverted" if ok else "revert-failed",
             criterion_ref="pipeline.state.json/source.expected_sha256",
             fix_hint=f"The contract was {outcome}; a run never verifies against a contract it changed.",
         ))
     for path in offenders:
-        status, detail = revert_offender(work, base_sha, path)
+        status, outcome, detail = revert_offender(work, base_sha, path)
         counts[status] += 1
-        outcome = {"reverted": "restored to base_ref.sha",
-                   "retained": "kept in place (only an index entry removed): nothing proves this run created it",
-                   "revert-failed": "left as is because restoring it failed"}[status]
-        message = f"Final diff touched an unaudited file outside authorized_surface: {path}"
+        message = f"Final diff touched an unaudited file outside authorized_surface: {path}; it was {outcome}"
         if detail:
             message = f"{message} ({detail})"
         findings.append(make_finding(
@@ -389,6 +464,12 @@ def assert_summary(devlyn: pathlib.Path, expected: dict) -> None:
     summary = read_summary(devlyn)
     for key, value in expected.items():
         assert summary.get(key) == value, summary
+
+
+def sole_finding(devlyn: pathlib.Path, status: str, text: str) -> dict:
+    finding, = read_findings(devlyn)
+    assert finding["status"] == status and text in finding["message"], finding
+    return finding
 
 
 def make_fixture(root: pathlib.Path, name: str, *, mode: str = "full") -> tuple[pathlib.Path, pathlib.Path, str]:
@@ -476,6 +557,17 @@ def self_test() -> int:
             "mode": "full", "checked": 1, "offenders": 1,
             "reverted": 0, "retained": 1, "revert_failed": 0, "exit": 2,
         })
+        # A refused index removal is reported as what happened: the file stays, and so does its index entry.
+        work, devlyn, _base = make_fixture(root, "added-file-edited")
+        write_text(work / "runtime.txt", "v1\n")
+        git_check(work, "add", "runtime.txt")
+        write_text(work / "runtime.txt", "v2\n")
+        assert checked_run_gate(work, devlyn) == 2
+        sole_finding(devlyn, "revert-failed", "it was left in place because removing its index entry failed "
+                                              "(error: the following file has staged content")
+        assert "runtime.txt" in git_check(work, "ls-files").splitlines()
+        assert (work / "runtime.txt").read_text(encoding="utf-8") == "v2\n"
+        assert_summary(devlyn, {"offenders": 1, "retained": 0, "revert_failed": 1, "exit": 2})
 
         work, devlyn, _base = make_fixture(root, "devlyn-owned-tracked-mutation")
         archived = devlyn / "runs" / "prior" / "pipeline.state.json"
@@ -520,6 +612,16 @@ def self_test() -> int:
             "mode": "full", "checked": 1, "offenders": 1,
             "reverted": 1, "revert_failed": 0, "exit": 2,
         })
+
+        # Repository hooks are worker code: none runs inside the gate to re-dirty what it restored.
+        for hook in ("post-checkout", "post-index-change"):
+            work, devlyn, _base = make_fixture(root, f"hook-{hook}")
+            write_text(work / ".git" / "hooks" / hook, '#!/bin/sh\n[ -n "$DEVLYN_HOOKED" ] && exit 0\nexport DEVLYN_HOOKED=1\n'
+                                                       "printf 'polluted again by a hook\\n' > notes.txt\n")
+            (work / ".git" / "hooks" / hook).chmod(0o755)
+            write_text(work / "notes.txt", "polluted\n")
+            assert checked_run_gate(work, devlyn) == 2
+            assert (work / "notes.txt").read_text(encoding="utf-8") == "base notes\n", hook
 
         work, devlyn, _base = make_fixture(root, "git-diff-failure")
         original_observer = SPEC_VERIFY.observed_git
@@ -599,6 +701,81 @@ def self_test() -> int:
             git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "gitlink")
             assert checked_run_gate(work, devlyn) == 0, read_findings(devlyn)
 
+        # An out-of-surface submodule bump, even one a committed `ignore = all` hides from plain diff, gets back
+        # base's pointer in the index only: the child's commit is not in this object store, and the child's
+        # checkout (HEAD, tracked and untracked bytes) and .gitmodules are never touched, whatever submodule.recurse says.
+        writer = runpy.run_path(str(pathlib.Path(__file__).with_name("state-phase-write.py")))
+
+        def rendered(work: pathlib.Path, devlyn: pathlib.Path) -> str:
+            return writer["render_final_report"](read_state(devlyn / "pipeline.state.json"), devlyn, work,
+                                                 "BLOCKED:finish-gate-unclean", None)
+
+        def bumped_submodule(name: str, bump: str) -> tuple[pathlib.Path, pathlib.Path, pathlib.Path, str]:
+            work, devlyn, _base = make_fixture(root, name)
+            child = root / f"{name}-child"
+            write_text(child / "lib.txt", "lib v1\n")
+            git_check(child, "init", "-q")
+            git_check(child, "add", "lib.txt")
+            git_check(child, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "v1")
+            git_check(work, "-c", "protocol.file.allow=always", "submodule", "add", "-q", str(child), "sub")
+            git_check(work, "config", "-f", ".gitmodules", "submodule.sub.ignore", "all")
+            git_check(work, "add", ".gitmodules")
+            git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "submodule")
+            base = git_check(work, "rev-parse", "HEAD")
+            write_state(devlyn, {"mode": "full", "base_ref": {"sha": base},
+                                 "phases": {"plan": {"started_at": "t", "completed_at": "t", "verdict": "PASS"}}})
+            sub = work / "sub"
+            write_text(sub / "lib.txt", "lib v2\n")
+            git_check(sub, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-am", "v2")
+            write_text(sub / "scratch.txt", "the child's untracked bytes\n")
+            if bump != "unstaged":
+                git_check(work, "add", "sub")
+            if bump == "committed":
+                git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "bump")
+            return work, devlyn, sub, git_check(work, "ls-tree", base, "--", "sub").split()[2]
+
+        for bump, recurse in (("committed", False), ("staged", True), ("unstaged", True)):
+            work, devlyn, sub, pointer = bumped_submodule(f"submodule-{bump}", bump)
+            if recurse:
+                git_check(work, "config", "submodule.recurse", "true")
+            assert git(work, "cat-file", "-e", pointer).returncode != 0
+            head, gitmodules = git_check(sub, "rev-parse", "HEAD"), (work / ".gitmodules").read_bytes()
+            assert checked_run_gate(work, devlyn) == 2
+            finding, = read_findings(devlyn)
+            assert (finding["file"], finding["status"]) == ("sub", "reverted"), finding
+            assert finding["message"].endswith("sub; it was restored to base_ref.sha's pointer in the index only; "
+                                               "its nested checkout was left at its current commit"), finding
+            assert git_check(work, "ls-files", "-s", "--", "sub").split()[:2] == ["160000", pointer]
+            assert git_check(sub, "rev-parse", "HEAD") == head and (work / ".gitmodules").read_bytes() == gitmodules
+            assert (sub / "lib.txt").read_text(encoding="utf-8") == "lib v2\n"
+            assert (sub / "scratch.txt").read_text(encoding="utf-8") == "the child's untracked bytes\n"
+        assert finding["message"] in rendered(work, devlyn)
+
+        # A failed base lookup is never taken for absence: the gitlink keeps its staged pointer, the failure is
+        # what the finding shows, and the offenders after it are still settled and recorded.
+        work, devlyn, sub, pointer = bumped_submodule("submodule-lookup-failure", "staged")
+        write_text(work / "tmp.txt", "a later offender\n")
+        staged = git_check(work, "ls-files", "-s", "--", "sub")
+        real_git = git
+
+        def failing_lookup(where: pathlib.Path, *args: str, **kwargs) -> subprocess.CompletedProcess:
+            if args[:2] == ("ls-tree", "-z") and args[-1] == "sub":
+                return subprocess.CompletedProcess(args, 128, "", "fatal: simulated lookup failure\n")
+            return real_git(where, *args, **kwargs)
+
+        globals()["git"] = failing_lookup
+        try:
+            assert checked_run_gate(work, devlyn) == 2
+        finally:
+            globals()["git"] = real_git
+        assert [(f["file"], f["status"]) for f in read_findings(devlyn)] == [("sub", "revert-failed"), ("tmp.txt", "retained")]
+        assert git_check(work, "ls-files", "-s", "--", "sub") == staged
+        assert_summary(devlyn, {"offenders": 2, "reverted": 0, "retained": 1, "revert_failed": 1})
+        report = rendered(work, devlyn)
+        assert "sub; it was left in place because looking it up at base_ref.sha failed (fatal: simulated lookup failure)" \
+            in report
+        assert "tmp.txt; it was kept in place (only an index entry removed)" in report
+
         # Paths are literal: an offender under app/[slug]/ never touches app/s/.
         work, devlyn, _base = make_fixture(root, "literal-paths")
         write_text(work / "app" / "s" / "page.tsx", "tracked route\n")
@@ -616,8 +793,55 @@ def self_test() -> int:
         (devlyn / "untracked.baseline").unlink()
         assert checked_run_gate(work, devlyn) == 1 and "untracked.baseline" in read_summary(devlyn)["malformed"]
 
+        # Paths are Git's own spelling, used verbatim: an NFD name committed without precomposition is restored
+        # when edited or deleted, never precomposed away from base's entry (PHASE 0 lists macOS's NFC phantom).
+        nfd = unicodedata.normalize("NFD", "문서.txt")
+        for change in ("edited", "deleted"):
+            work, devlyn, _base = make_fixture(root, f"nfd-{change}")
+            write_text(work / nfd, "base doc\n")
+            git_check(work, "-c", "core.precomposeunicode=false", "add", "--", nfd)
+            git_check(work, "-c", "core.precomposeunicode=false", "-c", "user.email=t@t", "-c", "user.name=t",
+                      "commit", "-q", "-m", "nfd")
+            write_state(devlyn, {"mode": "full", "base_ref": {"sha": git_check(work, "rev-parse", "HEAD")},
+                                 "phases": {"plan": {"started_at": "t", "completed_at": "t", "verdict": "PASS"}}})
+            assert SPEC_VERIFY.run_write_untracked_baseline(work, devlyn) == 0
+            if change == "edited":
+                write_text(work / nfd, "run edit\n")
+            else:
+                (work / nfd).unlink()
+            assert checked_run_gate(work, devlyn) == 2
+            assert [(f["file"], f["status"]) for f in read_findings(devlyn)] == [(nfd, "reverted")], change
+            assert (work / nfd).read_text(encoding="utf-8") == "base doc\n"
+
+        # A non-UTF-8 name never stops the gate midway: every finding and the summary are written, and a rerun
+        # returns that first result. APFS cannot hold such names, so the untracked one is injected into the
+        # listing and the tracked one exists only in base and the index.
+        work, devlyn, _base = make_fixture(root, "non-utf8-names")
+        tracked, untracked = os.fsdecode(b"y-caf\xe9.txt"), os.fsdecode(b"z-caf\xe9.txt")
+        git_check(work, "update-index", "--add", "--cacheinfo",
+                  f"100644,{git_check(work, 'rev-parse', 'HEAD:notes.txt')},{tracked}")
+        git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "tracked")
+        write_state(devlyn, {"mode": "full", "base_ref": {"sha": git_check(work, "rev-parse", "HEAD")},
+                             "phases": {"plan": {"started_at": "t", "completed_at": "t", "verdict": "PASS"}}})
+        write_text(work / "notes.txt", "polluted\n")
+        listed = SPEC_VERIFY.current_untracked_files
+        SPEC_VERIFY.current_untracked_files = lambda *args: (listed(*args)[0] | {untracked}, None)
+        try:
+            assert checked_run_gate(work, devlyn) == 2
+        finally:
+            SPEC_VERIFY.current_untracked_files = listed
+        findings = read_findings(devlyn)
+        assert [(f["file"], f["status"]) for f in findings] == [
+            ("notes.txt", "reverted"), (tracked, "reverted" if os.path.lexists(work / tracked) else "revert-failed"),
+            (untracked, "retained")], findings
+        first_summary = (devlyn / SUMMARY_NAME).read_bytes()
+        assert_summary(devlyn, {"checked": 3, "offenders": 3, "exit": 2})
+        assert checked_run_gate(work, devlyn) == 2
+        assert (devlyn / SUMMARY_NAME).read_bytes() == first_summary and read_findings(devlyn) == findings
+
         # The run's verification contract must still be what bootstrap bound, wherever PLAN's surface lies.
-        def contract_fixture(name: str, committed: bytes | None, bound: bytes | None) -> tuple[pathlib.Path, pathlib.Path]:
+        def contract_fixture(name: str, committed: bytes | None, bound: bytes | None,
+                             spec_path: str = "docs/spec.md") -> tuple[pathlib.Path, pathlib.Path]:
             work, devlyn, base = make_fixture(root, name)
             write_text(work / "docs" / "spec.md", "# Spec\n")
             if committed is not None:
@@ -626,8 +850,8 @@ def self_test() -> int:
             git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "spec")
             base = git_check(work, "rev-parse", "HEAD")
             write_state(devlyn, {"mode": "spec", "base_ref": {"sha": base},
-                                 "source": {"type": "spec", "spec_path": "docs/spec.md",
-                                            "expected_sha256": hashlib.sha256(bound).hexdigest() if bound else None},
+                                 "source": {"type": "spec", "spec_path": spec_path,
+                                            "expected_sha256": None if bound is None else hashlib.sha256(bound).hexdigest()},
                                  "phases": {"plan": {"started_at": "t", "completed_at": "t", "verdict": "PASS"}}})
             return work, devlyn
 
@@ -653,14 +877,15 @@ def self_test() -> int:
         write_text(work / "docs" / "spec.expected.json", '{"verification_commands": []}\n')
         assert checked_run_gate(work, devlyn) == 2 and not (work / "docs" / "spec.expected.json").exists()
 
-        # A rename never hides its source: moving an out-of-surface file into the surface offends.
+        # A rename never hides its source: moving an out-of-surface file to a new path inside the surface offends.
         work, devlyn, _base = make_fixture(root, "rename-into-surface")
-        git_check(work, "rm", "-q", "src/app.txt")
-        (work / "src").mkdir(exist_ok=True)
-        git_check(work, "mv", "notes.txt", "src/app.txt")
+        write_text(devlyn / "plan.md", "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## Files to touch\n\n```json\n"
+                                       '{"authorized_surface": ["src/app.txt", "src/moved.txt"]}\n```\n')
+        git_check(work, "mv", "notes.txt", "src/moved.txt")
         git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "rename")
         assert checked_run_gate(work, devlyn) == 2
-        assert "notes.txt" in [finding["file"] for finding in read_findings(devlyn)]
+        assert [(f["file"], f["status"]) for f in read_findings(devlyn)] == [("notes.txt", "reverted")]
+        assert (work / "notes.txt").read_text(encoding="utf-8") == "base notes\n"
 
         # A planted symlink is removed itself; its target is never touched.
         work, devlyn = contract_fixture("contract-symlink", None, None)
@@ -681,11 +906,158 @@ def self_test() -> int:
         assert checked_run_gate(work, devlyn) == 2
         assert [(f["rule_id"], f["status"]) for f in read_findings(devlyn)] == [("scope.finish-contract-drift", "revert-failed")]
         assert (work / "docs" / "spec.expected.json").read_text(encoding="utf-8") == '{"a": 2}\n'
-        # A contract bound absent while base tracks it (a sparse absence) loses only its worktree copy.
+        # A contract bound absent while base tracks it (a sparse absence) gets back base's index entry, mode and
+        # object alike, and loses only the copy the run materialized.
         work, devlyn = contract_fixture("contract-sparse-absent", b'{"a": 1}\n', None)
+        git_check(work, "update-index", "--skip-worktree", "docs/spec.expected.json")
+        (work / "docs" / "spec.expected.json").unlink()
+        assert SPEC_VERIFY.run_write_untracked_baseline(work, devlyn) == 0
+        git_check(work, "update-index", "--no-skip-worktree", "docs/spec.expected.json")
+        (work / "docs" / "spec.expected.json").write_bytes(b'{"a": 2}\n')
+        (work / "docs" / "spec.expected.json").chmod(0o755)
+        git_check(work, "add", "docs/spec.expected.json")
         assert checked_run_gate(work, devlyn) == 2
-        assert not (work / "docs" / "spec.expected.json").exists()
-        assert "docs/spec.expected.json" in git_check(work, "ls-files", "docs")
+        assert [(f["file"], f["status"]) for f in read_findings(devlyn)] == [("docs/spec.expected.json", "reverted")]
+        mode, _kind, oid = git_check(work, "ls-tree", "HEAD", "--", "docs/spec.expected.json").split()[:3]
+        assert git_check(work, "ls-files", "-s", "--", "docs/spec.expected.json").split()[:2] == [mode, oid]
+        assert not os.path.lexists(work / "docs" / "spec.expected.json")
+
+        # Bound absence means no directory entry: a planted dangling symlink is drift and goes itself (nothing
+        # appears at its target), and a planted directory is drift left in place, its contents keeping their own finding.
+        work, devlyn = contract_fixture("contract-dangling-symlink", None, None)
+        (work / "docs" / "spec.expected.json").symlink_to("missing.json")
+        assert checked_run_gate(work, devlyn) == 2
+        assert [(f["rule_id"], f["status"]) for f in read_findings(devlyn)] == [("scope.finish-contract-drift", "reverted")]
+        assert not os.path.lexists(work / "docs" / "spec.expected.json") and not os.path.lexists(work / "docs" / "missing.json")
+        work, devlyn = contract_fixture("contract-directory", None, None)
+        write_text(work / "docs" / "spec.expected.json" / "inner.json", "{}\n")
+        assert checked_run_gate(work, devlyn) == 2
+        findings = read_findings(devlyn)
+        assert [(f["file"], f["status"]) for f in findings] == [
+            ("docs/spec.expected.json", "revert-failed"), ("docs/spec.expected.json/inner.json", "retained")], findings
+        assert "The contract was left in place because removing it failed" in findings[0]["message"]
+        assert (work / "docs" / "spec.expected.json" / "inner.json").read_text(encoding="utf-8") == "{}\n"
+
+        # Only the entry spelled from spec_path is settled: through '..' or a parent directory that is a symlink
+        # (retargeted since bootstrap, here at the user's draft), the drift is reported and nothing is touched.
+        work, devlyn = contract_fixture("contract-dotdot", None, None, "src/../docs/spec.md")
+        write_text(work / "docs" / "spec.expected.json", '{"draft": 1}\n')
+        assert checked_run_gate(work, devlyn) == 2
+        sole_finding(devlyn, "revert-failed", "The contract was reported only because its path "
+                                              "src/../docs/spec.expected.json climbs with '..'.")
+        assert (work / "docs" / "spec.expected.json").read_text(encoding="utf-8") == '{"draft": 1}\n'
+        work, devlyn = contract_fixture("contract-symlinked-parent", None, None, "current/spec.md")
+        write_text(work / "drafts" / "spec.expected.json", "the user's draft\n")
+        (work / "current").symlink_to("drafts")
+        write_text(devlyn / "untracked.baseline",
+                   json.dumps({"untracked": ["current", "drafts/spec.expected.json"], "sparse_absences": []}) + "\n")
+        assert checked_run_gate(work, devlyn) == 2
+        assert sole_finding(devlyn, "revert-failed", "reported only because its parent directory current is a symlink"
+                            )["file"] == "current/spec.expected.json"
+        assert (work / "drafts" / "spec.expected.json").read_text(encoding="utf-8") == "the user's draft\n"
+        # An entry the PHASE 0 baseline lists is the user's whatever bootstrap bound: reported, never removed.
+        work, devlyn = contract_fixture("contract-baseline-listed", None, None)
+        write_text(work / "docs" / "spec.expected.json", "the user's draft\n")
+        write_text(devlyn / "untracked.baseline",
+                   json.dumps({"untracked": ["docs/spec.expected.json"], "sparse_absences": []}) + "\n")
+        assert checked_run_gate(work, devlyn) == 2
+        sole_finding(devlyn, "revert-failed", "reported only because the PHASE 0 baseline lists it as the user's")
+        assert (work / "docs" / "spec.expected.json").read_text(encoding="utf-8") == "the user's draft\n"
+        # An entry that cannot be inspected is never taken for absence: drift, reported with the error.
+        work, devlyn = contract_fixture("contract-uninspectable", None, None, "x" * 300 + "/spec.md")
+        assert checked_run_gate(work, devlyn) == 2
+        message = sole_finding(devlyn, "revert-failed", "whose absence bootstrap bound:")["message"]
+        assert "is inaccessible (" in message and "File name too long" in message, message
+
+        # Identity is the directory entry: a case alias of the spelling is one disposition, while a separate
+        # hardlink stays an offender of its own.
+        work, devlyn = contract_fixture("contract-case-alias", None, None, "Docs/spec.md")
+        if not (work / "DOCS").exists():
+            print("SKIP case-alias contract fixture: this filesystem is case-sensitive")
+        else:
+            write_text(work / "docs" / "Spec.Expected.json", "{}\n")
+            assert checked_run_gate(work, devlyn) == 2
+            assert [(f["file"], f["status"]) for f in read_findings(devlyn)] == [("Docs/spec.expected.json", "reverted")]
+            assert not os.path.lexists(work / "docs" / "Spec.Expected.json")
+        work, devlyn = contract_fixture("contract-hardlink", None, None)
+        write_text(work / "docs" / "spec.expected.json", "{}\n")
+        os.link(work / "docs" / "spec.expected.json", work / "docs" / "linked.json")
+        assert checked_run_gate(work, devlyn) == 2
+        assert [(f["file"], f["status"]) for f in read_findings(devlyn)] == [
+            ("docs/spec.expected.json", "reverted"), ("docs/linked.json", "retained")]
+        assert (work / "docs" / "linked.json").read_text(encoding="utf-8") == "{}\n"
+
+        # A missing leaf is still the contract's entry (one disposition); with its parent directory missing too,
+        # Git's path is no entry of the contract's, so it is settled on its own as well.
+        work, devlyn = contract_fixture("contract-missing-leaf", b'{"a": 1}\n', b'{"a": 1}\n')
+        (work / "docs" / "spec.expected.json").unlink()
+        assert checked_run_gate(work, devlyn) == 2
+        assert [(f["file"], f["status"]) for f in read_findings(devlyn)] == [("docs/spec.expected.json", "reverted")]
+        assert (work / "docs" / "spec.expected.json").read_bytes() == b'{"a": 1}\n'
+        work, devlyn = contract_fixture("contract-missing-parent", b'{"a": 1}\n', b'{"a": 1}\n')
+        for name in ("spec.expected.json", "spec.md"):
+            (work / "docs" / name).unlink()
+        (work / "docs").rmdir()
+        assert checked_run_gate(work, devlyn) == 2
+        assert [(f["rule_id"], f["file"], f["status"]) for f in read_findings(devlyn)] == [
+            ("scope.finish-contract-drift", "docs/spec.expected.json", "reverted"),
+            ("scope.finish-unaudited-file", "docs/spec.expected.json", "reverted"),
+            ("scope.finish-unaudited-file", "docs/spec.md", "reverted")]
+        assert (work / "docs" / "spec.expected.json").read_bytes() == b'{"a": 1}\n'
+
+        # A failed settle is reported as what happened, never as the settle it tried.
+        work, devlyn = contract_fixture("contract-staged-edited", None, None)
+        write_text(work / "docs" / "spec.expected.json", '{"a": 1}\n')
+        git_check(work, "add", "docs/spec.expected.json")
+        write_text(work / "docs" / "spec.expected.json", '{"a": 2}\n')
+        assert checked_run_gate(work, devlyn) == 2
+        finding = sole_finding(devlyn, "revert-failed", "The contract was left in place because removing its index entry "
+                                                        "failed (error:")
+        assert finding["fix_hint"].startswith("The contract was left in place because removing its index entry failed;")
+        assert (work / "docs" / "spec.expected.json").read_text(encoding="utf-8") == '{"a": 2}\n'
+        assert "docs/spec.expected.json" in git_check(work, "ls-files", "docs").splitlines()
+        assert_summary(devlyn, {"offenders": 1, "reverted": 0, "revert_failed": 1})
+        if os.geteuid() == 0:
+            print("SKIP read-only-parent contract fixture: permissions do not bind root")
+        else:
+            work, devlyn = contract_fixture("contract-read-only-parent", None, None)
+            write_text(work / "docs" / "spec.expected.json", "{}\n")
+            (work / "docs").chmod(0o555)
+            try:
+                assert checked_run_gate(work, devlyn) == 2
+            finally:
+                (work / "docs").chmod(0o755)
+            sole_finding(devlyn, "revert-failed", "The contract was left in place because removing it failed ([Errno 13]")
+            assert (work / "docs" / "spec.expected.json").read_text(encoding="utf-8") == "{}\n"
+            assert_summary(devlyn, {"offenders": 1, "reverted": 0, "revert_failed": 1})
+        work, devlyn = contract_fixture("contract-restore-locked", b'{"a": 1}\n', b'{"a": 1}\n')
+        (work / "docs" / "spec.expected.json").write_bytes(b'{"a": 2}\n')
+        (work / ".git" / "index.lock").write_bytes(b"")
+        try:
+            assert checked_run_gate(work, devlyn) == 2
+        finally:
+            (work / ".git" / "index.lock").unlink()
+        sole_finding(devlyn, "revert-failed", "The contract was left in place because restoring it failed "
+                                              "(fatal: Unable to create")
+        assert (work / "docs" / "spec.expected.json").read_bytes() == b'{"a": 2}\n'
+        assert_summary(devlyn, {"offenders": 1, "reverted": 0, "revert_failed": 1})
+        # A failed read of base's copy is not empty bytes, even when bootstrap bound an empty contract.
+        work, devlyn = contract_fixture("contract-empty-bound", None, b"")
+        write_text(work / "docs" / "spec.expected.json", "{}\n")
+        assert checked_run_gate(work, devlyn) == 2
+        sole_finding(devlyn, "revert-failed", "reported only because base_ref.sha does not hold the bytes bootstrap bound "
+                                              "(fatal:")
+
+        # The gate reads and restores genuine objects: a worker's replace refs never choose the bytes it restores.
+        work, devlyn = contract_fixture("replaced-objects", b'{"a": 1}\n', b'{"a": 1}\n')
+        write_text(root / "forged.txt", "forged\n")
+        forged = git_check(work, "hash-object", "-w", str(root / "forged.txt"))
+        for path in ("notes.txt", "docs/spec.expected.json"):
+            git_check(work, "replace", git_check(work, "rev-parse", f"HEAD:{path}"), forged)
+            write_text(work / path, "the run's\n")
+        assert checked_run_gate(work, devlyn) == 2
+        assert (work / "notes.txt").read_text(encoding="utf-8") == "base notes\n"
+        assert (work / "docs" / "spec.expected.json").read_bytes() == b'{"a": 1}\n'
 
     return 0
 

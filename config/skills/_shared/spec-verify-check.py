@@ -1038,10 +1038,17 @@ def source_integrity_error(src_type: str | None, state: dict, source_md: Path | 
 
 
 def expected_contract_error(src: dict, spec_md: Path) -> str | None:
-    """A sibling spec.expected.json must still be the bytes bootstrap bound (or still absent)."""
+    """A sibling spec.expected.json must still be the bytes bootstrap bound, or still no directory entry at all."""
     if "expected_sha256" not in src:
         return None  # a state from before the binding existed
     sibling = spec_md.with_name("spec.expected.json")
+    if src["expected_sha256"] is None:
+        # A directory or a dangling symlink is an entry too; an access error is reported, never taken for absence.
+        try:
+            present = _present(sibling)
+        except OSError as e:
+            return f"cannot inspect {sibling}, whose absence bootstrap bound: {e}."
+        return f"source.expected_sha256 mismatch for {sibling}: bootstrap bound its absence, but an entry exists." if present else None
     actual = _file_sha256(sibling)
     if actual != src["expected_sha256"]:
         return f"source.expected_sha256 mismatch for {sibling}: expected {src['expected_sha256']}, actual {actual}."
