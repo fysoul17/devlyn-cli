@@ -1194,7 +1194,8 @@ def slice_diff_to_files(diff_text: str, files: list[str]) -> str:
     return "".join(out)
 
 
-def diff_text_for_expected(work: Path, devlyn_dir: Path, state: dict) -> tuple[str, str | None]:
+def diff_text_for_expected(work: Path, devlyn_dir: Path, state: dict,
+                           sparse_absences: frozenset[str] = frozenset()) -> tuple[str, str | None]:
     external_diff = devlyn_dir / "external-diff.patch"
     if external_diff.is_file():
         try:
@@ -1202,27 +1203,23 @@ def diff_text_for_expected(work: Path, devlyn_dir: Path, state: dict) -> tuple[s
         except OSError as e:
             return ("", f"cannot read {external_diff}: {e}")
     base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
-    cmd = ["git", "diff"]
-    if base_sha:
-        cmd.append(base_sha)
-    proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True, encoding="utf-8")
-    if proc.returncode != 0:
-        return ("", (proc.stderr or proc.stdout or "git diff failed").strip())
-    return (proc.stdout or "", None)
+    try:
+        with observed_git(work, sparse_absences) as (git, _flags):
+            return (git("diff", *([base_sha] if base_sha else [])).decode("utf-8", "surrogateescape"), None)
+    except (OSError, ValueError) as exc:
+        return ("", str(exc) or "git diff failed")
 
 
-def count_deps_added(work: Path, state: dict) -> int:
+def count_deps_added(work: Path, state: dict, sparse_absences: frozenset[str] = frozenset()) -> int:
     base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
-    cmd = ["git", "diff"]
-    if base_sha:
-        cmd.append(base_sha)
-    cmd.extend(["--", "package.json"])
-    proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True, encoding="utf-8")
-    if proc.returncode != 0:
+    try:
+        with observed_git(work, sparse_absences) as (git, _flags):
+            diff = git("diff", *([base_sha] if base_sha else []), "--", "package.json").decode("utf-8", "surrogateescape")
+    except (OSError, ValueError):
         return 0
     in_deps = False
     count = 0
-    for line in (proc.stdout or "").splitlines():
+    for line in diff.splitlines():
         if line.startswith(("diff ", "index ", "---", "+++", "@@")):
             continue
         marker = line[:1]
@@ -1273,7 +1270,8 @@ def changed_files(work: Path, state: dict, devlyn_dir: Path,
     base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
     try:
         with observed_git(work, sparse_absences) as (git, _flags):
-            raw = git("diff", "--name-only", "-z", "--no-renames", *([base_sha] if base_sha else []))
+            raw = git("diff", "--name-only", "-z", "--no-renames", "--ignore-submodules=none",
+                      *([base_sha] if base_sha else []))
     except (OSError, ValueError) as exc:
         return ([], str(exc) or "git diff --name-only failed")
     return ([path.decode("utf-8", "surrogateescape") for path in raw.split(b"\0") if path], None)
@@ -1291,13 +1289,14 @@ def expected_contract_findings(
         return ([], finding_start)
     findings: list[dict] = []
     seq = finding_start
-    diff_text, diff_error = diff_text_for_expected(work, devlyn_dir, state)
+    # Observed like the scope check: the baseline's sparse absences are not deletions.
+    _baseline, sparse_absences, baseline_error = load_untracked_baseline(devlyn_dir)
+    if (devlyn_dir / "external-diff.patch").is_file():
+        baseline_error = None
+    diff_text, diff_error = ("", baseline_error) if baseline_error else diff_text_for_expected(work, devlyn_dir, state, sparse_absences)
     paths, paths_error = [], None
     if expected_data.get("forbidden_files"):
-        # Observed like the scope check: the baseline's sparse absences are not deletions.
-        _baseline, sparse_absences, paths_error = load_untracked_baseline(devlyn_dir)
-        if paths_error is None or (devlyn_dir / "external-diff.patch").is_file():
-            paths, paths_error = changed_files(work, state, devlyn_dir, sparse_absences)
+        paths, paths_error = ([], baseline_error) if baseline_error else changed_files(work, state, devlyn_dir, sparse_absences)
     diff_error = diff_error or paths_error
     if diff_error and (
         expected_data.get("forbidden_patterns") or expected_data.get("forbidden_files")
@@ -1379,7 +1378,7 @@ def expected_contract_findings(
         })
         seq += 1
     max_deps = expected_data.get("max_deps_added", 0)
-    deps_added = count_deps_added(work, state)
+    deps_added = count_deps_added(work, state, sparse_absences)
     if deps_added > max_deps:
         findings.append({
             "id": f"{FINDING_PREFIX}-{seq:04d}",
@@ -1697,12 +1696,12 @@ def authorized_surface_findings(
         findings.append(scope_finding(
             seq,
             "scope.out-of-scope-file",
-            f"{path} is a created-during-run unauthorized untracked file.",
+            f"{path} is an unauthorized untracked file outside the PHASE 0 baseline.",
             path,
             (
-                f"Remove {path}. Do not widen plan.md's authorized_surface "
-                "to include it — new untracked leaks must be removed, not "
-                "self-authorized by the fix loop."
+                f"Remove {path} if this run created it; a file that predates the run "
+                "(one an ignore change made visible) is the user's, so leave it and keep "
+                "the finding for review. Never widen plan.md's authorized_surface to cover it."
             ),
         ))
         seq += 1
@@ -1715,7 +1714,7 @@ def run_print_authorized_surface(work: Path, devlyn_dir: Path) -> int:
         print(f"[spec-verify --print-authorized-surface] {surface_error}", file=sys.stderr)
         return 2
     assert surface is not None
-    _baseline, sparse_absences, baseline_error = load_untracked_baseline(devlyn_dir)
+    baseline, sparse_absences, baseline_error = load_untracked_baseline(devlyn_dir)
     if baseline_error is not None:
         print(f"[spec-verify --print-authorized-surface] {baseline_error}", file=sys.stderr)
         return 2
@@ -1723,7 +1722,9 @@ def run_print_authorized_surface(work: Path, devlyn_dir: Path) -> int:
     if status_error is not None:
         print(f"[spec-verify --print-authorized-surface] git status failed: {status_error}", file=sys.stderr)
         return 2
-    authorized_paths = [path for path in paths if path_matches_surface(path, surface)]
+    # A user's untracked file from before the run is adopted only by an exact surface entry, never by a glob.
+    authorized_paths = [path for path in paths if path_matches_surface(path, surface)
+                        and (path not in baseline or path in surface)]
     if authorized_paths:
         sys.stdout.buffer.write("\0".join(authorized_paths).encode("utf-8", "surrogateescape") + b"\0")
     return 0
@@ -1805,10 +1806,10 @@ def sparse_absent_entries(work: Path) -> frozenset[str]:
 
 @contextlib.contextmanager
 def observed_git(work: Path, sparse_absences: frozenset[str] = frozenset()):
-    """Run Git as an observer that worktree state cannot steer.
+    """Run Git as an observer that index flags, caches and hooks cannot steer.
 
     Index flags make Git skip worktree content, caches make it trust stale state and hooks run
-    worker code, and a worker can set all three. On a private copy of the index (mtime kept, so racily clean entries
+    worker code, and a worker can set all three; other repository configuration is trusted. On a private copy of the index (mtime kept, so racily clean entries
     are still content-checked) assume-unchanged is cleared everywhere and skip-worktree
     everywhere except an absent path in `sparse_absences`, the caches are off, and the real
     index is never written (reading a split index still refreshes its shared index's mtime,
@@ -1842,68 +1843,6 @@ def observed_git(work: Path, sparse_absences: frozenset[str] = frozenset()):
                 git("update-index", option, "-z", "--stdin",
                     stdin=b"".join(path.encode("utf-8", "surrogateescape") + b"\0" for path in paths))
         yield git, flags
-
-
-def _rule_sha256(path: Path | None) -> str | None:
-    """Digest of an ignore-rule file, None when absent; an unreadable one fails the observation."""
-    if path is None:
-        return None
-    try:
-        return hashlib.sha256(path.read_bytes()).hexdigest()
-    except (FileNotFoundError, NotADirectoryError):
-        return None
-    except OSError as exc:
-        raise ValueError(f"cannot read ignore rules {path}: {exc}") from exc
-
-
-def global_excludes_file(work: Path) -> Path | None:
-    """The global excludes file Git reads, resolved the way Git resolves it."""
-    env = {key: value for key, value in os.environ.items() if key != "GIT_CONFIG"}  # it redirects only `git config`
-    proc = subprocess.run(["git", "config", "--null", "--path", "--includes", "--get", "core.excludesFile"],
-                          cwd=str(work), env=env, capture_output=True)
-    if proc.returncode == 1 and not proc.stdout:
-        home = os.environ.get("XDG_CONFIG_HOME") or None
-        if home is None:
-            user = os.environ.get("HOME") or (os.environ.get("USERPROFILE") if os.name == "nt" else None)
-            home = str(Path(user) / ".config") if user else None
-        return Path(home) / "git" / "ignore" if home else None
-    if proc.returncode != 0:
-        detail = (proc.stderr or proc.stdout).decode("utf-8", "replace").strip()
-        raise ValueError(f"git config core.excludesFile failed: {detail or proc.returncode}")
-    raw = proc.stdout.removesuffix(b"\0")
-    if not raw:
-        return None
-    path = Path(os.fsdecode(raw))
-    return path if path.is_absolute() else work / path
-
-
-def ignore_rules_identity(work: Path, git) -> dict:
-    """The ignore-rule sources Git reads beyond versioned .gitignore files.
-
-    They decide which untracked files the seal can see, so a run may not change them:
-    `.git/info/exclude`, the global excludes file and every untracked `.gitignore` (a
-    self-ignored one included). Ignored content itself is trusted environment.
-    """
-    entries, error = parse_status(git("status", "--porcelain=v1", "-z", "--ignored=matching",
-                                      "--untracked-files=all", "--ignore-submodules=none"))
-    if error:
-        raise ValueError(error)
-    rules = sorted([path, _rule_sha256(work / path)] for status, path in entries
-                   if status in ("??", "!!") and path.rsplit("/", 1)[-1] == ".gitignore" and not is_devlyn_path(path))
-    excludes = global_excludes_file(work)
-    return {"info_exclude": _rule_sha256(_git_path(work, "info/exclude")),
-            "excludes_file": str(excludes) if excludes else None,
-            "excludes_file_sha256": _rule_sha256(excludes), "untracked_gitignores": rules}
-
-
-def rules_digest(identity: dict) -> str:
-    return hashlib.sha256(json.dumps(identity, sort_keys=True).encode("utf-8", "surrogateescape")).hexdigest()
-
-
-def exclude_rules_digest(work: Path) -> str:
-    """The ignore-rule identity bootstrap binds as `base_ref.excludes_sha256`."""
-    with observed_git(work) as (git, _flags):
-        return rules_digest(ignore_rules_identity(work, git))
 
 
 def _entry_sha256(path: Path) -> str:
@@ -1944,14 +1883,14 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
     verification input wherever it lives: the source spec or criteria and goal,
     the sibling `spec.expected.json`, PLAN, risk probes with their scripts, the
     PHASE 0 baseline and the external diff. Git observes through `observed_git`, and
-    the document also binds the sparse absences still in place and the ignore-rule
-    identity, so a flag or rule changed after the snapshot changes the digest.
+    the document also binds the sparse absences still in place, so a flag changed or
+    an absence materialized after the snapshot changes the digest.
 
     Problems name what keeps the tree from being sealable. In normal mode: tracked
     or staged changes (hidden ones named with their flag), untracked files outside
-    the baseline, or HEAD away from the VERIFY span's `pre_sha`. In every mode: a
-    baseline that differs from its bound digest, or ignore rules changed since
-    bootstrap. Ignored content is trusted environment and is not attested.
+    the baseline, or HEAD away from the VERIFY span's `pre_sha`. In every mode: an
+    unusable baseline, or one that differs from its bound digest. Ignore rules of
+    every source and the content they hide are trusted environment, not attested.
     """
     baseline, sparse_absences, baseline_error = load_untracked_baseline(devlyn_dir)
     pathspec = ("--", ".", ":(exclude).devlyn")
@@ -1965,7 +1904,6 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
             raise ValueError(f"git status failed: {error}")
         absent = sorted(path for path, tag in flags.items()
                         if tag in "Ss" and path in sparse_absences and not _present(work / path))
-        rules = ignore_rules_identity(work, git)
     tracked = sorted([path, status] for status, path in entries if status != "??" and not is_devlyn_path(path))
     dirty = sorted({path for path, _status in tracked})
     verify_only = state.get("mode") == "verify-only"
@@ -2006,7 +1944,6 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
         "status": tracked,
         "untracked": untracked,
         "sparse_absences_sha256": hashlib.sha256("\0".join(absent).encode("utf-8", "surrogateescape")).hexdigest(),
-        "ignore_rules": rules,
         "inputs": {
             "spec": input_sha256(spec_path),
             "spec_expected": input_sha256(str(Path(spec_path).with_name("spec.expected.json"))) if isinstance(spec_path, str) and spec_path else None,
@@ -2037,9 +1974,6 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
         problems.append(baseline_error)
     elif "untracked_baseline_sha256" in state and state["untracked_baseline_sha256"] != baseline_sha:
         problems.append(".devlyn/untracked.baseline differs from its bound digest")
-    bound_rules = (state.get("base_ref") or {}).get("excludes_sha256")
-    if bound_rules is not None and bound_rules != rules_digest(rules):
-        problems.append("local Git ignore rules changed since bootstrap")
     return document, digest, problems
 
 
@@ -2073,9 +2007,6 @@ def snapshot_changes(before: dict, after: dict) -> list[str]:
         changes += [f"{name} {path}" for path in sorted(set(old) | set(new)) if old.get(path) != new.get(path)]
     if before.get("sparse_absences_sha256") != after.get("sparse_absences_sha256"):
         changes.append("sparse absences")
-    old_rules, new_rules = before.get("ignore_rules") or {}, after.get("ignore_rules") or {}
-    changes += [f"ignore rules {key}" for key in sorted(set(old_rules) | set(new_rules))
-                if old_rules.get(key) != new_rules.get(key)]
     old_inputs, new_inputs = before.get("inputs") or {}, after.get("inputs") or {}
     changes += [f"input {key}" for key in sorted(set(old_inputs) | set(new_inputs))
                 if old_inputs.get(key) != new_inputs.get(key)]
@@ -5257,10 +5188,10 @@ shutil.rmtree(scratch, ignore_errors=True)
 def binding_self_test(script_path: str) -> int:
     """MECHANICAL observes through Git's view with worker-writable modifiers neutralized.
 
-    A changed contract, a change hidden by an index flag (before or during the commands, or after
-    the seal), a newly concealed deletion, a path crossing between baseline categories and a
-    changed ignore-rule source never seal; a clean sparse checkout and a verify-only tree whose
-    ignore files bootstrap bound do. The observer never writes the real index.
+    A changed contract, a change hidden by an index flag (before or during the commands, after the
+    seal, or re-hidden by a hook), a newly concealed deletion and a path crossing between baseline
+    categories never seal; a clean sparse checkout, a verify-only tree, a host append to a shared
+    exclude file and a tool's self-ignoring cache do. The observer never writes the real index.
     """
     script_path = str(Path(script_path).resolve())
     failures: list[str] = []
@@ -5299,7 +5230,7 @@ def binding_self_test(script_path: str) -> int:
                 raise AssertionError(f"{name}: baseline write failed")
             head = git("rev-parse", "HEAD")
             state = {"run_id": f"rs-{name}", "mode": mode,
-                     "base_ref": {"sha": head, "excludes_sha256": exclude_rules_digest(root)},
+                     "base_ref": {"sha": head},
                      "source": {"type": "spec", "spec_path": str(spec), "spec_sha256": hashlib.sha256(spec.read_bytes()).hexdigest(),
                                 "expected_sha256": hashlib.sha256(contract(cmd, **extra)).hexdigest()},
                      "untracked_baseline_sha256": hashlib.sha256((devlyn / "untracked.baseline").read_bytes()).hexdigest(),
@@ -5430,35 +5361,72 @@ def binding_self_test(script_path: str) -> int:
         check(rc == 1 and "untracked files outside the PHASE 0 baseline: sparse.txt" in findings,
               f"a sparse absence exempted a new untracked file: {findings}")
 
-        # Ignore-rule sources stay as bootstrap bound them: local excludes and untracked .gitignore files.
-        root, devlyn, git, state = repo("info-exclude")
+        # Expected-contract readers observe like scope: a forbidden pattern hidden by a flag is still found.
+        root, devlyn, git, state = repo("hidden-forbidden", forbidden_patterns=[
+            {"pattern": "FORBIDDEN", "description": "hidden forbidden text", "severity": "disqualifier"}])
+        git("update-index", "--assume-unchanged", "a.txt")
+        (root / "a.txt").write_bytes(b"FORBIDDEN\n")
+        mechanical(root)
+        mech_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
+        check("correctness.forbidden-pattern" in mech_findings, f"a flag hid a forbidden pattern: {mech_findings}")
+
+        # A baseline that is missing or malformed never seals, even when its bytes match the recorded digest.
+        root, devlyn, git, state = repo("baseline-missing")
+        (devlyn / "untracked.baseline").unlink()
+        state["untracked_baseline_sha256"] = None
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        rc, findings = sealed(root)
+        check(rc == 1 and "requires .devlyn/untracked.baseline" in findings, f"a missing baseline sealed: {findings}")
+        root, devlyn, git, state = repo("baseline-malformed")
+        (devlyn / "untracked.baseline").write_bytes(b"a.txt\n")
+        state["untracked_baseline_sha256"] = hashlib.sha256(b"a.txt\n").hexdigest()
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        rc, findings = sealed(root)
+        check(rc == 1 and "untracked.baseline" in findings and "differs from its bound digest" not in findings,
+              f"a malformed baseline sealed: {findings}")
+
+        # A real cone-mode sparse checkout with a sparse index seals without false changes.
+        def cone(root: Path, git) -> None:
+            for name_ in ("inside/y.txt", "outside/x.txt"):
+                (root / name_).parent.mkdir(parents=True, exist_ok=True)
+                (root / name_).write_bytes(b"cone\n")
+            git("add", "-A"); git("commit", "-q", "-m", "dirs")
+            git("sparse-checkout", "set", "--cone", "inside")
+            git("config", "index.sparse", "true")
+            git("sparse-checkout", "reapply")
+        root, devlyn, git, state = repo("sparse-index", setup=cone)
+        rc, findings = sealed(root)
+        check(rc == 0 and not (root / "outside" / "x.txt").exists(), f"a sparse-index checkout did not seal: {findings}")
+
+        # A user's untracked file from before the run is staged only by an exact surface entry.
+        def user_file(root: Path, git) -> None:
+            (root / "src").mkdir()
+            (root / "src" / "user.txt").write_bytes(b"the user's draft\n")
+        root, devlyn, git, state = repo("adoption", setup=user_file)
+        def staged_paths(surface: list[str]) -> list[str]:
+            (devlyn / "plan.md").write_text("<!-- devlyn:authorized-surface -->\n## Files\n```json\n"
+                                            + json.dumps({"authorized_surface": surface}) + "\n```\n", encoding="utf-8")
+            out = subprocess.run([sys.executable, script_path, "--print-authorized-surface"], cwd=root,
+                                 capture_output=True).stdout
+            return [path.decode() for path in out.split(b"\0") if path]
+        check(staged_paths(["src/**"]) == [], "a glob surface adopted the user's untracked file")
+        check(staged_paths(["src/user.txt"]) == ["src/user.txt"], "an exact surface entry did not adopt the user's file")
+
+        # Ignore policy is trusted environment (owner decision 2026-10-04): the host appending to a shared
+        # exclude file, or a test tool writing a self-ignoring cache .gitignore, never blocks a correct run.
+        root, devlyn, git, state = repo("host-append")
         exclude = _git_path(root, "info/exclude")
         exclude.parent.mkdir(parents=True, exist_ok=True)
         with exclude.open("a", encoding="utf-8") as handle:
-            handle.write("\nhelper.py\n")
+            handle.write("\n**/.claude/settings.local.json\n**/.claude/settings.local.json\n")
         rc, findings = sealed(root)
-        check(rc == 1 and "local Git ignore rules changed since bootstrap" in findings, f"changed info/exclude sealed: {findings}")
-        root, devlyn, git, state = repo("self-hiding")
-        (root / "new").mkdir()
-        (root / "new" / ".gitignore").write_bytes(b"*\n")
-        (root / "new" / "helper.py").write_bytes(b"print('hidden')\n")
+        check(rc == 0, f"a host append to info/exclude blocked the seal: {findings}")
+        root, devlyn, git, state = repo("tool-cache")
+        (root / ".pytest_cache").mkdir()
+        (root / ".pytest_cache" / ".gitignore").write_bytes(b"# Created by pytest automatically.\n*\n")
+        (root / ".pytest_cache" / "CACHEDIR.TAG").write_bytes(b"Signature: 8a477f597d28d172789f06886806bc55\n")
         rc, findings = sealed(root)
-        check(rc == 1 and "local Git ignore rules changed since bootstrap" in findings,
-              f"a self-hiding untracked .gitignore sealed: {findings}")
-
-        # The rule identity is part of the sealed source: a command that changes it, or a verify-only tree whose
-        # rules changed since bootstrap, never seals.
-        root, devlyn, git, state = repo("command-rule-drift",
-                                        cmd="printf 'helper.py\\n' >> .git/info/exclude && printf x > helper.py")
-        rc, findings = sealed(root)
-        check(rc == 1 and "source changed after the MECHANICAL snapshot" in findings and "ignore rules" in findings,
-              f"an ignore rule changed during the commands sealed: {findings}")
-        root, devlyn, git, state = repo("verify-only-rule-drift", mode="verify-only")
-        with _git_path(root, "info/exclude").open("a", encoding="utf-8") as handle:
-            handle.write("\nhelper.py\n")
-        rc, findings = sealed(root)
-        check(rc == 1 and "local Git ignore rules changed since bootstrap" in findings,
-              f"verify-only sealed changed ignore rules: {findings}")
+        check(rc == 0, f"a test tool's self-ignoring cache blocked the seal: {findings}")
 
         # Verify-only reviews the untracked files bootstrap saw, a diff-added .gitignore included.
         def added_ignore(root: Path, git) -> None:
@@ -5466,34 +5434,12 @@ def binding_self_test(script_path: str) -> int:
             (root / "pkg" / ".gitignore").write_bytes(b"dist/\n")
         root, devlyn, git, state = repo("verify-only-ignore", mode="verify-only", setup=added_ignore)
         rc, findings = sealed(root)
-        check(rc == 0, f"a verify-only tree with a bound .gitignore did not seal: {findings}")
-
-        # The global excludes file resolves as Git resolves it.
-        root, devlyn, git, state = repo("excludes-path")
-        env = {key: os.environ.get(key) for key in ("HOME", "XDG_CONFIG_HOME")}
-        try:
-            os.environ["HOME"] = str(Path(tmp) / "home")
-            os.environ.pop("XDG_CONFIG_HOME", None)
-            check(global_excludes_file(root) == Path(tmp) / "home" / ".config" / "git" / "ignore", "default excludes path")
-            os.environ["XDG_CONFIG_HOME"] = str(Path(tmp) / "xdg")
-            check(global_excludes_file(root) == Path(tmp) / "xdg" / "git" / "ignore", "XDG excludes path")
-            git("config", "core.excludesFile", "rules/ignore")
-            check(global_excludes_file(root) == root / "rules" / "ignore", "relative excludes path")
-            git("config", "core.excludesFile", "~/ignore")
-            check(global_excludes_file(root) == Path(tmp) / "home" / "ignore", "home-relative excludes path")
-            git("config", "core.excludesFile", "")
-            check(global_excludes_file(root) is None, "an empty core.excludesFile names no file")
-        finally:
-            for key, value in env.items():
-                if value is None:
-                    os.environ.pop(key, None)
-                else:
-                    os.environ[key] = value
+        check(rc == 0, f"a verify-only tree with a .gitignore did not seal: {findings}")
     if failures:
         print("binding self-test failed:\n  " + "\n  ".join(failures), file=sys.stderr)
         return 1
-    print("PASS bindings: Git observes through neutralized flags and caches; contract, hidden changes, category "
-          "crossings and ignore-rule drift never seal; sparse and verify-only trees do; the real index is untouched")
+    print("PASS bindings: Git observes through neutralized flags, caches and hooks; a changed contract, hidden changes "
+          "and category crossings never seal; sparse, verify-only, host-appended and tool-cache trees do; the real index is untouched")
     return 0
 
 

@@ -460,7 +460,6 @@ def bootstrap(
             "base_ref": {
                 "branch": base_branch(cwd),
                 "sha": git_text(cwd, "rev-parse", "HEAD"),
-                "excludes_sha256": load_spec_helper(shared_dir).exclude_rules_digest(cwd),
             },
             "rounds": {"max_rounds": parsed["max_rounds"], "global": 0},
             "untracked_baseline_sha256": None,
@@ -1009,7 +1008,6 @@ def self_test() -> int:
             "base_ref": {
                 "branch": base_branch(work),
                 "sha": git_text(work, "rev-parse", "HEAD"),
-                "excludes_sha256": load_spec_helper(script_shared).exclude_rules_digest(work),
             },
             "rounds": {"max_rounds": 4, "global": 0},
             "untracked_baseline_sha256": None,
@@ -1202,6 +1200,11 @@ def self_test() -> int:
         pure_result = bootstrap(["--spec", str(pure_spec.relative_to(work))], work, script_shared)
         assert pure_result["source"]["spec_sha256"] == sha256(pure_spec.read_bytes())
         assert not (work / ".devlyn/spec-verify.json").exists()
+        crlf_spec = spec_dir / "crlf.md"
+        crlf_spec.write_bytes(b"# CRLF\r\n\r\n<!-- devlyn:verification -->\r\n## Verification\r\n\r\n- prints ok\r\n\r\n"
+                              b"```json\r\n{\"verification_commands\":[{\"cmd\":\"printf ok\",\"stdout_contains\":[\"ok\"]}]}\r\n```\r\n")
+        complete_prior(work)
+        bootstrap(["--risk-probes", "--spec", str(crlf_spec.relative_to(work))], work, script_shared)
         bare_spec = spec_dir / "bare.md"
         bare_spec.write_text("# Bare\n\n- no verification section\n", encoding="utf-8")
         complete_prior(work)

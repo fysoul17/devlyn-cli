@@ -2000,6 +2000,26 @@ class CompletionTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("archived by an older devlyn", json.loads(r.stdout)["reason"])
 
+    def test_bound_pre_seal_delivery_resumes(self):
+        """An acceptance an older devlyn already bound resumes; only a first acceptance meets the pre-seal refusal."""
+        self.allocate(); self.accept(pipeline=True)
+        self.complete("--mode", "pr", "--writers-stopped")
+        relative = f".devlyn/runs/{self.state['run_id']}/pipeline.state.json"
+        legacy = json.loads(json.dumps(self.state))
+        del legacy["phases"]["verify"]["source_seal"]
+        legacy["phases"]["cleanup"] = {"started_at": "2026-09-10T00:00:00Z", "completed_at": "2026-09-10T00:00:01Z",
+                                       "verdict": "PASS", "post_sha": self.sha}
+        raw = json.dumps(legacy).encode()
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        for root in (self.task, self.receipt.parent / "custody"):
+            (root / relative).write_bytes(raw)
+        receipt["files"][relative] = {**receipt["files"][relative], "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw)}
+        self.receipt.write_text(json.dumps(receipt), encoding="utf-8")
+        (self.receipt.parent / "manifest.json").write_text(json.dumps(receipt["files"]), encoding="utf-8")
+        self.merge_pr()
+        result, r = self.complete()
+        self.assertEqual(r.returncode, 0, r.stdout)
+
     def test_named_spec_missing_required_process_evidence(self):
         expected = {"process_evidence": [{"id": "red-first", "phase": "implement", "argv": [sys.executable, "-c", "print('red')"], "exit_code": 0, "timeout_sec": 10}]}
         self.allocate(); self.accept(pipeline=True, spec_expected=expected, spec_name="X.md")

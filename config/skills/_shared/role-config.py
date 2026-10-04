@@ -600,6 +600,17 @@ def self_test():
                         assert f"BLOCKED:{reason}:" in str(exc)
                     else:
                         raise AssertionError("failed native version probe accepted")
+    # Engine names follow the refusal grammar and resolve only to exact adapter stems; README is no engine.
+    for bad in ("Codex", "README", "readme", "co_dex"):
+        try:
+            adapter(bad)
+        except ValueError as exc:
+            assert "BLOCKED:invalid-engine-config" in str(exc), exc
+        else:
+            raise AssertionError(f"engine {bad!r} accepted")
+    assert refusal("codex-unavailable") and refusal(f"{ROUTE_UNSUPPORTED}:omp") and refusal(UNSUPPORTED)
+    assert not any(refusal(reason) for reason in ("readme-unavailable", "README-unavailable", "Codex-unavailable",
+                                                  f"{ROUTE_UNSUPPORTED}:codex", f"{ROUTE_UNSUPPORTED}:readme"))
     print("PASS role-config self-test: precedence, isolation, atomic validation, capability and legacy identity")
     return 0
 

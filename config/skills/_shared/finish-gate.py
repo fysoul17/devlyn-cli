@@ -41,8 +41,9 @@ SPEC_VERIFY = load_spec_verify()
 
 
 def git(work: pathlib.Path, *args: str) -> subprocess.CompletedProcess[str]:
+    # Paths are literal: a route such as app/[slug]/page.tsx must never glob-match another file.
     return subprocess.run(
-        ["git", *args],
+        ["git", "--literal-pathspecs", *args],
         cwd=str(work),
         capture_output=True,
         text=True,
@@ -163,7 +164,7 @@ def changed_files(work: pathlib.Path, base_sha: str, sparse_absences: frozenset[
     """Paths changed since base_ref.sha (committed or not, both sides of a rename), observed as MECHANICAL observes."""
     try:
         with SPEC_VERIFY.observed_git(work, sparse_absences) as (observe, _flags):
-            raw = observe("diff", "--name-only", "-z", "--no-renames", base_sha, "--")
+            raw = observe("diff", "--name-only", "-z", "--no-renames", "--ignore-submodules=none", base_sha, "--")
     except (OSError, ValueError) as e:
         raise Malformed(f"cannot compute finish-gate changed files: {e}") from e
     return {os.fsdecode(path) for path in raw.split(b"\0") if path}
@@ -208,15 +209,17 @@ def settle_contract(work: pathlib.Path, base_sha: str, path: str, action: str) -
     if action == "restore":
         proc = git(work, "checkout", base_sha, "--", path)
         return (proc.returncode == 0, proc.stderr.strip() or proc.stdout.strip() or None)
-    if path_exists_at_base(work, base_sha, path):
-        # Bound absent while base tracks it (a sparse absence): only the worktree copy goes.
-        try:
-            remove_worktree_path(work / path)
-        except OSError as e:
-            return (False, str(e))
-        return (True, None)
-    ok, detail, _existed = revert_offender(work, base_sha, path)
-    return (ok, detail)
+    # Bootstrap bound the contract's absence, so the run created this one: remove it, index entry
+    # included unless base tracks the path (a sparse absence keeps its index entry).
+    if not path_exists_at_base(work, base_sha, path):
+        proc = git(work, "rm", "-q", "--cached", "--ignore-unmatch", "--", path)
+        if proc.returncode != 0:
+            return (False, proc.stderr.strip() or proc.stdout.strip())
+    try:
+        remove_worktree_path(work / path)
+    except OSError as e:
+        return (False, str(e))
+    return (True, None)
 
 
 def devlyn_relative_prefix(work: pathlib.Path, devlyn_dir: pathlib.Path) -> str:
@@ -244,27 +247,19 @@ def remove_worktree_path(path: pathlib.Path) -> None:
         shutil.rmtree(path)
 
 
-def revert_offender(work: pathlib.Path, base_sha: str, path: str) -> tuple[bool, str | None, bool]:
-    existed_at_base = path_exists_at_base(work, base_sha, path)
-    if existed_at_base:
-        proc = git(work, "checkout", base_sha, "--", path)
-        if proc.returncode != 0:
-            return (False, proc.stderr.strip() or proc.stdout.strip(), True)
-        return (True, None, True)
+def revert_offender(work: pathlib.Path, base_sha: str, path: str) -> tuple[str, str | None]:
+    """Undo an out-of-surface change without destroying bytes the run cannot prove it made.
 
-    proc = git(work, "rm", "-f", "--ignore-unmatch", "--", path)
-    target = work / path
-    try:
-        if target.exists() or target.is_symlink():
-            remove_worktree_path(target)
-    except OSError as e:
-        return (False, str(e), False)
-    if proc.returncode != 0:
-        cached = git(work, "rm", "-f", "--cached", "--ignore-unmatch", "--", path)
-        if cached.returncode != 0:
-            detail = proc.stderr.strip() or cached.stderr.strip() or proc.stdout.strip()
-            return (False, detail, False)
-    return (True, None, False)
+    A path present at base_ref.sha is restored: bootstrap required a clean tracked baseline, so
+    its change is the run's. Any other path keeps its worktree bytes, losing only an index entry:
+    absence from the PHASE 0 baseline does not prove the run created it (an ignore change can
+    reveal a user's file). Returns (status, detail): "reverted", "retained" or "revert-failed".
+    """
+    if path_exists_at_base(work, base_sha, path):
+        proc = git(work, "checkout", base_sha, "--", path)
+        return ("reverted", None) if proc.returncode == 0 else ("revert-failed", proc.stderr.strip() or proc.stdout.strip())
+    proc = git(work, "rm", "-q", "--cached", "--ignore-unmatch", "--", path)
+    return ("retained", None) if proc.returncode == 0 else ("revert-failed", proc.stderr.strip() or proc.stdout.strip())
 
 
 def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
@@ -328,11 +323,10 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
         return 0
 
     findings: list[dict] = []
-    reverted = 0
-    revert_failed = 0
+    counts = {"reverted": 0, "retained": 0, "revert-failed": 0}
     if drift is not None:
         ok, detail = settle_contract(work, base_sha, *drift[::2])
-        reverted, revert_failed = (1, 0) if ok else (0, 1)
+        counts["reverted" if ok else "revert-failed"] += 1
         outcome = {"remove": "removed, as bootstrap bound its absence", "restore": "restored to the bytes bootstrap bound",
                    "report": "left in place"}[drift[2]]
         findings.append(make_finding(
@@ -343,20 +337,18 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
             fix_hint=f"The contract was {outcome}; a run never verifies against a contract it changed.",
         ))
     for path in offenders:
-        ok, detail, existed_at_base = revert_offender(work, base_sha, path)
-        status = "reverted" if ok else "revert-failed"
-        if ok:
-            reverted += 1
-        else:
-            revert_failed += 1
-        action = "restored to base_ref.sha" if existed_at_base else "removed because it did not exist at base_ref.sha"
+        status, detail = revert_offender(work, base_sha, path)
+        counts[status] += 1
+        outcome = {"reverted": "restored to base_ref.sha",
+                   "retained": "kept in place (only an index entry removed): nothing proves this run created it",
+                   "revert-failed": "left as is because restoring it failed"}[status]
         message = f"Final diff touched an unaudited file outside authorized_surface: {path}"
         if detail:
             message = f"{message} ({detail})"
         findings.append(make_finding(
             len(findings) + 1, "scope.finish-unaudited-file", message, path, status=status,
             criterion_ref="plan.md/authorized_surface",
-            fix_hint=f"This file was outside authorized_surface and was {action}; do not ship unlicensed final-diff changes."))
+            fix_hint=f"This file was outside authorized_surface and was {outcome}; do not ship unlicensed final-diff changes."))
     write_findings(devlyn_dir, findings)
     # Exit 0 let a real run treat reverted orchestrator commits as a clean pass.
     # Any offender is therefore unclean even when every automatic revert succeeds;
@@ -366,8 +358,9 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
         "mode": state.get("mode"),
         "checked": len(checked),
         "offenders": len(findings),
-        "reverted": reverted,
-        "revert_failed": revert_failed,
+        "reverted": counts["reverted"],
+        "retained": counts["retained"],
+        "revert_failed": counts["revert-failed"],
         "exit": exit_code,
     })
     return exit_code
@@ -470,15 +463,17 @@ def self_test() -> int:
         assert (work / "src" / "app.txt").read_text(encoding="utf-8") == "changed app\n"
         assert "bound PLAN no longer verifies" in read_summary(devlyn)["malformed"]
 
+        # A path absent at base keeps its bytes: staging proves nothing about who created it.
         work, devlyn, _base = make_fixture(root, "added-file")
         write_text(work / "runtime.txt", "late\n")
         git_check(work, "add", "runtime.txt")
         assert checked_run_gate(work, devlyn) == 2
-        assert not (work / "runtime.txt").exists()
-        assert "runtime.txt" not in git_check(work, "diff", "--name-only", _base).splitlines()
+        assert (work / "runtime.txt").read_text(encoding="utf-8") == "late\n"
+        assert "runtime.txt" not in git_check(work, "ls-files").splitlines()
+        assert read_findings(devlyn)[0]["status"] == "retained"
         assert_summary(devlyn, {
             "mode": "full", "checked": 1, "offenders": 1,
-            "reverted": 1, "revert_failed": 0, "exit": 2,
+            "reverted": 0, "retained": 1, "revert_failed": 0, "exit": 2,
         })
 
         work, devlyn, _base = make_fixture(root, "devlyn-owned-tracked-mutation")
@@ -558,10 +553,24 @@ def self_test() -> int:
         work, devlyn, _base = make_fixture(root, "untracked-residue")
         write_text(work / "keep.txt", "the user's\n")
         write_text(devlyn / "untracked.baseline", json.dumps({"untracked": ["keep.txt"], "sparse_absences": []}) + "\n")
-        write_text(work / "stray.txt", "left by the run\n")
+        write_text(work / "stray.txt", "outside the baseline\n")
         assert checked_run_gate(work, devlyn) == 2
-        assert not (work / "stray.txt").exists() and (work / "keep.txt").is_file()
-        assert [finding["file"] for finding in read_findings(devlyn)] == ["stray.txt"]
+        assert (work / "stray.txt").is_file() and (work / "keep.txt").is_file()
+        assert [(f["file"], f["status"]) for f in read_findings(devlyn)] == [("stray.txt", "retained")]
+
+        # Paths are literal: an offender under app/[slug]/ never touches app/s/.
+        work, devlyn, _base = make_fixture(root, "literal-paths")
+        write_text(work / "app" / "s" / "page.tsx", "tracked route\n")
+        git_check(work, "add", "app/s/page.tsx")
+        git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "route")
+        write_state(devlyn, {"mode": "full", "base_ref": {"sha": git_check(work, "rev-parse", "HEAD")},
+                             "phases": {"plan": {"started_at": "t", "completed_at": "t", "verdict": "PASS"}}})
+        write_text(work / "app" / "[slug]" / "page.tsx", "new route\n")
+        git_check(work, "add", "app/[slug]/page.tsx")
+        assert checked_run_gate(work, devlyn) == 2
+        assert "app/s/page.tsx" in git_check(work, "ls-files").splitlines()
+        assert (work / "app" / "s" / "page.tsx").read_text(encoding="utf-8") == "tracked route\n"
+        assert (work / "app" / "[slug]" / "page.tsx").is_file()
         work, devlyn, _base = make_fixture(root, "missing-baseline")
         (devlyn / "untracked.baseline").unlink()
         assert checked_run_gate(work, devlyn) == 1 and "untracked.baseline" in read_summary(devlyn)["malformed"]

@@ -133,7 +133,7 @@ def terminal_halt_witness(phases: dict[str, object]) -> tuple[str, str] | None:
     last = phases.get(reached[-1])
     if target is None and (
         (reached[-1] in {"plan", "probe_derive", "implement"} and isinstance(last, dict) and last.get("verdict") == "BLOCKED"
-         and writer()["canonical_reason"](reason) and not reason.endswith("-unavailable"))
+         and writer()["canonical_reason"](reason))
         or reason == "finish-gate-unclean" or halt_reason(reason, "handoff")
     ):
         target = reached[-1]
@@ -692,6 +692,7 @@ def self_test() -> int:
             ("model-attestation-failed", "implement", "BLOCKED"),
             ("finish-gate-unclean", "implement", "PASS"),
             ("unsupported-role-option", "plan", "PASS"),
+            ("dependency-unavailable", "implement", "BLOCKED"),
         )
         for reason, halt_phase, phase_verdict in witness_rows:
             root = base / f"witness-{reason}"
@@ -708,11 +709,11 @@ def self_test() -> int:
             }
             state = {"run_id": f"witness-{reason}", "phases": phases}
             assert terminal_halt_witness(phases) == (halt_phase, reason)
-            if reason in {"codex-unavailable", "phase-input-invalid"}:
-                invented_labels = ("required-tools-unavailable", "invented-unavailable", "phase-input-invalid:contract")
-                if phase_verdict == "PASS":  # a handoff names a dispatch refusal, never a freeze-only one
-                    invented_labels += ("large-needs-ideation", "judge-route-unsupported:omp")
-                for invented in invented_labels:
+            if reason == "phase-input-invalid":
+                # A handoff (the next worker never started) names a dispatch refusal: never a freeze-only
+                # one, an invented `-unavailable` or a prose qualifier.
+                for invented in ("required-tools-unavailable", "invented-unavailable", "phase-input-invalid:contract",
+                                 "large-needs-ideation", "judge-route-unsupported:omp"):
                     claimed = {**phases, "final_report": {**phases["final_report"], "verdict": f"BLOCKED:{invented}"}}
                     assert terminal_halt_witness(claimed) is None, invented
             write_archived_state(root, state)
@@ -724,7 +725,8 @@ def self_test() -> int:
         for reason, clean in (("large-needs-ideation", True), ("invalid-classification", True),
                               ("invalid-engine-config", True), ("unsupported-role-option", True),
                               ("judge-route-unsupported:omp", True), ("codex-unavailable", True),
-                              ("finish-gate-unclean", True), ("judge-route-unsupported:codex", False),
+                              ("finish-gate-unclean", True), ("untracked-baseline-unwritable", True),
+                              ("judge-route-unsupported:codex", False),
                               ("judge-route-unsupported:", False), ("invalid-classification:detail", False),
                               ("model-attestation-failed", False), ("plan-empty", False), ("invented-halt", False)):
             root = base / f"phase0-{reason.replace(':', '-')}"

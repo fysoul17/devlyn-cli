@@ -213,7 +213,7 @@ EVIDENCE_ONLY_REASONS = {"finish-gate-unclean", "build-env-underprovisioned", "r
 # One reason grammar: a label, or `<family>:<qualifier>` for a registered family; prose goes to --detail.
 REASON_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?")
 # PHASE 0 halts the orchestrator reports itself; every other PHASE 0 refusal is role resolution's.
-PHASE0_REASONS = {"large-needs-ideation", "invalid-classification"}
+PHASE0_REASONS = {"large-needs-ideation", "invalid-classification", "untracked-baseline-unwritable"}
 # Handoffs where the next worker never started: no fresh context, or no valid rendered prompt input.
 HANDOFF_REASONS = {"fresh-context-unavailable", "phase-input-invalid"}
 SKIPS_MARKER = "<!-- devlyn:mechanical-skips -->"
@@ -1757,6 +1757,7 @@ def final_report_self_test() -> None:
         # terminal-claim-check witnesses exactly what the writer accepts.
         for index, (reason, needle) in enumerate((
                 ("unsupported-role-option", None), ("judge-route-unsupported:omp", None),
+                ("untracked-baseline-unwritable", None),
                 ("invented-halt", "is not a PHASE 0 halt"), ("plan-empty", "is not a PHASE 0 halt"),
                 ("invalid-classification: a repeated freeze differs", "explanations go to --detail"))):
             work, devlyn = fixture(tmp, f"phase0-{index}", plan=False)
