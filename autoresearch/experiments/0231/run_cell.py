@@ -9,6 +9,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -29,6 +30,7 @@ prepare, cell_run, usage, locate, check, assess, quota, obligations = (
     load(n) for n in ('prepare', 'cell', 'record_usage', 'locate', 'check', 'assess', 'quota', 'obligations'))
 base = load('run_cell0222', HERE.parent / '0222/run_cell.py')
 CODEX_SESSIONS = Path.home() / '.codex/sessions'
+HEADROOM_BYTES = 20 * 2**30  # free space on the output volume before a cell; traces keep full request payloads
 
 
 def digest(path):
@@ -57,6 +59,9 @@ def codex_limits():
 
 
 def preflight(runtime):
+    free = shutil.disk_usage(runtime['output']).free
+    if free < HEADROOM_BYTES:
+        return None, f'output volume has {free} bytes free, below {HEADROOM_BYTES}'
     identity, blocked = base.snapshot_auth(runtime)
     if blocked:
         return None, blocked
@@ -114,9 +119,10 @@ def run(runtime_path, name, task, arm, config):
     except (OSError, ValueError, KeyError, TypeError) as exc:  # usage is recorded, never a stop
         recorded = dict(completeness=f'UNKNOWN ({type(exc).__name__}: {exc})', output_tokens=None)
     limits = quota.classify(out)
+    trace_bytes = sum(p.stat().st_size for p in (out / 'cell/trace').rglob('*') if p.is_file())
     record.update(owner_status=owner['owner_status'], owner_seconds=owner['seconds'], teardown=owner['teardown'],
                   identity=owner['identity'], usage=recorded['completeness'], output_tokens=recorded['output_tokens'],
-                  quota=limits)
+                  quota=limits, trace_bytes=trace_bytes)
     baseline = json.loads((out / 'baseline.json').read_text())
     stop = ('container survived teardown' if owner['teardown'] != 'CLEAN' else
             'harness changed' if not harness_unchanged(out, baseline) else
