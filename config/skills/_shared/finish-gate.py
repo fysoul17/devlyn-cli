@@ -312,7 +312,7 @@ def run_gate(work: pathlib.Path, devlyn_dir: pathlib.Path) -> int:
 
     contract = drift[0] if drift is not None else None
     offenders = sorted(path for path in checked if path != contract and (
-        not SPEC_VERIFY.path_matches_surface(path, surface) or (path in baseline and path not in surface)))
+        not SPEC_VERIFY.path_matches_surface(path, surface) or SPEC_VERIFY.unadopted_user_path(path, baseline, surface)))
     if not offenders and drift is None:
         findings_path.unlink(missing_ok=True)
         write_summary(devlyn_dir, {
@@ -570,6 +570,21 @@ def self_test() -> int:
         assert checked_run_gate(work, devlyn) == 2
         assert (work / "src" / "user.txt").read_text(encoding="utf-8") == "the user's\n"
         assert [(f["file"], f["status"]) for f in read_findings(devlyn)] == [("src/user.txt", "retained")]
+
+        # The same holds for a user's nested repository committed as a gitlink (baseline spelling `dir/`).
+        work, devlyn, _base = make_fixture(root, "user-repo-swept")
+        write_text(devlyn / "plan.md", "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## Files to touch\n\n```json\n"
+                                       '{"authorized_surface": ["src/**"]}\n```\n')
+        vendor = work / "src" / "vendor"
+        vendor.mkdir(parents=True)
+        git_check(vendor, "init", "-q")
+        git_check(vendor, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "vendor")
+        write_text(devlyn / "untracked.baseline", json.dumps({"untracked": ["src/vendor/"], "sparse_absences": []}) + "\n")
+        git_check(work, "add", "src/vendor")
+        git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "gitlink")
+        assert checked_run_gate(work, devlyn) == 2
+        assert (vendor / ".git").exists()
+        assert [(f["file"], f["status"]) for f in read_findings(devlyn)] == [("src/vendor", "retained")]
 
         # Paths are literal: an offender under app/[slug]/ never touches app/s/.
         work, devlyn, _base = make_fixture(root, "literal-paths")

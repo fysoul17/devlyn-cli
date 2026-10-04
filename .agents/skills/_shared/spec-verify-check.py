@@ -1549,6 +1549,16 @@ def load_untracked_baseline(devlyn_dir: Path) -> tuple[set[str], frozenset[str],
     return ({path for path in data["untracked"] if not is_devlyn_path(path)}, frozenset(data["sparse_absences"]), None)
 
 
+def unadopted_user_path(path: str, baseline: set[str], surface: list[str]) -> bool:
+    """Whether `path` is a user's untracked path from before the run that no exact surface entry adopts.
+
+    A nested repository is recorded as `dir/` in the baseline but becomes the gitlink `dir` once
+    staged, so ownership compares paths without a trailing slash.
+    """
+    key = path.rstrip("/")
+    return key in {item.rstrip("/") for item in baseline} and key not in {entry.rstrip("/") for entry in surface}
+
+
 def load_authorized_surface(devlyn_dir: Path) -> tuple[list[str] | None, str | None]:
     plan_path = devlyn_dir / "plan.md"
     if not plan_path.is_file():
@@ -1674,7 +1684,7 @@ def authorized_surface_findings(
             "Ensure base_ref.sha is valid and any external-diff.patch is a readable Git patch with a/ and b/ prefixes.",
         )], finding_start + 1)
     for path in paths:
-        if path in baseline and path not in surface:
+        if unadopted_user_path(path, baseline, surface):
             # A user's untracked file from before the run is adopted only by an exact surface entry.
             findings.append(scope_finding(
                 seq,
@@ -1736,7 +1746,7 @@ def run_print_authorized_surface(work: Path, devlyn_dir: Path) -> int:
         return 2
     # A user's untracked file from before the run is adopted only by an exact surface entry, never by a glob.
     authorized_paths = [path for path in paths if path_matches_surface(path, surface)
-                        and (path not in baseline or path in surface)]
+                        and not unadopted_user_path(path, baseline, surface)]
     if authorized_paths:
         sys.stdout.buffer.write("\0".join(authorized_paths).encode("utf-8", "surrogateescape") + b"\0")
     return 0
@@ -5438,6 +5448,27 @@ def binding_self_test(script_path: str) -> int:
             return [path.decode() for path in out.split(b"\0") if path]
         check(staged_paths(["src/**"]) == [], "a glob surface adopted the user's untracked file")
         check(staged_paths(["src/user.txt"]) == ["src/user.txt"], "an exact surface entry did not adopt the user's file")
+
+        # A user's nested repository (baseline `src/vendor/`, gitlink `src/vendor` once staged) follows the same rule.
+        def nested_repo(root: Path, git) -> None:
+            vendor = root / "src" / "vendor"
+            vendor.mkdir(parents=True)
+            for args in (("init", "-q"), ("commit", "-q", "--allow-empty", "-m", "vendor")):
+                subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=vendor, check=True,
+                               capture_output=True)
+        root, devlyn, git, state = repo("adoption-nested", setup=nested_repo)
+        check("src/vendor/" in loads_strict_json((devlyn / "untracked.baseline").read_text(encoding="utf-8"))["untracked"],
+              "the baseline did not record the nested repository")
+        check(staged_paths(["src/**"]) == [], "a glob surface staged the user's nested repository")
+        (devlyn / "plan.md").write_text("<!-- devlyn:authorized-surface -->\n## Files\n```json\n"
+                                        + json.dumps({"authorized_surface": ["src/**"]}) + "\n```\n", encoding="utf-8")
+        git("add", "src/vendor"); git("commit", "-q", "-m", "gitlink")
+        state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        mechanical(root)
+        mech_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
+        check("src/vendor was the user's untracked file before the run" in mech_findings,
+              f"a glob surface adopted the user's nested repository: {mech_findings}")
 
         # Ignore policy is trusted environment (owner decision 2026-10-04): the host appending to a shared
         # exclude file, or a test tool writing a self-ignoring cache .gitignore, never blocks a correct run.
