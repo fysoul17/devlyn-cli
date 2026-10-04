@@ -179,7 +179,7 @@ def contract_drift(work: pathlib.Path, state: dict) -> tuple[str, str, str] | No
     worktree is only reported.
     """
     source = state.get("source") if isinstance(state.get("source"), dict) else {}
-    if source.get("type") != "spec" or "expected_sha256" not in source or not source.get("spec_path"):
+    if source.get("type") != "spec" or not source.get("spec_path"):
         return None
     spec = pathlib.Path(source["spec_path"])
     spec = spec if spec.is_absolute() else work / spec
@@ -594,6 +594,23 @@ def self_test() -> int:
         finding = read_findings(devlyn)[0]
         assert (finding["rule_id"], finding["status"]) == ("scope.finish-contract-drift", "revert-failed"), finding
         assert (work / "docs" / "spec.expected.json").read_bytes() == b'{"a": 0}\n'
+
+        # A drifted contract offends even inside the authorized surface.
+        work, devlyn = contract_fixture("contract-in-surface", None, None)
+        (devlyn / "plan.md").write_text(
+            "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## Files to touch\n\n```json\n"
+            '{"authorized_surface": ["src/app.txt", "docs/**"]}\n```\n', encoding="utf-8")
+        write_text(work / "docs" / "spec.expected.json", '{"verification_commands": []}\n')
+        assert checked_run_gate(work, devlyn) == 2 and not (work / "docs" / "spec.expected.json").exists()
+
+        # A rename never hides its source: moving an out-of-surface file into the surface offends.
+        work, devlyn, _base = make_fixture(root, "rename-into-surface")
+        git_check(work, "rm", "-q", "src/app.txt")
+        (work / "src").mkdir(exist_ok=True)
+        git_check(work, "mv", "notes.txt", "src/app.txt")
+        git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "rename")
+        assert checked_run_gate(work, devlyn) == 2
+        assert "notes.txt" in [finding["file"] for finding in read_findings(devlyn)]
 
         # A planted symlink is removed itself; its target is never touched.
         work, devlyn = contract_fixture("contract-symlink", None, None)

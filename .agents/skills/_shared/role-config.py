@@ -31,13 +31,18 @@ def unavailable(engine):
     return f"{engine}-unavailable"
 
 
+def adapter_engines(shared=SHARED):
+    """Engine names with a shipped adapter, matched exactly (README is documentation, not an engine)."""
+    return {path.stem for path in (shared / "adapters").glob("*.md")} - {"README"}
+
+
 def refusal(reason):
     """Whether `reason` is one of this module's refusals."""
     family, _, engine = reason.partition(":")
     if family == ROUTE_UNSUPPORTED:
-        return engine not in JUDGE_ROUTES and (SHARED / "adapters" / f"{engine}.md").is_file()
+        return engine in adapter_engines() and engine not in JUDGE_ROUTES
     return reason in {INVALID, UNSUPPORTED} or (
-        reason.endswith("-unavailable") and (SHARED / "adapters" / f"{reason.removesuffix('-unavailable')}.md").is_file())
+        reason.endswith("-unavailable") and reason.removesuffix("-unavailable") in adapter_engines())
 
 
 def fail(detail, reason=INVALID):
@@ -70,15 +75,16 @@ def encoded(value):
 
 
 def name(value, field):
-    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", value):
-        fail(f"{field} must be a nonempty identifier")
+    # An engine name appears in refusal reasons, so it follows their label grammar.
+    if not isinstance(value, str) or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", value):
+        fail(f"{field} must be a lowercase engine name")
     return value
 
 
 def adapter(engine, judge=False, shared=SHARED):
     name(engine, "engine")
     path = shared / "adapters" / f"{engine}.md"
-    if not path.is_file():
+    if engine not in adapter_engines(shared):
         fail(f"no adapter for {engine}")
     text = path.read_text(encoding="utf-8")
     field = "pair_judge" if judge else "executor"

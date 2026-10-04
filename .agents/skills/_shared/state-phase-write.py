@@ -345,8 +345,8 @@ def canonical_reason(reason: str) -> bool:
 
 def halt_reason(reason: str, context: str) -> bool:
     """Whether BLOCKED:<reason> closes a run halted in `context`: "phase0" (state initialized, no work
-    phase opened) or "handoff" (a phase completed and the next worker never started). The writer and
-    terminal-claim-check both decide with this, so a report the writer accepts is one TCC witnesses."""
+    phase opened) or "handoff" (a phase completed and the next worker never started). The writer
+    refuses a PHASE 0 close outside it, and terminal-claim-check witnesses both contexts with it."""
     if not canonical_reason(reason):
         return False
     refusal = role_config_module()["refusal"](reason)

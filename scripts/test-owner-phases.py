@@ -265,6 +265,13 @@ class OwnerPhases(unittest.TestCase):
         self.cli("implement", "complete", "--verdict", "FAIL")
         self.cli("verify", "spawn", "--round", "0", error="verify-admission-invalid")
 
+    def test_verify_never_opens_over_a_failed_single_phase_implement(self):
+        self.plan()
+        self.cli("plan", "complete", "--verdict", "PASS")
+        self.cli("implement", "spawn", "--round", "0", "--engine", "claude")
+        self.cli("implement", "complete", "--verdict", "FAIL")
+        self.cli("verify", "spawn", "--round", "0", error="verify-admission-invalid")
+
     def test_plan_digest_and_atomic_handoff(self):
         self.plan()
         for worker in ("implement", "probe_derive"):  # worker phases open only by complete -> render -> spawn

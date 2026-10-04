@@ -23,9 +23,8 @@ Default mode (VERIFY MECHANICAL invocation, no args):
       source.{spec_path | criteria_path}` and extracts a `## Verification`
       ```json``` block. Stage executable commands; an explicit pure-design
       contract removes stale `.devlyn/spec-verify.json` instead.
-  (4) If no json block in source AND source.type=="generated": emit
-      CRITICAL `correctness.spec-verify-malformed` so the fix-loop reruns
-      IMPLEMENT.
+  (4) A generated source always has a json block: the PHASE 0 freeze refuses
+      one without it (BLOCKED:invalid-classification) and its bytes are bound.
   (5) If no sibling/json block in source AND source.type=="spec": benchmark mode
       with a pre-staged file would have hit branch (1). Without the
       pre-staged file, benchmark falls through to no-op (rare — fixture
@@ -75,9 +74,9 @@ Exit codes:
 - 0: silent no-op (no source carrier, real-user mode) OR --check passed
   OR all commands passed. Non-blocking expected-contract findings may be
   written with exit 0.
-- 1: at least one command failed, carrier malformed (generated source
-  required carrier, generated source had invalid json/shape, or pre-staged
-  file failed shape validation), or a blocking expected-contract finding
+- 1: at least one command failed, carrier malformed (invalid json/shape in a
+  source or sibling carrier, or a pre-staged file failed shape validation),
+  or a blocking expected-contract finding
   was emitted. Findings are written to
   `.devlyn/verify-mechanical.findings.jsonl`.
 - 2: invocation error (unreadable spec-verify.json, missing markdown in
@@ -1808,8 +1807,8 @@ def sparse_absent_entries(work: Path) -> frozenset[str]:
 def observed_git(work: Path, sparse_absences: frozenset[str] = frozenset()):
     """Run Git as an observer that worktree state cannot steer.
 
-    Index flags make Git skip worktree content and caches make it trust stale state, and a
-    worker can set both. On a private copy of the index (mtime kept, so racily clean entries
+    Index flags make Git skip worktree content, caches make it trust stale state and hooks run
+    worker code, and a worker can set all three. On a private copy of the index (mtime kept, so racily clean entries
     are still content-checked) assume-unchanged is cleared everywhere and skip-worktree
     everywhere except an absent path in `sparse_absences`, the caches are off, and the real
     index is never written (reading a split index still refreshes its shared index's mtime,
@@ -1823,8 +1822,11 @@ def observed_git(work: Path, sparse_absences: frozenset[str] = frozenset()):
             shutil.copy2(index, private)
         env = {**os.environ, "GIT_INDEX_FILE": str(private), "GIT_OPTIONAL_LOCKS": "0"}
 
+        # Hooks are worker-writable and would run against the private index (post-index-change).
+        config = (*OBSERVE_CONFIG, "-c", f"core.hooksPath={Path(tmp) / 'no-hooks'}")
+
         def git(*args: str, stdin: bytes | None = None) -> bytes:
-            proc = subprocess.run(["git", *OBSERVE_CONFIG, *args], cwd=str(work), env=env, input=stdin,
+            proc = subprocess.run(["git", *config, *args], cwd=str(work), env=env, input=stdin,
                                   capture_output=True)
             if proc.returncode != 0:
                 detail = (proc.stderr or proc.stdout).decode("utf-8", "replace").strip()
@@ -1951,7 +1953,7 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
     baseline that differs from its bound digest, or ignore rules changed since
     bootstrap. Ignored content is trusted environment and is not attested.
     """
-    baseline, sparse_absences, _baseline_error = load_untracked_baseline(devlyn_dir)
+    baseline, sparse_absences, baseline_error = load_untracked_baseline(devlyn_dir)
     pathspec = ("--", ".", ":(exclude).devlyn")
     diff = ("diff", "--no-ext-diff", "--no-textconv", "--binary", "--submodule=diff", "--ignore-submodules=none")
     with observed_git(work, sparse_absences) as (git, flags):
@@ -2031,7 +2033,9 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
         verify = open_verify_span(state)
         if verify is not None and head != verify["pre_sha"]:
             problems.append(f"HEAD {head} differs from the VERIFY span's pre_sha {verify['pre_sha']}")
-    if "untracked_baseline_sha256" in state and state["untracked_baseline_sha256"] != baseline_sha:
+    if baseline_error is not None:
+        problems.append(baseline_error)
+    elif "untracked_baseline_sha256" in state and state["untracked_baseline_sha256"] != baseline_sha:
         problems.append(".devlyn/untracked.baseline differs from its bound digest")
     bound_rules = (state.get("base_ref") or {}).get("excludes_sha256")
     if bound_rules is not None and bound_rules != rules_digest(rules):
@@ -2446,9 +2450,15 @@ def seal_self_test(script_path: str) -> int:
         git("reset", "-q", "--hard", base)
 
         original_baseline = (devlyn / "untracked.baseline").read_bytes()
-        (devlyn / "untracked.baseline").write_bytes(original_baseline + b"residue.txt\n")
+        edited = loads_strict_json(original_baseline.decode("utf-8"))
+        edited["untracked"].append("residue.txt")
+        (devlyn / "untracked.baseline").write_text(json.dumps(edited), encoding="utf-8")
         mechanical()
         if not refused("an edited baseline", "untracked.baseline differs from its bound digest"):
+            return 1
+        (devlyn / "untracked.baseline").write_bytes(original_baseline + b"residue.txt\n")
+        mechanical()
+        if not refused("an unreadable baseline", "untracked.baseline: Extra data"):
             return 1
         (devlyn / "untracked.baseline").write_bytes(original_baseline)
 
@@ -5360,6 +5370,33 @@ def binding_self_test(script_path: str) -> int:
             rc, findings = sealed(root)
             check(rc == 1 and "a.txt (hidden by index flag" in findings, f"{name}: a hidden change sealed: {findings}")
 
+        # A hook the worker installs never runs inside the observer (post-index-change would re-flag the private index).
+        if os.name != "nt":
+            root, devlyn, git, state = repo("hook-reflag")
+            git("update-index", "--assume-unchanged", "a.txt")
+            (root / "a.txt").write_bytes(b"hidden\n")
+            hook = Path(git("rev-parse", "--git-path", "hooks")) / "post-index-change"
+            hook = hook if hook.is_absolute() else root / hook
+            hook.parent.mkdir(parents=True, exist_ok=True)
+            hook.write_text("#!/bin/sh\ngit update-index --assume-unchanged a.txt\n", encoding="utf-8")
+            hook.chmod(0o755)
+            rc, findings = sealed(root)
+            check(rc == 1 and "a.txt (hidden by index flag h)" in findings, f"a worker hook re-hid a change: {findings}")
+
+        # Sparse absences are part of the identity: materializing one after the snapshot, even with HEAD's
+        # bytes, changes it; a dangling symlink at an authorized absence is present, so it is a change.
+        root, devlyn, git, state = repo("sparse-materialized", setup=sparse)
+        rc, findings = sealed(root)
+        record = loads_strict_json((devlyn / SEAL_NAME).read_text(encoding="utf-8"))
+        (root / "sparse.txt").write_bytes(b"sparse.txt\n")
+        after = source_snapshot(root, devlyn, state)
+        check(rc == 0 and after[1] != record["digest"] and "sparse absences" in snapshot_changes(record["snapshot"], after[0]),
+              "materializing a sparse absence kept the sealed identity")
+        root, devlyn, git, state = repo("sparse-dangling", setup=sparse)
+        (root / "sparse.txt").symlink_to("missing-target")
+        rc, findings = sealed(root)
+        check(rc == 1 and "sparse.txt" in findings, f"a dangling symlink at a sparse absence sealed: {findings}")
+
         # A flag set and a file changed by a verification command, or after the seal, changes the identity.
         root, devlyn, git, state = repo("command-drift", cmd="git update-index --skip-worktree a.txt && printf drift > a.txt")
         rc, findings = sealed(root)
@@ -5670,9 +5707,8 @@ def main() -> int:
     #      `pipeline.state.json:source.{spec_path | criteria_path}`. If it has
     #      a json block, stage its commands or clear stale staging for an
     #      explicit pure-design contract.
-    #   4. If source has no json block AND source.type=="generated":
-    #      CRITICAL spec-verify-malformed — generated criteria must ship a
-    #      verifiable contract per the generated-criteria output contract.
+    #   4. A generated source without a json block never gets here: the
+    #      PHASE 0 freeze refuses it and its bytes are bound.
     #   5. If source has no sibling/json block AND source.type=="spec":
     #      - Real-user mode: silent no-op (preserves iter-0019.6 backward
     #        compat for handwritten specs without the carrier). Drop any

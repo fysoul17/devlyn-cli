@@ -123,7 +123,7 @@ The writer derives it; the caller never chooses it. Precedence:
 4. Verify-only mode → the current VERIFY verdict.
 5. Current VERIFY `PASS_WITH_ISSUES` or `PASS` → that verdict.
 
-`--verdict BLOCKED:<reason>` is accepted only when none of these decides — a BLOCKED phase without a derivable reason, or a halt that state does not record — and its label (text before any `:`) never names `finish-gate-unclean`, `build-env-underprovisioned` or `repair-budget-exhausted`; when evidence decides, a different supplied verdict is refused.
+`--verdict BLOCKED:<reason>` is accepted only when none of these decides — a BLOCKED phase without a derivable reason, or a halt that state does not record — it is a bare label (`judge-route-unsupported:<engine>` is the one qualified family; prose goes to `--detail`) that never names `finish-gate-unclean`, `build-env-underprovisioned` or `repair-budget-exhausted`, and before any work phase it must be a PHASE 0 halt (a role-resolution refusal, `invalid-classification` or `large-needs-ideation`); when evidence decides, a different supplied verdict is refused.
 
 ## Final-report shape
 

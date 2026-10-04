@@ -84,7 +84,7 @@ PLAN  →  IMPLEMENT  →  VERIFY (MECHANICAL gate, then fresh findings-only jud
 ```
 
 - **PLAN** runs in the owner context and freezes requirements, verification and the authorized file surface before implementation.
-- **VERIFY MECHANICAL** runs once per round in the owner context without another model invocation, using your project's real compilers, typecheckers, linters, and `spec-verify-check.py` (verification commands literal-match), then seals the exact source it checked. Auto-detects Node, Python, Go and Rust projects. Browser flows route through Chrome MCP → Playwright → curl tier.
+- **VERIFY MECHANICAL** runs once per round in the owner context without another model invocation, using your project's real compilers, typecheckers, linters, and `spec-verify-check.py` (verification commands literal-match), then seals the source Git observed for delivery (`phases/mechanical.md` lists what the seal does not attest). Auto-detects Node, Python, Go and Rust projects. Browser flows route through Chrome MCP → Playwright → curl tier.
 - **VERIFY** runs in a fresh subagent context with no code-mutation tools — findings only, structurally independent.
 - Git checkpoints at every phase for safe rollback. Fix-loop budget shared across VERIFY repairs and phase-gate retries (`--max-rounds N`, default 4).
 

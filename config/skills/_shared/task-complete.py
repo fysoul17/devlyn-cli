@@ -346,13 +346,13 @@ def bind_acceptance(receipt, path, supplied):
                 bound_digest = source.get(key.replace("_path", "_sha256"))
                 require(file_record(source_file)["sha256"] == bound_digest, "source contract differs from run binding")
                 source_path = Path(source[key])
-                expected = str(source_path.with_name("spec.expected.json") if key == "spec_path" else source_path.with_suffix(".expected.json"))
+                expected = (source_path.with_name("spec.expected.json") if key == "spec_path" else source_path.with_suffix(".expected.json")).as_posix()
                 if key == "spec_path" and "expected_sha256" in source:
                     contract = safe_path(work, expected)
                     bound = file_record(contract)["sha256"] if contract.exists() else None
                     require(bound == source["expected_sha256"], "verification contract differs from run binding")
                 if safe_path(work, expected).exists():
-                    if key == "spec_path" and relative == source[key]:
+                    if key == "spec_path":
                         committed = subprocess.run(["git", "--git-dir", receipt["common_gitdir"], "show", sha+":"+expected], capture_output=True)
                         require(committed.returncode == 0 and committed.stdout == safe_path(work, expected).read_bytes(),
                                 "verification contract changed since accepted commit")

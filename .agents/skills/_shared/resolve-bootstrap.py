@@ -270,7 +270,7 @@ def init_spec_source(
     helper = shared_dir / "spec-verify-check.py"
     expected = path.with_name("spec.expected.json")
     module = load_spec_helper(shared_dir)
-    if risk_probes and not module.extract_verification_text(raw.decode("utf-8")):
+    if risk_probes and not module.extract_verification_text(path.read_text(encoding="utf-8")):
         block("BLOCKED:invalid-flags", "--risk-probes needs the spec's <!-- devlyn:verification --> section, "
               "which PROBE_DERIVE derives every probe from")
     if expected.is_file():
@@ -339,7 +339,8 @@ def require_clean_tracked_baseline(cwd: pathlib.Path, shared_dir: pathlib.Path) 
     try:
         with helper.observed_git(cwd, helper.sparse_absent_entries(cwd)) as (git, flags):
             for args in (("diff",), ("diff", "--cached")):
-                changed += [os.fsdecode(path) for path in git(*args, "--no-renames", "--name-only", "-z").split(b"\0") if path]
+                changed += [os.fsdecode(path) for path in git(*args, "--no-renames", "--name-only", "-z",
+                                                              "--ignore-submodules=none").split(b"\0") if path]
     except (OSError, ValueError) as exc:
         block("BLOCKED:invalid-flags", str(exc))
     dirty = sorted({path for path in changed if path != ".devlyn" and not path.startswith(".devlyn/")})
