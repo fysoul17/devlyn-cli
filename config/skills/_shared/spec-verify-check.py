@@ -94,6 +94,7 @@ import hashlib
 import os
 import re
 import secrets
+import shlex
 import shutil
 import stat
 import subprocess
@@ -1205,7 +1206,7 @@ def diff_text_for_expected(work: Path, devlyn_dir: Path, state: dict,
     base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
     try:
         with observed_git(work, sparse_absences) as (git, _flags):
-            return (git("diff", *([base_sha] if base_sha else [])).decode("utf-8", "surrogateescape"), None)
+            return (git("diff", "--ignore-submodules=none", *([base_sha] if base_sha else [])).decode("utf-8", "surrogateescape"), None)
     except (OSError, ValueError) as exc:
         return ("", str(exc) or "git diff failed")
 
@@ -1508,20 +1509,6 @@ def parse_status(raw: bytes) -> tuple[list[tuple[str, str]], str | None]:
     return (entries, None)
 
 
-def current_worktree_changed_paths(work: Path, sparse_absences: frozenset[str]) -> tuple[list[str], str | None]:
-    entries, error = git_status_entries(work, sparse_absences)
-    if error:
-        return ([], error)
-    paths: list[str] = []
-    seen: set[str] = set()
-    for _status, path in entries:
-        if is_devlyn_path(path) or path in seen:
-            continue
-        paths.append(path)
-        seen.add(path)
-    return (sorted(paths), None)
-
-
 def current_untracked_files(work: Path, sparse_absences: frozenset[str]) -> tuple[set[str], str | None]:
     entries, error = git_status_entries(work, sparse_absences)
     if error:
@@ -1691,7 +1678,7 @@ def authorized_surface_findings(
                 "scope.out-of-scope-file",
                 f"{path} was the user's untracked file before the run; only an exact authorized_surface entry adopts it.",
                 path,
-                (f"Remove {path} from the commit with `git --literal-pathspecs rm -q --cached -- {path}` and keep "
+                (f"Remove {path} from the commit with `git --literal-pathspecs rm -q --cached -- {shlex.quote(path)}` and keep "
                  "the file: it is the user's. Never widen plan.md's authorized_surface to cover it."),
             ))
             seq += 1
@@ -1731,6 +1718,13 @@ def authorized_surface_findings(
 
 
 def run_print_authorized_surface(work: Path, devlyn_dir: Path) -> int:
+    """Print the changed paths the scoped checkpoint stages, NUL-separated, once every check passes.
+
+    A refusal prints nothing to stdout and exits 2, so the checkpoint pipe stages and commits nothing.
+    The commit takes the whole index, so an index entry for a user's pre-run file that no exact surface
+    entry adopts refuses; so does an exactly adopted pre-run nested repository with content its commit
+    lacks, because adoption records only that commit.
+    """
     surface, surface_error = load_authorized_surface(devlyn_dir)
     if surface_error is not None:
         print(f"[spec-verify --print-authorized-surface] {surface_error}", file=sys.stderr)
@@ -1740,13 +1734,43 @@ def run_print_authorized_surface(work: Path, devlyn_dir: Path) -> int:
     if baseline_error is not None:
         print(f"[spec-verify --print-authorized-surface] {baseline_error}", file=sys.stderr)
         return 2
-    paths, status_error = current_worktree_changed_paths(work, sparse_absences)
+    try:
+        with observed_git(work, sparse_absences) as (git, _flags):
+            entries, status_error = parse_status(git(*STATUS_ARGS))
+            indexed = git("ls-files", "-z")  # every index entry, at any stage
+    except (OSError, ValueError) as exc:
+        entries, status_error, indexed = [], str(exc) or "git failed", b""
     if status_error is not None:
-        print(f"[spec-verify --print-authorized-surface] git status failed: {status_error}", file=sys.stderr)
+        print(f"[spec-verify --print-authorized-surface] {status_error}", file=sys.stderr)
         return 2
+    refusals = [
+        f"{path} is the user's file from before the run and is in the index, which the checkpoint commits "
+        "whole; no exact authorized_surface entry adopts it. Keep the file, drop its index entry with "
+        f"`git --literal-pathspecs rm -q --cached -- {shlex.quote(path)}`, then rerun the checkpoint."
+        for path in sorted({name.decode("utf-8", "surrogateescape") for name in indexed.split(b"\0") if name})
+        if unadopted_user_path(path, baseline, surface)]
     # A user's untracked file from before the run is adopted only by an exact surface entry, never by a glob.
-    authorized_paths = [path for path in paths if path_matches_surface(path, surface)
-                        and not unadopted_user_path(path, baseline, surface)]
+    authorized_paths = [path for path in sorted({path for _status, path in entries if not is_devlyn_path(path)})
+                        if path_matches_surface(path, surface) and not unadopted_user_path(path, baseline, surface)]
+    for path in authorized_paths:
+        if path.rstrip("/") + "/" not in baseline:
+            continue
+        # An adopted pre-run nested repository is staged as a gitlink: only its commit is recorded.
+        try:
+            dirt = _child_git(work / path, "status", "--porcelain=v1", "-z", "--untracked-files=all",
+                              "--ignore-submodules=none")
+        except (OSError, ValueError) as exc:
+            refusals.append(f"cannot read the adopted nested repository {path}: {exc}")
+            continue
+        if dirt:
+            refusals.append(
+                f"the adopted nested repository {path} has content its commit lacks, and adoption records only "
+                "its commit. Commit or clean that content inside it and rerun the checkpoint, or complete "
+                "IMPLEMENT BLOCKED and report BLOCKED:adopted-repository-dirty.")
+    if refusals:
+        print("[spec-verify --print-authorized-surface] refused:\n" + "\n".join(f"- {line}" for line in refusals),
+              file=sys.stderr)
+        return 2
     if authorized_paths:
         sys.stdout.buffer.write("\0".join(authorized_paths).encode("utf-8", "surrogateescape") + b"\0")
     return 0
@@ -1796,8 +1820,31 @@ def _file_sha256(path: Path) -> str | None:
 
 
 # Git trusts cached state through these; an observer turns them off.
-OBSERVE_CONFIG = ("-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
-                  "-c", "core.ignoreStat=false", "-c", "core.splitIndex=false")
+CACHE_CONFIG = ("-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "-c", "core.commitGraph=false")
+OBSERVE_CONFIG = (*CACHE_CONFIG, "-c", "core.ignoreStat=false", "-c", "core.splitIndex=false")
+# Replacement refs would make one object stand for another; C-locale diagnostics stay recognizable.
+OBSERVE_ENV = {"GIT_OPTIONAL_LOCKS": "0", "GIT_NO_REPLACE_OBJECTS": "1", "LC_ALL": "C"}
+
+
+def _checked(proc: subprocess.CompletedProcess, name: str) -> bytes:
+    """A finished Git command's stdout. A failure raises, and so does a directory Git could not open:
+    Git warns, leaves that directory's content out and still exits 0."""
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout).decode("utf-8", "replace").strip()
+        raise ValueError(f"git {name} failed: {detail or proc.returncode}")
+    if b"could not open directory" in proc.stderr:
+        raise ValueError(f"git {name} could not open every directory: {proc.stderr.decode('utf-8', 'replace').strip()}")
+    return proc.stdout
+
+
+def _child_git(child: Path, *args: str) -> bytes:
+    """Run Git inside a nested repository under the observer's object, cache and hook controls, on its
+    own index as it is: a nested repository's index flags and ignore rules are trusted environment."""
+    env = {key: value for key, value in os.environ.items() if key != "GIT_INDEX_FILE"}
+    with tempfile.TemporaryDirectory(prefix="devlyn-child-") as tmp:
+        return _checked(subprocess.run(
+            ["git", "-C", str(child), *CACHE_CONFIG, "-c", f"core.hooksPath={Path(tmp) / 'no-hooks'}", *args],
+            env={**env, **OBSERVE_ENV}, capture_output=True), args[0])
 
 
 def _git_path(work: Path, name: str) -> Path:
@@ -1828,42 +1875,41 @@ def sparse_absent_entries(work: Path) -> frozenset[str]:
 
 @contextlib.contextmanager
 def observed_git(work: Path, sparse_absences: frozenset[str] = frozenset()):
-    """Run Git as an observer that index flags, caches and hooks cannot steer.
+    """Run Git as an observer that index flags, caches, replacement refs and hooks cannot steer.
 
-    Index flags make Git skip worktree content, caches make it trust stale state and hooks run
-    worker code, and a worker can set all three; other repository configuration is trusted. On a private copy of the index (mtime kept, so racily clean entries
-    are still content-checked) assume-unchanged is cleared everywhere and skip-worktree
-    everywhere except an absent path in `sparse_absences`, the caches are off, and the real
-    index is never written (reading a split index still refreshes its shared index's mtime,
-    Git's expiry clock, as every Git read does). Yields (git, flags): a runner returning stdout
-    bytes, and the original tag of every flagged path.
+    Index flags make Git skip worktree content, caches make it trust stale state, replacement refs
+    swap objects and hooks run worker code, and a worker can set all four; other repository
+    configuration is trusted. On a private copy of the index (mtime kept, so racily clean entries
+    are still content-checked) every stage-0 entry is rewritten, which clears assume-unchanged and
+    invalidates the cache-tree along each entry's path (an unmerged entry stays, and status reports
+    it); skip-worktree is cleared everywhere except an absent path in `sparse_absences`, the caches
+    and replacement refs are off, and the real index is never written (reading a split index still
+    refreshes its shared index's mtime, Git's expiry clock, as every Git read does). Yields
+    (git, flags): a runner returning stdout bytes, and the original tag of every flagged path.
     """
     index = _git_path(work, "index")
     with tempfile.TemporaryDirectory(prefix="devlyn-observe-") as tmp:
         private = Path(tmp) / "index"
         if index.is_file():
             shutil.copy2(index, private)
-        env = {**os.environ, "GIT_INDEX_FILE": str(private), "GIT_OPTIONAL_LOCKS": "0"}
+        env = {**os.environ, **OBSERVE_ENV, "GIT_INDEX_FILE": str(private)}
 
         # Hooks are worker-writable and would run against the private index (post-index-change).
         config = (*OBSERVE_CONFIG, "-c", f"core.hooksPath={Path(tmp) / 'no-hooks'}")
 
         def git(*args: str, stdin: bytes | None = None) -> bytes:
-            proc = subprocess.run(["git", *config, *args], cwd=str(work), env=env, input=stdin,
-                                  capture_output=True)
-            if proc.returncode != 0:
-                detail = (proc.stderr or proc.stdout).decode("utf-8", "replace").strip()
-                raise ValueError(f"git {args[0]} failed: {detail or proc.returncode}")
-            return proc.stdout
+            return _checked(subprocess.run(["git", *config, *args], cwd=str(work), env=env, input=stdin,
+                                           capture_output=True), args[0])
 
-        flags = _flag_tags(git("ls-files", "-v", "-z"))
-        cleared = (("--no-assume-unchanged", [path for path, tag in flags.items() if tag.islower()]),
-                   ("--no-skip-worktree", [path for path, tag in flags.items() if tag in "Ss"
-                                           and not (path in sparse_absences and not _present(work / path))]))
+        listing = git("ls-files", "-v", "-z")
+        flags = _flag_tags(listing)
+        cleared = (("--no-assume-unchanged", [record[2:] for record in listing.split(b"\0")
+                                              if len(record) > 2 and record[:1] not in b"Mm"]),
+                   ("--no-skip-worktree", [path.encode("utf-8", "surrogateescape") for path, tag in flags.items()
+                                           if tag in "Ss" and not (path in sparse_absences and not _present(work / path))]))
         for option, paths in cleared:
             if paths:
-                git("update-index", option, "-z", "--stdin",
-                    stdin=b"".join(path.encode("utf-8", "surrogateescape") + b"\0" for path in paths))
+                git("update-index", option, "-z", "--stdin", stdin=b"".join(path + b"\0" for path in paths))
         yield git, flags
 
 
@@ -2000,22 +2046,25 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
 
 
 def _tree_sha256(root: Path) -> str:
-    """Digest every entry under a directory (paths, modes, bytes or link text), skipping `.git`.
+    """Digest a nested repository: its tracked entries, ignore patterns notwithstanding, and its
+    nonignored untracked files (path, mode and bytes or link text, sorted), never ignored content.
 
-    Symlinks, including ones to directories, count by link text and are never followed;
-    an unreadable subtree fails the snapshot instead of silently dropping out of it.
+    A tracked entry missing on disk counts as deleted and a repository nested inside counts the
+    same way; symlinks, including ones to directories, count by link text and are never followed,
+    and an unreadable path or a listed entry of another type fails the snapshot instead of dropping out.
     """
-    def fail(error: OSError) -> None:
-        raise error
-
+    listing = _child_git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
     digest = hashlib.sha256()
-    for current, dirs, files in os.walk(root, followlinks=False, onerror=fail):
-        linked = [name for name in dirs if (Path(current) / name).is_symlink()]
-        dirs[:] = sorted(name for name in dirs if name != ".git" and name not in linked)
-        for name in sorted(files + linked):
-            path = Path(current) / name
-            digest.update(os.fsencode(str(path.relative_to(root))) + b"\0"
-                          + oct(path.lstat().st_mode).encode() + b"\0" + _entry_sha256(path).encode())
+    for name in sorted(set(listing.split(b"\0")) - {b""}):
+        path = root / name.decode("utf-8", "surrogateescape")
+        try:
+            info = path.lstat()
+        except (FileNotFoundError, NotADirectoryError):
+            record = b"deleted"
+        else:
+            content = _tree_sha256(path) if stat.S_ISDIR(info.st_mode) else _entry_sha256(path)
+            record = oct(info.st_mode).encode() + b"\0" + content.encode()
+        digest.update(name + b"\0" + record + b"\0")
     return digest.hexdigest()
 
 
@@ -2253,12 +2302,15 @@ def seal_self_test(script_path: str) -> int:
         base = git("rev-parse", "HEAD")
         (root / "keep.local").write_text("user file\n", encoding="utf-8")
         os.symlink("keep.local", root / "keep.link")
-        # A user's nested repository is one `?? vendor/lib/` directory entry to the outer Git.
+        # A user's nested repository is one `?? vendor/lib/` directory entry to the outer Git. Its own
+        # ignore rules cover build/, where it also tracks a file.
         nested = root / "vendor" / "lib"
-        nested.mkdir(parents=True)
+        (nested / "build").mkdir(parents=True)
         subprocess.run(["git", "init", "-q"], cwd=nested, check=True)
         (nested / "lib.txt").write_text("vendored\n", encoding="utf-8")
-        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "add", "-A"], cwd=nested, check=True)
+        (nested / ".gitignore").write_text("build/\n", encoding="utf-8")
+        (nested / "build" / "keep.txt").write_text("tracked\n", encoding="utf-8")
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "add", "-A", "-f"], cwd=nested, check=True)
         subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "v"], cwd=nested, check=True)
         (devlyn / "plan.md").write_text(
             "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## Files\n\n```json\n"
@@ -2409,10 +2461,6 @@ def seal_self_test(script_path: str) -> int:
         mechanical()
         if not refused("an edited baseline", "untracked.baseline differs from its bound digest"):
             return 1
-        (devlyn / "untracked.baseline").write_bytes(original_baseline + b"residue.txt\n")
-        mechanical()
-        if not refused("an unreadable baseline", "untracked.baseline: Extra data"):
-            return 1
         (devlyn / "untracked.baseline").write_bytes(original_baseline)
 
         state(pre_sha=base)
@@ -2440,11 +2488,45 @@ def seal_self_test(script_path: str) -> int:
         if not refused("a verify-only untracked change after the snapshot", "untracked keep.local"):
             return 1
         (root / "keep.local").write_text("user file\n", encoding="utf-8")
+        # A nested repository's tracked entries (an ignored-looking one included) and nonignored untracked
+        # files are reviewed; its ignored output is not, and a deletion it already had is no change.
+        for label, target in (("a verify-only change inside a nested repository", nested / "lib.txt"),
+                              ("a change to a nested tracked file its ignore rules match", nested / "build" / "keep.txt")):
+            original = target.read_bytes()
+            mechanical()
+            target.write_text("changed\n", encoding="utf-8")
+            if not refused(label, "untracked vendor/lib/"):
+                return 1
+            target.write_bytes(original)
         mechanical()
-        (nested / "lib.txt").write_text("changed inside the nested repository\n", encoding="utf-8")
-        if not refused("a verify-only change inside a nested repository", "untracked vendor/lib/"):
+        (nested / "new.txt").write_text("new\n", encoding="utf-8")
+        if not refused("a new nonignored untracked file inside a nested repository", "untracked vendor/lib/"):
             return 1
+        (nested / "new.txt").unlink()
+        mechanical()
+        (nested / "build" / "stamp").write_text("written by a check\n", encoding="utf-8")
+        if seal()[0] != 0:
+            print("ignored build output inside a reviewed nested repository blocked the seal", file=sys.stderr)
+            return 1
+        (nested / "build" / "stamp").unlink()
+        (nested / "lib.txt").unlink()
+        mechanical()
+        if seal()[0] != 0:
+            print("a deletion already inside a reviewed nested repository blocked an unchanged seal", file=sys.stderr)
+            return 1
+        mechanical()
         (nested / "lib.txt").write_text("vendored\n", encoding="utf-8")
+        if not refused("a deleted nested file restored after the snapshot", "untracked vendor/lib/"):
+            return 1
+        inner = nested / "inner"  # a repository nested inside the reviewed one is digested the same way
+        inner.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=inner, check=True)
+        (inner / "x.txt").write_text("inner\n", encoding="utf-8")
+        mechanical()
+        (inner / "x.txt").write_text("changed\n", encoding="utf-8")
+        if not refused("a change inside a repository nested in a reviewed one", "untracked vendor/lib/"):
+            return 1
+        shutil.rmtree(inner)
         (nested / "releases" / "a").mkdir(parents=True)
         (nested / "releases" / "b").mkdir()
         os.symlink("releases/a", nested / "current")
@@ -2454,11 +2536,14 @@ def seal_self_test(script_path: str) -> int:
         if not refused("a directory symlink retargeted inside a nested repository", "untracked vendor/lib/"):
             return 1
         if os.name != "nt":
-            os.mkfifo(nested / "pipe")
+            # Git never lists an untracked FIFO, so a tracked path carries this one.
+            (nested / "lib.txt").unlink()
+            os.mkfifo(nested / "lib.txt")
             mechanical()
             if not refused("a FIFO inside a reviewed nested repository", "unsupported file type"):
                 return 1
-            os.unlink(nested / "pipe")
+            os.unlink(nested / "lib.txt")
+            (nested / "lib.txt").write_text("vendored\n", encoding="utf-8")
             if os.geteuid() != 0:
                 hidden = nested / "hidden"
                 hidden.mkdir()
@@ -5261,15 +5346,16 @@ def binding_self_test(script_path: str) -> int:
             (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
             return root, devlyn, git, state
 
-        def mechanical(root: Path) -> subprocess.CompletedProcess:
+        def mechanical(root: Path, env: dict | None = None) -> subprocess.CompletedProcess:
             (root / ".devlyn" / SEAL_NAME).unlink(missing_ok=True)
             shutil.rmtree(root / ".devlyn" / "process-evidence", ignore_errors=True)
-            return subprocess.run([sys.executable, script_path], cwd=root, capture_output=True, text=True, encoding="utf-8")
+            return subprocess.run([sys.executable, script_path], cwd=root, capture_output=True, text=True, encoding="utf-8",
+                                  env=env)
 
-        def sealed(root: Path) -> tuple[int, str]:
-            mechanical(root)
+        def sealed(root: Path, env: dict | None = None) -> tuple[int, str]:
+            mechanical(root, env)
             proc = subprocess.run([sys.executable, script_path, "--seal"], cwd=root, capture_output=True, text=True,
-                                  encoding="utf-8")
+                                  encoding="utf-8", env=env)
             findings = root / ".devlyn" / FINDINGS_NAME
             return proc.returncode, findings.read_text(encoding="utf-8") if findings.is_file() else ""
 
@@ -5331,10 +5417,199 @@ def binding_self_test(script_path: str) -> int:
             hook = Path(git("rev-parse", "--git-path", "hooks")) / "post-index-change"
             hook = hook if hook.is_absolute() else root / hook
             hook.parent.mkdir(parents=True, exist_ok=True)
-            hook.write_text("#!/bin/sh\ngit update-index --assume-unchanged a.txt\n", encoding="utf-8")
+            hook.write_text('#!/bin/sh\n[ -n "$DEVLYN_REFLAGGED" ] && exit 0\n'
+                            "DEVLYN_REFLAGGED=1 git update-index --assume-unchanged a.txt\n", encoding="utf-8")
             hook.chmod(0o755)
             rc, findings = sealed(root)
             check(rc == 1 and "a.txt (hidden by index flag h)" in findings, f"a worker hook re-hid a change: {findings}")
+
+        # Objects are read as stored: a replacement ref or a forged commit-graph entry for base or HEAD never
+        # hides a committed change from the scope check or the seal.
+        def replace(root: Path, git, commit: str, tree: str) -> None:
+            git("replace", commit, git("commit-tree", tree, "-m", "forged"))
+
+        def forge_graph(root: Path, git, commit: str, tree: str) -> None:
+            """Overwrite `commit`'s root-tree OID in a freshly written commit-graph."""
+            git("commit-graph", "write", "--reachable")
+            graph = _git_path(root, "objects/info/commit-graph")
+            data = bytearray(graph.read_bytes())
+            chunks = {bytes(data[8 + 12 * i:12 + 12 * i]): int.from_bytes(data[12 + 12 * i:20 + 12 * i], "big")
+                      for i in range(data[6])}
+            count = int.from_bytes(data[chunks[b"OIDF"] + 1020:chunks[b"OIDF"] + 1024], "big")
+            oids = [bytes(data[chunks[b"OIDL"] + 20 * i:chunks[b"OIDL"] + 20 * i + 20]) for i in range(count)]
+            at = chunks[b"CDAT"] + 36 * oids.index(bytes.fromhex(commit))
+            data[at:at + 20] = bytes.fromhex(tree)
+            graph.chmod(0o644)
+            graph.write_bytes(data)
+
+        for forge in (replace, forge_graph):
+            root, devlyn, git, state = repo(f"{forge.__name__}-base")
+            (root / "b.txt").write_bytes(b"outside the surface\n")
+            git("commit", "-q", "-am", "worker")
+            forge(root, git, state["base_ref"]["sha"], git("rev-parse", "HEAD^{tree}"))
+            (root / "a.txt").write_bytes(b"checkpoint\n")
+            git("commit", "-q", "-am", "checkpoint")
+            state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
+            (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+            rc, findings = sealed(root)
+            check("b.txt is outside PLAN's declared authorized_surface" in findings,
+                  f"{forge.__name__}: a forged base hid a committed change: {findings}")
+            root, devlyn, git, state = repo(f"{forge.__name__}-head")
+            (root / "a.txt").write_bytes(b"BAD\n")
+            git("commit", "-q", "-am", "checkpoint")
+            (root / "a.txt").write_bytes(b"GOOD\n")
+            git("add", "a.txt")
+            forge(root, git, git("rev-parse", "HEAD"), git("write-tree"))
+            state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
+            (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+            rc, findings = sealed(root)
+            check(rc == 1 and "tracked or staged changes: a.txt" in findings,
+                  f"{forge.__name__}: a forged HEAD sealed bytes it does not hold: {findings}")
+
+        def checkpoint(root: Path) -> subprocess.CompletedProcess:
+            """The documented scoped checkpoint: printer piped into staging under pipefail, then the commit."""
+            pipe = subprocess.run(["bash", "-o", "pipefail", "-c",
+                                   f"{shlex.quote(sys.executable)} {shlex.quote(script_path)} --print-authorized-surface"
+                                   " | git --literal-pathspecs add --pathspec-from-file=- --pathspec-file-nul"],
+                                  cwd=root, capture_output=True, text=True, encoding="utf-8")
+            return pipe if pipe.returncode else subprocess.run(
+                ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "x"], cwd=root,
+                capture_output=True, text=True, encoding="utf-8")
+
+        def index_layout(data: bytes) -> tuple[dict[bytes, tuple[int, int]], int, dict[bytes, bytes]]:
+            """A version 2 or 3 index: each entry's (start, end) by path, where entries end, its extensions."""
+            entries, offset = {}, 12
+            for _ in range(int.from_bytes(data[8:12], "big")):
+                flags = int.from_bytes(data[offset + 60:offset + 62], "big")
+                header, length = 62 + 2 * bool(flags & 0x4000), flags & 0xFFF
+                end = offset + ((header + length + 8) & ~7)
+                entries[data[offset + header:offset + header + length]] = (offset, end)
+                offset = end
+            end, extensions = offset, {}
+            while offset < len(data) - 20:
+                size = int.from_bytes(data[offset + 4:offset + 8], "big")
+                extensions[data[offset:offset + 4]] = data[offset:offset + 8 + size]
+                offset += 8 + size
+            return entries, end, extensions
+
+        def write_index(index: Path, body: bytes) -> None:
+            index.write_bytes(body + hashlib.sha1(body).digest())
+
+        # A forged cache-tree (the index's TREE) lets the documented checkpoint commit BAD while index and
+        # worktree hold GOOD; the observer rewrites every stage-0 entry, so the seal sees the difference.
+        def forge_tree(root: Path, git, path: str) -> None:
+            """Stage BAD and write the cache-tree, then splice in a GOOD entry built in a copy, keeping TREE."""
+            index, target = _git_path(root, "index"), root / path
+            target.write_bytes(b"BAD\n")
+            git("add", path)
+            git("write-tree")
+            donor = index.with_name("donor-index")
+            shutil.copy2(index, donor)
+            target.write_bytes(b"GOOD\n")
+            past = target.stat().st_mtime - 60  # older than the index, so staging trusts the spliced entry
+            os.utime(target, (past, past))
+            subprocess.run(["git", "add", path], cwd=root, env={**os.environ, "GIT_INDEX_FILE": str(donor)}, check=True)
+            data, spliced = index.read_bytes(), donor.read_bytes()
+            (start, end), (donor_start, donor_end) = (index_layout(data)[0][path.encode()],
+                                                      index_layout(spliced)[0][path.encode()])
+            write_index(index, data[:start] + spliced[donor_start:donor_end] + data[end:-20])
+            donor.unlink()
+
+        def tracked_tree(root: Path, git) -> None:
+            for name_ in ("src/a.py", "u/c.txt"):
+                (root / name_).parent.mkdir()
+                (root / name_).write_bytes(b"base\n")
+            git("add", "-A")
+            git("commit", "-q", "-m", "trees")
+
+        for name, path in (("forged-root-tree", "a.txt"), ("forged-subtree", "src/a.py")):
+            root, devlyn, git, state = repo(name, setup=tracked_tree)
+            (devlyn / "plan.md").write_text("<!-- devlyn:authorized-surface -->\n## Files\n```json\n"
+                                            + json.dumps({"authorized_surface": ["a.txt", "src/**"]}) + "\n```\n",
+                                            encoding="utf-8")
+            forge_tree(root, git, path)
+            if path != "a.txt":
+                (root / "a.txt").write_bytes(b"in-surface edit\n")
+            committed = checkpoint(root)
+            state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
+            (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+            index = _git_path(root, "index")
+            before = index.read_bytes()
+            rc, findings = sealed(root)
+            check(committed.returncode == 0 and git("show", f"HEAD:{path}") == "BAD" and rc == 1
+                  and f"tracked or staged changes: {path}" in findings and index.read_bytes() == before,
+                  f"{name}: a forged cache-tree sealed or observing wrote the index: {committed.stderr} {findings}")
+
+        # Rewriting stage-0 entries reaches no index portion without one; a TREE forged from HEAD still never
+        # seals an empty index or a conflict-only index (Git aborts on the mismatch, an explicit refusal), and
+        # a subtree holding only unmerged entries is reported as it is.
+        def forge_index(root: Path, git, entries: str) -> None:
+            """Give the real index these index-info entries and a TREE extension forged from HEAD's tree."""
+            index = _git_path(root, "index")
+            scratch = index.with_name("forged-index")
+            env = {**os.environ, "GIT_INDEX_FILE": str(scratch)}
+            subprocess.run(["git", "read-tree", "--empty"], cwd=root, env=env, check=True)
+            subprocess.run(["git", "update-index", "--index-info"], cwd=root, env=env, input=entries.encode(), check=True)
+            git("read-tree", "HEAD")
+            forged = scratch.read_bytes()
+            write_index(index, forged[:index_layout(forged)[1]] + index_layout(index.read_bytes())[2][b"TREE"])
+            scratch.unlink()
+
+        def unmerged(git, path: str) -> str:
+            return "".join(f"100644 {git('rev-parse', f'HEAD:{blob}')} {stage}\t{path}\n"
+                           for stage, blob in ((1, "a.txt"), (2, "b.txt"), (3, "sparse.txt")))
+
+        for name, entries, reported in (
+                ("empty-index", lambda git: "", None),
+                ("conflict-only-index", lambda git: unmerged(git, "a.txt"), None),
+                ("unmerged-subtree", lambda git: "".join(f"100644 {git('rev-parse', f'HEAD:{tracked}')} 0\t{tracked}\n"
+                                                         for tracked in (".gitignore", "a.txt", "b.txt", "sparse.txt",
+                                                                         "src/a.py")) + unmerged(git, "u/c.txt"),
+                 "tracked or staged changes: u/c.txt")):
+            root, devlyn, git, state = repo(name, setup=tracked_tree)
+            forge_index(root, git, entries(git))
+            index = _git_path(root, "index")
+            before = index.read_bytes()
+            rc, findings = sealed(root)
+            check(rc == 1 and "scope.unsealed-source" in findings and index.read_bytes() == before
+                  and (reported is None or (reported in findings and "snapshot failed" not in findings)),
+                  f"{name}: a forged TREE over an index portion without stage-0 entries sealed: {findings}")
+
+        # Rewriting every stage-0 entry keeps what each one means: intent-to-add stays intent-to-add.
+        root, devlyn, git, state = repo("intent-to-add")
+        (root / "new.txt").write_bytes(b"new\n")
+        git("add", "-N", "new.txt")
+        index = _git_path(root, "index")
+        before = index.read_bytes()
+        entries, error = git_status_entries(root)
+        check(error is None and (" A", "new.txt") in entries and index.read_bytes() == before,
+              f"observing changed an intent-to-add entry: {entries} {error}")
+
+        # Git skips a directory it cannot open and still exits 0; observing refuses instead, under any caller
+        # locale, at baseline writing and at MECHANICAL and the seal, while a readable directory passes.
+        if os.name != "nt" and os.geteuid() != 0:
+            korean = {**os.environ, "LANG": "ko_KR.UTF-8", "LC_ALL": "ko_KR.UTF-8"}
+
+            def user_dir(root: Path, git) -> None:
+                (root / "residue").mkdir()
+                (root / "residue" / "draft.txt").write_bytes(b"the user's\n")
+            root, devlyn, git, state = repo("unlistable", setup=user_dir)
+            for mode in (0o755, 0o000, 0o111):
+                (root / "residue").chmod(mode)
+                try:
+                    baseline = subprocess.run([sys.executable, script_path, "--write-untracked-baseline"], cwd=root,
+                                              env=korean, capture_output=True, text=True, encoding="utf-8")
+                    rc, findings = sealed(root, korean)
+                finally:
+                    (root / "residue").chmod(0o755)
+                if mode == 0o755:
+                    check(baseline.returncode == 0 and rc == 0, f"a readable directory failed: {baseline.stderr} {findings}")
+                else:
+                    needle = "could not open directory 'residue/'"
+                    check(baseline.returncode == 2 and needle in baseline.stderr and rc == 1 and needle in findings,
+                          f"a mode {mode:o} directory dropped out of the observation: {baseline.stderr} {findings}")
+        else:
+            print("SKIP unlistable-directory bindings: permission fixtures need a non-root POSIX user", file=sys.stderr)
 
         # Sparse absences are part of the identity: materializing one after the snapshot, even with HEAD's
         # bytes, changes it; a dangling symlink at an authorized absence is present, so it is a change.
@@ -5420,32 +5695,40 @@ def binding_self_test(script_path: str) -> int:
         rc, findings = sealed(root)
         check(rc == 0 and not (root / "outside" / "x.txt").exists(), f"a sparse-index checkout did not seal: {findings}")
 
-        # Committing a user's pre-run file through a glob surface is a scope finding, however it was staged.
+        # Committing a user's pre-run file through a glob surface is a scope finding, however it was staged; the
+        # hint's command, run by a shell as printed, drops exactly that index entry (a bracket is no glob).
         def committed_user_file(root: Path, git) -> None:
             (root / "src").mkdir()
-            (root / "src" / "user.txt").write_bytes(b"the user's draft\n")
+            (root / "src" / "i.txt").write_bytes(b"tracked\n")
+            git("add", "src/i.txt"); git("commit", "-q", "-m", "tracked")
+            (root / "src" / "[id].txt").write_bytes(b"the user's draft\n")
         root, devlyn, git, state = repo("adoption-committed", setup=committed_user_file)
         (devlyn / "plan.md").write_text("<!-- devlyn:authorized-surface -->\n## Files\n```json\n"
                                         + json.dumps({"authorized_surface": ["src/**"]}) + "\n```\n", encoding="utf-8")
-        git("add", "src/user.txt"); git("commit", "-q", "-m", "swept in")
+        git("--literal-pathspecs", "add", "src/[id].txt"); git("commit", "-q", "-m", "swept in")
         state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
         (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
         mechanical(root)
         mech_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
         check("was the user's untracked file before the run" in mech_findings,
               f"a glob surface adopted a committed user file: {mech_findings}")
+        hints = [loads_strict_json(line)["fix_hint"] for line in mech_findings.splitlines() if "src/[id].txt was the user's" in line]
+        command = re.search(r"`([^`]+)`", hints[0]).group(1) if hints else "false"
+        hinted = subprocess.run(["bash", "-c", command], cwd=root, capture_output=True, text=True, encoding="utf-8")
+        check(hinted.returncode == 0 and git("ls-files", "src") == "src/i.txt",
+              f"the hint's command did not drop exactly the user's index entry: {command} {hinted.stderr}")
 
         # A user's untracked file from before the run is staged only by an exact surface entry.
         def user_file(root: Path, git) -> None:
             (root / "src").mkdir()
             (root / "src" / "user.txt").write_bytes(b"the user's draft\n")
         root, devlyn, git, state = repo("adoption", setup=user_file)
-        def staged_paths(surface: list[str]) -> list[str]:
+        def print_surface(surface: list[str]) -> subprocess.CompletedProcess:
             (devlyn / "plan.md").write_text("<!-- devlyn:authorized-surface -->\n## Files\n```json\n"
                                             + json.dumps({"authorized_surface": surface}) + "\n```\n", encoding="utf-8")
-            out = subprocess.run([sys.executable, script_path, "--print-authorized-surface"], cwd=root,
-                                 capture_output=True).stdout
-            return [path.decode() for path in out.split(b"\0") if path]
+            return subprocess.run([sys.executable, script_path, "--print-authorized-surface"], cwd=root, capture_output=True)
+        def staged_paths(surface: list[str]) -> list[str]:
+            return [path.decode() for path in print_surface(surface).stdout.split(b"\0") if path]
         check(staged_paths(["src/**"]) == [], "a glob surface adopted the user's untracked file")
         check(staged_paths(["src/user.txt"]) == ["src/user.txt"], "an exact surface entry did not adopt the user's file")
 
@@ -5480,6 +5763,87 @@ def binding_self_test(script_path: str) -> int:
             mech_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
             check("src/vendor" not in mech_findings, f"exact entry {spelling!r} still flagged the adopted repository: {mech_findings}")
 
+        # Adoption records only a nested repository's commit, so content outside it refuses before anything is
+        # printed; the child's own ignore rules and index flags stay trusted.
+        def nested_files(root: Path, git) -> None:
+            vendor = root / "src" / "vendor"
+            vendor.mkdir(parents=True)
+            (vendor / ".gitignore").write_bytes(b"build/\n")
+            (vendor / "lib.txt").write_bytes(b"v1\n")
+            for args in (("init", "-q"), ("add", "-A"), ("commit", "-q", "-m", "vendor")):
+                subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=vendor, check=True,
+                               capture_output=True)
+        for index, spelling in enumerate(("src/vendor", "src/vendor/")):
+            root, devlyn, git, state = repo(f"adoption-dirty-{index}", setup=nested_files)
+            vendor = root / "src" / "vendor"
+
+            def child(*args: str) -> None:
+                subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=vendor, check=True,
+                               capture_output=True)
+
+            def refuses(label: str, needle: bytes) -> None:
+                proc = print_surface([spelling])
+                check(proc.returncode == 2 and not proc.stdout and b"src/vendor" in proc.stderr and needle in proc.stderr,
+                      f"{spelling!r}: {label} in the adopted repository was not refused: {proc.stdout!r} {proc.stderr!r}")
+            (vendor / "build").mkdir()
+            (vendor / "build" / "out.o").write_bytes(b"ignored\n")
+            child("update-index", "--assume-unchanged", "lib.txt")
+            (vendor / "lib.txt").write_bytes(b"hidden by the child's own flag\n")
+            check(staged_paths([spelling]) == ["src/vendor/"], f"{spelling!r}: trusted child content refused adoption")
+            child("update-index", "--no-assume-unchanged", "lib.txt")
+            refuses("a tracked modification", b"BLOCKED:adopted-repository-dirty")
+            child("checkout", "--", "lib.txt")
+            (vendor / "new.txt").write_bytes(b"new\n")
+            child("add", "new.txt")
+            refuses("a staged file", b"BLOCKED:adopted-repository-dirty")
+            child("rm", "-q", "--cached", "new.txt")
+            refuses("an untracked file", b"BLOCKED:adopted-repository-dirty")
+            (vendor / "new.txt").unlink()
+            (vendor / ".git" / "index").write_bytes(b"not an index")
+            refuses("a failing git status", b"cannot read the adopted nested repository src/vendor/: git status failed: fatal:")
+
+        # The checkpoint commits the whole index, so while the index holds a user's pre-run file no exact entry
+        # adopts, the printer refuses before printing anything; its quoted remedies keep the files, and the rerun
+        # commits the authorized work.
+        user_names = ("src/[id].txt", "src/my draft.txt", "src/it's.txt", "src/adopted.txt", "src/committed.txt", "notes.txt")
+
+        def user_files(root: Path, git) -> None:
+            (root / "src").mkdir()
+            (root / "src" / "i.txt").write_bytes(b"tracked\n")
+            git("add", "src/i.txt"); git("commit", "-q", "-m", "tracked")
+            for name_ in user_names:
+                (root / name_).write_bytes(f"the user's {name_}\n".encode())
+        root, devlyn, git, state = repo("checkpoint-refusal", setup=user_files)
+        (devlyn / "plan.md").write_text("<!-- devlyn:authorized-surface -->\n## Files\n```json\n"
+                                        + json.dumps({"authorized_surface": ["a.txt", "src/**", "src/adopted.txt"]})
+                                        + "\n```\n", encoding="utf-8")
+        git("--literal-pathspecs", "add", "src/committed.txt"); git("commit", "-q", "-m", "worker's own commit")
+        (root / "a.txt").write_bytes(b"authorized\n")
+        git("--literal-pathspecs", "add", *[name_ for name_ in user_names if name_ != "src/committed.txt"])
+        index = _git_path(root, "index")
+
+        def tree_state() -> tuple:
+            return git("rev-parse", "HEAD"), index.read_bytes(), [(root / name_).read_bytes() for name_ in user_names]
+        before = tree_state()
+        printer = subprocess.run([sys.executable, script_path, "--print-authorized-surface"], cwd=root,
+                                 capture_output=True, text=True, encoding="utf-8")
+        refused_checkpoint = checkpoint(root)
+        offenders = sorted(set(user_names) - {"src/adopted.txt"})
+        remedies = re.findall(r"`(git --literal-pathspecs rm -q --cached -- [^`]+)`", printer.stderr)
+        check(printer.returncode == 2 and printer.stdout == "" and "src/adopted.txt" not in printer.stderr
+              and remedies == [f"git --literal-pathspecs rm -q --cached -- {shlex.quote(name_)}" for name_ in offenders],
+              f"the printer did not refuse every unadopted indexed user file: {printer.stdout!r} {printer.stderr}")
+        check(refused_checkpoint.returncode != 0 and tree_state() == before,
+              f"a refused checkpoint committed, staged or changed bytes: {refused_checkpoint.stderr}")
+        for remedy in remedies:
+            ran = subprocess.run(["bash", "-c", remedy], cwd=root, capture_output=True, text=True, encoding="utf-8")
+            check(ran.returncode == 0, f"a printed remedy failed: {remedy} {ran.stderr}")
+        rerun = checkpoint(root)
+        tracked = git("ls-files", "-z").split("\0")
+        check(rerun.returncode == 0 and git("show", "HEAD:a.txt") == "authorized" and "src/adopted.txt" in tracked
+              and "src/i.txt" in tracked and not set(offenders) & set(tracked) and tree_state()[2] == before[2],
+              f"remedy and rerun did not commit the authorized work and keep the user's files: {rerun.stderr} {tracked}")
+
         # Ignore policy is trusted environment (owner decision 2026-10-04): the host appending to a shared
         # exclude file, or a test tool writing a self-ignoring cache .gitignore, never blocks a correct run.
         root, devlyn, git, state = repo("host-append")
@@ -5503,6 +5867,34 @@ def binding_self_test(script_path: str) -> int:
         root, devlyn, git, state = repo("verify-only-ignore", mode="verify-only", setup=added_ignore)
         rc, findings = sealed(root)
         check(rc == 0, f"a verify-only tree with a .gitignore did not seal: {findings}")
+
+        # A committed `ignore = all` hides a gitlink bump from plain Git only: the scope check, forbidden files,
+        # the judges' diff and forbidden patterns all see the out-of-surface pointer.
+        def ignored_submodule(root: Path, git) -> None:
+            source = Path(tmp) / "submodule-source"
+            source.mkdir()
+            for args in (("init", "-q"), ("commit", "-q", "--allow-empty", "-m", "v1")):
+                subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=source, check=True,
+                               capture_output=True)
+            git("-c", "protocol.file.allow=always", "submodule", "add", "-q", str(source), "sub")
+            git("config", "-f", ".gitmodules", "submodule.sub.ignore", "all")
+            git("add", ".gitmodules"); git("commit", "-q", "-m", "submodule")
+        root, devlyn, git, state = repo("ignored-gitlink", setup=ignored_submodule)
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "v2"],
+                       cwd=root / "sub", check=True, capture_output=True)
+        git("add", "sub"); git("commit", "-q", "-m", "bump")
+        scope, _seq = authorized_surface_findings(root, devlyn, state, 1)
+        forbidden, _seq = expected_contract_findings({"forbidden_files": ["sub"]}, None, root, devlyn, state, 1)
+        diff_text, diff_error = diff_text_for_expected(root, devlyn, state)
+        patterns, _seq = expected_contract_findings({"forbidden_patterns": [
+            {"pattern": "Subproject commit", "description": "a gitlink bump", "severity": "disqualifier"}]},
+            None, root, devlyn, state, 1)
+        check([finding["file"] for finding in scope if finding["rule_id"] == "scope.out-of-scope-file"] == ["sub"]
+              and [finding["rule_id"] for finding in forbidden] == ["scope.forbidden-file-touched"],
+              f"an ignore = all gitlink bump escaped scope or forbidden_files: {scope} {forbidden}")
+        check(diff_error is None and "Subproject commit" in diff_text
+              and [finding["rule_id"] for finding in patterns] == ["correctness.forbidden-pattern"],
+              f"an ignore = all gitlink bump escaped the judges' diff or forbidden_patterns: {diff_error} {patterns}")
     if failures:
         print("binding self-test failed:\n  " + "\n  ".join(failures), file=sys.stderr)
         return 1
