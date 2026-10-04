@@ -1467,7 +1467,7 @@ def path_matches_surface(path: str, surface: list[str]) -> bool:
                 prefix = expanded[:-3].rstrip("/")
                 if path == prefix or path.startswith(f"{prefix}/"):
                     return True
-            elif path == expanded:
+            elif path.rstrip("/") == expanded.rstrip("/"):  # a nested repository: `dir/` untracked, `dir` as a gitlink
                 return True
     return False
 
@@ -5469,6 +5469,16 @@ def binding_self_test(script_path: str) -> int:
         mech_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
         check("src/vendor was the user's untracked file before the run" in mech_findings,
               f"a glob surface adopted the user's nested repository: {mech_findings}")
+        # An exact entry, with or without the slash, adopts it through printing, staging, commit and MECHANICAL.
+        for index, spelling in enumerate(("src/vendor", "src/vendor/")):
+            root, devlyn, git, state = repo(f"adoption-nested-exact-{index}", setup=nested_repo)
+            check(staged_paths([spelling]) == ["src/vendor/"], f"exact entry {spelling!r} did not stage the nested repository")
+            git("add", "src/vendor"); git("commit", "-q", "-m", "adopted")
+            state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
+            (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+            mechanical(root)
+            mech_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
+            check("src/vendor" not in mech_findings, f"exact entry {spelling!r} still flagged the adopted repository: {mech_findings}")
 
         # Ignore policy is trusted environment (owner decision 2026-10-04): the host appending to a shared
         # exclude file, or a test tool writing a self-ignoring cache .gitignore, never blocks a correct run.

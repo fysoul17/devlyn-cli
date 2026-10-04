@@ -585,6 +585,19 @@ def self_test() -> int:
         assert checked_run_gate(work, devlyn) == 2
         assert (vendor / ".git").exists()
         assert [(f["file"], f["status"]) for f in read_findings(devlyn)] == [("src/vendor", "retained")]
+        # An exact entry, either spelling, adopts it.
+        for index, spelling in enumerate(("src/vendor", "src/vendor/")):
+            work, devlyn, _base = make_fixture(root, f"user-repo-adopted-{index}")
+            write_text(devlyn / "plan.md", "# PLAN\n\n<!-- devlyn:authorized-surface -->\n## Files to touch\n\n```json\n"
+                                           + json.dumps({"authorized_surface": [spelling]}) + "\n```\n")
+            vendor = work / "src" / "vendor"
+            vendor.mkdir(parents=True)
+            git_check(vendor, "init", "-q")
+            git_check(vendor, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "vendor")
+            write_text(devlyn / "untracked.baseline", json.dumps({"untracked": ["src/vendor/"], "sparse_absences": []}) + "\n")
+            git_check(work, "add", "src/vendor")
+            git_check(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "gitlink")
+            assert checked_run_gate(work, devlyn) == 0, read_findings(devlyn)
 
         # Paths are literal: an offender under app/[slug]/ never touches app/s/.
         work, devlyn, _base = make_fixture(root, "literal-paths")
