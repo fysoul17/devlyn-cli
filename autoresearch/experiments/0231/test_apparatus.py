@@ -146,6 +146,20 @@ class Binding(unittest.TestCase):
         self.assertEqual((recorded['completeness'], recorded['output_tokens']), ('PARTIAL', 3 + 7))
         self.assertIn('dispatched claude primary_judge r0 left no result', ' | '.join(recorded['gaps']))
 
+    def test_an_older_run_does_not_mask_a_newer_runs_missing_result(self):
+        devlyn = self.out / 'cell/work/.devlyn'
+        older = devlyn / 'runs/R1'
+        older.mkdir(parents=True)
+        for folder, run in ((older, 'R1'), (devlyn, 'R2')):
+            (folder / 'pipeline.state.json').write_text(json.dumps(dict(run_id=run)))
+            (folder / 'verify-judge.r0.dispatch.json').write_text(json.dumps(dict(roles=dict(
+                primary_judge=dict(decision='dispatch', engine='claude')))))
+        (older / 'claude-judge.r0.output.json').write_text(json.dumps(dict(type='result', session_id='J1',
+                                                                           modelUsage={'claude-opus-5-5': dict(outputTokens=7)})))
+        gaps = self.gaps()
+        self.assertIn('run R2: dispatched claude primary_judge r0 left no result', gaps)
+        self.assertNotIn('run R1', gaps)
+
     def test_rollout_counters_must_all_agree(self):
         self.judge('S1', '67')
         self.trace('S1')
@@ -193,6 +207,24 @@ class Identity(unittest.TestCase):
         result = self.cell.identity(self.out, self.codex_cell('gpt-6-astra', 'low'))
         self.assertEqual(result['status'], 'MISMATCH')
         self.assertTrue(any(v.startswith('worker WRK ran gpt-6-astra/low') for v in result['violations']), result['violations'])
+
+    def test_an_inference_on_another_model_is_a_mismatch(self):
+        plan = self.codex_cell('gpt-6-sol', 'high')
+        shutil.rmtree(self.out / 'cell/trace')
+        (self.out / 'cell/trace').mkdir()
+        events, payloads = self.configured('OWN', 'OWN', 'gpt-6-astra', 'high')
+        write_trace(self.out / 'cell/trace', 'OWN', [*events, *inference('c1', 'OWN', model='gpt-6-sol')],
+                    dict(payloads, **{'r.json': dict(token_usage=USAGE)}))
+        events, payloads = self.configured('WRK', 'WRK', 'gpt-6-sol', 'high')
+        write_trace(self.out / 'cell/trace', 'WRK', events, payloads)
+        self.assertTrue(any('owner inference c1 ran gpt-6-sol' in v for v in self.cell.identity(self.out, plan)['violations']))
+
+    def test_a_lost_owner_trace_falls_back_to_its_rollout(self):
+        plan = self.codex_cell('gpt-6-sol', 'high')
+        shutil.rmtree(self.out / 'cell/trace/trace-t-OWN')
+        (self.out / 'home/.codex/sessions/own.jsonl').write_text(json.dumps(dict(type='session_meta', payload=dict(id='OWN'))) + '\n'
+            + json.dumps(dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='high'))) + '\n')
+        self.assertEqual(self.cell.identity(self.out, plan)['status'], 'MATCH')
 
     def test_an_unbound_codex_process_is_a_mismatch(self):
         plan = self.codex_cell('gpt-6-sol', 'high')
@@ -363,6 +395,25 @@ class Decision(unittest.TestCase):
         with self.assertRaises(ValueError):
             decide.main(self.out, self.out / 'decisions.json')
 
+    def test_a_reproduced_defect_needs_its_witness_applied_to_the_paired_control(self):
+        self.write(wall=dict(control=100, candidate=60), output=dict(control=100, candidate=60))
+        candidate, control = next(c for c in decide.CELLS if c[2] == 'candidate'), None
+        control = next(c for c in decide.CELLS if c[1:4:2] == candidate[1:4:2] and c[2] == 'control' and c[4] == candidate[4])
+        verdict = json.loads((self.out / f'verdict-{candidate[0]}.json').read_text())
+        verdict['assessments'] = [dict(route=dict(engine='codex'), complete=False, severe=1, severe_findings=[dict(severity='HIGH')])]
+        (self.out / f'verdict-{candidate[0]}.json').write_text(json.dumps(verdict))
+        decisions = json.loads((self.out / 'decisions.json').read_text())
+        decisions['severe'] = {candidate[0]: {'codex:0': dict(disposition='reproduced')}}
+        (self.out / 'decisions.json').write_text(json.dumps(decisions))
+        with self.assertRaises(ValueError):  # a reproduced finding without a witness
+            decide.main(self.out, self.out / 'decisions.json')
+        decisions['severe'][candidate[0]]['codex:0']['witness'] = 'W1'
+        for trees, outcome in (({candidate[0]: True}, 'REJECTED'), ({candidate[0]: True, control[0]: False}, 'REJECTED'),
+                               ({candidate[0]: True, control[0]: True}, 'ADOPTED')):
+            decisions['witnesses'] = {'W1': trees}
+            (self.out / 'decisions.json').write_text(json.dumps(decisions))
+            self.assertEqual(decide.main(self.out, self.out / 'decisions.json')['configs'][candidate[3]]['outcome'], outcome, trees)
+
     def test_a_stop_row_blocks_the_computation(self):
         self.write()
         first = decide.CELLS[0][0]
@@ -394,9 +445,53 @@ class Quota(unittest.TestCase):
 class Assessor(unittest.TestCase):
     def test_an_invalid_answer_is_no_verdict(self):
         assess = load('assess')
-        for answer in ('{}', '{"complete": "unknown"}', '{"complete": true, "findings": "none"}', 'no json'):
+        for answer in ('{}', '{"complete": true}', '{"complete": "unknown"}', '{"complete": true, "findings": "none"}', 'no json'):
             self.assertIsNone(assess.valid(answer), answer)
         self.assertEqual(assess.valid('{"complete": false, "findings": [{"severity": "HIGH"}]}')['complete'], False)
+
+
+    def test_uncertain_container_teardown_raises(self):
+        assess = load('assess')
+        daemon_down = subprocess.CompletedProcess([], 1, '', 'Cannot connect to the Docker daemon')
+        original = assess.subprocess.run
+        assess.subprocess.run = lambda *a, **k: daemon_down
+        try:
+            with self.assertRaises(RuntimeError):
+                assess.reap('devlyn-0231-assess-x')
+        finally:
+            assess.subprocess.run = original
+
+
+class Venue(unittest.TestCase):
+    """Preflight and evidence collection fail closed and visibly."""
+
+    def setUp(self):
+        self.run_cell = load('run_cell')
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root)
+        (self.root / 'auth').mkdir()
+        (self.root / 'auth/codex.json').write_text('{}')
+
+    def test_a_timed_out_limit_probe_is_unavailable_evidence_and_is_reaped(self):
+        reaped, original_run, original_reap = [], self.run_cell.subprocess.run, self.run_cell.assess.reap
+        def timeout(*a, **k):
+            raise subprocess.TimeoutExpired(a[0], 180)
+        self.run_cell.subprocess.run, self.run_cell.assess.reap = timeout, reaped.append
+        try:
+            limits = self.run_cell.codex_limits(dict(auth=str(self.root / 'auth'), scratch=str(self.root), image='x'))
+        finally:
+            self.run_cell.subprocess.run, self.run_cell.assess.reap = original_run, original_reap
+        self.assertEqual((limits, len(reaped)), ({}, 1))
+
+    def test_collection_and_verdict_write_failures_are_explicit(self):
+        out = self.root / 'cell-out'
+        for name in ('run', 'cell', 'tmp', 'home'):
+            (out / name).mkdir(parents=True)
+        (out / 'evidence.manifest.json').mkdir()  # the manifest cannot be written
+        sealed, failures = self.run_cell.seal_after_teardown(out)
+        self.assertIsNone(sealed)
+        self.assertTrue(failures)
+        self.assertEqual(self.run_cell.write_verdict(self.root / 'missing-dir/verdict.json', dict(status='COMPLETE')), 2)
 
 
 def archived_run(out, shared_source, codex_mode='pass'):
@@ -490,6 +585,26 @@ class Obligations(unittest.TestCase):
         result = self.meter.meter(self.out)
         self.assertEqual((result['run_id'], result['satisfied']), ('rs-later', False))
 
+    def test_empty_carriers_do_not_satisfy(self):
+        work = archived_run(self.out, self.shared)
+        capture = next((work / '.devlyn/runs').glob('*/claude-judge.r0.output.json'))
+        capture.write_text('')
+        result = self.meter.meter(self.out)
+        self.assertFalse(result['checks']['round_carriers'], result)
+
+    def test_an_accepted_run_kept_only_in_custody_is_read_there(self):
+        work = archived_run(self.out, self.shared)
+        run = next((work / '.devlyn/runs').iterdir())
+        head = subprocess.run(['git', '-C', str(work), 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()
+        receipt = work / '.git/devlyn-completion/k'
+        shutil.copytree(run, receipt / 'custody/.devlyn/runs' / run.name)
+        shutil.rmtree(run)
+        (receipt / 'receipt.json').write_text(json.dumps(dict(task='t', allocation='owned', worktree='/cell/gone',
+                                                              acceptance=dict(task='t', source_sha=head, kind='pipeline', run_id=run.name))))
+        (self.out / 'snapshot.json').write_text(json.dumps(dict(kind='accepted', sha=head, receipt='cell/work/.git/devlyn-completion/k/receipt.json')))
+        result = self.meter.meter(self.out)
+        self.assertTrue(result['satisfied'], result)
+
     def test_a_change_after_the_seal_or_a_tampered_report_fails(self):
         work = archived_run(self.out, self.shared)
         self.assertTrue(self.meter.meter(self.out)['satisfied'])
@@ -579,6 +694,8 @@ python3 {skills}/_shared/task-complete.py allocate --repo . --task t --branch ta
 cd /tmp/task-t && {script}
 echo OK''')
             self.assertEqual(text.strip().splitlines()[-1] if text.strip() else '', 'OK', text)
+            sealed, failures = load('run_cell').seal_after_teardown(out)  # the full post-teardown sequence
+            self.assertTrue(sealed and not failures, failures)
             selection = locate_module.locate(out)
             baseline = json.loads((out / 'baseline.json').read_text())
             current = packet.tree(out / 'snapshot')

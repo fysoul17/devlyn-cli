@@ -15,6 +15,7 @@ import sys
 import tempfile
 import time
 import urllib.error
+import uuid
 import urllib.request
 
 HERE = Path(__file__).resolve().parent
@@ -54,14 +55,20 @@ def codex_limits(runtime):
         home = Path(temp)
         (home / '.codex').mkdir()
         shutil.copyfile(Path(runtime['auth']) / 'codex.json', home / '.codex/auth.json')
-        subprocess.run(['docker', 'run', '--rm', '--network', 'bridge', '--read-only', '--cap-drop', 'ALL',
-                        '--security-opt', 'no-new-privileges', '--tmpfs', '/tmp:rw,exec',
-                        '--tmpfs', '/home/probe/.codex/tmp:rw,nosuid,exec,uid=501,gid=501',
-                        '--mount', f'type=bind,src={home},dst=/home/probe', '--env', 'HOME=/home/probe',
-                        '--env', 'CODEX_HOME=/home/probe/.codex', runtime['image'], 'timeout', '120s', 'codex', 'exec',
-                        '--ignore-user-config', '--ignore-rules', '--skip-git-repo-check', '-s', 'read-only',
-                        '-m', 'gpt-6-astra', '-c', 'model_reasoning_effort=low', '-C', '/tmp', 'Reply OK.'],
-                       capture_output=True, timeout=180)
+        name = 'devlyn-0231-limits-' + uuid.uuid4().hex
+        argv = ['docker', 'run', '--name', name, '--rm', '--network', 'bridge', '--read-only', '--cap-drop', 'ALL',
+                '--security-opt', 'no-new-privileges', '--tmpfs', '/tmp:rw,exec',
+                '--tmpfs', '/home/probe/.codex/tmp:rw,nosuid,exec,uid=501,gid=501',
+                '--mount', f'type=bind,src={home},dst=/home/probe', '--env', 'HOME=/home/probe',
+                '--env', 'CODEX_HOME=/home/probe/.codex', runtime['image'], 'timeout', '120s', 'codex', 'exec',
+                '--ignore-user-config', '--ignore-rules', '--skip-git-repo-check', '-s', 'read-only',
+                '-m', 'gpt-6-astra', '-c', 'model_reasoning_effort=low', '-C', '/tmp', 'Reply OK.']
+        try:
+            subprocess.run(argv, capture_output=True, timeout=180)
+        except subprocess.TimeoutExpired:
+            return {}
+        finally:
+            assess.reap(name)
         for path in (home / '.codex/sessions').rglob('*.jsonl'):
             for line in reversed(path.read_text(errors='replace').splitlines()):
                 payload = (json.loads(line).get('payload') or {}) if line.startswith('{') else {}
@@ -83,7 +90,10 @@ def preflight(runtime):
         claude = claude_limits(runtime)
     except (urllib.error.URLError, KeyError, ValueError) as exc:
         return None, f'Claude limit check failed: {exc}'
-    codex = codex_limits(runtime)
+    try:
+        codex = codex_limits(runtime)
+    except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as exc:
+        return None, f'Codex limit check failed: {exc}'
     if not claude or not codex:
         return None, f'limit evidence unavailable (claude {bool(claude)}, codex {bool(codex)})'
     full = [f'{engine} {name} until {w["resets"]}' for engine, windows in (('claude', claude), ('codex', codex))
@@ -93,18 +103,25 @@ def preflight(runtime):
     return dict(identity, claude_limits=claude, codex_limits=codex), None
 
 
-def evidence_manifest(out):
-    """Raw evidence sealed after verified teardown: every file the run left, by relative path and sha256."""
-    roots = [out / name for name in ('run', 'cell', 'tmp', 'home')]
-    files, failures = {}, []
-    for root in roots:
-        for path in sorted(p for p in root.rglob('*') if p.is_file() and not p.is_symlink()):
-            try:
-                files[str(path.relative_to(out))] = digest(path)
-            except OSError as exc:
-                failures.append(f'{path.relative_to(out)}: {exc}')
-    (out / 'evidence.manifest.json').write_text(json.dumps(dict(files=files, failures=failures), indent=1, sort_keys=True))
-    return digest(out / 'evidence.manifest.json'), failures
+def seal_after_teardown(out):
+    """After verified teardown: make the cell directory owner-only (its own mode only, so product file modes stay
+    as the run left them) and seal every raw evidence file by sha256. Returns (manifest digest, failures)."""
+    failures = []
+    try:
+        out.chmod(0o700)
+        if out.stat().st_mode & 0o077:
+            failures.append('cell directory is not owner-only')
+        files = {}
+        for root in (out / name for name in ('run', 'cell', 'tmp', 'home')):
+            for path in sorted(p for p in root.rglob('*') if p.is_file() and not p.is_symlink()):
+                try:
+                    files[str(path.relative_to(out))] = digest(path)
+                except OSError as exc:
+                    failures.append(f'{path.relative_to(out)}: {exc}')
+        (out / 'evidence.manifest.json').write_text(json.dumps(dict(files=files, failures=failures), indent=1, sort_keys=True))
+        return digest(out / 'evidence.manifest.json'), failures
+    except OSError as exc:
+        return None, failures + [f'evidence collection failed: {exc}']
 
 
 def control_unchanged(runtime):
@@ -144,8 +161,7 @@ def run(runtime_path, name, task, arm, config):
         control_manifest_sha256=digest(runtime['control'] + '.manifest.json')), indent=2))
     record = dict(cell=name, task=task, arm=arm, config=config)
     owner = cell_run.run(out, runtime)
-    subprocess.run(['chmod', '-R', 'go-rwx', str(out)], check=True)
-    sealed, collection_failures = evidence_manifest(out)
+    sealed, collection_failures = seal_after_teardown(out)
     try:
         recorded = usage.record(out)
     except (OSError, ValueError, KeyError, TypeError) as exc:  # usage is recorded, never a stop
@@ -155,11 +171,11 @@ def run(runtime_path, name, task, arm, config):
     record.update(owner_status=owner['owner_status'], owner_seconds=owner['seconds'], teardown=owner['teardown'],
                   identity=owner['identity'], usage=recorded['completeness'], output_tokens=recorded['output_tokens'],
                   quota=limits, trace_bytes=trace_bytes, evidence_manifest_sha256=sealed,
-                  collection_failures=collection_failures, private=(out.stat().st_mode & 0o077) == 0)
+                  collection_failures=collection_failures)
     baseline = json.loads((out / 'baseline.json').read_text())
     stop = ('container survived teardown' if owner['teardown'] != 'CLEAN' else
             'harness changed' if not harness_unchanged(out, baseline) else
-            'evidence collection failed' if collection_failures or not record['private'] else
+            'evidence collection failed: ' + '; '.join(collection_failures[:3]) if collection_failures else
             'shared account fault during execution: ' + ', '.join(sorted({h['kind'] for h in limits['execution']}))
             if limits['execution'] else
             'model identity ' + owner['identity']['status'].lower()
@@ -174,9 +190,12 @@ def run(runtime_path, name, task, arm, config):
             stop = 'evaluator produced no verdict: ' + str(exc)
     if stop:
         record.update(status='STOP', reason=stop)
-        verdict_path.write_text(json.dumps(record, indent=2))
-        return 2
-    assessments = assess.assess(out, runtime)
+        return write_verdict(verdict_path, record)
+    try:
+        assessments = assess.assess(out, runtime)
+    except (RuntimeError, OSError, subprocess.SubprocessError) as exc:
+        record.update(status='STOP', reason=f'assessment failed: {exc}')
+        return write_verdict(verdict_path, record)
     record.update(product_check_pass=checks['product_check_pass'], oracle=checks['oracle'],
                   scope_violations=checks['scope_violations'], assessments=assessments,
                   assessor_disagreement=len({a['complete'] for a in assessments}) > 1,
@@ -185,7 +204,16 @@ def run(runtime_path, name, task, arm, config):
         regrade = quota.classify(out)['assessment']
         record.update(status='STOP', reason='assessor produced no verdict: ' + ', '.join(base.unassessed(assessments))
                       + ('; account limit: regrade from preserved evidence' if regrade else ''))
-    verdict_path.write_text(json.dumps(record, indent=2))
+    return write_verdict(verdict_path, record)
+
+
+def write_verdict(path, record):
+    """Write the cell's verdict; if storage refuses it, fail closed with the record on stderr and exit code 2."""
+    try:
+        path.write_text(json.dumps(record, indent=2))
+    except OSError as exc:
+        print(f'VERDICT_UNWRITTEN ({exc}): ' + json.dumps(dict(record, status='STOP')), file=sys.stderr)
+        return 2
     return 2 if record['status'] == 'STOP' else 0
 
 

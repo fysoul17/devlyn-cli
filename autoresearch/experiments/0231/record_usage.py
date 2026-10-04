@@ -8,6 +8,7 @@ thread and conflicting copy is a named gap: never zero, and never COMPLETE.
 import importlib.util
 import json
 from pathlib import Path
+import re
 import sys
 
 HERE = Path(__file__).resolve().parent
@@ -55,15 +56,17 @@ def codex(out, inv):
     traced = {r.get('rollout_id') for r in inv['rollouts']}
     launches = inv['owner_threads'] | inv['worker_threads'] | set(inv['headers'])
     gaps += [f'launch {root} has no trace' for root in sorted(launches - traced)]
-    for round_, role, engine in inv['attempted']['judges']:
-        if engine == 'codex' and not any(f'.r{round_}.' in h['path'] for h in inv['headers'].values()):
-            gaps.append(f'dispatched codex {role} r{round_} left no native header')
-    for name in inv['attempted']['workers']:
-        stem, round_ = name.split('.invocation.')[0], name.rsplit('.', 2)[1]
-        sessions = [p for d in evidence.devlyn_dirs(out) for p in d.rglob(f'{stem}.worker-session.{round_}.jsonl')]
-        threads = {e['thread_id'] for p in sessions for e in evidence.lines(p) if e.get('type') == 'thread.started'}
+    for (run, round_, role, engine), capture in inv['attempted']['judges'].items():
+        if engine != 'codex':
+            continue
+        header = evidence.HEADER.search(capture.read_text(errors='replace')) if capture.is_file() else None
+        session = re.search(r'^session id: (\S+)$', header.group(1), re.M) if header else None
+        if not session or session.group(1) not in traced:
+            gaps.append(f'run {run}: dispatched codex {role} r{round_} has no traced native header beside its dispatch')
+    for (run, name), session_path in inv['attempted']['workers'].items():
+        threads = {e['thread_id'] for e in evidence.lines(session_path) if e.get('type') == 'thread.started'}
         if not threads & traced:
-            gaps.append(f'worker invocation {name} has no traced session')
+            gaps.append(f'run {run}: worker invocation {name} has no traced session beside it')
     for session, header in inv['headers'].items():
         if any(s['root'] == session and s['seat'] == 'child' for s in inv['seated'].values()):
             gaps.append(f'plain root {session} has children: its footer scope is not established')
@@ -103,9 +106,15 @@ def claude(inv, plan):
         if not envelope['usage']:
             gaps.append(f'Claude result {session} without usage')
     gaps += [f'unreadable Claude result {path}' for path in inv['unreadable']]
-    for round_, role, engine in inv['attempted']['judges']:
-        if engine == 'claude' and not any(f'.r{round_}.' in e['path'] for e in inv['envelopes'].values()):
-            gaps.append(f'dispatched claude {role} r{round_} left no result')
+    for (run, round_, role, engine), capture in inv['attempted']['judges'].items():
+        if engine != 'claude':
+            continue
+        try:
+            session = json.loads(capture.read_text()).get('session_id') if capture.is_file() else None
+        except ValueError:
+            session = None
+        if not session or not (inv['envelopes'].get(session) or {}).get('usage'):
+            gaps.append(f'run {run}: dispatched claude {role} r{round_} left no result beside its dispatch')
     for session, transcript in inv['transcripts'].items():
         if session not in covered:
             gaps.append(f'Claude session {session} has no result; its transcript usage is a lower bound')

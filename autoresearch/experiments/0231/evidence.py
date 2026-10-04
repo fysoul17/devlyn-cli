@@ -111,19 +111,49 @@ def transcripts(out):
     return sessions
 
 
+def run_of(folder):
+    """The run a .devlyn directory (live or archived, in a worktree or in custody) belongs to."""
+    state = folder / 'pipeline.state.json'
+    try:
+        return json.loads(state.read_text()).get('run_id') or str(folder) if state.is_file() else str(folder)
+    except ValueError:
+        return str(folder)
+
+
 def attempted(out):
-    """Calls the products recorded launching: judge roles per dispatch record and worker invocation receipts."""
-    judges, workers = set(), set()
+    """Calls each run recorded launching, matched only to that run's own carriers: judge roles per dispatch record
+    (expected capture beside it) and worker invocation receipts (expected session beside it). Copies of one run
+    (a worktree archive and its custody copy) count once."""
+    judges, workers = {}, {}
     for devlyn in devlyn_dirs(out):
         for path in devlyn.rglob('verify-judge.r*.dispatch.json'):
             record = json.loads(path.read_text())
             round_ = re.search(r'\.r(\d+)\.', path.name).group(1)
             for role, entry in (record.get('roles') or {}).items():
                 if entry.get('decision') == 'dispatch':
-                    judges.add((round_, role, entry.get('engine')))
+                    engine = entry.get('engine')
+                    capture = path.parent / (f'{engine}-judge.r{round_}' + ('.output.json' if engine == 'claude' else '.stderr'))
+                    judges.setdefault((run_of(path.parent), round_, role, engine), capture)
         for path in devlyn.rglob('*.invocation.*.json'):
-            workers.add(path.name)
-    return dict(judges=sorted(judges), workers=sorted(workers))
+            stem, round_ = path.name.split('.invocation.')[0], path.name.rsplit('.', 2)[1]
+            workers.setdefault((run_of(path.parent), path.name), path.parent / f'{stem}.worker-session.{round_}.jsonl')
+    return dict(judges=judges, workers=workers)
+
+
+def native_rollouts(out):
+    """Codex rollouts in the cell home: thread id -> own models and efforts (turn_context), and its parent."""
+    found = {}
+    for path in (out / 'home/.codex/sessions').rglob('*.jsonl'):
+        rows = lines(path)
+        meta = next((e['payload'] for e in rows if e.get('type') == 'session_meta'), None)
+        if meta is None:
+            continue
+        source = meta.get('source')
+        contexts = [e['payload'] for e in rows if e.get('type') == 'turn_context']
+        found[meta['id']] = dict(models={c.get('model') for c in contexts} - {None},
+                                 efforts={c.get('effort') for c in contexts} - {None},
+                                 parent=source['subagent']['thread_spawn']['parent_thread_id'] if isinstance(source, dict) else None)
+    return found
 
 
 def inventory(out, plan):
@@ -158,6 +188,7 @@ def inventory(out, plan):
     init = next((e for e in stream if e.get('type') == 'system' and e.get('subtype') == 'init'), None)
     final = [e for e in stream if e.get('type') == 'result']
     return dict(rollouts=rollouts, seated=seated, unbound=unbound, inferences=inferences, headers=headers,
+                native=native_rollouts(out),
                 owner_threads=owner_threads, worker_threads=worker_threads, envelopes=envelopes, unreadable=unreadable,
                 transcripts=transcripts(out), attempted=attempted(out), gaps=gaps + envelope_conflicts,
                 claude_owner=dict(init_model=(init or {}).get('model'), session=(init or {}).get('session_id'),

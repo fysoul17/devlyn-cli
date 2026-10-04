@@ -38,6 +38,15 @@ def review_tree(out, temp):
     return work
 
 
+def reap(name):
+    """Remove a named container and prove it is gone; any uncertainty is an evaluator STOP, never silence."""
+    removed = subprocess.run(['docker', 'rm', '-f', name], capture_output=True, text=True, timeout=60)
+    probe = subprocess.run(['docker', 'inspect', name], capture_output=True, text=True, timeout=60)
+    gone = probe.returncode != 0 and 'No such object' in probe.stderr
+    if not gone or (removed.returncode != 0 and 'No such container' not in removed.stderr):
+        raise RuntimeError(f'cannot prove container {name} is gone: {removed.stderr.strip()} {probe.stderr.strip()}')
+
+
 def valid(answer):
     """The assessor's JSON verdict, or None when it is not one: complete must be a boolean and findings a list of
     objects with a string severity. An invalid answer is no verdict (an evaluator STOP), never complete:false."""
@@ -45,7 +54,7 @@ def valid(answer):
         parsed = json.loads(re.search(r'\{.*\}', answer or '', re.S).group(0))
     except (AttributeError, ValueError):
         return None
-    findings = parsed.get('findings', []) if isinstance(parsed, dict) else None
+    findings = parsed.get('findings') if isinstance(parsed, dict) else None
     if (not isinstance(parsed, dict) or not isinstance(parsed.get('complete'), bool) or not isinstance(findings, list)
             or not all(isinstance(f, dict) and isinstance(f.get('severity'), str) for f in findings)):
         return None
@@ -91,9 +100,7 @@ def one(out, runtime, route, prompt):
         except subprocess.TimeoutExpired:
             exit_code = None
         finally:
-            subprocess.run(['docker', 'rm', '-f', name], capture_output=True, timeout=60)
-            if subprocess.run(['docker', 'inspect', name], capture_output=True, timeout=60).returncode == 0:
-                raise RuntimeError(f'assessor container {name} survived teardown')
+            reap(name)
         seconds = time.monotonic() - start
         if route['engine'] == 'codex' and (home / '.codex/sessions').exists():
             shutil.copytree(home / '.codex/sessions', record_dir / 'sessions')

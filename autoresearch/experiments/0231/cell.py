@@ -41,6 +41,19 @@ def identity(out, plan):
         elif seat['model'] != want.get('model') or (want.get('effort') and seat['effort'] != want['effort']):
             violations.append(f'{seat["seat"]} {thread} ran {seat["model"]}/{seat["effort"]}, '
                               f'registered {want.get("model")}/{want.get("effort")}')
+    for (root, call), item in inv['inferences'].items():  # the model each inference actually ran
+        seat = inv['seated'].get(item['thread'], {}).get('seat')
+        if seat and item['model'] and item['model'] != expect[seat].get('model'):
+            violations.append(f'{seat} inference {call} ran {item["model"]}, registered {expect[seat].get("model")}')
+    traced = {s['root'] for s in inv['seated'].values()}
+    for seat, threads in (('owner', inv['owner_threads']), ('worker', inv['worker_threads'])):
+        for thread in sorted(threads - traced):  # no trace: the rollout, bound by the same thread id, still names it
+            native = inv['native'].get(thread)
+            want = expect[seat]
+            if not native or not native['models']:
+                gaps.append(f'{seat} {thread} has neither a trace nor a rollout model record')
+            elif native['models'] != {want.get('model')} or (want.get('effort') and native['efforts'] != {want['effort']}):
+                violations.append(f'{seat} {thread} rollout ran {sorted(native["models"])}/{sorted(native["efforts"])}')
     for session, header in inv['headers'].items():
         want = expect['codex_judge']
         if header['model'] != want['model'] or header['effort'] != want.get('effort'):
@@ -57,15 +70,17 @@ def identity(out, plan):
         owner_models = {m.split('[')[0] for m in (inv['claude_owner']['usage'] or {})}
         violations += [f'claude owner ran {m}' for m in owner_models - {plan['model']} if not INTERNAL.match(m)]
     else:
-        roots = [s for s in inv['seated'].values() if s['seat'] == 'owner' and s['agent_path'] == '/root']
-        owner = ('UNKNOWN' if not roots else 'MATCH' if all(s['model'] == plan['model'] for s in roots) else 'MISMATCH')
+        roots = [s for t, s in inv['seated'].items() if s['seat'] == 'owner' and t == s['root']]
+        models = {s['model'] for s in roots} | {m for thread in inv['owner_threads'] for m in (inv['native'].get(thread) or {}).get('models', ())}
+        owner = ('UNKNOWN' if not inv['owner_threads'] else 'UNVERIFIED' if not models - {None} else
+                 'MATCH' if models - {None} == {plan['model']} else 'MISMATCH')
     for session, envelope in inv['envelopes'].items():
         violations += [f'claude judge {session} ran {m}' for m in envelope['models']
                        if m.split('[')[0] != expect['claude_judge']['model'] and not INTERNAL.match(m)]
     for session, transcript in inv['transcripts'].items():
         violations += [f'claude session {session} ran {m}' for m in transcript['models'] - claude_models if not INTERNAL.match(m)]
     status = ('MISMATCH' if owner == 'MISMATCH' or violations else 'UNKNOWN' if owner == 'UNKNOWN' else
-              'UNVERIFIED' if gaps else 'MATCH')
+              'UNVERIFIED' if gaps or owner == 'UNVERIFIED' else 'MATCH')
     return dict(owner=owner, status=status, violations=violations, gaps=gaps,
                 codex_seats={t: [s['seat'], s['model'], s['effort']] for t, s in inv['seated'].items()})
 

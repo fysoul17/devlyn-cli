@@ -26,13 +26,16 @@ AUTO_SKIP = 'auto_pair_other_engine_unavailable'
 
 
 def task_root(out):
+    """Where the selected product's runs live: the anchor, the linked worktree, or for an accepted commit its
+    worktree or, after cleanup, the receipt's custody copy."""
     selection = json.loads((out / 'snapshot.json').read_text())
     if selection['kind'] == 'anchor':
-        return out / 'cell/work'
+        return out / 'cell/work', selection
     if selection['kind'] == 'worktree':
-        return out / selection['path']
-    receipt = json.loads((out / selection['receipt']).read_text())
-    return locate.host(out, receipt['worktree'])
+        return out / selection['path'], selection
+    receipt_path = out / selection['receipt']
+    worktree = locate.host(out, json.loads(receipt_path.read_text()).get('worktree', ''))
+    return (worktree if worktree and (worktree / '.devlyn').is_dir() else receipt_path.parent / 'custody'), selection
 
 
 def git(out, root, *args):
@@ -65,24 +68,72 @@ def final_state(root):
     return folder, json.loads((folder / 'pipeline.state.json').read_text()), archived
 
 
-def carriers(archive, round_, sub):
-    """The final VERIFY round's own records: MECHANICAL evidence, the dispatch record, each dispatched judge's prompt,
-    argv, role evidence and capture, and a merge summary that agrees with the recorded sub-verdicts."""
-    missing = [name for name in ('spec-verify.results.json', 'verify-mechanical.findings.jsonl', 'verify-merge.summary.json',
-                                 f'verify-judge.r{round_}.dispatch.json') if not (archive / name).is_file()]
-    if missing:
-        return False, missing
-    dispatch = json.loads((archive / f'verify-judge.r{round_}.dispatch.json').read_text())
+RANK = {'PASS': 0, 'PASS_WITH_ISSUES': 1, 'NEEDS_WORK': 2, 'BLOCKED': 3}
+
+
+def declared(engine, capture):
+    """The verdict a judge's own capture declares, or None when the capture is empty or unparseable."""
+    text = capture.read_text(errors='replace') if capture.is_file() else ''
+    if engine == 'claude':
+        try:
+            envelope = json.loads(text)
+        except ValueError:
+            return None
+        if not isinstance(envelope, dict) or envelope.get('type') != 'result' or envelope.get('is_error'):
+            return None
+        structured = envelope.get('structured_output')
+        text = structured.get('verdict', '') if isinstance(structured, dict) else str(envelope.get('result', ''))
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return lines[-1] if lines and lines[-1] in RANK else None
+
+
+def carriers(archive, state, verify, sub):
+    """The final VERIFY round's own records, by content: MECHANICAL results and findings parse; the dispatch record
+    names this run and round and the bound seal; each dispatched judge's prompt matches its dispatched digest, its
+    role evidence names this run, round and role with a clean exit, and its capture declares a verdict no worse than
+    the recorded sub-verdict."""
+    round_, problems = verify.get('round', 0), []
+
+    def parsed(name):
+        try:
+            return json.loads((archive / name).read_text())
+        except (OSError, ValueError):
+            problems.append(f'{name} missing or unparseable')
+            return None
+    results = parsed('spec-verify.results.json')
+    if not (isinstance(results, dict) and isinstance(results.get('commands'), list)):
+        problems.append('MECHANICAL results lack their commands')
+    try:
+        for line in (archive / 'verify-mechanical.findings.jsonl').read_text().splitlines():
+            if line.strip() and not isinstance(json.loads(line), dict):
+                raise ValueError
+    except (OSError, ValueError):
+        problems.append('MECHANICAL findings missing or unparseable')
+    dispatch = parsed(f'verify-judge.r{round_}.dispatch.json') or {}
+    seal_raw = (archive / 'source-seal.json').read_bytes() if (archive / 'source-seal.json').is_file() else b''
+    if (dispatch.get('run_id'), dispatch.get('round')) != (state.get('run_id'), round_):
+        problems.append('dispatch record names another run or round')
+    if dispatch.get('source_seal_sha256') != hashlib.sha256(seal_raw).hexdigest():
+        problems.append('dispatch record is bound to another seal')
     for role, entry in (dispatch.get('roles') or {}).items():
         if entry.get('decision') != 'dispatch':
             continue
-        stem = f'{entry.get("engine")}-judge.r{round_}'
-        capture = '.output.json' if entry.get('engine') == 'claude' else '.stdout'
-        missing += [stem + suffix for suffix in ('.prompt', '.argv.json', '.role-evidence.json', capture)
-                    if not (archive / (stem + suffix)).is_file()]
-    summary = json.loads((archive / 'verify-merge.summary.json').read_text())
-    agrees = {k: v for k, v in (summary.get('source_verdicts') or {}).items() if k in sub} == sub
-    return not missing and agrees, missing + ([] if agrees else ['merge summary disagrees with sub-verdicts'])
+        engine, stem = entry.get('engine'), f'{entry.get("engine")}-judge.r{round_}'
+        prompt = archive / (stem + '.prompt')
+        if not prompt.is_file() or hashlib.sha256(prompt.read_bytes()).hexdigest() != entry.get('prompt_sha256'):
+            problems.append(f'{role} prompt does not match its dispatched digest')
+        evidence = parsed(stem + '.role-evidence.json') or {}
+        if ((evidence.get('run_id'), evidence.get('round'), evidence.get('role')) != (state.get('run_id'), round_, role)
+                or evidence.get('exit_code') != 0 or not evidence.get('model_observed')):
+            problems.append(f'{role} role evidence does not bind this run, round and a clean observed call')
+        verdict = declared(engine, archive / (stem + ('.output.json' if engine == 'claude' else '.stdout')))
+        recorded = sub.get('judge' if role == 'primary_judge' else role)
+        if verdict is None or recorded not in RANK or RANK[recorded] < RANK[verdict]:
+            problems.append(f'{role} capture declares {verdict}, recorded {recorded}')
+    summary = parsed('verify-merge.summary.json') or {}
+    if {k: v for k, v in (summary.get('source_verdicts') or {}).items() if k in sub} != sub:
+        problems.append('merge summary disagrees with sub-verdicts')
+    return not problems, problems
 
 
 def shared(root):
@@ -99,8 +150,13 @@ def pair_skipped(archive, round_):
 
 def meter(out):
     plan = json.loads((out / 'plan.json').read_text())
-    root = task_root(out)
+    root, selection = task_root(out)
     archive, state, archived = final_state(root)
+    if selection['kind'] == 'accepted':  # the accepted run itself, wherever it is kept
+        receipt = json.loads((out / selection['receipt']).read_text())
+        folder = root / '.devlyn/runs' / str((receipt.get('acceptance') or {}).get('run_id'))
+        archive, state, archived = ((folder, json.loads((folder / 'pipeline.state.json').read_text()), True)
+                                    if (folder / 'pipeline.state.json').is_file() else (None, None, False))
     checks = {}
     if state is None:
         return dict(binding=plan['arm'] == 'candidate', satisfied=False, checks=dict(state_present=False))
@@ -112,17 +168,20 @@ def meter(out):
     checks['mechanical_reviewed'] = sub.get('mechanical') in REVIEWED
     checks['primary_judge_reviewed'] = sub.get('judge') in REVIEWED
     checks['pair_judge_reviewed'] = sub.get('pair_judge') in REVIEWED or pair_skipped(archive, verify.get('round', 0))
-    checks['round_carriers'], missing = carriers(archive, verify.get('round', 0), sub)
+    checks['round_carriers'], missing = carriers(archive, state, verify, sub)
     binding = verify.get('source_seal') or {}
     seal_path = archive / 'source-seal.json'
     seal = json.loads(seal_path.read_text()).get('seal') if seal_path.is_file() else None
     raw = seal_path.read_bytes() if seal_path.is_file() else b''
     checks['seal_bound'] = (binding.get('path') == '.devlyn/source-seal.json' and isinstance(seal, dict)
                             and binding.get('sha256') == hashlib.sha256(raw).hexdigest() and binding.get('bytes') == len(raw))
-    head = git(out, root, 'rev-parse', 'HEAD')
-    dirty = git(out, root, 'status', '--porcelain', '--untracked-files=all')
-    checks['seal_head_is_final_source'] = isinstance(seal, dict) and seal.get('head') == head and dirty == ''
-    tools = shared(root)
+    if selection['kind'] == 'accepted':  # an accepted commit is immutable: its seal must name exactly that commit
+        checks['seal_head_is_final_source'] = isinstance(seal, dict) and seal.get('head') == selection['sha']
+    else:
+        head = git(out, root, 'rev-parse', 'HEAD')
+        dirty = git(out, root, 'status', '--porcelain', '--untracked-files=all')
+        checks['seal_head_is_final_source'] = isinstance(seal, dict) and seal.get('head') == head and dirty == ''
+    tools = shared(out / 'cell/work') or shared(root)  # the installed package is committed in the anchor's baseline
     try:
         digest = runpy.run_path(str(tools / 'state-phase-write.py'))['final_report_digest'](
             state, archive, str(archive / 'final-report.md'))

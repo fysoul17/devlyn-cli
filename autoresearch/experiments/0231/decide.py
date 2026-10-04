@@ -3,8 +3,10 @@
 decisions.json holds root's recorded judgments ("Before any rule is computed"), all mandatory:
 {"audited": [every measured cell: its final report was audited], "false_completion": [cells],
  "adjudicated": {"<cell>": {"<row>": "PASS"|"FAIL"}},
- "severe": {"<cell>": {"<assessor engine>:<index>": "reproduced"|"not_reproduced"}} for every severe assessor finding,
- "reproduced": {"<cell>": [witness ids reproduced against that cell's tree]}}
+ "severe": {"<cell>": {"<assessor engine>:<index>": {"disposition": "reproduced"|"not_reproduced", "witness": "<id>"}}}
+   for every severe assessor finding (a reproduced one names its concrete witness),
+ "witnesses": {"<id>": {"<cell>": true|false}}: each witness applied to a tree; a candidate's reproduced witness must
+   also have been applied to the control tree of its pair}
 Eligibility per (task, config) over two replicates: counts for completion and rows (owner decision 2026-10-04),
 the concrete witness compared within each adjacent pair, obligations per candidate cell. A test is proven, disproved
 (only against complete evidence) or unresolved.
@@ -44,8 +46,12 @@ def audit_gaps(name, verdict, decisions):
     for assessment in verdict.get('assessments', ()):
         for index, _ in enumerate(assessment.get('severe_findings', ())):
             key = f'{assessment["route"]["engine"]}:{index}'
-            if recorded.get(key) not in ('reproduced', 'not_reproduced'):
-                gaps.append(f'{name}: severe finding {key} has no recorded disposition')
+            entry = recorded.get(key) or {}
+            witness = decisions.get('witnesses', {}).get(entry.get('witness'), {})
+            if entry.get('disposition') == 'not_reproduced':
+                continue
+            if entry.get('disposition') != 'reproduced' or witness.get(name) is not True:
+                gaps.append(f'{name}: severe finding {key} needs a disposition, and a reproduced one a witness that reproduces on this tree')
     return gaps
 
 
@@ -62,7 +68,8 @@ def load(out, decisions):
         table[name] = dict(task=task, arm=arm, config=config, replicate=int(replicate),
                            complete=complete(verdict, adjudicated), rows=rows(verdict, adjudicated, checks),
                            scope=bool(verdict['scope_violations']), false_completion=name in decisions.get('false_completion', ()),
-                           reproduced=set(decisions.get('reproduced', {}).get(name, ())),
+                           reproduced={w for w, trees in decisions.get('witnesses', {}).items() if trees.get(name) is True},
+                           witnessed={w for w, trees in decisions.get('witnesses', {}).items() if name in trees},
                            obligations=bool((verdict.get('obligations') or {}).get('satisfied')),
                            wall=HANG if verdict['owner_status'] == 'HANG_TIMEOUT' else verdict['owner_seconds'],
                            output=verdict.get('output_tokens'), usage=verdict.get('usage'))
@@ -85,7 +92,8 @@ def config_rule(table, config):
             rule1=not any(c['false_completion'] or c['scope'] for c in arms['candidate']),
             rule2=sum(c['complete'] for c in arms['candidate']) >= sum(c['complete'] for c in arms['control']),
             rule3=all(count('candidate', key) >= count('control', key) for key in row_ids),
-            rule4=all(p['candidate']['reproduced'] <= p['control']['reproduced'] for p in pairs.values()),
+            rule4=all(p['candidate']['reproduced'] <= p['control']['reproduced']
+                      and p['candidate']['reproduced'] <= p['control']['witnessed'] for p in pairs.values()),
             rule5=all(c['obligations'] for c in arms['candidate']),
             pairs={r: dict(candidate_complete=p['candidate']['complete'], control_complete=p['control']['complete'])
                    for r, p in sorted(pairs.items())})
