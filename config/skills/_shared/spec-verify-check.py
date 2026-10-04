@@ -1674,6 +1674,18 @@ def authorized_surface_findings(
             "Ensure base_ref.sha is valid and any external-diff.patch is a readable Git patch with a/ and b/ prefixes.",
         )], finding_start + 1)
     for path in paths:
+        if path in baseline and path not in surface:
+            # A user's untracked file from before the run is adopted only by an exact surface entry.
+            findings.append(scope_finding(
+                seq,
+                "scope.out-of-scope-file",
+                f"{path} was the user's untracked file before the run; only an exact authorized_surface entry adopts it.",
+                path,
+                (f"Remove {path} from the commit with `git --literal-pathspecs rm -q --cached -- {path}` and keep "
+                 "the file: it is the user's. Never widen plan.md's authorized_surface to cover it."),
+            ))
+            seq += 1
+            continue
         if path_matches_surface(path, surface):
             continue
         findings.append(scope_finding(
@@ -5397,6 +5409,21 @@ def binding_self_test(script_path: str) -> int:
         root, devlyn, git, state = repo("sparse-index", setup=cone)
         rc, findings = sealed(root)
         check(rc == 0 and not (root / "outside" / "x.txt").exists(), f"a sparse-index checkout did not seal: {findings}")
+
+        # Committing a user's pre-run file through a glob surface is a scope finding, however it was staged.
+        def committed_user_file(root: Path, git) -> None:
+            (root / "src").mkdir()
+            (root / "src" / "user.txt").write_bytes(b"the user's draft\n")
+        root, devlyn, git, state = repo("adoption-committed", setup=committed_user_file)
+        (devlyn / "plan.md").write_text("<!-- devlyn:authorized-surface -->\n## Files\n```json\n"
+                                        + json.dumps({"authorized_surface": ["src/**"]}) + "\n```\n", encoding="utf-8")
+        git("add", "src/user.txt"); git("commit", "-q", "-m", "swept in")
+        state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        mechanical(root)
+        mech_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
+        check("was the user's untracked file before the run" in mech_findings,
+              f"a glob surface adopted a committed user file: {mech_findings}")
 
         # A user's untracked file from before the run is staged only by an exact surface entry.
         def user_file(root: Path, git) -> None:

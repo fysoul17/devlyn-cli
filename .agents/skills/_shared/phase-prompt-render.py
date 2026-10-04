@@ -109,7 +109,12 @@ def build_verify_snapshot(devlyn: pathlib.Path, state: dict) -> bytes:
     verify_only = state.get("mode") == "verify-only"
     if (devlyn / "external-diff.patch").is_file() and not verify_only:
         raise invalid("diff", ".devlyn/external-diff.patch requires mode verify-only")
-    diff_text, error = check["diff_text_for_expected"](work, devlyn, state)
+    sparse_absences = frozenset()
+    if not verify_only:
+        _baseline, sparse_absences, error = check["load_untracked_baseline"](devlyn)
+        if error:
+            raise invalid("baseline", error)
+    diff_text, error = check["diff_text_for_expected"](work, devlyn, state, sparse_absences)
     if error:
         raise invalid("diff", error)
     surface = None
@@ -529,6 +534,7 @@ def verify_self_test() -> None:
         git("commit", "-qam", "change")
         (devlyn / "plan.md").write_text('<!-- devlyn:authorized-surface -->\n## Files\n```json\n{"authorized_surface": ["app.py"]}\n```\n')
         (devlyn / "spec-verify.results.json").write_text('{"commands": [], "process_evidence": null}\n')
+        (devlyn / "untracked.baseline").write_text('{"untracked": [], "sparse_absences": []}\n')
         state = {"run_id": "r", "mode": "spec", "base_ref": {"sha": base},
                  "source": {"type": "spec", "spec_path": "spec.md",
                             "spec_sha256": hashlib.sha256(b"# Spec\n").hexdigest()},

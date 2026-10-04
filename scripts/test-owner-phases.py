@@ -435,13 +435,35 @@ class OwnerPhases(unittest.TestCase):
         self.needs_work()
         self.cli("verify", "complete")
         self.cli("implement", "spawn", "--round", "1", "--triggered-by", "verify", "--engine", "claude")
-        self.git("restore", f"--source={self.head}", "--staged", "--worktree", "--", "extra.txt")
+        (self.work / "extra.txt").unlink()  # the repair deletes the file it created
+        self.git("--literal-pathspecs", "rm", "-q", "--cached", "--ignore-unmatch", "--", "extra.txt")
         self.git("commit", "--allow-empty", "-qm", "chore(pipeline): implement fix round 1")
         self.cli("implement", "durability-enforce", "--round", "1")
         self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
                  "--next-round", "1", "--next-triggered-by", "verify", "--next-engine", "claude")
         self.assertNotIn("extra.txt", self.git("ls-files"))
         self.assertFalse((self.work / "extra.txt").exists())
+
+    def test_judge_snapshot_keeps_sparse_absences(self):
+        """Judges see the source MECHANICAL sealed: a sparse absence is no deletion in their snapshot."""
+        (self.work / "excluded").mkdir()
+        (self.work / "excluded" / "x.txt").write_text("excluded\n")
+        self.git("add", "excluded/x.txt")
+        self.git("commit", "-qm", "excluded")
+        state = self.state()
+        state["base_ref"]["sha"] = self.git("rev-parse", "HEAD")
+        self.save(state)
+        self.git("update-index", "--skip-worktree", "excluded/x.txt")
+        (self.work / "excluded" / "x.txt").unlink()
+        (self.devlyn / "untracked.baseline").write_text(
+            json.dumps({"untracked": [], "sparse_absences": ["excluded/x.txt"]}))
+        self.with_spec(b"# Spec\n\n## Requirements\n\n- prints ok\n")
+        self.implemented()
+        result = self.mechanical()
+        findings = (self.devlyn / "verify-mechanical.findings.jsonl")
+        self.assertEqual(result.returncode, 0, result.stderr + (findings.read_text() if findings.is_file() else ""))
+        renderer = runpy.run_path(str(SHARED / "phase-prompt-render.py"))
+        self.assertNotIn(b"excluded/x.txt", renderer["build_verify_snapshot"](self.devlyn, self.state()))
 
     def test_refused_repair_closes_and_archives_terminal_report(self):
         self.implemented()
