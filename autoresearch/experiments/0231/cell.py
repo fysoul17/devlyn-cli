@@ -38,7 +38,7 @@ def identity(out, plan):
         for field, values in (('model', native.get('models')), ('effort', native.get('efforts'))):
             if values and seat[field] is None:  # an incomplete trace: that field from the rollout bound by the same id
                 seat = dict(seat, **{field: next(iter(values)) if len(values) == 1 else str(sorted(values))})
-            elif values and seat[field] not in values:
+            elif values and values != {seat[field]}:
                 violations.append(f'{seat["seat"]} {thread}: trace {field} {seat[field]} contradicts its rollout {sorted(values)}')
         if want.get('engine') != 'codex':
             violations.append(f'{seat["seat"]} ran on codex but is registered on {want.get("engine")}')

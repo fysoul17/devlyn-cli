@@ -267,6 +267,9 @@ A ratio is the candidate's 6-cell sum over the control's, per config. Without CO
 - Results hold for the instrumented configuration, the pinned CLI pair and the image's tool set.
 - Claude judges' effective effort is unverified.
 - The trace instrument is an undocumented CLI interface, pinned and cross-checked, and it voids on any CLI change.
-- Compaction accounting is not established. The probes reproduced reasoning, cache, multi-inference and child-thread usage, but not compaction. A started inference without completed usage stays a named gap.
+- **Compaction has no native usage.** A probe (2026-10-04) forced three auto-compactions (`model_auto_compact_token_limit=8000`). Each compaction request is a real model call, recorded as `compaction_request_*` with no token usage.
+  - The CLI's own totals exclude it: the 4 inferences' trace sums equaled the rollout's `total_token_usage` and JSON `turn.completed` exactly.
+  - Each compaction request is therefore a named gap, making that cell's usage PARTIAL.
+  - A compaction in a candidate cell leaves its config's OUTPUT tests unresolved, so the config is INCONCLUSIVE. This is a decidability risk, accepted rather than estimated around.
 - The seal's trusted-environment boundary (owner decisions R1, R2) is unchanged.
 - This comparison does not test live witness recall, Claude worker prompt-delivery attestation, or polling elimination.

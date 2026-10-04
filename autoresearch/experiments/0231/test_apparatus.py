@@ -81,6 +81,17 @@ class Traces(unittest.TestCase):
         self.assertEqual(measured['totals']['gpt-6-astra']['output_tokens'], 7)  # the known inference still counts
         self.assertIsNone(measured['rollouts'][0]['footer_tokens'])
 
+    def test_a_compaction_request_is_a_named_gap(self):  # shape of the 2026-10-04 compaction probe
+        write_trace(self.root, 'R', [*inference('c1', 'R'),
+                                     dict(type='compaction_request_started', compaction_request_id='compaction_request:1', thread_id='R', model='gpt-6-astra'),
+                                     dict(type='compaction_request_completed', compaction_request_id='compaction_request:1', response_payload=ref('cr.json')),
+                                     dict(type='rollout_ended', status='completed')],
+                    {'r.json': dict(token_usage=USAGE), 'cr.json': dict(output_items=[])})
+        self.assertIn('compaction request compaction_request:1 has no native usage', ' | '.join(traces.usage(self.root)['gaps']))
+
+    def test_host_git_never_fetches_lazily(self):
+        self.assertEqual(locate.ENV.get('GIT_NO_LAZY_FETCH'), '1')
+
     def test_missing_manifest_is_a_gap(self):
         write_trace(self.root, 'R', [], {}, manifest=False)
         self.assertIn('missing or unreadable manifest', traces.usage(self.root)['gaps'][0])
@@ -292,6 +303,14 @@ class Identity(unittest.TestCase):
             dict(type='event_msg', payload=dict(type='thread_settings_applied', thread_id='KID')),
             dict(type='turn_context', payload=dict(model='gpt-6-sol', effort='high')))) + '\n')
         self.assertEqual(self.cell.identity(self.out, plan)['status'], 'MATCH')
+
+    def test_mixed_native_efforts_are_a_mismatch(self):
+        plan = self.codex_cell('gpt-6-sol', 'high')
+        (self.out / 'home/.codex/sessions/own.jsonl').write_text('\n'.join(json.dumps(e) for e in (
+            dict(type='session_meta', payload=dict(id='OWN')),
+            dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='low')),
+            dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='high')))) + '\n')
+        self.assertEqual(self.cell.identity(self.out, plan)['status'], 'MISMATCH')
 
     def test_an_unbound_codex_process_is_a_mismatch(self):
         plan = self.codex_cell('gpt-6-sol', 'high')
@@ -746,6 +765,19 @@ class Obligations(unittest.TestCase):
         for record in ('{}', 'null', '[]', '"text"'):
             findings.write_text(record + '\n')
             self.assertFalse(self.meter.meter(self.out)['checks']['round_carriers'], record)
+
+    def test_strictly_invalid_mechanical_json_does_not_satisfy(self):
+        work = archived_run(self.out, self.shared)
+        findings = next((work / '.devlyn/runs').glob('*/verify-mechanical.findings.jsonl'))
+        for record in ('{"id":"x","severity":"CRITICAL","severity":"INFO"}', '{"id":"x","severity":"INFO","line":NaN}'):
+            findings.write_text(record + '\n')
+            self.assertFalse(self.meter.meter(self.out)['checks']['round_carriers'], record)
+
+    def test_an_export_ignored_deletion_after_the_seal_is_seen(self):
+        work = archived_run(self.out, self.shared)
+        (work / '.git/info/attributes').write_text('source.txt export-ignore\n')
+        (work / 'source.txt').unlink()
+        self.assertFalse(self.meter.meter(self.out)['checks']['seal_head_is_final_source'])
 
     def test_participant_git_configuration_never_executes_on_the_host(self):
         work = archived_run(self.out, self.shared)

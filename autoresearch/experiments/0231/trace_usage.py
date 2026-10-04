@@ -71,6 +71,10 @@ def load(root):
                     call['usage'] = {k: usage[k] for k in COUNTERS}
                 else:
                     gaps.append(f'inference {payload["inference_call_id"]} completed without usage')
+            elif kind == 'compaction_request_completed':
+                response = _payload(trace, payload.get('response_payload'), gaps) or {}
+                if not isinstance(response.get('token_usage'), dict):  # probe 2026-10-04: never reported natively
+                    gaps.append(f'compaction request {payload.get("compaction_request_id")} has no native usage')
             elif kind == 'thread_ended':
                 threads.setdefault(payload.get('thread_id'), dict(agent_path=None, model=None))['status'] = payload.get('status')
             elif kind == 'rollout_ended':

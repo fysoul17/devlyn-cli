@@ -19,6 +19,9 @@ TASKS = json.loads((BASE / 'tasks.json').read_text())  # 0222's registered tasks
 _spec = importlib.util.spec_from_file_location('packet0222', BASE / 'packet.py')
 packet = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(packet)
+_spec = importlib.util.spec_from_file_location('locate0231p', HERE / 'locate.py')
+locate = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(locate)
 ARMS = ('control', 'candidate')
 INSTALL = {'claude': ['-y', '--claude'], 'codex': ['-y']}
 GOAL = '.task/goal.txt'
@@ -75,12 +78,10 @@ def mirror(work, harness, repository):
 
 
 def committed_tree(work, sha):
-    """packet.tree of a commit's tracked files: what allocation gives a linked worktree (ignored installer output
-    stays behind in the anchor, so it is not part of the baseline)."""
+    """packet.tree of a commit's tracked files from its raw objects: what allocation gives a linked worktree (ignored
+    installer output stays behind in the anchor; export attributes do not apply)."""
     with tempfile.TemporaryDirectory() as temp:
-        archive = subprocess.run(['git', 'archive', sha], cwd=work, check=True, capture_output=True).stdout
-        subprocess.run(['tar', '-x', '-C', temp], input=archive, check=True)
-        return packet.tree(Path(temp))
+        return packet.tree(locate.raw_tree(['git', '-C', str(work)], sha, Path(temp)))
 
 
 def prompt_text(config):

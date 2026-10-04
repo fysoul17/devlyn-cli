@@ -61,10 +61,8 @@ def head_tree(out, root):
                                                if locate.host(out, (d / 'gitdir').read_text().strip()) == root / '.git'), None)
     command = ['git', *locate.SAFE] + (['--git-dir', str(gitdir)] if gitdir else ['-C', str(anchor)])
     head = subprocess.run([*command, 'rev-parse', 'HEAD'], capture_output=True, text=True, env=locate.ENV).stdout.strip()
-    archive = subprocess.run([*command, 'archive', head], capture_output=True, env=locate.ENV)
     with tempfile.TemporaryDirectory() as temp:
-        subprocess.run(['tar', '-x', '-C', temp], input=archive.stdout, check=False)
-        return head, packet.tree(Path(temp))
+        return head, packet.tree(locate.raw_tree(command, head, Path(temp)))
 
 
 def live_layout(archive, root, temp):
@@ -182,7 +180,7 @@ def carriers(archive, root, state, verify, sub, merge):
         for line in (archive / 'verify-mechanical.findings.jsonl').read_text().splitlines():
             if not line.strip():
                 continue
-            item = json.loads(line)
+            item = merge['loads_strict_json'](line)
             if not (isinstance(item, dict) and isinstance(item.get('id'), str) and isinstance(item.get('severity'), str)):
                 raise ValueError(f'malformed MECHANICAL finding {line[:80]!r}')
             derived = merge['worse'](derived, merge['RANK_VERDICT'][merge['finding_rank'](item)])

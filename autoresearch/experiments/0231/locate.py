@@ -28,7 +28,32 @@ def host(out, path):
 # Host Git never runs participant-configured commands: no fsmonitor, untracked cache or hooks, no user or system
 # config, no optional locks; and only commands that execute nothing (no status, no filters).
 SAFE = ('-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false', '-c', 'core.hooksPath=/dev/null')
-ENV = {**os.environ, 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null', 'GIT_OPTIONAL_LOCKS': '0'}
+ENV = {**os.environ, 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null', 'GIT_OPTIONAL_LOCKS': '0',
+       'GIT_NO_LAZY_FETCH': '1'}
+
+
+def raw_tree(command, commit, dest):
+    """Write a commit's tracked tree into dest from its raw objects (ls-tree + cat-file): no export attributes, filters or
+    conversions, so what is compared is exactly what the commit records. command is the Git prefix to use."""
+    listing = subprocess.run([*command, 'ls-tree', '-r', '-z', '--full-tree', commit], capture_output=True, env=ENV)
+    if listing.returncode:
+        raise LocatorError('git ls-tree failed: ' + listing.stderr.decode(errors='replace'))
+    for entry in filter(None, listing.stdout.split(b'\0')):
+        meta, path = entry.split(b'\t', 1)
+        mode, kind, sha = meta.decode().split()
+        if kind != 'blob':
+            raise LocatorError(f'unsupported tree entry {kind} at {path.decode(errors="replace")}')
+        blob = subprocess.run([*command, 'cat-file', 'blob', sha], capture_output=True, env=ENV)
+        if blob.returncode:
+            raise LocatorError('git cat-file failed: ' + blob.stderr.decode(errors='replace'))
+        target = dest / path.decode()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if mode == '120000':
+            target.symlink_to(blob.stdout.decode())
+        else:
+            target.write_bytes(blob.stdout)
+            target.chmod(0o755 if mode == '100755' else 0o644)
+    return dest
 
 
 def git(repo, *args, check=True):
@@ -125,11 +150,7 @@ def materialize(out, selection):
         raise LocatorError('snapshot already materialized')
     snapshot.mkdir()
     if selection['kind'] == 'accepted':
-        archive = subprocess.run(['git', *SAFE, 'archive', selection['sha']], cwd=out / 'cell/work', capture_output=True, env=ENV)
-        if archive.returncode:
-            raise LocatorError('git archive failed: ' + archive.stderr.decode(errors='replace'))
-        subprocess.run(['tar', '-x', '-C', str(snapshot)], input=archive.stdout, check=True)
-        return snapshot
+        return raw_tree(['git', *SAFE, '-C', str(out / 'cell/work')], selection['sha'], snapshot)
     folder = out / selection['path']
     for name in tree_files(out, folder):
         source, target = folder / name, snapshot / name
