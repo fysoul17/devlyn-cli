@@ -273,7 +273,14 @@ def init_spec_source(
     if risk_probes and not module.extract_verification_text(path.read_text(encoding="utf-8")):
         block("BLOCKED:invalid-flags", "--risk-probes needs the spec's <!-- devlyn:verification --> section, "
               "which PROBE_DERIVE derives every probe from")
-    if expected.is_file():
+    # A bound None means no directory entry existed, so any entry there is a regular file or refused.
+    try:
+        present = module._present(expected)
+    except OSError as exc:
+        block("BLOCKED:invalid-flags", f"cannot inspect {expected}: {exc}")
+    if present and not expected.is_file():
+        block("BLOCKED:invalid-flags", f"spec.expected.json exists but is not a regular file: {expected}")
+    if present:
         found, _staged, error, _expected_path, _data = module.stage_from_expected(path, staging_dir)
         if not found or error:
             block("BLOCKED:invalid-flags", error or f"expected contract not found: {expected}")
@@ -283,12 +290,11 @@ def init_spec_source(
         if error:
             block("BLOCKED:invalid-flags", error)
     staged_path = staging_dir / "spec-verify.json"
-    sibling = path.with_name("spec.expected.json")
     return ({
         "type": "spec",
         "spec_path": raw_path,
         "spec_sha256": sha256(raw),
-        "expected_sha256": sha256(sibling.read_bytes()) if sibling.is_file() else None,
+        "expected_sha256": sha256(expected.read_bytes()) if present else None,
         "criteria_path": None,
         "criteria_sha256": None,
     }, staged_path.read_bytes() if staged_path.is_file() else None)
@@ -319,17 +325,21 @@ def base_branch(cwd: pathlib.Path) -> str | None:
     return proc.stdout.strip()
 
 
-def capture_external_diff(cwd: pathlib.Path, ref: str) -> bytes:
+def capture_external_diff(cwd: pathlib.Path, ref: str) -> tuple[bytes, str | None]:
+    """The verify-only patch and the commit it is diffed from: a ref resolves once; a patch file asserts none."""
     supplied = pathlib.Path(ref)
     source = supplied if supplied.is_absolute() else cwd / supplied
     if source.is_file():
-        raw = source.read_bytes()
-    else:
-        proc = subprocess.run(["git", "diff", "--binary", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", ref], cwd=cwd, capture_output=True)
-        if proc.returncode != 0:
-            block("BLOCKED:invalid-flags", os.fsdecode(proc.stderr or proc.stdout).strip())
-        raw = proc.stdout
-    return raw
+        return source.read_bytes(), None
+    resolved = subprocess.run(["git", "rev-parse", "--verify", "--quiet", "--end-of-options", ref + "^{commit}"],
+                              cwd=cwd, capture_output=True)
+    if resolved.returncode != 0:
+        block("BLOCKED:invalid-flags", f"--verify-only {ref} is neither a patch file nor a commit")
+    oid = os.fsdecode(resolved.stdout).strip()
+    proc = subprocess.run(["git", "diff", "--binary", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", oid], cwd=cwd, capture_output=True)
+    if proc.returncode != 0:
+        block("BLOCKED:invalid-flags", os.fsdecode(proc.stderr or proc.stdout).strip())
+    return proc.stdout, oid
 
 
 def require_clean_tracked_baseline(cwd: pathlib.Path, shared_dir: pathlib.Path) -> None:
@@ -341,14 +351,20 @@ def require_clean_tracked_baseline(cwd: pathlib.Path, shared_dir: pathlib.Path) 
             for args in (("diff",), ("diff", "--cached")):
                 changed += [os.fsdecode(path) for path in git(*args, "--no-renames", "--name-only", "-z",
                                                               "--ignore-submodules=none").split(b"\0") if path]
+            dirty = sorted({path for path in changed if path != ".devlyn" and not path.startswith(".devlyn/")})
+            index = git("ls-files", "-s", "-z").split(b"\0") if dirty else []
     except (OSError, ValueError) as exc:
         block("BLOCKED:invalid-flags", str(exc))
-    dirty = sorted({path for path in changed if path != ".devlyn" and not path.startswith(".devlyn/")})
     if dirty:
         hidden = [f"{path} ({flags[path]})" for path in dirty if path in flags]
+        gitlinks = {os.fsdecode(entry.partition(b"\t")[2]) for entry in index if entry.startswith(b"160000 ")}
+        submodules = [path for path in dirty if path in gitlinks]
         block(
             "BLOCKED:worktree-dirty",
-            "Commit or stash tracked changes outside .devlyn before starting a full resolve."
+            f"Commit or stash tracked changes outside .devlyn before starting a full resolve: {', '.join(dirty)}."
+            + (f" Content inside a submodule ({', '.join(submodules)}) must be committed or cleaned inside it, or"
+               " ignored by that repository's own ignore rules; the submodule.<name>.ignore setting is not honored."
+               if submodules else "")
             + (f" Index flags hid these: {', '.join(hidden)}." if hidden else ""),
         )
 
@@ -418,7 +434,7 @@ def bootstrap(
                 )
             outputs[devlyn / "spec-verify.json"] = staged_spec
             if parsed["mode"] == "verify-only":
-                outputs[devlyn / "external-diff.patch"] = capture_external_diff(cwd, parsed["verify_ref"])
+                outputs[devlyn / "external-diff.patch"], source["diff_base_sha"] = capture_external_diff(cwd, parsed["verify_ref"])
 
         role_input = None
         if parsed["role_config"] is not None:
@@ -917,6 +933,8 @@ print(json.dumps(result))
 
 
 def self_test() -> int:
+    from unittest.mock import patch
+
     script_shared = pathlib.Path(__file__).resolve().parent
     try:
         strict_json('{"run_id":"a","run_id":"b"}')
@@ -933,6 +951,9 @@ def self_test() -> int:
         (path / "app.py").write_text("print('base')\n", encoding="utf-8")
         subprocess.run(["git", "add", "app.py"], cwd=path, check=True)
         subprocess.run(["git", "commit", "-qm", "base"], cwd=path, check=True)
+
+    def git(path: pathlib.Path, *args: str) -> bytes:
+        return subprocess.run(["git", *args], cwd=path, check=True, capture_output=True).stdout
 
     def snapshot(path: pathlib.Path) -> dict[str, bytes]:
         return {
@@ -1190,6 +1211,7 @@ def self_test() -> int:
         staged = strict_json((work / ".devlyn" / "spec-verify.json").read_text(encoding="utf-8"))
         assert staged["verification_commands"][0]["cmd"] == "printf ok"
         assert spec_result["source"]["spec_sha256"] == sha256(spec_raw)
+        assert "diff_base_sha" not in spec_result["source"]
         pure_spec = spec_dir / "design.md"
         pure_spec.write_text(
             "# Design\n\n<!-- devlyn:verification -->\n## Verification\n\n"
@@ -1234,6 +1256,7 @@ def self_test() -> int:
         ], work, script_shared)
         assert verify_result["mode"] == "verify-only"
         assert external_patch.read_bytes() == patch_raw
+        assert verify_result["source"]["diff_base_sha"] is None
         subprocess.run(["git", "restore", "app.py"], cwd=work, check=True)
         # Ambient no-prefix config must not change the reader's a/b contract.
         (work / "app.py").write_text("print('prefix control')\n", encoding="utf-8")
@@ -1241,11 +1264,31 @@ def self_test() -> int:
         for setting in settings:
             subprocess.run(["git", "config", setting, "true"], cwd=work, check=True)
             try:
-                assert b"diff --git a/app.py b/app.py\n" in capture_external_diff(work, "HEAD")
+                assert b"diff --git a/app.py b/app.py\n" in capture_external_diff(work, "HEAD")[0]
             finally:
                 subprocess.run(["git", "config", "--unset", setting], cwd=work, check=True)
         subprocess.run(["git", "restore", "app.py"], cwd=work, check=True)
-        print("PASS bootstrap self-test patch lifecycle: full-mode removal + dirty verify-only exact capture")
+        # A supplied ref binds its own commit, never a merge-base, and the patch is diffed from that commit.
+        diverged = root / "diverged-repo"
+        init_repo(diverged)
+        git(diverged, "checkout", "-qb", "trunk")
+        (diverged / "trunk.txt").write_text("trunk\n", encoding="utf-8")
+        git(diverged, "add", "trunk.txt")
+        git(diverged, "commit", "-qm", "trunk")
+        git(diverged, "checkout", "-q", "-")
+        (diverged / "app.py").write_text("print('feature')\n", encoding="utf-8")
+        git(diverged, "commit", "-qam", "feature")
+        (diverged / "spec.md").write_bytes(spec_raw)
+        trunk = git_text(diverged, "rev-parse", "trunk")
+        assert git_text(diverged, "merge-base", "trunk", "HEAD") != trunk
+        ref_result = bootstrap(["--verify-only", "trunk", "--spec", "spec.md"], diverged, script_shared)
+        assert ref_result["source"]["diff_base_sha"] == trunk
+        assert (diverged / ".devlyn/external-diff.patch").read_bytes() == git(
+            diverged, "diff", "--binary", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", trunk)
+        diverged_state = strict_json((diverged / ".devlyn/pipeline.state.json").read_text(encoding="utf-8"))
+        assert diverged_state["base_ref"]["sha"] == git_text(diverged, "rev-parse", "HEAD")
+        print("PASS bootstrap self-test patch lifecycle: full-mode removal + dirty verify-only exact capture;"
+              " diff base is the supplied ref's own commit, null for a patch file")
 
         for valid_named in (True, False):
             named_work = root / f"named-spec-{valid_named}"
@@ -1275,6 +1318,41 @@ def self_test() -> int:
                 staged = strict_json((named_work / ".devlyn/spec-verify.json").read_text(encoding="utf-8"))
                 assert staged["verification_commands"] == [{"cmd": "printf named-contract"}]
 
+        # Only a missing sibling binds absence; a nonregular entry or an inspection error refuses admission.
+        entry_work = root / "contract-entry-repo"
+        init_repo(entry_work)
+        (entry_work / "spec.md").write_bytes(spec_raw)
+        sibling = entry_work.resolve() / "spec.expected.json"
+        real_lstat = pathlib.Path.lstat
+
+        def denied_lstat(path: pathlib.Path):
+            if path == sibling:
+                raise PermissionError("injected access error")
+            return real_lstat(path)
+
+        def refused_contract(label: str, detail: str) -> None:
+            try:
+                bootstrap(["--spec", "spec.md"], entry_work, script_shared)
+            except BootstrapBlocked as exc:
+                assert exc.reason == "BLOCKED:invalid-flags" and exc.detail == detail, (label, exc.detail)
+            else:
+                raise AssertionError(f"{label} spec.expected.json was bound as absent")
+            assert not (entry_work / ".devlyn").exists()
+
+        nonregular = f"spec.expected.json exists but is not a regular file: {sibling}"
+        sibling.mkdir()
+        refused_contract("a directory", nonregular)
+        sibling.rmdir()
+        if os.name == "nt":
+            print("SKIP dangling spec.expected.json symlink: symlink creation requires native Windows privileges")
+        else:
+            sibling.symlink_to("absent.json")
+            refused_contract("a dangling symlink", nonregular)
+            sibling.unlink()
+        with patch.object(pathlib.Path, "lstat", denied_lstat):
+            refused_contract("an uninspectable", f"cannot inspect {sibling}: injected access error")
+        print("PASS bootstrap self-test contract absence: directory, dangling symlink and access error refused")
+
         dirty_work = root / "dirty-repo"
         init_repo(dirty_work)
         bootstrap(["clean", "baseline"], dirty_work, script_shared)
@@ -1287,7 +1365,7 @@ def self_test() -> int:
                 bootstrap(["blocked", label], dirty_work, script_shared)
             except BootstrapBlocked as exc:
                 assert exc.reason == "BLOCKED:worktree-dirty"
-                assert "commit or stash" in exc.detail.lower()
+                assert exc.detail == "Commit or stash tracked changes outside .devlyn before starting a full resolve: app.py.", exc.detail
             else:
                 raise AssertionError(f"{label} tracked owner change accepted")
             assert snapshot(dirty_work / ".devlyn") == before_dirty
@@ -1310,6 +1388,39 @@ def self_test() -> int:
         require_clean_tracked_baseline(dirty_work, script_shared)
         subprocess.run(["git", "update-index", "--no-skip-worktree", "app.py"], cwd=dirty_work, check=True)
         subprocess.run(["git", "restore", "app.py"], cwd=dirty_work, check=True)
+        # A submodule.<name>.ignore setting hides nothing: a moved checkout or untracked content inside is dirty.
+        sub_work = root / "submodule-repo"
+        init_repo(sub_work)
+        init_repo(sub_work / "sub")
+        git(sub_work, "add", "sub")
+        (sub_work / ".gitmodules").write_text('[submodule "sub"]\n\tpath = sub\n\turl = ./sub\n', encoding="utf-8")
+        git(sub_work, "add", ".gitmodules")
+        git(sub_work, "commit", "-qm", "register sub")
+        recorded = git_text(sub_work / "sub", "rev-parse", "HEAD")
+
+        def refused_submodule() -> None:
+            assert git(sub_work, "status", "--porcelain") == b""  # the ignore setting hides it from plain Git
+            try:
+                require_clean_tracked_baseline(sub_work, script_shared)
+            except BootstrapBlocked as exc:
+                assert exc.reason == "BLOCKED:worktree-dirty" and exc.detail == (
+                    "Commit or stash tracked changes outside .devlyn before starting a full resolve: sub. Content inside"
+                    " a submodule (sub) must be committed or cleaned inside it, or ignored by that repository's own"
+                    " ignore rules; the submodule.<name>.ignore setting is not honored."), exc.detail
+            else:
+                raise AssertionError("submodule dirt hidden by submodule.sub.ignore was accepted")
+
+        git(sub_work, "config", "submodule.sub.ignore", "all")
+        git(sub_work / "sub", "commit", "--allow-empty", "-qm", "moved")
+        refused_submodule()
+        git(sub_work, "config", "--unset", "submodule.sub.ignore")
+        git(sub_work, "config", "-f", ".gitmodules", "submodule.sub.ignore", "all")
+        git(sub_work, "commit", "-qm", "ignore sub", ".gitmodules")
+        refused_submodule()
+        git(sub_work / "sub", "checkout", "-q", recorded)
+        require_clean_tracked_baseline(sub_work, script_shared)
+        (sub_work / "sub" / "scratch.tmp").write_text("untracked\n", encoding="utf-8")
+        refused_submodule()
 
         devlyn_work = root / "devlyn-dirty-repo"
         init_repo(devlyn_work)
@@ -1326,7 +1437,8 @@ def self_test() -> int:
         init_repo(untracked_work)
         (untracked_work / "untracked.txt").write_text("allowed\n", encoding="utf-8")
         assert bootstrap(["untracked", "allowed"], untracked_work, script_shared)["ok"] is True
-        print("PASS bootstrap self-test honest baseline: dirty owner blocked; .devlyn/untracked allowed")
+        print("PASS bootstrap self-test honest baseline: dirty owner blocked and named, submodule dirt despite its"
+              " ignore setting; .devlyn/untracked allowed")
 
         prior_work = root / "prior-run-repo"
         init_repo(prior_work)

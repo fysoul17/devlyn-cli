@@ -132,7 +132,7 @@ def build_verify_snapshot(devlyn: pathlib.Path, state: dict) -> bytes:
         "verify_started_at": verify.get("started_at"), "workdir": str(work), "mode": state.get("mode"),
         "source": {"type": source["type"], "contract": source.get(field + "_path"),
                    "goal": source.get("goal_path") if generated else None},
-        "base_sha": base, "head_sha": commits[1],
+        "base_sha": source.get("diff_base_sha") if verify_only else base, "head_sha": commits[1],
         "present": {"goal": generated, "expected": bool(expected), "authorized_surface": surface is not None},
     }
     payloads = {
@@ -541,6 +541,10 @@ def verify_self_test() -> None:
                  "phases": {"verify": {"round": 0, "started_at": "t"}}}
         snapshot = build_verify_snapshot(devlyn, state)
         assert b"diff --git a/app.py b/app.py" in snapshot and b"# Spec\n" in snapshot
+
+        def snapshot_base(value):
+            return json.loads(split_frames(build_verify_snapshot(devlyn, value), b"", SNAPSHOT_FRAMES)["metadata"])["base_sha"]
+        assert snapshot_base(state) == base
         prompts = [render_verify(role, "claude", snapshot) for role in ("primary_judge", "pair_judge")]
         frames = [prompt_frames(prompt) for prompt in prompts]
         assert frames[0]["snapshot"] == frames[1]["snapshot"] == snapshot
@@ -585,6 +589,18 @@ def verify_self_test() -> None:
         (devlyn / "plan.md").unlink()
         (devlyn / "external-diff.patch").write_text("diff --git a/x b/x\n")
         assert b"diff --git a/x b/x" in build_verify_snapshot(devlyn, verify_only)
+        # Verify-only judges read existing behavior at the commit a supplied ref resolved to when bootstrap
+        # captured the patch, even after that branch moves; a supplied patch file asserts no base.
+        capture = runpy.run_path(str(pathlib.Path(__file__).with_name("resolve-bootstrap.py")))["capture_external_diff"]
+        git("branch", "supplied", base)
+        patch, captured = capture(work, "supplied")
+        git("branch", "-f", "supplied", "HEAD")
+        (devlyn / "external-diff.patch").write_bytes(patch)
+        assert captured == base
+        for diff_base in (captured, None):
+            supplied = {**verify_only, "base_ref": {"sha": git("rev-parse", "HEAD")},
+                        "source": {**state["source"], "diff_base_sha": diff_base}}
+            assert snapshot_base(supplied) == diff_base
 
 
 def main() -> int:

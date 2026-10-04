@@ -87,7 +87,9 @@ pre-existing defect do not excuse that violation. A changed line or requirement
 reference alone does not establish applicability. For the part of a clause that
 requires existing behavior — an existing path's current behavior, or "the
 existing …" behavior a new path must receive — establish that behavior from
-`base_sha` (the snapshot diff's base side): for an existing path, the same
+`base_sha` (the snapshot diff's base side; in verify-only, the supplied ref's
+commit, or null for a supplied patch, whose pre-image is then the base side):
+for an existing path, the same
 operation, or unchanged code on the path the clause names; for a new path, the
 existing operation that performs the named behavior under the same options. That
 part is met by matching it: bind only a demonstrated departure, and do not treat
