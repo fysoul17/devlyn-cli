@@ -90,6 +90,9 @@ def build_verify_snapshot(devlyn: pathlib.Path, state: dict) -> bytes:
     if not generated:
         spec_path = pathlib.Path(source["spec_path"])
         sibling = (spec_path if spec_path.is_absolute() else work / spec_path).with_name("spec.expected.json")
+        bound_error = check["expected_contract_error"](source, spec_path if spec_path.is_absolute() else work / spec_path)
+        if bound_error:
+            raise invalid("expected", bound_error)
         if sibling.exists():
             _data, error = check["load_expected_contract"](sibling)
             if error:
@@ -106,7 +109,12 @@ def build_verify_snapshot(devlyn: pathlib.Path, state: dict) -> bytes:
     verify_only = state.get("mode") == "verify-only"
     if (devlyn / "external-diff.patch").is_file() and not verify_only:
         raise invalid("diff", ".devlyn/external-diff.patch requires mode verify-only")
-    diff_text, error = check["diff_text_for_expected"](work, devlyn, state)
+    sparse_absences = frozenset()
+    if not verify_only:
+        _baseline, sparse_absences, error = check["load_untracked_baseline"](devlyn)
+        if error:
+            raise invalid("baseline", error)
+    diff_text, error = check["diff_text_for_expected"](work, devlyn, state, sparse_absences)
     if error:
         raise invalid("diff", error)
     surface = None
@@ -526,6 +534,7 @@ def verify_self_test() -> None:
         git("commit", "-qam", "change")
         (devlyn / "plan.md").write_text('<!-- devlyn:authorized-surface -->\n## Files\n```json\n{"authorized_surface": ["app.py"]}\n```\n')
         (devlyn / "spec-verify.results.json").write_text('{"commands": [], "process_evidence": null}\n')
+        (devlyn / "untracked.baseline").write_text('{"untracked": [], "sparse_absences": []}\n')
         state = {"run_id": "r", "mode": "spec", "base_ref": {"sha": base},
                  "source": {"type": "spec", "spec_path": "spec.md",
                             "spec_sha256": hashlib.sha256(b"# Spec\n").hexdigest()},
@@ -562,6 +571,9 @@ def verify_self_test() -> None:
                                                        goal_path="spec.md", goal_sha256="0" * 64))
         rejected("base", lambda s: s["base_ref"].update(sha="abc"))
         rejected("expected", lambda s: (work / "spec.expected.json").write_text("{"),
+                 lambda: (work / "spec.expected.json").unlink())
+        rejected("expected", lambda s: s["source"].update(expected_sha256="0" * 64))
+        rejected("expected", lambda s: ((work / "spec.expected.json").write_bytes(b"{}"), s["source"].update(expected_sha256=None)),
                  lambda: (work / "spec.expected.json").unlink())
         rejected("diff", lambda s: (devlyn / "external-diff.patch").write_text(""),
                  lambda: (devlyn / "external-diff.patch").unlink())

@@ -19,12 +19,6 @@ from typing import TextIO
 INCOMPLETE_EXIT = 79
 VALID_VERIFY_VERDICTS = {"PASS", "PASS_WITH_ISSUES", "NEEDS_WORK", "BLOCKED"}
 SAFE_RUN_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
-# `<engine>-unavailable` witnesses only an engine that ships an adapter; any other
-# `*-unavailable` label (for example a missing tool) is not an engine halt.
-ADAPTER_ENGINES = frozenset(
-    path.stem for path in (pathlib.Path(__file__).resolve().parent / "adapters").glob("*.md")
-    if path.stem != "README"
-)
 PHASE_ORDER = (
     "plan",
     "probe_derive",
@@ -109,23 +103,40 @@ def valid_final_verdict(value: object) -> bool:
     )
 
 
+_WRITER: dict | None = None
+
+
+def writer() -> dict:
+    """The state writer's namespace: halt reasons and repair origins are decided there, once."""
+    global _WRITER
+    if _WRITER is None:
+        _WRITER = runpy.run_path(str(pathlib.Path(__file__).with_name("state-phase-write.py")))
+    return _WRITER
+
+
 def terminal_halt_witness(phases: dict[str, object]) -> tuple[str, str] | None:
     final_report = phases.get("final_report")
-    if not isinstance(final_report, dict):
+    if not isinstance(final_report, dict) or final_report.get("completed_at") is None:
         return None
     verdict = final_report.get("verdict")
     if not isinstance(verdict, str) or not verdict.startswith("BLOCKED:"):
         return None
     reason = verdict.removeprefix("BLOCKED:")
+    halt_reason = writer()["halt_reason"]
+    reached = [name for name in WORK_PHASE_ORDER if phases.get(name) is not None]
+    if not reached:
+        return ("phase0", reason) if reason == "finish-gate-unclean" or halt_reason(reason, "phase0") else None
     target = HALT_WITNESS_PHASES.get(reason)
-    # A worker that never started (no fresh context, its engine, or its rendered prompt input)
-    # halts at the last phase reached.
+    # The last reached phase witnesses its own halt when it completed BLOCKED (malformed probes, a worker
+    # attestation failure), when the next worker never started, or when the finish gate found offenders.
+    # Retired phases keep their archived classification; only current work phases self-witness.
+    last = phases.get(reached[-1])
     if target is None and (
-        reason in {"fresh-context-unavailable", "phase-input-invalid"}
-        or (reason.endswith("-unavailable") and reason.removesuffix("-unavailable") in ADAPTER_ENGINES)
+        (reached[-1] in {"plan", "probe_derive", "implement"} and isinstance(last, dict) and last.get("verdict") == "BLOCKED"
+         and writer()["canonical_reason"](reason))
+        or reason == "finish-gate-unclean" or halt_reason(reason, "handoff")
     ):
-        reached = [name for name in WORK_PHASE_ORDER if phases.get(name) is not None]
-        target = reached[-1] if reached else None
+        target = reached[-1]
     if target is None:
         return None
     phase = phases.get(target)
@@ -139,7 +150,7 @@ def terminal_halt_witness(phases: dict[str, object]) -> tuple[str, str] | None:
 
 def exhausted_origin(state: dict[str, object]) -> str | None:
     # The writer derives the same origin when it renders the terminal verdict.
-    return runpy.run_path(str(pathlib.Path(__file__).with_name("state-phase-write.py")))["exhausted_origin"](state)
+    return writer()["exhausted_origin"](state)
 
 
 def classify_state_bytes(
@@ -677,6 +688,11 @@ def self_test() -> int:
             ("fresh-context-unavailable", "implement", "BLOCKED"),
             ("codex-unavailable", "plan", "BLOCKED"),
             ("phase-input-invalid", "plan", "PASS"),
+            ("probe-derive-malformed", "probe_derive", "BLOCKED"),
+            ("model-attestation-failed", "implement", "BLOCKED"),
+            ("finish-gate-unclean", "implement", "PASS"),
+            ("unsupported-role-option", "plan", "PASS"),
+            ("dependency-unavailable", "implement", "BLOCKED"),
         )
         for reason, halt_phase, phase_verdict in witness_rows:
             root = base / f"witness-{reason}"
@@ -693,13 +709,38 @@ def self_test() -> int:
             }
             state = {"run_id": f"witness-{reason}", "phases": phases}
             assert terminal_halt_witness(phases) == (halt_phase, reason)
-            if reason in {"codex-unavailable", "phase-input-invalid"}:
-                for invented in ("required-tools-unavailable", "invented-unavailable", "phase-input-invalid:contract"):
+            if reason == "phase-input-invalid":
+                # A handoff (the next worker never started) names a dispatch refusal: never a freeze-only
+                # one, an invented `-unavailable` or a prose qualifier.
+                for invented in ("required-tools-unavailable", "invented-unavailable", "phase-input-invalid:contract",
+                                 "large-needs-ideation", "judge-route-unsupported:omp"):
                     claimed = {**phases, "final_report": {**phases["final_report"], "verdict": f"BLOCKED:{invented}"}}
                     assert terminal_halt_witness(claimed) is None, invented
             write_archived_state(root, state)
             assert classify(root).status == "CLEAN"
             tests += 1
+
+        # PHASE 0 halts after bootstrap: no phase opened, the report alone closes the run. The writer's
+        # predicate decides, so every role-resolution refusal is witnessed and nothing else is.
+        for reason, clean in (("large-needs-ideation", True), ("invalid-classification", True),
+                              ("invalid-engine-config", True), ("unsupported-role-option", True),
+                              ("judge-route-unsupported:omp", True), ("codex-unavailable", True),
+                              ("finish-gate-unclean", True), ("untracked-baseline-unwritable", True),
+                              ("judge-route-unsupported:codex", False),
+                              ("judge-route-unsupported:", False), ("invalid-classification:detail", False),
+                              ("model-attestation-failed", False), ("plan-empty", False), ("invented-halt", False)):
+            root = base / f"phase0-{reason.replace(':', '-')}"
+            phases = {name: None for name in PHASE_ORDER}
+            phases["final_report"] = {"started_at": "2026-07-20T00:00:00Z", "completed_at": "2026-07-20T00:01:00Z",
+                                      "verdict": f"BLOCKED:{reason}"}
+            assert (terminal_halt_witness(phases) == ("phase0", reason)) is clean, reason
+            write_archived_state(root, {"run_id": f"phase0-{reason.replace(':', '-')}", "phases": phases})
+            assert (classify(root).status == "CLEAN") is clean, reason
+            tests += 1
+        unfinished = {name: None for name in PHASE_ORDER}
+        unfinished["final_report"] = {"verdict": "BLOCKED:large-needs-ideation"}
+        assert terminal_halt_witness(unfinished) is None  # a report that never completed witnesses nothing
+        tests += 1
 
         root = base / "rolled-back-not-witness"
         rolled_back = {

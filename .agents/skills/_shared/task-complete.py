@@ -235,7 +235,10 @@ def pipeline_acceptance(work, acceptance, files, directory):
     for name in ("plan", "implement", "verify", "final_report"):
         phase = phases.get(name) or {}
         require(phase.get("completed_at") and phase.get("verdict") in success, f"required {name} evidence is incomplete")
-    # VERIFY MECHANICAL sealed the exact source it checked; delivery must publish that source.
+    # VERIFY MECHANICAL sealed the source Git observed (phases/mechanical.md names what the seal does not
+    # attest); delivery must publish that source.
+    require("source_seal" in verify or not (phases.get("cleanup") or {}).get("post_sha"),
+            "archived by an older devlyn; deliver it with that version or rerun")
     seal_binding = verify.get("source_seal")
     require(isinstance(seal_binding, dict) and seal_binding.get("path") == ".devlyn/source-seal.json", "VERIFY has no bound MECHANICAL source seal")
     seal_record = file_record(archive / "source-seal.json")
@@ -343,8 +346,16 @@ def bind_acceptance(receipt, path, supplied):
                 bound_digest = source.get(key.replace("_path", "_sha256"))
                 require(file_record(source_file)["sha256"] == bound_digest, "source contract differs from run binding")
                 source_path = Path(source[key])
-                expected = str(source_path.with_name("spec.expected.json") if key == "spec_path" else source_path.with_suffix(".expected.json"))
+                expected = (source_path.with_name("spec.expected.json") if key == "spec_path" else source_path.with_suffix(".expected.json")).as_posix()
+                if key == "spec_path" and "expected_sha256" in source:
+                    contract = safe_path(work, expected)
+                    bound = file_record(contract)["sha256"] if contract.exists() else None
+                    require(bound == source["expected_sha256"], "verification contract differs from run binding")
                 if safe_path(work, expected).exists():
+                    if key == "spec_path":
+                        committed = subprocess.run(["git", "--git-dir", receipt["common_gitdir"], "show", sha+":"+expected], capture_output=True)
+                        require(committed.returncode == 0 and committed.stdout == safe_path(work, expected).read_bytes(),
+                                "verification contract changed since accepted commit")
                     paths.append(expected)
     else:
         raise CompletionError("acceptance kind must be direct|pipeline")
@@ -1173,11 +1184,17 @@ class CompletionTests(unittest.TestCase):
             with self.assertRaisesRegex(CompletionError, "cannot parse mount table"):
                 scratch_mounts()
 
-    def accept(self, pipeline=False, queue=False, spec_expected=None, spec_name="spec.md"):
+    def accept(self, pipeline=False, queue=False, spec_expected=None, spec_name="spec.md", expected_binding=None,
+               contract_committed=True):
         if spec_expected is not None:
             (self.task / spec_name).write_text("# Fixture\nProduct contains accepted bytes.\n", encoding="utf-8")
             (self.task / "spec.expected.json").write_text(json.dumps(spec_expected), encoding="utf-8")
-            self.g("add", spec_name, "spec.expected.json", work=self.task)
+            if not contract_committed:  # an ignored contract never shows as a dirty workspace
+                exclude = self.task / self.g("rev-parse", "--git-path", "info/exclude", work=self.task)
+                exclude.parent.mkdir(parents=True, exist_ok=True)
+                with exclude.open("a", encoding="utf-8") as handle:
+                    handle.write("\nspec.expected.json\n")
+            self.g("add", spec_name, *(["spec.expected.json"] if contract_committed else []), work=self.task)
         (self.task / "product").write_text("accepted\n", encoding="utf-8")
         self.g("add", "product", work=self.task)
         self.g("commit", "-m", "scoped task", work=self.task)
@@ -1208,6 +1225,8 @@ class CompletionTests(unittest.TestCase):
             if spec_expected is not None:
                 self.state["mode"] = "spec"
                 self.state["source"] = {"type": "spec", "spec_path": spec_name, "spec_sha256": hashlib.sha256((self.task / spec_name).read_bytes()).hexdigest()}
+                if expected_binding is not None:
+                    self.state["source"]["expected_sha256"] = expected_binding
             (archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
             (archive / "finish-gate.summary.json").write_text(json.dumps({"mode": self.state["mode"], "exit": 0, "offenders": 0, "checked": 1}), encoding="utf-8")
             (archive / "verify-merge.summary.json").write_text(json.dumps({"verdict": "PASS"}), encoding="utf-8")
@@ -1958,6 +1977,48 @@ class CompletionTests(unittest.TestCase):
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertIn("spec.expected.json", receipt["files"])
         self.assertEqual((self.receipt.parent / "custody/spec.expected.json").read_bytes(), (self.task / "spec.expected.json").read_bytes())
+
+    def test_named_spec_publishes_only_the_bound_contract(self):
+        self.allocate(); self.accept(pipeline=True, spec_expected={"pure_design": True}, spec_name="X.md", expected_binding="0" * 64)
+        _, r = self.complete(success=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("verification contract differs from run binding", json.loads(r.stdout)["reason"])
+
+    def test_named_spec_publishes_the_committed_contract(self):
+        self.allocate(); self.accept(pipeline=True, spec_expected={"pure_design": True}, spec_name="X.md", contract_committed=False)
+        _, r = self.complete(success=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("verification contract changed since accepted commit", json.loads(r.stdout)["reason"])
+
+    def test_pre_seal_archive_is_refused_with_guidance(self):
+        self.allocate(); self.accept(pipeline=True)
+        del self.state["phases"]["verify"]["source_seal"]
+        self.state["phases"]["cleanup"] = {"started_at": "2026-09-10T00:00:00Z", "completed_at": "2026-09-10T00:00:01Z",
+                                           "verdict": "PASS", "post_sha": self.sha}
+        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
+        _, r = self.complete(success=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("archived by an older devlyn", json.loads(r.stdout)["reason"])
+
+    def test_bound_pre_seal_delivery_resumes(self):
+        """An acceptance an older devlyn already bound resumes; only a first acceptance meets the pre-seal refusal."""
+        self.allocate(); self.accept(pipeline=True)
+        self.complete("--mode", "pr", "--writers-stopped")
+        relative = f".devlyn/runs/{self.state['run_id']}/pipeline.state.json"
+        legacy = json.loads(json.dumps(self.state))
+        del legacy["phases"]["verify"]["source_seal"]
+        legacy["phases"]["cleanup"] = {"started_at": "2026-09-10T00:00:00Z", "completed_at": "2026-09-10T00:00:01Z",
+                                       "verdict": "PASS", "post_sha": self.sha}
+        raw = json.dumps(legacy).encode()
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        for root in (self.task, self.receipt.parent / "custody"):
+            (root / relative).write_bytes(raw)
+        receipt["files"][relative] = {**receipt["files"][relative], "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw)}
+        self.receipt.write_text(json.dumps(receipt), encoding="utf-8")
+        (self.receipt.parent / "manifest.json").write_text(json.dumps(receipt["files"]), encoding="utf-8")
+        self.merge_pr()
+        result, r = self.complete()
+        self.assertEqual(r.returncode, 0, r.stdout)
 
     def test_named_spec_missing_required_process_evidence(self):
         expected = {"process_evidence": [{"id": "red-first", "phase": "implement", "argv": [sys.executable, "-c", "print('red')"], "exit_code": 0, "timeout_sec": 10}]}

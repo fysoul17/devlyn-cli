@@ -23,9 +23,8 @@ Default mode (VERIFY MECHANICAL invocation, no args):
       source.{spec_path | criteria_path}` and extracts a `## Verification`
       ```json``` block. Stage executable commands; an explicit pure-design
       contract removes stale `.devlyn/spec-verify.json` instead.
-  (4) If no json block in source AND source.type=="generated": emit
-      CRITICAL `correctness.spec-verify-malformed` so the fix-loop reruns
-      IMPLEMENT.
+  (4) A generated source always has a json block: the PHASE 0 freeze refuses
+      one without it (BLOCKED:invalid-classification) and its bytes are bound.
   (5) If no sibling/json block in source AND source.type=="spec": benchmark mode
       with a pre-staged file would have hit branch (1). Without the
       pre-staged file, benchmark falls through to no-op (rare — fixture
@@ -75,9 +74,9 @@ Exit codes:
 - 0: silent no-op (no source carrier, real-user mode) OR --check passed
   OR all commands passed. Non-blocking expected-contract findings may be
   written with exit 0.
-- 1: at least one command failed, carrier malformed (generated source
-  required carrier, generated source had invalid json/shape, or pre-staged
-  file failed shape validation), or a blocking expected-contract finding
+- 1: at least one command failed, carrier malformed (invalid json/shape in a
+  source or sibling carrier, or a pre-staged file failed shape validation),
+  or a blocking expected-contract finding
   was emitted. Findings are written to
   `.devlyn/verify-mechanical.findings.jsonl`.
 - 2: invocation error (unreadable spec-verify.json, missing markdown in
@@ -87,6 +86,7 @@ Exit codes:
 
 from __future__ import annotations
 
+import contextlib
 import runpy
 import importlib.util
 import json
@@ -94,6 +94,7 @@ import hashlib
 import os
 import re
 import secrets
+import shutil
 import stat
 import subprocess
 import sys
@@ -1033,6 +1034,17 @@ def source_integrity_error(src_type: str | None, state: dict, source_md: Path | 
         return f"could not read {source_md} for source integrity check: {exc}"
     if expected != actual:
         return f"{qualified} mismatch for {source_md}: expected {expected}, actual {actual}."
+    return expected_contract_error(src, source_md) if src_type == "spec" else None
+
+
+def expected_contract_error(src: dict, spec_md: Path) -> str | None:
+    """A sibling spec.expected.json must still be the bytes bootstrap bound (or still absent)."""
+    if "expected_sha256" not in src:
+        return None  # a state from before the binding existed
+    sibling = spec_md.with_name("spec.expected.json")
+    actual = _file_sha256(sibling)
+    if actual != src["expected_sha256"]:
+        return f"source.expected_sha256 mismatch for {sibling}: expected {src['expected_sha256']}, actual {actual}."
     return None
 
 
@@ -1182,7 +1194,8 @@ def slice_diff_to_files(diff_text: str, files: list[str]) -> str:
     return "".join(out)
 
 
-def diff_text_for_expected(work: Path, devlyn_dir: Path, state: dict) -> tuple[str, str | None]:
+def diff_text_for_expected(work: Path, devlyn_dir: Path, state: dict,
+                           sparse_absences: frozenset[str] = frozenset()) -> tuple[str, str | None]:
     external_diff = devlyn_dir / "external-diff.patch"
     if external_diff.is_file():
         try:
@@ -1190,27 +1203,23 @@ def diff_text_for_expected(work: Path, devlyn_dir: Path, state: dict) -> tuple[s
         except OSError as e:
             return ("", f"cannot read {external_diff}: {e}")
     base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
-    cmd = ["git", "diff"]
-    if base_sha:
-        cmd.append(base_sha)
-    proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True, encoding="utf-8")
-    if proc.returncode != 0:
-        return ("", (proc.stderr or proc.stdout or "git diff failed").strip())
-    return (proc.stdout or "", None)
+    try:
+        with observed_git(work, sparse_absences) as (git, _flags):
+            return (git("diff", *([base_sha] if base_sha else [])).decode("utf-8", "surrogateescape"), None)
+    except (OSError, ValueError) as exc:
+        return ("", str(exc) or "git diff failed")
 
 
-def count_deps_added(work: Path, state: dict) -> int:
+def count_deps_added(work: Path, state: dict, sparse_absences: frozenset[str] = frozenset()) -> int:
     base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
-    cmd = ["git", "diff"]
-    if base_sha:
-        cmd.append(base_sha)
-    cmd.extend(["--", "package.json"])
-    proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True, encoding="utf-8")
-    if proc.returncode != 0:
+    try:
+        with observed_git(work, sparse_absences) as (git, _flags):
+            diff = git("diff", *([base_sha] if base_sha else []), "--", "package.json").decode("utf-8", "surrogateescape")
+    except (OSError, ValueError):
         return 0
     in_deps = False
     count = 0
-    for line in (proc.stdout or "").splitlines():
+    for line in diff.splitlines():
         if line.startswith(("diff ", "index ", "---", "+++", "@@")):
             continue
         marker = line[:1]
@@ -1225,7 +1234,8 @@ def count_deps_added(work: Path, state: dict) -> int:
     return count
 
 
-def changed_files(work: Path, state: dict, devlyn_dir: Path) -> tuple[list[str], str | None]:
+def changed_files(work: Path, state: dict, devlyn_dir: Path,
+                  sparse_absences: frozenset[str] = frozenset()) -> tuple[list[str], str | None]:
     external_diff = devlyn_dir / "external-diff.patch"
     if external_diff.is_file():
         names: list[str] = []
@@ -1258,13 +1268,13 @@ def changed_files(work: Path, state: dict, devlyn_dir: Path) -> tuple[list[str],
                     names.append(fields[2].decode("utf-8", "surrogateescape"))
         return (list(dict.fromkeys(names)), None)
     base_sha = ((state.get("base_ref") or {}).get("sha") or "").strip()
-    cmd = ["git", "diff", "--name-only", "-z", "--no-renames"]
-    if base_sha:
-        cmd.append(base_sha)
-    proc = subprocess.run(cmd, cwd=str(work), capture_output=True)
-    if proc.returncode != 0:
-        return ([], (proc.stderr or proc.stdout).decode("utf-8", "replace").strip() or "git diff --name-only failed")
-    return ([path.decode("utf-8", "surrogateescape") for path in proc.stdout.split(b"\0") if path], None)
+    try:
+        with observed_git(work, sparse_absences) as (git, _flags):
+            raw = git("diff", "--name-only", "-z", "--no-renames", "--ignore-submodules=none",
+                      *([base_sha] if base_sha else []))
+    except (OSError, ValueError) as exc:
+        return ([], str(exc) or "git diff --name-only failed")
+    return ([path.decode("utf-8", "surrogateescape") for path in raw.split(b"\0") if path], None)
 
 
 def expected_contract_findings(
@@ -1279,8 +1289,14 @@ def expected_contract_findings(
         return ([], finding_start)
     findings: list[dict] = []
     seq = finding_start
-    diff_text, diff_error = diff_text_for_expected(work, devlyn_dir, state)
-    paths, paths_error = changed_files(work, state, devlyn_dir) if expected_data.get("forbidden_files") else ([], None)
+    # Observed like the scope check: the baseline's sparse absences are not deletions.
+    _baseline, sparse_absences, baseline_error = load_untracked_baseline(devlyn_dir)
+    if (devlyn_dir / "external-diff.patch").is_file():
+        baseline_error = None
+    diff_text, diff_error = ("", baseline_error) if baseline_error else diff_text_for_expected(work, devlyn_dir, state, sparse_absences)
+    paths, paths_error = [], None
+    if expected_data.get("forbidden_files"):
+        paths, paths_error = ([], baseline_error) if baseline_error else changed_files(work, state, devlyn_dir, sparse_absences)
     diff_error = diff_error or paths_error
     if diff_error and (
         expected_data.get("forbidden_patterns") or expected_data.get("forbidden_files")
@@ -1362,7 +1378,7 @@ def expected_contract_findings(
         })
         seq += 1
     max_deps = expected_data.get("max_deps_added", 0)
-    deps_added = count_deps_added(work, state)
+    deps_added = count_deps_added(work, state, sparse_absences)
     if deps_added > max_deps:
         findings.append({
             "id": f"{FINDING_PREFIX}-{seq:04d}",
@@ -1451,7 +1467,7 @@ def path_matches_surface(path: str, surface: list[str]) -> bool:
                 prefix = expanded[:-3].rstrip("/")
                 if path == prefix or path.startswith(f"{prefix}/"):
                     return True
-            elif path == expanded:
+            elif path.rstrip("/") == expanded.rstrip("/"):  # a nested repository: `dir/` untracked, `dir` as a gitlink
                 return True
     return False
 
@@ -1460,17 +1476,20 @@ def is_devlyn_path(path: str) -> bool:
     return path == ".devlyn" or path.startswith(".devlyn/")
 
 
-def git_status_entries(work: Path) -> tuple[list[tuple[str, str]], str | None]:
-    proc = subprocess.run(
-        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none"],
-        cwd=str(work),
-        capture_output=True,
-    )
-    if proc.returncode != 0:
-        error = (proc.stderr or proc.stdout).decode("utf-8", "replace").strip()
-        return ([], error or "git status failed")
+STATUS_ARGS = ("status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none")
+
+
+def git_status_entries(work: Path, sparse_absences: frozenset[str] = frozenset()) -> tuple[list[tuple[str, str]], str | None]:
+    try:
+        with observed_git(work, sparse_absences) as (git, _flags):
+            return parse_status(git(*STATUS_ARGS))
+    except (OSError, ValueError) as exc:
+        return ([], str(exc) or "git status failed")
+
+
+def parse_status(raw: bytes) -> tuple[list[tuple[str, str]], str | None]:
     entries: list[tuple[str, str]] = []
-    fields = proc.stdout.split(b"\0")
+    fields = raw.split(b"\0")
     i = 0
     while i < len(fields):
         raw = fields[i]
@@ -1489,8 +1508,8 @@ def git_status_entries(work: Path) -> tuple[list[tuple[str, str]], str | None]:
     return (entries, None)
 
 
-def current_worktree_changed_paths(work: Path) -> tuple[list[str], str | None]:
-    entries, error = git_status_entries(work)
+def current_worktree_changed_paths(work: Path, sparse_absences: frozenset[str]) -> tuple[list[str], str | None]:
+    entries, error = git_status_entries(work, sparse_absences)
     if error:
         return ([], error)
     paths: list[str] = []
@@ -1503,22 +1522,41 @@ def current_worktree_changed_paths(work: Path) -> tuple[list[str], str | None]:
     return (sorted(paths), None)
 
 
-def current_untracked_files(work: Path) -> tuple[set[str], str | None]:
-    entries, error = git_status_entries(work)
+def current_untracked_files(work: Path, sparse_absences: frozenset[str]) -> tuple[set[str], str | None]:
+    entries, error = git_status_entries(work, sparse_absences)
     if error:
         return (set(), error)
     return ({path for status, path in entries if status == "??" and not is_devlyn_path(path)}, None)
 
 
-def load_untracked_baseline(devlyn_dir: Path) -> tuple[set[str], str | None]:
+EMPTY_BASELINE = '{"untracked": [], "sparse_absences": []}\n'
+
+
+def load_untracked_baseline(devlyn_dir: Path) -> tuple[set[str], frozenset[str], str | None]:
+    """PHASE 0's record of what the run does not own: `untracked` paths that were already there, and
+    `sparse_absences`, tracked skip-worktree paths the worktree lacked. Each set grants only its own
+    exemption, so a path cannot move from one to the other to hide a change."""
     baseline_path = devlyn_dir / "untracked.baseline"
     if not baseline_path.is_file():
-        return (set(), "VERIFY MECHANICAL requires .devlyn/untracked.baseline from PHASE 0; the file is missing.")
+        return (set(), frozenset(), "VERIFY MECHANICAL requires .devlyn/untracked.baseline from PHASE 0; the file is missing.")
     try:
-        lines = baseline_path.read_text(encoding="utf-8").splitlines()
-    except OSError as e:
-        return (set(), f"Cannot read {baseline_path}: {e}")
-    return ({line for line in lines if line and not is_devlyn_path(line)}, None)
+        data = loads_strict_json(baseline_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return (set(), frozenset(), f"Cannot read {baseline_path}: {e}")
+    if (not isinstance(data, dict) or set(data) != {"untracked", "sparse_absences"}
+            or any(not isinstance(paths, list) or any(not isinstance(path, str) for path in paths) for paths in data.values())):
+        return (set(), frozenset(), f"{baseline_path} must hold exactly the untracked and sparse_absences path lists")
+    return ({path for path in data["untracked"] if not is_devlyn_path(path)}, frozenset(data["sparse_absences"]), None)
+
+
+def unadopted_user_path(path: str, baseline: set[str], surface: list[str]) -> bool:
+    """Whether `path` is a user's untracked path from before the run that no exact surface entry adopts.
+
+    A nested repository is recorded as `dir/` in the baseline but becomes the gitlink `dir` once
+    staged, so ownership compares paths without a trailing slash.
+    """
+    key = path.rstrip("/")
+    return key in {item.rstrip("/") for item in baseline} and key not in {entry.rstrip("/") for entry in surface}
 
 
 def load_authorized_surface(devlyn_dir: Path) -> tuple[list[str] | None, str | None]:
@@ -1611,7 +1649,7 @@ def authorized_surface_findings(
         )], finding_start + 1)
     assert surface is not None
 
-    baseline, baseline_error = load_untracked_baseline(devlyn_dir)
+    baseline, sparse_absences, baseline_error = load_untracked_baseline(devlyn_dir)
     if baseline_error is not None:
         return ([scope_finding(
             finding_start,
@@ -1624,7 +1662,7 @@ def authorized_surface_findings(
                 "visible to the scope gate."
             ),
         )], finding_start + 1)
-    current_untracked, untracked_error = current_untracked_files(work)
+    current_untracked, untracked_error = current_untracked_files(work, sparse_absences)
     if untracked_error is not None:
         return ([scope_finding(
             finding_start,
@@ -1636,7 +1674,7 @@ def authorized_surface_findings(
 
     findings: list[dict] = []
     seq = finding_start
-    paths, paths_error = changed_files(work, state, devlyn_dir)
+    paths, paths_error = changed_files(work, state, devlyn_dir, sparse_absences)
     if paths_error is not None:
         return ([scope_finding(
             finding_start,
@@ -1646,6 +1684,18 @@ def authorized_surface_findings(
             "Ensure base_ref.sha is valid and any external-diff.patch is a readable Git patch with a/ and b/ prefixes.",
         )], finding_start + 1)
     for path in paths:
+        if unadopted_user_path(path, baseline, surface):
+            # A user's untracked file from before the run is adopted only by an exact surface entry.
+            findings.append(scope_finding(
+                seq,
+                "scope.out-of-scope-file",
+                f"{path} was the user's untracked file before the run; only an exact authorized_surface entry adopts it.",
+                path,
+                (f"Remove {path} from the commit with `git --literal-pathspecs rm -q --cached -- {path}` and keep "
+                 "the file: it is the user's. Never widen plan.md's authorized_surface to cover it."),
+            ))
+            seq += 1
+            continue
         if path_matches_surface(path, surface):
             continue
         findings.append(scope_finding(
@@ -1668,12 +1718,12 @@ def authorized_surface_findings(
         findings.append(scope_finding(
             seq,
             "scope.out-of-scope-file",
-            f"{path} is a created-during-run unauthorized untracked file.",
+            f"{path} is an unauthorized untracked file outside the PHASE 0 baseline.",
             path,
             (
-                f"Remove {path}. Do not widen plan.md's authorized_surface "
-                "to include it — new untracked leaks must be removed, not "
-                "self-authorized by the fix loop."
+                f"Remove {path} if this run created it; a file that predates the run "
+                "(one an ignore change made visible) is the user's, so leave it and keep "
+                "the finding for review. Never widen plan.md's authorized_surface to cover it."
             ),
         ))
         seq += 1
@@ -1686,11 +1736,17 @@ def run_print_authorized_surface(work: Path, devlyn_dir: Path) -> int:
         print(f"[spec-verify --print-authorized-surface] {surface_error}", file=sys.stderr)
         return 2
     assert surface is not None
-    paths, status_error = current_worktree_changed_paths(work)
+    baseline, sparse_absences, baseline_error = load_untracked_baseline(devlyn_dir)
+    if baseline_error is not None:
+        print(f"[spec-verify --print-authorized-surface] {baseline_error}", file=sys.stderr)
+        return 2
+    paths, status_error = current_worktree_changed_paths(work, sparse_absences)
     if status_error is not None:
         print(f"[spec-verify --print-authorized-surface] git status failed: {status_error}", file=sys.stderr)
         return 2
-    authorized_paths = [path for path in paths if path_matches_surface(path, surface)]
+    # A user's untracked file from before the run is adopted only by an exact surface entry, never by a glob.
+    authorized_paths = [path for path in paths if path_matches_surface(path, surface)
+                        and not unadopted_user_path(path, baseline, surface)]
     if authorized_paths:
         sys.stdout.buffer.write("\0".join(authorized_paths).encode("utf-8", "surrogateescape") + b"\0")
     return 0
@@ -1704,8 +1760,14 @@ def run_write_untracked_baseline(work: Path, devlyn_dir: Path) -> int:
     `dir/` and C-quotes special characters, while the comparer sees
     `--untracked-files=all` unquoted per-file paths — every pre-existing
     file under an untracked directory would false-positive as
-    created-during-run)."""
-    entries, error = git_status_entries(work)
+    created-during-run). The skip-worktree paths the worktree lacks now are
+    the only sparse absences the run may keep."""
+    try:
+        sparse_absences = sparse_absent_entries(work)
+    except (OSError, ValueError) as exc:
+        print(f"[spec-verify --write-untracked-baseline] cannot read index flags: {exc}", file=sys.stderr)
+        return 2
+    entries, error = git_status_entries(work, sparse_absences)
     if error:
         print(f"[spec-verify --write-untracked-baseline] git status failed: {error}", file=sys.stderr)
         return 2
@@ -1714,11 +1776,9 @@ def run_write_untracked_baseline(work: Path, devlyn_dir: Path) -> int:
         if status == "??" and not is_devlyn_path(path)
     )
     devlyn_dir.mkdir(parents=True, exist_ok=True)
-    baseline_path = devlyn_dir / "untracked.baseline"
-    baseline_path.write_text(
-        "".join(path + "\n" for path in untracked),
+    (devlyn_dir / "untracked.baseline").write_text(
+        json.dumps({"untracked": untracked, "sparse_absences": sorted(sparse_absences)}, indent=1) + "\n",
         encoding="utf-8",
-        errors="surrogateescape",
     )
     return 0
 
@@ -1733,6 +1793,78 @@ def _git_bytes(work: Path, *args: str) -> bytes:
 
 def _file_sha256(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+
+
+# Git trusts cached state through these; an observer turns them off.
+OBSERVE_CONFIG = ("-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
+                  "-c", "core.ignoreStat=false", "-c", "core.splitIndex=false")
+
+
+def _git_path(work: Path, name: str) -> Path:
+    path = Path(os.fsdecode(_git_bytes(work, "rev-parse", "--git-path", name).removesuffix(b"\n")))
+    return path if path.is_absolute() else work / path
+
+
+def _present(path: Path) -> bool:
+    """Whether anything occupies the path, a dangling symlink included; an access error raises."""
+    try:
+        path.lstat()
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    return True
+
+
+def _flag_tags(listing: bytes) -> dict[str, str]:
+    """Paths `git ls-files -v -z` marks skip-worktree (S) or assume-unchanged (lowercase), by tag."""
+    records = (record.decode("utf-8", "surrogateescape") for record in listing.split(b"\0") if len(record) > 2)
+    return {record[2:]: record[0] for record in records if record[0] == "S" or record[0].islower()}
+
+
+def sparse_absent_entries(work: Path) -> frozenset[str]:
+    """Skip-worktree paths the worktree lacks: a sparse checkout's absences, as found right now."""
+    flags = _flag_tags(_git_bytes(work, "ls-files", "-v", "-z"))
+    return frozenset(path for path, tag in flags.items() if tag in "Ss" and not _present(work / path))
+
+
+@contextlib.contextmanager
+def observed_git(work: Path, sparse_absences: frozenset[str] = frozenset()):
+    """Run Git as an observer that index flags, caches and hooks cannot steer.
+
+    Index flags make Git skip worktree content, caches make it trust stale state and hooks run
+    worker code, and a worker can set all three; other repository configuration is trusted. On a private copy of the index (mtime kept, so racily clean entries
+    are still content-checked) assume-unchanged is cleared everywhere and skip-worktree
+    everywhere except an absent path in `sparse_absences`, the caches are off, and the real
+    index is never written (reading a split index still refreshes its shared index's mtime,
+    Git's expiry clock, as every Git read does). Yields (git, flags): a runner returning stdout
+    bytes, and the original tag of every flagged path.
+    """
+    index = _git_path(work, "index")
+    with tempfile.TemporaryDirectory(prefix="devlyn-observe-") as tmp:
+        private = Path(tmp) / "index"
+        if index.is_file():
+            shutil.copy2(index, private)
+        env = {**os.environ, "GIT_INDEX_FILE": str(private), "GIT_OPTIONAL_LOCKS": "0"}
+
+        # Hooks are worker-writable and would run against the private index (post-index-change).
+        config = (*OBSERVE_CONFIG, "-c", f"core.hooksPath={Path(tmp) / 'no-hooks'}")
+
+        def git(*args: str, stdin: bytes | None = None) -> bytes:
+            proc = subprocess.run(["git", *config, *args], cwd=str(work), env=env, input=stdin,
+                                  capture_output=True)
+            if proc.returncode != 0:
+                detail = (proc.stderr or proc.stdout).decode("utf-8", "replace").strip()
+                raise ValueError(f"git {args[0]} failed: {detail or proc.returncode}")
+            return proc.stdout
+
+        flags = _flag_tags(git("ls-files", "-v", "-z"))
+        cleared = (("--no-assume-unchanged", [path for path, tag in flags.items() if tag.islower()]),
+                   ("--no-skip-worktree", [path for path, tag in flags.items() if tag in "Ss"
+                                           and not (path in sparse_absences and not _present(work / path))]))
+        for option, paths in cleared:
+            if paths:
+                git("update-index", option, "-z", "--stdin",
+                    stdin=b"".join(path.encode("utf-8", "surrogateescape") + b"\0" for path in paths))
+        yield git, flags
 
 
 def _entry_sha256(path: Path) -> str:
@@ -1772,22 +1904,30 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
     Git reports as one directory entry, by path only), and the current bytes of every
     verification input wherever it lives: the source spec or criteria and goal,
     the sibling `spec.expected.json`, PLAN, risk probes with their scripts, the
-    PHASE 0 baseline and the external diff. Problems
-    name what keeps a normal-mode tree from being sealable: tracked or staged
-    changes, untracked files outside the baseline, a baseline that differs from
-    its bound digest, or HEAD away from the VERIFY span's `pre_sha`.
+    PHASE 0 baseline and the external diff. Git observes through `observed_git`, and
+    the document also binds the sparse absences still in place, so a flag changed or
+    an absence materialized after the snapshot changes the digest.
+
+    Problems name what keeps the tree from being sealable. In normal mode: tracked
+    or staged changes (hidden ones named with their flag), untracked files outside
+    the baseline, or HEAD away from the VERIFY span's `pre_sha`. In every mode: an
+    unusable baseline, or one that differs from its bound digest. Ignore rules of
+    every source and the content they hide are trusted environment, not attested.
     """
-    head = _git_bytes(work, "rev-parse", "HEAD").decode().strip()
+    baseline, sparse_absences, baseline_error = load_untracked_baseline(devlyn_dir)
     pathspec = ("--", ".", ":(exclude).devlyn")
     diff = ("diff", "--no-ext-diff", "--no-textconv", "--binary", "--submodule=diff", "--ignore-submodules=none")
-    worktree = _git_bytes(work, *diff, "HEAD", *pathspec)
-    index = _git_bytes(work, *diff, "--cached", "HEAD", *pathspec)
-    entries, error = git_status_entries(work)
-    if error:
-        raise ValueError(f"git status failed: {error}")
+    with observed_git(work, sparse_absences) as (git, flags):
+        head = git("rev-parse", "HEAD").decode().strip()
+        worktree = git(*diff, "HEAD", *pathspec)
+        index = git(*diff, "--cached", "HEAD", *pathspec)
+        entries, error = parse_status(git(*STATUS_ARGS))
+        if error:
+            raise ValueError(f"git status failed: {error}")
+        absent = sorted(path for path, tag in flags.items()
+                        if tag in "Ss" and path in sparse_absences and not _present(work / path))
     tracked = sorted([path, status] for status, path in entries if status != "??" and not is_devlyn_path(path))
     dirty = sorted({path for path, _status in tracked})
-    baseline, _baseline_error = load_untracked_baseline(devlyn_dir)
     verify_only = state.get("mode") == "verify-only"
     untracked = []
     for status, path in entries:
@@ -1825,6 +1965,7 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
         "index_diff_sha256": hashlib.sha256(index).hexdigest(),
         "status": tracked,
         "untracked": untracked,
+        "sparse_absences_sha256": hashlib.sha256("\0".join(absent).encode("utf-8", "surrogateescape")).hexdigest(),
         "inputs": {
             "spec": input_sha256(spec_path),
             "spec_expected": input_sha256(str(Path(spec_path).with_name("spec.expected.json"))) if isinstance(spec_path, str) and spec_path else None,
@@ -1841,16 +1982,20 @@ def source_snapshot(work: Path, devlyn_dir: Path, state: dict) -> tuple[dict, st
         json.dumps(document, sort_keys=True, separators=(",", ":")).encode("utf-8", "surrogateescape")
     ).hexdigest()
     problems = []
-    if dirty or worktree or index:
-        problems.append("tracked or staged changes: " + ", ".join(dirty or ["(index)"]))
-    residue = sorted({row[0] for row in untracked} - baseline)
-    if residue:
-        problems.append("untracked files outside the PHASE 0 baseline: " + ", ".join(residue))
-    if "untracked_baseline_sha256" in state and state["untracked_baseline_sha256"] != baseline_sha:
+    if not verify_only:
+        if dirty or worktree or index:
+            named = [f"{path} (hidden by index flag {flags[path]})" if path in flags else path for path in dirty]
+            problems.append("tracked or staged changes: " + ", ".join(named or ["(index)"]))
+        residue = sorted({row[0] for row in untracked} - baseline)
+        if residue:
+            problems.append("untracked files outside the PHASE 0 baseline: " + ", ".join(residue))
+        verify = open_verify_span(state)
+        if verify is not None and head != verify["pre_sha"]:
+            problems.append(f"HEAD {head} differs from the VERIFY span's pre_sha {verify['pre_sha']}")
+    if baseline_error is not None:
+        problems.append(baseline_error)
+    elif "untracked_baseline_sha256" in state and state["untracked_baseline_sha256"] != baseline_sha:
         problems.append(".devlyn/untracked.baseline differs from its bound digest")
-    verify = open_verify_span(state)
-    if verify is not None and head != verify["pre_sha"]:
-        problems.append(f"HEAD {head} differs from the VERIFY span's pre_sha {verify['pre_sha']}")
     return document, digest, problems
 
 
@@ -1882,6 +2027,8 @@ def snapshot_changes(before: dict, after: dict) -> list[str]:
         old = {row[0]: row for row in before.get(name) or []}
         new = {row[0]: row for row in after.get(name) or []}
         changes += [f"{name} {path}" for path in sorted(set(old) | set(new)) if old.get(path) != new.get(path)]
+    if before.get("sparse_absences_sha256") != after.get("sparse_absences_sha256"):
+        changes.append("sparse absences")
     old_inputs, new_inputs = before.get("inputs") or {}, after.get("inputs") or {}
     changes += [f"input {key}" for key in sorted(set(old_inputs) | set(new_inputs))
                 if old_inputs.get(key) != new_inputs.get(key)]
@@ -1972,7 +2119,7 @@ def run_seal(work: Path, devlyn_dir: Path) -> int:
     if not isinstance(record, dict) or (record.get("run_id"), record.get("round")) != (run_id, round_):
         print(f"[spec-verify --seal] {SEAL_NAME} does not belong to run {run_id} round {round_}", file=sys.stderr)
         return 2
-    problems = list(record.get("problems") or []) if state.get("mode") != "verify-only" else []
+    problems = list(record.get("problems") or [])
     if record.get("digest") is None:
         problems = list(record.get("problems") or ["snapshot missing"])
     else:
@@ -2256,9 +2403,15 @@ def seal_self_test(script_path: str) -> int:
         git("reset", "-q", "--hard", base)
 
         original_baseline = (devlyn / "untracked.baseline").read_bytes()
-        (devlyn / "untracked.baseline").write_bytes(original_baseline + b"residue.txt\n")
+        edited = loads_strict_json(original_baseline.decode("utf-8"))
+        edited["untracked"].append("residue.txt")
+        (devlyn / "untracked.baseline").write_text(json.dumps(edited), encoding="utf-8")
         mechanical()
         if not refused("an edited baseline", "untracked.baseline differs from its bound digest"):
+            return 1
+        (devlyn / "untracked.baseline").write_bytes(original_baseline + b"residue.txt\n")
+        mechanical()
+        if not refused("an unreadable baseline", "untracked.baseline: Extra data"):
             return 1
         (devlyn / "untracked.baseline").write_bytes(original_baseline)
 
@@ -3398,7 +3551,7 @@ def run_self_test() -> int:
             "```json\n{\"authorized_surface\": [\"external-only.txt\"]}\n```\n",
             encoding="utf-8",
         )
-        (external_diff_devlyn / "untracked.baseline").write_text("", encoding="utf-8")
+        (external_diff_devlyn / "untracked.baseline").write_text(EMPTY_BASELINE, encoding="utf-8")
         external_diff_state = {
             "mode": "free-form",
             "source": {"type": "spec", "spec_path": str(external_diff_spec)},
@@ -3681,33 +3834,6 @@ def run_self_test() -> int:
                     assert "correctness.spec-literal-mismatch" in (
                         generated_devlyn / FINDINGS_NAME
                     ).read_text(encoding="utf-8")
-
-        generated_criteria.write_text(
-            "# Criteria\n\n## Verification\n\n- generated criteria omitted its machine-readable carrier.\n",
-            encoding="utf-8",
-        )
-        malformed_generated_hash = hashlib.sha256(generated_criteria.read_bytes()).hexdigest()
-        (generated_devlyn / "pipeline.state.json").write_text(json.dumps({
-            "source": {
-                "type": "generated",
-                "criteria_path": str(generated_criteria),
-                "criteria_sha256": malformed_generated_hash,
-            }
-        }), encoding="utf-8")
-        malformed_generated_run = subprocess.run(
-            [sys.executable, script_path],
-            cwd=generated_user,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        )
-        if malformed_generated_run.returncode == 0:
-            print("generated criteria without a JSON carrier was accepted", file=sys.stderr)
-            return 1
-        if "Generated criteria were written without one" not in malformed_generated_run.stderr:
-            print("generated criteria without a JSON carrier did not report the generated-source contract", file=sys.stderr)
-            print(malformed_generated_run.stderr, file=sys.stderr)
-            return 1
 
         real_user = work / "real-user"
         real_user.mkdir()
@@ -4038,6 +4164,7 @@ def run_self_test() -> int:
             "max_deps_added": 0,
         }) + "\n", encoding="utf-8")
         subprocess.run(["git", "add", "-A"], cwd=contract_root, check=True)
+        (contract_devlyn / "untracked.baseline").write_text(EMPTY_BASELINE, encoding="utf-8")
         (contract_devlyn / "pipeline.state.json").write_text(json.dumps({
             "source": {"type": "spec", "spec_path": str(contract_spec)},
             "base_ref": {"sha": base_sha},
@@ -4615,7 +4742,7 @@ def run_self_test() -> int:
         literal_names += ["old name.txt", "new name.txt"]
         literal_state = {"base_ref": {"sha": "HEAD"}}
         literal_expected = {"forbidden_files": literal_names}
-        (literal_devlyn / "untracked.baseline").write_text("", encoding="utf-8")
+        (literal_devlyn / "untracked.baseline").write_text(EMPTY_BASELINE, encoding="utf-8")
         (literal_devlyn / "plan.md").write_text(
             "<!-- devlyn:authorized-surface -->\n## Files to touch\n\n```json\n"
             + json.dumps({"authorized_surface": literal_names}) + "\n```\n", encoding="utf-8",
@@ -4723,10 +4850,10 @@ def run_self_test() -> int:
             print("--write-untracked-baseline failed", file=sys.stderr)
             print(write_baseline_run.stderr, file=sys.stderr)
             return 1
-        baseline_lines = (scope_devlyn / "untracked.baseline").read_text(encoding="utf-8").splitlines()
-        if baseline_lines != ["pre existing dir/nested file.txt", "preexisting.local"]:
+        baseline_data = loads_strict_json((scope_devlyn / "untracked.baseline").read_text(encoding="utf-8"))
+        if baseline_data != {"untracked": ["pre existing dir/nested file.txt", "preexisting.local"], "sparse_absences": []}:
             print("--write-untracked-baseline wrote wrong content", file=sys.stderr)
-            print(repr(baseline_lines), file=sys.stderr)
+            print(repr(baseline_data), file=sys.stderr)
             return 1
         scope_findings_path = scope_devlyn / FINDINGS_NAME
 
@@ -4993,7 +5120,7 @@ def run_self_test() -> int:
         if not found or block is None or loads_strict_json(block) != {"authorized_surface": ["bin/cli.js"]}:
             print("extract_authorized_surface_block mis-parsed the mixed H2/H1 section-boundary shape", file=sys.stderr)
             return 1
-    return seal_self_test(script_path) or defect_witness_self_test(script_path)
+    return seal_self_test(script_path) or defect_witness_self_test(script_path) or binding_self_test(script_path)
 
 
 # A generic store CLI: each defect below is one class the four witness tags exist to catch.
@@ -5078,6 +5205,310 @@ print("cleanup ok" if code == 3 and not (scratch / "job.scratch").exists() else 
 shutil.rmtree(scratch, ignore_errors=True)
 """,
 }
+
+
+def binding_self_test(script_path: str) -> int:
+    """MECHANICAL observes through Git's view with worker-writable modifiers neutralized.
+
+    A changed contract, a change hidden by an index flag (before or during the commands, after the
+    seal, or re-hidden by a hook), a newly concealed deletion and a path crossing between baseline
+    categories never seal; a clean sparse checkout, a verify-only tree, a host append to a shared
+    exclude file and a tool's self-ignoring cache do. The observer never writes the real index.
+    """
+    script_path = str(Path(script_path).resolve())
+    failures: list[str] = []
+
+    def check(condition: bool, message: str) -> None:
+        if not condition:
+            failures.append(message)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        outside = Path(tmp) / "spec"
+        outside.mkdir()
+        spec = outside / "spec.md"
+        spec.write_bytes(b"# Spec\n\n<!-- devlyn:verification -->\n## Verification\n\n- prints ok\n")
+
+        def contract(cmd: str, **extra) -> bytes:
+            return json.dumps({"verification_commands": [{"cmd": cmd}], **extra}).encode()
+
+        def repo(name: str, *, mode: str = "spec", cmd: str = "true", setup=None, **extra):
+            root = Path(tmp) / name
+            devlyn = root / ".devlyn"
+            devlyn.mkdir(parents=True)
+
+            def git(*args: str) -> str:
+                return subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=root,
+                                      check=True, capture_output=True, text=True, encoding="utf-8").stdout.strip()
+
+            (root / ".gitignore").write_bytes(b".devlyn/\n")
+            for name_ in ("a.txt", "b.txt", "sparse.txt"):
+                (root / name_).write_bytes(f"{name_}\n".encode())
+            git("init", "-q"); git("add", "-A"); git("commit", "-q", "-m", "base")
+            (outside / "spec.expected.json").write_bytes(contract(cmd, **extra))
+            if setup is not None:
+                setup(root, git)
+            (devlyn / "plan.md").write_bytes(b'<!-- devlyn:authorized-surface -->\n## Files\n```json\n{"authorized_surface": ["a.txt"]}\n```\n')
+            if run_write_untracked_baseline(root, devlyn) != 0:
+                raise AssertionError(f"{name}: baseline write failed")
+            head = git("rev-parse", "HEAD")
+            state = {"run_id": f"rs-{name}", "mode": mode,
+                     "base_ref": {"sha": head},
+                     "source": {"type": "spec", "spec_path": str(spec), "spec_sha256": hashlib.sha256(spec.read_bytes()).hexdigest(),
+                                "expected_sha256": hashlib.sha256(contract(cmd, **extra)).hexdigest()},
+                     "untracked_baseline_sha256": hashlib.sha256((devlyn / "untracked.baseline").read_bytes()).hexdigest(),
+                     "phases": {"verify": {"round": 0, "started_at": "2026-10-03T00:00:00.000Z", "completed_at": None,
+                                           "pre_sha": head}}}
+            (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+            return root, devlyn, git, state
+
+        def mechanical(root: Path) -> subprocess.CompletedProcess:
+            (root / ".devlyn" / SEAL_NAME).unlink(missing_ok=True)
+            shutil.rmtree(root / ".devlyn" / "process-evidence", ignore_errors=True)
+            return subprocess.run([sys.executable, script_path], cwd=root, capture_output=True, text=True, encoding="utf-8")
+
+        def sealed(root: Path) -> tuple[int, str]:
+            mechanical(root)
+            proc = subprocess.run([sys.executable, script_path, "--seal"], cwd=root, capture_output=True, text=True,
+                                  encoding="utf-8")
+            findings = root / ".devlyn" / FINDINGS_NAME
+            return proc.returncode, findings.read_text(encoding="utf-8") if findings.is_file() else ""
+
+        def sparse(root: Path, git) -> None:
+            git("update-index", "--skip-worktree", "sparse.txt")
+            (root / "sparse.txt").unlink()
+
+        # A clean sparse checkout seals, and observing writes nothing in the real Git directory.
+        root, devlyn, git, state = repo("sparse-clean", setup=sparse)
+        index = Path(git("rev-parse", "--absolute-git-dir")) / "index"
+        before = (index.read_bytes(), index.stat().st_mtime_ns, sorted(p.name for p in index.parent.rglob("*")))
+        rc, findings = sealed(root)
+        check(rc == 0, f"a clean sparse checkout did not seal: {findings}")
+        check((index.read_bytes(), index.stat().st_mtime_ns, sorted(p.name for p in index.parent.rglob("*"))) == before,
+              "observing changed the real index or Git directory")
+
+        # A split index is read, never written: index bytes and mtime, shared-index bytes and the
+        # Git directory's file set stay as they were (Git's read refreshes only the shared index's mtime).
+        root, devlyn, git, state = repo("split-index")
+        git("update-index", "--split-index")
+        gitdir = Path(git("rev-parse", "--absolute-git-dir"))
+        def split_state():
+            return ({p.name: p.read_bytes() for p in gitdir.glob("sharedindex.*")},
+                    ((gitdir / "index").read_bytes(), (gitdir / "index").stat().st_mtime_ns),
+                    sorted(str(p.relative_to(gitdir)) for p in gitdir.rglob("*")))
+        before = split_state()
+        rc, findings = sealed(root)
+        check(rc == 0 and split_state() == before, f"observing a split index wrote Git metadata: {findings}")
+
+        # A sparse absence a contract forbids changing is no change.
+        root, devlyn, git, state = repo("sparse-forbidden", setup=sparse, forbidden_files=["sparse.txt"])
+        rc, findings = sealed(root)
+        check(rc == 0 and "forbidden" not in findings, f"a sparse absence counted as a forbidden change: {findings}")
+
+        # A changed contract is never used.
+        (outside / "spec.expected.json").write_bytes(contract("printf other"))
+        changed = mechanical(root)
+        check(changed.returncode != 0 and "source.expected_sha256 mismatch" in changed.stderr,
+              f"a changed verification contract was used: {changed.stderr}")
+
+        # Index flags never hide a change: skip-worktree, assume-unchanged, both, or a concealed deletion.
+        for name, flag, mutate in (
+                ("skip-worktree", ("--skip-worktree",), lambda r: (r / "a.txt").write_bytes(b"hidden\n")),
+                ("assume-unchanged", ("--assume-unchanged",), lambda r: (r / "a.txt").write_bytes(b"hidden\n")),
+                ("both-flags", ("--assume-unchanged", "--skip-worktree"), lambda r: (r / "a.txt").write_bytes(b"hidden\n")),
+                ("concealed-deletion", ("--skip-worktree",), lambda r: (r / "a.txt").unlink())):
+            root, devlyn, git, state = repo(name, setup=sparse)
+            for option in flag:
+                git("update-index", option, "a.txt")
+            mutate(root)
+            rc, findings = sealed(root)
+            check(rc == 1 and "a.txt (hidden by index flag" in findings, f"{name}: a hidden change sealed: {findings}")
+
+        # A hook the worker installs never runs inside the observer (post-index-change would re-flag the private index).
+        if os.name != "nt":
+            root, devlyn, git, state = repo("hook-reflag")
+            git("update-index", "--assume-unchanged", "a.txt")
+            (root / "a.txt").write_bytes(b"hidden\n")
+            hook = Path(git("rev-parse", "--git-path", "hooks")) / "post-index-change"
+            hook = hook if hook.is_absolute() else root / hook
+            hook.parent.mkdir(parents=True, exist_ok=True)
+            hook.write_text("#!/bin/sh\ngit update-index --assume-unchanged a.txt\n", encoding="utf-8")
+            hook.chmod(0o755)
+            rc, findings = sealed(root)
+            check(rc == 1 and "a.txt (hidden by index flag h)" in findings, f"a worker hook re-hid a change: {findings}")
+
+        # Sparse absences are part of the identity: materializing one after the snapshot, even with HEAD's
+        # bytes, changes it; a dangling symlink at an authorized absence is present, so it is a change.
+        root, devlyn, git, state = repo("sparse-materialized", setup=sparse)
+        rc, findings = sealed(root)
+        record = loads_strict_json((devlyn / SEAL_NAME).read_text(encoding="utf-8"))
+        (root / "sparse.txt").write_bytes(b"sparse.txt\n")
+        after = source_snapshot(root, devlyn, state)
+        check(rc == 0 and after[1] != record["digest"] and "sparse absences" in snapshot_changes(record["snapshot"], after[0]),
+              "materializing a sparse absence kept the sealed identity")
+        root, devlyn, git, state = repo("sparse-dangling", setup=sparse)
+        (root / "sparse.txt").symlink_to("missing-target")
+        rc, findings = sealed(root)
+        check(rc == 1 and "sparse.txt" in findings, f"a dangling symlink at a sparse absence sealed: {findings}")
+
+        # A flag set and a file changed by a verification command, or after the seal, changes the identity.
+        root, devlyn, git, state = repo("command-drift", cmd="git update-index --skip-worktree a.txt && printf drift > a.txt")
+        rc, findings = sealed(root)
+        check(rc == 1 and "source changed after the MECHANICAL snapshot" in findings,
+              f"a change made during the commands sealed: {findings}")
+        root, devlyn, git, state = repo("post-seal-drift")
+        rc, findings = sealed(root)
+        record = loads_strict_json((devlyn / SEAL_NAME).read_text(encoding="utf-8"))
+        git("update-index", "--skip-worktree", "a.txt")
+        (root / "a.txt").write_bytes(b"after the seal\n")
+        check(rc == 0 and source_snapshot(root, devlyn, state)[1] != record["digest"],
+              "a change after the seal kept the sealed identity")
+
+        # A path never moves between baseline categories to hide a change.
+        def untracked_then_hidden(root: Path, git) -> None:
+            (root / "u.txt").write_bytes(b"the user's\n")
+        root, devlyn, git, state = repo("category-untracked", setup=untracked_then_hidden)
+        git("add", "u.txt"); git("commit", "-q", "-m", "adopt")
+        state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        git("update-index", "--skip-worktree", "u.txt")
+        (root / "u.txt").unlink()
+        rc, findings = sealed(root)
+        check(rc == 1 and "u.txt (hidden by index flag S)" in findings, f"an untracked baseline path hid a deletion: {findings}")
+        root, devlyn, git, state = repo("category-sparse", setup=sparse)
+        git("update-index", "--force-remove", "sparse.txt"); git("commit", "-q", "-m", "drop")
+        state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        (root / "sparse.txt").write_bytes(b"new bytes\n")
+        rc, findings = sealed(root)
+        check(rc == 1 and "untracked files outside the PHASE 0 baseline: sparse.txt" in findings,
+              f"a sparse absence exempted a new untracked file: {findings}")
+
+        # Expected-contract readers observe like scope: a forbidden pattern hidden by a flag is still found.
+        root, devlyn, git, state = repo("hidden-forbidden", forbidden_patterns=[
+            {"pattern": "FORBIDDEN", "description": "hidden forbidden text", "severity": "disqualifier"}])
+        git("update-index", "--assume-unchanged", "a.txt")
+        (root / "a.txt").write_bytes(b"FORBIDDEN\n")
+        mechanical(root)
+        mech_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
+        check("correctness.forbidden-pattern" in mech_findings, f"a flag hid a forbidden pattern: {mech_findings}")
+
+        # A baseline that is missing or malformed never seals, even when its bytes match the recorded digest.
+        root, devlyn, git, state = repo("baseline-missing")
+        (devlyn / "untracked.baseline").unlink()
+        state["untracked_baseline_sha256"] = None
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        rc, findings = sealed(root)
+        check(rc == 1 and "requires .devlyn/untracked.baseline" in findings, f"a missing baseline sealed: {findings}")
+        root, devlyn, git, state = repo("baseline-malformed")
+        (devlyn / "untracked.baseline").write_bytes(b"a.txt\n")
+        state["untracked_baseline_sha256"] = hashlib.sha256(b"a.txt\n").hexdigest()
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        rc, findings = sealed(root)
+        check(rc == 1 and "untracked.baseline" in findings and "differs from its bound digest" not in findings,
+              f"a malformed baseline sealed: {findings}")
+
+        # A real cone-mode sparse checkout with a sparse index seals without false changes.
+        def cone(root: Path, git) -> None:
+            for name_ in ("inside/y.txt", "outside/x.txt"):
+                (root / name_).parent.mkdir(parents=True, exist_ok=True)
+                (root / name_).write_bytes(b"cone\n")
+            git("add", "-A"); git("commit", "-q", "-m", "dirs")
+            git("sparse-checkout", "set", "--cone", "inside")
+            git("config", "index.sparse", "true")
+            git("sparse-checkout", "reapply")
+        root, devlyn, git, state = repo("sparse-index", setup=cone)
+        rc, findings = sealed(root)
+        check(rc == 0 and not (root / "outside" / "x.txt").exists(), f"a sparse-index checkout did not seal: {findings}")
+
+        # Committing a user's pre-run file through a glob surface is a scope finding, however it was staged.
+        def committed_user_file(root: Path, git) -> None:
+            (root / "src").mkdir()
+            (root / "src" / "user.txt").write_bytes(b"the user's draft\n")
+        root, devlyn, git, state = repo("adoption-committed", setup=committed_user_file)
+        (devlyn / "plan.md").write_text("<!-- devlyn:authorized-surface -->\n## Files\n```json\n"
+                                        + json.dumps({"authorized_surface": ["src/**"]}) + "\n```\n", encoding="utf-8")
+        git("add", "src/user.txt"); git("commit", "-q", "-m", "swept in")
+        state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        mechanical(root)
+        mech_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
+        check("was the user's untracked file before the run" in mech_findings,
+              f"a glob surface adopted a committed user file: {mech_findings}")
+
+        # A user's untracked file from before the run is staged only by an exact surface entry.
+        def user_file(root: Path, git) -> None:
+            (root / "src").mkdir()
+            (root / "src" / "user.txt").write_bytes(b"the user's draft\n")
+        root, devlyn, git, state = repo("adoption", setup=user_file)
+        def staged_paths(surface: list[str]) -> list[str]:
+            (devlyn / "plan.md").write_text("<!-- devlyn:authorized-surface -->\n## Files\n```json\n"
+                                            + json.dumps({"authorized_surface": surface}) + "\n```\n", encoding="utf-8")
+            out = subprocess.run([sys.executable, script_path, "--print-authorized-surface"], cwd=root,
+                                 capture_output=True).stdout
+            return [path.decode() for path in out.split(b"\0") if path]
+        check(staged_paths(["src/**"]) == [], "a glob surface adopted the user's untracked file")
+        check(staged_paths(["src/user.txt"]) == ["src/user.txt"], "an exact surface entry did not adopt the user's file")
+
+        # A user's nested repository (baseline `src/vendor/`, gitlink `src/vendor` once staged) follows the same rule.
+        def nested_repo(root: Path, git) -> None:
+            vendor = root / "src" / "vendor"
+            vendor.mkdir(parents=True)
+            for args in (("init", "-q"), ("commit", "-q", "--allow-empty", "-m", "vendor")):
+                subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=vendor, check=True,
+                               capture_output=True)
+        root, devlyn, git, state = repo("adoption-nested", setup=nested_repo)
+        check("src/vendor/" in loads_strict_json((devlyn / "untracked.baseline").read_text(encoding="utf-8"))["untracked"],
+              "the baseline did not record the nested repository")
+        check(staged_paths(["src/**"]) == [], "a glob surface staged the user's nested repository")
+        (devlyn / "plan.md").write_text("<!-- devlyn:authorized-surface -->\n## Files\n```json\n"
+                                        + json.dumps({"authorized_surface": ["src/**"]}) + "\n```\n", encoding="utf-8")
+        git("add", "src/vendor"); git("commit", "-q", "-m", "gitlink")
+        state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
+        (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+        mechanical(root)
+        mech_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
+        check("src/vendor was the user's untracked file before the run" in mech_findings,
+              f"a glob surface adopted the user's nested repository: {mech_findings}")
+        # An exact entry, with or without the slash, adopts it through printing, staging, commit and MECHANICAL.
+        for index, spelling in enumerate(("src/vendor", "src/vendor/")):
+            root, devlyn, git, state = repo(f"adoption-nested-exact-{index}", setup=nested_repo)
+            check(staged_paths([spelling]) == ["src/vendor/"], f"exact entry {spelling!r} did not stage the nested repository")
+            git("add", "src/vendor"); git("commit", "-q", "-m", "adopted")
+            state["phases"]["verify"]["pre_sha"] = git("rev-parse", "HEAD")
+            (devlyn / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
+            mechanical(root)
+            mech_findings = (devlyn / FINDINGS_NAME).read_text(encoding="utf-8") if (devlyn / FINDINGS_NAME).is_file() else ""
+            check("src/vendor" not in mech_findings, f"exact entry {spelling!r} still flagged the adopted repository: {mech_findings}")
+
+        # Ignore policy is trusted environment (owner decision 2026-10-04): the host appending to a shared
+        # exclude file, or a test tool writing a self-ignoring cache .gitignore, never blocks a correct run.
+        root, devlyn, git, state = repo("host-append")
+        exclude = _git_path(root, "info/exclude")
+        exclude.parent.mkdir(parents=True, exist_ok=True)
+        with exclude.open("a", encoding="utf-8") as handle:
+            handle.write("\n**/.claude/settings.local.json\n**/.claude/settings.local.json\n")
+        rc, findings = sealed(root)
+        check(rc == 0, f"a host append to info/exclude blocked the seal: {findings}")
+        root, devlyn, git, state = repo("tool-cache")
+        (root / ".pytest_cache").mkdir()
+        (root / ".pytest_cache" / ".gitignore").write_bytes(b"# Created by pytest automatically.\n*\n")
+        (root / ".pytest_cache" / "CACHEDIR.TAG").write_bytes(b"Signature: 8a477f597d28d172789f06886806bc55\n")
+        rc, findings = sealed(root)
+        check(rc == 0, f"a test tool's self-ignoring cache blocked the seal: {findings}")
+
+        # Verify-only reviews the untracked files bootstrap saw, a diff-added .gitignore included.
+        def added_ignore(root: Path, git) -> None:
+            (root / "pkg").mkdir()
+            (root / "pkg" / ".gitignore").write_bytes(b"dist/\n")
+        root, devlyn, git, state = repo("verify-only-ignore", mode="verify-only", setup=added_ignore)
+        rc, findings = sealed(root)
+        check(rc == 0, f"a verify-only tree with a .gitignore did not seal: {findings}")
+    if failures:
+        print("binding self-test failed:\n  " + "\n  ".join(failures), file=sys.stderr)
+        return 1
+    print("PASS bindings: Git observes through neutralized flags, caches and hooks; a changed contract, hidden changes "
+          "and category crossings never seal; sparse, verify-only, host-appended and tool-cache trees do; the real index is untouched")
+    return 0
 
 
 def defect_witness_self_test(script_path: str) -> int:
@@ -5290,9 +5721,8 @@ def main() -> int:
     #      `pipeline.state.json:source.{spec_path | criteria_path}`. If it has
     #      a json block, stage its commands or clear stale staging for an
     #      explicit pure-design contract.
-    #   4. If source has no json block AND source.type=="generated":
-    #      CRITICAL spec-verify-malformed — generated criteria must ship a
-    #      verifiable contract per the generated-criteria output contract.
+    #   4. A generated source without a json block never gets here: the
+    #      PHASE 0 freeze refuses it and its bytes are bound.
     #   5. If source has no sibling/json block AND source.type=="spec":
     #      - Real-user mode: silent no-op (preserves iter-0019.6 backward
     #        compat for handwritten specs without the carrier). Drop any
@@ -5375,27 +5805,17 @@ def main() -> int:
             write_malformed_finding(devlyn_dir, error, source_md)
             return 1
         if not contract_found:
-            if src_type == "generated":
-                msg = (
-                    f"generated {source_md.name} must include a "
-                    "`## Verification` ```json``` block (verification_commands "
-                    "array). Generated criteria were written without one."
-                )
-                print(f"[spec-verify] {msg}", file=sys.stderr)
-                write_malformed_finding(devlyn_dir, msg, source_md)
-                return 1
-            # source.type=="spec", no block in spec markdown.
+            # A handwritten spec with no block (the PHASE 0 freeze already refused a
+            # generated source without one, and its bytes are rechecked above).
             if not bench_mode:
-                # Real-user handwritten spec: silent no-op. Drop any stale
-                # pre-staged file so a killed prior run cannot poison this
-                # run's gate.
+                # Drop any stale pre-staged file so a killed prior run cannot poison
+                # this run's gate; the missing-contract rule below decides the rest.
                 if spec_path.exists():
                     spec_path.unlink()
                     seal_error = refresh_open_seal(work, devlyn_dir, state)
                     if seal_error:
                         print(f"[spec-verify] {seal_error}", file=sys.stderr)
                         return 2
-                return 0
             # Benchmark mode with no source block AND no pre-staged file
             # (rare — fixture mis-config) falls through to the no-pre-staged
             # silent no-op branch below.
@@ -5415,10 +5835,10 @@ def main() -> int:
 
     commands: list[dict] = []
     if not spec_path.exists():
-        # A declared pure-design contract continues through probes/results.
-        # Missing handwritten/benchmark contracts remain an opt-in no-op;
-        # missing generated contracts were rejected above.
-        if not contract_found:
+        # A declared pure-design contract continues through probes/results, and so does
+        # a VERIFY round without any contract; elsewhere a missing handwritten/benchmark
+        # contract stays an opt-in no-op. The PHASE 0 freeze refuses a generated source without one.
+        if not contract_found and open_verify_span(state) is None:
             return 0
     else:
         try:

@@ -716,22 +716,20 @@ if ! grep -Fq 'generated criteria carrier was not staged into .devlyn/spec-verif
   || ! grep -Fq 'spec source with mismatched source.spec_sha256 was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'spec source with matching source.spec_sha256 was not staged' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'source.spec_sha256 mismatch' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'generated criteria without a JSON carrier was accepted' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'generated criteria need a valid verification json block' config/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'generated criteria without source.criteria_sha256 was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'generated criteria with mismatched source.criteria_sha256 was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'def source_integrity_error' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'source.criteria_sha256 mismatch' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'Generated criteria were written without one' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'generated criteria carrier was not staged into .devlyn/spec-verify.json' .agents/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'spec source with mismatched source.spec_sha256 was accepted' .agents/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'spec source with matching source.spec_sha256 was not staged' .agents/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'source.spec_sha256 mismatch' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'generated criteria without a JSON carrier was accepted' .agents/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'generated criteria need a valid verification json block' .agents/skills/_shared/state-phase-write.py \
   || ! grep -Fq 'generated criteria without source.criteria_sha256 was accepted' .agents/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'generated criteria with mismatched source.criteria_sha256 was accepted' .agents/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'def source_integrity_error' .agents/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'source.criteria_sha256 mismatch' .agents/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'Generated criteria were written without one' .agents/skills/_shared/spec-verify-check.py \
   || ! grep -Fq '"criteria_sha256": generated_hash' .agents/skills/_shared/spec-verify-check.py; then
   bad "spec-verify-check.py self-test must cover generated criteria source extraction"
 else

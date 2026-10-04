@@ -116,8 +116,10 @@ def option_value(argv: list[str], short: str, long: str) -> str | None:
 
 
 def sandbox_network_access(argv: list[str], phase: str) -> bool:
-    enabled = False  # Worker phases (PLAN, IMPLEMENT) never get network access.
-    expected = f"{NETWORK_ACCESS_CONFIG}=false"
+    # Worker phases (PLAN, IMPLEMENT) never get network access; only a retired BUILD_GATE
+    # receipt, read back from a run completed before the upgrade, recorded it enabled.
+    enabled = phase == "build_gate"
+    expected = f"{NETWORK_ACCESS_CONFIG}={'true' if enabled else 'false'}"
     related = [
         raw for raw in option_values(argv, "-c", "--config")
         if "sandbox_workspace_write" in raw or "network_access" in raw
@@ -410,7 +412,7 @@ def validate_receipt_artifacts(
         raise ReceiptError("invocation receipt model is invalid")
     if receipt["sandbox"] != "workspace-write":
         raise ReceiptError("invocation receipt sandbox must be workspace-write")
-    if receipt["sandbox_network_access"] is not False:
+    if receipt["sandbox_network_access"] is not (phase == "build_gate"):
         raise ReceiptError("invocation receipt sandbox network-access capability mismatch")
     if not isinstance(receipt["exit_code"], int) or isinstance(receipt["exit_code"], bool):
         raise ReceiptError("invocation receipt exit_code is invalid")
@@ -918,6 +920,56 @@ def self_test() -> int:
             validate_receipt_artifacts(work, receipt, run_id="rs-receipt", phase="implement")
         session.write_bytes(original_session)
         receipt.write_bytes(original_receipt)
+        # A BUILD_GATE receipt sealed before the phase retired still reads back (network enabled);
+        # nothing writes a new one.
+        historical = json.loads(original_receipt)
+        assert "transport" not in historical
+        for name in ("prompt.0", "worker-session.0.jsonl"):
+            (devlyn / f"build_gate.{name}").write_bytes((devlyn / f"implement.{name}").read_bytes())
+        historical.update(phase="build_gate", sandbox_network_access=True,
+                          prompt={**historical["prompt"], "path": ".devlyn/build_gate.prompt.0"},
+                          session={**historical["session"], "path": ".devlyn/build_gate.worker-session.0.jsonl"})
+        historical_receipt = devlyn / "build_gate.invocation.0.json"
+        historical_receipt.write_text(json.dumps(historical), encoding="utf-8")
+        validate_receipt_artifacts(work, historical_receipt, run_id="rs-receipt", phase="build_gate")
+        historical_receipt.write_text(json.dumps({**historical, "sandbox_network_access": False}), encoding="utf-8")
+        try:
+            validate_receipt_artifacts(work, historical_receipt, run_id="rs-receipt", phase="build_gate")
+        except ReceiptError as exc:
+            assert "network-access capability mismatch" in str(exc), exc
+        else:
+            raise AssertionError("a historical BUILD_GATE receipt without its network capability was accepted")
+        # f33cf2ca sent every Codex phase through DEVLYN_CODEX_PROMPT_FILE, so the realistic historical
+        # BUILD_GATE receipt carries a transport: its transported argv must enable network access.
+        prompt_raw = (devlyn / "build_gate.prompt.0").read_bytes()
+        for enabled in ("true", "false"):
+            transported = ["-C", str(work), "-s", "workspace-write", "-m", historical["model"],
+                           "-c", f"{NETWORK_ACCESS_CONFIG}={enabled}", "-"]
+            carrier = devlyn / "build_gate.prompt.0.transport.json"
+            carrier.write_text(json.dumps({
+                "schema_version": 1, "transport": "stdin-file",
+                "prompt": {"path": str((devlyn / "build_gate.prompt.0").resolve()), "sha256": sha256(prompt_raw),
+                           "bytes": len(prompt_raw)},
+                "command": ["codex", "exec", *transported], "argv": ["codex", "exec", *transported],
+                "timeout_sec": 0, "isolated": False, "status": "completed", "exit_code": historical["exit_code"]}),
+                encoding="utf-8")
+            historical_receipt.write_text(json.dumps({
+                **historical, "argv_sha256": sha256(json.dumps(transported, separators=(",", ":")).encode("utf-8")),
+                "transport": {"path": ".devlyn/build_gate.prompt.0.transport.json", "sha256": sha256(carrier.read_bytes())},
+            }), encoding="utf-8")
+            try:
+                validate_receipt_artifacts(work, historical_receipt, run_id="rs-receipt", phase="build_gate")
+            except ReceiptError as exc:
+                assert enabled == "false" and "network" in str(exc), exc
+            else:
+                assert enabled == "true", "a transported BUILD_GATE receipt without network access was accepted"
+        try:
+            start_receipt(work, devlyn / "build_gate.invocation.1.json", "rs-receipt", "build_gate", 1,
+                          str(prompt), str(session), argv)
+        except ReceiptError as exc:
+            assert "unsupported invocation phase" in str(exc), exc
+        else:
+            raise AssertionError("a new BUILD_GATE receipt was written")
         plan_prompt = devlyn / "plan.prompt.0"
         plan_prompt.write_text("plan exactly\n", encoding="utf-8")
         plan_session = devlyn / "plan.worker-session.0.jsonl"

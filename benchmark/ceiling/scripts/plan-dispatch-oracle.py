@@ -2555,9 +2555,7 @@ def self_test() -> int:
         complete_run = subprocess.run(
             [
                 sys.executable, str(spw), "--devlyn-dir", str(e2e_state_path.parent),
-                "--phase", "plan", "transition", "--verdict", "PASS",
-                "--next-phase", "implement", "--next-round", "0",
-                "--next-engine", "claude",
+                "--phase", "plan", "complete", "--verdict", "PASS",
             ],
             capture_output=True, text=True, check=False, cwd=repo,
         )

@@ -15,6 +15,7 @@ SHARED = Path(__file__).resolve().parents[1] / "config/skills/_shared"
 ENV = {k: v for k, v in os.environ.items() if not k.startswith("DEVLYN_INVOCATION_")}
 ENV["PYTHONDONTWRITEBYTECODE"] = "1"
 ENV.pop("BENCH_WORKDIR", None)
+EMPTY_BASELINE = runpy.run_path(str(SHARED / "spec-verify-check.py"))["EMPTY_BASELINE"]
 
 
 class OwnerPhases(unittest.TestCase):
@@ -25,7 +26,7 @@ class OwnerPhases(unittest.TestCase):
         self.devlyn = self.work / ".devlyn"
         self.devlyn.mkdir()
         self.state_path = self.devlyn / "pipeline.state.json"
-        (self.devlyn / "untracked.baseline").write_text("")
+        (self.devlyn / "untracked.baseline").write_text(EMPTY_BASELINE)
         self.git("init", "-q")
         self.git("config", "user.name", "Owner phase test")
         self.git("config", "user.email", "owner@example.invalid")
@@ -88,8 +89,8 @@ class OwnerPhases(unittest.TestCase):
     def implemented(self):
         """PLAN → IMPLEMENT with a committed change → VERIFY round 0."""
         self.plan()
-        self.cli("plan", "transition", "--verdict", "PASS", "--next-phase", "implement",
-                 "--next-round", "0", "--next-engine", "claude")
+        self.cli("plan", "complete", "--verdict", "PASS")
+        self.cli("implement", "spawn", "--round", "0", "--engine", "claude")
         (self.work / "source.txt").write_text("implemented\n")
         self.git("commit", "-qam", "chore(pipeline): implement")
         self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
@@ -216,14 +217,72 @@ class OwnerPhases(unittest.TestCase):
         report = self.refused_render_closes("findings")
         self.assertIn("verify-merged.findings.jsonl is missing", report)
 
+    def test_spec_without_contract_still_reaches_judges(self):
+        """A handwritten spec with no verification section yields empty MECHANICAL evidence, not a dead end."""
+        self.with_spec(b"# Spec\n\n## Requirements\n\n- prints ok\n")
+        self.implemented()
+        self.assertEqual(self.mechanical().returncode, 0)
+        results = json.loads((self.devlyn / "spec-verify.results.json").read_text())
+        self.assertEqual(results["commands"], [])
+        self.assertTrue((self.devlyn / "verify-mechanical.findings.jsonl").is_file())
+        renderer = runpy.run_path(str(SHARED / "phase-prompt-render.py"))
+        self.assertIn(b"contract ", renderer["build_verify_snapshot"](self.devlyn, self.state()))
+
+    def test_phase_gated_last_phase_transitions_to_verify(self):
+        self.with_spec()
+        self.cli("plan", "spawn", "--round", "0")
+        (self.devlyn / "plan.md").write_text(
+            '<!-- devlyn:authorized-surface -->\n# Files\n```json\n{"authorized_surface":["source.txt"]}\n```\n'
+            "## Execution phases\n### Phase 1 \u2014 a\ngate: true\n### Phase 2 \u2014 b\ngate: true\n")
+        self.cli("plan", "complete", "--verdict", "PASS")
+        for round_ in (0, 1):
+            self.cli("implement", "spawn", "--round", str(round_), "--engine", "claude",
+                     "--prompt-sha256", self.render("implement", round_))
+            (self.work / "source.txt").write_text(f"phase {round_ + 1}\n")
+            self.git("commit", "-qam", f"chore(pipeline): implement phase {round_ + 1}/2")
+            if round_ == 0:
+                self.cli("implement", "complete", "--verdict", "PASS")
+        self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
+                 "--next-round", "1", "--next-engine", "claude")
+        state = self.state()
+        self.assertEqual(state["phases"]["implement"]["exec"]["statuses"], ["PASS", "PASS"])
+        self.assertEqual((state["phases"]["verify"]["round"], state["rounds"]["global"]), (1, 0))
+
+    def test_verify_opens_only_over_a_finished_implement(self):
+        """VERIFY never reviews unrun phases or a failed IMPLEMENT (state unchanged on refusal)."""
+        self.with_spec()
+        self.cli("plan", "spawn", "--round", "0")
+        (self.devlyn / "plan.md").write_text(
+            '<!-- devlyn:authorized-surface -->\n# Files\n```json\n{"authorized_surface":["source.txt"]}\n```\n'
+            "## Execution phases\n### Phase 1 \u2014 a\ngate: true\n### Phase 2 \u2014 b\ngate: true\n")
+        self.cli("plan", "complete", "--verdict", "PASS")
+        self.cli("implement", "spawn", "--round", "0", "--engine", "claude",
+                 "--prompt-sha256", self.render("implement", 0))
+        (self.work / "source.txt").write_text("phase 1\n")
+        self.git("commit", "-qam", "chore(pipeline): implement phase 1/2")
+        self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
+                 "--next-round", "0", "--next-engine", "claude", error="verify-admission-invalid")
+        self.cli("implement", "complete", "--verdict", "FAIL")
+        self.cli("verify", "spawn", "--round", "0", error="verify-admission-invalid")
+
+    def test_verify_never_opens_over_a_failed_single_phase_implement(self):
+        self.plan()
+        self.cli("plan", "complete", "--verdict", "PASS")
+        self.cli("implement", "spawn", "--round", "0", "--engine", "claude")
+        self.cli("implement", "complete", "--verdict", "FAIL")
+        self.cli("verify", "spawn", "--round", "0", error="verify-admission-invalid")
+
     def test_plan_digest_and_atomic_handoff(self):
         self.plan()
-        self.cli("plan", "transition", "--verdict", "PASS", "--next-phase", "implement",
-                 "--next-round", "0", "--next-engine", "claude")
+        for worker in ("implement", "probe_derive"):  # worker phases open only by complete -> render -> spawn
+            self.cli("plan", "transition", "--verdict", "PASS", "--next-phase", worker,
+                     "--next-round", "0", "--next-engine", "claude", error="illegal phase transition")
+        self.cli("plan", "complete", "--verdict", "PASS")
+        self.cli("implement", "spawn", "--round", "0", "--engine", "claude")
         entry = self.assert_owner("plan")
         self.assertEqual(entry["output_sha256"],
                          hashlib.sha256((self.devlyn / "plan.md").read_bytes()).hexdigest())
-        self.assertEqual(self.state()["untracked_baseline_sha256"], hashlib.sha256(b"").hexdigest())
+        self.assertEqual(self.state()["untracked_baseline_sha256"], hashlib.sha256(EMPTY_BASELINE.encode()).hexdigest())
         self.cli("plan", "spawn", "--round", "1", "--triggered-by", "plan",
                  error="plan-already-in-use")
         (self.devlyn / "plan.md").write_text("widened scope")
@@ -288,7 +347,7 @@ class OwnerPhases(unittest.TestCase):
 
     def test_preexisting_untracked_files_survive_and_residue_cannot_seal(self):
         (self.work / "user-existing.txt").write_text("preserve")
-        (self.devlyn / "untracked.baseline").write_text("user-existing.txt\n")
+        (self.devlyn / "untracked.baseline").write_text(json.dumps({"untracked": ["user-existing.txt"], "sparse_absences": []}))
         self.implemented()
         (self.work / "outside-plan.txt").write_text("created before MECHANICAL")
         self.mechanical()
@@ -301,8 +360,8 @@ class OwnerPhases(unittest.TestCase):
     def test_verify_repair_reenters_with_checkpoint(self):
         self.implemented()
         self.needs_work()
-        self.cli("verify", "transition", "--next-phase", "implement", "--next-round", "1",
-                 "--next-triggered-by", "verify", "--next-engine", "claude")
+        self.cli("verify", "complete")
+        self.cli("implement", "spawn", "--round", "1", "--triggered-by", "verify", "--engine", "claude")
         self.assertEqual(self.state()["rounds"]["global"], 1)
         self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
                  "--next-round", "1", "--next-triggered-by", "verify", error="repair-checkpoint")
@@ -350,16 +409,71 @@ class OwnerPhases(unittest.TestCase):
         self.assertEqual(self.state()["rounds"]["global"], 1)
         self.assertEqual(self.state()["phases"]["implement"]["round"], 1)
 
+    def test_repair_that_only_removes_residue_checkpoints_empty(self):
+        """A repair whose sanctioned fix removes an out-of-surface file still reaches a fresh VERIFY."""
+        self.implemented()
+        self.needs_work()
+        self.cli("verify", "complete")
+        self.cli("implement", "spawn", "--round", "1", "--triggered-by", "verify", "--engine", "claude")
+        self.git("commit", "--allow-empty", "-qm", "chore(pipeline): implement fix round 1")
+        self.cli("implement", "durability-enforce", "--round", "1")
+        self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
+                 "--next-round", "1", "--next-triggered-by", "verify", "--next-engine", "claude")
+        self.assertEqual(self.state()["phases"]["verify"]["round"], 1)
+
+    def test_repair_restores_a_committed_out_of_surface_file_and_checkpoints(self):
+        """The documented checkpoint returns a committed out-of-surface path to base, then reaches a fresh VERIFY."""
+        self.plan()
+        self.cli("plan", "complete", "--verdict", "PASS")
+        self.cli("implement", "spawn", "--round", "0", "--engine", "claude")
+        (self.work / "source.txt").write_text("implemented\n")
+        (self.work / "extra.txt").write_text("outside the surface\n")
+        self.git("add", "source.txt", "extra.txt")
+        self.git("commit", "-qm", "chore(pipeline): implement")
+        self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
+                 "--next-round", "0", "--next-engine", "claude")
+        self.needs_work()
+        self.cli("verify", "complete")
+        self.cli("implement", "spawn", "--round", "1", "--triggered-by", "verify", "--engine", "claude")
+        (self.work / "extra.txt").unlink()  # the repair deletes the file it created
+        self.git("--literal-pathspecs", "rm", "-q", "--cached", "--ignore-unmatch", "--", "extra.txt")
+        self.git("commit", "--allow-empty", "-qm", "chore(pipeline): implement fix round 1")
+        self.cli("implement", "durability-enforce", "--round", "1")
+        self.cli("implement", "transition", "--verdict", "PASS", "--next-phase", "verify",
+                 "--next-round", "1", "--next-triggered-by", "verify", "--next-engine", "claude")
+        self.assertNotIn("extra.txt", self.git("ls-files"))
+        self.assertFalse((self.work / "extra.txt").exists())
+
+    def test_judge_snapshot_keeps_sparse_absences(self):
+        """Judges see the source MECHANICAL sealed: a sparse absence is no deletion in their snapshot."""
+        (self.work / "excluded").mkdir()
+        (self.work / "excluded" / "x.txt").write_text("excluded\n")
+        self.git("add", "excluded/x.txt")
+        self.git("commit", "-qm", "excluded")
+        state = self.state()
+        state["base_ref"]["sha"] = self.git("rev-parse", "HEAD")
+        self.save(state)
+        self.git("update-index", "--skip-worktree", "excluded/x.txt")
+        (self.work / "excluded" / "x.txt").unlink()
+        (self.devlyn / "untracked.baseline").write_text(
+            json.dumps({"untracked": [], "sparse_absences": ["excluded/x.txt"]}))
+        self.with_spec(b"# Spec\n\n## Requirements\n\n- prints ok\n")
+        self.implemented()
+        result = self.mechanical()
+        findings = (self.devlyn / "verify-mechanical.findings.jsonl")
+        self.assertEqual(result.returncode, 0, result.stderr + (findings.read_text() if findings.is_file() else ""))
+        renderer = runpy.run_path(str(SHARED / "phase-prompt-render.py"))
+        self.assertNotIn(b"excluded/x.txt", renderer["build_verify_snapshot"](self.devlyn, self.state()))
+
     def test_refused_repair_closes_and_archives_terminal_report(self):
         self.implemented()
         self.needs_work()
         state = self.state()
         state["rounds"] = {"global": 1, "max_rounds": 1}
         self.save(state)
-        self.cli("verify", "transition", "--next-phase", "implement", "--next-round", "1",
-                 "--next-triggered-by", "verify", "--next-engine", "claude",
-                 error="BLOCKED:repair-budget-exhausted")
         self.cli("verify", "complete")
+        self.cli("implement", "spawn", "--round", "1", "--triggered-by", "verify", "--engine", "claude",
+                 error="BLOCKED:repair-budget-exhausted")
         self.finish_and_report("NEEDS_WORK")
         archived = subprocess.run([sys.executable, str(SHARED / "archive_run.py"), "--devlyn-dir", ".devlyn"],
                                   cwd=self.work, env=ENV, capture_output=True, text=True)
@@ -392,10 +506,10 @@ class OwnerPhases(unittest.TestCase):
         self.assertEqual({role: entry["reason"] for role, entry in record["roles"].items()},
                          {"primary_judge": "mechanical_blocker", "pair_judge": "mechanical_blocker"})
         self.assertFalse(list(self.devlyn.glob("*-judge.r0.prompt")))
-        self.cli("verify", "transition", "--next-phase", "implement", "--next-round", "1",
-                 "--next-triggered-by", "verify", "--next-engine", "claude", error="repair-edge-invalid")
-        self.assertEqual(self.state()["rounds"]["global"], 0)
         self.cli("verify", "complete")
+        self.cli("implement", "spawn", "--round", "1", "--triggered-by", "verify", "--engine", "claude",
+                 error="repair-edge-invalid")
+        self.assertEqual(self.state()["rounds"]["global"], 0)
         self.finish_and_report("BLOCKED:build-env-underprovisioned")
         archived = subprocess.run([sys.executable, str(SHARED / "archive_run.py"), "--devlyn-dir", ".devlyn"],
                                   cwd=self.work, env=ENV, capture_output=True, text=True)

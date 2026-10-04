@@ -22,7 +22,7 @@ sys.dont_write_bytecode = True
 VALUE_FLAGS = {
     "--max-rounds", "--engine", "--spec", "--verify-only", "--goal-file", "--role-config",
 }
-BOOL_FLAGS = {"--pair-verify", "--no-pair", "--risk-probes", "--no-risk-probes", "--perf"}
+BOOL_FLAGS = {"--pair-verify", "--no-pair", "--risk-probes", "--no-risk-probes"}
 PHASE_NAMES = ("plan", "probe_derive", "implement", "verify", "final_report")
 
 
@@ -151,6 +151,8 @@ def parse_flags(argv: list[str]) -> dict:
         block("BLOCKED:invalid-flags", "--goal-file is mutually exclusive with an inline goal")
     if "--verify-only" in values and "--spec" not in values:
         block("BLOCKED:invalid-flags", "--verify-only requires --spec")
+    if "--verify-only" in values and "--risk-probes" in switches:
+        block("BLOCKED:invalid-flags", "--risk-probes needs PHASE 1.5, which --verify-only skips")
     if "--spec" in values and positional:
         block("BLOCKED:invalid-flags", "--spec is mutually exclusive with an inline goal")
 
@@ -254,7 +256,7 @@ def load_spec_helper(shared_dir: pathlib.Path):
 
 
 def init_spec_source(
-    cwd: pathlib.Path, staging_dir: pathlib.Path, shared_dir: pathlib.Path, raw_path: str,
+    cwd: pathlib.Path, staging_dir: pathlib.Path, shared_dir: pathlib.Path, raw_path: str, risk_probes: bool = False,
 ) -> tuple[dict, bytes | None]:
     path = pathlib.Path(raw_path)
     path = path if path.is_absolute() else cwd / path
@@ -268,6 +270,9 @@ def init_spec_source(
     helper = shared_dir / "spec-verify-check.py"
     expected = path.with_name("spec.expected.json")
     module = load_spec_helper(shared_dir)
+    if risk_probes and not module.extract_verification_text(path.read_text(encoding="utf-8")):
+        block("BLOCKED:invalid-flags", "--risk-probes needs the spec's <!-- devlyn:verification --> section, "
+              "which PROBE_DERIVE derives every probe from")
     if expected.is_file():
         found, _staged, error, _expected_path, _data = module.stage_from_expected(path, staging_dir)
         if not found or error:
@@ -278,10 +283,12 @@ def init_spec_source(
         if error:
             block("BLOCKED:invalid-flags", error)
     staged_path = staging_dir / "spec-verify.json"
+    sibling = path.with_name("spec.expected.json")
     return ({
         "type": "spec",
         "spec_path": raw_path,
         "spec_sha256": sha256(raw),
+        "expected_sha256": sha256(sibling.read_bytes()) if sibling.is_file() else None,
         "criteria_path": None,
         "criteria_sha256": None,
     }, staged_path.read_bytes() if staged_path.is_file() else None)
@@ -325,21 +332,24 @@ def capture_external_diff(cwd: pathlib.Path, ref: str) -> bytes:
     return raw
 
 
-def require_clean_tracked_baseline(cwd: pathlib.Path) -> None:
-    changed: list[bytes] = []
-    for args in (("diff",), ("diff", "--cached")):
-        proc = subprocess.run(
-            ["git", *args, "--no-renames", "--name-only", "-z"],
-            cwd=cwd,
-            capture_output=True,
-        )
-        if proc.returncode != 0:
-            block("BLOCKED:invalid-flags", os.fsdecode(proc.stderr or proc.stdout).strip())
-        changed.extend(path for path in proc.stdout.split(b"\0") if path)
-    if any(path != b".devlyn" and not path.startswith(b".devlyn/") for path in changed):
+def require_clean_tracked_baseline(cwd: pathlib.Path, shared_dir: pathlib.Path) -> None:
+    """Refuse tracked changes, including ones index flags hide; a sparse checkout's absences are not changes."""
+    helper = load_spec_helper(shared_dir)
+    changed: list[str] = []
+    try:
+        with helper.observed_git(cwd, helper.sparse_absent_entries(cwd)) as (git, flags):
+            for args in (("diff",), ("diff", "--cached")):
+                changed += [os.fsdecode(path) for path in git(*args, "--no-renames", "--name-only", "-z",
+                                                              "--ignore-submodules=none").split(b"\0") if path]
+    except (OSError, ValueError) as exc:
+        block("BLOCKED:invalid-flags", str(exc))
+    dirty = sorted({path for path in changed if path != ".devlyn" and not path.startswith(".devlyn/")})
+    if dirty:
+        hidden = [f"{path} ({flags[path]})" for path in dirty if path in flags]
         block(
             "BLOCKED:worktree-dirty",
-            "Commit or stash tracked changes outside .devlyn before starting a full resolve.",
+            "Commit or stash tracked changes outside .devlyn before starting a full resolve."
+            + (f" Index flags hid these: {', '.join(hidden)}." if hidden else ""),
         )
 
 
@@ -380,7 +390,7 @@ def bootstrap(
     if cwd != root:
         block("BLOCKED:worktree-root-required", f"{cwd} is not the worktree root {root}. Retry from {root}.")
     if parsed["mode"] != "verify-only":
-        require_clean_tracked_baseline(cwd)
+        require_clean_tracked_baseline(cwd, shared_dir)
     with admission_lock(cwd):
         devlyn = cwd / ".devlyn"
         outputs: dict[pathlib.Path, bytes | None] = {devlyn / "external-diff.patch": None}
@@ -395,6 +405,7 @@ def bootstrap(
                 "type": "generated",
                 "spec_path": None,
                 "spec_sha256": None,
+                "expected_sha256": None,
                 "goal_path": ".devlyn/goal.raw.txt",
                 "goal_sha256": sha256(raw_goal),
                 "criteria_path": ".devlyn/criteria.generated.md",
@@ -403,7 +414,7 @@ def bootstrap(
         else:
             with tempfile.TemporaryDirectory() as tmp:
                 source, staged_spec = init_spec_source(
-                    cwd, pathlib.Path(tmp), shared_dir, parsed["spec"],
+                    cwd, pathlib.Path(tmp), shared_dir, parsed["spec"], parsed["risk_probes"],
                 )
             outputs[devlyn / "spec-verify.json"] = staged_spec
             if parsed["mode"] == "verify-only":
@@ -1004,6 +1015,7 @@ def self_test() -> int:
                 "type": "generated",
                 "spec_path": None,
                 "spec_sha256": None,
+                "expected_sha256": None,
                 "goal_path": ".devlyn/goal.raw.txt",
                 "goal_sha256": sha256(b"fix app.py failing test"),
                 "criteria_path": ".devlyn/criteria.generated.md",
@@ -1073,6 +1085,8 @@ def self_test() -> int:
             ["--max-rounds", "x", "fix", "app.py"],
             ["--max-rounds"],
             ["--bypass", "build-gate,cleanup", "fix", "app.py"],
+            ["--perf", "fix", "app.py"],
+            ["--risk-probes", "--verify-only", "patch", "--spec", "spec.md"],
             ["--risk-probes", "--no-risk-probes", "fix", "app.py"],
             ["--bypass"],
             ["--unknown", "fix", "app.py"],
@@ -1186,6 +1200,20 @@ def self_test() -> int:
         pure_result = bootstrap(["--spec", str(pure_spec.relative_to(work))], work, script_shared)
         assert pure_result["source"]["spec_sha256"] == sha256(pure_spec.read_bytes())
         assert not (work / ".devlyn/spec-verify.json").exists()
+        crlf_spec = spec_dir / "crlf.md"
+        crlf_spec.write_bytes(b"# CRLF\r\n\r\n<!-- devlyn:verification -->\r\n## Verification\r\n\r\n- prints ok\r\n\r\n"
+                              b"```json\r\n{\"verification_commands\":[{\"cmd\":\"printf ok\",\"stdout_contains\":[\"ok\"]}]}\r\n```\r\n")
+        complete_prior(work)
+        bootstrap(["--risk-probes", "--spec", str(crlf_spec.relative_to(work))], work, script_shared)
+        bare_spec = spec_dir / "bare.md"
+        bare_spec.write_text("# Bare\n\n- no verification section\n", encoding="utf-8")
+        complete_prior(work)
+        try:
+            bootstrap(["--risk-probes", "--spec", str(bare_spec.relative_to(work))], work, script_shared)
+        except BootstrapBlocked as exc:
+            assert exc.reason == "BLOCKED:invalid-flags" and "verification --> section" in str(exc), exc
+        else:
+            raise AssertionError("--risk-probes accepted for a spec PROBE_DERIVE cannot derive from")
         external_patch.write_bytes(b"stale free-form patch\n")
         complete_prior(work)
         bootstrap(["fresh", "goal"], work, script_shared)
@@ -1264,6 +1292,23 @@ def self_test() -> int:
                 raise AssertionError(f"{label} tracked owner change accepted")
             assert snapshot(dirty_work / ".devlyn") == before_dirty
         subprocess.run(["git", "restore", "--staged", "app.py"], cwd=dirty_work, check=True)
+        subprocess.run(["git", "restore", "app.py"], cwd=dirty_work, check=True)
+        # Index flags never hide a tracked change from the clean baseline; a sparse absence is no change.
+        subprocess.run(["git", "update-index", "--assume-unchanged", "app.py"], cwd=dirty_work, check=True)
+        require_clean_tracked_baseline(dirty_work, script_shared)
+        (dirty_work / "app.py").write_text("print('hidden')\n", encoding="utf-8")
+        try:
+            require_clean_tracked_baseline(dirty_work, script_shared)
+        except BootstrapBlocked as exc:
+            assert exc.reason == "BLOCKED:worktree-dirty" and "app.py (h)" in exc.detail, exc.detail
+        else:
+            raise AssertionError("a change hidden by assume-unchanged was accepted")
+        subprocess.run(["git", "update-index", "--no-assume-unchanged", "app.py"], cwd=dirty_work, check=True)
+        subprocess.run(["git", "restore", "app.py"], cwd=dirty_work, check=True)
+        subprocess.run(["git", "update-index", "--skip-worktree", "app.py"], cwd=dirty_work, check=True)
+        (dirty_work / "app.py").unlink()
+        require_clean_tracked_baseline(dirty_work, script_shared)
+        subprocess.run(["git", "update-index", "--no-skip-worktree", "app.py"], cwd=dirty_work, check=True)
         subprocess.run(["git", "restore", "app.py"], cwd=dirty_work, check=True)
 
         devlyn_work = root / "devlyn-dirty-repo"
