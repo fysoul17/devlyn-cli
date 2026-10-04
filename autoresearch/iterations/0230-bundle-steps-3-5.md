@@ -198,7 +198,7 @@ Lint, test-owner-phases (15), test-windows-portability and every touched self-te
   - the merged findings on a VERIFY repair, or the declared requirements for probe_derive.
 
   The owner writes no prompt text. Every edge into PROBE_DERIVE or IMPLEMENT runs complete → render → spawn. The PLAN-PASS `complete` refusal and `transition --next-prompt-sha256` are deleted.
-- **Renderer refusals** (`BLOCKED:phase-input-invalid:<kind>`) leave the output untouched. They close through FINAL_REPORT with the bare label, which TCC accepts as a halt witness at the last reached phase. FINAL_REPORT records a PLAN that no longer verifies instead of refusing. Findings and criteria in the report are display-only. The finish gate verifies the bound PLAN before it interprets the surface or reverts anything.
+- **Renderer refusals** (`BLOCKED:phase-input-invalid:<kind>`) leave the output untouched. They close through FINAL_REPORT. The owner supplies the bare `BLOCKED:phase-input-invalid` only when the writer cannot derive the verdict, and TCC accepts that label as a halt witness at the last reached phase; otherwise FINAL_REPORT completes without `--verdict` and keeps the evidence-derived verdict. FINAL_REPORT records a PLAN that no longer verifies instead of refusing. Findings and criteria in the report are display-only. The finish gate verifies the bound PLAN before it interprets the surface or reverts anything.
 - **Contract-first PLAN.** plan.md, implement.md, probe-derive.md, risk-probes.md and SKILL no longer carry the acceptance restatement or owner-pasted context. implement.md now gives the worker canonical instructions: path bindings, the worktree, probes, `exec`, and the scope of each repair.
 - **U4 (probe policy).**
   - The small-surface demotion is deleted.
@@ -236,7 +236,7 @@ The fixes are PR #164 (`candidate/bundle-review-fix`), merged into the bundle as
   - Astra dropped presence-refusal of index flags after six confirmed sparse-checkout and ignoreStat regressions.
   - Root dropped "count only tracked-rule ignores as environment", because `gitignore(5)` puts editor and per-user patterns in local and global excludes.
 - **Fix v2** (`a0e4994b`, `f1c06224`): Astra REVISE (4). A second seven-lens Claude review confirmed 44 of 49. Each one was fixed, made moot by an owner decision, or deferred with Astra's acceptance.
-- **Fix v3–v6** (`3cf16ba8`, `06dca174`, `fe4b9130`, `23842dc3`, `484e627c`, `9679381f`): Astra REVISE (3), then REVISE (1), REVISE (1), and v6 **SHIP** with no new findings across `f33cf2ca..9679381f`.
+- **Fix v3–v6** (`3cf16ba8`, `06dca174`, `fe4b9130`, `23842dc3`, `484e627c`, `9679381f`): Astra REVISE (3), then REVISE (1), REVISE (1), and v6 **SHIP**, with no new actionable findings identified across `f33cf2ca..9679381f`. Astra performed its own read-only checks; root supplied the fixture-writing results. Root's v6 prompt gave the v5 report's path relative to the review worktree, where it does not exist, so the reviewer assessed v5's closure from the described finding and the actual code.
 
 **Owner decisions (2026-10-04).**
 
@@ -245,7 +245,7 @@ The fixes are PR #164 (`candidate/bundle-review-fix`), merged into the bundle as
 | R1 | Git conversion filters (#30) are documented as trusted environment, not closed | The seal claim is qualified. Astra recommended closing; root recommended documenting. |
 | R2 | Ignore rules of every source, including rules added during a run, and the content they hide are trusted environment | The ignore-rule identity (`base_ref.excludes_sha256`) is deleted. Claude Code itself appends to the global and local exclude files, and pytest and venv write self-ignoring cache `.gitignore` files, so the binding refused correct runs. |
 | R3 | A completed BLOCKED work phase witnesses a dependency `<x>-unavailable` reason | TCC now matches the writer. Absent-worker handoffs stay narrow. |
-| R4 | An untracked file that predates the run is adopted only by an exact `authorized_surface` entry | A glob never stages or commits a user's file, and a nested repository counts in both spellings, `dir/` and `dir`. |
+| R4 | An untracked file that predates the run is adopted only by an exact `authorized_surface` entry | For PHASE 0 baseline-listed paths, scoped staging omits glob-only matches, and MECHANICAL and the finish gate reject staged or committed additions without exact adoption. A nested repository counts in both spellings, `dir/` and `dir`. User files that were ignored at PHASE 0 are absent from the baseline and stay outside this protection. |
 
 **What changed.**
 - **Halt reasons.**
@@ -254,7 +254,7 @@ The fixes are PR #164 (`candidate/bundle-review-fix`), merged into the bundle as
   - Reasons are canonical labels; prose goes to `--detail`.
   - A halt witness needs a completed final report.
   - `untracked-baseline-unwritable` closes a failed step-2 baseline write.
-- **VERIFY admission** requires a finished IMPLEMENT: PASS or PASS_WITH_ISSUES, with every execution phase passed.
+- **VERIFY admission** outside verify-only requires a finished IMPLEMENT: PASS or PASS_WITH_ISSUES, with every execution phase passed. A verify-only run's initial admission stays exempt.
 - **Seal observation.**
   - `observed_git` works on a private index copy (mtime kept). It clears assume-unchanged and skip-worktree, except on the baseline's authorized sparse absences, and turns off fsmonitor, the untracked cache, ignoreStat, split index and hooks.
   - These consumers all use it: bootstrap cleanliness, scope, staging, the snapshot, the finish gate and the expected-contract readers.
@@ -279,7 +279,7 @@ The fixes are PR #164 (`candidate/bundle-review-fix`), merged into the bundle as
   - an orphan parameter.
 
 **Verification.**
-- Every round: lint-skills, `git diff --check`, test-owner-phases (22 at the end), test-windows-portability, plan-dispatch-oracle and every touched `--self-test`.
+- Root's final checks at `9679381f` passed: lint-skills, `git diff --check`, test-owner-phases (22), test-windows-portability, plan-dispatch-oracle and every `--self-test`. The oracle had failed at `cfc405f6` (found by the first Claude review) and was repaired in fix v2.
 - 38 guard-removal mutations were killed across the rounds: 6, 12, 4, 11, 3, 1, 1.
 
 **Honest limits.**
