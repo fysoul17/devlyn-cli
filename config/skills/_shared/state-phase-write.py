@@ -261,7 +261,7 @@ def bound_dispatch_roles(verify: dict, devlyn: pathlib.Path) -> dict:
 
 
 def verify_blocked_reason(state: dict, devlyn: pathlib.Path, work: pathlib.Path) -> str | None:
-    """Derive a VERIFY BLOCKED reason from this round's state-bound evidence, rehashed."""
+    """Derive the canonical VERIFY BLOCKED reason from this round's state-bound evidence, rehashed."""
     verify = state["phases"]["verify"]
     carrier = next((item for item in state.get("process_evidence") or []
                     if isinstance(item, dict) and item.get("phase") == "verify"
@@ -279,7 +279,8 @@ def verify_blocked_reason(state: dict, devlyn: pathlib.Path, work: pathlib.Path)
         entry = roles.get(role) or {}
         reason = entry.get("reason") if entry.get("decision") == "blocked" else None
         if isinstance(reason, str) and reason.startswith("BLOCKED:") and len(reason) > 8:
-            return reason.split(": ", 1)[0]
+            label = reason.removeprefix("BLOCKED:").split(": ", 1)[0].split(":")
+            return "BLOCKED:" + ":".join(label[:2 if label[0] == role_config_module()["ROUTE_UNSUPPORTED"] else 1])
     return None
 
 
@@ -478,7 +479,7 @@ def render_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, v
         notes.append("- opt-out: --no-risk-probes")
     if verdict.startswith("BLOCKED:") and verdict.endswith("-unavailable"):
         engine = verdict.removeprefix("BLOCKED:").removesuffix("-unavailable")
-        if (pathlib.Path(__file__).with_name("adapters") / f"{engine}.md").is_file():
+        if engine in role_config_module()["adapter_engines"]():
             notes.append(f"- setup: install and authenticate {engine}, then rerun")
     if detail:
         notes.append(f"- detail: {detail}")
@@ -715,19 +716,24 @@ def parse_effective_model(session_log: pathlib.Path) -> str:
     )
 
 
-def _git_text(work: pathlib.Path, *args: str) -> str:
-    proc = subprocess.run(["git", *args], cwd=work, capture_output=True, text=True,
-                          encoding="utf-8", check=False)
+def _git(work: pathlib.Path, *args: str) -> bytes:
+    proc = subprocess.run(["git", *args], cwd=work, capture_output=True, check=False)
     if proc.returncode != 0:
-        detail = (proc.stderr or proc.stdout).strip() or f"exit {proc.returncode}"
+        detail = (proc.stderr or proc.stdout).decode("utf-8").strip() or f"exit {proc.returncode}"
         raise SystemExit(f"BLOCKED:repair-checkpoint: git {args[0]} failed: {detail}")
-    return proc.stdout.strip()
+    return proc.stdout
+
+
+def _git_text(work: pathlib.Path, *args: str) -> str:
+    return _git(work, *args).decode("utf-8").strip()
 
 
 def repair_checkpoint(work: pathlib.Path, devlyn: pathlib.Path, round_: int) -> dict:
     """The fix checkpoint a VERIFY-origin repair round must leave before fresh VERIFY."""
-    if _git_text(work, "status", "--porcelain", "--untracked-files=no", "--", ".", ":(exclude).devlyn"):
-        raise SystemExit("BLOCKED:repair-checkpoint: tracked worktree/index is not clean")
+    status = _git(work, "status", "--porcelain", "-z", "--no-renames", "--untracked-files=no", "--", ".", ":(exclude).devlyn")
+    dirty = [record[3:].decode("utf-8", "backslashreplace") for record in status.split(b"\0") if record]
+    if dirty:
+        raise SystemExit("BLOCKED:repair-checkpoint: tracked worktree/index is not clean: " + ", ".join(dirty))
     fix = _git_text(work, "rev-parse", "HEAD")
     subject = _git_text(work, "show", "-s", "--format=%s", fix)
     if subject != f"chore(pipeline): implement fix round {round_}":
@@ -1035,6 +1041,8 @@ def repair_admission(state: dict, phase: str, round_: int, triggered_by: str | N
         return
     predecessor = repair_predecessor(state)
     if phase == "implement":
+        if state.get("mode") == "verify-only":
+            raise SystemExit("BLOCKED:repair-edge-invalid: a verify-only run never opens IMPLEMENT")
         if predecessor is None:
             if triggered_by not in {None, "plan"}:
                 raise SystemExit("BLOCKED:repair-trigger-mismatch: expected=null supplied=" + triggered_by)
@@ -1286,7 +1294,9 @@ def do_complete(state: dict, phase: str, verdict: str | None,
             devlyn, phase, entry.get("round"), engine, model,
             engine_session_log=engine_session_log, entry=entry,
         )
-    if phase != "plan":
+    # Over a PLAN that no longer verifies, only closure remains: a work phase completing exactly BLOCKED, or VERIFY
+    # recording its merged verdict. FINAL_REPORT then derives BLOCKED:phase-input-invalid.
+    if phase not in {"plan", "verify"} and verdict != "BLOCKED":
         validate_plan_output(state, devlyn, phase)
     if phase == "final_report":
         if devlyn is None or any(value is not None for value in (findings_file, log_file, engine, model, engine_session_log)):
@@ -1598,15 +1608,20 @@ def final_report_self_test() -> None:
         denial_state["process_evidence"] = [module.validate_manifest(
             denied[0], manifest, denial_state["run_id"], "verify", 0, require_expectations=False)]
         write_state(denied[1] / "pipeline.state.json", denial_state)
-        unavailable = fixture(tmp, "judge-unavailable", phases={"implement": span("PASS"), "verify": span("BLOCKED")})
-        record = json.dumps({"run_id": "rs-final-judge-unavailable", "round": 0, "roles": {
-            "primary_judge": {"decision": "dispatch", "reason": None},
-            "pair_judge": {"decision": "blocked", "reason": "BLOCKED:codex-unavailable: --pair-verify requires codex"}}}).encode()
-        (unavailable[1] / "verify-judge.r0.dispatch.json").write_bytes(record)
-        unavailable_state = read_state(unavailable[1] / "pipeline.state.json")
-        unavailable_state["phases"]["verify"]["dispatch"] = {
-            "path": ".devlyn/verify-judge.r0.dispatch.json", "sha256": hashlib.sha256(record).hexdigest(), "bytes": len(record)}
-        write_state(unavailable[1] / "pipeline.state.json", unavailable_state)
+
+        def judge_blocked(name, reason):
+            work, devlyn = fixture(tmp, name, phases={"implement": span("PASS"), "verify": span("BLOCKED")})
+            record = json.dumps({"run_id": f"rs-final-{name}", "round": 0, "roles": {
+                "primary_judge": {"decision": "dispatch", "reason": None},
+                "pair_judge": {"decision": "blocked", "reason": reason}}}).encode()
+            (devlyn / "verify-judge.r0.dispatch.json").write_bytes(record)
+            state = read_state(devlyn / "pipeline.state.json")
+            state["phases"]["verify"]["dispatch"] = {
+                "path": ".devlyn/verify-judge.r0.dispatch.json", "sha256": hashlib.sha256(record).hexdigest(), "bytes": len(record)}
+            write_state(devlyn / "pipeline.state.json", state)
+            return work, devlyn
+
+        unavailable = judge_blocked("judge-unavailable", "BLOCKED:codex-unavailable: --pair-verify requires codex")
         gated = {"total": 2, "current": 1, "statuses": ["FAIL", None]}
         matrix = [
             ("pass", fixture(tmp, "pass", phases={"implement": span("PASS"), "verify": verify_pass()}), [], "PASS"),
@@ -1642,6 +1657,12 @@ def final_report_self_test() -> None:
                 "implement": span("PASS"), "verify": verify_pass()}), [], "PASS"),
             ("plan-tampered", fixture(tmp, "plan-tampered", finish=None, phases={
                 "implement": span("PASS"), "verify": verify_pass()}), [], "BLOCKED:phase-input-invalid"),
+            # A blocked seat's reason becomes its label, qualified only for the registered family; detail is dropped.
+            ("judge-input-invalid", judge_blocked("judge-input-invalid", "BLOCKED:verify-input-invalid:goal:"
+                                                  ".devlyn/goal.raw.txt does not match its recorded sha256"),
+             [], "BLOCKED:verify-input-invalid"),
+            ("judge-route", judge_blocked("judge-route", "BLOCKED:judge-route-unsupported:codex: detail"), [],
+             "BLOCKED:judge-route-unsupported:codex"),
         ]
         plan_empty_devlyn = matrix[8][1][1]
         (plan_empty_devlyn / "plan.md").write_bytes(b"# PLAN\n")
@@ -1678,6 +1699,10 @@ def final_report_self_test() -> None:
         (follow_devlyn / "criteria.generated.md").rename(follow_devlyn / "criteria.off")
         assert "generated criteria unavailable" in render_final_report(follow, follow_devlyn, follow_work, "PASS", None)
         (follow_devlyn / "criteria.off").rename(follow_devlyn / "criteria.generated.md")
+        # Only a shipped adapter engine gets a setup note; README, in any letter case, is documentation.
+        for engine in ("readme", "README"):
+            report = render_final_report(follow, follow_devlyn, follow_work, f"BLOCKED:{engine}-unavailable", None)
+            assert "- setup:" not in report, (engine, report)
         if os.name != "nt":
             unreadable = matrix[0][1][1] / "verify-merged.findings.jsonl"
             unreadable.write_bytes(b"{}\n")
@@ -1716,6 +1741,7 @@ def final_report_self_test() -> None:
             state = read_state(devlyn / "pipeline.state.json")
             final = state["phases"]["final_report"]
             assert final["verdict"] == expected, (name, final["verdict"])
+            assert not expected.startswith("BLOCKED:") or canonical_reason(expected.removeprefix("BLOCKED:")), name
             assert f"| {expected} |" in report.splitlines()[5], (name, report)
             assert final["output_sha256"] == hashlib.sha256(raw_report).hexdigest(), name
             if name == "pass":
@@ -1770,7 +1796,7 @@ def final_report_self_test() -> None:
             assert archived.returncode == 0, (reason, archived.stderr)
             state_file = devlyn / "runs" / f"rs-final-phase0-{index}" / "pipeline.state.json"
             assert classifier["classify_state_bytes"](work, state_file, state_file.read_bytes(), archived=True)[0].status == "CLEAN"
-    print("PASS final report: evidence-derived verdict matrix (16) agrees with archive and TCC; refusals preserve state; "
+    print("PASS final report: evidence-derived verdict matrix (18) agrees with archive and TCC; refusals preserve state; "
           "PHASE 0 closes only with a witnessed PHASE 0 halt")
 
 
@@ -3565,6 +3591,7 @@ def self_test() -> int:
         repo_git("init", "-q")
         (repo / ".gitignore").write_text(".devlyn/\n", encoding="utf-8")
         (repo / "a.txt").write_text("base\n", encoding="utf-8")
+        (repo / "b c.txt").write_text("base\n", encoding="utf-8")
         repo_git("add", "-A")
         repo_git("commit", "-qm", "base")
         base = repo_git("rev-parse", "HEAD")
@@ -3594,9 +3621,10 @@ def self_test() -> int:
 
         refused(lambda: enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 2), "receipt is missing")
         (repo / "a.txt").write_text("uncommitted\n", encoding="utf-8")
-        refused(lambda: enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1), "not clean")
+        (repo / "b c.txt").write_text("uncommitted\n", encoding="utf-8")
+        refused(lambda: enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1), "not clean: a.txt, b c.txt")
         repo_git("add", "a.txt")
-        refused(lambda: enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1), "not clean")
+        refused(lambda: enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1), "not clean: a.txt, b c.txt")
         repo_git("reset", "-q", "--hard", fix)
         merged.write_text('{"id": "VERIFY-0002", "severity": "HIGH"}\n', encoding="utf-8")
         refused(lambda: enforce_repair_checkpoint(repo, repo_devlyn, checkpoint_state, 1), "no longer matches")
