@@ -1,12 +1,14 @@
-# 0230 bundle development — steps 2 fixed, 3 and 4 merged on `bundle/0225-steps-2-5`; next: PR-5, whole-bundle review
+# 0230 bundle development — steps 2–5 merged and the whole-bundle review fixed on `bundle/0225-steps-2-5`; next: live-comparison registration
 
-2026-10-03 KST. Owner direction: resume bundle development with a thorough Astra ultra review at the end. The record is [0230](iterations/0230-bundle-steps-3-5.md) (converged design, owner decisions U1–U4, PR-3 and PR-4 results). On the bundle branch (never main):
+2026-10-03 KST. Owner direction: resume bundle development with a thorough Astra ultra review at the end. The record is [0230](iterations/0230-bundle-steps-3-5.md) (converged design, owner decisions U1–U4 and R1–R4, PR-3 to PR-5 results, the whole-bundle review). On the bundle branch (never main):
 - PR #157: port of the 0229 candidate onto 4.1.0.
 - PR #158: step-2 follow-up — omp judge auto-assign, grok diagnostic, global Bash-max guidance.
 - PR #159: step 3 — one sealed MECHANICAL gate inside VERIFY. Astra v4 SHIP.
 - PR #161: step 4 — scripts take over the owner state writes except the small-surface probe demotion; `final_report complete` derives supported verdicts, requires a supplied halt reason where it cannot derive one, and renders the report. Astra v3 SHIP; merged `ea14d7fe`.
+- PR #163: step 5 — contract-first PLAN, rendered worker prompts, U4 probes, defect-4 witnesses. Astra v3 SHIP; merged `ac90bb0c`.
+- PR #164: whole-bundle review fixes. Astra v6 SHIP; owner decisions R1–R4 (2026-10-04); merged `f71a17d3`.
 
-Next: PR-5 (contract-first PLAN, U4 probes, defect-4 witnesses), each through Astra SHIP and CI. Then a whole-bundle review, then a live-comparison registration, whose run needs the owner's approval. Nothing ships. Working notes are in `.devlyn/bundle/` (design inputs, Astra rounds, `pr3-contract.md`, `pr4-contract.md`).
+Next: a live-comparison registration for the bundle. Running it needs the owner's approval for resolve. The seven-lens Claude review of the rounds after `f1c06224` can run once the Claude weekly limit resets (2026-10-10 08:00 KST). Deferred follow-ups are in the 0230 record's "Honest limits". Nothing ships. Working notes are in `.devlyn/bundle/`.
 
 The 0229 handoff follows unchanged.
 

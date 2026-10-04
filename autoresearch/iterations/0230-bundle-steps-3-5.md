@@ -1,6 +1,6 @@
 # 0230 — develop the held 0225 bundle: steps 3–5 on the ported candidate
 
-2026-10-03. **Status: PR-3 and PR-4 merged into the bundle; PR-5 next.** Development only. Nothing ships, and no resolve run happens under this record.
+2026-10-03/04. **Status: PR-3, PR-4 and PR-5 are merged into the bundle, and so are the whole-bundle review fixes (PR #164, `f71a17d3`). Next is the live-comparison registration.** Development only. Nothing ships, and no resolve run happens under this record.
 
 **Owner direction (2026-10-03):** "묶음 개발 재개해 줘. astra ultra 와 나중에 검수/검증까지 확실하게" — after [0229](0229-verify-existing-behavior-rescreen.md) PASS readmitted 22616b57 + F + G + H, prepare 0225 steps 3–5, with a thorough Astra ultra review at the end. Per [0226](0226-verify-recall-screen.md):83, a live comparison of the bundle needs its own registration and the owner's approval to run resolve. Per [0225](0225-resolve-cost-cuts.md) "Release", steps 2–5 ship only as a bundle adopted in both configs.
 
@@ -179,3 +179,112 @@ Lint, test-owner-phases, test-windows-portability and the touched self-tests pas
 **Honest limits.**
 - The Codex foreground, timeout and maximum-wait recipe is a mitigation; a delayed-child host test is still open.
 - Product code grew by about 370 lines. In return, the moved state writes and the report rendering became script-enforced. The small-surface demotion remains an owner edit, and halts without a derivable reason still need a supplied reason. Per skill tree, `SKILL.md` shrank by 78 lines; the resolve docs overall shrank by 17.
+
+## PR-5 result (2026-10-03)
+
+PR #163 (`candidate/bundle-step5`, commits de8c4350 + 2c1f50d9 + 31d12e0f + b90cbe7e), merged into the bundle as `ac90bb0c`. Each skill tree changes +821 / −194:
+- **Scripts (`_shared`):** +746 / −145, most of it the renderer worker mode, its tests, and the witness fixture.
+- **Docs (resolve and ideate):** +75 / −49.
+- **Test scripts:** +162 / −1.
+
+Lint, test-owner-phases (15), test-windows-portability and every touched self-test pass. PR #163 CI passes on POSIX and Windows (Actions run 37119409361).
+
+**What changed.**
+- **Rendered worker prompts.** `phase-prompt-render.py --devlyn-dir .devlyn --phase implement|probe_derive --engine E --round N` builds each prompt from completed state. The prompt carries:
+  - the projected adapter and the canonical body;
+  - the exact contract and goal bytes, hash-checked;
+  - path bindings taken from the renderer's own location;
+  - the phase-gated `exec` and `repair_of`;
+  - the merged findings on a VERIFY repair, or the declared requirements for probe_derive.
+
+  The owner writes no prompt text. Every edge into PROBE_DERIVE or IMPLEMENT runs complete → render → spawn. The PLAN-PASS `complete` refusal and `transition --next-prompt-sha256` are deleted.
+- **Renderer refusals** (`BLOCKED:phase-input-invalid:<kind>`) leave the output untouched. They close through FINAL_REPORT with the bare label, which TCC accepts as a halt witness at the last reached phase. FINAL_REPORT records a PLAN that no longer verifies instead of refusing. Findings and criteria in the report are display-only. The finish gate verifies the bound PLAN before it interprets the surface or reverts anything.
+- **Contract-first PLAN.** plan.md, implement.md, probe-derive.md, risk-probes.md and SKILL no longer carry the acceptance restatement or owner-pasted context. implement.md now gives the worker canonical instructions: path bindings, the worktree, probes, `exec`, and the scope of each repair.
+- **U4 (probe policy).**
+  - The small-surface demotion is deleted.
+  - Inline `required_risk_probe_requirements` are accepted. The resolver and staging share one shape rule and a cap of three distinct bullets, since a run derives at most three probes.
+  - The freeze marks declared requirements as high risk (reason `declared-risk-probe-requirements`) under the existing gating.
+- **Defect-4 witnesses.** Four generic tags with marker contracts: `release_recovery`, `physical_alias`, `fixture_cleanup` and `temp_file_preservation`. `defect_witness_self_test` runs one synthetic store CLI with four independently switchable defects through MECHANICAL, using three probes:
+  - the fixed build passes and seals;
+  - each single defect fails exactly its own probe (P1 names which sub-check failed);
+  - it also runs natively on Windows CI.
+
+  Nothing task-specific entered the harness.
+
+**Review.**
+- **Astra ultra:** R0 REVISE (9; all adopted), v1 REVISE (2), v2 REVISE (3), v3 SHIP.
+- **Five-lens Claude review** (workflow `wf_94d1d502-874`, two refuters per finding): 10 confirmed, 6 distinct, all fixed.
+- **Mutation checks:** root's listed guard-removal mutations (22 + 6 + 3) were all killed.
+- **CI:** the first run failed on Windows. The renderer's existing VERIFY self-test, which runs natively there for the first time in this PR, wrote a hashed fixture in text mode (CRLF). b90cbe7e writes exact bytes.
+
+**Honest limits.**
+- The live recall of the witness tags still depends on the probe engine. The fixture proves the mechanism, not recall.
+- Claude/omp delivery of the rendered bytes is not attested (step-6 territory).
+- A permanent VERIFY snapshot digest pin was not added, because the fixture's git SHAs change on every run.
+
+## Whole-bundle review (2026-10-03/04)
+
+The review covered bundle head `ac90bb0c` and found:
+- Astra ultra: REVISE (5) (`.devlyn/bundle/bundle-review-astra.out.md`);
+- a six-lens Claude review: 15 confirmed.
+
+The fixes are PR #164 (`candidate/bundle-review-fix`), merged into the bundle as `f71a17d3`. That is nine commits, `cfc405f6` through `9679381f`, with `config/skills` at +1357 / −352. CI passes on POSIX and Windows.
+
+**Process.**
+- **Fix v1** (`cfc405f6`): Astra REVISE (2). A seven-lens Claude review with three refuters per finding confirmed 38, about 25 distinct.
+- **Design rounds 1–4 with Astra.** The owner asked whether the planned fixes were best practice and to settle them with Astra (`.devlyn/bundle/bundle-fix-v2-design-*`, converged record `bundle-fix-v2-design-converged.md`). Both sides reversed a position, each with a named delta:
+  - Astra dropped presence-refusal of index flags after six confirmed sparse-checkout and ignoreStat regressions.
+  - Root dropped "count only tracked-rule ignores as environment", because `gitignore(5)` puts editor and per-user patterns in local and global excludes.
+- **Fix v2** (`a0e4994b`, `f1c06224`): Astra REVISE (4). A second seven-lens Claude review confirmed 44 of 49. Each one was fixed, made moot by an owner decision, or deferred with Astra's acceptance.
+- **Fix v3–v6** (`3cf16ba8`, `06dca174`, `fe4b9130`, `23842dc3`, `484e627c`, `9679381f`): Astra REVISE (3), then REVISE (1), REVISE (1), and v6 **SHIP** with no new findings across `f33cf2ca..9679381f`.
+
+**Owner decisions (2026-10-04).**
+
+| # | Decision | Effect |
+|---|---|---|
+| R1 | Git conversion filters (#30) are documented as trusted environment, not closed | The seal claim is qualified. Astra recommended closing; root recommended documenting. |
+| R2 | Ignore rules of every source, including rules added during a run, and the content they hide are trusted environment | The ignore-rule identity (`base_ref.excludes_sha256`) is deleted. Claude Code itself appends to the global and local exclude files, and pytest and venv write self-ignoring cache `.gitignore` files, so the binding refused correct runs. |
+| R3 | A completed BLOCKED work phase witnesses a dependency `<x>-unavailable` reason | TCC now matches the writer. Absent-worker handoffs stay narrow. |
+| R4 | An untracked file that predates the run is adopted only by an exact `authorized_surface` entry | A glob never stages or commits a user's file, and a nested repository counts in both spellings, `dir/` and `dir`. |
+
+**What changed.**
+- **Halt reasons.**
+  - `role-config.py` owns its refusal vocabulary, and engine names follow the reason grammar.
+  - The writer's `halt_reason()` decides PHASE 0 closes, and TCC witnesses with the same predicate.
+  - Reasons are canonical labels; prose goes to `--detail`.
+  - A halt witness needs a completed final report.
+  - `untracked-baseline-unwritable` closes a failed step-2 baseline write.
+- **VERIFY admission** requires a finished IMPLEMENT: PASS or PASS_WITH_ISSUES, with every execution phase passed.
+- **Seal observation.**
+  - `observed_git` works on a private index copy (mtime kept). It clears assume-unchanged and skip-worktree, except on the baseline's authorized sparse absences, and turns off fsmonitor, the untracked cache, ignoreStat, split index and hooks.
+  - These consumers all use it: bootstrap cleanliness, scope, staging, the snapshot, the finish gate and the expected-contract readers.
+  - `untracked.baseline` is typed JSON (`untracked`, `sparse_absences`).
+  - The blanket index-flag refusal is deleted, so sparse checkouts seal.
+- **Finish gate.**
+  - A PHASE 0 halt has an empty surface.
+  - Paths at base are restored. Other offenders keep their bytes and lose only their index entry.
+  - Pathspecs are literal.
+  - A drifted sibling contract is settled by its binding.
+  - Submodule pointers are enumerated.
+- **Delivery.** The sibling contract must equal the accepted commit. A pre-seal archive is refused with guidance; an already-bound delivery resumes.
+- **Probes.** Automatic probes skip, and explicit `--risk-probes` is refused at bootstrap, for a spec without a verification section.
+- **Repair checkpoint.**
+  - Base paths are restored. Other offenders lose only their index entry, and only the repair deletes a file it created.
+  - The fix commit may be empty.
+  - Commands use `git --literal-pathspecs`.
+- **Cleanups.**
+  - stale docs, including README's seal claim;
+  - the benchmark oracle's retired edge;
+  - duplicate helpers and an unreachable generated-carrier branch (the freeze owns that refusal);
+  - an orphan parameter.
+
+**Verification.**
+- Every round: lint-skills, `git diff --check`, test-owner-phases (22 at the end), test-windows-portability, plan-dispatch-oracle and every touched `--self-test`.
+- 38 guard-removal mutations were killed across the rounds: 6, 12, 4, 11, 3, 1, 1.
+
+**Honest limits.**
+- **Claude review coverage.** No Claude multi-lens review covered the rounds after `f1c06224`. The Claude weekly usage limit (resets 2026-10-10 08:00 KST) stopped the second review's gap pass. Its two unverified gap findings: one doc fix adopted, one pre-bundle follow-up.
+- **Deferred, now failing closed and visibly.** Staging paths that carry index flags (plain `git add` skips assume-unchanged entries and refuses skip-worktree ones), additions outside a sparse cone, and implement-empty ignoring untracked or staged changes.
+- **Pre-bundle follow-ups.** Risk probes import unattested modules from `.devlyn/probes/`; `pipeline.state.json` is worker-writable (#35); `process_evidence` is missing from the contract validator (#36/#38).
+- **A narrower seal.** The seal guarantees less than the bundle first claimed. `phases/mechanical.md` step 5 lists the trusted environment.
+
