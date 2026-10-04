@@ -287,4 +287,3 @@ The fixes are PR #164 (`candidate/bundle-review-fix`), merged into the bundle as
 - **Deferred, now failing closed and visibly.** Staging paths that carry index flags (plain `git add` skips assume-unchanged entries and refuses skip-worktree ones), additions outside a sparse cone, and implement-empty ignoring untracked or staged changes.
 - **Pre-bundle follow-ups.** Risk probes import unattested modules from `.devlyn/probes/`; `pipeline.state.json` is worker-writable (#35); `process_evidence` is missing from the contract validator (#36/#38).
 - **A narrower seal.** The seal guarantees less than the bundle first claimed. `phases/mechanical.md` step 5 lists the trusted environment.
-
