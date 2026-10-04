@@ -55,7 +55,10 @@ def load(root):
                                                      effort=None, status=None)
             elif kind == 'protocol_event_observed' and payload.get('event_type') == 'session_configured':
                 configured = _payload(trace, payload.get('event_payload'), gaps) or {}
-                thread = threads.setdefault(configured.get('thread_id'), dict(agent_path=None, model=None, status=None))
+                if not configured.get('thread_id'):
+                    gaps.append('session_configured without its payload')
+                    continue
+                thread = threads.setdefault(configured['thread_id'], dict(agent_path=None, model=None, status=None))
                 thread.update(model=configured.get('model'), effort=configured.get('reasoning_effort'))
             elif kind == 'inference_started':
                 inferences[payload['inference_call_id']] = dict(thread=payload.get('thread_id'),

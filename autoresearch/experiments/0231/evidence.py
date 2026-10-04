@@ -123,7 +123,7 @@ def run_of(folder):
 def attempted(out):
     """Calls each run recorded launching, matched only to that run's own carriers: judge roles per dispatch record
     (expected capture beside it) and worker invocation receipts (expected session beside it). Copies of one run
-    (a worktree archive and its custody copy) count once."""
+    (a worktree archive and its custody copy) are one logical launch with every copy's carrier path kept."""
     judges, workers = {}, {}
     for devlyn in devlyn_dirs(out):
         for path in devlyn.rglob('verify-judge.r*.dispatch.json'):
@@ -133,10 +133,10 @@ def attempted(out):
                 if entry.get('decision') == 'dispatch':
                     engine = entry.get('engine')
                     capture = path.parent / (f'{engine}-judge.r{round_}' + ('.output.json' if engine == 'claude' else '.stderr'))
-                    judges.setdefault((run_of(path.parent), round_, role, engine), capture)
+                    judges.setdefault((run_of(path.parent), round_, role, engine), []).append(capture)
         for path in devlyn.rglob('*.invocation.*.json'):
             stem, round_ = path.name.split('.invocation.')[0], path.name.rsplit('.', 2)[1]
-            workers.setdefault((run_of(path.parent), path.name), path.parent / f'{stem}.worker-session.{round_}.jsonl')
+            workers.setdefault((run_of(path.parent), path.name), []).append(path.parent / f'{stem}.worker-session.{round_}.jsonl')
     return dict(judges=judges, workers=workers)
 
 

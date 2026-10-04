@@ -162,6 +162,10 @@ def run(runtime_path, name, task, arm, config):
     record = dict(cell=name, task=task, arm=arm, config=config)
     owner = cell_run.run(out, runtime)
     sealed, collection_failures = seal_after_teardown(out)
+    if collection_failures:  # stop before any other reader touches evidence that could not be sealed
+        record.update(owner_status=owner['owner_status'], teardown=owner['teardown'], status='STOP',
+                      reason='evidence collection failed: ' + '; '.join(collection_failures[:3]))
+        return write_verdict(verdict_path, record)
     try:
         recorded = usage.record(out)
     except (OSError, ValueError, KeyError, TypeError) as exc:  # usage is recorded, never a stop
@@ -175,7 +179,6 @@ def run(runtime_path, name, task, arm, config):
     baseline = json.loads((out / 'baseline.json').read_text())
     stop = ('container survived teardown' if owner['teardown'] != 'CLEAN' else
             'harness changed' if not harness_unchanged(out, baseline) else
-            'evidence collection failed: ' + '; '.join(collection_failures[:3]) if collection_failures else
             'shared account fault during execution: ' + ', '.join(sorted({h['kind'] for h in limits['execution']}))
             if limits['execution'] else
             'model identity ' + owner['identity']['status'].lower()

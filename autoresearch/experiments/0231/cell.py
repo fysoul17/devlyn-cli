@@ -34,6 +34,10 @@ def identity(out, plan):
             violations.append(f'unbound Codex process {seat["root"]}')
             continue
         want = expect[seat['seat']]
+        native = inv['native'].get(thread) or {}
+        if seat['model'] is None and native.get('models'):  # an incomplete trace: the rollout bound by the same id
+            seat = dict(seat, model=next(iter(native['models'])) if len(native['models']) == 1 else str(sorted(native['models'])),
+                        effort=next(iter(native['efforts'])) if len(native['efforts']) == 1 else str(sorted(native['efforts'])))
         if want.get('engine') != 'codex':
             violations.append(f'{seat["seat"]} ran on codex but is registered on {want.get("engine")}')
         elif seat['model'] is None:
@@ -54,6 +58,17 @@ def identity(out, plan):
                 gaps.append(f'{seat} {thread} has neither a trace nor a rollout model record')
             elif native['models'] != {want.get('model')} or (want.get('effort') and native['efforts'] != {want['effort']}):
                 violations.append(f'{seat} {thread} rollout ran {sorted(native["models"])}/{sorted(native["efforts"])}')
+    bound_roots = inv['owner_threads'] | inv['worker_threads']
+    for thread, native in inv['native'].items():  # untraced native children, found by ancestry to a bound launch
+        ancestor, seen = native['parent'], set()
+        while ancestor and ancestor not in bound_roots and ancestor not in seen:
+            seen.add(ancestor)
+            ancestor = (inv['native'].get(ancestor) or {}).get('parent')
+        if not native['parent'] or ancestor not in bound_roots or thread in inv['seated']:
+            continue
+        want = expect['child']
+        if native['models'] != {want['model']} or (want.get('effort') and native['efforts'] != {want['effort']}):
+            violations.append(f'native child {thread} ran {sorted(native["models"])}/{sorted(native["efforts"])}')
     for session, header in inv['headers'].items():
         want = expect['codex_judge']
         if header['model'] != want['model'] or header['effort'] != want.get('effort'):

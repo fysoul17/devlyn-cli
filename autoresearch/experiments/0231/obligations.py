@@ -71,6 +71,11 @@ def final_state(root):
 RANK = {'PASS': 0, 'PASS_WITH_ISSUES': 1, 'NEEDS_WORK': 2, 'BLOCKED': 3}
 
 
+def frozen(plan):
+    """The arm's own helpers from the frozen control tree: never code a participant could have rewritten."""
+    return Path(plan['control']).parent / 'packages' / plan['arm'] / 'package/config/skills/_shared'
+
+
 def declared(engine, capture):
     """The verdict a judge's own capture declares, or None when the capture is empty or unparseable."""
     text = capture.read_text(errors='replace') if capture.is_file() else ''
@@ -87,42 +92,59 @@ def declared(engine, capture):
     return lines[-1] if lines and lines[-1] in RANK else None
 
 
-def carriers(archive, state, verify, sub):
-    """The final VERIFY round's own records, by content: MECHANICAL results and findings parse; the dispatch record
-    names this run and round and the bound seal; each dispatched judge's prompt matches its dispatched digest, its
-    role evidence names this run, round and role with a clean exit, and its capture declares a verdict no worse than
-    the recorded sub-verdict."""
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+
+
+def carriers(archive, state, verify, sub, merge):
+    """The final VERIFY round's own records, by binding and content:
+    - the dispatch record matches state's binding, names this run, round and seal, dispatches the primary judge and
+      either dispatches the pair or records the automatic skip;
+    - each dispatched judge's role evidence and every artifact it lists match state's bindings; its prompt and argv
+      match the dispatch record; its evidence names this run, round and role with a clean observed call; its capture
+      declares a verdict no better than the recorded sub-verdict;
+    - MECHANICAL's verdict, derived with the arm's frozen merge helpers from its findings and evidence, is no better
+      than recorded, and the merged verdict is the worst sub-verdict."""
     round_, problems = verify.get('round', 0), []
 
-    def parsed(name):
+    def parsed(path):
         try:
-            return json.loads((archive / name).read_text())
+            return json.loads(path.read_text())
         except (OSError, ValueError):
-            problems.append(f'{name} missing or unparseable')
+            problems.append(f'{path.name} missing or unparseable')
             return None
-    results = parsed('spec-verify.results.json')
-    if not (isinstance(results, dict) and isinstance(results.get('commands'), list)):
-        problems.append('MECHANICAL results lack their commands')
-    try:
-        for line in (archive / 'verify-mechanical.findings.jsonl').read_text().splitlines():
-            if line.strip() and not isinstance(json.loads(line), dict):
-                raise ValueError
-    except (OSError, ValueError):
-        problems.append('MECHANICAL findings missing or unparseable')
-    dispatch = parsed(f'verify-judge.r{round_}.dispatch.json') or {}
-    seal_raw = (archive / 'source-seal.json').read_bytes() if (archive / 'source-seal.json').is_file() else b''
+    binding = verify.get('dispatch') or {}
+    dispatch_file = archive / Path(str(binding.get('path', ''))).name
+    if sha(dispatch_file) != binding.get('sha256'):
+        problems.append('dispatch record does not match its state binding')
+    dispatch = parsed(dispatch_file) or {}
     if (dispatch.get('run_id'), dispatch.get('round')) != (state.get('run_id'), round_):
         problems.append('dispatch record names another run or round')
-    if dispatch.get('source_seal_sha256') != hashlib.sha256(seal_raw).hexdigest():
+    if dispatch.get('source_seal_sha256') != sha(archive / 'source-seal.json'):
         problems.append('dispatch record is bound to another seal')
-    for role, entry in (dispatch.get('roles') or {}).items():
+    roles = dispatch.get('roles') or {}
+    if (roles.get('primary_judge') or {}).get('decision') != 'dispatch':
+        problems.append('primary judge was not dispatched')
+    pair = roles.get('pair_judge') or {}
+    if not (pair.get('decision') == 'dispatch' or (pair.get('decision') == 'skip' and pair.get('reason') == AUTO_SKIP)):
+        problems.append('pair judge neither dispatched nor automatically skipped')
+    bound_evidence = verify.get('role_evidence') or {}
+    for role in ('primary_judge', 'pair_judge'):
+        entry = roles.get(role) or {}
         if entry.get('decision') != 'dispatch':
             continue
-        engine, stem = entry.get('engine'), f'{entry.get("engine")}-judge.r{round_}'
-        prompt = archive / (stem + '.prompt')
-        if not prompt.is_file() or hashlib.sha256(prompt.read_bytes()).hexdigest() != entry.get('prompt_sha256'):
+        engine, stem, bound = entry.get('engine'), f'{entry.get("engine")}-judge.r{round_}', bound_evidence.get(role) or {}
+        evidence_file = archive / f'{stem}.role-evidence.json'
+        if not bound or sha(evidence_file) != bound.get('sha256'):
+            problems.append(f'{role} role evidence does not match its state binding')
+        for artifact in bound.get('artifacts', ()):
+            if sha(archive / Path(artifact['path']).name) != artifact['sha256']:
+                problems.append(f'{role} artifact {Path(artifact["path"]).name} does not match its binding')
+        if sha(archive / f'{stem}.prompt') != entry.get('prompt_sha256'):
             problems.append(f'{role} prompt does not match its dispatched digest')
-        evidence = parsed(stem + '.role-evidence.json') or {}
+        if parsed(archive / f'{stem}.argv.json') != entry.get('argv'):
+            problems.append(f'{role} argv does not match the dispatch record')
+        evidence = parsed(evidence_file) or {}
         if ((evidence.get('run_id'), evidence.get('round'), evidence.get('role')) != (state.get('run_id'), round_, role)
                 or evidence.get('exit_code') != 0 or not evidence.get('model_observed')):
             problems.append(f'{role} role evidence does not bind this run, round and a clean observed call')
@@ -130,14 +152,26 @@ def carriers(archive, state, verify, sub):
         recorded = sub.get('judge' if role == 'primary_judge' else role)
         if verdict is None or recorded not in RANK or RANK[recorded] < RANK[verdict]:
             problems.append(f'{role} capture declares {verdict}, recorded {recorded}')
-    summary = parsed('verify-merge.summary.json') or {}
-    if {k: v for k, v in (summary.get('source_verdicts') or {}).items() if k in sub} != sub:
-        problems.append('merge summary disagrees with sub-verdicts')
+    derived = 'PASS'
+    try:
+        for line in (archive / 'verify-mechanical.findings.jsonl').read_text().splitlines():
+            item = json.loads(line) if line.strip() else None
+            if isinstance(item, dict):
+                derived = merge['worse'](derived, merge['RANK_VERDICT'][merge['finding_rank'](item)])
+        if merge['mechanical_evidence_violation'](archive) is not None:
+            derived = 'BLOCKED'
+        outcome = merge['mechanical_evidence_outcome'](archive)
+        if outcome is not None:
+            derived = merge['worse'](derived, outcome['verdict'])
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        problems.append(f'MECHANICAL evidence cannot be derived: {exc}')
+    if sub.get('mechanical') not in RANK or RANK[sub['mechanical']] < RANK.get(derived, 3):
+        problems.append(f'MECHANICAL derives {derived}, recorded {sub.get("mechanical")}')
+    worst = max((sub.get(k) for k in ('mechanical', 'judge', 'pair_judge') if sub.get(k)), key=lambda v: RANK.get(v, 3), default=None)
+    summary = parsed(archive / 'verify-merge.summary.json') or {}
+    if verify.get('verdict') != worst or summary.get('verdict') != worst:
+        problems.append(f'merged verdict is not the worst sub-verdict ({worst})')
     return not problems, problems
-
-
-def shared(root):
-    return next((d for d in (root / '.claude/skills/_shared', root / '.agents/skills/_shared') if d.is_dir()), None)
 
 
 def pair_skipped(archive, round_):
@@ -168,7 +202,11 @@ def meter(out):
     checks['mechanical_reviewed'] = sub.get('mechanical') in REVIEWED
     checks['primary_judge_reviewed'] = sub.get('judge') in REVIEWED
     checks['pair_judge_reviewed'] = sub.get('pair_judge') in REVIEWED or pair_skipped(archive, verify.get('round', 0))
-    checks['round_carriers'], missing = carriers(archive, state, verify, sub)
+    checks['round_carriers'], missing = carriers(archive, state, verify, sub,
+                                                 runpy.run_path(str(frozen(plan) / 'verify-merge-findings.py')))
+    final_verdict = (phases.get('final_report') or {}).get('verdict')
+    allowed = {verify.get('verdict')} | ({'BLOCKED:repair-budget-exhausted'} if verify.get('verdict') == 'NEEDS_WORK' else set())
+    checks['final_verdict_derived'] = final_verdict in allowed
     binding = verify.get('source_seal') or {}
     seal_path = archive / 'source-seal.json'
     seal = json.loads(seal_path.read_text()).get('seal') if seal_path.is_file() else None
@@ -181,7 +219,7 @@ def meter(out):
         head = git(out, root, 'rev-parse', 'HEAD')
         dirty = git(out, root, 'status', '--porcelain', '--untracked-files=all')
         checks['seal_head_is_final_source'] = isinstance(seal, dict) and seal.get('head') == head and dirty == ''
-    tools = shared(out / 'cell/work') or shared(root)  # the installed package is committed in the anchor's baseline
+    tools = frozen(plan)
     try:
         digest = runpy.run_path(str(tools / 'state-phase-write.py'))['final_report_digest'](
             state, archive, str(archive / 'final-report.md'))

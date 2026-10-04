@@ -43,6 +43,12 @@ def rollout_counters(sessions):
     return found
 
 
+def surviving(copies):
+    """A logical launch's carrier from whichever copies survived; differing surviving copies are a conflict."""
+    present = [p for p in copies if p.is_file()]
+    return (present[0] if present else None), len({p.read_bytes() for p in present}) > 1
+
+
 def codex(out, inv):
     totals, per_thread, gaps = {}, {}, list(inv['gaps'])
     for (root, call), item in inv['inferences'].items():
@@ -56,15 +62,21 @@ def codex(out, inv):
     traced = {r.get('rollout_id') for r in inv['rollouts']}
     launches = inv['owner_threads'] | inv['worker_threads'] | set(inv['headers'])
     gaps += [f'launch {root} has no trace' for root in sorted(launches - traced)]
-    for (run, round_, role, engine), capture in inv['attempted']['judges'].items():
+    for (run, round_, role, engine), copies in inv['attempted']['judges'].items():
         if engine != 'codex':
             continue
-        header = evidence.HEADER.search(capture.read_text(errors='replace')) if capture.is_file() else None
+        capture, conflict = surviving(copies)
+        if conflict:
+            gaps.append(f'run {run}: copies of codex {role} r{round_} capture disagree')
+        header = evidence.HEADER.search(capture.read_text(errors='replace')) if capture else None
         session = re.search(r'^session id: (\S+)$', header.group(1), re.M) if header else None
         if not session or session.group(1) not in traced:
             gaps.append(f'run {run}: dispatched codex {role} r{round_} has no traced native header beside its dispatch')
-    for (run, name), session_path in inv['attempted']['workers'].items():
-        threads = {e['thread_id'] for e in evidence.lines(session_path) if e.get('type') == 'thread.started'}
+    for (run, name), copies in inv['attempted']['workers'].items():
+        session_path, conflict = surviving(copies)
+        if conflict:
+            gaps.append(f'run {run}: copies of worker session {name} disagree')
+        threads = {e['thread_id'] for e in evidence.lines(session_path) if e.get('type') == 'thread.started'} if session_path else set()
         if not threads & traced:
             gaps.append(f'run {run}: worker invocation {name} has no traced session beside it')
     for session, header in inv['headers'].items():
@@ -106,11 +118,14 @@ def claude(inv, plan):
         if not envelope['usage']:
             gaps.append(f'Claude result {session} without usage')
     gaps += [f'unreadable Claude result {path}' for path in inv['unreadable']]
-    for (run, round_, role, engine), capture in inv['attempted']['judges'].items():
+    for (run, round_, role, engine), copies in inv['attempted']['judges'].items():
         if engine != 'claude':
             continue
+        capture, conflict = surviving(copies)
+        if conflict:
+            gaps.append(f'run {run}: copies of claude {role} r{round_} result disagree')
         try:
-            session = json.loads(capture.read_text()).get('session_id') if capture.is_file() else None
+            session = json.loads(capture.read_text()).get('session_id') if capture else None
         except ValueError:
             session = None
         if not session or not (inv['envelopes'].get(session) or {}).get('usage'):

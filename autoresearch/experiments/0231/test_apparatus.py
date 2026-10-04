@@ -160,6 +160,21 @@ class Binding(unittest.TestCase):
         self.assertIn('run R2: dispatched claude primary_judge r0 left no result', gaps)
         self.assertNotIn('run R1', gaps)
 
+    def test_surviving_copies_are_reconciled_in_any_order(self):
+        for names in (('a-live', 'b-custody'), ('b-live', 'a-custody')):
+            devlyn = self.out / 'cell' / names[0] / '.devlyn'
+            custody = self.out / 'cell' / names[1] / '.devlyn'
+            for folder in (devlyn, custody):
+                folder.mkdir(parents=True)
+                (folder / 'pipeline.state.json').write_text(json.dumps(dict(run_id='R1')))
+                (folder / 'verify-judge.r0.dispatch.json').write_text(json.dumps(dict(roles=dict(
+                    primary_judge=dict(decision='dispatch', engine='claude')))))
+            (custody / 'claude-judge.r0.output.json').write_text(json.dumps(dict(type='result', session_id='J1',
+                                                                                 modelUsage={'claude-opus-5-5': dict(outputTokens=7)})))
+            self.assertNotIn('left no result', self.gaps(), names)
+            shutil.rmtree(self.out / 'cell' / names[0])
+            shutil.rmtree(self.out / 'cell' / names[1])
+
     def test_rollout_counters_must_all_agree(self):
         self.judge('S1', '67')
         self.trace('S1')
@@ -222,6 +237,28 @@ class Identity(unittest.TestCase):
     def test_a_lost_owner_trace_falls_back_to_its_rollout(self):
         plan = self.codex_cell('gpt-6-sol', 'high')
         shutil.rmtree(self.out / 'cell/trace/trace-t-OWN')
+        (self.out / 'home/.codex/sessions/own.jsonl').write_text(json.dumps(dict(type='session_meta', payload=dict(id='OWN'))) + '\n'
+            + json.dumps(dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='high'))) + '\n')
+        self.assertEqual(self.cell.identity(self.out, plan)['status'], 'MATCH')
+
+    def test_untraced_native_children_are_validated_by_ancestry(self):
+        plan = self.codex_cell('gpt-6-sol', 'high')
+        shutil.rmtree(self.out / 'cell/trace/trace-t-OWN')
+        sessions = self.out / 'home/.codex/sessions'
+        (sessions / 'own.jsonl').write_text(json.dumps(dict(type='session_meta', payload=dict(id='OWN'))) + '\n'
+            + json.dumps(dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='high'))) + '\n')
+        source = dict(subagent=dict(thread_spawn=dict(parent_thread_id='OWN')))
+        (sessions / 'kid.jsonl').write_text(json.dumps(dict(type='session_meta', payload=dict(id='KID', source=source))) + '\n'
+            + json.dumps(dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='low'))) + '\n')
+        result = self.cell.identity(self.out, plan)
+        self.assertEqual(result['status'], 'MISMATCH')
+        self.assertTrue(any(v.startswith('native child KID') for v in result['violations']), result['violations'])
+
+    def test_an_incomplete_trace_identity_uses_the_bound_rollout(self):
+        plan = self.codex_cell('gpt-6-sol', 'high')
+        own = self.out / 'cell/trace/trace-t-OWN/payloads'
+        for name in ('OWN.json', 'OWN-c.json'):
+            (own / name).unlink()
         (self.out / 'home/.codex/sessions/own.jsonl').write_text(json.dumps(dict(type='session_meta', payload=dict(id='OWN'))) + '\n'
             + json.dumps(dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='high'))) + '\n')
         self.assertEqual(self.cell.identity(self.out, plan)['status'], 'MATCH')
@@ -483,6 +520,36 @@ class Venue(unittest.TestCase):
             self.run_cell.subprocess.run, self.run_cell.assess.reap = original_run, original_reap
         self.assertEqual((limits, len(reaped)), ({}, 1))
 
+    def test_a_sealing_failure_stops_before_any_other_evidence_reader(self):
+        rc, out = self.run_cell, self.root / 'out'
+        out.mkdir()
+        cell = out / 'c1'
+        (cell / 'run').mkdir(parents=True)
+        runtime = dict(output=str(out), control=str(self.root / 'control'), image='devlyn-0231')
+        saved = (rc.preflight, rc.control_unchanged, rc.prepare.prepare, rc.cell_run.run, rc.seal_after_teardown,
+                 rc.usage.record, rc.quota.classify)
+        def forbidden(*a, **k):
+            raise AssertionError('an evidence reader ran after a sealing failure')
+        (rc.preflight, rc.control_unchanged) = (lambda runtime: (dict(), None)), (lambda runtime: True)
+        rc.prepare.prepare = lambda *a: (cell / 'plan.json').write_text('{}') and cell or cell
+        rc.cell_run.run = lambda out, runtime: dict(owner_status='EXITED_0', teardown='CLEAN', seconds=1, identity={})
+        rc.seal_after_teardown = lambda out: (None, ['owner log unreadable'])
+        rc.usage.record, rc.quota.classify = forbidden, forbidden
+        (self.root / 'runtime.json').write_text(json.dumps(runtime))
+        try:
+            (cell / 'baseline.json').write_text('{}')
+            (cell / 'prompt.txt').write_text('')
+            original_digest = rc.digest
+            rc.digest = lambda path: 'x'
+            code = rc.run(str(self.root / 'runtime.json'), 'c1', 'SMOKE', 'control', 'claude')
+        finally:
+            rc.digest = original_digest
+            (rc.preflight, rc.control_unchanged, rc.prepare.prepare, rc.cell_run.run, rc.seal_after_teardown,
+             rc.usage.record, rc.quota.classify) = saved
+        verdict = json.loads((out / 'verdict-c1.json').read_text())
+        self.assertEqual((code, verdict['status']), (2, 'STOP'))
+        self.assertIn('evidence collection failed', verdict['reason'])
+
     def test_collection_and_verdict_write_failures_are_explicit(self):
         out = self.root / 'cell-out'
         for name in ('run', 'cell', 'tmp', 'home'):
@@ -556,7 +623,7 @@ def archived_run(out, shared_source, codex_mode='pass'):
     run('finish-gate.py')
     spw('--phase', 'final_report', 'complete')
     run('archive_run.py', '--devlyn-dir', '.devlyn')
-    (out / 'plan.json').write_text(json.dumps(dict(arm='candidate')))
+    (out / 'plan.json').write_text(json.dumps(dict(arm='candidate', control=str(Path(os.environ['APPARATUS_CONTROL']) / 'public'))))
     (out / 'snapshot.json').write_text(json.dumps(dict(kind='anchor', path='cell/work')))
     return work
 
@@ -604,6 +671,35 @@ class Obligations(unittest.TestCase):
         (self.out / 'snapshot.json').write_text(json.dumps(dict(kind='accepted', sha=head, receipt='cell/work/.git/devlyn-completion/k/receipt.json')))
         result = self.meter.meter(self.out)
         self.assertTrue(result['satisfied'], result)
+
+    def test_participant_rewritten_helpers_never_run_on_the_host(self):
+        work = archived_run(self.out, self.shared)
+        marker = self.out / 'participant-code-ran'
+        for name in ('state-phase-write.py', 'terminal-claim-check.py', 'verify-merge-findings.py'):
+            (work / '.agents/skills/_shared' / name).write_text(f'open({str(marker)!r}, "w").write("ran")\n')
+        checks = self.meter.meter(self.out)['checks']
+        self.assertFalse(marker.exists())  # the frozen control-tree helpers ran, never the rewritten ones
+        self.assertTrue(checks['report_bound'] and checks['terminal_clean'] and checks['round_carriers'], checks)
+        self.assertFalse(checks['seal_head_is_final_source'])  # and rewriting tracked files is itself a change after the seal
+
+    def test_removed_dispatch_roles_or_argv_carriers_do_not_satisfy(self):
+        work = archived_run(self.out, self.shared)
+        run = next((work / '.devlyn/runs').iterdir())
+        dispatch = json.loads((run / 'verify-judge.r0.dispatch.json').read_text())
+        (run / 'verify-judge.r0.dispatch.json').write_text(json.dumps(dict(dispatch, roles={})))
+        self.assertFalse(self.meter.meter(self.out)['satisfied'])
+        (run / 'verify-judge.r0.dispatch.json').write_text(json.dumps(dispatch, indent=2))
+        for argv in run.glob('*-judge.r0.argv.json'):
+            argv.unlink()
+        self.assertFalse(self.meter.meter(self.out)['satisfied'])
+
+    def test_a_hidden_mechanical_failure_does_not_satisfy(self):
+        work = archived_run(self.out, self.shared)
+        run = next((work / '.devlyn/runs').iterdir())
+        (run / 'verify-mechanical.findings.jsonl').write_text(json.dumps(dict(
+            id='M1', rule_id='spec.literal', severity='CRITICAL', file='source.txt', line=1, message='failed', confidence='high')) + '\n')
+        result = self.meter.meter(self.out)
+        self.assertFalse(result['checks']['round_carriers'], result)
 
     def test_a_change_after_the_seal_or_a_tampered_report_fails(self):
         work = archived_run(self.out, self.shared)
