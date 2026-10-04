@@ -263,6 +263,36 @@ class Identity(unittest.TestCase):
             + json.dumps(dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='high'))) + '\n')
         self.assertEqual(self.cell.identity(self.out, plan)['status'], 'MATCH')
 
+    def test_a_surviving_child_does_not_hide_the_owners_own_identity(self):
+        plan = self.codex_cell('gpt-6-sol', 'high')
+        shutil.rmtree(self.out / 'cell/trace/trace-t-OWN')
+        events, payloads = self.configured('OWN', 'KID', 'gpt-6-sol', 'high', path='/root/child')
+        write_trace(self.out / 'cell/trace', 'OWN', events, payloads)
+        (self.out / 'home/.codex/sessions/own.jsonl').write_text(json.dumps(dict(type='session_meta', payload=dict(id='OWN'))) + '\n'
+            + json.dumps(dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='low'))) + '\n')
+        self.assertEqual(self.cell.identity(self.out, plan)['status'], 'MISMATCH')
+
+    def test_effort_lost_from_the_trace_is_recovered_from_the_rollout(self):
+        plan = self.codex_cell('gpt-6-sol', 'high')
+        (self.out / 'cell/trace/trace-t-OWN/payloads/OWN-c.json').unlink()
+        (self.out / 'home/.codex/sessions/own.jsonl').write_text(json.dumps(dict(type='session_meta', payload=dict(id='OWN'))) + '\n'
+            + json.dumps(dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='high'))) + '\n')
+        self.assertEqual(self.cell.identity(self.out, plan)['status'], 'MATCH')
+
+    def test_a_forked_childs_inherited_context_is_not_its_own(self):
+        plan = self.codex_cell('gpt-6-sol', 'high')
+        shutil.rmtree(self.out / 'cell/trace/trace-t-OWN')
+        sessions = self.out / 'home/.codex/sessions'
+        (sessions / 'own.jsonl').write_text(json.dumps(dict(type='session_meta', payload=dict(id='OWN'))) + '\n'
+            + json.dumps(dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='high'))) + '\n')
+        source = dict(subagent=dict(thread_spawn=dict(parent_thread_id='OWN')))
+        (sessions / 'kid.jsonl').write_text('\n'.join(json.dumps(e) for e in (
+            dict(type='session_meta', payload=dict(id='KID', source=source, forked_from_id='OWN')),
+            dict(type='turn_context', payload=dict(model='gpt-6-astra', effort='high')),
+            dict(type='event_msg', payload=dict(type='thread_settings_applied', thread_id='KID')),
+            dict(type='turn_context', payload=dict(model='gpt-6-sol', effort='high')))) + '\n')
+        self.assertEqual(self.cell.identity(self.out, plan)['status'], 'MATCH')
+
     def test_an_unbound_codex_process_is_a_mismatch(self):
         plan = self.codex_cell('gpt-6-sol', 'high')
         events, payloads = self.configured('STRAY', 'STRAY', 'gpt-6-sol', 'high')
@@ -580,7 +610,8 @@ def archived_run(out, shared_source, codex_mode='pass'):
     shared = work / '.agents/skills/_shared'
     devlyn.mkdir()
     (devlyn / 'untracked.baseline').write_text(runpy.run_path(str(shared / 'spec-verify-check.py'))['EMPTY_BASELINE'])
-    spec = b'# Spec\n\n## Requirements\n\n- source.txt says implemented\n'
+    spec = (b'# Spec\n\n## Requirements\n\n- source.txt says implemented\n\n<!-- devlyn:verification -->\n## Verification\n\n'
+            b'```json\n{"verification_commands": [{"cmd": "grep -q implemented source.txt", "exit_code": 0}]}\n```\n')
     (devlyn / 'spec.md').write_bytes(spec)
     (devlyn / 'pipeline.state.json').write_text(json.dumps({
         'version': '3.0', 'run_id': 'rs-fixture', 'engine': 'claude', 'mode': 'spec', 'base_ref': {'sha': git('rev-parse', 'HEAD')},
@@ -700,6 +731,29 @@ class Obligations(unittest.TestCase):
             id='M1', rule_id='spec.literal', severity='CRITICAL', file='source.txt', line=1, message='failed', confidence='high')) + '\n')
         result = self.meter.meter(self.out)
         self.assertFalse(result['checks']['round_carriers'], result)
+
+    def test_a_real_command_carrier_satisfies_and_its_loss_does_not(self):
+        work = archived_run(self.out, self.shared)
+        run = next((work / '.devlyn/runs').iterdir())
+        self.assertTrue(json.loads((run / 'spec-verify.results.json').read_text())['commands'])
+        self.assertTrue(self.meter.meter(self.out)['satisfied'])
+        (run / 'spec-verify.results.json').unlink()
+        self.assertFalse(self.meter.meter(self.out)['satisfied'])
+
+    def test_malformed_mechanical_findings_do_not_satisfy(self):
+        work = archived_run(self.out, self.shared)
+        findings = next((work / '.devlyn/runs').glob('*/verify-mechanical.findings.jsonl'))
+        for record in ('{}', 'null', '[]', '"text"'):
+            findings.write_text(record + '\n')
+            self.assertFalse(self.meter.meter(self.out)['checks']['round_carriers'], record)
+
+    def test_participant_git_configuration_never_executes_on_the_host(self):
+        work = archived_run(self.out, self.shared)
+        marker = self.out / 'fsmonitor-ran'
+        subprocess.run(['git', '-C', str(work), 'config', 'core.fsmonitor', f'touch {marker}; echo'], check=True)
+        locate.materialize(self.out, dict(kind='anchor', path='cell/work'))
+        self.meter.meter(self.out)
+        self.assertFalse(marker.exists())
 
     def test_a_change_after_the_seal_or_a_tampered_report_fails(self):
         work = archived_run(self.out, self.shared)

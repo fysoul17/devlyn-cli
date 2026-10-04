@@ -14,13 +14,18 @@ import importlib.util
 import json
 from pathlib import Path
 import runpy
+import shutil
 import subprocess
 import sys
+import tempfile
 
 HERE = Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location('locate0231', HERE / 'locate.py')
 locate = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(locate)
+_spec = importlib.util.spec_from_file_location('packet0222o', HERE.parent / '0222/packet.py')
+packet = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(packet)
 REVIEWED = {'PASS', 'PASS_WITH_ISSUES', 'NEEDS_WORK'}
 AUTO_SKIP = 'auto_pair_other_engine_unavailable'
 
@@ -38,19 +43,37 @@ def task_root(out):
     return (worktree if worktree and (worktree / '.devlyn').is_dir() else receipt_path.parent / 'custody'), selection
 
 
-def git(out, root, *args):
-    """Git in the anchor or in a linked worktree whose .git file names a container path."""
+def files_of(root, names):
+    """packet.tree of the named files under root (read as bytes; nothing executes)."""
+    with tempfile.TemporaryDirectory() as temp:
+        for name in names:
+            source, target = root / name, Path(temp) / name
+            if source.is_symlink() or source.is_file():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.symlink_to(source.readlink()) if source.is_symlink() else shutil.copy2(source, target)
+        return packet.tree(Path(temp))
+
+
+def head_tree(out, root):
+    """The task tree's HEAD commit and its tracked content, read with exec-free host Git."""
     anchor = out / 'cell/work'
-    if root == anchor:
-        command = ['git', '-C', str(root), *args]
-    else:
-        gitdir = next((d for d in (anchor / '.git/worktrees').iterdir()
-                       if locate.host(out, (d / 'gitdir').read_text().strip()) == root / '.git'), None)
-        if gitdir is None:
-            return None
-        command = ['git', '--git-dir', str(gitdir), '--work-tree', str(root), *args]
-    done = subprocess.run(command, capture_output=True, text=True)
-    return done.stdout.strip() if done.returncode == 0 else None
+    gitdir = None if root == anchor else next((d for d in (anchor / '.git/worktrees').iterdir()
+                                               if locate.host(out, (d / 'gitdir').read_text().strip()) == root / '.git'), None)
+    command = ['git', *locate.SAFE] + (['--git-dir', str(gitdir)] if gitdir else ['-C', str(anchor)])
+    head = subprocess.run([*command, 'rev-parse', 'HEAD'], capture_output=True, text=True, env=locate.ENV).stdout.strip()
+    archive = subprocess.run([*command, 'archive', head], capture_output=True, env=locate.ENV)
+    with tempfile.TemporaryDirectory() as temp:
+        subprocess.run(['tar', '-x', '-C', temp], input=archive.stdout, check=False)
+        return head, packet.tree(Path(temp))
+
+
+def live_layout(archive, root, temp):
+    """The pre-archive layout the frozen helpers expect: the task's files with the run's records as its .devlyn."""
+    work = Path(temp) / 'work'
+    shutil.copytree(root, work, symlinks=True, ignore=lambda folder, names: [n for n in names if n in ('.git', '.devlyn')
+                                                                             and Path(folder) == root])
+    shutil.copytree(archive, work / '.devlyn', symlinks=True)
+    return work / '.devlyn'
 
 
 def final_state(root):
@@ -96,7 +119,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
 
 
-def carriers(archive, state, verify, sub, merge):
+def carriers(archive, root, state, verify, sub, merge):
     """The final VERIFY round's own records, by binding and content:
     - the dispatch record matches state's binding, names this run, round and seal, dispatches the primary judge and
       either dispatches the pair or records the automatic skip;
@@ -153,16 +176,23 @@ def carriers(archive, state, verify, sub, merge):
         if verdict is None or recorded not in RANK or RANK[recorded] < RANK[verdict]:
             problems.append(f'{role} capture declares {verdict}, recorded {recorded}')
     derived = 'PASS'
+    if not (archive / 'spec-verify.results.json').is_file():
+        problems.append('MECHANICAL results are missing')
     try:
         for line in (archive / 'verify-mechanical.findings.jsonl').read_text().splitlines():
-            item = json.loads(line) if line.strip() else None
-            if isinstance(item, dict):
-                derived = merge['worse'](derived, merge['RANK_VERDICT'][merge['finding_rank'](item)])
-        if merge['mechanical_evidence_violation'](archive) is not None:
-            derived = 'BLOCKED'
-        outcome = merge['mechanical_evidence_outcome'](archive)
-        if outcome is not None:
-            derived = merge['worse'](derived, outcome['verdict'])
+            if not line.strip():
+                continue
+            item = json.loads(line)
+            if not (isinstance(item, dict) and isinstance(item.get('id'), str) and isinstance(item.get('severity'), str)):
+                raise ValueError(f'malformed MECHANICAL finding {line[:80]!r}')
+            derived = merge['worse'](derived, merge['RANK_VERDICT'][merge['finding_rank'](item)])
+        with tempfile.TemporaryDirectory() as temp:
+            devlyn = live_layout(archive, root, temp)
+            if merge['mechanical_evidence_violation'](devlyn) is not None:
+                derived = 'BLOCKED'
+            outcome = merge['mechanical_evidence_outcome'](devlyn)
+            if outcome is not None:
+                derived = merge['worse'](derived, outcome['verdict'])
     except (OSError, ValueError, KeyError, TypeError) as exc:
         problems.append(f'MECHANICAL evidence cannot be derived: {exc}')
     if sub.get('mechanical') not in RANK or RANK[sub['mechanical']] < RANK.get(derived, 3):
@@ -202,7 +232,7 @@ def meter(out):
     checks['mechanical_reviewed'] = sub.get('mechanical') in REVIEWED
     checks['primary_judge_reviewed'] = sub.get('judge') in REVIEWED
     checks['pair_judge_reviewed'] = sub.get('pair_judge') in REVIEWED or pair_skipped(archive, verify.get('round', 0))
-    checks['round_carriers'], missing = carriers(archive, state, verify, sub,
+    checks['round_carriers'], missing = carriers(archive, root, state, verify, sub,
                                                  runpy.run_path(str(frozen(plan) / 'verify-merge-findings.py')))
     final_verdict = (phases.get('final_report') or {}).get('verdict')
     allowed = {verify.get('verdict')} | ({'BLOCKED:repair-budget-exhausted'} if verify.get('verdict') == 'NEEDS_WORK' else set())
@@ -215,10 +245,10 @@ def meter(out):
                             and binding.get('sha256') == hashlib.sha256(raw).hexdigest() and binding.get('bytes') == len(raw))
     if selection['kind'] == 'accepted':  # an accepted commit is immutable: its seal must name exactly that commit
         checks['seal_head_is_final_source'] = isinstance(seal, dict) and seal.get('head') == selection['sha']
-    else:
-        head = git(out, root, 'rev-parse', 'HEAD')
-        dirty = git(out, root, 'status', '--porcelain', '--untracked-files=all')
-        checks['seal_head_is_final_source'] = isinstance(seal, dict) and seal.get('head') == head and dirty == ''
+    else:  # no change after the seal: Git's view of the tree equals its HEAD commit, compared without running Git status
+        head, committed = head_tree(out, root)
+        current = files_of(root, locate.tree_files(out, root))
+        checks['seal_head_is_final_source'] = isinstance(seal, dict) and seal.get('head') == head and current == committed
     tools = frozen(plan)
     try:
         digest = runpy.run_path(str(tools / 'state-phase-write.py'))['final_report_digest'](

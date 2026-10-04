@@ -123,7 +123,7 @@ One snapshot is selected before grading:
 - **Completion:** 0222's verdict on the selected snapshot.
   - COMPLETE needs every public check and oracle row to pass, clean scope, and both assessors calling it complete with no HIGH/CRITICAL.
   - NOT_TRIGGERED gives ADJUDICATE (0224 rule 1). Anything else is PRODUCT_INCOMPLETE.
-- **Obligations** (binding for the candidate, reported for the control): VERIFY completed with a MECHANICAL seal equal to the final source, both judge carriers accepted (or a reported automatic pair skip), and FINAL_REPORT's verdict derived from that evidence with its render digest bound. The meter keys on obligations, never on phase names. A correct early halt that skipped the final review does not satisfy it.
+- **Obligations** (binding for the candidate, reported for the control): VERIFY completed with a MECHANICAL seal equal to the final source, both judge carriers accepted (or a reported automatic pair skip), and FINAL_REPORT's verdict derived from that evidence with its render digest bound. The meter reads these records through the candidate's own schema (`phases.verify`, `phases.final_report` and the round's carriers) using the arm's frozen helpers; BUILD_GATE and CLEANUP play no part. A correct early halt that skipped the final review does not satisfy it.
 
 ### Trace contract
 
@@ -267,5 +267,6 @@ A ratio is the candidate's 6-cell sum over the control's, per config. Without CO
 - Results hold for the instrumented configuration, the pinned CLI pair and the image's tool set.
 - Claude judges' effective effort is unverified.
 - The trace instrument is an undocumented CLI interface, pinned and cross-checked, and it voids on any CLI change.
+- Compaction accounting is not established. The probes reproduced reasoning, cache, multi-inference and child-thread usage, but not compaction. A started inference without completed usage stays a named gap.
 - The seal's trusted-environment boundary (owner decisions R1, R2) is unchanged.
 - This comparison does not test live witness recall, Claude worker prompt-delivery attestation, or polling elimination.

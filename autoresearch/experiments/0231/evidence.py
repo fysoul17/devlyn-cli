@@ -16,6 +16,9 @@ HERE = Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location('trace0231e', HERE / 'trace_usage.py')
 traces = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(traces)
+_spec = importlib.util.spec_from_file_location('usage0222e', HERE.parent / '0222/record_usage.py')
+usage0222 = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(usage0222)
 TASKS = json.loads((HERE.parent / '0222/tasks.json').read_text())
 WRITABLE = ('cell', 'tmp', 'home')
 HEADER = re.compile(r'^OpenAI Codex v[^\n]+\n--------\n(.*?)\n--------\n', re.S | re.M)
@@ -149,7 +152,7 @@ def native_rollouts(out):
         if meta is None:
             continue
         source = meta.get('source')
-        contexts = [e['payload'] for e in rows if e.get('type') == 'turn_context']
+        contexts = [e['payload'] for e in usage0222.own_events(rows) if e.get('type') == 'turn_context']
         found[meta['id']] = dict(models={c.get('model') for c in contexts} - {None},
                                  efforts={c.get('effort') for c in contexts} - {None},
                                  parent=source['subagent']['thread_spawn']['parent_thread_id'] if isinstance(source, dict) else None)

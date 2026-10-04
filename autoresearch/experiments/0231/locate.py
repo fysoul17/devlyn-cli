@@ -5,6 +5,7 @@ at teardown; the anchor only when no task tree was allocated. Every check, oracl
 materialized <cell-out>/snapshot; the other trees stay in place as audit evidence.
 """
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -24,8 +25,14 @@ def host(out, path):
     return None
 
 
+# Host Git never runs participant-configured commands: no fsmonitor, untracked cache or hooks, no user or system
+# config, no optional locks; and only commands that execute nothing (no status, no filters).
+SAFE = ('-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false', '-c', 'core.hooksPath=/dev/null')
+ENV = {**os.environ, 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null', 'GIT_OPTIONAL_LOCKS': '0'}
+
+
 def git(repo, *args, check=True):
-    done = subprocess.run(['git', *args], cwd=repo, capture_output=True, text=True)
+    done = subprocess.run(['git', *SAFE, *args], cwd=repo, capture_output=True, text=True, env=ENV)
     if check and done.returncode:
         raise LocatorError(f'git {" ".join(args)}: {done.stderr.strip()}')
     return done.stdout.strip() if done.returncode == 0 else None
@@ -98,15 +105,15 @@ def tree_files(out, folder):
     product), read from the host even though linked worktrees record container paths."""
     anchor = out / 'cell/work'
     if folder == anchor:
-        command = ['git', '-C', str(folder)]
+        command = ['git', *SAFE, '-C', str(folder)]
     else:
         gitdir = next((d for d in (anchor / '.git/worktrees').iterdir()
                        if host(out, (d / 'gitdir').read_text().strip()) == folder / '.git'), None)
         if gitdir is None:
             raise LocatorError(f'no registered worktree for {folder}')
-        command = ['git', '--git-dir', str(gitdir), '--work-tree', str(folder)]
+        command = ['git', *SAFE, '--git-dir', str(gitdir), '--work-tree', str(folder)]
     listed = subprocess.run([*command, 'ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, env=ENV)
     if listed.returncode:
         raise LocatorError('git ls-files failed: ' + listed.stderr.strip())
     return sorted({n for n in listed.stdout.split('\0') if n and n.split('/')[0] != '.devlyn'})
@@ -118,7 +125,7 @@ def materialize(out, selection):
         raise LocatorError('snapshot already materialized')
     snapshot.mkdir()
     if selection['kind'] == 'accepted':
-        archive = subprocess.run(['git', 'archive', selection['sha']], cwd=out / 'cell/work', capture_output=True)
+        archive = subprocess.run(['git', *SAFE, 'archive', selection['sha']], cwd=out / 'cell/work', capture_output=True, env=ENV)
         if archive.returncode:
             raise LocatorError('git archive failed: ' + archive.stderr.decode(errors='replace'))
         subprocess.run(['tar', '-x', '-C', str(snapshot)], input=archive.stdout, check=True)

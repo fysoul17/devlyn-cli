@@ -35,9 +35,11 @@ def identity(out, plan):
             continue
         want = expect[seat['seat']]
         native = inv['native'].get(thread) or {}
-        if seat['model'] is None and native.get('models'):  # an incomplete trace: the rollout bound by the same id
-            seat = dict(seat, model=next(iter(native['models'])) if len(native['models']) == 1 else str(sorted(native['models'])),
-                        effort=next(iter(native['efforts'])) if len(native['efforts']) == 1 else str(sorted(native['efforts'])))
+        for field, values in (('model', native.get('models')), ('effort', native.get('efforts'))):
+            if values and seat[field] is None:  # an incomplete trace: that field from the rollout bound by the same id
+                seat = dict(seat, **{field: next(iter(values)) if len(values) == 1 else str(sorted(values))})
+            elif values and seat[field] not in values:
+                violations.append(f'{seat["seat"]} {thread}: trace {field} {seat[field]} contradicts its rollout {sorted(values)}')
         if want.get('engine') != 'codex':
             violations.append(f'{seat["seat"]} ran on codex but is registered on {want.get("engine")}')
         elif seat['model'] is None:
@@ -49,9 +51,9 @@ def identity(out, plan):
         seat = inv['seated'].get(item['thread'], {}).get('seat')
         if seat and item['model'] and item['model'] != expect[seat].get('model'):
             violations.append(f'{seat} inference {call} ran {item["model"]}, registered {expect[seat].get("model")}')
-    traced = {s['root'] for s in inv['seated'].values()}
+    traced = {t for t, s in inv['seated'].items() if t == s['root']}  # roots with their own trace records
     for seat, threads in (('owner', inv['owner_threads']), ('worker', inv['worker_threads'])):
-        for thread in sorted(threads - traced):  # no trace: the rollout, bound by the same thread id, still names it
+        for thread in sorted(threads - traced):  # no own trace: the rollout, bound by the same thread id, still names it
             native = inv['native'].get(thread)
             want = expect[seat]
             if not native or not native['models']:
