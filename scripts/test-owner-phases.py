@@ -272,6 +272,17 @@ class OwnerPhases(unittest.TestCase):
         self.cli("implement", "complete", "--verdict", "FAIL")
         self.cli("verify", "spawn", "--round", "0", error="verify-admission-invalid")
 
+    def test_verify_only_needs_work_never_admits_implement(self):
+        """A verify-only run has no repair edge: IMPLEMENT admission refuses before any state or counter change."""
+        state = self.state()
+        state["mode"] = "verify-only"
+        self.save(state)
+        self.cli("verify", "spawn", "--round", "0", "--engine", "claude")
+        self.needs_work()
+        self.cli("verify", "complete")
+        self.cli("implement", "spawn", "--round", "1", "--triggered-by", "verify", "--engine", "claude",
+                 error="BLOCKED:repair-edge-invalid: a verify-only run never opens IMPLEMENT")
+
     def test_plan_digest_and_atomic_handoff(self):
         self.plan()
         for worker in ("implement", "probe_derive"):  # worker phases open only by complete -> render -> spawn
@@ -287,6 +298,86 @@ class OwnerPhases(unittest.TestCase):
                  error="plan-already-in-use")
         (self.devlyn / "plan.md").write_text("widened scope")
         self.cli("implement", "complete", "--verdict", "PASS", error="plan-integrity-mismatch")
+
+    def close_over_changed_plan(self):
+        """FINAL_REPORT derives phase-input-invalid; archive and TCC witness the run, and delivery refuses it."""
+        self.cli("final_report", "spawn", "--round", "0")
+        self.cli("final_report", "complete")
+        self.assertEqual(self.state()["phases"]["final_report"]["verdict"], "BLOCKED:phase-input-invalid")
+        for step in ("archive_run.py", "terminal-claim-check.py"):
+            closed = subprocess.run([sys.executable, str(SHARED / step), *(["--devlyn-dir", ".devlyn"] if step == "archive_run.py" else [])],
+                                    cwd=self.work, env=ENV, capture_output=True, text=True)
+            self.assertEqual(closed.returncode, 0, closed.stdout + closed.stderr)
+        delivery = runpy.run_path(str(SHARED / "task-complete.py"))
+        with self.assertRaisesRegex(delivery["CompletionError"], "archive did not finish successfully"):
+            delivery["pipeline_acceptance"](self.work, {"run_id": "rs-owner-test", "source_sha": self.git("rev-parse", "HEAD")},
+                                            [], self.work)
+
+    def worker_closes_over_changed_plan(self, phase):
+        """PLAN changes under an open worker phase: only exact BLOCKED closes it, and no further work opens."""
+        self.with_spec(b"# Spec\n\n## Requirements\n\n- prints ok\n")
+        self.plan()
+        self.cli("plan", "complete", "--verdict", "PASS")
+        self.cli(phase, "spawn", "--round", "0", "--engine", "claude")
+        (self.devlyn / "plan.md").write_text("widened after binding\n")
+        for verdict in ("PASS", "PASS_WITH_ISSUES", "FAIL", "NEEDS_WORK"):
+            self.cli(phase, "complete", "--verdict", verdict, error="plan-integrity-mismatch")
+        self.cli(phase, "complete", "--verdict", "BLOCKED")
+        for admission in ("implement", "verify"):
+            self.cli(admission, "spawn", "--round", "1" if admission == phase else "0", "--engine", "claude",
+                     error="plan-integrity-mismatch")
+        self.close_over_changed_plan()
+
+    def test_implement_closes_blocked_over_a_changed_plan(self):
+        self.worker_closes_over_changed_plan("implement")
+
+    def test_probe_derive_closes_blocked_over_a_changed_plan(self):
+        self.worker_closes_over_changed_plan("probe_derive")
+
+    def verify_closes_over_changed_plan(self):
+        """VERIFY completes with its merged verdict over a changed PLAN; a caller-supplied verdict stays refused."""
+        merged = self.state()["phases"]["verify"]["merged"]
+        self.cli("verify", "complete", "--verdict", "PASS", error="owned by verify-merge-findings.py")
+        self.cli("verify", "complete")
+        verify = self.state()["phases"]["verify"]
+        self.assertEqual((verify["verdict"], verify["merged"]), (merged["verdict"], merged))
+        self.close_over_changed_plan()
+
+    def test_verify_closes_over_a_plan_changed_before_the_merge(self):
+        """The merge's seal recheck blocks a PLAN changed after the seal; VERIFY never completes without a verdict."""
+        self.with_spec(b"# Spec\n\n## Requirements\n\n- prints ok\n")
+        subprocess.run([sys.executable, str(SHARED / "state-phase-write.py"), "--devlyn-dir", ".devlyn",
+                        "--freeze-roles", "--default-engine", "claude"], cwd=self.work, env=ENV, check=True,
+                       capture_output=True)
+        self.implemented()
+        self.assertEqual(self.mechanical().returncode, 0)
+        self.assertEqual(self.checker("--seal").returncode, 0)
+        (self.devlyn / "plan.md").write_text("widened after the seal\n")
+        self.cli("verify", "complete", error="still null")
+        judged = subprocess.run([sys.executable, str(SHARED / "verify-judges.py"), "--devlyn-dir", str(self.devlyn)],
+                                cwd=self.work, env=ENV, capture_output=True, text=True)
+        self.assertEqual(self.state()["phases"]["verify"]["merged"]["verdict"], "BLOCKED", judged.stdout + judged.stderr)
+        self.assertIn("invariant.mechanical-seal", (self.devlyn / "verify-merged.findings.jsonl").read_text())
+        self.verify_closes_over_changed_plan()
+
+    def merged_verify_closes_over_changed_plan(self, verdict):
+        self.with_spec(b"# Spec\n\n## Requirements\n\n- prints ok\n")
+        self.implemented()
+        self.needs_work()
+        state = self.state()
+        state["phases"]["verify"]["verdict"] = state["phases"]["verify"]["merged"]["verdict"] = verdict
+        self.save(state)
+        (self.devlyn / "plan.md").write_text("widened after the merge\n")
+        self.verify_closes_over_changed_plan()
+
+    def test_merged_pass_completes_over_a_changed_plan(self):
+        self.merged_verify_closes_over_changed_plan("PASS")
+
+    def test_merged_needs_work_completes_over_a_changed_plan(self):
+        self.merged_verify_closes_over_changed_plan("NEEDS_WORK")
+
+    def test_merged_blocked_completes_over_a_changed_plan(self):
+        self.merged_verify_closes_over_changed_plan("BLOCKED")
 
     def test_owner_identity_and_current_round_artifacts(self):
         self.cli("plan", "spawn", "--round", "0")

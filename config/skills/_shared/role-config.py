@@ -608,6 +608,18 @@ def self_test():
             assert "BLOCKED:invalid-engine-config" in str(exc), exc
         else:
             raise AssertionError(f"engine {bad!r} accepted")
+    # The grammar alone guards the callers no adapter lookup follows: a frozen snapshot and the primary engine.
+    forged = {key: value for key, value in selected.items() if key != "sha256"}
+    forged["roles"] = {**forged["roles"], "worker": {**forged["roles"]["worker"], "engine": "Co_dex"}}
+    forged["sha256"] = digest(encoded(forged))
+    for call in (lambda: snapshot({"role_resolution": forged}),
+                 lambda: primary_engine({"engine": "codex", "phases": {"verify": {"engine": "Co_dex"}}})):
+        try:
+            call()
+        except ValueError as exc:
+            assert "must be a lowercase engine name" in str(exc), exc
+        else:
+            raise AssertionError("engine 'Co_dex' accepted without an adapter lookup")
     assert refusal("codex-unavailable") and refusal(f"{ROUTE_UNSUPPORTED}:omp") and refusal(UNSUPPORTED)
     assert not any(refusal(reason) for reason in ("readme-unavailable", "README-unavailable", "Codex-unavailable",
                                                   f"{ROUTE_UNSUPPORTED}:codex", f"{ROUTE_UNSUPPORTED}:readme"))
