@@ -1,0 +1,5 @@
+# name task arm config — 0231 route smoke (inside the approval scope; outside every sum and decision)
+smoke-claude-control SMOKE control claude
+smoke-claude-candidate SMOKE candidate claude
+smoke-codex-control SMOKE control codex
+smoke-codex-candidate SMOKE candidate codex

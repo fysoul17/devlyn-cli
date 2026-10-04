@@ -1,0 +1,25 @@
+# name task arm config replicate — 0231 measured cells, registered order (each pair runs back to back)
+m01-D4-claude-control-r1 D4 control claude 1
+m02-D4-claude-candidate-r1 D4 candidate claude 1
+m03-I0185-codex-candidate-r1 I0185 candidate codex 1
+m04-I0185-codex-control-r1 I0185 control codex 1
+m05-D3-claude-candidate-r1 D3 candidate claude 1
+m06-D3-claude-control-r1 D3 control claude 1
+m07-D4-codex-candidate-r1 D4 candidate codex 1
+m08-D4-codex-control-r1 D4 control codex 1
+m09-I0185-claude-control-r1 I0185 control claude 1
+m10-I0185-claude-candidate-r1 I0185 candidate claude 1
+m11-D3-codex-control-r1 D3 control codex 1
+m12-D3-codex-candidate-r1 D3 candidate codex 1
+m13-D3-codex-candidate-r2 D3 candidate codex 2
+m14-D3-codex-control-r2 D3 control codex 2
+m15-I0185-claude-candidate-r2 I0185 candidate claude 2
+m16-I0185-claude-control-r2 I0185 control claude 2
+m17-D4-codex-control-r2 D4 control codex 2
+m18-D4-codex-candidate-r2 D4 candidate codex 2
+m19-D3-claude-control-r2 D3 control claude 2
+m20-D3-claude-candidate-r2 D3 candidate claude 2
+m21-I0185-codex-control-r2 I0185 control codex 2
+m22-I0185-codex-candidate-r2 I0185 candidate codex 2
+m23-D4-claude-candidate-r2 D4 candidate claude 2
+m24-D4-claude-control-r2 D4 control claude 2

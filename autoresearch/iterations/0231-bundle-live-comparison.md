@@ -20,11 +20,11 @@
 | Candidate | the bundle head at freeze (now `f71a17d3`) | Re-frozen by addendum after any later product change; no result carries over. |
 
 - The result is attributed to the whole difference, never split per step. There is no step-6 arm.
-- **Packing:** both arms come from their frozen commit by one procedure, `git archive <sha>` → `npm pack --ignore-scripts`, in one environment.
+- **Packing:** both arms come from their frozen commit by one procedure, the publish procedure in `publish.yml`: a clone with its history → `node scripts/update-instruction-templates.js` (it rebuilds `bin/instruction-templates.json` from first-parent history) → `npm pack --ignore-scripts`, in one environment. A plain `git archive` export would ship the stale committed `instruction-templates.json`, and the installer reads it to migrate existing instructions.
   - Recorded per arm: source SHA, tree SHA, tarball sha256, file list, installed-file list.
-  - Descriptive check: whether the control tarball equals the published 4.1.0 tarball.
+  - Check: the control tarball equals the published 4.1.0 tarball file for file (shown 2026-10-04 at `4056ebe2`), so the procedure reproduces publishing.
 - **Install:** each arm's own installer runs offline in the cell image, and only the selected package is visible. The Claude config uses `-y --claude`, the Codex config `-y`.
-- **Roles** come from 0222's `product_roles` and are bound by `--role-config /cell/roles.json` (`{"roles": …}`), a harness-owned, read-only file. Both arms accept it and rank it above project pins (`role-config.py`). A project `.devlyn/engines.json` would stay in the anchor when the owner allocates a linked worktree, so it is not used:
+- **Roles** come from 0222's `product_roles` and are bound by `--role-config /harness/roles.json` (`{"roles": …}`), a harness-owned file on the read-only `/harness` mount. Both arms accept it and rank it above project pins (`role-config.py`). A project `.devlyn/engines.json` would stay in the anchor when the owner allocates a linked worktree, so it is not used:
 
   | Config | Owner | IMPLEMENT | Primary judge | Pair judge |
   |---|---|---|---|---|
@@ -33,14 +33,16 @@
 
   Both arms' validators reject an explicit Opus 5.5 effort, so Claude judges are model-only. Claude's effective effort is reported as unverified.
 - **Prompt:**
-  - Claude: `/devlyn-resolve --goal-file .task/goal.txt --role-config /cell/roles.json --max-rounds 4`.
+  - Claude: `/devlyn-resolve --goal-file .task/goal.txt --role-config /harness/roles.json --max-rounds 4`.
   - Codex: an instruction to read the installed `devlyn-resolve/SKILL.md` and execute the same command; the exact text is frozen with the apparatus.
   - **Goal file:** bootstrap accepts only a relative goal file inside the worktree (`resolve-bootstrap.py` `safe_goal_file`, both arms). So the goal is committed as `.task/goal.txt` in the post-install baseline, and every linked worktree allocated from the mirror carries the exact bytes. This mirrors the documented practice of committing owner inputs (`references/outer-loop.md`).
     - `.txt` keeps it outside the tasks' format checks.
     - It lies outside every allowed path, so a change to it is a scope violation.
-  - **Roles file:** `--role-config` accepts the absolute, harness-owned `/cell/roles.json` in both arms.
+  - **Roles file:** `--role-config` accepts the absolute, harness-owned `/harness/roles.json` in both arms.
   - `--max-rounds 4` is the shipped default. It is explicit, and frozen state must show it.
-  - **The goal is 0222's product goal with one shared adaptation.** 0222's common text points to `/work/.devlyn/caller.json` and the repository at `/work` (`0222/common.txt`). Its first three sentences become: "Complete the development request above in this repository. Change only the ALLOWED PATHS listed above, and do not weaken existing tests. Run the PUBLIC CHECKS listed above." The rest is unchanged, including the local-only constraint. The adapted bytes are frozen for both arms.
+  - **The goal is 0222's product goal with its paths moved** (`0231/common.txt`). 0222's common text points to `/work/.devlyn/caller.json` and the repository at `/work`; it now says "Complete the development request in /harness/caller.json for this repository." Nothing else changes, including the local-only constraint, and the adapted bytes are frozen for both arms.
+    - The caller contract stays because it carries `original_context`, the issue snapshot that 0222's product arms could read. Dropping the reference, as d3 proposed, would silently remove that task information.
+    - `/harness/caller.json` is read-only and resolves from any worktree.
 
 ## Tasks and claims
 
@@ -81,12 +83,17 @@ Four SMOKE runs come first: the SMOKE task × 2 arms × 2 configs. They fall ins
   - "Declared" means the dependency closure that the repository's own check scripts and type configuration name at its base commit. It is installed offline from that repository's lock:
     - D4: mypy 1.20.0 and pyright 1.1.408;
     - D3: commander's devDependencies (typescript, tsd, eslint and its plugins, prettier).
-  - No environment managers (tox, uv). Public-check bytes are unchanged, and assessors run the same pinned CLIs.
+  - No environment managers (tox, uv). Public-check bytes are unchanged, and assessors run the same pinned CLIs inside the image.
+  - **Placement.** The tools live in the image:
+    - mypy comes from click's `uv.lock` hashes, and pyright from an npm lock at 1.1.408.
+    - commander's devDependencies sit at `/node_modules`. That is an ancestor of every worktree path, so ESM imports and type roots resolve from any linked worktree without a `node_modules` in the evaluated source, and `tsc`, `tsd`, `eslint` and `prettier` are on PATH.
+  - **Click's metadata only.** `/control/python` holds only Click's installed metadata, which its tests read. An installed copy of the code would silently replace the cell's own source whenever `src` was not first on the path.
+  - **Path.** Participants run with `PYTHONPATH=src:/control/python`. Evaluators keep 0222's `/cell/work/src:/control/python` on the snapshot.
   - **Why:** in 0224, F-codex D4 ended on a missing type checker. The control still turns a missing tool into a product finding (0225 defect 3), while the candidate halts with `build-env-underprovisioned`. Unequal provisioning would decide the comparison instead of the bundle.
 - **Cell layout.**
-  - The anchor is `/cell/work` under a writable `/cell`, preserved at teardown. The root filesystem is read-only, and `/tmp` and `CODEX_HOME/tmp` are tmpfs (0224 Amendment 1).
+  - The anchor is `/cell/work` under a writable `/cell`, preserved at teardown. `/tmp` is a preserved bind mount too, because an owner may allocate its linked worktree there (shown by fixture). The root filesystem is read-only, and `CODEX_HOME/tmp` stays tmpfs (0224 Amendment 1).
   - **Origin:** `git@github.com:<repository>.git`, with the harness's `core.sshCommand` pointing at a sealed script.
-    - The script serves `git-upload-pack` from a harness bare mirror whose `main` is the arm's post-install allocation SHA, and refuses every other command. The mirror holds no later refs, and the task's source SHA is recorded separately.
+    - The script serves `git-upload-pack` from a harness bare mirror whose `main` is the arm's post-install allocation SHA, and refuses every other command. The mirror holds no later refs, and the task's source SHA is recorded separately. D3 and D4 sources are shallow, so the mirror accepts a shallow update.
     - **Why:** allocation fetches its base from the remote, and the candidate's `task-complete.py` (`f71a17d3`) requires every remote URL to name one GitHub repository (`:152-166`) and fetches the base (`:388-392`). An unmodified cell would branch from today's upstream `main`.
     - **Model-free evidence so far:** with the bundle's real `task-complete.py allocate`, the baseline equals the registered base, `remote get-url` stays the GitHub URL, a push fails with rc 128, and the mirror is unchanged.
   - After allocation, the goal digest in state must equal the frozen goal and the frozen roles must resolve; this is shown by fixture.
