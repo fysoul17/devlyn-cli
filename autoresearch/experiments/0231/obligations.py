@@ -51,13 +51,38 @@ def git(out, root, *args):
 
 
 def final_state(root):
-    """The newest archived run, else the live state (an unarchived run has not finished its report)."""
-    runs = [p for p in (root / '.devlyn/runs').glob('*/pipeline.state.json')]
-    runs.sort(key=lambda p: json.loads(p.read_text()).get('started_at') or '')
-    if runs:
-        return runs[-1].parent, json.loads(runs[-1].read_text()), True
+    """The final invocation: the newest of the archived runs and the live state. A newer live run that never archived
+    has not finished its report, so it is the final invocation and it is unfinished."""
+    candidates = []
+    for path in root.glob('.devlyn/runs/*/pipeline.state.json'):
+        candidates.append((json.loads(path.read_text()).get('started_at') or '', path.parent, True))
     live = root / '.devlyn/pipeline.state.json'
-    return (root / '.devlyn', json.loads(live.read_text()), False) if live.is_file() else (None, None, False)
+    if live.is_file():
+        candidates.append((json.loads(live.read_text()).get('started_at') or '', root / '.devlyn', False))
+    if not candidates:
+        return None, None, False
+    _, folder, archived = max(candidates, key=lambda c: (c[0], c[2]))
+    return folder, json.loads((folder / 'pipeline.state.json').read_text()), archived
+
+
+def carriers(archive, round_, sub):
+    """The final VERIFY round's own records: MECHANICAL evidence, the dispatch record, each dispatched judge's prompt,
+    argv, role evidence and capture, and a merge summary that agrees with the recorded sub-verdicts."""
+    missing = [name for name in ('spec-verify.results.json', 'verify-mechanical.findings.jsonl', 'verify-merge.summary.json',
+                                 f'verify-judge.r{round_}.dispatch.json') if not (archive / name).is_file()]
+    if missing:
+        return False, missing
+    dispatch = json.loads((archive / f'verify-judge.r{round_}.dispatch.json').read_text())
+    for role, entry in (dispatch.get('roles') or {}).items():
+        if entry.get('decision') != 'dispatch':
+            continue
+        stem = f'{entry.get("engine")}-judge.r{round_}'
+        capture = '.output.json' if entry.get('engine') == 'claude' else '.stdout'
+        missing += [stem + suffix for suffix in ('.prompt', '.argv.json', '.role-evidence.json', capture)
+                    if not (archive / (stem + suffix)).is_file()]
+    summary = json.loads((archive / 'verify-merge.summary.json').read_text())
+    agrees = {k: v for k, v in (summary.get('source_verdicts') or {}).items() if k in sub} == sub
+    return not missing and agrees, missing + ([] if agrees else ['merge summary disagrees with sub-verdicts'])
 
 
 def shared(root):
@@ -87,6 +112,7 @@ def meter(out):
     checks['mechanical_reviewed'] = sub.get('mechanical') in REVIEWED
     checks['primary_judge_reviewed'] = sub.get('judge') in REVIEWED
     checks['pair_judge_reviewed'] = sub.get('pair_judge') in REVIEWED or pair_skipped(archive, verify.get('round', 0))
+    checks['round_carriers'], missing = carriers(archive, verify.get('round', 0), sub)
     binding = verify.get('source_seal') or {}
     seal_path = archive / 'source-seal.json'
     seal = json.loads(seal_path.read_text()).get('seal') if seal_path.is_file() else None
@@ -110,7 +136,7 @@ def meter(out):
         checks['terminal_clean'] = classification.status == 'CLEAN'
     except (SystemExit, ValueError, OSError, KeyError, TypeError, AttributeError):
         checks['terminal_clean'] = False
-    return dict(binding=plan['arm'] == 'candidate', satisfied=all(checks.values()), checks=checks,
+    return dict(binding=plan['arm'] == 'candidate', satisfied=all(checks.values()), checks=checks, missing=missing,
                 run_id=state.get('run_id'), verify_verdict=verify.get('verdict'), final_verdict=final.get('verdict'),
                 sub_verdicts=sub, phases=sorted(phases))
 

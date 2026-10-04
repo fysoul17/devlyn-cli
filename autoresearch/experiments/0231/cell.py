@@ -16,96 +16,58 @@ HERE = Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location('cell0222', HERE.parent / '0222/cell.py')
 base = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(base)
-_spec = importlib.util.spec_from_file_location('trace0231', HERE / 'trace_usage.py')
-traces = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(traces)
-TASKS = base.TASKS
-lines, walk, dicts, docker, INTERNAL = base.lines, base.walk, base.dicts, base.docker, base.INTERNAL
-# Container paths the owner can write, and where each is preserved on the host.
-WRITABLE = {'/cell': 'cell', '/tmp': 'tmp', '/home/participant': 'home'}
-
-
-def routed(plan):
-    """Models each engine may run in this cell: the owner, its native children and every product role."""
-    route = TASKS['routes'][plan['config']]
-    allowed = {'claude': set(), 'codex': set()}
-    for role in [route['owner'], *route['product_roles'].values()]:
-        allowed[role['engine']] |= {role.get('model'), role.get('child_model')} - {None}
-    return allowed
-
-
-def devlyn_dirs(out):
-    """Every `.devlyn` directory the owner could have used: the anchor, any linked worktree and their run archives."""
-    return sorted(p for name in WRITABLE.values() for p in (out / name).rglob('.devlyn') if p.is_dir())
+_spec = importlib.util.spec_from_file_location('evidence0231c', HERE / 'evidence.py')
+evidence = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(evidence)
+lines, docker, INTERNAL = base.lines, base.docker, base.INTERNAL
+devlyn_dirs = evidence.devlyn_dirs
 
 
 def identity(out, plan):
-    """Bind observed models to the registered routes; an unrouted model, a reroute or a frozen-role mismatch is a
-    violation. A missing model record for a call that ran is a gap, which leaves the status UNVERIFIED."""
-    allowed, violations, gaps = routed(plan), [], []
-    sessions = {}
+    """Every seat's native model (and Codex effort) against the registered route. An unrouted model, a wrong effort,
+    an unbound Codex process or a reroute is a violation; a seat that ran without any native model record is a gap
+    (UNVERIFIED); an owner with no evidence at all never ran (UNKNOWN). Lost usage records are not identity gaps."""
+    inv, expect = evidence.inventory(out, plan), evidence.seats(plan)
+    violations, gaps = [], []
+    for thread, seat in sorted(inv['seated'].items()):
+        if seat['seat'] is None:
+            violations.append(f'unbound Codex process {seat["root"]}')
+            continue
+        want = expect[seat['seat']]
+        if want.get('engine') != 'codex':
+            violations.append(f'{seat["seat"]} ran on codex but is registered on {want.get("engine")}')
+        elif seat['model'] is None:
+            gaps.append(f'{seat["seat"]} {thread} without a native model record')
+        elif seat['model'] != want.get('model') or (want.get('effort') and seat['effort'] != want['effort']):
+            violations.append(f'{seat["seat"]} {thread} ran {seat["model"]}/{seat["effort"]}, '
+                              f'registered {want.get("model")}/{want.get("effort")}')
+    for session, header in inv['headers'].items():
+        want = expect['codex_judge']
+        if header['model'] != want['model'] or header['effort'] != want.get('effort'):
+            violations.append(f'codex judge header {session} names {header["model"]}/{header["effort"]}')
     for path in (out / 'home/.codex/sessions').rglob('*.jsonl'):
-        events = lines(path)
-        meta = next((e['payload'] for e in events if e.get('type') == 'session_meta'), {})
-        source = meta.get('source')
-        parent = source['subagent']['thread_spawn']['parent_thread_id'] if isinstance(source, dict) else None
-        own = base.usage.own_events(events)
-        models = {e['payload'].get('model') for e in own if e.get('type') == 'turn_context'}
-        if any(e.get('type') == 'event_msg' and (e.get('payload') or {}).get('type') == 'model_reroute' for e in own):
+        if any(e.get('type') == 'event_msg' and (e.get('payload') or {}).get('type') == 'model_reroute' for e in lines(path)):
             violations.append(f'model_reroute in {path.name}')
-        sessions[meta.get('id', path.name)] = dict(parent=parent, models=models)
-        violations += [f'codex {m} unrouted ({path.name})' for m in models - allowed['codex']]
-    traced = traces.models(out / 'cell/trace')  # every Codex inference, ephemeral judges included
-    for thread, models in traced.items():
-        violations += [f'codex {m} unrouted (trace {thread})' for m in models - allowed['codex']]
-    stdout = lines(out / 'run/stdout')
-    if plan['engine'] == 'codex':
-        owner_id = next((e['thread_id'] for e in stdout if e.get('type') == 'thread.started'), None)
-        owner = ('UNKNOWN' if owner_id not in sessions else
-                 'MATCH' if sessions[owner_id]['models'] == {plan['model']} else 'MISMATCH')
-        child = TASKS['routes'][plan['config']]['owner'].get('child_model')
-        for sid, session in sessions.items():
-            ancestor = session['parent']
-            while ancestor and ancestor != owner_id:
-                ancestor = sessions.get(ancestor, {}).get('parent')
-            if ancestor == owner_id and session['models'] - {child}:
-                violations.append(f'native child {sid} not on {child}')
+    claude_models = {expect['owner']['model']} if plan['engine'] == 'claude' else set()
+    claude_models |= {expect['claude_judge']['model']}
+    owner = 'UNKNOWN'
+    if plan['engine'] == 'claude':
+        init = inv['claude_owner']['init_model']
+        owner = 'UNKNOWN' if not init else 'MATCH' if init.split('[')[0] == plan['model'] else 'MISMATCH'
+        owner_models = {m.split('[')[0] for m in (inv['claude_owner']['usage'] or {})}
+        violations += [f'claude owner ran {m}' for m in owner_models - {plan['model']} if not INTERNAL.match(m)]
     else:
-        init = next((e for e in stdout if e.get('type') == 'system' and e.get('subtype') == 'init'), None)
-        owner = ('UNKNOWN' if not init else
-                 'MATCH' if str(init.get('model', '')).split('[')[0] == plan['model'] else 'MISMATCH')
-    final = [e for e in stdout if e.get('type') == 'result']
-    claude = set(final[-1].get('modelUsage') or {}) if final else set()
-    for path in (out / 'home/.claude/projects').rglob('*.jsonl'):
-        claude |= {(e.get('message') or {}).get('model') for e in lines(path)
-                   if e.get('type') == 'assistant' and not e.get('isApiErrorMessage')}
-    roles = TASKS['routes'][plan['config']]['product_roles']
-    for devlyn in devlyn_dirs(out):
-        for path in devlyn.rglob('*.output.json'):  # separate `claude -p` runs (judges) keep their own results
-            try:
-                claude |= set((json.loads(path.read_text(errors='replace')) or {}).get('modelUsage') or {})
-            except (ValueError, AttributeError):
-                gaps.append(f'unreadable Claude result {path.relative_to(out)}')
-        for path in devlyn.rglob('pipeline.state.json'):
-            try:
-                state = json.loads(path.read_text())
-            except ValueError:  # an in-place writer can be cut by the hang wall
-                gaps.append(f'unreadable {path.relative_to(out)}')
-                continue
-            requested = {m.split('[')[0] for m in set(walk(state, 'model_requested')) | set(walk(state, 'model_effective'))}
-            violations += [f'pipeline {m} unrouted' for m in requested - allowed['claude'] - allowed['codex']]
-            violations += [f'pipeline requested {d["model_requested"]} but ran {d["model_effective"]}'
-                           for d in dicts(state) if d.get('model_requested') and d.get('model_effective')
-                           and d['model_requested'].split('[')[0] != d['model_effective'].split('[')[0]]
-            violations += base.frozen_mismatch((state.get('role_resolution') or {}).get('roles') or {}, roles)
-    claude = {str(m).split('[')[0] for m in claude - {None, '<synthetic>'}}
-    violations += [f'claude {m} unrouted' for m in claude - allowed['claude'] if not INTERNAL.match(m)]
-    evidence = bool(sessions or claude or traced)
-    status = ('MISMATCH' if owner == 'MISMATCH' or violations else
-              'UNVERIFIED' if (owner == 'UNKNOWN' and evidence) or gaps else owner)
-    return dict(owner=owner, status=status, violations=violations, gaps=gaps, claude_models=sorted(claude),
-                codex_sessions={sid: sorted(s['models']) for sid, s in sessions.items()},
-                codex_traces={thread: sorted(models) for thread, models in traced.items()})
+        roots = [s for s in inv['seated'].values() if s['seat'] == 'owner' and s['agent_path'] == '/root']
+        owner = ('UNKNOWN' if not roots else 'MATCH' if all(s['model'] == plan['model'] for s in roots) else 'MISMATCH')
+    for session, envelope in inv['envelopes'].items():
+        violations += [f'claude judge {session} ran {m}' for m in envelope['models']
+                       if m.split('[')[0] != expect['claude_judge']['model'] and not INTERNAL.match(m)]
+    for session, transcript in inv['transcripts'].items():
+        violations += [f'claude session {session} ran {m}' for m in transcript['models'] - claude_models if not INTERNAL.match(m)]
+    status = ('MISMATCH' if owner == 'MISMATCH' or violations else 'UNKNOWN' if owner == 'UNKNOWN' else
+              'UNVERIFIED' if gaps else 'MATCH')
+    return dict(owner=owner, status=status, violations=violations, gaps=gaps,
+                codex_seats={t: [s['seat'], s['model'], s['effort']] for t, s in inv['seated'].items()})
 
 
 def run(out, runtime):

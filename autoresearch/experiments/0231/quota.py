@@ -1,15 +1,18 @@
-"""Classify shared account-limit faults from native error fields only: quota.py <cell-out>.
+"""Classify shared account faults from native error fields only: quota.py <cell-out>.
 
-Claude: a result with is_error and api_error_status 429, or an assistant event whose error is rate_limit (0224's
-weekly limit had exactly this shape). Codex: an error event, error item or rollout error message whose own error text
-names a usage or rate limit. Model prose is never read: only these structured fields count.
+Account limit: a Claude result with is_error, api_error_status 429 and the CLI's own limit message (0224's weekly
+limit had exactly this shape), or a Codex error naming its usage limit. Authentication: a Claude result with
+api_error_status 401/403, or a Codex error naming an expired or missing login. Plain-mode Codex stderr lines that
+start with "ERROR:" are read too. Model prose is never read, and a bare status code never counts.
 """
 import json
 from pathlib import Path
 import re
 import sys
 
-LIMIT = re.compile(r'usage limit|rate limit|usage_limit|rate_limit|\b429\b', re.I)
+CLAUDE_LIMIT = re.compile(r"hit your (weekly|session|usage|5-hour|opus) limit|usage limit reached", re.I)
+CODEX_LIMIT = re.compile(r"hit your usage limit|usage_limit_reached|usage limit has been reached", re.I)
+CODEX_AUTH = re.compile(r"401 Unauthorized|token_expired|refresh_token_reused|not logged in|please log in again", re.I)
 
 
 def objects(path):
@@ -32,28 +35,39 @@ def objects(path):
 
 
 def hit(event):
-    if event.get('type') == 'result' and event.get('is_error') is True and event.get('api_error_status') == 429:
-        return 'claude 429 result'
-    if event.get('type') == 'assistant' and event.get('error') == 'rate_limit':
-        return 'claude rate_limit'
-    if event.get('type') == 'error' and LIMIT.search(str(event.get('message', ''))):
-        return 'codex error event'
+    if event.get('type') == 'result' and event.get('is_error') is True:
+        if event.get('api_error_status') == 429 and CLAUDE_LIMIT.search(str(event.get('result', ''))):
+            return 'limit', 'claude limit result'
+        if event.get('api_error_status') in (401, 403):
+            return 'auth', 'claude authentication result'
     item = event.get('item') if isinstance(event.get('item'), dict) else {}
-    if item.get('type') == 'error' and LIMIT.search(str(item.get('message', ''))):
-        return 'codex error item'
     payload = event.get('payload') if isinstance(event.get('payload'), dict) else {}
-    if event.get('type') == 'event_msg' and payload.get('type') == 'error' and LIMIT.search(json.dumps(payload)):
-        return 'codex rollout error'
+    for message in (str(event.get('message', '')) if event.get('type') == 'error' else '',
+                    str(item.get('message', '')) if item.get('type') == 'error' else '',
+                    json.dumps(payload) if event.get('type') == 'event_msg' and payload.get('type') == 'error' else ''):
+        if CODEX_LIMIT.search(message):
+            return 'limit', 'codex usage limit'
+        if CODEX_AUTH.search(message):
+            return 'auth', 'codex authentication'
     return None
+
+
+def stderr_hits(path):
+    hits = []
+    for line in path.read_text(errors='replace').splitlines():
+        if line.startswith('ERROR:'):
+            if CODEX_LIMIT.search(line):
+                hits.append(('limit', 'codex usage limit (stderr)'))
+            elif CODEX_AUTH.search(line):
+                hits.append(('auth', 'codex authentication (stderr)'))
+    return hits
 
 
 def scan(paths, root):
     hits = []
     for path in paths:
-        for event in objects(path):
-            kind = hit(event)
-            if kind:
-                hits.append(dict(kind=kind, path=str(path.relative_to(root))))
+        found = stderr_hits(path) if path.suffix == '.stderr' else [h for h in map(hit, objects(path)) if h]
+        hits += [dict(fault=fault, kind=kind, path=str(path.relative_to(root))) for fault, kind in found]
     return hits
 
 

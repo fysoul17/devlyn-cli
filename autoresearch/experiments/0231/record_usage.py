@@ -1,15 +1,13 @@
 """Post-hoc usage for one finished 0231 cell: record_usage.py <cell-out>. Recording only; never gates or stops.
 
-Claude: the owner's result.modelUsage (it includes native subagents) plus each separate `claude -p` result,
-deduplicated by session; transcripts are a cross-check only. Codex: every inference in the private traces, both arms.
-Each traced process must bind to independent launch evidence (the Codex owner's thread, a worker session, a plain
-judge's native header) and each piece of launch evidence to a trace; plain roots must reproduce their `tokens used`
-footer and traced threads with a rollout must match its counters. Any miss is a named gap, never zero.
+Built on evidence.inventory: Codex inferences counted once by native ids; Claude from the owner's result, each
+separate result envelope (one per session) and, for any transcript session no result covers, its transcript usage as
+a known lower bound. Every unbound trace, untraced or unresulted launch, footer or rollout disagreement, undeclared
+thread and conflicting copy is a named gap: never zero, and never COMPLETE.
 """
 import importlib.util
 import json
 from pathlib import Path
-import re
 import sys
 
 HERE = Path(__file__).resolve().parent
@@ -23,40 +21,13 @@ def load(name, path):
 
 
 base = load('usage0222', HERE.parent / '0222/record_usage.py')
-traces = load('trace0231', HERE / 'trace_usage.py')
-cells = load('cell0231', HERE / 'cell.py')
-HEADER = re.compile(r'^OpenAI Codex v[^\n]+\n--------\n(.*?)\n--------\n', re.S | re.M)
-FOOTER = re.compile(r'^tokens used\n([\d,]+)\s*$', re.M)
+evidence = load('evidence0231', HERE / 'evidence.py')
+COUNTERS = evidence.traces.COUNTERS
 
 
-def plain_roots(out):
-    """Native plain-mode headers saved by the products: session id -> printed `tokens used` (None if absent)."""
-    roots = {}
-    for devlyn in cells.devlyn_dirs(out):
-        for path in devlyn.rglob('*.stderr'):
-            text = path.read_text(errors='replace')
-            for header in HEADER.finditer(text):
-                session = re.search(r'^session id: (\S+)$', header.group(1), re.M)
-                if session:
-                    footer = FOOTER.search(text, header.end())
-                    roots.setdefault(session.group(1), int(footer.group(1).replace(',', '')) if footer else None)
-    return roots
-
-
-def json_roots(out, plan):
-    """Thread ids of JSON-mode Codex processes: the Codex owner and receipt-bound workers' captured sessions."""
-    roots = set()
-    if plan['engine'] == 'codex':
-        roots |= {e['thread_id'] for e in cells.lines(out / 'run/stdout') if e.get('type') == 'thread.started'}
-    for devlyn in cells.devlyn_dirs(out):
-        for log in devlyn.rglob('*.worker-session.*.jsonl'):
-            roots |= {e['thread_id'] for e in cells.lines(log) if e.get('type') == 'thread.started'}
-    return roots
-
-
-def rollout_totals(sessions):
-    """Per-thread own counters from native rollouts (fork context excluded), for the trace cross-check."""
-    totals = {}
+def rollout_counters(sessions):
+    """Per-thread own counters from native rollouts (fork context excluded); None when a rollout has none."""
+    found = {}
     for path in sessions.rglob('*.jsonl'):
         rows = base.events(path)
         meta = next((e['payload'] for e in rows if e.get('type') == 'session_meta'), None)
@@ -67,54 +38,93 @@ def rollout_totals(sessions):
             info = (event.get('payload') or {}).get('info') if event.get('type') == 'event_msg' else None
             if isinstance(info, dict) and isinstance(info.get('total_token_usage'), dict):
                 last = info['total_token_usage']
-        if last:
-            totals[meta['id']] = last
-    return totals
+        found[meta['id']] = last
+    return found
 
 
-def codex(out, plan):
-    measured = traces.usage(out / 'cell/trace')
-    gaps = list(measured['gaps'])
-    rollouts = {r['rollout_id']: r for r in measured['rollouts']}
-    plain, json_threads = plain_roots(out), json_roots(out, plan)
-    for rollout_id in rollouts.keys() - plain.keys() - json_threads:
-        gaps.append(f'trace {rollout_id} binds to no launch evidence')
-    for root in (plain.keys() | json_threads) - rollouts.keys():
-        gaps.append(f'launch {root} has no trace')
-    for root, printed in plain.items():
-        traced = rollouts.get(root, {}).get('footer_tokens')
-        if root in rollouts and (printed is None or traced != printed):
-            gaps.append(f'plain root {root}: footer {printed} vs trace {traced}')
-    per_thread = {}
-    for rollout in traces.load(out / 'cell/trace'):
-        for item in rollout['inferences'].values():
-            if item['usage']:
-                per_thread[item['thread']] = per_thread.get(item['thread'], 0) + item['usage']['output_tokens']
-    for thread, counters in rollout_totals(out / 'home/.codex/sessions').items():
-        if counters.get('output_tokens') != per_thread.get(thread):
-            gaps.append(f'thread {thread}: rollout output {counters.get("output_tokens")} vs trace {per_thread.get(thread)}')
-    return measured['totals'], gaps
+def codex(out, inv):
+    totals, per_thread, gaps = {}, {}, list(inv['gaps'])
+    for (root, call), item in inv['inferences'].items():
+        if item['usage'] is None:
+            continue
+        for bucket in (totals.setdefault(item['model'] or 'UNKNOWN', dict.fromkeys(COUNTERS, 0)),
+                       per_thread.setdefault(item['thread'], dict.fromkeys(COUNTERS, 0))):
+            for key in COUNTERS:
+                bucket[key] += item['usage'][key]
+    gaps += [f'trace {root} binds to no launch evidence' for root in inv['unbound']]
+    traced = {r.get('rollout_id') for r in inv['rollouts']}
+    launches = inv['owner_threads'] | inv['worker_threads'] | set(inv['headers'])
+    gaps += [f'launch {root} has no trace' for root in sorted(launches - traced)]
+    for round_, role, engine in inv['attempted']['judges']:
+        if engine == 'codex' and not any(f'.r{round_}.' in h['path'] for h in inv['headers'].values()):
+            gaps.append(f'dispatched codex {role} r{round_} left no native header')
+    for name in inv['attempted']['workers']:
+        stem, round_ = name.split('.invocation.')[0], name.rsplit('.', 2)[1]
+        sessions = [p for d in evidence.devlyn_dirs(out) for p in d.rglob(f'{stem}.worker-session.{round_}.jsonl')]
+        threads = {e['thread_id'] for p in sessions for e in evidence.lines(p) if e.get('type') == 'thread.started'}
+        if not threads & traced:
+            gaps.append(f'worker invocation {name} has no traced session')
+    for session, header in inv['headers'].items():
+        if any(s['root'] == session and s['seat'] == 'child' for s in inv['seated'].values()):
+            gaps.append(f'plain root {session} has children: its footer scope is not established')
+            continue
+        own = [i['usage'] for (root, _), i in inv['inferences'].items() if root == session and i['thread'] == session]
+        printed = header['footer']
+        computed = (sum(u['input_tokens'] - u['cached_input_tokens'] + u['output_tokens'] for u in own)
+                    if own and all(own) else None)
+        if session in traced and (printed is None or computed != printed):
+            gaps.append(f'plain root {session}: footer {printed} vs trace {computed}')
+    for thread, counters in rollout_counters(out / 'home/.codex/sessions').items():
+        if counters is None:
+            gaps.append(f'rollout {thread} has no usable counters')
+        elif any(counters.get(key) != per_thread.get(thread, {}).get(key) for key in COUNTERS):
+            gaps.append(f'thread {thread}: rollout counters {[counters.get(k) for k in COUNTERS]} vs trace '
+                        f'{[per_thread.get(thread, {}).get(k) for k in COUNTERS]}')
+    return totals, gaps
+
+
+def claude(inv, plan):
+    totals, gaps = {}, []
+
+    def add(model, output):
+        totals[model] = totals.get(model, 0) + output
+    owner = inv['claude_owner']
+    covered = set(inv['envelopes'])
+    if plan['engine'] == 'claude':
+        if owner['usage'] is None:
+            gaps.append('owner result without usage')
+        else:
+            covered.add(owner['session'])
+            for model, usage in owner['usage'].items():
+                add(model.split('[')[0], usage.get('outputTokens', 0))
+    for session, envelope in inv['envelopes'].items():
+        for model, usage in envelope['usage'].items():
+            add(model.split('[')[0], usage.get('outputTokens', 0))
+        if not envelope['usage']:
+            gaps.append(f'Claude result {session} without usage')
+    gaps += [f'unreadable Claude result {path}' for path in inv['unreadable']]
+    for round_, role, engine in inv['attempted']['judges']:
+        if engine == 'claude' and not any(f'.r{round_}.' in e['path'] for e in inv['envelopes'].values()):
+            gaps.append(f'dispatched claude {role} r{round_} left no result')
+    for session, transcript in inv['transcripts'].items():
+        if session not in covered:
+            gaps.append(f'Claude session {session} has no result; its transcript usage is a lower bound')
+            for usage in transcript['messages'].values():
+                add(next(iter(transcript['models'])), usage.get('output_tokens', 0))
+    return totals, gaps
 
 
 def record(out):
     plan = json.loads((out / 'plan.json').read_text())
-    codex_totals, codex_gaps = codex(out, plan)
-    result = base.claude_result(out / 'run/stdout')
-    nested, unreadable = {}, []
-    for devlyn in cells.devlyn_dirs(out):
-        found, missing = base.claude_nested(devlyn)
-        for model, row in found.items():
-            for key, value in row.items():
-                nested.setdefault(model, dict(input=0, cache_read=0, cache_write=0, output=0))[key] += value
-        unreadable += missing
-    transcripts = base.claude_transcripts(out / 'home/.claude/projects')
-    owner_known = bool(result) if plan['engine'] == 'claude' else bool(json_roots(out, plan))
-    gaps = ([] if owner_known else ['owner usage']) + codex_gaps + [f'unreadable Claude result {n}' for n in unreadable]
-    output = (sum(row['output'] for row in (result or {}).values()) + sum(row['output'] for row in nested.values())
-              + sum(row['output_tokens'] for row in codex_totals.values()))
+    inv = evidence.inventory(out, plan)
+    codex_totals, codex_gaps = codex(out, inv)
+    claude_totals, claude_gaps = claude(inv, plan)
+    if plan['engine'] == 'codex' and not inv['owner_threads']:
+        codex_gaps.append('owner thread missing')
+    gaps = codex_gaps + claude_gaps
+    output = sum(row['output_tokens'] for row in codex_totals.values()) + sum(claude_totals.values())
     completeness = 'COMPLETE' if not gaps else 'PARTIAL' if output else 'UNKNOWN'
-    usage = dict(completeness=completeness, output_tokens=output, gaps=gaps, codex=codex_totals,
-                 claude_result=result, claude_nested=nested, claude_transcripts=transcripts)
+    usage = dict(completeness=completeness, output_tokens=output, gaps=gaps, codex=codex_totals, claude_output=claude_totals)
     (out / 'usage.json').write_text(json.dumps(usage, indent=2))
     return usage
 

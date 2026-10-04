@@ -12,6 +12,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -29,7 +30,6 @@ def load(name, path=None):
 prepare, cell_run, usage, locate, check, assess, quota, obligations = (
     load(n) for n in ('prepare', 'cell', 'record_usage', 'locate', 'check', 'assess', 'quota', 'obligations'))
 base = load('run_cell0222', HERE.parent / '0222/run_cell.py')
-CODEX_SESSIONS = Path.home() / '.codex/sessions'
 HEADROOM_BYTES = 20 * 2**30  # free space on the output volume before a cell; traces keep full request payloads
 
 
@@ -38,24 +38,38 @@ def digest(path):
 
 
 def claude_limits(runtime):
-    """Current utilization of the dispatching Claude account (percent per window), from its own usage endpoint."""
+    """The dispatching Claude account's own windows (utilization percent and reset), from its usage endpoint."""
     oauth = json.loads((Path(runtime['auth']) / 'claude.json').read_text())['claudeAiOauth']
     request = urllib.request.Request('https://api.anthropic.com/api/oauth/usage', headers={
         'Authorization': 'Bearer ' + oauth['accessToken'], 'anthropic-beta': 'oauth-2025-04-20'})
     with urllib.request.urlopen(request, timeout=20) as response:
         windows = json.load(response)
-    return {name: (value or {}).get('utilization') for name, value in windows.items() if isinstance(value, dict)}
+    return {name: dict(used=value.get('utilization'), resets=value.get('resets_at'))
+            for name, value in windows.items() if isinstance(value, dict) and isinstance(value.get('utilization'), (int, float))}
 
 
-def codex_limits():
-    """The newest rate-limit snapshot Codex recorded on this host (percent used per window), or None."""
-    newest = max(CODEX_SESSIONS.rglob('*.jsonl'), key=lambda p: p.stat().st_mtime, default=None)
-    for line in reversed(newest.read_text(errors='replace').splitlines() if newest else ()):
-        payload = (json.loads(line).get('payload') or {}) if line.startswith('{') else {}
-        limits = payload.get('rate_limits') if isinstance(payload, dict) else None
-        if isinstance(limits, dict):
-            return {k: (v or {}).get('used_percent') for k, v in limits.items() if isinstance(v, dict)}
-    return None
+def codex_limits(runtime):
+    """Fresh, account-bound Codex windows: one minimal call on the dispatching login, read from its own rollout."""
+    with tempfile.TemporaryDirectory(prefix='limits-', dir=runtime['scratch']) as temp:
+        home = Path(temp)
+        (home / '.codex').mkdir()
+        shutil.copyfile(Path(runtime['auth']) / 'codex.json', home / '.codex/auth.json')
+        subprocess.run(['docker', 'run', '--rm', '--network', 'bridge', '--read-only', '--cap-drop', 'ALL',
+                        '--security-opt', 'no-new-privileges', '--tmpfs', '/tmp:rw,exec',
+                        '--tmpfs', '/home/probe/.codex/tmp:rw,nosuid,exec,uid=501,gid=501',
+                        '--mount', f'type=bind,src={home},dst=/home/probe', '--env', 'HOME=/home/probe',
+                        '--env', 'CODEX_HOME=/home/probe/.codex', runtime['image'], 'timeout', '120s', 'codex', 'exec',
+                        '--ignore-user-config', '--ignore-rules', '--skip-git-repo-check', '-s', 'read-only',
+                        '-m', 'gpt-6-astra', '-c', 'model_reasoning_effort=low', '-C', '/tmp', 'Reply OK.'],
+                       capture_output=True, timeout=180)
+        for path in (home / '.codex/sessions').rglob('*.jsonl'):
+            for line in reversed(path.read_text(errors='replace').splitlines()):
+                payload = (json.loads(line).get('payload') or {}) if line.startswith('{') else {}
+                limits = payload.get('rate_limits') if isinstance(payload, dict) else None
+                if isinstance(limits, dict):
+                    return {k: dict(used=v.get('used_percent'), resets=v.get('resets_at'))
+                            for k, v in limits.items() if isinstance(v, dict) and isinstance(v.get('used_percent'), (int, float))}
+    return {}
 
 
 def preflight(runtime):
@@ -69,12 +83,28 @@ def preflight(runtime):
         claude = claude_limits(runtime)
     except (urllib.error.URLError, KeyError, ValueError) as exc:
         return None, f'Claude limit check failed: {exc}'
-    codex = codex_limits()
-    full = [f'claude {k}' for k, v in claude.items() if isinstance(v, (int, float)) and v >= 100]
-    full += [f'codex {k}' for k, v in (codex or {}).items() if isinstance(v, (int, float)) and v >= 100]
+    codex = codex_limits(runtime)
+    if not claude or not codex:
+        return None, f'limit evidence unavailable (claude {bool(claude)}, codex {bool(codex)})'
+    full = [f'{engine} {name} until {w["resets"]}' for engine, windows in (('claude', claude), ('codex', codex))
+            for name, w in windows.items() if w['used'] >= 100]
     if full:
         return None, 'account limit reached: ' + ', '.join(full)
     return dict(identity, claude_limits=claude, codex_limits=codex), None
+
+
+def evidence_manifest(out):
+    """Raw evidence sealed after verified teardown: every file the run left, by relative path and sha256."""
+    roots = [out / name for name in ('run', 'cell', 'tmp', 'home')]
+    files, failures = {}, []
+    for root in roots:
+        for path in sorted(p for p in root.rglob('*') if p.is_file() and not p.is_symlink()):
+            try:
+                files[str(path.relative_to(out))] = digest(path)
+            except OSError as exc:
+                failures.append(f'{path.relative_to(out)}: {exc}')
+    (out / 'evidence.manifest.json').write_text(json.dumps(dict(files=files, failures=failures), indent=1, sort_keys=True))
+    return digest(out / 'evidence.manifest.json'), failures
 
 
 def control_unchanged(runtime):
@@ -114,6 +144,8 @@ def run(runtime_path, name, task, arm, config):
         control_manifest_sha256=digest(runtime['control'] + '.manifest.json')), indent=2))
     record = dict(cell=name, task=task, arm=arm, config=config)
     owner = cell_run.run(out, runtime)
+    subprocess.run(['chmod', '-R', 'go-rwx', str(out)], check=True)
+    sealed, collection_failures = evidence_manifest(out)
     try:
         recorded = usage.record(out)
     except (OSError, ValueError, KeyError, TypeError) as exc:  # usage is recorded, never a stop
@@ -122,13 +154,16 @@ def run(runtime_path, name, task, arm, config):
     trace_bytes = sum(p.stat().st_size for p in (out / 'cell/trace').rglob('*') if p.is_file())
     record.update(owner_status=owner['owner_status'], owner_seconds=owner['seconds'], teardown=owner['teardown'],
                   identity=owner['identity'], usage=recorded['completeness'], output_tokens=recorded['output_tokens'],
-                  quota=limits, trace_bytes=trace_bytes)
+                  quota=limits, trace_bytes=trace_bytes, evidence_manifest_sha256=sealed,
+                  collection_failures=collection_failures, private=(out.stat().st_mode & 0o077) == 0)
     baseline = json.loads((out / 'baseline.json').read_text())
     stop = ('container survived teardown' if owner['teardown'] != 'CLEAN' else
             'harness changed' if not harness_unchanged(out, baseline) else
-            'shared account limit during execution' if limits['execution'] else
+            'evidence collection failed' if collection_failures or not record['private'] else
+            'shared account fault during execution: ' + ', '.join(sorted({h['kind'] for h in limits['execution']}))
+            if limits['execution'] else
             'model identity ' + owner['identity']['status'].lower()
-            if owner['identity']['status'] in ('MISMATCH', 'UNVERIFIED') else None)
+            if owner['identity']['status'] in ('MISMATCH', 'UNVERIFIED', 'UNKNOWN') else None)
     if not stop:
         try:
             record['snapshot'] = locate.locate(out)

@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 
 HERE = Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location('assess0222', HERE.parent / '0222/assess.py')
@@ -35,6 +36,20 @@ def review_tree(out, temp):
     (work / '.devlyn').mkdir(exist_ok=True)
     shutil.copyfile(out / 'harness/caller.json', work / '.devlyn/caller.json')
     return work
+
+
+def valid(answer):
+    """The assessor's JSON verdict, or None when it is not one: complete must be a boolean and findings a list of
+    objects with a string severity. An invalid answer is no verdict (an evaluator STOP), never complete:false."""
+    try:
+        parsed = json.loads(re.search(r'\{.*\}', answer or '', re.S).group(0))
+    except (AttributeError, ValueError):
+        return None
+    findings = parsed.get('findings', []) if isinstance(parsed, dict) else None
+    if (not isinstance(parsed, dict) or not isinstance(parsed.get('complete'), bool) or not isinstance(findings, list)
+            or not all(isinstance(f, dict) and isinstance(f.get('severity'), str) for f in findings)):
+        return None
+    return parsed
 
 
 def one(out, runtime, route, prompt):
@@ -61,15 +76,24 @@ def one(out, runtime, route, prompt):
             command = ['codex', 'exec', '--json', '--ignore-user-config', '--ignore-rules', '--skip-git-repo-check',
                        '--sandbox', 'read-only', '-m', route['model'], '-c',
                        f'model_reasoning_effort="{route["effort"]}"', '-C', '/tmp', '-']
-        argv = ['docker', 'run', '--rm', '-i', '--network', 'bridge', '--read-only', '--cap-drop', 'ALL',
+        name = 'devlyn-0231-assess-' + uuid.uuid4().hex
+        argv = ['docker', 'run', '--name', name, '--rm', '-i', '--network', 'bridge', '--read-only', '--cap-drop', 'ALL',
                 '--security-opt', 'no-new-privileges', '--tmpfs', '/tmp:rw,nosuid,exec',
                 '--tmpfs', '/home/assessor/.codex/tmp:rw,nosuid,exec,uid=501,gid=501',
                 '--mount', f'type=bind,src={home},dst=/home/assessor', *env, runtime['image'],
                 'timeout', '--kill-after=5s', f'{seconds_limit}s', *command]
         start = time.monotonic()
-        with (record_dir / 'prompt.txt').open('rb') as stdin, (record_dir / 'stdout').open('xb') as stdout, \
-                (record_dir / 'stderr').open('xb') as stderr:
-            result = subprocess.run(argv, stdin=stdin, stdout=stdout, stderr=stderr, timeout=seconds_limit + 60)
+        try:
+            with (record_dir / 'prompt.txt').open('rb') as stdin, (record_dir / 'stdout').open('xb') as stdout, \
+                    (record_dir / 'stderr').open('xb') as stderr:
+                result = subprocess.run(argv, stdin=stdin, stdout=stdout, stderr=stderr, timeout=seconds_limit + 60)
+            exit_code = result.returncode
+        except subprocess.TimeoutExpired:
+            exit_code = None
+        finally:
+            subprocess.run(['docker', 'rm', '-f', name], capture_output=True, timeout=60)
+            if subprocess.run(['docker', 'inspect', name], capture_output=True, timeout=60).returncode == 0:
+                raise RuntimeError(f'assessor container {name} survived teardown')
         seconds = time.monotonic() - start
         if route['engine'] == 'codex' and (home / '.codex/sessions').exists():
             shutil.copytree(home / '.codex/sessions', record_dir / 'sessions')
@@ -84,13 +108,10 @@ def one(out, runtime, route, prompt):
         answer = texts[-1] if texts else None
         turns = [e['usage'] for e in stream if e.get('type') == 'turn.completed']
         usage = turns[-1] if turns else None
-    try:
-        parsed = json.loads(re.search(r'\{.*\}', answer or '', re.S).group(0))
-    except (AttributeError, ValueError):
-        parsed = None
+    parsed = valid(answer)
     severe = [f for f in (parsed or {}).get('findings', []) if str(f.get('severity', '')).lower() in ('high', 'critical')]
-    record = dict(route=route, exit_code=result.returncode, seconds=seconds, usage=usage or 'UNKNOWN',
-                  complete=None if parsed is None else parsed.get('complete') is True, severe=len(severe))
+    record = dict(route=route, exit_code=exit_code, seconds=seconds, usage=usage or 'UNKNOWN',
+                  complete=None if parsed is None else parsed['complete'], severe=len(severe), severe_findings=severe)
     (record_dir / 'result.json').write_text(json.dumps(record, indent=2))
     return record
 

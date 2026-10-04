@@ -11,6 +11,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 
 HERE = Path(__file__).resolve().parent
 BASE = HERE.parent / '0222'
@@ -73,6 +74,15 @@ def mirror(work, harness, repository):
                 script_sha256=hashlib.sha256(script.read_bytes()).hexdigest())
 
 
+def committed_tree(work, sha):
+    """packet.tree of a commit's tracked files: what allocation gives a linked worktree (ignored installer output
+    stays behind in the anchor, so it is not part of the baseline)."""
+    with tempfile.TemporaryDirectory() as temp:
+        archive = subprocess.run(['git', 'archive', sha], cwd=work, check=True, capture_output=True).stdout
+        subprocess.run(['tar', '-x', '-C', temp], input=archive, check=True)
+        return packet.tree(Path(temp))
+
+
 def prompt_text(config):
     command = f'/devlyn-resolve --goal-file {GOAL} --role-config /harness/roles.json --max-rounds {MAX_ROUNDS}'
     return command if config == 'claude' else (
@@ -85,7 +95,8 @@ def prepare(runtime, name, task_id, arm, config):
     if arm not in ARMS:
         raise ValueError('arm must be control or candidate')
     out = Path(runtime['output']) / name
-    out.mkdir(parents=True, exist_ok=False)
+    out.mkdir(parents=True, exist_ok=False, mode=0o700)
+    out.chmod(0o700)
     cell, home, harness = out / 'cell', out / 'home', out / 'harness'
     work = cell / 'work'
     cell.mkdir()
@@ -128,7 +139,7 @@ def prepare(runtime, name, task_id, arm, config):
     owner = route['owner']
     env = dict(HOME='/home/participant', CODEX_HOME='/home/participant/.codex', DISABLE_AUTOUPDATER='1',
                PYTHONPATH='src:/control/python', GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1',
-               CODEX_ROLLOUT_TRACE_ROOT='/cell/trace')
+               CODEX_ROLLOUT_TRACE_ROOT='/cell/trace', MYPY_CACHE_DIR='/tmp/.mypy_cache')
     prompt = (out / 'prompt.txt').read_text()
     argv = (['claude', '-p', '--model', owner['model'], '--effort', owner['effort'], '--permission-mode',
              'bypassPermissions', '--output-format', 'stream-json', '--verbose', prompt] if config == 'claude' else
@@ -141,7 +152,7 @@ def prepare(runtime, name, task_id, arm, config):
     digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
     (out / 'baseline.json').write_text(json.dumps(dict(
         task=task_id, arm=arm, config=config, source_sha=source_sha, allocation_sha=transport['head'],
-        transport=transport, files=packet.tree(work), goal_sha256=digest(work / GOAL),
+        transport=transport, files=committed_tree(work, transport['head']), goal_sha256=digest(work / GOAL),
         prompt_sha256=digest(out / 'prompt.txt'), caller_sha256=digest(harness / 'caller.json'),
         roles_sha256=digest(harness / 'roles.json'), prepare_sha256=digest(Path(__file__)),
         tasks_sha256=digest(BASE / 'tasks.json')), indent=2))

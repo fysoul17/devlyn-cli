@@ -96,8 +96,9 @@ def models(root):
 
 
 def footer_tokens(rollout):
-    """What a plain `codex exec` prints as `tokens used`: uncached input plus output, over its inferences."""
-    usages = [item['usage'] for item in rollout['inferences'].values()]
+    """What a plain `codex exec` prints as `tokens used`: uncached input plus output over the root thread's
+    inferences (probe 2026-10-04: one and two inferences, reasoning included in output)."""
+    usages = [item['usage'] for item in rollout['inferences'].values() if item['thread'] == rollout.get('rollout_id')]
     if not usages or any(u is None for u in usages):
         return None
     return sum(u['input_tokens'] - u['cached_input_tokens'] + u['output_tokens'] for u in usages)

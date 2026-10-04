@@ -1,10 +1,13 @@
 """Apply the frozen 0231 rule: decide.py <out> <decisions.json>. Reads verdicts; never dispatches.
 
-decisions.json holds root's recorded judgments ("Before any rule is computed"):
-{"adjudicated": {"<cell>": {"<row>": "PASS"|"FAIL"}}, "false_completion": [cells],
+decisions.json holds root's recorded judgments ("Before any rule is computed"), all mandatory:
+{"audited": [every measured cell: its final report was audited], "false_completion": [cells],
+ "adjudicated": {"<cell>": {"<row>": "PASS"|"FAIL"}},
+ "severe": {"<cell>": {"<assessor engine>:<index>": "reproduced"|"not_reproduced"}} for every severe assessor finding,
  "reproduced": {"<cell>": [witness ids reproduced against that cell's tree]}}
 Eligibility per (task, config) over two replicates: counts for completion and rows (owner decision 2026-10-04),
-the concrete witness compared within each adjacent pair, obligations per candidate cell.
+the concrete witness compared within each adjacent pair, obligations per candidate cell. A test is proven, disproved
+(only against complete evidence) or unresolved.
 """
 import json
 from pathlib import Path
@@ -35,12 +38,24 @@ def rows(verdict, adjudicated, checks):
     return passed
 
 
+def audit_gaps(name, verdict, decisions):
+    gaps = [] if name in decisions.get('audited', ()) else [f'{name}: final report not audited']
+    recorded = decisions.get('severe', {}).get(name, {})
+    for assessment in verdict.get('assessments', ()):
+        for index, _ in enumerate(assessment.get('severe_findings', ())):
+            key = f'{assessment["route"]["engine"]}:{index}'
+            if recorded.get(key) not in ('reproduced', 'not_reproduced'):
+                gaps.append(f'{name}: severe finding {key} has no recorded disposition')
+    return gaps
+
+
 def load(out, decisions):
-    table = {}
+    table, missing = {}, []
     for name, task, arm, config, replicate in CELLS:
         verdict = json.loads((out / f'verdict-{name}.json').read_text())
         if verdict.get('status') == 'STOP':
             raise ValueError(f'{name} is a STOP row: re-dispatch or regrade it before computing the rule')
+        missing += audit_gaps(name, verdict, decisions)
         checks = json.loads((out / name / 'checks.json').read_text())
         verdict['product_check_pass_public'] = all(c['exit_code'] == 0 for c in checks['public'])
         adjudicated = decisions.get('adjudicated', {}).get(name, {})
@@ -51,6 +66,8 @@ def load(out, decisions):
                            obligations=bool((verdict.get('obligations') or {}).get('satisfied')),
                            wall=HANG if verdict['owner_status'] == 'HANG_TIMEOUT' else verdict['owner_seconds'],
                            output=verdict.get('output_tokens'), usage=verdict.get('usage'))
+    if missing:
+        raise ValueError('mandatory judgments are missing: ' + '; '.join(missing))
     return table
 
 
@@ -79,11 +96,17 @@ def config_rule(table, config):
         sums[arm] = dict(wall=sum(c['wall'] for c in group), output=sum(c['output'] or 0 for c in group),
                          complete_usage=all(c['usage'] == 'COMPLETE' and c['output'] is not None for c in group))
     candidate, control = sums['candidate'], sums['control']
-    provable = candidate['complete_usage']  # the control's recorded output is always a valid lower bound
-    wall_test = provable and candidate['wall'] <= WALL_RATIO * control['wall'] and candidate['output'] <= WALL_OUTPUT_RATIO * control['output']
-    output_test = provable and candidate['output'] <= OUTPUT_RATIO * control['output']
-    outcome = ('REJECTED' if not eligible else 'ADOPTED' if wall_test or output_test else
-               'INCONCLUSIVE' if not provable else 'REJECTED')
+
+    def status(factor):  # the control's recorded output is a valid lower bound; only complete evidence disproves
+        if not candidate['complete_usage']:
+            return 'unresolved'
+        if candidate['output'] <= factor * control['output']:
+            return 'proven'
+        return 'disproved' if control['complete_usage'] else 'unresolved'
+    wall_test = 'disproved' if candidate['wall'] > WALL_RATIO * control['wall'] else status(WALL_OUTPUT_RATIO)
+    output_test = status(OUTPUT_RATIO)
+    outcome = ('REJECTED' if not eligible else 'ADOPTED' if 'proven' in (wall_test, output_test) else
+               'REJECTED' if (wall_test, output_test) == ('disproved', 'disproved') else 'INCONCLUSIVE')
     return dict(outcome=outcome, eligible=eligible, eligibility=eligibility, sums=sums, wall_test=wall_test,
                 output_test=output_test, wall_ratio=candidate['wall'] / control['wall'] if control['wall'] else None,
                 output_ratio=candidate['output'] / control['output'] if control['output'] else None)

@@ -87,29 +87,37 @@ class Traces(unittest.TestCase):
 
 
 class Binding(unittest.TestCase):
-    """Every traced process binds to launch evidence and every launch to a trace (record_usage.codex)."""
+    """Usage on the shared inventory: bound once, attempted calls inventoried, every disagreement a named gap."""
 
     def setUp(self):
         self.out = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.out)
-        for name in ('cell/trace', 'cell/work/.devlyn', 'home/.codex/sessions', 'tmp', 'run'):
+        for name in ('cell/trace', 'cell/work/.devlyn', 'home/.codex/sessions', 'home/.claude/projects', 'tmp', 'run'):
             (self.out / name).mkdir(parents=True)
-        (self.out / 'run/stdout').write_text('')
-        self.plan = dict(engine='claude')
+        init = dict(type='system', subtype='init', model='claude-opus-5-5', session_id='OWNER')
+        result = dict(type='result', session_id='OWNER', modelUsage={'claude-opus-5-5': dict(outputTokens=3)})
+        (self.out / 'run/stdout').write_text(json.dumps(init) + '\n' + json.dumps(result) + '\n')
+        (self.out / 'plan.json').write_text(json.dumps(dict(engine='claude', config='claude', model='claude-opus-5-5', arm='candidate')))
 
-    def judge(self, session, footer):
+    def judge(self, session, footer, round_=0):
         header = ('OpenAI Codex v0.156.1\n--------\nworkdir: /cell/work\nmodel: gpt-6-astra\nprovider: openai\n'
                   f'approval: never\nsandbox: read-only\nreasoning effort: high\nsession id: {session}\n--------\nuser\nVERIFY\n')
-        (self.out / 'cell/work/.devlyn/codex-judge.r0.stderr').write_text(header + f'codex\nPASS\ntokens used\n{footer}\n')
+        (self.out / f'cell/work/.devlyn/codex-judge.r{round_}.stderr').write_text(header + f'codex\nPASS\ntokens used\n{footer}\n')
 
-    def trace(self, rollout):
-        write_trace(self.out / 'cell/trace', rollout, [*inference('c1', rollout), dict(type='rollout_ended', status='completed')],
-                    {'r.json': dict(token_usage=USAGE)})
+    def trace(self, rollout, folder=None):
+        write_trace(self.out / 'cell/trace' / (folder or ''), rollout,
+                    [dict(type='thread_started', thread_id=rollout, agent_path='/root', metadata_payload=ref('m.json')),
+                     *inference('c1', rollout), dict(type='rollout_ended', status='completed')],
+                    {'m.json': dict(model='gpt-6-astra'), 'r.json': dict(token_usage=USAGE)})
 
-    def test_plain_root_with_matching_footer_binds(self):
+    def gaps(self):
+        return ' | '.join(usage.record(self.out)['gaps'])
+
+    def test_plain_root_with_matching_footer_is_complete(self):
         self.judge('S1', '67')
         self.trace('S1')
-        self.assertEqual(usage.codex(self.out, self.plan)[1], [])
+        recorded = usage.record(self.out)
+        self.assertEqual((recorded['completeness'], recorded['output_tokens']), ('COMPLETE', 3 + 7), recorded['gaps'])
 
     def test_footer_mismatch_unexplained_trace_and_untraced_launch_are_gaps(self):
         self.judge('S1', '68')
@@ -117,15 +125,45 @@ class Binding(unittest.TestCase):
         self.trace('ORPHAN')
         (self.out / 'cell/work/.devlyn/implement.worker-session.0.jsonl').write_text(
             json.dumps(dict(type='thread.started', thread_id='W0')) + '\n')
-        gaps = ' | '.join(usage.codex(self.out, self.plan)[1])
-        self.assertIn('plain root S1: footer 68 vs trace 67', gaps)
-        self.assertIn('trace ORPHAN binds to no launch evidence', gaps)
-        self.assertIn('launch W0 has no trace', gaps)
+        gaps = self.gaps()
+        for expected in ('plain root S1: footer 68 vs trace 67', 'trace ORPHAN binds to no launch evidence', 'launch W0 has no trace'):
+            self.assertIn(expected, gaps)
 
+    def test_a_duplicated_trace_counts_once(self):
+        self.judge('S1', '67')
+        self.trace('S1')
+        self.trace('S1', folder='copy')
+        recorded = usage.record(self.out)
+        self.assertEqual((recorded['completeness'], recorded['output_tokens']), ('COMPLETE', 10), recorded['gaps'])
+
+    def test_a_dispatched_judge_whose_result_vanished_is_a_gap_and_its_transcript_counts(self):
+        (self.out / 'cell/work/.devlyn/verify-judge.r0.dispatch.json').write_text(json.dumps(dict(roles=dict(
+            primary_judge=dict(decision='dispatch', engine='claude')))))
+        (self.out / 'home/.claude/projects/x').mkdir()
+        (self.out / 'home/.claude/projects/x/judge.jsonl').write_text(json.dumps(dict(type='assistant', sessionId='JUDGE', message=dict(
+            id='m1', model='claude-opus-5-5', usage=dict(output_tokens=7)))) + '\n')
+        recorded = usage.record(self.out)
+        self.assertEqual((recorded['completeness'], recorded['output_tokens']), ('PARTIAL', 3 + 7))
+        self.assertIn('dispatched claude primary_judge r0 left no result', ' | '.join(recorded['gaps']))
+
+    def test_rollout_counters_must_all_agree(self):
+        self.judge('S1', '67')
+        self.trace('S1')
+        rollout = self.out / 'home/.codex/sessions/r.jsonl'
+        rollout.write_text(json.dumps(dict(type='session_meta', payload=dict(id='S1'))) + '\n' + json.dumps(dict(
+            type='event_msg', payload=dict(type='token_count', info=dict(total_token_usage=dict(USAGE, input_tokens=999))))) + '\n')
+        self.assertIn('thread S1: rollout counters', self.gaps())
+
+    def test_an_inference_on_an_undeclared_thread_is_a_gap(self):
+        self.judge('S1', '67')
+        write_trace(self.out / 'cell/trace', 'S1', [dict(type='thread_started', thread_id='S1', agent_path='/root', metadata_payload=ref('m.json')),
+                                                    *inference('c1', 'GHOST'), dict(type='rollout_ended', status='completed')],
+                    {'m.json': dict(model='gpt-6-astra'), 'r.json': dict(token_usage=USAGE)})
+        self.assertIn('undeclared thread GHOST', self.gaps())
 
 
 class Identity(unittest.TestCase):
-    """Routed models only; an unrouted traced model is a MISMATCH, an unreadable record a gap (UNVERIFIED)."""
+    """Each seat's native model and Codex effort against the route; usage-only loss never makes identity UNVERIFIED."""
 
     def setUp(self):
         self.cell = load('cell')
@@ -133,26 +171,48 @@ class Identity(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.out)
         for name in ('cell/trace', 'cell/work/.devlyn', 'home/.codex/sessions', 'home/.claude/projects', 'tmp', 'run'):
             (self.out / name).mkdir(parents=True)
-        init = dict(type='system', subtype='init', model='claude-opus-5-5')
-        result = dict(type='result', modelUsage={'claude-opus-5-5': {}})
-        (self.out / 'run/stdout').write_text(json.dumps(init) + '\n' + json.dumps(result) + '\n')
-        self.plan = dict(config='claude', engine='claude', model='claude-opus-5-5', arm='candidate')
 
-    def test_routed_models_match(self):
-        write_trace(self.out / 'cell/trace', 'J', inference('c1', 'J'), {'r.json': dict(token_usage=USAGE)})
-        self.assertEqual(self.cell.identity(self.out, self.plan)['status'], 'MATCH')
+    def configured(self, rollout, thread, model, effort, path='/root'):
+        return [dict(type='thread_started', thread_id=thread, agent_path=path, metadata_payload=ref(f'{thread}.json')),
+                dict(type='protocol_event_observed', event_type='session_configured', event_payload=ref(f'{thread}-c.json'))], {
+            f'{thread}.json': dict(model=model), f'{thread}-c.json': dict(thread_id=thread, model=model, reasoning_effort=effort)}
 
-    def test_an_unrouted_traced_model_is_a_mismatch(self):
-        write_trace(self.out / 'cell/trace', 'J', inference('c1', 'J', model='gpt-6-sol'), {'r.json': dict(token_usage=USAGE)})
-        result = self.cell.identity(self.out, self.plan)
+    def codex_cell(self, worker_model, worker_effort):
+        (self.out / 'run/stdout').write_text(json.dumps(dict(type='thread.started', thread_id='OWN')) + '\n')
+        events, payloads = self.configured('OWN', 'OWN', 'gpt-6-astra', 'high')
+        write_trace(self.out / 'cell/trace', 'OWN', [*events, dict(type='rollout_ended', status='completed')], payloads)
+        events, payloads = self.configured('WRK', 'WRK', worker_model, worker_effort)
+        write_trace(self.out / 'cell/trace', 'WRK', [*events, dict(type='rollout_ended', status='completed')], payloads)
+        (self.out / 'cell/work/.devlyn/implement.worker-session.0.jsonl').write_text(json.dumps(dict(type='thread.started', thread_id='WRK')) + '\n')
+        return dict(config='codex', engine='codex', model='gpt-6-astra', arm='candidate')
+
+    def test_the_registered_worker_matches_and_a_seat_swap_does_not(self):
+        self.assertEqual(self.cell.identity(self.out, self.codex_cell('gpt-6-sol', 'high'))['status'], 'MATCH')
+        shutil.rmtree(self.out / 'cell/trace')
+        (self.out / 'cell/trace').mkdir()
+        result = self.cell.identity(self.out, self.codex_cell('gpt-6-astra', 'low'))
         self.assertEqual(result['status'], 'MISMATCH')
-        self.assertIn('codex gpt-6-sol unrouted (trace J)', result['violations'])
+        self.assertTrue(any(v.startswith('worker WRK ran gpt-6-astra/low') for v in result['violations']), result['violations'])
 
-    def test_an_unreadable_judge_result_is_a_gap(self):
-        (self.out / 'cell/work/.devlyn/claude-judge.r0.output.json').write_text('{torn')
-        result = self.cell.identity(self.out, self.plan)
-        self.assertEqual(result['status'], 'UNVERIFIED')
-        self.assertTrue(result['gaps'])
+    def test_an_unbound_codex_process_is_a_mismatch(self):
+        plan = self.codex_cell('gpt-6-sol', 'high')
+        events, payloads = self.configured('STRAY', 'STRAY', 'gpt-6-sol', 'high')
+        write_trace(self.out / 'cell/trace', 'STRAY', events, payloads)
+        self.assertIn('unbound Codex process STRAY', self.cell.identity(self.out, plan)['violations'])
+
+    def test_an_empty_judge_capture_with_a_routed_transcript_stays_verified(self):
+        init = dict(type='system', subtype='init', model='claude-opus-5-5', session_id='OWNER')
+        (self.out / 'run/stdout').write_text(json.dumps(init) + '\n' + json.dumps(dict(type='result', session_id='OWNER', modelUsage={'claude-opus-5-5': {}})) + '\n')
+        (self.out / 'cell/work/.devlyn/claude-judge.r0.output.json').write_text('')
+        (self.out / 'home/.claude/projects/x').mkdir()
+        (self.out / 'home/.claude/projects/x/j.jsonl').write_text(json.dumps(dict(type='assistant', sessionId='J', message=dict(
+            id='m', model='claude-opus-5-5', usage=dict(output_tokens=1)))) + '\n')
+        self.assertEqual(self.cell.identity(self.out, dict(config='claude', engine='claude', model='claude-opus-5-5', arm='candidate'))['status'], 'MATCH')
+
+    def test_an_owner_without_any_evidence_is_unknown(self):
+        (self.out / 'run/stdout').write_text('')
+        self.assertEqual(self.cell.identity(self.out, dict(config='claude', engine='claude', model='claude-opus-5-5', arm='control'))['status'], 'UNKNOWN')
+
 
 class Locator(unittest.TestCase):
     def setUp(self):
@@ -161,53 +221,75 @@ class Locator(unittest.TestCase):
         anchor = self.out / 'cell/work'
         anchor.mkdir(parents=True)
         (self.out / 'tmp').mkdir()
-        run = lambda *a, cwd=anchor: subprocess.run(['git', *a], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
-        self.git = run
-        run('init', '-q', '-b', 'main')
-        run('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'base')
-        self.base = run('rev-parse', 'HEAD')
+        self.git = lambda *a, cwd=anchor: subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', *a], cwd=cwd,
+                                                         check=True, capture_output=True, text=True).stdout.strip()
+        self.git('init', '-q', '-b', 'main')
+        (anchor / '.gitignore').write_text('ignored.log\n')
+        (anchor / 'product.txt').write_text('base\n')
+        self.git('add', '.')
+        self.git('commit', '-q', '-m', 'base')
+        self.base = self.git('rev-parse', 'HEAD')
         (anchor / 'product.txt').write_text('anchor edit\n')
+        (anchor / 'ignored.log').write_text('noise\n')
         (self.out / 'baseline.json').write_text(json.dumps(dict(allocation_sha=self.base)))
+
+    def linked(self, container_path, edit):
+        """A worktree as a container leaves it: registered, with container paths in both Git links."""
+        worktree = locate.host(self.out, container_path)
+        self.git('worktree', 'add', '-q', '-b', 'task/' + worktree.name, str(worktree), self.base)
+        (gitdir,) = [d for d in (self.out / 'cell/work/.git/worktrees').iterdir()
+                     if Path((d / 'gitdir').read_text().strip()).resolve() == (worktree / '.git').resolve()]
+        (gitdir / 'gitdir').write_text(container_path + '/.git\n')
+        (worktree / '.git').write_text(f'gitdir: /cell/work/.git/worktrees/{gitdir.name}\n')
+        (worktree / 'product.txt').write_text(edit)
+        (worktree / 'ignored.log').write_text('noise\n')
+        return worktree
 
     def receipt(self, key, **fields):
         folder = self.out / 'cell/work/.git/devlyn-completion' / key
         folder.mkdir(parents=True)
         (folder / 'receipt.json').write_text(json.dumps(dict(task='t', allocation='owned', **fields)))
+        return folder
 
-    def linked(self, path, files):
-        worktree = locate.host(self.out, path)
-        worktree.mkdir(parents=True)
-        for name, text in files.items():
-            (worktree / name).write_text(text)
-        return worktree
+    def baseline(self):
+        return json.loads((self.out / 'baseline.json').read_text())
 
-    def test_anchor_only_when_nothing_was_allocated(self):
-        self.assertEqual(locate.select(self.out, json.loads((self.out / 'baseline.json').read_text()))['kind'], 'anchor')
+    def test_anchor_only_when_nothing_was_allocated_and_ignored_files_stay_out(self):
+        selection = locate.locate(self.out)
+        self.assertEqual(selection['kind'], 'anchor')
+        self.assertEqual(sorted(p.name for p in (self.out / 'snapshot').iterdir()), ['.gitignore', 'product.txt'])
 
     def test_worktree_tree_when_local_only_completion_bound_no_acceptance(self):
-        self.linked('/tmp/task', {'product.txt': 'linked edit\n'})
+        self.linked('/tmp/task', 'linked edit\n')
         self.receipt('a', worktree='/tmp/task', local_only=True)
         selection = locate.locate(self.out)
         self.assertEqual((selection['kind'], selection['path']), ('worktree', 'tmp/task'))
         self.assertEqual((self.out / 'snapshot/product.txt').read_text(), 'linked edit\n')
+        self.assertFalse((self.out / 'snapshot/ignored.log').exists())
 
-    def test_valid_acceptance_wins_and_an_invalid_one_falls_back(self):
-        worktree = self.linked('/cell/task', {})
-        (worktree / '.devlyn/runs/R1').mkdir(parents=True)
-        self.git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'accepted')
-        accepted = self.git('rev-parse', 'HEAD')
-        self.receipt('a', worktree='/cell/task', acceptance=dict(task='other', source_sha=accepted, kind='pipeline', run_id='R1'))
-        baseline = json.loads((self.out / 'baseline.json').read_text())
-        self.assertEqual(locate.select(self.out, baseline)['kind'], 'worktree')
+    def accepted_run(self, worktree, sha, *, seal_head=None, root=None):
+        runs = (root or worktree) / '.devlyn/runs/R1'
+        runs.mkdir(parents=True)
+        (runs / 'pipeline.state.json').write_text(json.dumps(dict(run_id='R1')))
+        (runs / 'source-seal.json').write_text(json.dumps(dict(seal=dict(head=seal_head or sha))))
+
+    def test_acceptance_needs_its_run_and_seal_and_survives_cleanup_through_custody(self):
+        worktree = self.linked('/cell/task', 'accepted\n')
+        sha = self.git('commit-tree', self.git('write-tree'), '-p', self.base, '-m', 'accepted')
+        acceptance = dict(task='t', source_sha=sha, kind='pipeline', run_id='R1')
+        self.accepted_run(worktree, sha, seal_head=self.base)  # a seal of another commit binds nothing
+        self.receipt('a', worktree='/cell/task', acceptance=acceptance)
+        self.assertEqual(locate.select(self.out, self.baseline())['kind'], 'worktree')
+        shutil.rmtree(worktree / '.devlyn')
         shutil.rmtree(self.out / 'cell/work/.git/devlyn-completion')
-        self.receipt('b', worktree='/cell/task', acceptance=dict(task='t', source_sha=accepted, kind='pipeline', run_id='R1'))
-        self.assertEqual(locate.select(self.out, baseline), dict(kind='accepted', sha=accepted,
-                         receipt='cell/work/.git/devlyn-completion/b/receipt.json', candidates=locate.select(self.out, baseline)['candidates']))
+        folder = self.receipt('b', worktree='/cell/task', acceptance=acceptance)
+        self.accepted_run(None, sha, root=folder / 'custody')  # cleanup kept the archive in custody
+        self.assertEqual(locate.select(self.out, self.baseline())['sha'], sha)
 
     def test_owned_allocation_without_a_preserved_tree_stops(self):
         self.receipt('a', worktree='/var/lost')
         with self.assertRaises(locate.LocatorError):
-            locate.select(self.out, json.loads((self.out / 'baseline.json').read_text()))
+            locate.select(self.out, self.baseline())
 
 
 class Decision(unittest.TestCase):
@@ -226,19 +308,20 @@ class Decision(unittest.TestCase):
                 owner_seconds=(wall or {}).get(arm, 100) / 6, output_tokens=(output or {}).get(arm, 600) / 6,
                 obligations=dict(satisfied=True))))
         decisions = self.out / 'decisions.json'
-        decisions.write_text('{}')
+        decisions.write_text(json.dumps(dict(audited=[c[0] for c in decide.CELLS], false_completion=[], adjudicated={},
+                                             severe={}, reproduced={})))
         return decide.main(self.out, decisions)
 
     def test_wall_path_passes_with_output_inside_its_allowance(self):  # Astra's d1 fixture: W 80/100, O 105/100
         report = self.write(wall=dict(control=100, candidate=80), output=dict(control=100, candidate=105))
         self.assertEqual(report['configs']['claude']['outcome'], 'ADOPTED')
-        self.assertTrue(report['configs']['claude']['wall_test'] and not report['configs']['claude']['output_test'])
+        self.assertEqual((report['configs']['claude']['wall_test'], report['configs']['claude']['output_test']), ('proven', 'disproved'))
 
     def test_boundaries_are_inclusive(self):
         report = self.write(wall=dict(control=100, candidate=85), output=dict(control=100, candidate=110))
-        self.assertTrue(report['configs']['codex']['wall_test'])
+        self.assertEqual(report['configs']['codex']['wall_test'], 'proven')
         report = self.write_fresh(wall=dict(control=100, candidate=86), output=dict(control=100, candidate=75))
-        self.assertTrue(report['configs']['codex']['output_test'] and not report['configs']['codex']['wall_test'])
+        self.assertEqual((report['configs']['codex']['output_test'], report['configs']['codex']['wall_test']), ('proven', 'disproved'))
 
     def write_fresh(self, **kw):
         shutil.rmtree(self.out)
@@ -261,6 +344,25 @@ class Decision(unittest.TestCase):
         loss = lambda name, arm: not ('D4-claude' in name and arm == 'candidate' and name.endswith('r1'))
         self.assertEqual(self.write_fresh(wall=dict(control=100, candidate=50), complete_of=loss)['configs']['claude']['outcome'], 'REJECTED')
 
+    def test_a_partial_control_bound_that_fails_is_unresolved_not_disproved(self):  # Astra apparatus #13
+        report = self.write(wall=dict(control=100, candidate=100), output=dict(control=100, candidate=120),
+                            usage_of=lambda arm: 'COMPLETE' if arm == 'candidate' else 'PARTIAL')
+        self.assertEqual(report['configs']['claude']['outcome'], 'INCONCLUSIVE')
+
+    def test_missing_audits_or_severe_dispositions_block_the_computation(self):
+        self.write()
+        decisions = json.loads((self.out / 'decisions.json').read_text())
+        (self.out / 'decisions.json').write_text(json.dumps(dict(decisions, audited=decisions['audited'][1:])))
+        with self.assertRaises(ValueError):
+            decide.main(self.out, self.out / 'decisions.json')
+        first = decide.CELLS[0][0]
+        verdict = json.loads((self.out / f'verdict-{first}.json').read_text())
+        verdict['assessments'] = [dict(route=dict(engine='codex'), complete=True, severe=1, severe_findings=[dict(severity='HIGH')])]
+        (self.out / f'verdict-{first}.json').write_text(json.dumps(verdict))
+        (self.out / 'decisions.json').write_text(json.dumps(decisions))
+        with self.assertRaises(ValueError):
+            decide.main(self.out, self.out / 'decisions.json')
+
     def test_a_stop_row_blocks_the_computation(self):
         self.write()
         first = decide.CELLS[0][0]
@@ -271,17 +373,30 @@ class Decision(unittest.TestCase):
 
 
 class Quota(unittest.TestCase):
-    def test_only_native_error_fields_count(self):
+    def test_only_explicit_native_shapes_count(self):
         root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, root)
         prose = root / 'prose.jsonl'
-        prose.write_text(json.dumps(dict(type='item.completed', item=dict(type='agent_message', text='the reviewer hit a rate limit (429)'))) + '\n')
+        prose.write_text(json.dumps(dict(type='item.completed', item=dict(type='agent_message', text='the reviewer hit a rate limit (429)'))) + '\n'
+                         + json.dumps(dict(type='item.completed', item=dict(type='error', message='upstream gateway responded HTTP 429'))) + '\n')
         native = root / 'native.jsonl'
         native.write_text(json.dumps(dict(type='result', is_error=True, api_error_status=429, result="You've hit your weekly limit")) + '\n'
-                          + json.dumps(dict(type='item.completed', item=dict(type='error', message='You have hit your usage limit'))) + '\n')
+                          + json.dumps(dict(type='item.completed', item=dict(type='error', message="You've hit your usage limit"))) + '\n'
+                          + json.dumps(dict(type='result', is_error=True, api_error_status=401, result='OAuth token expired')) + '\n')
+        stderr = root / 'codex-judge.r0.stderr'
+        stderr.write_text("OpenAI Codex v0.156.1\nERROR: You've hit your usage limit. Try again later.\n")
         self.assertEqual(quota.scan([prose], root), [])
-        self.assertEqual([h['kind'] for h in quota.scan([native], root)], ['claude 429 result', 'codex error item'])
+        self.assertEqual([(h['fault'], h['kind']) for h in quota.scan([native, stderr], root)],
+                         [('limit', 'claude limit result'), ('limit', 'codex usage limit'), ('auth', 'claude authentication result'),
+                          ('limit', 'codex usage limit (stderr)')])
 
+
+class Assessor(unittest.TestCase):
+    def test_an_invalid_answer_is_no_verdict(self):
+        assess = load('assess')
+        for answer in ('{}', '{"complete": "unknown"}', '{"complete": true, "findings": "none"}', 'no json'):
+            self.assertIsNone(assess.valid(answer), answer)
+        self.assertEqual(assess.valid('{"complete": false, "findings": [{"severity": "HIGH"}]}')['complete'], False)
 
 
 def archived_run(out, shared_source, codex_mode='pass'):
@@ -367,6 +482,14 @@ class Obligations(unittest.TestCase):
             result = self.meter.meter(out)
             self.assertEqual((result['verify_verdict'], result['satisfied']), (verdict, satisfied), f'{mode}: {result}')
 
+    def test_a_newer_unfinished_run_is_the_final_invocation(self):
+        work = archived_run(self.out, self.shared)
+        state = json.loads(next((work / '.devlyn/runs').glob('*/pipeline.state.json')).read_text())
+        live = dict(state, run_id='rs-later', started_at='9999-01-01T00:00:00Z', phases={})
+        (work / '.devlyn/pipeline.state.json').write_text(json.dumps(live))
+        result = self.meter.meter(self.out)
+        self.assertEqual((result['run_id'], result['satisfied']), ('rs-later', False))
+
     def test_a_change_after_the_seal_or_a_tampered_report_fails(self):
         work = archived_run(self.out, self.shared)
         self.assertTrue(self.meter.meter(self.out)['satisfied'])
@@ -444,6 +567,23 @@ python3 {skills}/_shared/task-complete.py allocate --repo . --task t --branch ta
 {script}
 echo OK''')
             self.assertEqual((code, text.strip().splitlines()[-1] if text.strip() else ''), (0, 'OK'), f'{task}: {text}')
+
+    def test_an_unchanged_allocation_after_checker_runs_has_no_scope_violations(self):  # Astra apparatus #1
+        locate_module, packet = load('locate'), load('check').packet
+        for task, config, skills, repository, script in (
+                ('D4', 'claude', '.claude/skills', 'pallets/click', 'python3 -m pytest tests/test_basic.py -q >/dev/null && mypy >/dev/null'),
+                ('D3', 'codex', '.agents/skills', 'tj/commander.js', 'npm run -s check:type >/dev/null && env -u NO_COLOR node --test >/dev/null')):
+            out = self.prepare.prepare(self.runtime, f'scope-{task}', task, 'candidate', config)
+            code, text = self.probe(out, f'''set -e
+python3 {skills}/_shared/task-complete.py allocate --repo . --task t --branch task/t --worktree /tmp/task-t --repository {repository} --remote origin --base main >/dev/null
+cd /tmp/task-t && {script}
+echo OK''')
+            self.assertEqual(text.strip().splitlines()[-1] if text.strip() else '', 'OK', text)
+            selection = locate_module.locate(out)
+            baseline = json.loads((out / 'baseline.json').read_text())
+            current = packet.tree(out / 'snapshot')
+            changed = sorted(n for n in baseline['files'].keys() | current.keys() if baseline['files'].get(n) != current.get(n))
+            self.assertEqual((selection['kind'], changed), ('worktree', []), task)
 
     def test_wrong_arm_is_refused(self):
         with self.assertRaises(ValueError):
