@@ -26,10 +26,11 @@ def host(out, path):
 
 
 # Host Git never runs participant-configured commands: no fsmonitor, untracked cache or hooks, no user or system
-# config, no optional locks; and only commands that execute nothing (no status, no filters).
+# config, no optional locks, no lazy fetch; it reads objects as committed (no replacement refs); and it uses only
+# commands that execute nothing (no status, no filters).
 SAFE = ('-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false', '-c', 'core.hooksPath=/dev/null')
 ENV = {**os.environ, 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null', 'GIT_OPTIONAL_LOCKS': '0',
-       'GIT_NO_LAZY_FETCH': '1'}
+       'GIT_NO_LAZY_FETCH': '1', 'GIT_NO_REPLACE_OBJECTS': '1'}
 
 
 def raw_tree(command, commit, dest):

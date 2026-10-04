@@ -89,8 +89,14 @@ class Traces(unittest.TestCase):
                     {'r.json': dict(token_usage=USAGE), 'cr.json': dict(output_items=[])})
         self.assertIn('compaction request compaction_request:1 has no native usage', ' | '.join(traces.usage(self.root)['gaps']))
 
-    def test_host_git_never_fetches_lazily(self):
-        self.assertEqual(locate.ENV.get('GIT_NO_LAZY_FETCH'), '1')
+    def test_an_unfinished_compaction_request_is_a_named_gap(self):
+        write_trace(self.root, 'R', [*inference('c1', 'R'),
+                                     dict(type='compaction_request_started', compaction_request_id='compaction_request:9', thread_id='R'),
+                                     dict(type='rollout_ended', status='completed')], {'r.json': dict(token_usage=USAGE)})
+        self.assertIn('compaction request compaction_request:9 has no native usage', ' | '.join(traces.usage(self.root)['gaps']))
+
+    def test_host_git_never_fetches_lazily_or_follows_replacements(self):
+        self.assertEqual((locate.ENV.get('GIT_NO_LAZY_FETCH'), locate.ENV.get('GIT_NO_REPLACE_OBJECTS')), ('1', '1'))
 
     def test_missing_manifest_is_a_gap(self):
         write_trace(self.root, 'R', [], {}, manifest=False)
@@ -778,6 +784,18 @@ class Obligations(unittest.TestCase):
         (work / '.git/info/attributes').write_text('source.txt export-ignore\n')
         (work / 'source.txt').unlink()
         self.assertFalse(self.meter.meter(self.out)['checks']['seal_head_is_final_source'])
+
+    def test_a_replacement_ref_cannot_hide_a_change_after_the_seal(self):
+        work = archived_run(self.out, self.shared)
+        git = lambda *a: subprocess.run(['git', '-C', str(work), *a], check=True, capture_output=True, text=True).stdout.strip()
+        original = git('rev-parse', 'HEAD:source.txt')
+        (work / 'source.txt').write_text('changed after the seal\n')
+        git('replace', original, git('hash-object', '-w', 'source.txt'))  # the old blob now reads as the new bytes
+        self.assertFalse(self.meter.meter(self.out)['checks']['seal_head_is_final_source'])
+        head = git('rev-parse', 'HEAD')
+        snapshot = self.out / 'accepted-snapshot'
+        locate.raw_tree(['git', *locate.SAFE, '-C', str(work)], head, snapshot)
+        self.assertEqual((snapshot / 'source.txt').read_text(), 'implemented\n')
 
     def test_participant_git_configuration_never_executes_on_the_host(self):
         work = archived_run(self.out, self.shared)

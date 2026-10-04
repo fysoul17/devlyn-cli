@@ -45,7 +45,7 @@ def load(root):
             continue
         if manifest.get('schema_version') != SCHEMA:
             gaps.append(f'trace schema {manifest.get("schema_version")}, expected {SCHEMA}')
-        threads, inferences, status = {}, {}, None
+        threads, inferences, compactions, status = {}, {}, {}, None
         for row in _rows(trace / manifest.get('raw_event_log', 'trace.jsonl'), gaps):
             payload = row.get('payload') or {}
             kind = payload.get('type')
@@ -71,16 +71,21 @@ def load(root):
                     call['usage'] = {k: usage[k] for k in COUNTERS}
                 else:
                     gaps.append(f'inference {payload["inference_call_id"]} completed without usage')
+            elif kind == 'compaction_request_started':
+                compactions.setdefault(payload.get('compaction_request_id'), None)
             elif kind == 'compaction_request_completed':
                 response = _payload(trace, payload.get('response_payload'), gaps) or {}
-                if not isinstance(response.get('token_usage'), dict):  # probe 2026-10-04: never reported natively
-                    gaps.append(f'compaction request {payload.get("compaction_request_id")} has no native usage')
+                usage = response.get('token_usage')
+                compactions[payload.get('compaction_request_id')] = usage if isinstance(usage, dict) else None
             elif kind == 'thread_ended':
                 threads.setdefault(payload.get('thread_id'), dict(agent_path=None, model=None))['status'] = payload.get('status')
             elif kind == 'rollout_ended':
                 status = payload.get('status')
         gaps += [f'inference {call} started without completed usage' for call, item in inferences.items()
                  if item['usage'] is None and not any(call in gap for gap in gaps)]
+        # Compaction requests are model calls the CLI reports no usage for (probe 2026-10-04); every request seen, finished
+        # or not, is a named gap.
+        gaps += [f'compaction request {request} has no native usage' for request, usage in compactions.items() if usage is None]
         if status is None:
             gaps.append('rollout did not end')
         rollouts.append(dict(trace=trace.name, rollout_id=manifest.get('rollout_id'),
