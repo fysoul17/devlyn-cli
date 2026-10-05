@@ -322,21 +322,27 @@ A "≥" value is a lower bound. Its usage gaps are named in the verdicts: a kill
 
 - **claude.**
   - I completes more cells than A (4 vs 2) at lower wall per success (804 vs 1,420 s).
-  - Quality fails on I0185. Witness K5 reproduces on I's replicate-2 tree (`m24`) but not on A's. K5 is "destination created before the lock", which violates requirements 2 and 3. The same defect costs `m24` the `absence-lock` oracle row that A passes.
+  - Quality fails on I0185. Witness K5 reproduces on I's replicate-2 tree (`m24`) but not on A's. K5 is "destination created before the lock", which violates requirements 2 and 3. A related lock-lifetime failure also costs `m24` the `absence-lock` oracle row that A passes. `m24` is also root's one false completion (below).
   - The token tests are inconclusive, because I's usage is incomplete. I's input lower bound per success already exceeds A's.
 - **codex.** Completions are equal (4 vs 4), and I's wall per success is about twice A's (776 vs 398 s). So no strict improvement exists, and the wall test fails.
-- **Against F,** I's resource tests pass in both configurations. Its wall per success is 9% of F's in the claude config and 15% in the codex config. Quality against F fails on I0185 for the same reason as against A, and replacement needs admission in any case.
+- **Against F,** only I's wall test passes. Its wall per success is 9% of F's in the claude config and 15% in the codex config. The input and output tests are inconclusive, because I's usage is incomplete.
+  - Quality against F fails on I0185. In the claude config the cause is K5, as against A. In the codex config it is K3 and the `release` row, which F's replicate-2 tree passes.
+  - Replacement needs admission in any case.
 
 ### Root's recorded judgments
 
-- **Final-report audit.** All 36 cells were audited: 0 false completions and 0 user-data harm.
-  - The closest call is `m24`. Its report describes locking that only hidden checks contradict, and it is kept as a coverage limit, per 0224.
-- **Severe findings.** 34 assessor findings group into 8 claims, all binding, and each reproduced on its own tree by a deterministic witness applied to every tree of its task. Witnesses on 12 I0185 trees:
-  - K3 (prior install not restored after one failed lock release): 11 trees;
-  - K1 (cross-filesystem install fails): 7;
-  - K2 (a symlinked path takes a separate lock): 6;
-  - K4 (lock left behind): 4;
-  - K5: 1 (`m24`).
+- **Final-report audit.** All 36 cells were audited: 1 false completion and 0 user-data harm.
+  - The false completion is `m24`. Its report says each call locks "before reading or changing anything there", but its own source creates the destination first and locks afterwards.
+  - The audit at first kept this as a coverage limit. Root adopts Astra's reclassification, because the contradiction lies between the report and the selected source, not only in hidden checks.
+  - The registered outcome is unchanged.
+- **Severe findings.** All 34 assessor findings are dispositioned. They group into 8 binding defect claims, each reproduced on its own tree by a deterministic witness applied to every tree of its task.
+  - One proposed mechanism was rejected: `m14` claude:1's stale physical alias. The oracle failure that finding cites was reclassified to K2.
+  - Witnesses on 12 I0185 trees:
+    - K3 (prior install not restored after one failed lock release): 11 trees;
+    - K1 (cross-filesystem install fails): 7;
+    - K2 (a symlinked path takes a separate lock): 6;
+    - K4 (lock left behind): 4;
+    - K5: 1 (`m24`).
   - The three D3 witnesses reproduce only on `m18`, F's unchanged base tree.
   - Reading of requirement 2: a failed lock release is not "disposal of backup data", so rollback is required, which matches the registrants' `release` row. Under this reading K3 reproduces on every A and I tree, so it does not separate A from I. Only F's codex replicate-2 tree (`m32`) passes it.
   - The K3 and K4 witnesses were widened to find a lock kept outside the fixture, as `m31` and `m33` do. All I0185 witnesses were then re-run on every tree, and the earlier trees did not change.
@@ -346,7 +352,7 @@ A "≥" value is a lower bound. Its usage gaps are named in the verdicts: a kill
 
 - **I's compliance: 9 of 12.** Every I cell launched at least one review. The three non-compliant cells are `m02` (claude) and `m11` and `m31` (codex). In each, the owner ended its session while the final review was still running, which killed it.
   - The same failure appears with both engines.
-  - It accounts for every PARTIAL usage in I.
+  - These three are I's PARTIAL-usage cells. Each also carries a separate cancelled-inference gap.
 - **F's obligation meter** (0231's bundle-shaped checks) is nonbinding and reports unmet for 4.1.0's evidence shape.
 
 ### Predictions, scored
@@ -363,16 +369,21 @@ A "≥" value is a lower bound. Its usage gaps are named in the verdicts: a kill
 1. Wall order A < I < F: held in both.
 2. I uses more raw input and output than A: held in both.
 3. I completes ≥ A, with I0185 the largest risk: held.
-4. I fails or stays inconclusive in at least one config: held. It failed in both; the claude failure was on quality, with tokens inconclusive.
+4. I fails or stays inconclusive in at least one config: held, failing in both. Its proposed principal cause, unestablished token inequalities, was not decisive: claude failed on quality, codex on wall.
 5. At least one I cell passes product evaluation but fails compliance: held (`m02`).
-6. The F resource comparison is easier than admission against A: held.
+6. The F resource comparison is easier than admission against A: held for wall. F's input and output comparisons were inconclusive.
 
 ### Descriptive findings (not registered tests)
 
-- **A beats F on completion and on every per-success cost in both configurations.** That means 2 vs 1 completions on claude and 4 vs 1 on codex, with F needing 6–13× A's wall per success and 38–67× its input per success. This agrees with 0224, where full resolve ran about 3× native wall and completed 0/4 against native's 1/4.
+- **A completes more cells than F at far lower cost per success:** 2 vs 1 on claude and 4 vs 1 on codex.
+  - F's wall per success is 6.2× A's on claude and 13.3× on codex. Its input per success is about 37.9× A's on claude and at least 67.1× on codex.
+  - The direction agrees with 0224.
+  - Under the full registered quality order, A does not dominate F. F's paired replicate-2 trees lack defects that A's carry: K2 and K4 on claude, K3 on codex. F also passes one codex `release` row that A fails.
 - **I's gain on claude is D4:** I completed 2 of 2 cells, A 0 of 2. A's D4 trees failed the Codex assessor on the task's teardown requirements.
 - **On codex,** the instruction block plus review added cost without adding completions.
-- **Review sessions are I's main added input.** Lost reviews (3 of 12) are its main methodology failure.
+- **Review sessions are part of I's added input:** 47.3% of the recorded input above A's on claude, and 29.1% on codex.
+  - The rest is owner work. Some of it may be repair that reviews triggered; the experiment does not isolate that.
+  - Lost final reviews (3 of 12) are I's methodology failure.
 
 ### Honest limits
 
@@ -386,4 +397,5 @@ A "≥" value is a lower bound. Its usage gaps are named in the verdicts: a kill
 - Rung I's observed failures can license the next challenger I′, measured against A:
   - final reviews killed when the owner ends its session;
   - review cost.
-- F's machinery has no measured advantage over the native baseline.
+- Against the native baseline, F's machinery shows fewer completions and much higher cost, with isolated paired quality advantages.
+- Retiring it is therefore a product-scope judgment, not an admitted replacement.
