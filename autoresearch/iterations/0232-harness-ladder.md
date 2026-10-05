@@ -80,10 +80,9 @@ Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함")
   - a helper-written task record;
   - R5's inventory kept;
   - an already-unreadable, wholly untracked environment directory may become a protected opaque baseline entry. Tracked, staged or adopted source and required verification inputs are not exempt, and new unreadability still causes refusal.
-- **Self-compaction (owner message 4).** Official docs show that neither CLI lets the model trigger compaction in a headless run:
-  - Claude Code: `/compact` is interactive only; `autoCompactWindow` sets the threshold; a SessionStart hook with source `compact` can re-inject context (https://code.claude.com/docs/en/settings-reference.md, https://code.claude.com/docs/en/hooks.md).
+- **Self-compaction (owner message 4).** Root's vendor-documentation research identified these native compaction controls:
+  - Claude Code: `autoCompactWindow` sets the threshold; a SessionStart hook with source `compact` can re-inject context (https://code.claude.com/docs/en/settings-reference.md, https://code.claude.com/docs/en/hooks.md).
   - Codex: `model_auto_compact_token_limit` and `compact_prompt` (https://developers.openai.com/codex/config-reference).
-  - Hence the session-boundary handoff above, which is unmeasured.
 - **D4 (product restructure):**
   - N becomes `devlyn-intent`.
   - `devlyn-ideate` is the public loop owner, with the queue protocol kept as its internal durable utility.
