@@ -1,6 +1,6 @@
 # 0231 — live comparison: the 0225 bundle against 4.1.0
 
-2026-10-04. **Status: DRAFT, not frozen.** Design: independent R0s (root; Astra gpt-6-astra/ultra, read-only), then R1 and R2. **Owner decision (2026-10-04):** eligibility with replicates compares counts per (task, config) ("통과로 봄 (Claude 추천)"); Astra's pairwise recommendation is recorded below. The run needs the owner's separate approval. Raw record: `.devlyn/bundle/live-r0-*`, `live-r1-*`, `live-r2-*`.
+2026-10-04. **Status: SUPERSEDED by [0232](0232-harness-ladder.md) on 2026-10-05; never frozen or run.** Its apparatus (v7, `dd29d664`) is the base of 0232's. Design: independent R0s (root; Astra gpt-6-astra/ultra, read-only), then R1 and R2. **Owner decision (2026-10-04):** eligibility with replicates compares counts per (task, config) ("통과로 봄 (Claude 추천)"); Astra's pairwise recommendation is recorded below. The run needs the owner's separate approval. Raw record: `.devlyn/bundle/live-r0-*`, `live-r1-*`, `live-r2-*`.
 
 ## Why
 

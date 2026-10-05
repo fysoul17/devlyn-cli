@@ -1,6 +1,6 @@
 # 0232 — harness ladder: instruction-only first, then `intent` one measured rung at a time
 
-2026-10-05. **Status: DRAFT (direction recorded; ladder design converging with Astra; registration not frozen).**
+2026-10-05. **Status: stage 1 FROZEN (§6); later rungs are registered separately.**
 
 Authors: root (Opus 5.5) and Astra (gpt-6-astra, reasoning ultra, read-only). Independent Claude checks ran in parallel; they are summarized under "Direction check". Raw exchanges are in `/Users/aipalm/.local/share/nx01/core-continuation-20260912/.devlyn/bundle/`:
 - `direction-a1-*` and `direction-root-position.md`;
@@ -115,18 +115,32 @@ Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함")
 | O3 | Running the cells | Run when ready; no further run approval |
 | O4 | A mechanism improves quality but costs some time or tokens | **Judge per success** (root recommended; Astra recommended strict sums). Count all run costs, failures included, per correctly completed task, and preserve quality. §6 proposes the operational admission rule |
 | — | Baseline failure first | A design choice, not an owner decision: demonstrate a relevant baseline failure before repair when feasible; otherwise record why it is unavailable and provide meaningful behavioral coverage (Astra D4/D5) |
-| open | Dependent tasks in ideate's local loop start from the accepted predecessor commit in a new owned worktree | Deferred to the ideate stage (Astra recommends yes) |
+| — | Dependent tasks in ideate's local loop start from the accepted predecessor commit in a new owned worktree | Yes: root decided under the owner's delegation of architecture, with Astra concurring (D4, D6) |
 
-## 6. Registration
+## 6. Registration (stage 1)
 
-Not frozen. Stage 1 is planned as follows:
+**FROZEN 2026-10-05.** Astra's stage-1 readiness review (`stage1-app-v1-astra.out.md`) required four apparatus fixes, made in `a1d48e53`; its freeze verification is `stage1-freeze-v1-astra.out.md`. Any later change is a dated addendum at the end of this section.
 
-- **Cells:** A/I/F × D3/D4/I0185 × claude/codex × 2 replicates = 36 measured cells, plus 6 SMOKE, on the 0231 apparatus.
-- **Fixed conditions:**
-  - pinned CLIs, tasks, roles and the four-round allowance;
-  - F at `4056ebe2`;
-  - A as the task repository with no devlyn installation.
-- **Decision rule proposed for the registration freeze (implements O4).** Each configuration is evaluated separately.
+- **Cells:** A/I/F × D3/D4/I0185 × claude/codex × 2 replicates = 36 measured cells, run one at a time in `experiments/0232/cells.tsv` order. Six SMOKE cells (`smoke.tsv`) run first and stay outside every sum and decision.
+- **Arms**, the same way in both configurations:
+  - **A:** the task repository as supplied, with no devlyn installation, and the native prompt (`common.txt` plus the caller contract).
+  - **I:** the rung-1 package, installed offline by its own installer: the methodology block in CLAUDE.md/AGENTS.md and the review launcher `$HOME/.devlyn/review.js`. Same prompt as A.
+  - **F:** 4.1.0 as in 0231. Its package (Claude settings included), resolve command, committed goal file and worker/judge machinery are all F's treatment. The four-round allowance (`--max-rounds 4`) belongs to F alone; A and I run natively.
+  - **Common to all arms:** owner pins, image, environment, resources and the 5,400 s owner watchdog. Every arm's anchor starts with `origin/main` and `origin/HEAD` at the allocation commit. 0231's F construction lacked them, so these F results are not pooled with any earlier run.
+- **Identities:**
+  - I: `candidate/0232-rung1` at `5bf3dc740773851bee787a4f69c05b02ae0d62b6`; pack sha256 `3ee56995952ec6b4bf0335f37ba7161dee1f061ab7281b6a01c0752772225427`.
+  - F: `4056ebe24cba16c03bc447a8fbd4bb92cbf21edb`; pack sha256 `48d21558e717a8b833b619d7ea696d07512cb78b6f29d13b0ccfb063ac263806`, file for file the published 4.1.0 tarball.
+  - Image `devlyn-0231` `sha256:1a1c68897b18960e56f176ce03e8209f5b6c9950efc0d2631b7290d9de25a283`: Claude Code 2.1.281, Codex 0.156.1, Node 22.23.2.
+  - Apparatus `experiments/0232/` at `5dbdd4b3`. Control-tree manifest digest `fcc5b8acb3bfcdc49e17c8da47ef07b55912fcd31b2c87d202ffd33948c9d633`; its public and oracle trees are identical to 0231's.
+  - Routes (`experiments/0222/tasks.json`):
+    - claude config: owner claude-opus-5-5 high; reviewer codex gpt-6-astra high;
+    - codex config: owner gpt-6-astra high with native children gpt-6-sol high; reviewer claude-opus-5-5 high.
+- **Evaluation.** Each cell yields one snapshot: F by its accepted-commit or task-worktree rule, A and I by the native rule in `DESIGN.md`. 0222's checks, oracle rows and blinded assessors grade it; completion is as in [0231](0231-bundle-live-comparison.md) "Metrics".
+- **Usage.** Processed input (cache counted once) and output cover the owner, native children, F's workers and judges, and I's review launches. Gaps are named. A sum that is not COMPLETE is published as unknown, with its lower bound.
+- **Methodology** is reported and never part of the rule:
+  - I's compliance: a successful review by the registered other engine of exactly the final tree, against the allocation commit;
+  - F's obligations: 0231's meter.
+- **Decision rule (implements O4).** Each configuration is evaluated separately.
   - **Totals.** For arm X, S_X is the number of correctly completed cells under the frozen completion definition. W_X is total owner wall; I_X and O_X are total input and output over all six measured cells, failures included. They include all workers, reviewers, repairs, retries and resumed sessions, and count cache input without double counting. SMOKE and external evaluation are reported separately.
   - **Per-success costs.** w_X = W_X/S_X, i_X = I_X/S_X and o_X = O_X/S_X when S_X > 0; when S_X = 0 these costs are +∞ for selection only.
   - **Missing usage.** Unknown usage remains UNKNOWN. Accounting too incomplete to establish an inequality makes that comparison inconclusive. Input and output cannot offset each other.
@@ -141,5 +155,54 @@ Not frozen. Stage 1 is planned as follows:
     - When S_F > 0: w_C ≤ 0.70 w_F, i_C ≤ i_F and o_C ≤ o_F.
     - When S_F = 0 < S_C: the per-success cost gate passes by dominance over the zero-success incumbent. That outcome is reported as such, not as a numerical percentage wall reduction, and no raw-sum comparison is substituted.
   - **Publication.** Raw sums, success counts and per-success costs are published together. They are observed selection results, not guarantees about future tasks.
-  - The +∞ convention and the tie treatment are proposed freeze wording, not further owner decisions. The 30% threshold applies to incumbent replacement, not to every adjacent rung.
-- **To freeze:** exact definitions, predictions, identities and the build list are frozen with Astra before any cell runs.
+  - The +∞ convention and the tie treatment are root and Astra's freeze wording, not owner decisions. The 30% threshold applies to incumbent replacement, not to every adjacent rung.
+- **SMOKE must show:**
+  - the registered routes and identities;
+  - allocation from the mirror;
+  - snapshot selection;
+  - usage reconciled, or its gaps named;
+  - for I, at least one review launch with its record;
+  - clean teardown.
+
+  A failed SMOKE blocks measurement. A treatment change that SMOKE requires re-freezes that arm, with the new commit and pack digest recorded as an addendum, and repeats its SMOKE cells. One such change is pre-registered from Astra's readiness review: if the Bash tool's default two-minute timeout cuts off a Claude owner's review, I's block gains the instruction to run the review in the foreground with a 600000 ms timeout. Nothing else changes.
+- **Accounts:** cells run on the host's Claude and Codex logins, each cell behind 0231's preflight (fresh login, identity, limits, free space). Root's monitoring and reviews share those accounts; no other model-heavy work runs during measured cells.
+- **Faults:** as in [0231](0231-bundle-live-comparison.md) "Faults".
+- **After stage 1:** later rungs, the easy-task panel and ideate's loop experiment are each registered separately, under this rule against the last admitted rung.
+
+### Predictions (before any run)
+
+**Root**, verbatim from `.devlyn/bundle/0232-root-predictions.md`. It was written on 2026-10-05, before anything was built or run.
+
+Per configuration, over each arm's six measured cells (3 tasks × 2 replicates):
+
+1. **Completions.**
+   - A completes 1–2 cells on claude and 2 on codex.
+   - I completes at least as many as A in both configurations.
+   - F completes at most 1 in each configuration.
+2. **I0185.** No arm completes it in either configuration.
+3. **Wall.**
+   - I's raw wall sum is 1.1–1.6× A's in each configuration, because of the review session and repair.
+   - I's per-success wall is ≤ A's in at least one configuration.
+4. **F's wall.** F's raw wall sum is ≥ 2× A's in each configuration. F has the worst per-success cost, or no successes at all.
+5. **The review and input.**
+   - I runs the cross-engine review in at least 10 of its 12 cells.
+   - I's input per cell, review sessions included, is ≤ 1.5× A's.
+6. **Decisions.**
+   - I is admitted over A in at least one configuration: p ≈ 0.5.
+   - The incumbent-replacement gate against F passes in both configurations: p ≈ 0.8.
+
+**Astra**, verbatim from its stage-1 readiness review. Astra had not seen root's predictions.
+
+1. In both configurations, raw owner wall will order **A < I < F**.
+2. I will consume more raw input and output than A in both configurations.
+3. I will complete at least as many cells as A in each configuration; I0185 will remain the largest completion risk.
+4. I will fail admission or remain inconclusive in at least one configuration, principally because the per-success token inequalities are not established.
+5. At least one I cell will pass product evaluation while failing the final-source review-compliance rule.
+6. Passing the resource comparison against F will be easier than earning admission against A.
+
+### Honest limits
+
+- The tasks are exposed and n is small. Replicates are not a significance test.
+- Results hold only for the pinned CLIs, image, tasks and routes.
+- Compaction requests carry no native usage (0231 "Honest limits"). A compaction in a cell makes that cell's usage PARTIAL.
+- The compliance meter's host-tree limits are listed in `DESIGN.md` "Tests and limits".
