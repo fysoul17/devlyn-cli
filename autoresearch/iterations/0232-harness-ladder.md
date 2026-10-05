@@ -259,3 +259,21 @@ Astra reviewed the round-1 fixes (`smoke-r1-fix-astra.out.md`, SHIP) and recomme
 Measured cells use apparatus `a8b18137`.
 
 **Added honest limit:** like compaction requests, cancelled Codex inferences carry no native usage. Each one makes its cell's usage PARTIAL. In the codex configuration that can leave token tests inconclusive.
+
+### Addendum 2026-10-05 — measured run: an assessor fault and its regrade
+
+**The fault.** The drive stopped at `m07-D3-claude-F-r1`: assessment failed with `[Errno 17] File exists`.
+- Cause: the assessors' review tree copied the snapshot over a checkout of the allocation commit. That checkout already held commander's tracked fixture symlinks, and a symlink cannot be copied over an existing one. Every D3 cell would have stopped the same way.
+- Fix (`cce71305`): every tracked file is removed before the copy.
+- D4 and I0185 track no colliding symlink, so their review trees are unchanged and the assessments of `m01`–`m06` stand.
+
+**The regrade.** Per 0231 "Faults", an assessor-only fault is regraded from preserved evidence, never re-dispatched.
+- `run_cell.py --regrade` now runs the same `grade` path that a cell runs, and keeps the STOP verdict as `.stop-1`.
+- `m07` regraded to COMPLETE. Its execution record, snapshot and checks are unchanged.
+
+From `m08` on, cells use apparatus `cce71305`. That change affects only the assessment tree and the regrade.
+
+**A measured observation, not a fault.** In `m02-D4-claude-I-r1` the Claude owner started the required review with `run_in_background: true` and a 600000 ms timeout. It said it would pick up the findings when the review finished, then ended its session. Headless Claude Code terminates background tasks at the final response, so the review was killed before it answered.
+- Compliance records "failed review", and the killed reviewer's usage is a named gap, so the cell is PARTIAL.
+- This is not the pre-authorized contingency, which covers a cut-off by the default two-minute timeout. The treatment stays frozen.
+- Such cells are evidence about rung I, a failure that can license a later rung.
