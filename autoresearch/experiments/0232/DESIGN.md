@@ -2,7 +2,7 @@
 
 Stage 1 of [0232](../../iterations/0232-harness-ladder.md) §6 runs A/I/F on the 0231 apparatus. This directory is a copy of
 `../0231` with only the changes below. Unlisted files are byte-identical copies, so their docstrings still say 0231:
-`assess.py`, `check.py`, `calibrate.py`, `obligations.py`, `trace_usage.py`, `common.txt` and the image recipe
+`check.py`, `calibrate.py`, `obligations.py`, `trace_usage.py`, `common.txt` and the image recipe
 (`Dockerfile`, `build.sh`, `py_tools.py`, `pyright/`). The image is 0231's `devlyn-0231`, unchanged.
 
 ## Arms (`prepare.py`, `control.py`)
@@ -75,6 +75,11 @@ Stage 1 of [0232](../../iterations/0232-harness-ladder.md) §6 runs A/I/F on the
   is refused too: the tree would hold only its commit while the snapshot copies its live files. A refusal or Git
   failure leaves no final tree; it is recorded, and no call matches.
 - A has no methodology obligation. All arms get the same checks, oracle rows and blinded assessors on one snapshot.
+- **Assessor tree** (`assess.py`): the review tree drops every tracked file before copying the snapshot. 0231's copy
+  refused a symlink that exists in both the base and the snapshot, so every D3 cell (commander tracks symlinked fixtures)
+  STOPped in assessment.
+- **Regrade** (`run_cell.py --regrade <runtime.json> <name>`): after an assessor fault, the preserved cell is assessed
+  again through the same `grade` path (0231 Faults). The STOP verdict and any partial assessment stay as `.stop-N`.
 
 ## Decision (`decide.py`)
 

@@ -1,6 +1,6 @@
 # 0232 — harness ladder: instruction-only first, then `intent` one measured rung at a time
 
-2026-10-05. **Status: stage 1 FROZEN (§6); later rungs are registered separately.**
+2026-10-05. **Status: stage 1 CLOSED (2026-10-06): A admitted in both configurations, I not admitted (§7); resolve retired as a product-scope decision (§8). Later rungs are registered separately.**
 
 Authors: root (Opus 5.5) and Astra (gpt-6-astra, reasoning ultra, read-only). Independent Claude checks ran in parallel; they are summarized under "Direction check". Raw exchanges are in `/Users/aipalm/.local/share/nx01/core-continuation-20260912/.devlyn/bundle/`:
 - `direction-a1-*` and `direction-root-position.md`;
@@ -259,3 +259,166 @@ Astra reviewed the round-1 fixes (`smoke-r1-fix-astra.out.md`, SHIP) and recomme
 Measured cells use apparatus `a8b18137`.
 
 **Added honest limit:** like compaction requests, cancelled Codex inferences carry no native usage. Each one makes its cell's usage PARTIAL. In the codex configuration that can leave token tests inconclusive.
+
+### Addendum 2026-10-05 — measured run: an assessor fault and its regrade
+
+**The fault.** The drive stopped at `m07-D3-claude-F-r1`: assessment failed with `[Errno 17] File exists`.
+- Cause: the assessors' review tree copied the snapshot over a checkout of the allocation commit. That checkout already held commander's tracked fixture symlinks, and a symlink cannot be copied over an existing one. Every D3 cell would have stopped the same way.
+- Fix (`cce71305`): every tracked file is removed before the copy.
+- D4 and I0185 track no colliding symlink, so their review trees are unchanged and the assessments of `m01`–`m06` stand.
+
+**The regrade.** Per 0231 "Faults", an assessor-only fault is regraded from preserved evidence, never re-dispatched.
+- `run_cell.py --regrade` now runs the same `grade` path that a cell runs, and keeps the STOP verdict as `.stop-1`.
+- `m07` regraded to COMPLETE. Its execution record, snapshot and checks are unchanged.
+
+From `m08` on, cells use apparatus `cce71305`. That change affects only the assessment tree and the regrade.
+
+**A measured observation, not a fault.** In `m02-D4-claude-I-r1` the Claude owner started the required review with `run_in_background: true` and a 600000 ms timeout. It said it would pick up the findings when the review finished, then ended its session. Headless Claude Code terminates background tasks at the final response, so the review was killed before it answered.
+- Compliance records "failed review", and the killed reviewer's usage is a named gap, so the cell's usage is PARTIAL. Its product verdict is COMPLETE.
+- This is not the pre-authorized contingency, which covers a cut-off by the default two-minute timeout. The treatment stays frozen.
+- Such cells are evidence about rung I, a failure that can license a later rung.
+
+### Addendum 2026-10-05 — venue change at m11
+
+**What happened.** After `m10`, the host's Claude login changed. The preflight refused `m11` with "account/organization mismatch", as 0231's rule requires: the account never switches automatically.
+- Before: account `cc43a4e02ede`, organization `2905f4abf05b`.
+- After: account `45eff57aaa45`, organization `b6b7768fd228`, `claude_max`, rate tier `default_claude_max_20x`.
+
+**What root did.**
+- Recorded the switch as a venue change.
+- Set the runtime's account to the new fingerprint.
+- Resumed from `m11`.
+
+`m01`–`m10` ran on the first account, and `m11`–`m36` run on the second. Models, CLIs, image, apparatus and treatments are unchanged. The balanced cell order puts every arm on both accounts. The account change can affect only wall time, through provider-side throughput, and RESULT reports it per cell.
+
+## 7. Stage 1 result (2026-10-06)
+
+**Registered outcome:** `LIVE:claude=admitted:A,replaces_F:FAIL;codex=admitted:A,replaces_F:FAIL`.
+
+In both configurations, rung I is not admitted, and A (native) remains the admitted rung. Replacing F requires admission, so it fails too.
+
+All 36 measured cells have verdicts. One assessor fault (`m07`) was regraded from preserved evidence. The inputs and outputs are under `experiments/0232/results/`:
+- `decision.json`, `decisions.json`;
+- `cells.md`, the per-cell table;
+- `adjudication.md` and `witnesses/`, the severe-finding dispositions;
+- `audit.md`, the final-report audit.
+
+The raw evidence stays in `~/.local/share/nx01/0232-live/out` with its seal manifests.
+
+### Totals per configuration (six cells per arm)
+
+| Config | Arm | Completed (D3/D4/I0185) | Wall s (per success) | Input (per success) | Output (per success) | Usage |
+|---|---|---|---|---|---|---|
+| claude | A | 2 (2/0/0) | 2,841 (1,420) | 4,691,860 (2,345,930) | 144,449 (72,224) | complete |
+| claude | I | 4 (2/2/0) | 3,217 (804) | ≥10,315,933 (≥2,578,983) | ≥191,721 (≥47,930) | 1 cell PARTIAL |
+| claude | F | 1 (1/0/0) | 8,836 (8,836) | 88,973,473 (88,973,473) | 688,264 (688,264) | complete |
+| codex | A | 4 (2/2/0) | 1,593 (398) | 1,787,074 (446,768) | 39,567 (9,892) | complete |
+| codex | I | 4 (2/2/0) | 3,105 (776) | ≥7,491,270 (≥1,872,818) | ≥154,707 (≥38,677) | 2 cells PARTIAL |
+| codex | F | 1 (0/1/0) | 5,303 (5,303) | ≥29,977,697 (≥29,977,697) | ≥150,982 (≥150,982) | 3 cells PARTIAL |
+
+A "≥" value is a lower bound. Its usage gaps are named in the verdicts: a killed review session, or a cancelled Codex inference.
+
+### Why I is not admitted
+
+- **claude.**
+  - I completes more cells than A (4 vs 2) at lower wall per success (804 vs 1,420 s).
+  - Quality fails on I0185. Witness K5 reproduces on I's replicate-2 tree (`m24`) but not on A's. K5 is "destination created before the lock", which violates requirements 2 and 3. A related lock-lifetime failure also costs `m24` the `absence-lock` oracle row that A passes. `m24` is also root's one false completion (below).
+  - The token tests are inconclusive, because I's usage is incomplete. I's input lower bound per success already exceeds A's.
+- **codex.** Completions are equal (4 vs 4), and I's wall per success is about twice A's (776 vs 398 s). So no strict improvement exists, and the wall test fails.
+- **Against F,** only I's wall test passes. Its wall per success is 9% of F's in the claude config and 15% in the codex config. The input and output tests are inconclusive, because I's usage is incomplete.
+  - Quality against F fails on I0185. In the claude config the cause is K5, as against A. In the codex config it is K3 and the `release` row, which F's replicate-2 tree passes.
+  - Replacement needs admission in any case.
+
+### Root's recorded judgments
+
+- **Final-report audit.** All 36 cells were audited: 1 false completion and 0 user-data harm.
+  - The false completion is `m24`. Its report says each call locks "before reading or changing anything there", but its own source creates the destination first and locks afterwards.
+  - The audit at first kept this as a coverage limit. Root adopts Astra's reclassification, because the contradiction lies between the report and the selected source, not only in hidden checks.
+  - The registered outcome is unchanged.
+- **Severe findings.** All 34 assessor findings are dispositioned. They group into 8 binding defect claims, each reproduced on its own tree by a deterministic witness applied to every tree of its task.
+  - One proposed mechanism was rejected: `m14` claude:1's stale physical alias. The oracle failure that finding cites was reclassified to K2.
+  - Witnesses on 12 I0185 trees:
+    - K3 (prior install not restored after one failed lock release): 11 trees;
+    - K1 (cross-filesystem install fails): 7;
+    - K2 (a symlinked path takes a separate lock): 6;
+    - K4 (lock left behind): 4;
+    - K5: 1 (`m24`).
+  - The three D3 witnesses reproduce only on `m18`, F's unchanged base tree.
+  - Reading of requirement 2: a failed lock release is not "disposal of backup data", so rollback is required, which matches the registrants' `release` row. Under this reading K3 reproduces on every A and I tree, so it does not separate A from I. Only F's codex replicate-2 tree (`m32`) passes it.
+  - The K3 and K4 witnesses were widened to find a lock kept outside the fixture, as `m31` and `m33` do. All I0185 witnesses were then re-run on every tree, and the earlier trees did not change.
+- **Adjudicated oracle rows.** `release` is NOT_TRIGGERED in `m31` and `m33`, and is adjudicated FAIL in both on the K3 evidence. Neither cell's completion changes.
+
+### Methodology (reported, not part of the rule)
+
+- **I's compliance: 9 of 12.** Every I cell launched at least one review. The three non-compliant cells are `m02` (claude) and `m11` and `m31` (codex). In each, the owner ended its session while the final review was still running, which killed it.
+  - The same failure appears with both engines.
+  - These three are I's PARTIAL-usage cells. Each also carries a separate cancelled-inference gap.
+- **F's obligation meter** (0231's bundle-shaped checks) is nonbinding and reports unmet for 4.1.0's evidence shape.
+
+### Predictions, scored
+
+**Root:**
+1. **Completions.** "A 1–2 on claude": held (2). "2 on codex": missed (4). "I ≥ A": held in both. "F ≤ 1": held.
+2. **I0185 uncompleted by every arm:** held.
+3. **I's raw wall 1.1–1.6× A's:** held for claude (1.13), missed for codex (1.95). "I's per-success wall ≤ A's in at least one config": held (claude).
+4. **F's raw wall ≥ 2× A's, and F worst per success:** held in both.
+5. **Review in ≥ 10 of 12 I cells:** held (12). "I's input per cell ≤ 1.5× A's": missed in both (about 2.2× and 4.2×).
+6. **Decisions.** "I admitted in at least one config, p ≈ 0.5": not admitted. "Replacement passes in both, p ≈ 0.8": failed, because replacement requires admission.
+
+**Astra:**
+1. Wall order A < I < F: held in both.
+2. I uses more raw input and output than A: held in both.
+3. I completes ≥ A, with I0185 the largest risk: held.
+4. I fails or stays inconclusive in at least one config: held, failing in both. Its proposed principal cause, unestablished token inequalities, was not decisive: claude failed on quality, codex on wall.
+5. At least one I cell passes product evaluation but fails compliance: held (`m02`).
+6. The F resource comparison is easier than admission against A: held for wall. F's input and output comparisons were inconclusive.
+
+### Descriptive findings (not registered tests)
+
+- **A completes more cells than F at far lower cost per success:** 2 vs 1 on claude and 4 vs 1 on codex.
+  - F's wall per success is 6.2× A's on claude and 13.3× on codex. Its input per success is about 37.9× A's on claude and at least 67.1× on codex.
+  - The direction agrees with 0224.
+  - Under the full registered quality order, A does not dominate F. F's paired replicate-2 trees lack defects that A's carry: K2 and K4 on claude, K3 on codex. F also passes one codex `release` row that A fails.
+- **I's gain on claude is D4:** I completed 2 of 2 cells, A 0 of 2. A's D4 trees failed the Codex assessor on the task's teardown requirements.
+- **On codex,** the instruction block plus review added cost without adding completions.
+- **Review sessions are part of I's added input:** 47.3% of the recorded input above A's on claude, and 29.1% on codex.
+  - The rest is owner work. Some of it may be repair that reviews triggered; the experiment does not isolate that.
+  - Lost final reviews (3 of 12) are I's methodology failure.
+
+### Honest limits
+
+- The sample is three exposed tasks with two replicates. A single replicate decides the K5 quality result.
+- **Venue change.** `m01`–`m10` ran on the first Claude account and `m11`–`m36` on the second (Addendum, venue change at m11).
+- Cancelled Codex inferences and killed reviews leave usage PARTIAL, so several token tests are inconclusive by rule.
+
+### What the result licenses
+
+- Under the ladder rule (feedback "harness ladder", HARD), I is not kept as the default: it raised tokens per success, and on claude it regressed severe quality.
+- Rung I's observed failures can license the next challenger I′, measured against A:
+  - final reviews killed when the owner ends its session;
+  - review cost.
+- Against the native baseline, F's machinery shows fewer completions and much higher cost, with isolated paired quality advantages.
+- Retiring it is therefore a product-scope judgment, not an admitted replacement.
+
+## 8. Product consequence (2026-10-06): resolve is retired as a product-scope decision
+
+**Decision.** `devlyn-resolve` and the machinery only it uses leave the product. The installed instructions carry the North Star, the seven principles and three discipline rules, plus short pointers for ideate, task delivery and executor selection.
+
+Root made this decision under the owner's direction of 2026-10-05:
+- "resolve가 없어지던지 intent로 재설계되든지 할거 같은데, 그거에 맞게 설계 되어야 하지 않겠어?"
+- "그리고 사실 resolve가 없이도 claude.md나 agents.md 로 그게 가능하면 없어도 되긴 해."
+
+The owner's final instruction asked for a releasable state on main. Astra (`result-product-a1`) recommends the same and frames it as an owner yes/no question. **The owner can veto it by reverting the product PR before any release.**
+
+**What it is not.**
+- It is not an admitted replacement. The registered replacement test failed, because I was not admitted.
+- A, which won on completion and cost, had no devlyn installation at all, so it is not the new installed product.
+- No successor mechanism (`devlyn-intent`) has been earned. The N kernel of §4 becomes a deferred hypothesis.
+
+**Tradeoffs recorded.**
+- F has fewer completions and much higher cost than native. But it has isolated paired quality advantages (§7). Retirement gives those up.
+- Rung I's review launcher stays experimental on `candidate/0232-rung1` and is not imported through another instruction.
+
+**Next measurement.**
+- Register the actual installed baseline, meaning the principles block plus ideate, before any performance or default claim. Include the easy-task panel that §4 promised.
+- After that comes I′, licensed by I's observed failures: final reviews killed at session end, and review cost. It is compared with that baseline under the no-regression, no-token-increase rule.

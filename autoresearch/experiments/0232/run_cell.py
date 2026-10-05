@@ -1,4 +1,5 @@
-"""Run one 0232 cell end to end: run_cell.py <runtime.json> <name> <task> <arm> <config>.
+"""Run one 0232 cell end to end: run_cell.py <runtime.json> <name> <task> <arm> <config>. After an assessor fault,
+run_cell.py --regrade <runtime.json> <name> assesses the preserved cell again.
 
 Exit 0 = verdict recorded (any product outcome), 3 = not dispatched (preflight), 2 = STOP: a container survivor,
 changed control or harness, model identity collapse, a shared account limit, a locator defect, or an evaluator or
@@ -195,24 +196,50 @@ def run(runtime_path, name, task, arm, config):
     if stop:
         record.update(status='STOP', reason=stop)
         return write_verdict(verdict_path, record)
+    return write_verdict(verdict_path, grade(out, runtime, record, checks))
+
+
+def grade(out, runtime, record, checks):
+    """The assessors on the checked snapshot, then the arm's methodology record: the verdict record."""
     try:
         assessments = assess.assess(out, runtime)
     except (RuntimeError, OSError, subprocess.SubprocessError) as exc:
-        record.update(status='STOP', reason=f'assessment failed: {exc}')
-        return write_verdict(verdict_path, record)
+        return dict(record, status='STOP', reason=f'assessment failed: {exc}')
     record.update(product_check_pass=checks['product_check_pass'], oracle=checks['oracle'],
                   scope_violations=checks['scope_violations'], assessments=assessments,
                   assessor_disagreement=len({a['complete'] for a in assessments}) > 1,
                   status=base.verdict(checks, assessments))
-    if arm == 'F':  # methodology, reported apart from product quality; A has none
+    if record['arm'] == 'F':  # methodology, reported apart from product quality; A has none
         record['obligations'] = obligations.meter(out)
-    elif arm == 'I':
+    elif record['arm'] == 'I':
         record['compliance'] = compliance.read(out)
     if base.unassessed(assessments):
         regrade = quota.classify(out)['assessment']
         record.update(status='STOP', reason='assessor produced no verdict: ' + ', '.join(base.unassessed(assessments))
                       + ('; account limit: regrade from preserved evidence' if regrade else ''))
-    return write_verdict(verdict_path, record)
+    return record
+
+
+def regrade(runtime_path, name):
+    """Assess a cell again from its preserved evidence after an assessor fault (0231 Faults: regrade, never re-dispatch).
+    Its execution record, snapshot and checks stay; the STOP verdict and any partial assessment are kept as .stop-N."""
+    runtime = json.loads(Path(runtime_path).read_text())
+    output = Path(runtime['output'])
+    out, verdict_path = output / name, output / f'verdict-{name}.json'
+    record = json.loads(verdict_path.read_text())
+    if record.get('status') != 'STOP' or not str(record.get('reason')).startswith(('assessment failed', 'assessor produced')):
+        raise SystemExit(f'{name}: only an assessor STOP is regraded')
+    venue, blocked = preflight(runtime)  # fresh credentials and limits, as for a dispatched cell
+    if blocked:
+        print(f'{name}: not regraded: {blocked}', file=sys.stderr)
+        return 3
+    stop = next(n for n in range(1, 100) if not (output / f'verdict-{name}.stop-{n}.json').exists())
+    verdict_path.rename(output / f'verdict-{name}.stop-{stop}.json')
+    if (out / 'assessment').exists():
+        (out / 'assessment').rename(out / f'assessment.stop-{stop}')
+    record = {k: v for k, v in record.items() if k not in ('status', 'reason')} | dict(
+        regraded=dict(after=f'stop-{stop}', venue=venue, at=datetime.datetime.now(datetime.timezone.utc).isoformat()))
+    return write_verdict(verdict_path, grade(out, runtime, record, json.loads((out / 'checks.json').read_text())))
 
 
 def write_verdict(path, record):
@@ -226,4 +253,4 @@ def write_verdict(path, record):
 
 
 if __name__ == '__main__':
-    sys.exit(run(*sys.argv[1:6]))
+    sys.exit(regrade(*sys.argv[2:4]) if sys.argv[1] == '--regrade' else run(*sys.argv[1:6]))

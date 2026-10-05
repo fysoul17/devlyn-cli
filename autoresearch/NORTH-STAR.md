@@ -2,7 +2,11 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current work: [0232 harness ladder](iterations/0232-harness-ladder.md) (2026-10-05, owner direction below): measure how far an instruction-only harness in CLAUDE.md/AGENTS.md carries capable agents, then add `intent` mechanisms one rung at a time only where they improve the measured outcome. The 0230 bundle (resolve cost cuts, `bundle/0225-steps-2-5`) is parked unmerged; the 0231 registration is superseded by 0232 and was never run; its apparatus is the base of 0232's.
+Current work: [0232 harness ladder](iterations/0232-harness-ladder.md) (2026-10-05, owner direction below).
+- **Stage 1 closed on 2026-10-06** (§7). Native A stays the admitted rung in both configurations. The instruction rung I is not admitted. Full resolve completes fewer cells than native at far higher cost.
+- **resolve is retired** as a product-scope decision (§8). The installed product becomes the principles plus ideate's loop.
+- **Next:** measure that installed baseline, then add mechanisms one rung at a time, only where they improve the measured outcome.
+- **Parked and superseded:** the 0230 bundle (`bundle/0225-steps-2-5`) is parked unmerged. The 0231 registration is superseded by 0232 and was never run.
 Latest closed unit: [0229 existing-behavior re-screen](iterations/0229-verify-existing-behavior-rescreen.md) (2026-10-02, PASS).
 Priority: accuracy/completeness → verified-resolution speed → tokens; since 2026-10-05, harness mechanisms follow the per-success non-regression rule below.
 Tests carry no token budgets. The independent CLI core comes first; optional Pyx and

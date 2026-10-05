@@ -22,17 +22,17 @@ TASKS, packet, events = base.TASKS, base.packet, base.events
 
 
 def review_tree(out, temp):
-    """The snapshot as a working tree of a clone at the allocation commit, with the caller contract in .devlyn."""
+    """The snapshot as a working tree of a clone at the allocation commit, with the caller contract in .devlyn. Every
+    tracked file goes first, so the snapshot's own files and symlinks (a symlink cannot be copied over an existing
+    one) and its deletions are exactly what remains."""
     baseline = json.loads((out / 'baseline.json').read_text())
     work = temp / 'work'
     subprocess.run(['git', 'clone', '-q', '--shared', '--no-checkout', str(out / 'cell/work'), str(work)], check=True)
     subprocess.run(['git', '-C', str(work), 'checkout', '-q', '--detach', baseline['allocation_sha']], check=True)
-    snapshot = out / 'snapshot'
-    keep = set(packet.tree(snapshot))
     for name in subprocess.check_output(['git', 'ls-files', '-z'], cwd=work, text=True).split('\0'):
-        if name and name not in keep:
+        if name:
             (work / name).unlink()
-    shutil.copytree(snapshot, work, symlinks=True, dirs_exist_ok=True)
+    shutil.copytree(out / 'snapshot', work, symlinks=True, dirs_exist_ok=True)
     (work / '.devlyn').mkdir(exist_ok=True)
     shutil.copyfile(out / 'harness/caller.json', work / '.devlyn/caller.json')
     return work

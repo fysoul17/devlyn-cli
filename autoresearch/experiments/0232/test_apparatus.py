@@ -832,6 +832,32 @@ class Assessor(unittest.TestCase):
         self.assertEqual(assess.valid('{"complete": false, "findings": [{"severity": "HIGH"}]}')['complete'], False)
 
 
+    def test_the_review_tree_takes_the_snapshot_over_tracked_symlinks_and_deletions(self):  # 0232 m07 STOP
+        out = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, out)
+        work = out / 'cell/work'
+        work.mkdir(parents=True)
+        git = lambda *a: subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', *a], cwd=work, check=True,
+                                        capture_output=True, text=True).stdout.strip()
+        git('init', '-q', '-b', 'main')
+        (work / 'pm').write_text('target\n')
+        (work / 'link').symlink_to('pm')
+        (work / 'gone.txt').write_text('x\n')
+        git('add', '.')
+        git('commit', '-q', '-m', 'base')
+        (out / 'baseline.json').write_text(json.dumps(dict(allocation_sha=git('rev-parse', 'HEAD'))))
+        (out / 'harness').mkdir()
+        (out / 'harness/caller.json').write_text('{}')
+        snapshot = out / 'snapshot'
+        snapshot.mkdir()
+        (snapshot / 'pm').write_text('changed\n')
+        for name in ('link', 'new'):
+            (snapshot / name).symlink_to('pm')
+        with tempfile.TemporaryDirectory() as temp:
+            tree = load('assess').review_tree(out, Path(temp))
+            self.assertEqual(((tree / 'pm').read_text(), (tree / 'link').readlink(), (tree / 'new').readlink(),
+                              (tree / 'gone.txt').exists()), ('changed\n', Path('pm'), Path('pm'), False))
+
     def test_uncertain_container_teardown_raises(self):
         assess = load('assess')
         daemon_down = subprocess.CompletedProcess([], 1, '', 'Cannot connect to the Docker daemon')
@@ -929,6 +955,32 @@ class Venue(unittest.TestCase):
             verdict = json.loads((out / f'verdict-c-{arm}.json').read_text())
             self.assertEqual((verdict.get('compliance'), verdict.get('obligations')),
                              (dict(compliant=True) if arm == 'I' else None, dict(satisfied=True) if arm == 'F' else None), arm)
+
+    def test_an_assessor_stop_is_regraded_from_preserved_evidence_and_kept(self):  # 0232 m07 STOP
+        rc, out = self.run_cell, self.root / 'out'
+        cell = out / 'c-F'
+        (cell / 'assessment').mkdir(parents=True)
+        (cell / 'checks.json').write_text(json.dumps(dict(product_check_pass=True, oracle=[], scope_violations=[])))
+        stopped = dict(cell='c-F', arm='F', owner_seconds=7, snapshot=dict(kind='anchor'), status='STOP',
+                       reason='assessment failed: [Errno 17] File exists')
+        (out / 'verdict-c-F.json').write_text(json.dumps(stopped))
+        (self.root / 'runtime.json').write_text(json.dumps(dict(output=str(out))))
+        for owner, name, value in ((rc, 'preflight', lambda runtime: (dict(account=['a']), None)),
+                                   (rc.assess, 'assess', lambda out, runtime: [dict(complete=True)]),
+                                   (rc.base, 'verdict', lambda checks, assessments: 'COMPLETE'),
+                                   (rc.base, 'unassessed', lambda assessments: []),
+                                   (rc.obligations, 'meter', lambda out: dict(satisfied=True))):
+            self.addCleanup(setattr, owner, name, getattr(owner, name))
+            setattr(owner, name, value)
+        self.assertEqual(rc.regrade(str(self.root / 'runtime.json'), 'c-F'), 0)
+        verdict = json.loads((out / 'verdict-c-F.json').read_text())
+        self.assertEqual((verdict['status'], verdict['owner_seconds'], verdict['regraded']['after'], 'reason' in verdict),
+                         ('COMPLETE', 7, 'stop-1', False))
+        self.assertEqual((json.loads((out / 'verdict-c-F.stop-1.json').read_text()), (cell / 'assessment.stop-1').is_dir()),
+                         (stopped, True))
+        (out / 'verdict-c-F.json').write_text(json.dumps(dict(stopped, reason='locator: no snapshot')))
+        with self.assertRaises(SystemExit):  # only an assessor fault is regraded; an execution or locator fault is not
+            rc.regrade(str(self.root / 'runtime.json'), 'c-F')
 
     def test_collection_and_verdict_write_failures_are_explicit(self):
         out = self.root / 'cell-out'

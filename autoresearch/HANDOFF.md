@@ -1,4 +1,4 @@
-# 0232 harness ladder — stage 1 FROZEN; next: SMOKE, then the 36 measured cells
+# 0232 harness ladder — stage 1 CLOSED (A admitted, I not); resolve being retired; next: register the installed baseline
 
 ## The owner's direction (2026-10-05)
 
@@ -14,21 +14,24 @@ Wall, input and output are judged per correctly completed task, failures include
 ## State
 
 - **0230 bundle** (`bundle/0225-steps-2-5`, head `f71a17d3`): parked, unmerged.
-  - The v7 review-fix round is kept for reference and for reusing primitives. It consists of `candidate/bundle-review-fix-v7` at `3eed3956`, plus uncommitted wave 2 in the worktrees `~/.local/share/nx01/v7-w5` and `v7-w6`.
-  - Owner decision R5 (2026-10-05) carries into `intent`: a PHASE 0 ignored inventory protects pre-run user files.
-- **0231:** superseded by 0232 and never run. Its apparatus (`dd29d664`) is the base of 0232's.
-- **0232 stage 1 is frozen** (0232 §6):
-  - Rung 1 (I) is `candidate/0232-rung1` at `5bf3dc74`. It stays unmerged until the ladder admits it.
-  - The apparatus is `experiments/0232/`.
-  - The runtime is `~/.local/share/nx01/0232-live`: `runtime.json`, the control tree (manifest digest `fcc5b8ac…`) and the model-free calibration.
-- **Product track:** the ideate loop (Astra D6) and the retirement of design-ui and the queue skill. It is being built on `candidate/ideate-*` and is verified and merged separately.
+  - The v7 review-fix round is kept for reference and for reusing primitives on remote branches: `candidate/bundle-review-fix-v7` at `3eed3956`, and the parked wave 2 as `candidate/v7-w5` (`fc7c1bbe`) and `candidate/v7-w6` (`fa7d0e82`), committed unreviewed.
+  - Owner decision R5 (2026-10-05) protects pre-run ignored user files. It applies again if a methodology layer is ever earned.
+- **0231:** superseded by 0232 and never run.
+- **0232 stage 1: CLOSED** (0232 §7). The result is `LIVE:claude=admitted:A,replaces_F:FAIL;codex=admitted:A,replaces_F:FAIL`.
+  - Native A stays the admitted rung. I is not admitted: in the claude config it fails on I0185 quality, in the codex config on wall.
+  - F completes fewer cells than A at far higher cost.
+  - The evidence is in `experiments/0232/results/` and `~/.local/share/nx01/0232-live/out`.
+  - Rung 1 stays unmerged on `candidate/0232-rung1` (`5bf3dc74`).
+- **Product:**
+  - The ideate loop and the retirement of design-ui and the queue skill are merged (PR #169).
+  - resolve is being retired as a product-scope decision (0232 §8). The owner can veto that by reverting the product PR before release.
 
 **Next:**
 
-1. **SMOKE:** the six cells in `smoke.tsv`, each run with `python3 run_cell.py <runtime.json> <name> SMOKE <arm> <config>` from `experiments/0232`. Check the SMOKE criteria in §6.
-2. **Measurement:** the 36 cells in `cells.tsv` order, one at a time.
-3. **Decision:** `decide.py` on the verdicts plus root's recorded judgments. Write RESULT, get Astra's verification, then open the PR.
-4. **Ladder:** later rungs only where the result licenses them.
+1. **Finish resolve's retirement** to the plan in `.devlyn/bundle/result-product-a1-astra.out.md` Part B. Get Astra's review and CI including native Windows, then merge.
+2. **Final whole-product check** against the original intent: intake, loop design, autonomous execution, acceptance, truthful reporting, delivery.
+3. **Next registration:** the actual installed baseline, meaning principles plus ideate, with the easy-task panel. After that, I′, licensed by I's lost final reviews and review cost.
+4. **Release preparation** (version, notes, publish) stays with the owner.
 
 ## Open user decisions and carried notes
 
