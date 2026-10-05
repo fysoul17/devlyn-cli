@@ -88,7 +88,7 @@ Run `runner` (`acceptance.py run --packet <packet>`) on the committed candidate 
 
 ## Review records
 
-Each `review_requirements` ID needs review evidence: a JSON record under `<worktree>/.devlyn/`, listed in the submission's `reviews`. The future instruction-only review launcher writes this shape:
+Each `review_requirements` ID needs review evidence: a JSON record under `<worktree>/.devlyn/`, listed in the submission's `reviews`, in this shape:
 
 ```json
 {
@@ -106,10 +106,3 @@ Each `review_requirements` ID needs review evidence: a JSON record under `<workt
 ```
 
 A record counts only when it binds this task, the candidate source and both contract digests; any other well-formed record is reported under `ignored_reviews` (a source change invalidates earlier reviews). A listed review or runner record that is unreadable or not this shape fails acceptance with its path named. The counted records' `requirements` must cover `review_requirements`. Each finding's `disposition` is `open`, `resolved` or `rejected` (`rejected` needs a `reason`); an open binding finding blocks acceptance. The loop requires no particular engine or number of reviewers; the installed methodology decides who reviews.
-
-## Replaced machinery
-
-- `terminal-claim-check` → source-bound acceptance and receipt reconciliation.
-- Spec-amend-and-restart → repair inside the same task under the installed methodology. A terminal failure is recorded; drain launches no outer cycle.
-- Genuine contract changes → explicitly authorized revised inputs under new task IDs, committed before execution. Failed checks never authorize weakening a requirement.
-- The mandatory resolve archive → the receipt custody above.

@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
-"""Strict JSON and `spec.expected.json` contract validation, without pipeline state.
-
-Shared by resolve's spec-verify gate (which executes shell `cmd` only, so it
-validates with `argv=False`) and the ideate loop's acceptance runner.
-"""
+"""Strict JSON and `spec.expected.json` contract validation for the ideate loop's package check and acceptance runner."""
 from __future__ import annotations
 
 import json
 import re
 import sys
 import unittest
-from pathlib import Path
 
 
 def reject_json_constant(token: str) -> None:
@@ -34,31 +29,13 @@ def loads_strict_json(text: str):
     )
 
 
-RISK_PROBE_TAGS = {
-    "ordering_inversion",
-    "boundary_overlap",
-    "prior_consumption",
-    "rollback_state",
-    "positive_remaining",
-    "stdout_stderr_contract",
-    "error_contract",
-    "http_error_contract",
-    "auth_signature_contract",
-    "idempotency_replay",
-    "concurrent_state_consistency",
-    "atomic_batch_state",
-    "shape_contract",
-}
 EXPECTED_TOP_LEVEL_KEYS = {
     "verification_commands",
     "forbidden_patterns",
     "required_files",
     "forbidden_files",
-    "tier_a_waivers",
-    "spec_output_files",
     "max_deps_added",
     "pure_design",
-    "required_risk_probe_requirements",
 }
 EXPECTED_VERIFICATION_COMMAND_KEYS = {
     "cmd",
@@ -76,11 +53,11 @@ def verification_timeout_sec(command: dict) -> int:
     return command.get("timeout_sec", DEFAULT_TIMEOUT_SEC)
 
 
-def validate_command(command: object, label: str, *, argv: bool = True) -> str | None:
-    """Validate one command; `argv` and `cmd` are mutually exclusive when argv is supported."""
+def validate_command(command: object, label: str) -> str | None:
+    """Validate one command; `argv` and `cmd` are mutually exclusive."""
     if not isinstance(command, dict):
         return f"{label} must be an object"
-    if argv and "argv" in command:
+    if "argv" in command:
         if "cmd" in command:
             return f"{label} requires exactly one of cmd or argv"
         value = command["argv"]
@@ -103,12 +80,12 @@ def validate_command(command: object, label: str, *, argv: bool = True) -> str |
     return None
 
 
-def validate_shape(data, *, argv: bool = True) -> str | None:
+def validate_shape(data) -> str | None:
     """Return None if `data` has a non-empty, well-formed `verification_commands`
     list; else a human-readable error string.
 
-    Each object requires exactly one of a non-empty string `cmd` or (when argv
-    is supported) a string-array `argv`; `exit_code` defaults to 0 and must be a
+    Each object requires exactly one of a non-empty string `cmd` or a
+    string-array `argv`; `exit_code` defaults to 0 and must be a
     non-bool int; `timeout_sec` defaults to DEFAULT_TIMEOUT_SEC and must be a
     non-bool int from 1 through 600; `stdout_contains` and `stdout_not_contains`
     default to empty lists of strings. Bool is rejected explicitly because
@@ -122,7 +99,7 @@ def validate_shape(data, *, argv: bool = True) -> str | None:
     if not cmds:
         return "verification_commands must contain at least one entry"
     for i, c in enumerate(cmds):
-        err = validate_command(c, f"verification_commands[{i}]", argv=argv)
+        err = validate_command(c, f"verification_commands[{i}]")
         if err:
             return err
     return None
@@ -135,7 +112,7 @@ def validate_string_list(data: object, key: str) -> str | None:
     return None
 
 
-def validate_expected_shape(data, *, argv: bool = True) -> str | None:
+def validate_expected_shape(data) -> str | None:
     """Return None if shape matches the sibling spec.expected.json schema.
 
     Keep this dependency-free: it mirrors `_shared/expected.schema.json` enough
@@ -151,12 +128,11 @@ def validate_expected_shape(data, *, argv: bool = True) -> str | None:
         if not isinstance(commands, list):
             return "verification_commands must be a list"
         if commands:
-            err = validate_shape({"verification_commands": commands}, argv=argv)
+            err = validate_shape({"verification_commands": commands})
             if err:
                 return err
-        command_keys = EXPECTED_VERIFICATION_COMMAND_KEYS - (set() if argv else {"argv"})
         for i, command in enumerate(commands):
-            unknown_command_keys = sorted(set(command) - command_keys)
+            unknown_command_keys = sorted(set(command) - EXPECTED_VERIFICATION_COMMAND_KEYS)
             if unknown_command_keys:
                 return (
                     f"verification_commands[{i}] unknown key(s): "
@@ -167,7 +143,7 @@ def validate_expected_shape(data, *, argv: bool = True) -> str | None:
                 isinstance(item, str) and item for item in contract_refs
             ):
                 return f"verification_commands[{i}].contract_refs must be a list of non-empty strings"
-    for key in ("required_files", "forbidden_files", "tier_a_waivers", "spec_output_files"):
+    for key in ("required_files", "forbidden_files"):
         err = validate_string_list(data, key)
         if err:
             return err
@@ -176,24 +152,6 @@ def validate_expected_shape(data, *, argv: bool = True) -> str | None:
         return "max_deps_added must be a non-negative integer"
     if "pure_design" in data and not isinstance(data["pure_design"], bool):
         return "pure_design must be a boolean"
-    requirements = data.get("required_risk_probe_requirements", [])
-    if not isinstance(requirements, list):
-        return "required_risk_probe_requirements must be a list"
-    for i, requirement in enumerate(requirements):
-        if not isinstance(requirement, dict):
-            return f"required_risk_probe_requirements[{i}] must be an object"
-        unknown_requirement_keys = sorted(set(requirement) - {"tag", "derived_from"})
-        if unknown_requirement_keys:
-            return (
-                f"required_risk_probe_requirements[{i}] unknown key(s): "
-                f"{', '.join(unknown_requirement_keys)}"
-            )
-        tag = requirement.get("tag")
-        if not isinstance(tag, str) or tag not in RISK_PROBE_TAGS:
-            return f"required_risk_probe_requirements[{i}].tag must be one of: {', '.join(sorted(RISK_PROBE_TAGS))}"
-        derived_from = requirement.get("derived_from")
-        if not isinstance(derived_from, str) or not derived_from:
-            return f"required_risk_probe_requirements[{i}].derived_from must be a non-empty string"
     patterns = data.get("forbidden_patterns", [])
     if not isinstance(patterns, list):
         return "forbidden_patterns must be a list"
@@ -216,19 +174,6 @@ def validate_expected_shape(data, *, argv: bool = True) -> str | None:
         if not isinstance(files, list) or not all(isinstance(item, str) and item for item in files):
             return f"forbidden_patterns[{i}].files must be a list of non-empty strings"
     return None
-
-
-def load_expected_contract(expected_path: Path, *, argv: bool = True) -> tuple[dict | None, str | None]:
-    try:
-        data = loads_strict_json(expected_path.read_text(encoding="utf-8"))
-    except ValueError as e:
-        return (None, f"{expected_path} has invalid JSON: {e}")
-    except OSError as e:
-        return (None, f"{expected_path} is unreadable: {e}")
-    err = validate_expected_shape(data, argv=argv)
-    if err:
-        return (None, f"{expected_path}: {err}")
-    return (data, None)
 
 
 def slice_diff_to_files(diff_text: str, files: list[str]) -> str:
@@ -280,12 +225,6 @@ class ContractTests(unittest.TestCase):
             ({}, "cmd must be a non-empty string"),
         ):
             self.assertIn(message, validate_expected_shape({"verification_commands": [command]}))
-
-    def test_cmd_only_consumers_keep_their_messages(self):
-        self.assertEqual(validate_shape({"verification_commands": [{"argv": ["true"]}]}, argv=False),
-                         "verification_commands[0].cmd must be a non-empty string")
-        self.assertEqual(validate_expected_shape({"verification_commands": [{"cmd": "x", "argv": ["x"]}]}, argv=False),
-                         "verification_commands[0] unknown key(s): argv")
 
     def test_command_fields(self):
         for command, message in (
