@@ -329,12 +329,7 @@ def bind_acceptance(receipt, path, supplied):
     require(isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{40,64}", sha), "acceptance must name an exact commit")
     require(gref(receipt, "rev-parse", sha+"^{commit}") == sha, "source is not a commit")
     gref(receipt, "merge-base", "--is-ancestor", receipt["baseline"], sha)
-    publish = sha
-    queue = acceptance.get("queue")
-    if queue:
-        publish = queue["commit"]
-        queue_commit(receipt, work, queue, sha)
-    require(ref_sha(receipt, "refs/heads/"+receipt["branch"]) == publish and git(work, "rev-parse", "HEAD") == publish, "unverified source delta or changed task ref")
+    require(ref_sha(receipt, "refs/heads/"+receipt["branch"]) == sha and git(work, "rev-parse", "HEAD") == sha, "unverified source delta or changed task ref")
     paths = [str(acceptance_path.relative_to(work))]
     kind = acceptance.get("kind")
     if kind == "direct":
@@ -377,10 +372,10 @@ def bind_acceptance(receipt, path, supplied):
         pipeline_acceptance(work, acceptance, files, path.parent)
     custody(work, path.parent / "custody", files)
     recovery = ref_sha(receipt, receipt["recovery_ref"])
-    require(recovery in {None, publish}, "recovery ref changed")
+    require(recovery in {None, sha}, "recovery ref changed")
     if recovery is None:
-        gref(receipt, "update-ref", receipt["recovery_ref"], publish, "0"*len(publish))
-    receipt.update(acceptance=acceptance, acceptance_digest=file_record(acceptance_path)["sha256"], source_sha=sha, publish_sha=publish, files=files)
+        gref(receipt, "update-ref", receipt["recovery_ref"], sha, "0"*len(sha))
+    receipt.update(acceptance=acceptance, acceptance_digest=file_record(acceptance_path)["sha256"], source_sha=sha, publish_sha=sha, files=files)
     if acceptance.get("verdict") == "FAILED":
         # Failed results keep custody and a recovery ref, but never become a frontier or a publishable product.
         receipt["product"] = "FAILED"
@@ -408,7 +403,7 @@ def attach(args):
     path = Path(args.receipt).absolute()
     queue = {"commit": args.commit, "file": args.file}
     with locked_receipt(path) as receipt:
-        require(receipt.get("acceptance") and not receipt["acceptance"].get("queue"), "bind the result before attaching its terminal commit")
+        require(receipt.get("acceptance"), "bind the result before attaching its terminal commit")
         if receipt.get("queue") != queue:
             require(not receipt.get("queue"), "a different terminal commit is already attached")
             work = Path(receipt["worktree"])
@@ -1268,7 +1263,7 @@ class CompletionTests(unittest.TestCase):
             with self.assertRaisesRegex(CompletionError, "cannot parse mount table"):
                 scratch_mounts()
 
-    def accept(self, pipeline=False, queue=False, spec_expected=None, spec_name="spec.md"):
+    def accept(self, pipeline=False, spec_expected=None, spec_name="spec.md"):
         if spec_expected is not None:
             (self.task / spec_name).write_text("# Fixture\nProduct contains accepted bytes.\n", encoding="utf-8")
             (self.task / "spec.expected.json").write_text(json.dumps(spec_expected), encoding="utf-8")
@@ -1304,11 +1299,6 @@ class CompletionTests(unittest.TestCase):
             (archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
             (archive / "finish-gate.summary.json").write_text(json.dumps({"mode": self.state["mode"], "exit": 0, "offenders": 0, "checked": 1}), encoding="utf-8")
             (archive / "verify-merge.summary.json").write_text(json.dumps({"verdict": "PASS"}), encoding="utf-8")
-        if queue:
-            (self.task / "queue.md").write_text("- [x] fixture\n", encoding="utf-8")
-            self.g("add", "queue.md", work=self.task)
-            self.g("commit", "-m", "terminal queue", work=self.task)
-            a["queue"] = {"commit": self.g("rev-parse", "HEAD", work=self.task), "file": "queue.md"}
         self.acceptance = evidence / "acceptance.json"
         self.acceptance.write_text(json.dumps(a), encoding="utf-8")
 
@@ -1825,8 +1815,8 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(result["status"], "LOCAL_ONLY")
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("creates", 0), 0)
 
-    def test_queue_only_and_unverified_descendant(self):
-        self.allocate(); self.accept(pipeline=True, queue=True)
+    def test_unverified_descendant_is_never_merged(self):
+        self.allocate(); self.accept(pipeline=True)
         result, _ = self.complete("--mode", "pr")
         self.assertEqual(result["status"], "PR")
         (self.task / "product").write_text("unverified", encoding="utf-8")
@@ -1948,18 +1938,6 @@ class CompletionTests(unittest.TestCase):
         result, _ = self.complete("--no-push", success=False)
         self.assertIn("fixture already has a pushed PR https://github.com/test/project/pull/1", result["reason"])
         self.assertNotIn("local_only", json.loads(self.receipt.read_text(encoding="utf-8")))
-
-    def test_queue_commit_cannot_hide_product_changes(self):
-        self.allocate(); self.accept(pipeline=True, queue=True)
-        (self.task / "product").write_text("unverified extra\n", encoding="utf-8")
-        self.g("add", "product", work=self.task)
-        self.g("commit", "--amend", "--no-edit", work=self.task)
-        a = json.loads(self.acceptance.read_text(encoding="utf-8"))
-        a["queue"]["commit"] = self.g("rev-parse", "HEAD", work=self.task)
-        self.acceptance.write_text(json.dumps(a), encoding="utf-8")
-        _, r = self.complete(success=False)
-        self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
 
     def test_pipeline_sealed_process_evidence(self):
         self.allocate(); self.accept(pipeline=True)
