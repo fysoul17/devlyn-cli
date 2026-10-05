@@ -195,7 +195,7 @@ def parse_flags(argv: list[str]) -> dict:
 
 
 def validate_shared_dir(shared_dir: pathlib.Path) -> None:
-    for name in ("spec-verify-check.py", "archive_run.py", "process-evidence.py"):
+    for name in ("spec-verify-check.py", "expected-contract.py", "archive_run.py", "process-evidence.py"):
         required = shared_dir / name
         if not required.is_file():
             block("BLOCKED:shared-dir-unresolved", str(required))

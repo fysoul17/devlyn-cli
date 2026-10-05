@@ -1,0 +1,115 @@
+# Loop protocol
+
+`drain` runs the queue serially. Each eligible task gets an owned worktree, committed inputs, one executor exchange, evidence-derived acceptance, a queue-only terminal commit and delivery. The executor works under the installed methodology (the CLAUDE.md/AGENTS.md instruction block); the loop adds no phase graph, reviewer quota, engine router or restart cycle. Formats: [package-format.md](package-format.md). Allocation, custody, delivery and cleanup follow the completion contract in `$DEVLYN_SHARED_DIR/task-completion.md`.
+
+## Commands
+
+```sh
+python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" status --repo .
+python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" drain --repo . [--local-only] [--worktree-root <dir>] -- <executor argv containing {packet}>
+```
+
+Both print one JSON object; exit 1 is `BLOCKED` with a `reason`.
+
+- `status` is read-only: reconciled counts (`pending`, `active`, `accepted`, `failed`, `blocked`, `legacy_pending`), the `next` task, `blockers`, and deliveries still pending with their resume commands.
+- `drain` ends `DRAINED` (nothing pending), `WAITING` (pending work waits on a delivery, or legacy rows need planning) or `BLOCKED` (conflict, invalid input or a recovery blocker). Progress lines `devlyn-loop: <task>: <event>` go to stderr.
+- `--local-only` (alias `--no-push`) keeps the loop local. A manifest `delivery: local-only` and any earlier local receipt of the loop keep that restriction for later drains.
+- Worktrees default to `<repo parent>/<repo name>.devlyn/<loop-id>/<task-id>`.
+
+The host supplies the executor and maps its configured engine to the argv; the loop has no model preference. Each `{packet}` in the argv is replaced by the task packet path. The executor runs with the task worktree as its working directory; its stdout goes to the driver's stderr.
+
+`<common Gitdir>/devlyn-loops/drain.lock` is held for the controller's lifetime, so a second drain from any worktree of the repository is refused. `queue.lock` is held only to read the queue, append and make terminal transitions, so `add` works during a drain.
+
+## Steps
+
+1. **Reconcile.** Read the queue, every `<common Gitdir>/devlyn-completion/*/receipt.json` and their recovery refs. A row's identity, its receipt's branch `devlyn/<loop-id>/<task-id>`, the recovery ref (equal to the receipt's `publish_sha`), the terminal commit's mark and, while active, the committed contract digests must agree. A receipt's terminal result supplements a stale `[ ]` row. Two receipts for one task, a terminal row contradicting its receipt, an interrupted allocation or an active contract changed in the repository stop selection with the conflict named. A checkbox alone never authorizes a local predecessor. Unsettled receipts (active, terminal commit unattached, or delivery not final) resume before any new allocation.
+2. **Select** the earliest pending row whose prerequisites are accepted: receipt-bound for a local loop, delivered (merged) for `auto`/`pr`. A failed or blocked prerequisite makes its dependent `[F] blocked-prerequisite:<id>` without invoking the executor; that derived mark is proven by the prerequisite's receipt and travels into later checkouts and the report. A prerequisite awaiting delivery leaves its dependent pending while independent work continues. Legacy rows wait for `add --materialize`.
+3. **Allocate** a new owned worktree on the absent branch `devlyn/<loop-id>/<task-id>` with `task-complete.py allocate`:
+   - Local: the first task uses `--local-base <base_sha>`; later tasks use `--from-receipt <latest accepted receipt of the loop>`, which starts from that receipt's exact `source_sha`, never its terminal commit, current HEAD or workspace. Every prerequisite's accepted source must be an ancestor of that frontier; divergent dependencies need a planned integration task, because the driver never merges. A failure leaves the frontier unchanged.
+   - `auto`/`pr`: the refreshed remote base, which must contain each prerequisite's merge commit. A squash merge needs no original-source ancestry.
+4. **Commit scoped inputs** on the owned branch before any executor write: `meta.md`, the task's `spec.md` and `spec.expected.json`, and `docs/specs/queue.md`. That queue is the allocation base's queue plus this task's row and, for a local loop, the receipt-proven terminal rows of the same loop, placed in queue order with every other byte unchanged. Unrelated product commits and pending rows stay out.
+5. **Exchange one packet.** Write `<receipt dir>/packet.json`, then run the executor. An executor that exits without writing its submission is recorded as `blocked-infrastructure`; one that cannot start blocks the drain.
+6. **Derive acceptance** with `acceptance.py accept`. It binds the committed contract to the packet digests; requires the candidate to be the owned branch head and HEAD, to descend from the inputs, to leave the package and queue untouched and to have a clean worktree; executes each declared command on that source, recording raw stdout/stderr and exit, timeout or spawn outcomes (passed outcomes from the runner are reused while their source, contract and streams are unchanged); evaluates the file and diff guards against the inputs; confirms the source is unchanged; checks review records; and writes `.devlyn/loop/acceptance.json`. Missing checks, missing review coverage and open binding findings cannot produce `[x]`, and acceptance weakening is not repair. This establishes command outcomes and evidence completeness, not a reviewer's semantic judgment; deliberate evidence forgery is outside the trust model.
+7. **Bind before terminal metadata.** `task-complete.py accept --receipt <receipt> --acceptance <worktree>/.devlyn/loop/acceptance.json` takes evidence custody and points the recovery ref at the source. Failed results are bound the same way; they never become a frontier or a publishable product.
+8. **Commit the terminal transition** under the queue lock: one commit whose sole parent is the bound source and whose only change is this task's row (`[x]`, or `[F] — <first reason> (receipt <id>)`), validated as the only legal transition. Then `task-complete.py attach --receipt <receipt> --commit <terminal> --file docs/specs/queue.md` records it separately from the source and moves the recovery ref to it.
+9. **Deliver** with `task-complete.py complete --receipt <receipt> --writers-stopped`, plus `--local-only` or `--mode auto|pr`. Local-only keeps source, custody and the recovery ref with no remote effect. `auto`/`pr` publish the terminal commit under the completion contract; a pending or refused delivery keeps product acceptance, resources and a resume command. Failed products are never published. The receipt's `delivery` field checkpoints the latest outcome. A local chain is never turned into stacked PRs; publishing it requires integrated acceptance of the actual publication candidate.
+10. **Recover** from durable state only:
+
+    | Interrupted | Resume |
+    |---|---|
+    | During allocation | A receipt without `allocation: owned` blocks; it is never adopted. |
+    | Inputs commit | A branch head equal to the expected inputs tree is adopted; anything else blocks. |
+    | During execution | The recorded task resumes once task-complete observes no process using its worktree, then the executor runs again; where writers cannot be observed (native Windows) the task stays blocked for inspection. Exactly-once execution is not promised. |
+    | During checks | Acceptance reruns; incomplete evidence stays unreferenced. |
+    | Accepted, before terminal commit | Only the missing transition is created. |
+    | Terminal committed, before attachment | The commit is validated and attached; nothing reruns. |
+    | Terminal committed, before delivery | Only the missing delivery effects run. |
+    | After delivery, before cleanup | Owned cleanup resumes; the product verdict is unchanged. |
+
+11. **Report** to `<common Gitdir>/devlyn-loops/<loop-id>/drain-report.md` after every drain: per task the product result and reason, receipt, evidence custody and recovery ref, allocation base, accepted (or unaccepted) source, terminal commit, delivery status, PR URL and resume command, assumptions and unresolved questions, the retained worktree and branch, and scratch cleanup. Whole-loop acceptance is reported separately: every task accepted, including the integration task's assembled-product check on the final frontier.
+
+## Executor exchange
+
+The packet (`<receipt dir>/packet.json`) carries everything a fresh executor needs:
+
+| Field | Meaning |
+|---|---|
+| `task`, `title`, `kind` | Queue identity and deliverable description. |
+| `worktree`, `branch`, `receipt`, `scratch` | Absolute owned worktree, branch, receipt and disposable build directory. |
+| `allocation_base`, `inputs_sha` | Allocation base and the committed-inputs commit. |
+| `contract`, `expected`, `meta` | `{path, sha256}` of the committed task contract, expected acceptance and meta-prompt. |
+| `requirements`, `review_requirements` | Requirement IDs and those needing review evidence. |
+| `shared_constraints` | The meta-prompt's `Constraints and exclusions`. |
+| `dependencies` | `{task, receipt, source_sha}` of each accepted prerequisite. |
+| `methodology` | `{path, sha256}` of the installed instruction files at the inputs commit. |
+| `delivery` | `local-only`, `auto` or `pr`. |
+| `evidence_dir`, `runner` | Where loop evidence lives (`<worktree>/.devlyn/loop`, ignored by Git) and the runner argv. |
+| `submission`, `obligations` | Where to write the submission, and the completion obligations. |
+
+Run `runner` (`acceptance.py run --packet <packet>`) on the committed candidate before review. It prints `{"result": <path>, "passed": ..., "reasons": [...]}`; listing that result lets drain reuse its passed outcomes. Then write the submission:
+
+```json
+{
+  "schema_version": 1,
+  "task": "<identity>",
+  "source_sha": "<candidate commit on the owned branch>",
+  "runner_results": ["<worktree>/.devlyn/loop/runs/<n>/result.json"],
+  "reviews": ["<worktree>/.devlyn/reviews/<name>.json"],
+  "findings": [{"id": "F1", "disposition": "resolved", "evidence": "<what changed>"}],
+  "cleanup": "<residue removed, output retained>",
+  "handoff": "<state a successor needs>",
+  "assumptions": ["<each assumption, recorded once>"],
+  "blockers": [],
+  "summary": "<informational only>"
+}
+```
+
+`schema_version`, `task` and `source_sha` are required. A blocker `{"kind": "failed" | "needs-review" | "blocked-infrastructure", "detail": "<concrete question or cause>"}` records `[F]` with that reason and runs no checks; material ambiguity becomes `needs-review`, never a weakened acceptance. The summary is never evidence.
+
+## Review records
+
+Each `review_requirements` ID needs review evidence: a JSON record under `<worktree>/.devlyn/`, listed in the submission's `reviews`. The future instruction-only review launcher writes this shape:
+
+```json
+{
+  "schema_version": 1,
+  "kind": "devlyn-review",
+  "task": "<identity>",
+  "engine": "<engine>",
+  "model": "<exact model id>",
+  "source_sha": "<reviewed commit>",
+  "contract_sha256": "<packet.contract.sha256>",
+  "expected_sha256": "<packet.expected.sha256>",
+  "requirements": ["R3"],
+  "findings": [{"id": "F1", "binding": true, "disposition": "resolved", "requirement": "R3", "summary": "<finding>"}]
+}
+```
+
+A record counts only when it binds this task, the candidate source and both contract digests; any other record is reported under `ignored_reviews` (a source change invalidates earlier reviews). The counted records' `requirements` must cover `review_requirements`. Each finding's `disposition` is `open`, `resolved` or `rejected` (`rejected` needs a `reason`); an open binding finding blocks acceptance. The loop requires no particular engine or number of reviewers; the installed methodology decides who reviews.
+
+## Replaced machinery
+
+- `terminal-claim-check` → source-bound acceptance and receipt reconciliation.
+- Spec-amend-and-restart → repair inside the same task under the installed methodology. A terminal failure is recorded; drain launches no outer cycle.
+- Genuine contract changes → explicitly authorized revised inputs under new task IDs, committed before execution. Failed checks never authorize weakening a requirement.
+- The mandatory resolve archive → the receipt custody above.

@@ -101,25 +101,26 @@ import tempfile
 from pathlib import Path
 
 
-def reject_json_constant(token: str) -> None:
-    raise ValueError(f"invalid JSON numeric constant: {token}")
+_CONTRACT = runpy.run_path(str(Path(__file__).with_name("expected-contract.py")))
+loads_strict_json = _CONTRACT["loads_strict_json"]
+RISK_PROBE_TAGS = _CONTRACT["RISK_PROBE_TAGS"]
+DEFAULT_TIMEOUT_SEC = _CONTRACT["DEFAULT_TIMEOUT_SEC"]
+verification_timeout_sec = _CONTRACT["verification_timeout_sec"]
+validate_string_list = _CONTRACT["validate_string_list"]
+slice_diff_to_files = _CONTRACT["slice_diff_to_files"]
 
 
-def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError(f"duplicate JSON key: {key}")
-        result[key] = value
-    return result
+# This gate executes shell `cmd` only; argv commands belong to the ideate loop runner.
+def validate_shape(data) -> str | None:
+    return _CONTRACT["validate_shape"](data, argv=False)
 
 
-def loads_strict_json(text: str):
-    return json.loads(
-        text,
-        parse_constant=reject_json_constant,
-        object_pairs_hook=reject_duplicate_keys,
-    )
+def validate_expected_shape(data) -> str | None:
+    return _CONTRACT["validate_expected_shape"](data, argv=False)
+
+
+def load_expected_contract(expected_path: Path) -> tuple[dict | None, str | None]:
+    return _CONTRACT["load_expected_contract"](expected_path, argv=False)
 
 
 def output_phase() -> str:
@@ -251,21 +252,6 @@ LOCAL_URL_HOSTS = {
     '[::1]',
     '::1',
 }
-RISK_PROBE_TAGS = {
-    "ordering_inversion",
-    "boundary_overlap",
-    "prior_consumption",
-    "rollback_state",
-    "positive_remaining",
-    "stdout_stderr_contract",
-    "error_contract",
-    "http_error_contract",
-    "auth_signature_contract",
-    "idempotency_replay",
-    "concurrent_state_consistency",
-    "atomic_batch_state",
-    "shape_contract",
-}
 RISK_PROBE_REQUIRED_EVIDENCE = {
     "ordering_inversion": {
         "input_order_would_choose_wrong_winner",
@@ -323,31 +309,7 @@ SHAPE_CONTRACT_REQUIRED_EVIDENCE = {
     "asserts_visible_output_key_names",
     "asserts_no_unexpected_output_keys",
 }
-EXPECTED_TOP_LEVEL_KEYS = {
-    "verification_commands",
-    "forbidden_patterns",
-    "required_files",
-    "forbidden_files",
-    "tier_a_waivers",
-    "spec_output_files",
-    "max_deps_added",
-    "pure_design",
-    "required_risk_probe_requirements",
-}
-EXPECTED_VERIFICATION_COMMAND_KEYS = {
-    "cmd",
-    "exit_code",
-    "timeout_sec",
-    "stdout_contains",
-    "stdout_not_contains",
-    "contract_refs",
-}
-DEFAULT_TIMEOUT_SEC = 60
 SPEC_COMPLEXITY_VALUES = {"trivial", "medium", "high", "large"}
-
-
-def verification_timeout_sec(command: dict) -> int:
-    return command.get("timeout_sec", DEFAULT_TIMEOUT_SEC)
 
 
 def extract_verification_block(text: str) -> tuple[bool, str | None]:
@@ -547,139 +509,6 @@ def risk_probe_integrity_error(state: dict, devlyn_dir: Path) -> str | None:
     expected = expected.strip()
     if expected != actual:
         return f"pipeline.state.json risk_probes_digest mismatch: expected {expected}, actual {actual}"
-    return None
-
-
-def validate_shape(data) -> str | None:
-    """Return None if shape matches the canonical verification_commands
-    schema; else a human-readable error string.
-
-    Schema (iter-0019.8): top-level object with a non-empty
-    `verification_commands` list of objects. Each object requires a
-    non-empty string `cmd`; `exit_code` defaults to 0 and must be a
-    non-bool int; `timeout_sec` defaults to DEFAULT_TIMEOUT_SEC and must be a
-    non-bool int from 1 through 600; `stdout_contains` and
-    `stdout_not_contains` default to empty list and must be lists of strings.
-    Bool is rejected explicitly because Python's `bool` subclasses `int` —
-    `isinstance(True, int) is True` would otherwise let numeric fields accept
-    true.
-    """
-    if not isinstance(data, dict):
-        return "top-level must be a JSON object"
-    cmds = data.get("verification_commands")
-    if not isinstance(cmds, list):
-        return "verification_commands must be a list"
-    if not cmds:
-        return "verification_commands must contain at least one entry"
-    for i, c in enumerate(cmds):
-        if not isinstance(c, dict):
-            return f"verification_commands[{i}] must be an object"
-        cmd = c.get("cmd")
-        if not isinstance(cmd, str) or not cmd.strip():
-            return f"verification_commands[{i}].cmd must be a non-empty string"
-        ec = c.get("exit_code", 0)
-        if isinstance(ec, bool) or not isinstance(ec, int):
-            return f"verification_commands[{i}].exit_code must be int (not bool)"
-        timeout_sec = c.get("timeout_sec", DEFAULT_TIMEOUT_SEC)
-        if (
-            isinstance(timeout_sec, bool)
-            or not isinstance(timeout_sec, int)
-            or not 1 <= timeout_sec <= 600
-        ):
-            return f"verification_commands[{i}].timeout_sec must be int from 1 to 600 (not bool)"
-        for k in ("stdout_contains", "stdout_not_contains"):
-            v = c.get(k, [])
-            if not isinstance(v, list) or not all(isinstance(s, str) for s in v):
-                return f"verification_commands[{i}].{k} must be a list of strings"
-    return None
-
-
-def validate_string_list(data: object, key: str) -> str | None:
-    value = data.get(key, []) if isinstance(data, dict) else None
-    if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
-        return f"{key} must be a list of non-empty strings"
-    return None
-
-
-def validate_expected_shape(data) -> str | None:
-    """Return None if shape matches the sibling spec.expected.json schema.
-
-    Keep this dependency-free: it mirrors `_shared/expected.schema.json` enough
-    to catch malformed ideate output before /devlyn-resolve consumes it.
-    """
-    if not isinstance(data, dict):
-        return "top-level must be a JSON object"
-    unknown = sorted(set(data) - EXPECTED_TOP_LEVEL_KEYS)
-    if unknown:
-        return f"unknown top-level key(s): {', '.join(unknown)}"
-    if "verification_commands" in data:
-        commands = data["verification_commands"]
-        if not isinstance(commands, list):
-            return "verification_commands must be a list"
-        if commands:
-            err = validate_shape({"verification_commands": commands})
-            if err:
-                return err
-        for i, command in enumerate(commands):
-            unknown_command_keys = sorted(set(command) - EXPECTED_VERIFICATION_COMMAND_KEYS)
-            if unknown_command_keys:
-                return (
-                    f"verification_commands[{i}] unknown key(s): "
-                    f"{', '.join(unknown_command_keys)}"
-                )
-            contract_refs = command.get("contract_refs", [])
-            if not isinstance(contract_refs, list) or not all(
-                isinstance(item, str) and item for item in contract_refs
-            ):
-                return f"verification_commands[{i}].contract_refs must be a list of non-empty strings"
-    for key in ("required_files", "forbidden_files", "tier_a_waivers", "spec_output_files"):
-        err = validate_string_list(data, key)
-        if err:
-            return err
-    max_deps = data.get("max_deps_added", 0)
-    if isinstance(max_deps, bool) or not isinstance(max_deps, int) or max_deps < 0:
-        return "max_deps_added must be a non-negative integer"
-    if "pure_design" in data and not isinstance(data["pure_design"], bool):
-        return "pure_design must be a boolean"
-    requirements = data.get("required_risk_probe_requirements", [])
-    if not isinstance(requirements, list):
-        return "required_risk_probe_requirements must be a list"
-    for i, requirement in enumerate(requirements):
-        if not isinstance(requirement, dict):
-            return f"required_risk_probe_requirements[{i}] must be an object"
-        unknown_requirement_keys = sorted(set(requirement) - {"tag", "derived_from"})
-        if unknown_requirement_keys:
-            return (
-                f"required_risk_probe_requirements[{i}] unknown key(s): "
-                f"{', '.join(unknown_requirement_keys)}"
-            )
-        tag = requirement.get("tag")
-        if not isinstance(tag, str) or tag not in RISK_PROBE_TAGS:
-            return f"required_risk_probe_requirements[{i}].tag must be one of: {', '.join(sorted(RISK_PROBE_TAGS))}"
-        derived_from = requirement.get("derived_from")
-        if not isinstance(derived_from, str) or not derived_from:
-            return f"required_risk_probe_requirements[{i}].derived_from must be a non-empty string"
-    patterns = data.get("forbidden_patterns", [])
-    if not isinstance(patterns, list):
-        return "forbidden_patterns must be a list"
-    for i, pattern in enumerate(patterns):
-        if not isinstance(pattern, dict):
-            return f"forbidden_patterns[{i}] must be an object"
-        unknown_pattern_keys = sorted(set(pattern) - {"pattern", "description", "files", "severity"})
-        if unknown_pattern_keys:
-            return (
-                f"forbidden_patterns[{i}] unknown key(s): "
-                f"{', '.join(unknown_pattern_keys)}"
-            )
-        for key in ("pattern", "description", "severity"):
-            value = pattern.get(key)
-            if not isinstance(value, str) or not value:
-                return f"forbidden_patterns[{i}].{key} must be a non-empty string"
-        if pattern["severity"] not in {"disqualifier", "warning"}:
-            return f"forbidden_patterns[{i}].severity must be disqualifier or warning"
-        files = pattern.get("files", [])
-        if not isinstance(files, list) or not all(isinstance(item, str) and item for item in files):
-            return f"forbidden_patterns[{i}].files must be a list of non-empty strings"
     return None
 
 
@@ -1010,19 +839,6 @@ def source_integrity_error(src_type: str | None, state: dict, source_md: Path | 
     return None
 
 
-def load_expected_contract(expected_path: Path) -> tuple[dict | None, str | None]:
-    try:
-        data = loads_strict_json(expected_path.read_text(encoding="utf-8"))
-    except ValueError as e:
-        return (None, f"{expected_path} has invalid JSON: {e}")
-    except OSError as e:
-        return (None, f"{expected_path} is unreadable: {e}")
-    err = validate_expected_shape(data)
-    if err:
-        return (None, f"{expected_path}: {err}")
-    return (data, None)
-
-
 def stage_from_source(md: Path, devlyn_dir: Path) -> tuple[bool, bool, str | None]:
     """Materialize .devlyn/spec-verify.json from the json block in `md`.
 
@@ -1143,19 +959,6 @@ def write_risk_probe_integrity_finding(devlyn_dir: Path, error: str) -> None:
         fh.write(json.dumps(finding) + "\n")
 
 
-def slice_diff_to_files(diff_text: str, files: list[str]) -> str:
-    if not files:
-        return diff_text
-    out: list[str] = []
-    keep = False
-    for line in diff_text.splitlines(keepends=True):
-        if line.startswith("diff --git "):
-            keep = any(path in line for path in files)
-        if keep:
-            out.append(line)
-    return "".join(out)
-
-
 def diff_text_for_expected(work: Path, devlyn_dir: Path, state: dict) -> tuple[str, str | None]:
     external_diff = devlyn_dir / "external-diff.patch"
     if external_diff.is_file():
@@ -1182,21 +985,7 @@ def count_deps_added(work: Path, state: dict) -> int:
     proc = subprocess.run(cmd, cwd=str(work), capture_output=True, text=True, encoding="utf-8")
     if proc.returncode != 0:
         return 0
-    in_deps = False
-    count = 0
-    for line in (proc.stdout or "").splitlines():
-        if line.startswith(("diff ", "index ", "---", "+++", "@@")):
-            continue
-        marker = line[:1]
-        content = line[1:] if marker in {"+", "-", " "} else line
-        if '"dependencies"' in content or '"devDependencies"' in content:
-            in_deps = True
-        elif content.strip().startswith("}"):
-            in_deps = False
-        elif in_deps and marker == "+":
-            if re.search(r'"[^"]+"\s*:\s*"[^"]+"', content):
-                count += 1
-    return count
+    return _CONTRACT["count_deps_in_diff"](proc.stdout or "")
 
 
 def changed_files(work: Path, state: dict, devlyn_dir: Path) -> tuple[list[str], str | None]:

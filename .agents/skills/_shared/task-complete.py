@@ -2,7 +2,7 @@
 """Outer-owner delivery and recoverable cleanup (task-completion spec, R1–7).
 
 No phase/state writer, staging, scheduler, or implicit adoption. See
-devlyn-resolve/references/task-completion.md for the owner acceptance contract.
+_shared/task-completion.md for the owner acceptance contract.
 """
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ def shared(name):
 
 def read_json(path):
     require(stat.S_ISREG(path.lstat().st_mode), f"JSON must be a nonsymlink regular file: {path}")
-    return shared("archive_run")["loads_strict_json"](path.read_text(encoding="utf-8"))
+    return shared("expected-contract")["loads_strict_json"](path.read_text(encoding="utf-8"))
 
 
 def atomic_json(path, value):
@@ -190,7 +190,10 @@ def allocate(args):
     receipt["remote_url"] = remote_url(receipt)
     require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
     require(not ref_sha(receipt, "refs/heads/"+args.branch), "existing branch cannot be adopted")
-    receipt["baseline"] = remote_base(receipt)
+    local = local_baseline(receipt, args)
+    receipt["baseline"] = local or remote_base(receipt)
+    if local:
+        receipt["local_only"] = True
     target = Path(args.worktree).absolute()
     require(target == target.resolve(), "worktree path must not traverse symlinks")
     require(not target.exists() and all(not target.is_relative_to(p) and not p.is_relative_to(target) for p in map(Path, registrations(receipt))), "linked worktree must be an absent path disjoint from every registered worktree")
@@ -213,7 +216,24 @@ def allocate(args):
     receipt["allocation"] = "owned"
     atomic_json(path, receipt)
     return {"status": "ALLOCATED", "receipt": str(path), "worktree": str(target), "scratch": str(scratch),
-            "reconciled": reconcile(common, path, work)}
+            "reconciled": [] if local else reconcile(common, path, work)}
+
+
+def local_baseline(receipt, args):
+    """A local loop starts from its recorded base commit or a receipt-bound accepted predecessor, never a fetch."""
+    require(not (args.local_base and args.from_receipt), "use --local-base or --from-receipt, not both")
+    if args.from_receipt:
+        with locked_receipt(Path(args.from_receipt).absolute(), blocking=False) as predecessor:
+            require(predecessor["common_gitdir"] == receipt["common_gitdir"], "predecessor receipt belongs to another repository")
+            require(predecessor.get("acceptance") and predecessor.get("product") != "FAILED", "predecessor has no accepted result")
+            require(ref_sha(predecessor, predecessor["recovery_ref"]) == predecessor["publish_sha"], "predecessor recovery ref changed")
+            gref(predecessor, "merge-base", "--is-ancestor", predecessor["source_sha"], predecessor["publish_sha"])
+            receipt["allocated_from"] = {"receipt": predecessor["id"], "source_sha": predecessor["source_sha"]}
+            return predecessor["source_sha"]
+    if args.local_base:
+        require(re.fullmatch(r"[0-9a-f]{40,64}", args.local_base) and ref_sha(receipt, args.local_base+"^{commit}") == args.local_base,
+                "--local-base must name an exact local commit")
+    return args.local_base
 
 
 def pipeline_acceptance(work, acceptance, files, directory):
@@ -308,9 +328,7 @@ def bind_acceptance(receipt, path, supplied):
     queue = acceptance.get("queue")
     if queue:
         publish = queue["commit"]
-        safe_path(work, queue["file"])
-        require(gref(receipt, "rev-list", "--parents", "-n", "1", publish).split() == [publish, sha], "queue commit must be directly atop verified source with one parent")
-        require(gref(receipt, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", publish).strip("\0") == queue["file"], "queue commit must change exactly the declared queue file")
+        queue_commit(receipt, work, queue, sha)
     require(ref_sha(receipt, "refs/heads/"+receipt["branch"]) == publish and git(work, "rev-parse", "HEAD") == publish, "unverified source delta or changed task ref")
     paths = [str(acceptance_path.relative_to(work))]
     kind = acceptance.get("kind")
@@ -342,8 +360,13 @@ def bind_acceptance(receipt, path, supplied):
                 expected = str(source_path.with_name("spec.expected.json") if key == "spec_path" else source_path.with_suffix(".expected.json"))
                 if safe_path(work, expected).exists():
                     paths.append(expected)
+    elif kind == "loop":
+        require(acceptance.get("verdict") in {"ACCEPTED", "FAILED"}, "loop result verdict must be ACCEPTED or FAILED")
+        evidence = acceptance.get("evidence")
+        require(isinstance(evidence, list) and all(isinstance(p, str) for p in evidence), "loop result must list its evidence files")
+        paths.extend(evidence)
     else:
-        raise CompletionError("acceptance kind must be direct|pipeline")
+        raise CompletionError("acceptance kind must be direct|pipeline|loop")
     files = snapshot_files(work, paths)
     if kind == "pipeline":
         pipeline_acceptance(work, acceptance, files, path.parent)
@@ -353,7 +376,47 @@ def bind_acceptance(receipt, path, supplied):
     if recovery is None:
         gref(receipt, "update-ref", receipt["recovery_ref"], publish, "0"*len(publish))
     receipt.update(acceptance=acceptance, acceptance_digest=file_record(acceptance_path)["sha256"], source_sha=sha, publish_sha=publish, files=files)
+    if acceptance.get("verdict") == "FAILED":
+        # Failed results keep custody and a recovery ref, but never become a frontier or a publishable product.
+        receipt["product"] = "FAILED"
     atomic_json(path, receipt)
+
+
+def queue_commit(receipt, work, queue, source):
+    safe_path(work, queue["file"])
+    commit = queue["commit"]
+    require(gref(receipt, "rev-list", "--parents", "-n", "1", commit).split() == [commit, source], "queue commit must be directly atop verified source with one parent")
+    require(gref(receipt, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", commit).strip("\0") == queue["file"], "queue commit must change exactly the declared queue file")
+
+
+def accept(args):
+    """Bind a result's source and evidence custody before terminal metadata or any delivery decision."""
+    path = Path(args.receipt).absolute()
+    with locked_receipt(path) as receipt:
+        bind_acceptance(receipt, path, args.acceptance)
+        return {"status": "FAILED" if receipt.get("product") == "FAILED" else "ACCEPTED", "receipt": str(path),
+                "source_sha": receipt["source_sha"], "recovery_ref": receipt["recovery_ref"]}
+
+
+def attach(args):
+    """Attach the queue-only terminal commit to an already bound result; the recovery ref moves with it."""
+    path = Path(args.receipt).absolute()
+    queue = {"commit": args.commit, "file": args.file}
+    with locked_receipt(path) as receipt:
+        require(receipt.get("acceptance") and not receipt["acceptance"].get("queue"), "bind the result before attaching its terminal commit")
+        if receipt.get("queue") != queue:
+            require(not receipt.get("queue"), "a different terminal commit is already attached")
+            work = Path(receipt["worktree"])
+            queue_commit(receipt, work, queue, receipt["source_sha"])
+            require(ref_sha(receipt, "refs/heads/"+receipt["branch"]) == args.commit and git(work, "rev-parse", "HEAD") == args.commit,
+                    "task ref and HEAD must be the terminal commit")
+            recovery = ref_sha(receipt, receipt["recovery_ref"])
+            require(recovery in {receipt["source_sha"], args.commit}, "recovery ref changed")
+            if recovery != args.commit:
+                gref(receipt, "update-ref", receipt["recovery_ref"], args.commit, receipt["source_sha"])
+            receipt.update(queue=queue, publish_sha=args.commit)
+            atomic_json(path, receipt)
+        return {"status": "ATTACHED", "receipt": str(path), "source_sha": receipt["source_sha"], "terminal_sha": args.commit}
 
 
 PR_FIELDS = "number,url,headRefName,baseRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,state,mergedAt,mergeCommit,autoMergeRequest"
@@ -600,6 +663,9 @@ def locked_receipt(path, *, blocking=True):
 
 
 def completion_result(receipt, path, status):
+    if receipt.get("delivery") != status:
+        receipt["delivery"] = status  # Phase-independent checkpoint: the latest delivery outcome.
+        atomic_json(path, receipt)
     released = receipt.get("writers_released", False)
     resume = shlex.join([sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)] +
                         (["--writers-stopped"] if released else []))
@@ -666,9 +732,16 @@ def complete(args):
             atomic_json(path, receipt)
         def result(status):
             return completion_result(receipt, path, status)
+        if receipt.get("product") == "FAILED":
+            return result("FAILED")
         if args.local_only or receipt.get("local_only"):
             receipt["local_only"] = True
             atomic_json(path, receipt)
+            if args.acceptance or receipt.get("acceptance"):
+                # Persist acceptance custody before the local-only return.
+                if not receipt.get("acceptance"):
+                    inspect_workspace(dict(receipt, publish_sha=ref_sha(receipt, "refs/heads/"+receipt["branch"])))
+                bind_acceptance(receipt, path, args.acceptance)
             return result("LOCAL_ONLY")
         mode = policy(receipt, args.mode or receipt.get("mode_override"))
         if args.mode:
@@ -751,6 +824,15 @@ def main():
         allocation.add_argument("--"+name, required=True)
     allocation.add_argument("--remote", default="origin")
     allocation.add_argument("--worktree", required=True)
+    allocation.add_argument("--local-base")
+    allocation.add_argument("--from-receipt")
+    binding = actions.add_parser("accept")
+    binding.add_argument("--receipt", required=True)
+    binding.add_argument("--acceptance", required=True)
+    attachment = actions.add_parser("attach")
+    attachment.add_argument("--receipt", required=True)
+    attachment.add_argument("--commit", required=True)
+    attachment.add_argument("--file", default="docs/specs/queue.md")
     completion = actions.add_parser("complete")
     completion.add_argument("--receipt", required=True)
     completion.add_argument("--acceptance")
@@ -764,16 +846,17 @@ def main():
     if args.self_test:
         return self_test()
     if args.action is None:
-        parser.error("allocate, complete or clean-scratch is required")
+        parser.error("allocate, accept, attach, complete or clean-scratch is required")
     try:
-        result = (allocate(args) if args.action == "allocate" else
-                  clean_scratch_command(args) if args.action == "clean-scratch" else complete(args))
+        result = {"allocate": allocate, "accept": accept, "attach": attach,
+                  "clean-scratch": clean_scratch_command, "complete": complete}[args.action](args)
         print(json.dumps(result, sort_keys=True))
         return 0
     except (CompletionError, OSError, ValueError, KeyError, TypeError, IndexError, SystemExit) as exc:
         result = {"status": "BLOCKED", "reason": str(exc)}
-        if args.action in {"complete", "clean-scratch"}:
+        if args.action != "allocate":
             result["receipt"] = str(Path(args.receipt).absolute())
+        if args.action in {"complete", "clean-scratch"}:
             result["resume"] = shlex.join([sys.executable, str(Path(__file__).resolve()), args.action, "--receipt", result["receipt"], *(["--writers-stopped"] if args.writers_stopped else [])])
         print(json.dumps(result, sort_keys=True))
         return 1
@@ -1953,6 +2036,117 @@ class CompletionTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("implement process evidence", json.loads(r.stdout)["reason"])
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
+
+    def allocate_local(self, name, **source):
+        args = ["allocate", "--repo", self.work, "--task", name, "--branch", "task/"+name, "--repository", "test/project",
+                "--base", "main", "--worktree", self.root / name]
+        for key, value in source.items():
+            args += ["--" + key.replace("_", "-"), value]
+        result, _ = self.cli(*args)
+        self.receipt, self.task = Path(result["receipt"]), Path(result["worktree"])
+        return result
+
+    def loop_result(self, verdict="ACCEPTED"):
+        (self.task / "product").write_text(verdict.lower() + "\n", encoding="utf-8")
+        self.g("add", "product", work=self.task)
+        self.g("commit", "-m", "loop source", work=self.task)
+        self.sha = self.g("rev-parse", "HEAD", work=self.task)
+        stream = self.task / ".devlyn/loop/runs/1/cmd-0.stdout"
+        stream.parent.mkdir(parents=True, exist_ok=True)
+        stream.write_text("check output\n", encoding="utf-8")
+        self.acceptance = self.task / ".devlyn/loop/acceptance.json"
+        self.acceptance.write_text(json.dumps({"kind": "loop", "task": json.loads(self.receipt.read_text())["task"], "source_sha": self.sha,
+                                               "verdict": verdict, "evidence": [".devlyn/loop/runs/1/cmd-0.stdout"]}), encoding="utf-8")
+        return self.cli("accept", "--receipt", self.receipt, "--acceptance", self.acceptance)[0]
+
+    def terminal(self):
+        (self.task / "queue.md").write_text("- [x] fixture\n", encoding="utf-8")
+        self.g("add", "queue.md", work=self.task)
+        self.g("commit", "-m", "terminal", work=self.task)
+        commit = self.g("rev-parse", "HEAD", work=self.task)
+        return commit, self.cli("attach", "--receipt", self.receipt, "--commit", commit, "--file", "queue.md")[0]
+
+    def test_local_chain_starts_from_accepted_source_not_terminal_commit(self):
+        base = self.g("rev-parse", "main")
+        other = self.root / "advance"  # The remote advances; a local allocation never fetches it.
+        self.run_cmd(["git", "clone", str(self.bare), str(other)])
+        (other / "product").write_text("remote advance\n", encoding="utf-8")
+        self.g("commit", "-am", "remote advance", work=other)
+        self.g("push", "origin", "main", work=other)
+        self.configure(pushs=0)
+        result = self.allocate_local("first", local_base=base)
+        receipt = json.loads(self.receipt.read_text())
+        self.assertEqual((result["reconciled"], receipt["baseline"], receipt["local_only"]), ([], base, True))
+        self.assertNotEqual(self.run_cmd(["git", "-C", str(self.work), "rev-parse", "--verify", "--quiet", "refs/remotes/origin/main"], success=False).returncode, 0)
+        self.assertEqual(self.loop_result()["status"], "ACCEPTED")
+        source = self.sha
+        terminal, _ = self.terminal()
+        receipt = json.loads(self.receipt.read_text())
+        self.assertEqual((receipt["source_sha"], receipt["publish_sha"], self.g("rev-parse", receipt["recovery_ref"])), (source, terminal, terminal))
+        first = self.receipt
+        self.allocate_local("second", from_receipt=first)
+        second = json.loads(self.receipt.read_text())
+        self.assertEqual((second["baseline"], second["allocated_from"]["source_sha"], self.g("rev-parse", "HEAD", work=self.task)), (source, source, source))
+        self.receipt = first
+        result, _ = self.complete("--mode", "auto", acceptance=False)
+        self.assertEqual(result["status"], "LOCAL_ONLY")
+        self.assertEqual(json.loads(self.data.read_text()).get("pushs", 0), 0)
+
+    def test_local_allocation_refuses_unaccepted_failed_or_inexact_sources(self):
+        self.allocate_local("pending", local_base=self.g("rev-parse", "main"))
+        predecessor = self.receipt
+        args = ["allocate", "--repo", self.work, "--task", "next", "--branch", "task/next", "--repository", "test/project",
+                "--base", "main", "--worktree", self.root / "next"]
+        for state in ("pending", "failed"):
+            if state == "failed":
+                self.assertEqual(self.loop_result("FAILED")["status"], "FAILED")
+            result, _ = self.cli(*args, "--from-receipt", predecessor, success=False)
+            self.assertIn("predecessor has no accepted result", result["reason"])
+        result, _ = self.cli(*args, "--local-base", "main", success=False)
+        self.assertIn("exact local commit", result["reason"])
+        self.assertEqual(self.g("branch", "--list", "task/next"), "")
+        self.assertFalse((self.root / "next").exists())
+
+    def test_failed_loop_result_keeps_custody_and_recovery_but_never_publishes(self):
+        self.allocate()
+        self.assertEqual(self.loop_result("FAILED")["status"], "FAILED")
+        receipt = json.loads(self.receipt.read_text())
+        self.assertEqual((receipt["product"], self.g("rev-parse", receipt["recovery_ref"])), ("FAILED", self.sha))
+        self.assertTrue((self.receipt.parent / "custody/.devlyn/loop/runs/1/cmd-0.stdout").is_file())
+        terminal, _ = self.terminal()
+        self.assertEqual(self.g("rev-parse", receipt["recovery_ref"]), terminal)
+        result, _ = self.complete("--mode", "auto", acceptance=False)
+        self.assertEqual(result["status"], "FAILED")
+        d = json.loads(self.data.read_text())
+        self.assertEqual((d.get("pushs", 0), d.get("creates", 0)), (0, 0))
+
+    def test_local_only_completion_binds_acceptance_custody(self):
+        self.allocate(); self.accept()
+        result, _ = self.complete("--local-only")
+        self.assertEqual(result["status"], "LOCAL_ONLY")
+        receipt = json.loads(self.receipt.read_text())
+        self.assertEqual((receipt["source_sha"], self.g("rev-parse", receipt["recovery_ref"])), (self.sha, self.sha))
+        verify_files(self.receipt.parent / "custody", receipt["files"])
+
+    def test_attach_binds_only_a_queue_only_commit_and_publishes_it_with_the_source(self):
+        self.allocate(); self.loop_result()
+        source = self.sha
+        (self.task / "product").write_text("unaccepted\n", encoding="utf-8")
+        (self.task / "queue.md").write_text("- [x] fixture\n", encoding="utf-8")
+        self.g("add", "product", "queue.md", work=self.task)
+        self.g("commit", "-m", "mixed", work=self.task)
+        result, _ = self.cli("attach", "--receipt", self.receipt, "--commit", self.g("rev-parse", "HEAD", work=self.task),
+                             "--file", "queue.md", success=False)
+        self.assertIn("exactly the declared queue file", result["reason"])
+        self.g("reset", "--hard", source, work=self.task)
+        terminal, attached = self.terminal()
+        self.assertEqual(attached["status"], "ATTACHED")
+        self.assertEqual(self.cli("attach", "--receipt", self.receipt, "--commit", terminal, "--file", "queue.md")[0]["status"], "ATTACHED")
+        receipt = json.loads(self.receipt.read_text())
+        self.assertEqual((receipt["source_sha"], receipt["publish_sha"]), (source, terminal))
+        result, _ = self.complete("--mode", "pr", acceptance=False)
+        self.assertEqual(result["status"], "PR")
+        self.assertEqual(json.loads(self.data.read_text())["pr"]["headRefOid"], terminal)
 
 
 if __name__ == "__main__":

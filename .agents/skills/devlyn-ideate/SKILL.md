@@ -1,33 +1,21 @@
 ---
 name: devlyn-ideate
-description: Extract a verifiable spec from a user's idea by driving the conversation with focused questions. Output is a single-feature `spec.md` + `spec.expected.json` that `/devlyn-resolve --spec` consumes directly. Use when the user has an idea but not a spec, or wants AI to elicit the missing engineering context. Modes — default (single spec, AI drives Q&A), `--quick` (assume-and-confirm from one-line goal), `--from-spec <path>` (normalize external spec), `--project` (plan.md index + N specs). Optional in the pipeline — `/devlyn-resolve` works standalone via free-form mode for users who skip ideate.
+description: Loop designer and intent queue. Turns an intent or a document into a validated loop package (a meta-prompt plus self-contained task contracts), appends its tasks to docs/specs/queue.md, reports queue status, and drains the queue serially with evidence-derived acceptance, recovery and delivery. Operations — plan, add, status, drain; a bare intent is planned and, when the request authorizes implementation, continues through add and drain; no arguments shows status. Use when the user wants an idea, goal or document planned into tasks, wants to stack work ("queue this", "큐에 넣어줘"), asks what is queued, or wants unattended execution ("drain the queue", "큐 드레인 시작", "밤새 돌려줘").
 ---
 
-Spec-elicitation surface for users who have ideas but not engineering specifications. AI drives the conversation with focused questions until a structurally-valid, verifiable spec exists. Output consumed directly by `/devlyn-resolve --spec`.
+Ideate owns planning and durable serial execution. Each task runs under the installed methodology, the CLAUDE.md/AGENTS.md instruction block; ideate adds no phase graph, reviewer quota, engine router or restart cycle.
 
-<elicit_config>
+<ideate_args>
 $ARGUMENTS
-</elicit_config>
-
-<orchestrator_context>
-This skill is OPTIONAL. `/devlyn-resolve` is standalone-capable: free-form mode handles trivial/medium tasks without a spec, `--spec` mode accepts handwritten specs from any source. Use ideate when the user wants AI to do the elicitation work.
-</orchestrator_context>
-
-<elicitation_contract>
-The user does not know context engineering. They will under-specify and over-assume. AI's job is to ask focused, specific questions that surface the missing engineering decisions.
-
-1. Ask one or two questions per turn, not more. Multi-question lists overwhelm and produce shallow answers.
-2. Questions are concrete and decision-grade — what is the input, what is the expected output, what command verifies success, what files are out of scope.
-3. Do not ask design preferences the user clearly does not have. Infer the simplest reasonable default and confirm in one line.
-4. Stop when the spec passes structural lint AND the user explicitly confirms or 8 turns have elapsed (whichever comes first). Eight turns is a hard ceiling — beyond that, the spec is either ready or the task is too large for ideate.
-5. The output is the spec, not a transcript. Do not include the conversation in the saved files.
-</elicitation_contract>
+</ideate_args>
 
 <harness_principles>
-Read `_shared/runtime-principles.md` (Subtractive-first / Goal-locked / Evidence-over-claim). The principles bind the spec content as well as your conversation. A spec that says "for future flexibility" is a Subtractive-first violation. A spec that asks for `try { ... } catch { return null }` is a No-workaround violation. AI flags these in elicitation, not after `/devlyn-resolve` has built them.
+`_shared/runtime-principles.md`, mirrored in the installed instruction block (read the file only when no block is loaded), binds package content as well as the conversation: a requirement "for future flexibility" violates Subtractive-first, and acceptance that permits a silent fallback violates No-workaround. Flag these while planning, not after execution.
 </harness_principles>
 
 <runtime_paths>
+Before any operation, establish the bindings below.
+
 Resolve bundled resources from the SKILL.md loaded for this invocation.
 
 Reader-rendered directory hint:
@@ -61,116 +49,65 @@ written as _shared/... use this binding. Verify the directory and each
 required resource before use; failure is BLOCKED:shared-dir-unresolved
 with the failed path. Never search another installation.
 
-Verify DEVLYN_SHARED_DIR/spec-verify-check.py before validation. Use `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py"` for spec validation commands after binding the path in that shell. In omp, use `printf '%s\n' skill://devlyn-ideate`.
+Verify DEVLYN_SKILL_DIR/scripts/queue.py before running it. In omp, use `printf '%s\n' skill://devlyn-ideate`.
 </runtime_paths>
 
-<engine_routing>
-Default engine: Claude. The per-engine adapter from `_shared/adapters/<engine>.md` is prepended to the elicitation prompt so the model honors its own official prompt-engineering guidance during the Q&A.
-</engine_routing>
+## Operations
 
-<modes>
-Four modes, selected by flag:
+| Invocation | Behavior |
+|---|---|
+| `plan <intent or absolute document path>` | Inspect, elicit what is necessary and write a validated loop package. Does not enqueue or execute. |
+| `add <intent or absolute package path>` | Plan when necessary, then append the package's tasks atomically in dependency order. Does not execute. |
+| `status` | Reconciled pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
+| `drain` | Resume or drain the queue serially under existing execution authorization. |
+| Bare intent | Plan; when the request authorizes implementation, continue through add and drain without reconfirmation. |
+| No arguments | Status. |
 
-1. **Default** (no flag) — single-spec elicitation. AI asks questions in-conversation until lint passes. Output: `<spec-dir>/<id>-<slug>/spec.md` + `<spec-dir>/<id>-<slug>/spec.expected.json`. Default spec dir: `docs/specs/` (configurable via `--spec-dir <path>`).
-2. **`--quick`** — one-line goal, AI synthesizes a spec with explicit assumptions block, asks the user to confirm or correct in a single turn. Use when the user wants speed over thoroughness.
-3. **`--from-spec <path>`** — external spec exists. AI lints it for the canonical structure, normalizes section names, generates a missing `spec.expected.json` if absent, fixes minor schema issues, and stops. Does NOT reshape Requirements / Out-of-Scope content; structural changes only.
-4. **`--project`** — multi-feature project. AI elicits a project description, decomposes it into 3-7 feature specs, writes `<spec-dir>/plan.md` (the index) and one `<spec-dir>/<id>/spec.md` + `<spec-dir>/<id>/spec.expected.json` per feature. See `references/project-mode.md`.
+Two controls only: `--autonomous` applies the autonomous policy to plan or add (drain always applies it), and `--local-only` keeps a drain's delivery local (`--no-push` is equivalent). A delivery restriction already established for a loop persists. Engine selection and pins stay project and host settings (`/devlyn-engines`).
 
-`--spec-dir <path>` overrides the default output directory. `--engine <model>` selects the adapter.
-</modes>
+A removed flag stops with its instruction and selects no other behavior.
 
-<spec_kind_escape_hatch>
-The spec carries `spec.kind ∈ {feature, spike, prototype}` in its frontmatter. The kind changes downstream behavior:
+| Flag | Instruction |
+|---|---|
+| `--quick` | Removed: use `plan <intent>`, adding `--autonomous` to plan without questions. |
+| `--from-spec <path>` | Removed: use `plan <absolute path>`; the document stays unchanged as the input contract. |
+| `--project` | Removed: every plan is a loop package with as many tasks as the intent needs. |
+| `--spec-dir`, `--spec-id`, `--in-place` | Removed: packages live at `docs/specs/<loop-id>/` with generated IDs, and input documents are never rewritten. |
+| `--engine` | Removed: drain uses the configured executor; pin it with `/devlyn-engines executor <name>`. |
 
-- **feature** — production-quality implementation expected. `/devlyn-resolve --spec` runs the full pipeline (PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY).
-- **spike** — exploratory work; deliverable is learning, evidence, or a disposable demo. `/devlyn-resolve --spec` proceeds but VERIFY's quality bar is relaxed for code that the spike says is throwaway.
-- **prototype** — between feature and spike. Production-shape but not production-grade. CLEANUP runs; VERIFY's quality bar is stricter than spike, looser than feature.
+## Question policy
 
-The user picks the kind during elicitation. Default = feature when not specified. `--quick` infers from the goal text (verbs like "explore", "investigate", "spike" → spike; "implement", "ship", "add" → feature).
-</spec_kind_escape_hatch>
+> Inspect available project facts before asking. Ask only when the unresolved answer changes authorized behavior, scope, data semantics, acceptance or delivery. State the recommended answer and its consequence. Ask the smallest useful question. Stop eliciting when the contract is executable and verifiable; no turn target or mandatory confirmation applies. Existing authorization remains effective.
 
-## PHASE 0: PARSE + ROUTE
+## Autonomous policy
 
-1. Parse flags from `<elicit_config>`:
-   - `--quick`
-   - `--from-spec <path>`
-   - `--project`
-   - `--spec-dir <path>` (default `docs/specs/`)
-   - `--engine MODE` (default `claude`)
-   - `--spec-id <id>` — optional explicit id; auto-generated when absent.
+> Infer only scope-narrowing, reversible, non-user-visible defaults, and record each assumption once. Reversibility alone is insufficient. Material ambiguity stops the affected work as needs-review with a concrete question; independent authorized work may continue. Never weaken acceptance to obtain completion.
 
-2. Engine pre-flight: `_shared/engine-preflight.md`.
+## plan
 
-3. Mode dispatch:
-   - default → PHASE 1.
-   - `--quick` → PHASE 1Q (single turn assume-and-confirm).
-   - `--from-spec` → PHASE 1F (lint + normalize external).
-   - `--project` → PHASE 1P (project decomposition).
+1. Inspect, then elicit, per [elicitation.md](references/elicitation.md). A document argument is the input contract: carry each substantive requirement into a task without weakening it, cite the document in `## Intent`, and never modify it.
+2. Write `docs/specs/<loop-id>/meta.md` and each task's `spec.md` and `spec.expected.json` per [package-format.md](references/package-format.md). In the manifest, `base_ref` is the delivery branch and `base_sha` the exact commit the loop builds on; `delivery` is `local-only` when the user restricted delivery, else the project's `git config --local devlyn.completionMode` (absent means `auto`). `## Execution policy` quotes the autonomous policy, which binds every task's executor.
+3. Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" check '<absolute meta.md>'` and repair the package until it reports `VALID`.
+4. Report the package path, the tasks with their dependencies, and every recorded assumption.
 
-## PHASE 1: ELICITATION (default mode)
+## add
 
-Prompt body: `references/elicitation.md`. Adapter prepended.
+An absolute path to a package's `meta.md` is appended as it is; anything else is planned first. Append with `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" add '<absolute meta.md>'`, the only writer of new queue rows; never edit `docs/specs/queue.md` by hand. A pending legacy raw-intent row is replaced in place by a package whose `## Intent` reproduces the row verbatim, added with `--materialize <line>`.
 
-The elicitation agent:
-1. Reads the user's initial goal from `<elicit_config>`.
-2. Identifies the missing engineering decisions (input shape, output shape, success command, scope boundary, constraints).
-3. Asks 1-2 focused questions per turn until each blank is filled or the user accepts an inferred default.
-4. Maintains a running draft spec in `.devlyn/ideate-draft.md` (run-scoped, gitignored).
-5. Stops when the structural lint passes AND user confirms, or 8 turns elapsed.
+## status
 
-Structural lint (inline check, no script needed):
-- Frontmatter has `id`, `title`, `kind`, `status: planned`, `complexity`.
-- `## Context` non-empty (≥ 1 sentence).
-- `## Requirements` has ≥ 1 `- [ ]` bullet.
-- `## Out of Scope` present (may list "none" if truly nothing).
-- `## Verification` is preceded by a `<!-- devlyn:verification -->` sentinel and has either ≥ 1 named command OR sibling `spec.expected.json` declares `"pure_design": true`.
+Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" status --repo .` and report its counts, `next`, `blockers` and pending deliveries with their resume commands.
 
-After lint passes:
-1. Write `<spec-dir>/<id>-<slug>/spec.md` (the spec).
-2. Generate `<spec-dir>/<id>-<slug>/spec.expected.json` following `references/spec-template.md` § "Sibling file: `spec.expected.json`" for constraint coverage, diff scope and guard controls.
-3. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check <spec-path>` to validate the actual spec's carrier shape and supported `complexity` frontmatter. Sibling `spec.expected.json` takes precedence over the legacy inline `## Verification` JSON carrier. If exit 2, fix the file named in the error and re-run.
-4. Run `python3 "$DEVLYN_SHARED_DIR/spec-verify-check.py" --check-expected <expected-path>` to validate sibling `spec.expected.json` against `_shared/expected.schema.json` plus sibling spec `complexity` frontmatter. If exit 2, fix the JSON/frontmatter and re-run.
-5. Print: `spec ready — /devlyn-resolve --spec <spec-path>`.
+## drain
 
-## PHASE 1Q: QUICK MODE
+Follow [loop.md](references/loop.md). The executor is the configured route, the `.devlyn/engines.json` `executor` pin or else this CLI, checked per `_shared/engine-preflight.md`. Pass it after `--` as an argv that starts one fresh non-interactive session of that engine, able without prompts to edit, run commands and commit in its task worktree and to write the packet's submission file, with the prompt `Execute the devlyn loop task packet {packet}: meet its obligations, then write its submission and any review records as "Executor exchange" and "Review records" in <absolute DEVLYN_SKILL_DIR>/references/loop.md specify.`
 
-Single-turn assume-and-confirm. Prompt body: see `references/elicitation.md` § "Quick mode".
+```sh
+python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" drain --repo . [--local-only] -- <executor argv>
+```
 
-1. AI synthesizes a spec from the one-line goal.
-2. AI surfaces an explicit "Assumptions made" section listing every inferred decision.
-3. User responds with "go" / "fix X" / "no, different".
-4. On "go": write spec + spec.expected.json + lint + announce.
-5. On "fix X": apply correction, re-show, ask again. Maximum 3 correction rounds before escalating to default mode.
+- `WAITING` on legacy rows: plan and materialize each under the autonomous policy, then drain again; a row whose planning stops on material ambiguity stays pending and its question is reported.
+- `WAITING` on a delivery or `BLOCKED`: report the reason and resume commands; never edit receipts, refs or queue rows to get past them.
+- An interrupted drain is resumed by running `drain` again; accepted work is never replayed.
 
-## PHASE 1F: FROM-SPEC MODE
-
-Prompt body: `references/from-spec-mode.md`.
-
-1. Read the external spec at `<path>`.
-2. Lint structure (same checks as default mode).
-3. Identify missing pieces (no frontmatter, missing sections, malformed Verification block).
-4. Apply structural fixes only — do NOT reshape Requirements / Out-of-Scope content. The user's substantive intent is preserved.
-5. Generate `spec.expected.json` if absent, following the same template carrier guidance as default mode.
-6. Write the normalized spec back to `<spec-dir>/<id>-<slug>/` (preserves original at `<path>` untouched unless user passes `--in-place`).
-7. Run both lint checks: `--check <spec-path>` and `--check-expected <expected-path>`.
-8. Lint pass → announce. Lint fail → surface the unfixable issue and exit non-zero.
-
-## PHASE 1P: PROJECT MODE
-
-Prompt body: `references/project-mode.md`.
-
-1. AI elicits a project description (longer Q&A — multi-feature scope warrants more turns).
-2. AI decomposes the project into 3-7 feature specs. Each feature is independently shippable; cross-feature dependencies surface explicitly in the spec frontmatter `depends_on:` field.
-3. AI writes `<spec-dir>/plan.md` — index file with: project name, decomposition rationale, list of feature specs with id + title + dependency, suggested implementation order.
-4. AI writes one `<spec-dir>/<id>/spec.md` + `<spec-dir>/<id>/spec.expected.json` per feature, each lint-validated.
-5. Announce: `project ready — N specs at <spec-dir>/. Start with /devlyn-resolve --spec <first-spec-path>`.
-
-`/devlyn-resolve` consumes one spec at a time; the user works through `plan.md`'s suggested order. Multi-feature parallel runs are Mission 2 work.
-
-## State management
-
-ideate is conversational, not pipeline-staged. State lives in:
-- `.devlyn/ideate-draft.md` — current draft spec during elicitation (run-scoped, gitignored).
-- `<spec-dir>/<id>-<slug>/` — final output (committed to repo by user choice).
-
-No `pipeline.state.json` here — that's resolve's surface.
+Report each task's product result, delivery status, PR URL, resume command, assumptions and unresolved questions, plus the drain report paths.

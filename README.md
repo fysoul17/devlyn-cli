@@ -8,7 +8,7 @@
 
 ### Context, Harness & Loop Engineering Toolkit for AI Coding Agents
 
-**Structured prompts, agent orchestration, and automated pipelines — debugging, code review, UI design, product specs, and more.**
+**Structured prompts, agent orchestration, and automated pipelines — debugging, code review, product specs, and more.**
 
 [![npm version](https://img.shields.io/npm/v/devlyn-cli.svg)](https://www.npmjs.com/package/devlyn-cli)
 [![npm downloads](https://img.shields.io/npm/dw/devlyn-cli.svg)](https://www.npmjs.com/package/devlyn-cli)
@@ -32,44 +32,38 @@ That's it. The installer asks two things:
 1. **What** — `AGENTS.md — Codex · omp · Pi · Grok` (checked) and `CLAUDE.md — Claude Code` (checked when this project already has a devlyn Claude install). Space toggles, Enter confirms.
 2. **Where** — `This project` (default) or `Global — every project on this machine`.
 
-In a project, AGENTS.md readers load the skills from `.agents/skills/`; Claude Code loads only `.claude/skills/` and reads AGENTS.md when the project has no CLAUDE.md. Global installs skills only: `~/.agents/skills/` (omp, Pi, Grok) and `~/.codex/skills/` (Codex), plus `~/.claude/skills/` for Claude Code. Every target gets the `devlyn-resolve`, `devlyn-ideate`, and `devlyn-design-ui` skills plus the `devlyn-engines` and `devlyn-queue` utilities. In Codex / omp / Pi, invoke them as skills (`$devlyn-resolve`, `$devlyn-ideate`, `$devlyn-design-ui`); in Claude Code and Grok they're slash commands (`/devlyn-resolve`). Rerunning refreshes skills and the managed instruction block while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery.
+In a project, AGENTS.md readers load the skills from `.agents/skills/`; Claude Code loads only `.claude/skills/` and reads AGENTS.md when the project has no CLAUDE.md. Global installs skills only: `~/.agents/skills/` (omp, Pi, Grok) and `~/.codex/skills/` (Codex), plus `~/.claude/skills/` for Claude Code. Every target gets the `devlyn-resolve` and `devlyn-ideate` skills plus the `devlyn-engines` utility. In Codex / omp / Pi, invoke them as skills (`$devlyn-resolve`, `$devlyn-ideate`); in Claude Code and Grok they're slash commands (`/devlyn-resolve`). Rerunning refreshes skills and the managed instruction block while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery.
 
 Without prompts, `npx devlyn-cli -y` installs AGENTS.md + `.agents/skills/` plus every target this project already has; add `--claude` for Claude Code. With `--global` it installs for every project on this machine, plus `~/.claude/skills/` with `--claude` or when it already has a devlyn install.
 
 ---
 
-## How It Works — Direct Work or Full Pipeline
+## How It Works — Direct Work, Full Pipeline or Loop
 
-devlyn-cli supports direct execution for clear, low-risk work with decisive checks and a full pipeline for work that needs it. The pipeline surface is two skills, with `/devlyn-design-ui` installed as the required creative UI surface:
-
-```
-inspect intent  →  direct work or full resolve  →  ship
-```
-
-Non-Claude agents (Codex / omp / Pi / Grok): the AGENTS.md choice installs the workflows as their skills. In Codex / omp / Pi, use `$devlyn-ideate`, `$devlyn-resolve`, or `$devlyn-design-ui`; in Grok, use `/devlyn-ideate`, `/devlyn-resolve`, or `/devlyn-design-ui`, the same slash-command form as Claude Code.
-
-### Step 1 (optional) — Plan with `/devlyn-ideate`
-
-Turn a raw idea into a verifiable spec — single-feature, multi-feature, or "normalize this external doc".
+devlyn-cli supports direct execution for clear, low-risk work with decisive checks, a full pipeline for work that needs it, and loops that split one intent into tasks agents drain without you:
 
 ```
-/devlyn-ideate "I want to build a habit tracking app with AI nudges"
+inspect intent  →  direct work, full resolve or an ideate loop  →  ship
 ```
 
-Default mode produces a `docs/specs/<id>-<slug>/spec.md` plus `spec.expected.json` (mechanical verification block) that `/devlyn-resolve --spec` consumes directly. Modes:
+Non-Claude agents (Codex / omp / Pi / Grok): the AGENTS.md choice installs the workflows as their skills. In Codex / omp / Pi, use `$devlyn-ideate` or `$devlyn-resolve`; in Grok, use `/devlyn-ideate` or `/devlyn-resolve`, the same slash-command form as Claude Code.
 
-| Mode | When to use |
+### Plan and drain loops — `/devlyn-ideate`
+
+Give ideate an intent or a document. It writes a loop package — a meta-prompt plus self-contained task contracts with mechanical acceptance — and agents drain the tasks one by one without you.
+
+| Command | What it does |
 |---|---|
-| `default` | One feature, AI drives focused Q&A |
-| `--quick` | One-line goal → assume-and-confirm spec, single-turn (autonomous-pipeline-safe) |
-| `--from-spec <path>` | You already wrote a spec; ideate normalizes + lints it |
-| `--project` | Multi-feature project: emits `plan.md` index + N child specs |
+| `/devlyn-ideate plan <intent or document>` | Inspects the project, asks only what it must, and writes a validated package to `docs/specs/<loop-id>/`. Nothing is queued or run. |
+| `/devlyn-ideate add <intent or package>` | Plans when needed, then appends the package's tasks to `docs/specs/queue.md` in dependency order. |
+| `/devlyn-ideate status` | Pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
+| `/devlyn-ideate drain` | Runs the queue serially and hands-free. |
 
-Skip ideate entirely if you have a spec or just want to describe the work — `/devlyn-resolve` accepts free-form goals too.
+A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without them, taking only scope-narrowing, reversible, non-user-visible defaults. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened) under your installed CLAUDE.md/AGENTS.md instructions. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it, never on the executor's say-so; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local.
 
 ### Choose direct execution or `/devlyn-resolve`
 
-Inspect the requested behavior, affected callers and tests first. Default to direct work when its scope and verification are tractable, including bounded multi-file changes; honor constraints and executor pins, run risk-proportionate checks and independent review for consequential changes, then review the diff and deliver. Automatically use full `/devlyn-resolve` only for concrete interacting requirements or verification too complex to manage reliably in the current context, such as coupled durable state, concurrent ownership and failure recovery. Domain labels, file count and a spec document alone do not trigger it. Investigate or clarify missing intent/access first. Explicit resolve (including small tasks), explicit spec-mode workflows and queue drains keep the full workflow below.
+Inspect the requested behavior, affected callers and tests first. Default to direct work when its scope and verification are tractable, including bounded multi-file changes; honor constraints and executor pins, run risk-proportionate checks and independent review for consequential changes, then review the diff and deliver. Automatically use full `/devlyn-resolve` only for concrete interacting requirements or verification too complex to manage reliably in the current context, such as coupled durable state, concurrent ownership and failure recovery. Domain labels, file count and a spec document alone do not trigger it. Investigate or clarify missing intent/access first. Explicit resolve (including small tasks) and explicit spec-mode workflows keep the full workflow below.
 
 ```
 /devlyn-resolve "fix the login bug"                                # free-form
@@ -100,12 +94,8 @@ branches cannot be adopted. Full runs require successful archive before delivery
 direct tasks use their actual checks and root acceptance. Verify-only never
 publishes. Pending checks or unsupported merge policy retain resources and
 report a receipt-based resume command separately from product verification.
-See [task completion](config/skills/devlyn-resolve/references/task-completion.md)
+See [task completion](config/skills/_shared/task-completion.md)
 for allocation, acceptance, writer cessation and recovery.
-
-### Queue multiple intents for unattended drain — `/devlyn-queue`
-
-Stack tasks to run back-to-back without supervision. `/devlyn-queue add "<intent>"` appends to `docs/specs/queue.md` (an ordered checklist); `/devlyn-queue drain` runs each item serially — spec it, run the resolve outer loop, commit `[x]` done or `[F]` blocked with a reason, then complete eligible delivery once. Product verdict and delivery status are separate. A blocked product otherwise never halts the queue; pending delivery retains its branch, and the next item requires separate safe placement. Unattended runs only take scope-narrowing, reversible defaults — anything user-visible or ambiguous is marked `[F] needs-review` for you to adjudicate afterward. `/devlyn-queue` with no args shows status.
 
 ### Engine roles — auto-detected, pinnable with `/devlyn-engines`
 
@@ -199,9 +189,11 @@ Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4
 |---|---|
 | `/devlyn:auto-resolve`, `/devlyn:preflight`, `/devlyn:evaluate`, `/devlyn:review`, `/devlyn:team-resolve`, `/devlyn:team-review`, `/devlyn:clean`, `/devlyn:update-docs`, `/devlyn:browser-validate`, `/devlyn:implement-ui` | `/devlyn-resolve` (folds them into PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY) |
 | `/devlyn:product-spec`, `/devlyn:feature-spec`, `/devlyn:recommend-features`, `/devlyn:discover-product` | `/devlyn-ideate` |
-| `/devlyn:team-design-ui` | `/devlyn-design-ui` (now always spawns the 5-specialist team — Creative Director, Product Designer, Visual Designer, Interaction Designer, Accessibility Designer) |
 | `/devlyn:design-system` | Removed 2026-05-14 — no replacement |
-| `/devlyn:resolve`, `/devlyn:ideate`, `/devlyn:design-ui`, `/devlyn:engines`, `/devlyn:queue`, `devlyn:pencil-pull`, `devlyn:pencil-push`, `devlyn:reap` (3.x and earlier) | `/devlyn-resolve`, `/devlyn-ideate`, `/devlyn-design-ui`, `/devlyn-engines`, `/devlyn-queue`, `devlyn-pencil-pull`, `devlyn-pencil-push`, `devlyn-reap` (4.0.0) |
+| `/devlyn:resolve`, `/devlyn:ideate`, `/devlyn:engines`, `devlyn:pencil-pull`, `devlyn:pencil-push`, `devlyn:reap` (3.x and earlier) | `/devlyn-resolve`, `/devlyn-ideate`, `/devlyn-engines`, `devlyn-pencil-pull`, `devlyn-pencil-push`, `devlyn-reap` (4.0.0) |
+| `/devlyn:queue` (3.x and earlier), `/devlyn-queue` (4.0.0–4.1.0) | `/devlyn-ideate add`, `status` and `drain` |
+| `/devlyn-ideate --quick`, `--from-spec`, `--project` (4.1.0 and earlier) | `/devlyn-ideate plan`; `--autonomous` replaces `--quick` |
+| `/devlyn:team-design-ui`, `/devlyn:design-ui` (3.x and earlier), `/devlyn-design-ui` (4.0.0–4.1.0) | Retired — no replacement |
 <!-- legacy-surface-map:end -->
 
 ---
@@ -263,7 +255,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 ## Requirements
 
 - **Node.js 18+** and npm
-- **Python 3.11+** available as `python3`, and Git for the resolve harness
+- **Python 3.11+** available as `python3`, and Git for the harness
 - **An agent CLI** installed and configured: Codex, omp, Pi or Grok (AGENTS.md), or [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLAUDE.md)
 
 On native Windows, use native Node/npm and Python plus Git for Windows Bash for the shipped shell wrapper. Run `npx devlyn-cli -y` in the project (add `--claude` for Claude Code). Skill folders follow the Agent Skills naming standard (for example `devlyn-resolve`), so a project that commits them checks out on Windows. Harness text is UTF-8 without requiring `PYTHONUTF8`.
