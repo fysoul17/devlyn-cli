@@ -154,15 +154,15 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
         return json.loads(result.stdout)
 
-    def drain_argv(self, local=True, unobservable=False):
+    def drain_argv(self, local=True, unobservable=False, repo=None):
         self.config.write_text(json.dumps({"behaviors": self.behaviors, "products": PRODUCTS, "hold": HOLD,
                                            "platform_support": str(self.platform),
                                            "queue_lock": str(self.common / "devlyn-loops/queue.lock")}), encoding="utf-8")
-        return [sys.executable, *(["-c", UNOBSERVABLE] if unobservable else []), str(self.queue_py), "drain", "--repo", str(self.anchor),
+        return [sys.executable, *(["-c", UNOBSERVABLE] if unobservable else []), str(self.queue_py), "drain", "--repo", str(repo or self.anchor),
                 *(["--local-only"] if local else []), "--", sys.executable, str(self.config.parent / "executor.py"), str(self.config), "{packet}"]
 
-    def drain(self, local=True, code=0, unobservable=False):
-        result = subprocess.run(self.drain_argv(local, unobservable), cwd=self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
+    def drain(self, local=True, code=0, unobservable=False, repo=None):
+        result = subprocess.run(self.drain_argv(local, unobservable, repo), cwd=self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
         return json.loads(result.stdout)
 
@@ -567,6 +567,27 @@ class LoopFixture(unittest.TestCase):
                      "--repository", "test/project", "--base", "main", "--worktree", str(self.root / "repo.devlyn/inv/t2")])
         self.assertIn(f"lacks the delivered prerequisite merge {merge}", self.drain(local=False, code=1)["reason"])
         self.assertEqual(self.calls("inv.t2"), 0)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_whole_loop_acceptance_waits_for_every_manifest_task(self):
+        bare, data = self.remote(pending=False)
+        self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
+        queue = self.anchor / "docs/specs/queue.md"
+        planned = queue.read_bytes()
+        queue.write_bytes(planned.replace((self.queue["row_line"]("inv.t2", "Greeting app [cli]") + "\n").encode(), b""))
+        self.assertEqual(self.tasks(self.drain(local=False))["inv.t1"]["delivery"], "COMPLETE")
+        queue.write_bytes(planned)
+        # A checkout of the refreshed base: T1's merged publication carries the manifest and T1's row, not T2's.
+        refreshed = self.root / "refreshed"
+        self.g("fetch", "-q", str(bare), "main")
+        self.g("worktree", "add", "-q", "--detach", str(refreshed), "FETCH_HEAD")
+        self.drain(local=False, repo=refreshed)
+        report = self.common / "devlyn-loops/inv/drain-report.md"
+        self.assertIn("- Whole-loop acceptance: INCOMPLETE — inv.t2 not yet run", report.read_text(encoding="utf-8"))
+        # The original checkout runs T2, the integration task (the fake server keeps one PR at a time).
+        data.write_text(json.dumps({key: value for key, value in json.loads(data.read_text()).items() if key != "pr"}))
+        self.assertEqual(self.tasks(self.drain(local=False))["inv.t2"]["result"], "accepted")
+        self.assertIn("- Whole-loop acceptance: ACCEPTED", report.read_text(encoding="utf-8"))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_delivery_pending_keeps_acceptance_resources_and_resume(self):

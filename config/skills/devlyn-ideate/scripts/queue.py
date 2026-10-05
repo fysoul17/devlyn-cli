@@ -311,8 +311,8 @@ def load_task(anchor, manifest, entry):
             "depends_on": entry["depends_on"], "expected": load_expected(expected_path, requirements, review)}
 
 
-def load_package(anchor, loop_id):
-    """The manifest and each task's contract, or under `invalid` the task's validation error."""
+def load_manifest(anchor, loop_id):
+    """The loop's meta.md text and its validated manifest."""
     meta = anchor / "docs/specs" / loop_id / "meta.md"
     text = read_text(meta)
     require_sections(sections(text, meta), META_SECTIONS, meta)
@@ -323,6 +323,12 @@ def load_package(anchor, loop_id):
     except ValueError as exc:
         raise LoopError(f"{meta}: manifest is not strict JSON: {exc}") from exc
     check_manifest(anchor, manifest, loop_id, meta)
+    return text, manifest
+
+
+def load_package(anchor, loop_id):
+    """The manifest and each task's contract, or under `invalid` the task's validation error."""
+    text, manifest = load_manifest(anchor, loop_id)
     tasks, invalid = {}, {}
     for entry in manifest["tasks"]:
         try:
@@ -849,15 +855,31 @@ def summary(v, row):
     return item
 
 
+def loop_acceptance(v, loop, items):
+    """Whole-loop acceptance over the manifest's complete task set: every task, the integration task last, needs
+    receipt-backed acceptance. A manifest task missing from this queue joins `items` as not yet run."""
+    try:
+        manifest = v["packages"][loop]["manifest"] if loop in v["packages"] else load_manifest(v["anchor"], loop)[1]
+    except LoopError as exc:
+        return f"INCOMPLETE — manifest unreadable: {exc}"
+    found, gaps = {item["identity"]: item for item in items}, []
+    for identity in (f"{loop}.{entry['id']}" for entry in manifest["tasks"]):
+        if identity not in found:
+            items.append(found.setdefault(identity, {"identity": identity, "result": "not yet run"}))
+        if found[identity]["result"] != "accepted":
+            gaps.append(f"{identity} {found[identity]['result']}")
+        elif not found[identity].get("receipt"):
+            gaps.append(f"{identity} accepted without a receipt")
+    return "INCOMPLETE — " + ", ".join(gaps) if gaps else "ACCEPTED"
+
+
 def write_reports(v, status, reason):
     paths = []
     for loop in dict.fromkeys(row["loop"] for row in v["rows"] if row["identity"]):
         items = [summary(v, row) for row in v["rows"] if row.get("loop") == loop]
-        whole = ("ACCEPTED" if all(item["result"] == "accepted" for item in items)
-                 else "INCOMPLETE — " + ", ".join(f"{item['identity']} {item['result']}" for item in items if item["result"] != "accepted"))
         lines = [f"# Drain report — {loop}", "", f"- Generated: {datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}",
                  f"- Queue: {v['anchor'] / QUEUE}", f"- Drain: {status}" + (f" — {reason}" if reason else ""),
-                 f"- Whole-loop acceptance: {whole}", ""]
+                 f"- Whole-loop acceptance: {loop_acceptance(v, loop, items)}", ""]
         labels = (("result", "Product"), ("reason", "Reason"), ("receipt", "Receipt"), ("custody", "Evidence custody"),
                   ("recovery_ref", "Recovery ref"), ("allocation_base", "Allocation base"), ("source", "Accepted source"), ("candidate", "Unaccepted source"),
                   ("terminal", "Terminal commit"), ("delivery", "Delivery"), ("pr", "PR"), ("resume", "Resume"),
@@ -1182,6 +1204,10 @@ class QueueTests(unittest.TestCase):
                 status = self.cli("status")
                 self.assertEqual(status["next"], None)
                 self.assertIn("hw.t2: prerequisite hw.t1 has no receipt-bound accepted source", status["blockers"])
+                self.cli("drain", "--", "executor", "{packet}")
+                report = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "devlyn-loops/hw/drain-report.md"
+                self.assertIn("- Whole-loop acceptance: INCOMPLETE — hw.t1 accepted without a receipt, hw.t2 pending",
+                              report.read_text(encoding="utf-8"))
 
     def test_common_gitdir_locks_span_worktrees(self):
         linked = self.root / "linked tree"
