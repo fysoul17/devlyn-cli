@@ -28,10 +28,13 @@ HOLD = ("import pathlib, runpy, sys, time\n"
         "    pathlib.Path(sys.argv[3]).write_text('held')\n"
         "    while True:\n        time.sleep(1)\n")
 EXECUTOR = r'''
-import json, os, pathlib, subprocess, sys, time
+import json, os, pathlib, stat, subprocess, sys, time
 config_path, packet = pathlib.Path(sys.argv[1]), json.loads(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8"))
 config = json.loads(config_path.read_text(encoding="utf-8"))
 behavior = config["behaviors"][packet["task"]]
+if behavior.get("refuse_pipe") and stat.S_ISFIFO(os.fstat(1).st_mode):
+    print("stdout is a pipe", file=sys.stderr)  # codex-monitored.sh refuses this shape with exit 64
+    sys.exit(64)
 with config_path.with_name("calls-" + packet["task"]).open("a", encoding="utf-8") as calls:
     calls.write("call\n")
 work = pathlib.Path(packet["worktree"])
@@ -203,13 +206,16 @@ class LoopFixture(unittest.TestCase):
         return {task["identity"]: task for task in result["tasks"]}
 
     def test_successful_local_chain_keeps_custody_and_transfers_metadata(self):
-        self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}})
+        # Both executors refuse a piped stdout, as codex-monitored.sh does; the driver gives them files.
+        self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", "refuse_pipe": True}, "inv.t2": {"product": "app", "refuse_pipe": True}})
         result = self.drain()
         tasks = self.tasks(result)
         self.assertEqual((result["status"], tasks["inv.t1"]["result"], tasks["inv.t2"]["result"]), ("WAITING", "accepted", "accepted"))
         self.assertEqual((self.calls("inv.t1"), self.calls("inv.t2")), (1, 1))
         first, second = self.receipt("inv.t1"), self.receipt("inv.t2")
         self.assertNotEqual(first["worktree"], second["worktree"])
+        self.assertTrue(all((Path(r["worktree"]) / ".devlyn/loop" / name).is_file() for r in (first, second)
+                            for name in ("executor.stdout", "executor.stderr")))
         self.assertTrue(Path(first["worktree"]).is_dir() and Path(second["worktree"]).is_dir())
         self.assertEqual((second["baseline"], second["allocated_from"]["source_sha"]), (first["source_sha"], first["source_sha"]))
         self.assertNotEqual(second["baseline"], first["publish_sha"])

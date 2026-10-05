@@ -661,13 +661,17 @@ def ensure_submission(identity, packet_path, packet, executor):
         except shared("task-complete")["CompletionError"] as exc:
             raise LoopError(f"{identity}: an earlier executor may still be writing ({exc}); stop it, then drain again") from exc
     argv = [part.replace("{packet}", str(packet_path)) for part in executor]
+    output = Path(packet["evidence_dir"])
+    output.mkdir(parents=True, exist_ok=True)
     try:
-        child = subprocess.Popen(shared("platform-support")["native_argv"](argv), cwd=worktree, stdout=sys.stderr)
+        # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout.
+        with (output / "executor.stdout").open("ab") as stdout, (output / "executor.stderr").open("ab") as stderr:
+            child = subprocess.Popen(shared("platform-support")["native_argv"](argv), cwd=worktree, stdout=stdout, stderr=stderr)
     except OSError as exc:
         raise LoopError(f"executor could not start: {exc}") from exc
     with attempts.open("a", encoding="utf-8") as log:
         log.write(f"{datetime.datetime.now(datetime.timezone.utc).isoformat()} executor pid {child.pid} started\n")
-    progress(identity, "executing")
+    progress(identity, f"executing; output in {output}")
     code = child.wait()
     if not submission.exists():
         write_json(submission, {"schema_version": 1, "task": identity, "source_sha": packet["inputs_sha"],
