@@ -654,7 +654,7 @@ the diff is frozen.
 Hard floors (any one fails → block):
 
 - Zero variant disqualifier (silent catch, fabricated verification, extra deps beyond `max_deps_added`, etc.).
-- `F9-e2e-ideate-to-resolve` must PASS (novice-flow contract).
+- `F9-e2e-ideate-to-resolve` must PASS (novice-flow contract) while active. It was retired to `fixtures/retired/` on 2026-10-05 (the ideate loop removed its `--quick` chain), so the gate prints a note and leaves this floor out; an active fixture without results still fails.
 - ≥ 7 gated, headroom-available fixtures have margin ≥ +5.
 - No per-fixture regression worse than −5 vs last shipped baseline.
 

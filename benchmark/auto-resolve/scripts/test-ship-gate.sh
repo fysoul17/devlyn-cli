@@ -1186,4 +1186,25 @@ expect_fail_contains nan-result-artifact-disqualifies \
   "variant disqualifier(s)" \
   python3 "$GATE" --run-id "$NAN_RESULT_RUN" --accept-missing
 
+# Hard floors apply to active fixtures: a retired one leaves the gate with a note, while an active one without
+# results still fails. A copy of the gate reads its own fixtures/ so both states are exercised.
+FLOOR_ROOT="$TMP_DIR/floor-bench"
+mkdir -p "$FLOOR_ROOT/scripts" "$FLOOR_ROOT/fixtures/retired/F9-e2e-ideate-to-resolve" "$FLOOR_ROOT/results/floor"
+cp "$GATE" "$SCRIPT_DIR/pair_evidence_contract.py" "$FLOOR_ROOT/scripts/"
+write_summary "$RUN_PREFIX-floor" 8
+python3 - "$BENCH_ROOT/results/$RUN_PREFIX-floor/summary.json" "$FLOOR_ROOT/results/floor/summary.json" <<'PY'
+import json
+import sys
+
+summary = json.load(open(sys.argv[1], encoding="utf8"))
+summary["rows"] = [row for row in summary["rows"] if row["fixture"] != "F9-e2e-ideate-to-resolve"]
+json.dump(summary, open(sys.argv[2], "w", encoding="utf8"))
+PY
+expect_pass retired-fixture-floor python3 "$FLOOR_ROOT/scripts/ship-gate.py" --run-id floor
+grep -Fq "F9-e2e-ideate-to-resolve is retired (fixtures/retired/)" "$TMP_DIR/retired-fixture-floor.out"
+mv "$FLOOR_ROOT/fixtures/retired/F9-e2e-ideate-to-resolve" "$FLOOR_ROOT/fixtures/"
+expect_fail_contains active-fixture-floor \
+  "F9 (E2E novice flow) missing" \
+  python3 "$FLOOR_ROOT/scripts/ship-gate.py" --run-id floor
+
 echo "PASS test-ship-gate"
