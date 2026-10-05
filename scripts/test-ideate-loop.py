@@ -434,6 +434,23 @@ class LoopFixture(unittest.TestCase):
         return bare, data
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_unobservable_post_merge_cleanup_retains_the_workspace_and_drain_continues(self):
+        self.remote(pending=False)
+        self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting"}}, delivery="auto")
+        self.plan("loc", [("t1", [], "Notes", [NOTES_CHECK])], {"loc.t1": {"product": "notes"}})
+        for _ in range(2):
+            tasks = self.tasks(self.drain(local=False, unobservable=True))
+            self.assertEqual((tasks["inv.t1"]["result"], tasks["inv.t1"]["delivery"], tasks["loc.t1"]["result"]), ("accepted", "COMPLETE", "accepted"))
+        self.assertEqual((self.calls("inv.t1"), self.calls("loc.t1")), (1, 1))
+        receipt = self.receipt("inv.t1")
+        # Retained, never reported as cleaned: the worktree, task ref and receipt stay, and the report says why.
+        self.assertTrue(receipt["merge"] and Path(receipt["worktree"]).is_dir())
+        self.assertNotIn("status", receipt)
+        self.assertEqual(self.g("rev-parse", "refs/heads/devlyn/inv/t1"), receipt["publish_sha"])
+        report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")
+        self.assertIn("- Workspace cleanup: RETAINED — writer observation unsupported on this platform; retain workspace", report)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_prerequisite_merge_is_checked_before_allocation_and_execution(self):
         bare, _ = self.remote(pending=False)
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")

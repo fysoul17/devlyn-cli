@@ -784,6 +784,7 @@ def summary(v, row):
                     assumptions=acceptance_record.get("assumptions", []),
                     questions=[r.removeprefix("needs-review: ") for r in acceptance_record.get("reasons", []) if r.startswith("needs-review: ")],
                     worktree=receipt["worktree"] if receipt.get("worktree") and Path(receipt["worktree"]).exists() else None,
+                    cleanup=f"{c['status']} — {c['reason']}; resume: {c['resume']}" if (c := receipt.get("workspace_cleanup")) else None,
                     branch=receipt.get("branch"), recovery_ref=receipt.get("recovery_ref"),
                     custody=str(Path(state["path"]).parent / "custody") if receipt.get("files") else None,
                     scratch=(receipt.get("scratch_cleanup") or {}).get("status", "NOT_CLEANED"))
@@ -803,6 +804,7 @@ def write_reports(v, status, reason):
                   ("recovery_ref", "Recovery ref"), ("allocation_base", "Allocation base"), ("source", "Accepted source"), ("candidate", "Unaccepted source"),
                   ("terminal", "Terminal commit"), ("delivery", "Delivery"), ("pr", "PR"), ("resume", "Resume"),
                   ("assumptions", "Assumptions"), ("questions", "Unresolved questions"), ("worktree", "Retained worktree"),
+                  ("cleanup", "Workspace cleanup"),
                   ("branch", "Branch"), ("scratch", "Scratch cleanup"))
         for item in items:
             lines += [f"## {item['identity']}", ""]

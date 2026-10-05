@@ -648,6 +648,7 @@ def cleanup(receipt, path, pr):
     if ref_sha(receipt, branch_ref) is not None:
         require(all(row.get("branch") != branch_ref for row in registrations(receipt).values()), "task branch became checked out; retain ref")
         gref(receipt, "update-ref", "-d", branch_ref, sha)
+    receipt.pop("workspace_cleanup", None)
     receipt["status"] = "COMPLETE"
     atomic_json(path, receipt)
 
@@ -687,11 +688,12 @@ def completion_result(receipt, path, status):
                 atomic_json(path, receipt)
             except OSError as record_error:
                 scratch["record_error"] = str(record_error)
-    return {"status": "CLEANUP_PENDING" if status == "COMPLETE" and scratch["status"] == "RETAINED" else status,
+    retained = scratch["status"] == "RETAINED" or "workspace_cleanup" in receipt
+    return {"status": "CLEANUP_PENDING" if status == "COMPLETE" and retained else status,
             "delivery_status": status, "receipt": str(path), "pr": receipt.get("pr_url"), "resume": resume,
             "acceptance": (receipt.get("acceptance") or {}).get("kind"), "product_verdict_unchanged": True,
             "scratch_path": str(path.parent / "scratch") if "scratch_identity" in receipt else None,
-            "scratch_cleanup": scratch}
+            "scratch_cleanup": scratch, "workspace_cleanup": receipt.get("workspace_cleanup")}
 
 
 def reconcile(common, allocated, anchor):
@@ -816,7 +818,13 @@ def complete(args):
                 return dict(result("PR"), merge_refused=refused) if refused and not pr.get("autoMergeRequest") else result("PENDING")
         receipt["merge"] = pr
         atomic_json(path, receipt)
-        cleanup(receipt, path, pr)
+        try:
+            cleanup(receipt, path, pr)
+        except WritersUnobservable as error:
+            # Conservative retention: the merge settles delivery; workspace, task refs and custody stay, reported.
+            receipt["workspace_cleanup"] = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
+                sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)])}
+            atomic_json(path, receipt)
         return result("COMPLETE")
 
 
@@ -1475,6 +1483,22 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("merges"), 1)
         self.assertFalse(self.task.exists())
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+
+    def test_unobservable_writers_settle_a_merged_delivery_and_retain_the_workspace(self):
+        from unittest.mock import patch
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=False)
+        with patch.object(sys, "platform", "win32"), patch.dict(os.environ, self.env):
+            result = complete(args)
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn("writer observation unsupported", result["workspace_cleanup"]["reason"])
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        self.assertEqual((receipt["delivery"], receipt.get("status")), ("COMPLETE", None))
+        self.assertTrue(self.task.exists())
+        self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
 
     def test_release_is_refused_from_inside_the_task_tree(self):
         self.allocate(); self.accept()
