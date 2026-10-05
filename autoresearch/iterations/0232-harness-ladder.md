@@ -290,3 +290,99 @@ From `m08` on, cells use apparatus `cce71305`. That change affects only the asse
 - Resumed from `m11`.
 
 `m01`–`m10` ran on the first account, and `m11`–`m36` run on the second. Models, CLIs, image, apparatus and treatments are unchanged. The balanced cell order puts every arm on both accounts. The account change can affect only wall time, through provider-side throughput, and RESULT reports it per cell.
+
+## 7. Stage 1 result (2026-10-06)
+
+**Registered outcome:** `LIVE:claude=admitted:A,replaces_F:FAIL;codex=admitted:A,replaces_F:FAIL`.
+
+In both configurations, rung I is not admitted, and A (native) remains the admitted rung. Replacing F requires admission, so it fails too.
+
+All 36 measured cells have verdicts. One assessor fault (`m07`) was regraded from preserved evidence. The inputs and outputs are under `experiments/0232/results/`:
+- `decision.json`, `decisions.json`;
+- `cells.md`, the per-cell table;
+- `adjudication.md` and `witnesses/`, the severe-finding dispositions;
+- `audit.md`, the final-report audit.
+
+The raw evidence stays in `~/.local/share/nx01/0232-live/out` with its seal manifests.
+
+### Totals per configuration (six cells per arm)
+
+| Config | Arm | Completed (D3/D4/I0185) | Wall s (per success) | Input (per success) | Output (per success) | Usage |
+|---|---|---|---|---|---|---|
+| claude | A | 2 (2/0/0) | 2,841 (1,420) | 4,691,860 (2,345,930) | 144,449 (72,224) | complete |
+| claude | I | 4 (2/2/0) | 3,217 (804) | ≥10,315,933 (≥2,578,983) | ≥191,721 (≥47,930) | 1 cell PARTIAL |
+| claude | F | 1 (1/0/0) | 8,836 (8,836) | 88,973,473 (88,973,473) | 688,264 (688,264) | complete |
+| codex | A | 4 (2/2/0) | 1,593 (398) | 1,787,074 (446,768) | 39,567 (9,892) | complete |
+| codex | I | 4 (2/2/0) | 3,105 (776) | ≥7,491,270 (≥1,872,818) | ≥154,707 (≥38,677) | 2 cells PARTIAL |
+| codex | F | 1 (0/1/0) | 5,303 (5,303) | ≥29,977,697 (≥29,977,697) | ≥150,982 (≥150,982) | 3 cells PARTIAL |
+
+A "≥" value is a lower bound. Its usage gaps are named in the verdicts: a killed review session, or a cancelled Codex inference.
+
+### Why I is not admitted
+
+- **claude.**
+  - I completes more cells than A (4 vs 2) at lower wall per success (804 vs 1,420 s).
+  - Quality fails on I0185. Witness K5 reproduces on I's replicate-2 tree (`m24`) but not on A's. K5 is "destination created before the lock", which violates requirements 2 and 3. The same defect costs `m24` the `absence-lock` oracle row that A passes.
+  - The token tests are inconclusive, because I's usage is incomplete. I's input lower bound per success already exceeds A's.
+- **codex.** Completions are equal (4 vs 4), and I's wall per success is about twice A's (776 vs 398 s). So no strict improvement exists, and the wall test fails.
+- **Against F,** I's resource tests pass in both configurations. Its wall per success is 9% of F's in the claude config and 15% in the codex config. Quality against F fails on I0185 for the same reason as against A, and replacement needs admission in any case.
+
+### Root's recorded judgments
+
+- **Final-report audit.** All 36 cells were audited: 0 false completions and 0 user-data harm.
+  - The closest call is `m24`. Its report describes locking that only hidden checks contradict, and it is kept as a coverage limit, per 0224.
+- **Severe findings.** 34 assessor findings group into 8 claims, all binding, and each reproduced on its own tree by a deterministic witness applied to every tree of its task. Witnesses on 12 I0185 trees:
+  - K3 (prior install not restored after one failed lock release): 11 trees;
+  - K1 (cross-filesystem install fails): 7;
+  - K2 (a symlinked path takes a separate lock): 6;
+  - K4 (lock left behind): 4;
+  - K5: 1 (`m24`).
+  - The three D3 witnesses reproduce only on `m18`, F's unchanged base tree.
+  - Reading of requirement 2: a failed lock release is not "disposal of backup data", so rollback is required, which matches the registrants' `release` row. Under this reading K3 does not separate the arms.
+- **Adjudicated oracle rows.** `release` is NOT_TRIGGERED in `m31` and `m33`, and is adjudicated FAIL in both on the K3 evidence. Neither cell's completion changes.
+
+### Methodology (reported, not part of the rule)
+
+- **I's compliance: 9 of 12.** Every I cell launched at least one review. The three non-compliant cells are `m02` (claude) and `m11` and `m31` (codex). In each, the owner ended its session while the final review was still running, which killed it.
+  - The same failure appears with both engines.
+  - It accounts for every PARTIAL usage in I.
+- **F's obligation meter** (0231's bundle-shaped checks) is nonbinding and reports unmet for 4.1.0's evidence shape.
+
+### Predictions, scored
+
+**Root:**
+1. **Completions.** "A 1–2 on claude": held (2). "2 on codex": missed (4). "I ≥ A": held in both. "F ≤ 1": held.
+2. **I0185 uncompleted by every arm:** held.
+3. **I's raw wall 1.1–1.6× A's:** held for claude (1.13), missed for codex (1.95). "I's per-success wall ≤ A's in at least one config": held (claude).
+4. **F's raw wall ≥ 2× A's, and F worst per success:** held in both.
+5. **Review in ≥ 10 of 12 I cells:** held (12). "I's input per cell ≤ 1.5× A's": missed in both (about 2.2× and 4.2×).
+6. **Decisions.** "I admitted in at least one config, p ≈ 0.5": not admitted. "Replacement passes in both, p ≈ 0.8": failed, because replacement requires admission.
+
+**Astra:**
+1. Wall order A < I < F: held in both.
+2. I uses more raw input and output than A: held in both.
+3. I completes ≥ A, with I0185 the largest risk: held.
+4. I fails or stays inconclusive in at least one config: held. It failed in both; the claude failure was on quality, with tokens inconclusive.
+5. At least one I cell passes product evaluation but fails compliance: held (`m02`).
+6. The F resource comparison is easier than admission against A: held.
+
+### Descriptive findings (not registered tests)
+
+- **A beats F on completion and on every per-success cost in both configurations.** That means 2 vs 1 completions on claude and 4 vs 1 on codex, with F needing 6–13× A's wall per success and 38–67× its input per success. This agrees with 0224, where full resolve ran about 3× native wall and completed 0/4 against native's 1/4.
+- **I's gain on claude is D4:** I completed 2 of 2 cells, A 0 of 2. A's D4 trees failed the Codex assessor on the task's teardown requirements.
+- **On codex,** the instruction block plus review added cost without adding completions.
+- **Review sessions are I's main added input.** Lost reviews (3 of 12) are its main methodology failure.
+
+### Honest limits
+
+- The sample is three exposed tasks with two replicates. A single replicate decides the K5 quality result.
+- **Venue change.** `m01`–`m10` ran on the first Claude account and `m11`–`m36` on the second (Addendum, venue change at m11).
+- Cancelled Codex inferences and killed reviews leave usage PARTIAL, so several token tests are inconclusive by rule.
+
+### What the result licenses
+
+- Under the ladder rule (feedback "harness ladder", HARD), I is not kept as the default: it raised tokens per success, and on claude it regressed severe quality.
+- Rung I's observed failures can license the next challenger I′, measured against A:
+  - final reviews killed when the owner ends its session;
+  - review cost.
+- F's machinery has no measured advantage over the native baseline.

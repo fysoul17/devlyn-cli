@@ -1,0 +1,261 @@
+{
+  "token": "LIVE:claude=admitted:A,replaces_F:FAIL;codex=admitted:A,replaces_F:FAIL",
+  "configs": {
+    "claude": {
+      "admitted": "A",
+      "admission": {
+        "candidate": "I",
+        "reference": "A",
+        "quality": {
+          "D3": {
+            "safe": true,
+            "completion": true,
+            "rows": true,
+            "severe": true
+          },
+          "D4": {
+            "safe": true,
+            "completion": true,
+            "rows": true,
+            "severe": true
+          },
+          "I0185": {
+            "safe": true,
+            "completion": true,
+            "rows": false,
+            "severe": false
+          }
+        },
+        "tests": {
+          "wall": true,
+          "input": null,
+          "output": null
+        },
+        "strictly_better": true,
+        "outcome": "FAIL"
+      },
+      "replacement": {
+        "candidate": "I",
+        "reference": "F",
+        "quality": {
+          "D3": {
+            "safe": true,
+            "completion": true,
+            "rows": true,
+            "severe": true
+          },
+          "D4": {
+            "safe": true,
+            "completion": true,
+            "rows": true,
+            "severe": true
+          },
+          "I0185": {
+            "safe": true,
+            "completion": true,
+            "rows": false,
+            "severe": false
+          }
+        },
+        "tests": {
+          "wall": true,
+          "input": null,
+          "output": null
+        },
+        "outcome": "FAIL",
+        "comparison": "FAIL",
+        "admission": "FAIL"
+      },
+      "sums": {
+        "A": {
+          "S": 2,
+          "wall": 2840.8993977499777,
+          "input": 4691860,
+          "output": 144449,
+          "per_success": {
+            "wall": 1420.4496988749888,
+            "input": 2345930.0,
+            "output": 72224.5
+          },
+          "methodology": {
+            "m01-D4-claude-A-r1": null,
+            "m08-D3-claude-A-r1": null,
+            "m15-I0185-claude-A-r1": null,
+            "m22-I0185-claude-A-r2": null,
+            "m29-D3-claude-A-r2": null,
+            "m36-D4-claude-A-r2": null
+          }
+        },
+        "I": {
+          "S": 4,
+          "wall": 3217.2353258750227,
+          "input": null,
+          "output": null,
+          "input_lower_bound": 10315933,
+          "output_lower_bound": 191721,
+          "per_success": {
+            "wall": 804.3088314687557,
+            "input": null,
+            "output": null
+          },
+          "methodology": {
+            "m02-D4-claude-I-r1": false,
+            "m09-D3-claude-I-r1": true,
+            "m13-I0185-claude-I-r1": true,
+            "m24-I0185-claude-I-r2": true,
+            "m28-D3-claude-I-r2": true,
+            "m35-D4-claude-I-r2": true
+          }
+        },
+        "F": {
+          "S": 1,
+          "wall": 8836.146001376008,
+          "input": 88973473,
+          "output": 688264,
+          "per_success": {
+            "wall": 8836.146001376008,
+            "input": 88973473.0,
+            "output": 688264.0
+          },
+          "methodology": {
+            "m03-D4-claude-F-r1": false,
+            "m07-D3-claude-F-r1": false,
+            "m14-I0185-claude-F-r1": false,
+            "m23-I0185-claude-F-r2": false,
+            "m30-D3-claude-F-r2": false,
+            "m34-D4-claude-F-r2": false
+          }
+        }
+      }
+    },
+    "codex": {
+      "admitted": "A",
+      "admission": {
+        "candidate": "I",
+        "reference": "A",
+        "quality": {
+          "D3": {
+            "safe": true,
+            "completion": true,
+            "rows": true,
+            "severe": true
+          },
+          "D4": {
+            "safe": true,
+            "completion": true,
+            "rows": true,
+            "severe": true
+          },
+          "I0185": {
+            "safe": true,
+            "completion": true,
+            "rows": true,
+            "severe": true
+          }
+        },
+        "tests": {
+          "wall": false,
+          "input": null,
+          "output": null
+        },
+        "strictly_better": null,
+        "outcome": "FAIL"
+      },
+      "replacement": {
+        "candidate": "I",
+        "reference": "F",
+        "quality": {
+          "D3": {
+            "safe": true,
+            "completion": true,
+            "rows": true,
+            "severe": true
+          },
+          "D4": {
+            "safe": true,
+            "completion": true,
+            "rows": true,
+            "severe": true
+          },
+          "I0185": {
+            "safe": true,
+            "completion": true,
+            "rows": false,
+            "severe": false
+          }
+        },
+        "tests": {
+          "wall": true,
+          "input": null,
+          "output": null
+        },
+        "outcome": "FAIL",
+        "comparison": "FAIL",
+        "admission": "FAIL"
+      },
+      "sums": {
+        "A": {
+          "S": 4,
+          "wall": 1592.5955364579859,
+          "input": 1787074,
+          "output": 39567,
+          "per_success": {
+            "wall": 398.14888411449647,
+            "input": 446768.5,
+            "output": 9891.75
+          },
+          "methodology": {
+            "m04-I0185-codex-A-r1": null,
+            "m12-D4-codex-A-r1": null,
+            "m17-D3-codex-A-r1": null,
+            "m20-D3-codex-A-r2": null,
+            "m25-D4-codex-A-r2": null,
+            "m33-I0185-codex-A-r2": null
+          }
+        },
+        "I": {
+          "S": 4,
+          "wall": 3104.6053259150067,
+          "input": null,
+          "output": null,
+          "input_lower_bound": 7491270,
+          "output_lower_bound": 154707,
+          "per_success": {
+            "wall": 776.1513314787517,
+            "input": null,
+            "output": null
+          },
+          "methodology": {
+            "m06-I0185-codex-I-r1": true,
+            "m11-D4-codex-I-r1": false,
+            "m16-D3-codex-I-r1": true,
+            "m21-D3-codex-I-r2": true,
+            "m26-D4-codex-I-r2": true,
+            "m31-I0185-codex-I-r2": false
+          }
+        },
+        "F": {
+          "S": 1,
+          "wall": 5302.611689083948,
+          "input": null,
+          "output": null,
+          "input_lower_bound": 29977697,
+          "output_lower_bound": 150982,
+          "per_success": {
+            "wall": 5302.611689083948,
+            "input": null,
+            "output": null
+          },
+          "methodology": {
+            "m05-I0185-codex-F-r1": false,
+            "m10-D4-codex-F-r1": false,
+            "m18-D3-codex-F-r1": false,
+            "m19-D3-codex-F-r2": false,
+            "m27-D4-codex-F-r2": false,
+            "m32-I0185-codex-F-r2": false
+          }
+        }
+      }
+    }
+  }
+}
