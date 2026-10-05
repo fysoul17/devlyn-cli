@@ -363,8 +363,8 @@ class LoopFixture(unittest.TestCase):
             exclude.write(".devlyn/\n")
         self.assertEqual(self.tasks(self.drain())["ig.t1"]["result"], "accepted")
 
-    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
-    def test_delivery_pending_keeps_acceptance_resources_and_resume(self):
+    def remote(self, **server):
+        """GitHub stand-in: task-complete's fake gh and transport wrappers over a local bare repository."""
         helper = runpy.run_path(str(self.helper))
         bare = self.root / "remote.git"
         self.run_ok(["git", "init", "-q", "--bare", "--initial-branch=main", str(bare)])
@@ -375,9 +375,34 @@ class LoopFixture(unittest.TestCase):
             (bin_dir / name).write_text(body, encoding="utf-8")
             (bin_dir / name).chmod(0o755)
         data = self.root / "gh.json"
-        data.write_text(json.dumps({"bare": str(bare), "pending": True}), encoding="utf-8")
+        data.write_text(json.dumps({"bare": str(bare), **server}), encoding="utf-8")
         self.env.update(PATH=str(bin_dir) + os.pathsep + self.env["PATH"], FIXTURE_GH=str(data), REAL_GIT=shutil.which("git"))
         self.g("remote", "add", "origin", "https://github.com/test/project.git")
+        return bare, data
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_prerequisite_merge_is_checked_before_allocation_and_execution(self):
+        bare, _ = self.remote(pending=False)
+        self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
+        queue = self.anchor / "docs/specs/queue.md"
+        planned = queue.read_bytes()
+        queue.write_bytes(planned.replace((self.queue["row_line"]("inv.t2", "Greeting app [cli]") + "\n").encode(), b""))
+        self.assertEqual(self.tasks(self.drain(local=False))["inv.t1"]["delivery"], "COMPLETE")
+        merge = self.receipt("inv.t1")["merge"]["mergeCommit"]["oid"]
+        self.run_ok(["git", "--git-dir", str(bare), "update-ref", "refs/heads/main", self.base])  # The base loses that merge.
+        queue.write_bytes(planned)
+        for _ in range(2):
+            self.assertIn(f"lacks the delivered prerequisite merge {merge}", self.drain(local=False, code=1)["reason"])
+            self.assertFalse(self.receipt_path("inv.t2").exists())
+        # A receipt allocated on that base by another route is checked again before execution.
+        self.run_ok([sys.executable, str(self.helper), "allocate", "--repo", str(self.anchor), "--task", "inv.t2", "--branch", "devlyn/inv/t2",
+                     "--repository", "test/project", "--base", "main", "--worktree", str(self.root / "repo.devlyn/inv/t2")])
+        self.assertIn(f"lacks the delivered prerequisite merge {merge}", self.drain(local=False, code=1)["reason"])
+        self.assertEqual(self.calls("inv.t2"), 0)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_delivery_pending_keeps_acceptance_resources_and_resume(self):
+        bare, data = self.remote(pending=True)
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
         result = self.drain(local=False)
         tasks = self.tasks(result)

@@ -572,6 +572,14 @@ def input_files(v, row, receipt, local):
     return files
 
 
+def require_merged(v, row, base):
+    """auto/pr: every prerequisite's merge commit must be in the base, before allocation and before every execution."""
+    for dep in v["packages"][row["loop"]]["tasks"][row["task"]]["depends_on"]:
+        receipt = v["states"][f"{row['loop']}.{dep}"]["receipt"] or {}
+        merge = ((receipt.get("merge") or {}).get("mergeCommit") or {}).get("oid")
+        require(merge and ancestor(v["anchor"], merge, base), f"{row['identity']}: base {base} lacks the delivered prerequisite merge {merge}")
+
+
 def evidence_ignored(anchor, common, start):
     """Whether a checkout of `start` ignores .devlyn/: its .gitignore files on that path, info/exclude, core.excludesFile."""
     with tempfile.TemporaryDirectory(prefix="devlyn-loop-ignore-") as temp:
@@ -609,16 +617,12 @@ def allocate(v, row, opts):
             start = helper["remote_base"]({"common_gitdir": str(common), "remote": "origin", "base": manifest["base_ref"]})
         except helper["CompletionError"] as exc:
             raise LoopError(f"{identity}: cannot refresh base {manifest['base_ref']}: {exc}") from exc
+        require_merged(v, row, start)
     require(evidence_ignored(anchor, common, start),
             f"{identity}: .devlyn/ is not ignored in its start commit {start}, so loop evidence would dirty task source; commit a "
             f"`.devlyn/` entry to .gitignore in the base the task starts from, or add `.devlyn/` to {common / 'info' / 'exclude'}")
     result = task_complete("allocate", **values)
     progress(identity, f"allocated {result['worktree']}")
-    if not is_local(v, loop):
-        baseline = read_json(result["receipt"])["baseline"]
-        for dep in deps:
-            merge = ((dep["receipt"] or {}).get("merge") or {}).get("mergeCommit") or {}
-            require(not merge or ancestor(anchor, merge["oid"], baseline), f"{identity}: refreshed base {baseline} lacks the delivered prerequisite merge {merge.get('oid')}")
 
 
 def ensure_packet(v, row, path, receipt):
@@ -730,6 +734,8 @@ def advance(v, row, opts):
         allocate(v, row, opts)
     receipt = read_json(path)
     if not receipt.get("acceptance"):
+        if not receipt.get("local_only"):
+            require_merged(v, row, receipt["baseline"])
         packet_path, packet = ensure_packet(v, row, path, receipt)
         ensure_submission(identity, packet_path, packet, opts.executor)
         try:
