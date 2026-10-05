@@ -68,6 +68,8 @@ if behavior.get("review", True):
     submission["reviews"] = [str(review)]
 if behavior.get("change_after_review"):
     submission["source_sha"] = commit({"late.txt": "late change\n"}, "change after checks and review")
+if behavior.get("detach"):
+    git("checkout", "-q", "--detach")
 if behavior.get("hold"):
     flag = config_path.with_name("held")
     detach = {"creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
@@ -403,6 +405,16 @@ class LoopFixture(unittest.TestCase):
         queue_file = self.anchor / "docs/specs/queue.md"
         queue_file.write_bytes(queue_file.read_bytes().replace(b"- [ ] ee.t1", b"- [x] ee.t1").replace(b"- [ ] ee.t2", b"- [x] ee.t2"))
         self.assertIn("conflicting terminal state for ee.t2", self.cli("status", "--repo", self.anchor, code=1)["reason"])
+
+    def test_a_detached_submission_fails_settles_and_the_drain_continues(self):
+        self.plan("a", [CHAIN[0]], {"a.t1": {"product": "greeting", "detach": True}})
+        self.plan("b", [("t1", [], "Notes", [NOTES_CHECK])], {"b.t1": {"product": "notes"}})
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"a.t1": "failed", "b.t1": "accepted"})
+        self.assertIn("HEAD detached", tasks["a.t1"]["reason"])
+        receipt = self.receipt("a.t1")
+        self.assertEqual((receipt["delivery"], receipt["queue"]["commit"], self.calls("a.t1")), ("FAILED", receipt["publish_sha"], 1))
+        self.assertEqual(self.rows(receipt["publish_sha"])["a.t1"]["mark"], "F")
 
     def test_unobservable_interrupted_execution_fails_only_that_task(self):
         self.plan("a", CHAIN, {"a.t1": {"product": "greeting", "hang": True}, "a.t2": {"product": "app"}})

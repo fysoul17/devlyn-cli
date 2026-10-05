@@ -412,7 +412,9 @@ def attach(args):
             require(not receipt.get("queue"), "a different terminal commit is already attached")
             work = Path(receipt["worktree"])
             queue_commit(receipt, work, queue, receipt["source_sha"])
-            require(ref_sha(receipt, "refs/heads/"+receipt["branch"]) == args.commit and git(work, "rev-parse", "HEAD") == args.commit,
+            # A failed result is never published, so its checkout stays as left; a publishable one must be checked out.
+            require(ref_sha(receipt, "refs/heads/"+receipt["branch"]) == args.commit
+                    and (receipt.get("product") == "FAILED" or git(work, "rev-parse", "HEAD") == args.commit),
                     "task ref and HEAD must be the terminal commit")
             recovery = ref_sha(receipt, receipt["recovery_ref"])
             require(recovery in {receipt["source_sha"], args.commit}, "recovery ref changed")
@@ -2134,6 +2136,19 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(result["status"], "FAILED")
         d = json.loads(self.data.read_text())
         self.assertEqual((d.get("pushs", 0), d.get("creates", 0)), (0, 0))
+
+    def test_attach_requires_the_terminal_checkout_only_for_a_publishable_result(self):
+        for verdict in ("ACCEPTED", "FAILED"):
+            with self.subTest(verdict=verdict):
+                self.allocate(verdict.lower())
+                self.loop_result(verdict)
+                (self.task / "queue.md").write_text("- [x] fixture\n", encoding="utf-8")
+                self.g("add", "queue.md", work=self.task)
+                self.g("commit", "-m", "terminal", work=self.task)
+                terminal = self.g("rev-parse", "HEAD", work=self.task)
+                self.g("checkout", "-q", "--detach", self.sha, work=self.task)  # The task ref is terminal; HEAD stays at the source.
+                result, _ = self.cli("attach", "--receipt", self.receipt, "--commit", terminal, "--file", "queue.md", success=False)
+                self.assertEqual(result["status"], "ATTACHED" if verdict == "FAILED" else "BLOCKED", result)
 
     def test_local_only_completion_binds_acceptance_custody(self):
         self.allocate(); self.accept()
