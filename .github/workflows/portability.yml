@@ -158,7 +158,7 @@ jobs:
           for relative, expected in identity['driver_sha256'].items():
               assert hashlib.sha256((driver.parent / relative).read_bytes()).hexdigest() == expected, relative
 
-          def checked(label, command, timeout=360, **kwargs):
+          def checked(label, command, timeout=240, **kwargs):
               # No inherited stdin, and a bounded run: a hung check fails with its partial log instead of
               # consuming the job's timeout without evidence.
               with (logs / (label + '.log')).open('wb') as output:
