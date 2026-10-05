@@ -127,8 +127,8 @@ class LoopFixture(unittest.TestCase):
     def g(self, *args, work=None):
         return self.run_ok(["git", "-C", str(work or self.anchor), *args])
 
-    def plan(self, loop, tasks, behaviors, delivery="local-only"):
-        meta = self.queue["write_package"](self.anchor, loop, tasks, delivery=delivery, base=self.base)
+    def plan(self, loop, tasks, behaviors, delivery="local-only", base=None):
+        meta = self.queue["write_package"](self.anchor, loop, tasks, delivery=delivery, base=base or self.base)
         self.behaviors.update(behaviors)
         self.cli("add", meta)
 
@@ -347,6 +347,21 @@ class LoopFixture(unittest.TestCase):
         queue_file = self.anchor / "docs/specs/queue.md"
         queue_file.write_bytes(queue_file.read_bytes().replace(b"- [ ] ee.t1", b"- [x] ee.t1").replace(b"- [ ] ee.t2", b"- [x] ee.t2"))
         self.assertIn("conflicting terminal state for ee.t2", self.cli("status", "--repo", self.anchor, code=1)["reason"])
+
+    def test_devlyn_ignore_is_checked_before_allocation(self):
+        (self.anchor / ".gitignore").write_text("__pycache__/\n", encoding="utf-8")
+        self.g("commit", "-qam", "base without the .devlyn/ rule")
+        self.plan("ig", [("t1", [], "Notes", [NOTES_CHECK])], {"ig.t1": {"product": "notes"}}, base=self.g("rev-parse", "HEAD"))
+        blocked = self.drain(code=1)
+        self.assertIn(".devlyn/ is not ignored", blocked["reason"])
+        self.assertIn(".gitignore", blocked["reason"])
+        self.assertIn("info", blocked["reason"])
+        self.assertIn("exclude", blocked["reason"])
+        self.assertFalse(self.receipt_path("ig.t1").exists())
+        (self.common / "info").mkdir(exist_ok=True)
+        with (self.common / "info" / "exclude").open("a", encoding="utf-8") as exclude:
+            exclude.write(".devlyn/\n")
+        self.assertEqual(self.tasks(self.drain())["ig.t1"]["result"], "accepted")
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_delivery_pending_keeps_acceptance_resources_and_resume(self):

@@ -572,11 +572,22 @@ def input_files(v, row, receipt, local):
     return files
 
 
+def evidence_ignored(anchor, common, start):
+    """Whether a checkout of `start` ignores .devlyn/: its .gitignore files on that path, info/exclude, core.excludesFile."""
+    with tempfile.TemporaryDirectory(prefix="devlyn-loop-ignore-") as temp:
+        for rel in (".gitignore", ".devlyn/.gitignore", ".devlyn/loop/.gitignore"):
+            if (rules := show(anchor, start, rel)) is not None:
+                (Path(temp) / rel).parent.mkdir(parents=True, exist_ok=True)
+                (Path(temp) / rel).write_bytes(rules)
+        return git_run(temp, "--git-dir", str(common), "--work-tree", temp, "check-ignore", "-q", "--no-index",
+                       ".devlyn/loop/evidence", ok=(0, 1)).returncode == 0
+
+
 def allocate(v, row, opts):
     identity, loop, task = row["identity"], row["loop"], row["task"]
     package = v["packages"][loop]
     manifest = package["manifest"]
-    anchor = v["anchor"]
+    anchor, common = v["anchor"], v["common"]
     deps = [v["states"][f"{loop}.{dep}"] for dep in package["tasks"][task]["depends_on"]]
     values = {"repo": str(anchor), "task": identity, "branch": branch_of(identity), "repository": None,
               "base": manifest["base_ref"], "remote": "origin", "worktree": str(opts.worktree_root / loop / task),
@@ -589,10 +600,18 @@ def allocate(v, row, opts):
                     f"{identity}: prerequisite source {dep['receipt']['source_sha']} is not in the accepted frontier {start}; plan an integration task")
         values["from_receipt" if tip else "local_base"] = str(tip["path"]) if tip else start
     else:
+        helper = shared("task-complete")
         try:
-            values["repository"] = shared("task-complete")["repository_from_url"](git(anchor, "config", "--get", "remote.origin.url"))
-        except (LoopError, shared("task-complete")["CompletionError"]) as exc:
+            values["repository"] = helper["repository_from_url"](git(anchor, "config", "--get", "remote.origin.url"))
+        except (LoopError, helper["CompletionError"]) as exc:
             raise LoopError(f"{identity}: {manifest['delivery']} delivery needs an origin remote naming one GitHub repository: {exc}") from exc
+        try:
+            start = helper["remote_base"]({"common_gitdir": str(common), "remote": "origin", "base": manifest["base_ref"]})
+        except helper["CompletionError"] as exc:
+            raise LoopError(f"{identity}: cannot refresh base {manifest['base_ref']}: {exc}") from exc
+    require(evidence_ignored(anchor, common, start),
+            f"{identity}: .devlyn/ is not ignored in its start commit {start}, so loop evidence would dirty task source; commit a "
+            f"`.devlyn/` entry to .gitignore in the base the task starts from, or add `.devlyn/` to {common / 'info' / 'exclude'}")
     result = task_complete("allocate", **values)
     progress(identity, f"allocated {result['worktree']}")
     if not is_local(v, loop):
@@ -609,8 +628,6 @@ def ensure_packet(v, row, path, receipt):
         return packet_path, read_json(packet_path)
     identity, loop, task = row["identity"], row["loop"], row["task"]
     worktree, baseline, branch = Path(receipt["worktree"]), receipt["baseline"], receipt["branch"]
-    require(git_run(worktree, "check-ignore", "-q", ".devlyn/loop/evidence", ok=(0, 1)).returncode == 0,
-            f"{identity}: .devlyn/ must be ignored in {worktree} (add it to .gitignore); loop evidence must not dirty task source")
     local = bool(receipt.get("local_only"))
     files = input_files(v, row, receipt, local)
     head = git(worktree, "rev-parse", "refs/heads/" + branch)
