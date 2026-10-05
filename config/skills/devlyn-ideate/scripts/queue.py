@@ -33,7 +33,8 @@ ID = r"[a-z0-9][a-z0-9-]{0,62}"
 SHA_RE = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 JSON_FENCE_RE = re.compile(r"(?ms)^```json[ \t]*\n(.*?)\n```[ \t]*$")
 ROW_RE = re.compile(r"- \[(?P<mark>[ xF])\] (?P<text>.*)")
-ITEM_RE = re.compile(rf"(?P<identity>(?P<loop>{ID})\.(?P<task>{ID})) \[(?P<title>(?:[^\]\\\n]|\\.)*)\]\((?P<link>[^)\s]+)\)(?P<rest>.*)")
+ITEM_RE = re.compile(rf"(?P<identity>(?P<loop>{ID})\.(?P<task>{ID})) \[(?P<title>(?:[^\]\\\n]|\\.)*)\]"
+                     r"\(docs/specs/(?P=loop)/(?P=task)/spec\.md\)(?P<rest>(?: — .*)?)")
 REQUIREMENT_RE = re.compile(r"[-*] (R[1-9][0-9]*): \S")
 META_SECTIONS = ("Intent", "Constraints and exclusions", "Tasks", "Overall acceptance", "Execution policy",
                  "Decisions and assumptions")
@@ -350,11 +351,10 @@ def parse_queue(data):
         match = ROW_RE.fullmatch(raw.removesuffix("\r"))
         if not match:
             continue
-        row = {"index": index, "line": match.group(0), "mark": match["mark"], "text": match["text"], "identity": None}
-        if item := ITEM_RE.fullmatch(match["text"]):
-            link = f"docs/specs/{item['loop']}/{item['task']}/spec.md"
-            require(item["link"] == link, f"{QUEUE} line {index + 1}: {item['identity']} must link {link}")
-            require(bool(item["rest"]) == (match["mark"] == "F"), f"{QUEUE} line {index + 1}: only [F] rows carry a reason suffix")
+        row = {"index": index, "line": match.group(0), "mark": match["mark"], "text": match["text"].rstrip(), "identity": None}
+        # Only a row matching the full loop-row grammar is a loop row; any other row is a legacy row.
+        item = ITEM_RE.fullmatch(row["text"])
+        if item and bool(item["rest"]) == (match["mark"] == "F"):
             row.update(identity=item["identity"], loop=item["loop"], task=item["task"], rest=item["rest"])
         rows.append(row)
     identities = [row["identity"] for row in rows if row["identity"]]
@@ -1044,11 +1044,17 @@ class QueueTests(unittest.TestCase):
         self.assertEqual(after.replace(b"- [F] a.t2 [Same](docs/specs/a/t2/spec.md) \xe2\x80\x94 failed: check (receipt 1)", b""),
                          queue.replace(row_line("a.t2", "Same").encode(), b""))
         for bad, message in ((lambda: transition(after, "a.t2", "x"), "no pending queue row"),
-                             (lambda: parse_queue(queue + row_line("a.t1", "Dup").encode()), "duplicate queue identity: a.t1"),
-                             (lambda: parse_queue(b"- [ ] a.t3 [T](docs/specs/a/t9/spec.md)"), "must link docs/specs/a/t3/spec.md")):
+                             (lambda: parse_queue(queue + row_line("a.t1", "Dup").encode()), "duplicate queue identity: a.t1")):
             with self.assertRaisesRegex(LoopError, re.escape(message)):
                 bad()
         self.assertEqual(parse_queue(row_line("a.t1", "[x] tricky \\ title").encode())[0]["identity"], "a.t1")
+        # A row that does not fully match the loop-row grammar is a legacy row; trailing whitespace is tolerated.
+        legacy = [b"- [ ] package.json [bump lodash](https://github.com/x/y/issues/3)", b"- [ ] a.t3 [T](docs/specs/a/t9/spec.md)",
+                  b"- [x] a.t4 [T](docs/specs/a/t4/spec.md) trailing words", b"- [F] a.t5 [T](docs/specs/a/t5/spec.md)"]
+        self.assertEqual([row["identity"] for row in parse_queue(b"\n".join(legacy))], [None] * 4)
+        spaced = row_line("a.t1", "T").encode() + b" \t\n"
+        self.assertEqual(parse_queue(spaced)[0]["identity"], "a.t1")
+        self.assertEqual([(r["identity"], r["mark"]) for r in parse_queue(transition(spaced, "a.t1", "F", " — failed: x (receipt 1)"))], [("a.t1", "F")])
         order = ["a.t1", "a.t2", "a.t3"]
         merged = merge_rows(HEADER + b"- [x] keep\n" + row_line("a.t3", "C").encode() + b"\n",
                             order, {"a.t1": "- [x] " + row_line("a.t1", "A")[6:], "a.t2": row_line("a.t2", "B")})

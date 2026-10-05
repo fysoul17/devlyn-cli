@@ -101,7 +101,7 @@ Coverage proves that every obligation has evidence. Whether the checks express t
 - `[ ]` is pending or active (the receipt tells which). `[x]` is an accepted product. `[F]` is failed, infrastructure-blocked, prerequisite-blocked or needs-review and ends with ` — <reason> (receipt <id>)`. Delivery state lives in receipts and the drain report; a pending PR never turns `[x]` into `[F]`.
 - The only legal transition turns one pending row into `[x]` or `[F]` with every other byte unchanged. Terminal rows are never reinterpreted or rerun.
 - Identities are unique; equal titles are fine.
-- Rows without an identity are legacy raw intents: readable, never executed. `add --materialize <line>` replaces one pending legacy row, at its position, with a package whose `## Intent` reproduces that intent verbatim (whitespace may reflow).
+- A row that does not fully match this grammar (trailing whitespace aside) is a legacy raw intent: readable, never executed. `add --materialize <line>` replaces one pending legacy row, at its position, with a package whose `## Intent` reproduces that intent verbatim (whitespace may reflow).
 
 ## Commands
 
