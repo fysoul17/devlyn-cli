@@ -235,3 +235,27 @@ The operator loop now starts from its runtime directory.
 - everything else unchanged.
 
 SMOKE repeats in full. Round 1's evidence stays in `0232-live/out/smoke-round1/`.
+
+### Addendum 2026-10-05 — SMOKE round 2 passed
+
+SMOKE round 2 used apparatus `92c6571e` and models cache `c24e50ce…`. All six cells exited 0 with a recorded verdict.
+
+**Every criterion holds:**
+- **Identity:** MATCH in 6 of 6 cells.
+- **Allocation:** each F run's `base_ref` equals the allocation commit, in both configurations.
+- **Snapshots:** one per cell.
+- **Usage:** 5 cells COMPLETE. `smoke-codex-I` is PARTIAL with one named gap: a Codex parent's in-flight request was cancelled when its child messaged it ("response stream dropped before provider terminal event"), so it has no native usage.
+- **I's review** completed in both configurations, each with its record:
+  - claude config, Codex reviewer: exit 0, `turn.completed`, a nonempty answer, and its own unittest rerun;
+  - codex config, Claude reviewer: exit 0, `subtype: success`, `is_error: false`, a 1,561-character answer.
+- **Teardown:** clean in all cells, with no surviving volume.
+
+The pre-authorized timeout adjustment was not needed: no review command timed out or moved to the background.
+
+Astra reviewed the round-1 fixes (`smoke-r1-fix-astra.out.md`, SHIP) and recommended two follow-ups. Both are made in `a8b18137`, with no change to a normal run:
+- the teardown record decodes a timeout's byte stderr;
+- the `/tmp` volume test now covers a linked worktree, a symlink, an executable mode and a skipped socket.
+
+Measured cells use apparatus `a8b18137`.
+
+**Added honest limit:** like compaction requests, cancelled Codex inferences carry no native usage. Each one makes its cell's usage PARTIAL. In the codex configuration that can leave token tests inconclusive.
