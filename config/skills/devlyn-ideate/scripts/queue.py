@@ -491,9 +491,9 @@ def waiting(v, row):
         state = v["states"][identity]
         if state["kind"] != "accepted":
             return f"waiting for {identity} ({state['kind']})"
-        if local and not state["receipt"]:
+        if not state["receipt"]:
             return f"prerequisite {identity} has no receipt-bound accepted source"
-        if not local and state["receipt"] and not delivered(state["receipt"]):
+        if not local and not delivered(state["receipt"]):
             return f"awaiting delivery of {identity}"
     return None
 
@@ -1079,6 +1079,17 @@ class QueueTests(unittest.TestCase):
         write_package(self.anchor, "rep", [("t1", [], "Weekly", self.tasks[0][3])], intent="User asked: Make the report weekly.")
         self.cli("add", second, "--materialize", 5)
         self.assertEqual(queue.read_bytes(), expected + row_line("rep.t1", "Weekly").encode())
+
+    def test_handwritten_marks_never_satisfy_dependencies(self):
+        queue = self.anchor / QUEUE
+        for delivery in ("local-only", "auto"):
+            with self.subTest(delivery=delivery):
+                queue.unlink(missing_ok=True)
+                self.cli("add", write_package(self.anchor, "hw", self.tasks, delivery=delivery))
+                queue.write_bytes(queue.read_bytes().replace(b"- [ ] hw.t1", b"- [x] hw.t1"))
+                status = self.cli("status")
+                self.assertEqual(status["next"], None)
+                self.assertIn("hw.t2: prerequisite hw.t1 has no receipt-bound accepted source", status["blockers"])
 
     def test_common_gitdir_locks_span_worktrees(self):
         linked = self.root / "linked tree"
