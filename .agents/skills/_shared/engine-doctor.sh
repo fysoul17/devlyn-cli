@@ -17,13 +17,12 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ADAPTERS_DIR="$SCRIPT_DIR/adapters"
 
-TARGETS=(claude codex grok omp pi)
-KINDS=(cli-engine cli-engine cli-engine cli-engine orchestrator-only)
-BINARIES=(claude codex grok omp "")
+TARGETS=(claude codex omp pi)
+KINDS=(cli-engine cli-engine cli-engine orchestrator-only)
+BINARIES=(claude codex omp "")
 INSTALL_HINTS=(
   "see https://docs.anthropic.com/en/docs/claude-code"
   "npm install -g @openai/codex"
-  "see https://docs.x.ai/build/overview (install + browser auth)"
   "brew install can1357/tap/omp"
   ""
 )
@@ -39,72 +38,44 @@ check_adapter() {
   if [ -f "$ADAPTERS_DIR/$1.md" ]; then printf 'yes'; else printf 'no'; fi
 }
 
-check_role() {
-  # $1 = adapter file path. Reads the optional `## Role eligibility` fixed
-  # ASCII fields (_shared/adapters/README.md); absent file or section = both
-  # roles eligible by default (every adapter shipped before iter-0051).
+check_executor() {
+  # $1 = adapter file path. An adapter may declare the fixed ASCII field
+  # `executor: no` under `## Role eligibility`; otherwise it can execute.
   [ -f "$1" ] || { printf 'n/a'; return; }
-  local exec_ok='yes' judge_ok='yes'
-  grep -q '^executor: no' "$1" 2>/dev/null && exec_ok='no'
-  grep -q '^pair_judge: no' "$1" 2>/dev/null && judge_ok='no'
-  if [ "$exec_ok" = 'yes' ] && [ "$judge_ok" = 'yes' ]; then printf 'executor+judge'
-  elif [ "$judge_ok" = 'yes' ]; then printf 'judge-only'
-  elif [ "$exec_ok" = 'yes' ]; then printf 'executor-only'
-  else printf 'none'
-  fi
+  if grep -q '^executor: no' "$1" 2>/dev/null; then printf 'no'; else printf 'yes'; fi
 }
 
-printf '%-8s %-17s %-8s %-8s %-14s %-12s %s\n' \
-  'target' 'kind' 'binary' 'adapter' 'role' 'pin_eligible' 'note'
-
-pin_eligible_count=0
-missing_hints=()
+printf '%-8s %-17s %-8s %-8s %-9s %-12s %s\n' \
+  'target' 'kind' 'binary' 'adapter' 'executor' 'pin_eligible' 'note'
 
 for i in "${!TARGETS[@]}"; do
   target="${TARGETS[$i]}"
   kind="${KINDS[$i]}"
   binary="$(check_binary "${BINARIES[$i]}")"
   adapter="$(check_adapter "$target")"
-  role="$(check_role "$ADAPTERS_DIR/$target.md")"
+  executor="$(check_executor "$ADAPTERS_DIR/$target.md")"
 
   pin_eligible='no'
   case "$kind" in
-    cli-engine) [ "$binary" = 'yes' ] && [ "$adapter" = 'yes' ] && pin_eligible='yes' ;;
+    cli-engine) [ "$binary" = 'yes' ] && [ "$adapter" = 'yes' ] && [ "$executor" = 'yes' ] && pin_eligible='yes' ;;
   esac
 
   note='-'
   case "$kind" in
     cli-engine)
-      if [ "$pin_eligible" = 'yes' ]; then
-        pin_eligible_count=$((pin_eligible_count + 1))
-      elif [ "$binary" = 'no' ]; then
+      if [ "$binary" = 'no' ]; then
         note="not installed; ${INSTALL_HINTS[$i]}"
-        missing_hints+=("$target: ${INSTALL_HINTS[$i]}")
-      else
+      elif [ "$adapter" = 'no' ]; then
         note="binary present, no adapter — ship _shared/adapters/$target.md"
+      elif [ "$executor" = 'no' ]; then
+        note='adapter declares executor: no'
       fi
       ;;
     orchestrator-only)
-      note='informational only; not a routable role engine — no verified CLI binary or adapter'
+      note='informational only; not a routable engine — no verified CLI binary or adapter'
       ;;
   esac
 
-  [ "$target" = 'grok' ] && note='not emission-certified; BLOCKED pair source'
-
-  printf '%-8s %-17s %-8s %-8s %-14s %-12s %s\n' \
-    "$target" "$kind" "$binary" "$adapter" "$role" "$pin_eligible" "$note"
+  printf '%-8s %-17s %-8s %-8s %-9s %-12s %s\n' \
+    "$target" "$kind" "$binary" "$adapter" "$executor" "$pin_eligible" "$note"
 done
-
-printf '\n'
-if [ "$pin_eligible_count" -lt 2 ]; then
-  printf 'Recommendation: only %d adapter-valid engine(s) available. VERIFY pair-judge and\n' "$pin_eligible_count"
-  printf 'risk-probe escalation need a second, genuinely different model to check against —\n'
-  printf 'iter-0045 found different model tiers hit different failure-mode blind spots (not\n'
-  printf 'that any arbitrary second model helps); with fewer than 2, those routes can never\n'
-  printf 'fire and every run stays solo. Add one of:\n'
-  for hint in "${missing_hints[@]}"; do
-    printf '  - %s\n' "$hint"
-  done
-else
-  printf 'Pair-judge diversity: %d adapter-valid engines available.\n' "$pin_eligible_count"
-fi
