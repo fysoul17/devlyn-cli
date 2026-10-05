@@ -443,9 +443,9 @@ def derive_state(anchor, common, row, claims):
             f"conflicting terminal state for {identity}: queue row [{row['mark']}] but receipt {path} is {result or 'unbound'}")
     if result:
         recovery = ref_value(anchor, receipt["recovery_ref"])
-        # An attachment interrupted after moving the recovery ref, before saving the receipt; drain completes it.
-        interrupted = not receipt.get("queue") and bool(recovery) and is_terminal(anchor, receipt, identity, recovery)
-        require(recovery == receipt["publish_sha"] or interrupted,
+        # Or an attachment interrupted after moving the recovery ref, before saving the receipt; drain completes it.
+        require(recovery == receipt["publish_sha"] or not receipt.get("queue") and bool(recovery)
+                and is_terminal(anchor, receipt, identity, recovery),
                 f"{identity}: recovery ref {receipt['recovery_ref']} is {recovery or 'missing'}, receipt binds {receipt['publish_sha']}")
         if receipt.get("queue"):
             marks = [r["mark"] for r in parse_queue(show(anchor, receipt["publish_sha"], QUEUE) or b"") if r["identity"] == identity]
@@ -724,7 +724,7 @@ def ensure_submission(identity, packet_path, packet, executor):
     events = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
     if events and events[-1].partition(" ")[2] == "start":
         helper = shared("task-complete")
-        waiting = False
+        reported = False
         while True:
             try:
                 helper["stopped_writers"](worktree)
@@ -732,9 +732,9 @@ def ensure_submission(identity, packet_path, packet, executor):
             except helper["WritersUnobservable"] as exc:
                 return f"interrupted-unobservable: an interrupted executor may still be writing ({exc})"
             except helper["WriterActive"] as exc:
-                if not waiting:
+                if not reported:
                     progress(identity, f"waiting for an interrupted execution to stop ({exc})")
-                waiting = True
+                reported = True
                 time.sleep(2)
             except helper["CompletionError"] as exc:
                 raise LoopError(f"{identity}: cannot establish that an interrupted execution stopped ({exc})") from exc
@@ -745,7 +745,7 @@ def ensure_submission(identity, packet_path, packet, executor):
     output.mkdir(parents=True, exist_ok=True)
     record(log, "start")
     try:
-        # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout. The driver's stdin is not the executor's.
+        # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout; stdin is empty, never the driver's.
         with (output / "executor.stdout").open("ab") as stdout, (output / "executor.stderr").open("ab") as stderr:
             child = subprocess.Popen(shared("platform-support")["native_argv"](argv), cwd=worktree, stdin=subprocess.DEVNULL,
                                      stdout=stdout, stderr=stderr)
