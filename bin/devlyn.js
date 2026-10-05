@@ -15,14 +15,13 @@ const { updateInstructions, InstructionError, holdsDevlynDefaults } = require('.
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
 // skill here installs it everywhere.
-const DEVLYN_CORE_SKILLS = ['devlyn-resolve', 'devlyn-ideate', 'devlyn-engines', '_shared'];
+const DEVLYN_CORE_SKILLS = ['devlyn-ideate', 'devlyn-engines', '_shared'];
 // 4.0.0 renamed the colon-named skills to the Agent Skills standard (`[a-z0-9-]`, name ==
 // folder): Git for Windows cannot check out a folder with ':' in its name. Installs from 3.x
 // and earlier keep the old folder under either spelling (':' or npm's U+F03A extraction
 // alias). Both are removed, and an optional skill that was installed is installed again
 // under its new name in the same place.
 const RENAMED_SKILLS = {
-  'devlyn:resolve': 'devlyn-resolve',
   'devlyn:ideate': 'devlyn-ideate',
   'devlyn:engines': 'devlyn-engines',
   'devlyn:pencil-pull': 'devlyn-pencil-pull',
@@ -30,6 +29,11 @@ const RENAMED_SKILLS = {
   'devlyn:reap': 'devlyn-reap',
 };
 const DEVLYN_INSTALL_MARKER = '.devlyn-install.json';
+// Project settings earlier releases added for the retired pipeline.
+const RETIRED_STOP_HOOK = 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"';
+const RETIRED_ENV = ['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'];
+const RETIRED_PERMISSIONS = ['Write(.devlyn/**)', 'Edit(.devlyn/**)', 'Bash(git add *)', 'Bash(git commit *)',
+  'Bash(git diff *)', 'Bash(git status *)', 'Bash(git log *)'];
 
 // Every spelling a colon name can have on disk: its own and npm's U+F03A extraction alias.
 function legacySkillPaths(root, name) {
@@ -182,11 +186,14 @@ const DEPRECATED_DIRS = [
   'skills/devlyn:team-design-ui',
   'skills/devlyn:design-system',
   // Retired after 4.1.0 (design-ui deleted; the intent queue moved into
-  // devlyn-ideate). Both were core skills, so their 3.x and 4.x folders go.
+  // devlyn-ideate; resolve retired). All were core skills, so their 3.x and
+  // 4.x folders go.
   'skills/devlyn-design-ui',
   'skills/devlyn:design-ui',
   'skills/devlyn-queue',
   'skills/devlyn:queue',
+  'skills/devlyn-resolve',
+  'skills/devlyn:resolve',
 ];
 
 function projectDir() {
@@ -261,10 +268,7 @@ const OPTIONAL_ADDONS = [
   { name: 'anthropics/skills', desc: 'Official Anthropic skill-creator with eval framework and description optimizer', type: 'external' },
   { name: 'Leonxlnx/taste-skill', desc: 'Premium frontend design skills — modern layouts, animations, and visual refinement', type: 'external' },
   // MCP servers (installed via claude mcp add)
-  // Note: the Codex integration uses the local `codex` CLI binary (not MCP).
-  // Install the CLI separately per https://platform.openai.com/docs/codex — the
-  // pair/risk-probe routes fail closed when Codex is required but unavailable.
-  { name: 'playwright', desc: 'Playwright MCP for browser testing — powers /devlyn-resolve BUILD_GATE browser tier', type: 'mcp', command: 'npx -y @playwright/mcp@latest' },
+  { name: 'playwright', desc: 'Playwright MCP for browser testing', type: 'mcp', command: 'npx -y @playwright/mcp@latest' },
 ];
 
 function log(msg, color = 'reset') {
@@ -748,7 +752,7 @@ function installClaudeCore() {
   installCoreSkills(skillsDir);
   ignoreInGit(['.devlyn/', '.claude/skills/.devlyn-install.json']);
 
-  // Enable agent teams in project settings
+  // One-hour foreground Bash calls and one-hour prompt caching serve a drain host that waits in the foreground.
   const settingsPath = path.join(targetDir, 'settings.json');
   let settings = {};
   if (fs.existsSync(settingsPath)) {
@@ -761,51 +765,16 @@ function installClaudeCore() {
   if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
     throw new Error('Cannot merge .claude/settings.json: root must be a JSON object');
   }
-  const hasOwnSetting = (key) => Object.prototype.hasOwnProperty.call(settings, key);
   let settingsChanged = false;
-  if (!hasOwnSetting('env')) {
+  if (!Object.prototype.hasOwnProperty.call(settings, 'env')) {
     settings.env = {};
     settingsChanged = true;
   }
   if (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env)) {
     throw new Error('Cannot merge .claude/settings.json: env must be a JSON object');
   }
-  // Auto-allow pipeline state directory and common git commands so resolve doesn't prompt
-  if (!hasOwnSetting('permissions')) {
-    settings.permissions = {};
-    settingsChanged = true;
-  }
-  if (!settings.permissions || typeof settings.permissions !== 'object' || Array.isArray(settings.permissions)) {
-    throw new Error('Cannot merge .claude/settings.json: permissions must be a JSON object');
-  }
-  if (!Object.prototype.hasOwnProperty.call(settings.permissions, 'allow')) {
-    settings.permissions.allow = [];
-    settingsChanged = true;
-  }
-  if (!Array.isArray(settings.permissions.allow)) {
-    throw new Error('Cannot merge .claude/settings.json: permissions.allow must be an array');
-  }
-  const pipelinePermissions = [
-    'Write(.devlyn/**)',
-    'Edit(.devlyn/**)',
-    'Bash(git add *)',
-    'Bash(git commit *)',
-    'Bash(git diff *)',
-    'Bash(git status *)',
-    'Bash(git log *)',
-  ];
-  for (const perm of pipelinePermissions) {
-    if (!settings.permissions.allow.includes(perm)) {
-      settings.permissions.allow.push(perm);
-      settingsChanged = true;
-    }
-  }
   if (!settings.env.ENABLE_PROMPT_CACHING_1H) {
     settings.env.ENABLE_PROMPT_CACHING_1H = 'true';
-    settingsChanged = true;
-  }
-  if (!settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) {
-    settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1';
     settingsChanged = true;
   }
   const bashMaxTimeoutMs = Number.parseInt(settings.env.BASH_MAX_TIMEOUT_MS, 10);
@@ -813,43 +782,36 @@ function installClaudeCore() {
     settings.env.BASH_MAX_TIMEOUT_MS = '3600000';
     settingsChanged = true;
   }
-  if (!hasOwnSetting('hooks')) {
-    settings.hooks = {};
-    settingsChanged = true;
-  }
-  if (!settings.hooks || typeof settings.hooks !== 'object' || Array.isArray(settings.hooks)) {
-    throw new Error('Cannot merge .claude/settings.json: hooks must be a JSON object');
-  }
-  if (!Object.prototype.hasOwnProperty.call(settings.hooks, 'Stop')) {
-    settings.hooks.Stop = [];
-    settingsChanged = true;
-  }
-  if (!Array.isArray(settings.hooks.Stop)) {
-    throw new Error('Cannot merge .claude/settings.json: hooks.Stop must be an array');
-  }
-  const stopHookCommand = 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"';
-  const stopHookInstalled = settings.hooks.Stop.some((entry) => (
-    entry && Array.isArray(entry.hooks) && entry.hooks.some((hook) => (
-      hook && hook.type === 'command' && hook.command === stopHookCommand
-    ))
-  ));
-  if (!stopHookInstalled) {
-    settings.hooks.Stop.push({
-      hooks: [{ type: 'command', command: stopHookCommand, timeout: 30 }],
-    });
+  // Remove exactly the retired Stop hook command, and its entry only when nothing else is left in it.
+  const retiredHook = (hook) => hook?.type === 'command' && hook.command === RETIRED_STOP_HOOK;
+  const stop = Array.isArray(settings.hooks?.Stop) ? settings.hooks.Stop : [];
+  for (let i = stop.length - 1; i >= 0; i--) {
+    const hooks = stop[i]?.hooks;
+    if (!Array.isArray(hooks) || !hooks.some(retiredHook)) continue;
+    stop[i].hooks = hooks.filter((hook) => !retiredHook(hook));
+    if (stop[i].hooks.length === 0 && Object.keys(stop[i]).length === 1) stop.splice(i, 1);
+    log('  ✕ settings.json Stop hook of the retired pipeline (removed)', 'dim');
     settingsChanged = true;
   }
   if (settingsChanged) {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-    log('  → settings.json (agent teams + one-hour Bash max + 1h prompt caching + pipeline permissions + Stop hook)', 'dim');
+    log('  → settings.json (one-hour Bash max + 1h prompt caching)', 'dim');
+  }
+  // Their ownership cannot be established, so the other retired settings stay; name the ones present.
+  const retired = [
+    ...RETIRED_ENV.filter((key) => Object.prototype.hasOwnProperty.call(settings.env, key)),
+    ...RETIRED_PERMISSIONS.filter((rule) => Array.isArray(settings.permissions?.allow) && settings.permissions.allow.includes(rule)),
+  ];
+  if (retired.length > 0) {
+    log(`  Retired devlyn settings may remain in .claude/settings.json: ${retired.join(', ')} — delete those you did not add yourself.`, 'yellow');
   }
 }
 
 // Installs the targets in one scope; returns the skill roots written.
 function install(targets, global) {
   // In the home folder CLAUDE.md, AGENTS.md (agents read a parent folder's too) and
-  // .claude/settings.json (permissions, Stop hook) would apply to every project. Same folder by
-  // identity, so a link or another spelling of the path is caught too.
+  // .claude/settings.json would apply to every project. Same folder by identity, so a link or
+  // another spelling of the path is caught too.
   const home = fs.statSync(os.homedir(), { bigint: true, throwIfNoEntry: false });
   const here = fs.statSync(projectDir(), { bigint: true });
   if (!global && home?.dev === here.dev && home?.ino === here.ino) {
