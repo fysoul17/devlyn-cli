@@ -255,6 +255,24 @@ class Binding(unittest.TestCase):
                          ('COMPLETE', 240 + 6 + 62, 3 + 4 + 6), recorded['gaps'])
         self.assertEqual(recorded['claude']['claude-opus-5-5'], dict(input=16, cache_read=252, cache_write=40, output=13))
 
+    def test_4_1_0_result_text_is_no_envelope_and_every_output_json_counts(self):  # 0232 SMOKE round 1
+        run = self.out / 'cell/work/.devlyn/runs/rs-1'
+        run.mkdir(parents=True)
+        finding = json.dumps(dict(id='VERIFY-JUDGE-1', severity='LOW', verdict_binding=False))
+        for name in ('claude-judge.r0.stdout', 'claude-judge.stdout'):  # extracted result text: findings, then the verdict
+            (run / name).write_text(finding + '\nPASS_WITH_ISSUES\n')
+        (run / 'surface-close.stdout').write_text('UVR-STALE: N/A\n')
+        for stem, session, counts in (('claude-judge.r0', 'J1', (1, 2, 3, 4)), ('surface-close', 'SC', (5, 6, 7, 8))):
+            (run / f'{stem}.output.json').write_text(json.dumps(dict(
+                type='result', session_id=session, modelUsage={'claude-opus-5-5': claude_usage(*counts)})))
+        (self.out / 'home/.claude/projects/x').mkdir()  # SURFACE_CLOSE's own transcript: covered by its result
+        (self.out / 'home/.claude/projects/x/sc.jsonl').write_text(json.dumps(dict(type='assistant', sessionId='SC', message=dict(
+            id='m1', model='claude-opus-5-5', usage=dict(input_tokens=5, cache_read_input_tokens=6, cache_creation_input_tokens=7,
+                                                         output_tokens=8)))) + '\n')
+        recorded = usage.record(self.out)
+        self.assertEqual((recorded['completeness'], recorded['input_tokens'], recorded['output_tokens']),
+                         ('COMPLETE', 240 + 6 + 18, 3 + 4 + 8), recorded['gaps'])
+
     def test_a_missing_claude_counter_is_a_named_gap_never_zero(self):
         result = dict(type='result', session_id='OWNER', modelUsage={'claude-opus-5-5': dict(inputTokens=10, outputTokens=3)})
         (self.out / 'run/stdout').write_text(json.dumps(result) + '\n')
@@ -1326,6 +1344,28 @@ echo OK''')
             current = packet.tree(out / 'snapshot')
             changed = sorted(n for n in baseline['files'].keys() | current.keys() if baseline['files'].get(n) != current.get(n))
             self.assertEqual((selection['kind'], changed), ('worktree', []), task)
+
+    def test_tmp_survives_teardown_on_its_own_volume_and_codex_sandboxes_commands(self):  # 0232 SMOKE round 1
+        out = self.prepare.prepare(self.runtime, 'tmp-volume', 'SMOKE', 'A', 'codex')
+        auth = Path(self.runtime['auth'])
+        auth.mkdir(exist_ok=True)
+        for name in ('claude.json', 'codex.json'):
+            (auth / name).write_text('{}')
+        plan = json.loads((out / 'plan.json').read_text())
+        plan.update(wall_seconds=300, argv=['sh', '-c', (
+            'git -c user.name=t -c user.email=t@t worktree add -q -b kept /tmp/kept && echo kept > /tmp/kept/f && '
+            'ln -s f /tmp/kept/link && printf "#!/bin/sh\\n" > /tmp/kept/run.sh && chmod 755 /tmp/kept/run.sh && '
+            'python3 -c "import socket; socket.socket(socket.AF_UNIX).bind(\'/tmp/kept/sock\')" && '
+            'codex sandbox -- sh -c "echo SANDBOXED; touch /cell/work/x || echo READ-ONLY"')])
+        (out / 'plan.json').write_text(json.dumps(plan))
+        record = load('cell').run(out, self.runtime)
+        self.assertEqual(record['teardown'], 'CLEAN', record.get('teardown_error'))
+        kept = out / 'tmp/kept'
+        self.assertEqual(((kept / 'f').read_text(), (kept / 'link').readlink(), (kept / 'run.sh').stat().st_mode & 0o777,
+                          (kept / 'sock').exists()), ('kept\n', Path('f'), 0o755, False))  # the socket is skipped
+        self.assertEqual(locate.host(out, (out / 'cell/work/.git/worktrees/kept/gitdir').read_text().strip()), kept / '.git')
+        self.assertEqual([w for w in ('SANDBOXED', 'READ-ONLY') if w in (out / 'run/stdout').read_text()], ['SANDBOXED', 'READ-ONLY'])
+        self.assertNotEqual(subprocess.run(['docker', 'volume', 'inspect', record['tmp_volume']], capture_output=True).returncode, 0)
 
     def test_wrong_arm_is_refused(self):
         with self.assertRaises(ValueError):

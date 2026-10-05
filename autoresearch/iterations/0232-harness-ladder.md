@@ -207,3 +207,55 @@ Per configuration, over each arm's six measured cells (3 tasks × 2 replicates):
 - Results hold only for the pinned CLIs, image, tasks and routes.
 - Compaction requests carry no native usage (0231 "Honest limits"). A compaction in a cell makes that cell's usage PARTIAL.
 - The compliance meter's host-tree limits are listed in `DESIGN.md` "Tests and limits".
+
+### Addendum 2026-10-05 — SMOKE round 1
+
+SMOKE round 1 ran `smoke-claude-A`, `smoke-claude-I` and `smoke-claude-F`, then stopped.
+- **A and I met their SMOKE criteria.** I's Codex review completed with exit zero, `turn.completed`, a nonempty answer and its record.
+- **F stopped in the locator.** The operator loop had been launched from a directory under macOS privacy protection, so Git could not read its working directory.
+
+Root then found three apparatus defects. None changes a treatment; each fix applies to every arm alike.
+
+1. **Codex's Linux sandbox refused every command in the cells.**
+   - Cause: `/tmp` was a host bind mount ("cannot establish app-server socket mount isolation").
+   - Effect: I's Codex reviewer ran without tools. F's Codex judges and workers would have done the same.
+   - Fix: `/tmp` is now a per-cell Docker volume, copied into the cell output after teardown (`cell.py`).
+2. **The frozen models cache came from the host's Codex 0.160.0.**
+   - Effect: 4.1.0's role check refused it against the pinned 0.156.1. F's pair judge was therefore BLOCKED before dispatch.
+   - Fix: the pinned Codex 0.156.1 regenerated the cache, sha256 `c24e50cef6c1df5e78a964aede20823d7bd72827936b8dbb75ddb725b26c3c0e`. It replaces `0968c49e…`.
+3. **The usage meter misread 4.1.0's files.**
+   - Effect: it took 4.1.0's extracted judge text (`*.stdout`) for unreadable result envelopes, and it missed SURFACE_CLOSE's envelope. F's usage read PARTIAL when it was complete.
+   - Fix: envelopes are the `*.output.json` files (`evidence.py`).
+
+The operator loop now starts from its runtime directory.
+
+**Identities after this addendum:**
+- apparatus `92c6571e`;
+- models cache `c24e50ce…`;
+- everything else unchanged.
+
+SMOKE repeats in full. Round 1's evidence stays in `0232-live/out/smoke-round1/`.
+
+### Addendum 2026-10-05 — SMOKE round 2 passed
+
+SMOKE round 2 used apparatus `92c6571e` and models cache `c24e50ce…`. All six cells exited 0 with a recorded verdict.
+
+**Every criterion holds:**
+- **Identity:** MATCH in 6 of 6 cells.
+- **Allocation:** each F run's `base_ref` equals the allocation commit, in both configurations.
+- **Snapshots:** one per cell.
+- **Usage:** 5 cells COMPLETE. `smoke-codex-I` is PARTIAL with one named gap: a Codex parent's in-flight request was cancelled when its child messaged it ("response stream dropped before provider terminal event"), so it has no native usage.
+- **I's review** completed in both configurations, each with its record:
+  - claude config, Codex reviewer: exit 0, `turn.completed`, a nonempty answer, and its own unittest rerun;
+  - codex config, Claude reviewer: exit 0, `subtype: success`, `is_error: false`, a 1,561-character answer.
+- **Teardown:** clean in all cells, with no surviving volume.
+
+The pre-authorized timeout adjustment was not needed: no review command timed out or moved to the background.
+
+Astra reviewed the round-1 fixes (`smoke-r1-fix-astra.out.md`, SHIP) and recommended two follow-ups. Both are made in `a8b18137`, with no change to a normal run:
+- the teardown record decodes a timeout's byte stderr;
+- the `/tmp` volume test now covers a linked worktree, a symlink, an executable mode and a skipped socket.
+
+Measured cells use apparatus `a8b18137`.
+
+**Added honest limit:** like compaction requests, cancelled Codex inferences carry no native usage. Each one makes its cell's usage PARTIAL. In the codex configuration that can leave token tests inconclusive.

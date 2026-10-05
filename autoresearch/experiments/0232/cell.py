@@ -106,6 +106,15 @@ def identity(out, plan):
                 codex_seats={t: [s['seat'], s['model'], s['effort']] for t, s in inv['seated'].items()})
 
 
+def preserve_tmp(volume, dest, image):
+    """Copy the cell's /tmp volume into dest (tar skips sockets), then remove the volume. On failure the volume stays
+    for recovery and the caller records a teardown failure."""
+    docker('run', '--rm', '--network', 'none', '--user', '0', '--mount', f'type=volume,src={volume},dst=/src,readonly',
+           '--mount', f'type=bind,src={dest},dst=/dst', '--entrypoint', 'bash', image, '-c',
+           'set -o pipefail; tar -C /src -cf - . | tar -C /dst -xpf -', timeout=600)
+    docker('volume', 'rm', volume)
+
+
 def run(out, runtime):
     plan = json.loads((out / 'plan.json').read_text())
     record_dir = out / 'run'
@@ -118,24 +127,30 @@ def run(out, runtime):
     home = Path(plan['home'])
     (home / '.claude/.credentials.json').touch()
     (home / '.codex/auth.json').touch()
-    mounts = [(Path(plan['cell']), '/cell', False), (Path(plan['tmp']), '/tmp', False), (home, '/home/participant', False),
+    mounts = [(Path(plan['cell']), '/cell', False), (home, '/home/participant', False),
               (Path(plan['control']), '/control', True), (Path(plan['harness']), '/harness', True),
               (auth / 'codex.json', '/home/participant/.codex/auth.json', True),
               (secret / 'claude.json', '/home/participant/.claude/.credentials.json', False)]
     name = 'devlyn-0231-' + uuid.uuid4().hex
+    # /tmp is a per-cell Docker volume, copied to plan['tmp'] after teardown: Codex's Linux sandbox refuses to run any
+    # command when /tmp is a host bind mount (0232 SMOKE), which would disable every sandboxed Codex reviewer, judge
+    # and worker.
+    volume = 'devlyn-0232-tmp-' + uuid.uuid4().hex
+    docker('volume', 'create', '--label', 'devlyn.task=0232', volume)
     argv = ['create', '--name', name, '--label', 'devlyn.task=0231', '--network', 'bridge', '--cap-drop', 'ALL',
             '--security-opt', 'no-new-privileges', '--security-opt', 'seccomp=unconfined', '--read-only',
             '--restart=no', '--pids-limit', '256', '--memory', '4g', '--cpus', '2',
             # Codex keeps per-process helper links under CODEX_HOME/tmp/arg0; on the host bind mount a second codex
             # process's janitor cannot see the live lock and deletes them (0224 Amendment 1).
-            '--tmpfs', '/home/participant/.codex/tmp:rw,nosuid,exec,uid=501,gid=501', '-w', '/cell/work']
+            '--tmpfs', '/home/participant/.codex/tmp:rw,nosuid,exec,uid=501,gid=501', '-w', '/cell/work',
+            '--mount', f'type=volume,src={volume},dst=/tmp']
     for src, dst, readonly in mounts:
         argv += ['--mount', f'type=bind,src={src},dst={dst}' + (',readonly' if readonly else '')]
     for key, value in plan['env'].items():
         argv += ['--env', f'{key}={value}']
     argv += [plan['image'], *plan['argv']]
     record = dict(create_argv=argv, source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-                  started_at=time.time())
+                  tmp_volume=volume, started_at=time.time())
     (record_dir / 'started.json').write_text(json.dumps(record, indent=2))
     cid = docker(*argv)
     start, status = time.monotonic(), None
@@ -156,9 +171,12 @@ def run(out, runtime):
             if state['Running'] or state['Pid'] != 0:
                 raise RuntimeError('container survived kill')
             docker('rm', cid)
+            preserve_tmp(volume, Path(plan['tmp']), plan['image'])
             record['teardown'] = 'CLEAN'
         except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
-            record.update(teardown='FAILED', teardown_error=str(exc))
+            stderr = getattr(exc, 'stderr', None)  # bytes on a timeout, even when the call asked for text
+            stderr = stderr.decode(errors='replace') if isinstance(stderr, bytes) else stderr
+            record.update(teardown='FAILED', teardown_error=' '.join(filter(None, (str(exc), stderr))))
         shutil.rmtree(secret)
         (record_dir / 'result.json').write_text(json.dumps(record, indent=2))
     try:
