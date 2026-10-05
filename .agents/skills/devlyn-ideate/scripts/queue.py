@@ -292,7 +292,7 @@ def load_task(anchor, manifest, entry):
         fail("frontmatter id and loop_id must match the manifest")
     if not isinstance(front["title"], str) or not front["title"]:
         fail("title must be a non-empty line")
-    if front["kind"] not in KINDS:
+    if not isinstance(front["kind"], str) or front["kind"] not in KINDS:
         fail("kind must be feature, spike or prototype")
     review = front["review_requirements"]
     if not isinstance(review, list):
@@ -747,7 +747,7 @@ def ensure_submission(identity, packet_path, packet, executor):
     try:
         # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout; stdin is empty, never the driver's.
         with (output / "executor.stdout").open("ab") as stdout, (output / "executor.stderr").open("ab") as stderr:
-            child = subprocess.Popen(shared("platform-support")["native_argv"](argv), cwd=worktree, stdin=subprocess.DEVNULL,
+            child = subprocess.Popen(shared("platform-support")["native_argv"](argv, cwd=worktree), cwd=worktree, stdin=subprocess.DEVNULL,
                                      stdout=stdout, stderr=stderr)
     except OSError as exc:
         record(log, f"not started: {one_line(str(exc))}")
@@ -1138,6 +1138,7 @@ class QueueTests(unittest.TestCase):
             ("base_sha must name an exact commit", manifest_edit(lambda m: m.update(base_sha="0" * 40))),
             ("missing or empty section(s): '## Execution policy'", self.edit("meta.md", "## Execution policy", "## Policy")),
             ("status is queue state", self.edit("t1/spec.md", "kind: feature", "kind: feature\nstatus: planned")),
+            ("kind must be feature, spike or prototype", self.edit("t1/spec.md", "kind: feature", "kind: [feature]")),
             ("must directly follow", self.edit("t1/spec.md", "<!-- devlyn:verification -->\n", "")),
             ("unique stable IDs", self.edit("t1/spec.md", "- R2: The code", "- R1: The code")),
             ("review_requirements name unknown requirement(s): R7", self.edit("t1/spec.md", "review_requirements: [R2]", "review_requirements: [R7]")),

@@ -174,7 +174,7 @@ def execute(work, command, index, run_dir):
     timeout = shared("expected-contract")["verification_timeout_sec"](command)
     try:
         if "argv" in command:
-            proc = subprocess.run(shared("platform-support")["native_argv"](command["argv"]), cwd=work,
+            proc = subprocess.run(shared("platform-support")["native_argv"](command["argv"], cwd=work), cwd=work,
                                   capture_output=True, timeout=timeout)
         else:
             proc = subprocess.run(command["cmd"], cwd=work, shell=True, capture_output=True, timeout=timeout)
@@ -608,7 +608,7 @@ class AcceptanceTests(unittest.TestCase):
         node_path = corepack.replace("@SETLOCAL\r\n", '@SETLOCAL\r\n@SET "NODE_PATH=C:\\proj\\node_modules\\.pnpm\\node_modules"\r\n')
         nodejs, tools, prefix = self.root / "nodejs", self.root / "tools", self.root / "prefix"
         node = nodejs / "node.exe"
-        files = {nodejs / "npm.cmd": npm_cmd, node: f"#!/bin/sh\necho '{prefix}'\n", tools / "pnpm.cmd": cmd_shim, tools / "yarn.cmd": corepack,
+        files = {nodejs / "npm.cmd": npm_cmd, node: "", tools / "pnpm.cmd": cmd_shim, tools / "yarn.cmd": corepack,
                  tools / "vitest.cmd": node_path, tools / "build.bat": "@echo off\r\necho built\r\n"}
         for path in (nodejs / "node_modules/npm/bin/npm-cli.js", nodejs / "node_modules/npm/bin/npm-prefix.js",
                      tools / "node_modules/pnpm/bin/pnpm.cjs", tools / "node_modules/corepack/dist/yarn.js"):
@@ -616,17 +616,23 @@ class AcceptanceTests(unittest.TestCase):
         for path, body in files.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(body.encode("utf-8"))
-        node.chmod(0o755)
         found = {"npm": nodejs / "npm.cmd", "node.exe": node, **{path.stem: path for path in tools.glob("*.*")}}
         platform = shared("platform-support")
-        windows = {"os": SimpleNamespace(name="nt"), "shutil": SimpleNamespace(which=lambda name: str(found[name]) if name in found else None)}
+        lookups = []
+
+        def npm_prefix(argv, cwd=None, **kwargs):  # what node npm-prefix.js prints, recorded with the directory it ran in
+            lookups.append((argv, cwd))
+            return SimpleNamespace(stdout=f"{prefix}\n")
+        windows = {"os": SimpleNamespace(name="nt"), "shutil": SimpleNamespace(which=lambda name: str(found[name]) if name in found else None),
+                   "subprocess": SimpleNamespace(run=npm_prefix)}
         with mock.patch.dict(platform["native_argv"].__globals__, windows):
             resolve = platform["native_argv"]
             self.assertEqual(resolve(["npm", "test"]), [str(node), str(nodejs / "node_modules/npm/bin/npm-cli.js"), "test"])
             upgraded = prefix / "node_modules/npm/bin/npm-cli.js"  # npm install -g npm: npm.cmd defers to the global prefix's npm.
             upgraded.parent.mkdir(parents=True)
             upgraded.write_bytes(b"")
-            self.assertEqual(resolve(["npm", "test"]), [str(node), str(upgraded), "test"])
+            self.assertEqual(resolve(["npm", "test"], cwd=self.root), [str(node), str(upgraded), "test"])
+            self.assertEqual(lookups[-1], ([str(node), str(nodejs / "node_modules/npm/bin/npm-prefix.js")], self.root))
             self.assertEqual(resolve(["pnpm", "test"]), [str(node), str(tools / "node_modules/pnpm/bin/pnpm.cjs"), "test"])
             self.assertEqual(resolve(["yarn", "test"]), [str(node), str(tools / "node_modules/corepack/dist/yarn.js"), "test"])
             for name in ("vitest", "build"):

@@ -67,8 +67,9 @@ SHIM_SET = re.compile(r'(?im)^[ \t]*@?SET[ \t]+"?([^=" \t]+)=')
 NPM_CLI = re.compile(r'SET "(NP[MX]_CLI_JS)=%~dp0\\([^"\r\n]+)"')
 
 
-def native_argv(argv):
-    """Resolve argv as Windows does; a Node command shim runs its Node and script directly, never cmd /c."""
+def native_argv(argv, cwd=None):
+    """Resolve argv as Windows does, for a command that will run in cwd; a Node command shim runs its Node and script
+    directly, never cmd /c."""
     if os.name != "nt":
         return list(argv)
     binary = shutil.which(argv[0])
@@ -79,7 +80,7 @@ def native_argv(argv):
         return [binary, *argv[1:]]
     node = shim.parent / "node.exe"
     node = str(node) if node.is_file() else shutil.which("node.exe")
-    script = shim_script(shim, shim.read_text(encoding="utf-8", errors="replace"), node)
+    script = shim_script(shim, shim.read_text(encoding="utf-8", errors="replace"), node, cwd)
     if script is None:
         raise OSError(f"unsupported native command shim: {shim}; use argv with an explicit interpreter, such as node and the script")
     if node is None:
@@ -87,7 +88,7 @@ def native_argv(argv):
     return [node, str(script.resolve(strict=True)), *argv[1:]]
 
 
-def shim_script(shim, raw, node):
+def shim_script(shim, raw, node, cwd=None):
     """The script a Node command shim runs, as cmd.exe would resolve it, else None: the one target of an npm, pnpm
     or corepack cmd-shim that sets no environment, or for Node.js's own npm.cmd and npx.cmd the global prefix's
     npm when installed there, else the bundled one."""
@@ -101,7 +102,7 @@ def shim_script(shim, raw, node):
     global_cli = re.search(rf'SET "NPM_PREFIX_{cli[1]}=%%F\\([^"\r\n]+)"', raw)
     if prefix_js and global_cli and node:
         # As the shim's FOR /F does: the last nonempty line npm-prefix.js prints names the global prefix.
-        output = subprocess.run([node, str(shim.parent / prefix_js[1].replace("\\", "/"))], capture_output=True,
+        output = subprocess.run([node, str(shim.parent / prefix_js[1].replace("\\", "/"))], cwd=cwd, capture_output=True,
                                 text=True, encoding="utf-8").stdout
         prefix = [line for line in output.splitlines() if line]
         if prefix and (installed := Path(prefix[-1]) / global_cli[1].replace("\\", "/")).is_file():
