@@ -28,6 +28,10 @@ class CompletionError(Exception):
     pass
 
 
+class WritersUnobservable(CompletionError):
+    """Writer cessation cannot be observed here, so owned resources are retained, never deleted."""
+
+
 def require(condition, message):
     if not condition:
         raise CompletionError(message)
@@ -492,7 +496,8 @@ def stopped_writers(work):
     # other currently open files/cwds, not future writers or a universal lease.
     if sys.platform == "darwin":
         result = subprocess.run(["lsof", "-Fpn", "+D", str(work)], capture_output=True, text=True, encoding="utf-8")
-        require(result.returncode in {0, 1} and not result.stderr.strip(), "writer observation unavailable; retain tree and inspect writers")
+        if result.returncode not in {0, 1} or result.stderr.strip():
+            raise WritersUnobservable("writer observation unavailable; retain tree and inspect writers")
         pid = None
         for line in result.stdout.splitlines():
             if line.startswith("p"):
@@ -516,9 +521,9 @@ def stopped_writers(work):
             except FileNotFoundError:
                 continue  # Process exited during observation.
             except PermissionError as exc:
-                raise CompletionError("unknown process access; retain tree until writer cessation can be established") from exc
+                raise WritersUnobservable("unknown process access; retain tree until writer cessation can be established") from exc
     else:
-        raise CompletionError("writer observation unsupported on this platform; retain workspace")
+        raise WritersUnobservable("writer observation unsupported on this platform; retain workspace")
 
 
 def scratch_mounts():

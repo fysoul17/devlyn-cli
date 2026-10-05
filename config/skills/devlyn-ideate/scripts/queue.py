@@ -675,15 +675,19 @@ def ensure_packet(v, row, path, receipt):
 
 
 def ensure_submission(identity, packet_path, packet, executor):
+    """Run the executor once unless its submission exists; returns a drain-recorded failure reason, else None."""
     submission = Path(packet["submission"])
     if submission.exists():
-        return
+        return None
     worktree = Path(packet["worktree"])
     attempts = submission.with_name("executions.log")
     if attempts.exists():
+        helper = shared("task-complete")
         try:
-            shared("task-complete")["stopped_writers"](worktree)
-        except shared("task-complete")["CompletionError"] as exc:
+            helper["stopped_writers"](worktree)
+        except helper["WritersUnobservable"] as exc:
+            return f"interrupted-unobservable: an interrupted executor may still be writing ({exc})"
+        except helper["CompletionError"] as exc:
             raise LoopError(f"{identity}: an earlier executor may still be writing ({exc}); stop it, then drain again") from exc
     argv = [part.replace("{packet}", str(packet_path)) for part in executor]
     output = Path(packet["evidence_dir"])
@@ -702,6 +706,7 @@ def ensure_submission(identity, packet_path, packet, executor):
         write_json(submission, {"schema_version": 1, "task": identity, "source_sha": packet["inputs_sha"],
                                 "summary": "recorded by the drain, not the executor",
                                 "blockers": [{"kind": "blocked-infrastructure", "detail": f"executor exited {code} without a submission"}]})
+    return None
 
 
 def settle(v, row, receipt_file):

@@ -37,6 +37,10 @@ if behavior.get("refuse_pipe") and stat.S_ISFIFO(os.fstat(1).st_mode):
     sys.exit(64)
 with config_path.with_name("calls-" + packet["task"]).open("a", encoding="utf-8") as calls:
     calls.write("call\n")
+if behavior.get("hang"):
+    config_path.with_name("hang.pid").write_text(str(os.getpid()))
+    while True:
+        time.sleep(1)
 work = pathlib.Path(packet["worktree"])
 def git(*args):
     return subprocess.run(["git", "-C", str(work), *args], check=True, capture_output=True, text=True, encoding="utf-8").stdout.strip()
@@ -73,6 +77,14 @@ if behavior.get("hold"):
     config_path.with_name("holder.pid").write_text(str(holder.pid))
 pathlib.Path(packet["submission"]).write_text(json.dumps(submission), encoding="utf-8")
 '''
+# Runs the driver where task-complete cannot observe writers, as on native Windows (a no-op there).
+UNOBSERVABLE = ("import runpy, sys\n"
+                "queue = runpy.run_path(sys.argv[1])\n"
+                "queue['shared']('task-complete')\n"
+                "sys.platform = 'win32'\n"
+                "sys.argv = sys.argv[1:]\n"
+                "queue['shared']('platform-support')['configure_utf8']()\n"
+                "sys.exit(queue['main']())\n")
 PRODUCTS = {
     "greeting": {"greeting.py": "def greet(name):\n    return f\"Hello, {name}!\"\n"},
     "bad-greeting": {"greeting.py": "def greet(name):\n    return f\"Hi {name}\"\n"},
@@ -118,6 +130,7 @@ class LoopFixture(unittest.TestCase):
         (self.config.parent / "executor.py").write_text(EXECUTOR, encoding="utf-8")
         self.behaviors = {}
         self.addCleanup(self.release_executor_holder)
+        self.addCleanup(self.kill_hung_executor)
 
     def run_ok(self, argv, cwd=None):
         result = subprocess.run(argv, cwd=cwd or self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
@@ -138,15 +151,15 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
         return json.loads(result.stdout)
 
-    def drain_argv(self, local=True):
+    def drain_argv(self, local=True, unobservable=False):
         self.config.write_text(json.dumps({"behaviors": self.behaviors, "products": PRODUCTS, "hold": HOLD,
                                            "platform_support": str(self.platform),
                                            "queue_lock": str(self.common / "devlyn-loops/queue.lock")}), encoding="utf-8")
-        return [sys.executable, str(self.queue_py), "drain", "--repo", str(self.anchor), *(["--local-only"] if local else []),
-                "--", sys.executable, str(self.config.parent / "executor.py"), str(self.config), "{packet}"]
+        return [sys.executable, *(["-c", UNOBSERVABLE] if unobservable else []), str(self.queue_py), "drain", "--repo", str(self.anchor),
+                *(["--local-only"] if local else []), "--", sys.executable, str(self.config.parent / "executor.py"), str(self.config), "{packet}"]
 
-    def drain(self, local=True, code=0):
-        result = subprocess.run(self.drain_argv(local), cwd=self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
+    def drain(self, local=True, code=0, unobservable=False):
+        result = subprocess.run(self.drain_argv(local, unobservable), cwd=self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
         return json.loads(result.stdout)
 
@@ -184,6 +197,12 @@ class LoopFixture(unittest.TestCase):
             pid = int(pid_file.read_text())
             pid_file.unlink()
             os.kill(pid, signal.SIGTERM)
+
+    def kill_hung_executor(self):
+        pid_file = self.config.with_name("hang.pid")
+        if pid_file.exists():
+            os.kill(int(pid_file.read_text()), signal.SIGTERM)
+            pid_file.unlink()
 
     def calls(self, identity):
         path = self.config.with_name("calls-" + identity)
@@ -347,6 +366,23 @@ class LoopFixture(unittest.TestCase):
         queue_file = self.anchor / "docs/specs/queue.md"
         queue_file.write_bytes(queue_file.read_bytes().replace(b"- [ ] ee.t1", b"- [x] ee.t1").replace(b"- [ ] ee.t2", b"- [x] ee.t2"))
         self.assertIn("conflicting terminal state for ee.t2", self.cli("status", "--repo", self.anchor, code=1)["reason"])
+
+    def test_unobservable_interrupted_execution_fails_only_that_task(self):
+        self.plan("a", CHAIN, {"a.t1": {"product": "greeting", "hang": True}, "a.t2": {"product": "app"}})
+        self.plan("b", [("t1", [], "Notes", [NOTES_CHECK])], {"b.t1": {"product": "notes"}})
+        driver = next(self.drain_until("a.t1: executing"))
+        while not self.config.with_name("hang.pid").exists():
+            time.sleep(0.05)
+        driver.kill()
+        driver.wait()
+        self.kill_hung_executor()
+        tasks = self.tasks(self.drain(unobservable=True))
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"a.t1": "failed", "a.t2": "blocked", "b.t1": "accepted"})
+        self.assertTrue(tasks["a.t1"]["reason"].startswith("interrupted-unobservable: "))
+        self.assertEqual((self.calls("a.t1"), self.calls("a.t2"), self.calls("b.t1")), (1, 0, 1))
+        receipt = self.receipt("a.t1")
+        self.assertTrue(Path(receipt["worktree"]).is_dir())
+        self.assertIn("— interrupted-unobservable: ", self.rows(receipt["publish_sha"])["a.t1"]["rest"])
 
     def test_changed_contract_of_an_active_task_fails_only_that_task(self):
         self.plan("a", CHAIN, {"a.t1": {"product": "greeting"}, "a.t2": {"product": "app"}})
