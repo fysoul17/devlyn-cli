@@ -2326,7 +2326,7 @@ assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work
             try:
                 shim.write_bytes(b'@echo malformed\r\n')
                 error = run([sys.executable, self.shared / 'run-bounded.py', '5', '--', 'codex'], env=self.env, code=2)
-                self.assertIn(b'unrecognized npm engine shim', error.stderr)
+                self.assertIn(b'unsupported native command shim', error.stderr)
             finally:
                 shim.write_bytes(raw)
         else:

@@ -585,6 +585,54 @@ class AcceptanceTests(unittest.TestCase):
         self.assertNotIn("reused_from", result["commands"][0])
         self.assertEqual(((self.work / ".devlyn/count").read_text(), result["verdict"]), ("2", "ACCEPTED"))
 
+    def test_windows_runs_node_command_shims_without_cmd(self):
+        """Windows resolution mocked: verification argv such as ["npm", "test"] runs the Node and script its command
+        shim names, as cmd.exe would resolve it; any other batch file is refused with an actionable message."""
+        from types import SimpleNamespace
+        from unittest import mock
+        npm_cmd = "\r\n".join((  # npm 10 and 11 ship this npm.cmd byte for byte.
+            ":: Created by npm, please don't edit manually.", "@ECHO OFF", "", "SETLOCAL", "",
+            'SET "NODE_EXE=%~dp0\\node.exe"', 'IF NOT EXIST "%NODE_EXE%" (', '  SET "NODE_EXE=node"', ")", "",
+            'SET "NPM_PREFIX_JS=%~dp0\\node_modules\\npm\\bin\\npm-prefix.js"', 'SET "NPM_CLI_JS=%~dp0\\node_modules\\npm\\bin\\npm-cli.js"',
+            'FOR /F "delims=" %%F IN (\'CALL "%NODE_EXE%" "%NPM_PREFIX_JS%"\') DO (',
+            '  SET "NPM_PREFIX_NPM_CLI_JS=%%F\\node_modules\\npm\\bin\\npm-cli.js"', ")",
+            'IF EXIST "%NPM_PREFIX_NPM_CLI_JS%" (', '  SET "NPM_CLI_JS=%NPM_PREFIX_NPM_CLI_JS%"', ")", "", '"%NODE_EXE%" "%NPM_CLI_JS%" %*', ""))
+        cmd_shim = "\r\n".join((  # npm's cmd-shim 6 (npm install -g, node_modules/.bin).
+            "@ECHO off", "GOTO start", ":find_dp0", "SET dp0=%~dp0", "EXIT /b", ":start", "SETLOCAL", "CALL :find_dp0", "",
+            'IF EXIST "%dp0%\\node.exe" (', '  SET "_prog=%dp0%\\node.exe"', ") ELSE (", '  SET "_prog=node"',
+            "  SET PATHEXT=%PATHEXT:;.JS;=;%", ")", "",
+            'endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\\node_modules\\pnpm\\bin\\pnpm.cjs" %*', ""))
+        corepack = "\r\n".join((  # @zkochan/cmd-shim, as corepack enable and pnpm write it.
+            "@SETLOCAL", '@IF EXIST "%~dp0\\node.exe" (', '  "%~dp0\\node.exe"  "%~dp0\\node_modules\\corepack\\dist\\yarn.js" %*', ") ELSE (",
+            "  @SET PATHEXT=%PATHEXT:;.JS;=;%", '  node  "%~dp0\\node_modules\\corepack\\dist\\yarn.js" %*', ")", ""))
+        node_path = corepack.replace("@SETLOCAL\r\n", '@SETLOCAL\r\n@SET "NODE_PATH=C:\\proj\\node_modules\\.pnpm\\node_modules"\r\n')
+        nodejs, tools, prefix = self.root / "nodejs", self.root / "tools", self.root / "prefix"
+        node = nodejs / "node.exe"
+        files = {nodejs / "npm.cmd": npm_cmd, node: f"#!/bin/sh\necho '{prefix}'\n", tools / "pnpm.cmd": cmd_shim, tools / "yarn.cmd": corepack,
+                 tools / "vitest.cmd": node_path, tools / "build.bat": "@echo off\r\necho built\r\n"}
+        for path in (nodejs / "node_modules/npm/bin/npm-cli.js", nodejs / "node_modules/npm/bin/npm-prefix.js",
+                     tools / "node_modules/pnpm/bin/pnpm.cjs", tools / "node_modules/corepack/dist/yarn.js"):
+            files[path] = ""
+        for path, body in files.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(body.encode("utf-8"))
+        node.chmod(0o755)
+        found = {"npm": nodejs / "npm.cmd", "node.exe": node, **{path.stem: path for path in tools.glob("*.*")}}
+        platform = shared("platform-support")
+        windows = {"os": SimpleNamespace(name="nt"), "shutil": SimpleNamespace(which=lambda name: str(found[name]) if name in found else None)}
+        with mock.patch.dict(platform["native_argv"].__globals__, windows):
+            resolve = platform["native_argv"]
+            self.assertEqual(resolve(["npm", "test"]), [str(node), str(nodejs / "node_modules/npm/bin/npm-cli.js"), "test"])
+            upgraded = prefix / "node_modules/npm/bin/npm-cli.js"  # npm install -g npm: npm.cmd defers to the global prefix's npm.
+            upgraded.parent.mkdir(parents=True)
+            upgraded.write_bytes(b"")
+            self.assertEqual(resolve(["npm", "test"]), [str(node), str(upgraded), "test"])
+            self.assertEqual(resolve(["pnpm", "test"]), [str(node), str(tools / "node_modules/pnpm/bin/pnpm.cjs"), "test"])
+            self.assertEqual(resolve(["yarn", "test"]), [str(node), str(tools / "node_modules/corepack/dist/yarn.js"), "test"])
+            for name in ("vitest", "build"):
+                with self.subTest(name=name), self.assertRaisesRegex(OSError, "use argv with an explicit interpreter"):
+                    resolve([name, "run"])
+
     def test_guards_and_blockers(self):
         self.inputs({"verification_commands": self.commands, "required_files": ["missing.txt"], "forbidden_files": ["product.txt"],
                      "forbidden_patterns": [{"pattern": "rea+dy", "description": "no ready", "severity": "disqualifier"},
