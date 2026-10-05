@@ -4,22 +4,12 @@
 
 The owner redirected the work. The details are in NORTH-STAR "Owner direction 2026-10-05" and the record [0232](iterations/0232-harness-ladder.md).
 
-- **What carries the harness.**
-  - The installed CLAUDE.md/AGENTS.md instructions carry it wherever they suffice.
-  - `ideate` becomes the loop designer: intent → meta-prompt plus split tasks, which agents then drain.
-  - `intent` succeeds `resolve`, and is used only where the instructions fall short.
-  - `design-ui` is retired.
-- **Ladder.**
-  - Start instruction-only and add one `intent` mechanism at a time.
-  - A mechanism stays only if it improves at least one of wall time, quality, efficiency and tokens, and regresses none.
-  - Tokens must not increase.
-- **Decisions made the same day.**
-  - Promotion asks for:
-    - preserved quality;
-    - at least 30% less wall than main resolve;
-    - no token increase.
-  - Core routes come first.
-  - Run the 0232 cells as soon as they are ready. This is the owner's approval for them.
+Follow the product direction in NORTH-STAR and O1–O4 in 0232:
+- instruction-only first, with `intent` mechanisms only where earned;
+- `ideate` as the loop designer;
+- `design-ui` retired.
+
+Wall, input and output are judged per correctly completed task, failures included. Incumbent replacement targets at least 30% less wall per success than F, with quality preserved and no input or output increase; §6 defines zero-success comparisons. Core routes come first. Run the registered 0232 cells when ready; no further run approval is required.
 
 ## State
 
@@ -27,16 +17,11 @@ The owner redirected the work. The details are in NORTH-STAR "Owner direction 20
   - The v7 review-fix round is kept for reference and for reusing primitives. It consists of `candidate/bundle-review-fix-v7` at `3eed3956`, plus uncommitted wave 2 in the worktrees `~/.local/share/nx01/v7-w5` and `v7-w6`.
   - Owner decision R5 (2026-10-05) carries into `intent`: a PHASE 0 ignored inventory protects pre-run user files.
 - **0231** (`candidate/0231-registration`, `dd29d664`, APPARATUS-SHIP): superseded by 0232. Its apparatus is the base for 0232's.
-- **Direction and design rounds** with Astra (ultra) and the independent Claude checks are in `.devlyn/bundle/`:
-  - `direction-*`
-  - `harness-design-*`
-  - `product-d4-*`
-  - `product-d5-*`
 
 **Next:**
 
 1. Build rung 1, the instruction-only block plus a cross-engine review helper.
-2. Build the apparatus extension: native, instruction and intent arms, plus Claude input/cache accounting.
+2. Build the apparatus extension for A (native), I (instruction treatment) and an unchanged F (main resolve), including Claude input/cache accounting. N/intent preparation is deferred.
 3. Astra check.
 4. SMOKE.
 5. Stage 1.
@@ -46,7 +31,7 @@ The owner redirected the work. The details are in NORTH-STAR "Owner direction 20
 
 - **The `_devlynjudge` user record (uid 450) remains.** macOS refuses its deletion without Full Disk Access. Removing it is the user's call.
 - **Raw outputs of the 0228/0229 replays** remain in `/Users/Shared/devlyn-vr-0228-dev` (owner-only) until the user decides.
-- **The 0223 slim-plus-orphan instruction add-back** feeds rung 1.
+- **Orphan cleanup.** Rung 1 keeps the orphan-cleanup obligation. Its isolated effect is unmeasured, and the separate 0223 slim-plus-orphan add-back is unrun and remains an open user decision.
 - **The `/devlyn:queue` branch-reconciliation rule** has not been exercised by a model-driven drain. A null `autoMergeRequest` does not prove the merge queue was removed.
 
 ## Start here (every new session)
@@ -88,6 +73,7 @@ The owner redirected the work. The details are in NORTH-STAR "Owner direction 20
   - A16, frozen results and the original WIP stay untouched.
   - 0226's sealed root `/Users/Shared/devlyn-vr` stays byte-identical.
   - Past stop verdicts (0211–0219, 0224, 0225) are history, not something to regrade.
+  - Do not run a third 0225 replay or its live comparison, and do not publish its held candidate `22616b57`.
 - **Replay apparatus gotchas (0225).**
   - Judge roots go outside `$HOME`: Claude loads every ancestor `.claude/CLAUDE.md`.
   - Codex judges need an isolated HOME (a shim), because `--ignore-user-config` still loads `$CODEX_HOME/AGENTS.md` and `~/.agents/skills`.

@@ -2,7 +2,7 @@
 
 2026-10-05. **Status: DRAFT (direction recorded; ladder design converging with Astra; registration not frozen).**
 
-Authors: root (Opus 5.5) and Astra (gpt-6-astra, reasoning ultra, read-only). Independent Claude checks ran in parallel; they are summarized under "Direction check". Raw exchanges are in `.devlyn/bundle/`:
+Authors: root (Opus 5.5) and Astra (gpt-6-astra, reasoning ultra, read-only). Independent Claude checks ran in parallel; they are summarized under "Direction check". Raw exchanges are in `/Users/aipalm/.local/share/nx01/core-continuation-20260912/.devlyn/bundle/`:
 - `direction-a1-*` and `direction-root-position.md`;
 - `harness-design-d1/d2/d3-*` and `harness-design-root-d1.md`;
 - `product-d4-*` and `product-d5-*`.
@@ -21,7 +21,7 @@ Authors: root (Opus 5.5) and Astra (gpt-6-astra, reasoning ultra, read-only). In
 8. "하네스가 없다기보다는 사실 하네스가 agents.md 나 claude.md 에만 들어가도 잘 해내냐는거지. 그게 아니면 조금씩 intent를 조여서 하고, 조였을때 다른 수치들이 안좋아지면 안되고 더 좋아져야지 (실행 시간, 성능, 효율성, 토큰 등) 그런것들을 기준으로 해서 세계 최고 수준의 하네스를 만들어보자고. astra와 잘 논의해봐" (Astra at ultra.)
 9. "우리가 지금까지 얘기한것들중에 의도 목표 북극성 등 관련 context가 부족하거나 아웃데이트 되었으면 업데이트도 하고 진행하자" This record and NORTH-STAR's 2026-10-05 block are that update.
 
-Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함"). In 0230's v7 round: a PHASE 0 inventory of ignored entries protects pre-run user files, which are never deleted and are adopted only by an exact path.
+Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함"). In 0230's v7 round, a PHASE 0 inventory protects pre-run ignored content from harness settlement deletion and permits adoption only by exact path. Separately authorized disposal of a released worktree remains governed by the completion contract.
 
 ## 2. Interpretation (what the record binds)
 
@@ -33,8 +33,8 @@ Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함")
 - **Ladder rule.**
   - Rung 1 is the instruction-only harness.
   - Each later rung adds one `intent` mechanism, licensed by a failure observed on the rung below.
-  - A mechanism stays only if it improves at least one of wall time, quality, efficiency and tokens, and regresses none.
-- **Tokens.** They must not increase, and lower is better. Optional memory may replace re-reading where present; it is never required.
+  - Retention follows O4 and §6: quality is preserved, and total resources, failures included, are compared per correctly completed task.
+- **Tokens.** Input and output per success must not increase; lower is better. Optional memory may replace re-reading where present; it is never required.
 - **Threat model and stopping rule for review and hardening** (the outcome of the direction check, §3):
   - Agents are capable, authorized and fallible.
   - Deliberate forgery is a documented trust boundary.
@@ -45,7 +45,7 @@ Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함")
 
 - **Root's position** (written before any reply): the goal matches the North Star.
   - The bundle cut agent-facing text: SKILL.md −31%, references −6%.
-  - The review-fix rounds grew the gate layer: spec-verify-check 5,083 → 6,576 lines, finish-gate 521 → 1,080.
+  - Gate-layer sizes (main → bundle → v7 wave 1): spec-verify-check 5,083 → 6,177 → 6,576 lines; finish-gate 521 → 708 → 1,080.
   - Confirmed findings per seven-lens round did not fall: 38 → 44 → 49.
 - **Astra A1:** the bundle's architecture fits, but open-ended hardening does not. Finish bounded v7, stop, measure.
 - **Claude classification of the 49 v7 rows:**
@@ -62,7 +62,7 @@ Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함")
   - 0 rows concern efficiency.
   - About 24% of wave 1's new test lines pin the 4 adversarial rows.
 - **Claude evidence review, 0213–0231:**
-  - Full resolve ran about 3× native wall and 3–9× OUTPUT, and completed 0/4 against native's 1/4 (0224).
+  - Full resolve (3.2.1) ran about 3× native wall, with recorded OUTPUT lower bounds roughly 3–9× native, and completed 0/4 against native's 1/4 (0224).
   - The repeatedly measured lifts are review→reproduce→repair on hard tasks (0184 2/4 → 4/4) and the cross-engine pair's unique hits (0227, 0229).
   - 0224's final-report audit recorded 0 false completions. Native reports of success on I0185 failed only hidden oracle rows. That shows inadequate coverage, not knowingly false reporting (Astra D4 correction).
   - Most other phases and gates are unmeasured.
@@ -76,15 +76,14 @@ Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함")
   - a declared scope with one recorded amendment inside the user's authorization;
   - mechanical acceptance on the final source, with no corrective mutation;
   - two fresh reviewers, where a binding claim names the requirement, trigger, causal path and evidence;
-  - a handoff note plus a fresh session only at review→repair;
+  - a handoff note at submission, and a fresh execution session only when review requires repair, leaving native compaction settings unchanged (an unmeasured design hypothesis);
   - a helper-written task record;
   - R5's inventory kept;
-  - an unreadable environment directory that existed before the run becomes an opaque baseline entry.
-- **Self-compaction (owner message 4):**
-  - Neither CLI lets the model trigger compaction headless.
-  - Claude Code: `autoCompactWindow`, plus a SessionStart hook with source `compact` for re-injection.
-  - Codex: `model_auto_compact_token_limit` and `compact_prompt`.
-  - N therefore implements it as a session boundary with an agent-written handoff.
+  - an already-unreadable, wholly untracked environment directory may become a protected opaque baseline entry. Tracked, staged or adopted source and required verification inputs are not exempt, and new unreadability still causes refusal.
+- **Self-compaction (owner message 4).** Official docs show that neither CLI lets the model trigger compaction in a headless run:
+  - Claude Code: `/compact` is interactive only; `autoCompactWindow` sets the threshold; a SessionStart hook with source `compact` can re-inject context (https://code.claude.com/docs/en/settings-reference.md, https://code.claude.com/docs/en/hooks.md).
+  - Codex: `model_auto_compact_token_limit` and `compact_prompt` (https://developers.openai.com/codex/config-reference).
+  - Hence the session-boundary handoff above, which is unmeasured.
 - **D4 (product restructure):**
   - N becomes `devlyn-intent`.
   - `devlyn-ideate` is the public loop owner, with the queue protocol kept as its internal durable utility.
@@ -115,8 +114,8 @@ Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함")
 | O1 | Promotion threshold against the incumbent | Keep ≥30% less wall than F with quality preserved; tokens must not increase, and lower is better |
 | O2 | Scope of the first package | Core routes first; unsupported routes are rejected explicitly |
 | O3 | Running the cells | Run when ready; no further run approval |
-| O4 | A mechanism improves quality but costs some time or tokens | **Judge per success** (Claude recommended; Astra recommended strict sums). A failed run counts as not done, and a mechanism stays if time and tokens per correctly completed task do not increase, quality does not regress, and at least one of them strictly improves |
-| — | Baseline failure first | Settled without the owner: required when feasible, with the reason recorded otherwise (Astra D4/D5). This matches CLAUDE.md's existing rule ("Bugs: write the failing test first"). Root's broader "failing test first for every behavior change" has no supporting record and adds cost |
+| O4 | A mechanism improves quality but costs some time or tokens | **Judge per success** (root recommended; Astra recommended strict sums). Count all run costs, failures included, per correctly completed task, and preserve quality. §6 proposes the operational admission rule |
+| — | Baseline failure first | A design choice, not an owner decision: demonstrate a relevant baseline failure before repair when feasible; otherwise record why it is unavailable and provide meaningful behavioral coverage (Astra D4/D5) |
 | open | Dependent tasks in ideate's local loop start from the accepted predecessor commit in a new owned worktree | Deferred to the ideate stage (Astra recommends yes) |
 
 ## 6. Registration
@@ -128,18 +127,20 @@ Not frozen. Stage 1 is planned as follows:
   - pinned CLIs, tasks, roles and the four-round allowance;
   - F at `4056ebe2`;
   - A as the task repository with no devlyn installation.
-- **Decision rule (O4):** applied per configuration to arm X's six cells.
-  - **Definitions:**
-    - S_X = completed cells;
-    - W_X, I_X, O_X = sums over all six cells, failures included;
-    - per-success cost = sum ÷ S_X.
-  - **Admitting a candidate** against the last admitted rung, which is A at the start:
-    - per-task completion counts and oracle-row passes are no lower;
+- **Decision rule proposed for the registration freeze (implements O4).** Each configuration is evaluated separately.
+  - **Totals.** For arm X, S_X is the number of correctly completed cells under the frozen completion definition. W_X is total owner wall; I_X and O_X are total input and output over all six measured cells, failures included. They include all workers, reviewers, repairs, retries and resumed sessions, and count cache input without double counting. SMOKE and external evaluation are reported separately.
+  - **Per-success costs.** w_X = W_X/S_X, i_X = I_X/S_X and o_X = O_X/S_X when S_X > 0; when S_X = 0 these costs are +∞ for selection only.
+  - **Missing usage.** Unknown usage remains UNKNOWN. Accounting too incomplete to establish an inequality makes that comparison inconclusive. Input and output cannot offset each other.
+  - **Admission.** Candidate C is admitted against the last admitted rung P (initially A) only if all of these hold:
+    - S_C > 0;
+    - each task's completion count and each check/oracle-row pass count is no lower than P's;
     - there is no false completion, scope violation, user-data harm or severe regression;
-    - per-success W, I and O do not increase;
-    - at least one of completion, W, I and O strictly improves.
-  - A candidate with S = 0 earns no claim.
-  - If I fails against A, A stays the admitted rung.
-  - **Incumbent replacement against F** applies O1 on per-success terms.
-  - Raw sums are published alongside.
+    - w_C ≤ w_P, i_C ≤ i_P and o_C ≤ o_P;
+    - S_C > S_P, or at least one per-success cost strictly improves.
+  - **Ties and zero success.** Increased completion with tied costs qualifies; equal completion with all three costs tied does not. A zero-success candidate never qualifies, even against a zero-success comparator. If I fails, P remains A.
+  - **Incumbent replacement** additionally requires the same quality and safety conditions against F:
+    - When S_F > 0: w_C ≤ 0.70 w_F, i_C ≤ i_F and o_C ≤ o_F.
+    - When S_F = 0 < S_C: the per-success cost gate passes by dominance over the zero-success incumbent. That outcome is reported as such, not as a numerical percentage wall reduction, and no raw-sum comparison is substituted.
+  - **Publication.** Raw sums, success counts and per-success costs are published together. They are observed selection results, not guarantees about future tasks.
+  - The +∞ convention and the tie treatment are proposed freeze wording, not further owner decisions. The 30% threshold applies to incumbent replacement, not to every adjacent rung.
 - **To freeze:** exact definitions, predictions, identities and the build list are frozen with Astra before any cell runs.
