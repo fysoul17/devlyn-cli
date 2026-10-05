@@ -421,7 +421,12 @@ init({options});
         for root in self.roots():
             self.assertEqual({p.name for p in root.iterdir()},
                              {'devlyn-ideate', 'devlyn-engines', '_shared', optional, '.devlyn-install.json'}, root)
-        retired = ['devlyn-resolve', '_shared/resolve-stop-hook.py', '_shared/archive_run.py', '_shared/run-bounded.py']
+        # Everything the resolve retirement removed from the package: a copy it still shipped would return on reinstall.
+        retired = ['devlyn-resolve', *(f'_shared/{name}' for name in (
+            'archive_run.py', 'codex-config.md', 'collect-codex-findings.py', 'finish-gate.py', 'grok-anchor-guard.py',
+            'judge-output-parser.py', 'judge-role-evidence.py', 'phase-prompt-render.py', 'process-evidence.py',
+            'resolve-bootstrap.py', 'resolve-stop-hook.py', 'run-bounded.py', 'spec-verify-check.py', 'state-phase-write.py',
+            'terminal-claim-check.py', 'verify-merge-findings.py', 'adapters/grok.md', 'adapters/README.md'))]
         for root in self.roots():
             for relative in retired:
                 (root / relative).parent.mkdir(exist_ok=True); (root / relative).write_bytes(b'from an older release')
