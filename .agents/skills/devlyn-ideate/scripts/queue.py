@@ -436,8 +436,11 @@ def derive_state(anchor, common, row, claims):
         bound = read_json(packet)
         for key in ("contract", "expected"):
             current = anchor / Path(bound[key]["path"]).relative_to(bound["worktree"])
-            require(current.is_file() and hashlib.sha256(current.read_bytes()).hexdigest() == bound[key]["sha256"],
-                    f"{identity}: {current} changed after its inputs were committed; restore it or plan the revision under a new task ID")
+            if not current.is_file() or hashlib.sha256(current.read_bytes()).hexdigest() != bound[key]["sha256"]:
+                # Drain fails this task alone; the revision is planned as a new task.
+                state["inputs_changed"] = (f"inputs-changed: {current.relative_to(anchor).as_posix()} changed after its inputs were "
+                                           "committed; plan the revision as a new task")
+                break
     state.update(kind=result or "active", path=path, receipt=receipt)
     return state
 
@@ -737,9 +740,9 @@ def advance(v, row, opts):
         if not receipt.get("local_only"):
             require_merged(v, row, receipt["baseline"])
         packet_path, packet = ensure_packet(v, row, path, receipt)
-        ensure_submission(identity, packet_path, packet, opts.executor)
+        failure = v["states"][identity].get("inputs_changed") or ensure_submission(identity, packet_path, packet, opts.executor)
         try:
-            result = acceptance()["accept"](packet_path, packet["submission"])
+            result = acceptance()["accept"](packet_path, packet["submission"], failure)
         except acceptance()["AcceptanceError"] as exc:
             raise LoopError(f"{identity}: acceptance could not run: {exc}") from exc
         progress(identity, result["verdict"].lower() + "".join(f"; {reason}" for reason in result["reasons"][:3]))
@@ -764,8 +767,8 @@ def summary(v, row):
         item["reason"] = row["rest"].lstrip(" —") if row["mark"] == "F" else (receipt.get("acceptance") or {}).get("reasons", ["failed"])[0]
     if state["kind"] == "blocked":
         item["reason"] = f"blocked-prerequisite:{state['blocker']}"
-    if state.get("waiting"):
-        item["reason"] = state["waiting"]
+    if state.get("waiting") or state.get("inputs_changed"):
+        item["reason"] = state.get("waiting") or state["inputs_changed"]
     if receipt:
         acceptance_record = receipt.get("acceptance") or {}
         item.update(allocation_base=receipt.get("baseline"), **{"source" if state["kind"] == "accepted" else "candidate": receipt.get("source_sha")},
@@ -847,7 +850,7 @@ def status(args):
     annotate(v)
     tasks = [summary(v, r) for r in v["rows"] if r["identity"]]
     return {"status": "OK", "queue": str(anchor / QUEUE), "counts": counts(v), "next": row["identity"] if row else None,
-            "blockers": [f"{t['identity']}: {t['reason']}" for t in tasks if t.get("reason") and t["result"] in {"pending", "blocked"}]
+            "blockers": [f"{t['identity']}: {t['reason']}" for t in tasks if t.get("reason") and t["result"] in {"pending", "active", "blocked"}]
             + [f"legacy row {r['index'] + 1} needs planning: {r['text']}" for r in v["rows"] if not r["identity"] and r["mark"] == " "]
             + [f"unreadable receipt {item}" for item in v["unreadable"]],
             "delivery": [t for t in tasks if t.get("resume")]}

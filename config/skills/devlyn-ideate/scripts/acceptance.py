@@ -364,20 +364,22 @@ def run(packet_path, source=None):
     return path, result
 
 
-def accept(packet_path, submission_path):
-    """Drain-side derivation; writes .devlyn/loop/acceptance.json for task-complete custody."""
+def accept(packet_path, submission_path, failure=None):
+    """Drain-side derivation; writes .devlyn/loop/acceptance.json for task-complete custody. A drain-recorded
+    `failure` (changed inputs, an unobservable interrupted execution) fails the task without its submission."""
     packet = load_packet(packet_path)
     work = Path(packet["worktree"])
     result = result_shell(packet, "loop", text(work, "rev-parse", "refs/heads/" + packet["branch"]))
-    result.update(reviews=[], ignored_reviews=[], assumptions=[], reasons=[])
+    result.update(reviews=[], ignored_reviews=[], assumptions=[], reasons=[failure] if failure else [])
     try:
-        submission = read_json(submission_path)
-        check_submission(packet, submission)
-        result["assumptions"] = submission.get("assumptions", [])
-        if submission.get("blockers"):
-            result["reasons"] = [f"{b['kind']}: {b['detail']}" for b in submission["blockers"]]
-        else:
-            derive(packet, submission, result)
+        if not failure:
+            submission = read_json(submission_path)
+            check_submission(packet, submission)
+            result["assumptions"] = submission.get("assumptions", [])
+            if submission.get("blockers"):
+                result["reasons"] = [f"{b['kind']}: {b['detail']}" for b in submission["blockers"]]
+            else:
+                derive(packet, submission, result)
     except AcceptanceError as exc:
         result["reasons"].append(f"failed: {exc}")
     result["verdict"] = "FAILED" if result["reasons"] else "ACCEPTED"

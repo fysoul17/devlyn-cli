@@ -348,6 +348,23 @@ class LoopFixture(unittest.TestCase):
         queue_file.write_bytes(queue_file.read_bytes().replace(b"- [ ] ee.t1", b"- [x] ee.t1").replace(b"- [ ] ee.t2", b"- [x] ee.t2"))
         self.assertIn("conflicting terminal state for ee.t2", self.cli("status", "--repo", self.anchor, code=1)["reason"])
 
+    def test_changed_contract_of_an_active_task_fails_only_that_task(self):
+        self.plan("a", CHAIN, {"a.t1": {"product": "greeting"}, "a.t2": {"product": "app"}})
+        self.plan("b", [("t1", [], "Notes", [NOTES_CHECK])], {"b.t1": {"product": "notes"}})
+        # An executor that cannot start leaves a.t1 active with committed inputs and a packet.
+        blocked = self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "no executor"), "{packet}", code=1)
+        self.assertIn("executor could not start", blocked["reason"])
+        spec = self.anchor / "docs/specs/a/t1/spec.md"
+        spec.write_text(spec.read_text(encoding="utf-8").replace(" works.", " works for every caller."), encoding="utf-8")
+        self.assertIn("a.t1: inputs-changed", " ".join(self.cli("status", "--repo", self.anchor)["blockers"]))
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"a.t1": "failed", "a.t2": "blocked", "b.t1": "accepted"})
+        self.assertTrue(tasks["a.t1"]["reason"].startswith("inputs-changed: docs/specs/a/t1/spec.md changed"))
+        self.assertEqual((self.calls("a.t1"), self.calls("a.t2"), self.calls("b.t1")), (0, 0, 1))
+        receipt = self.receipt("a.t1")
+        self.assertTrue(Path(receipt["worktree"]).is_dir())
+        self.assertIn("— inputs-changed:", self.rows(receipt["publish_sha"])["a.t1"]["rest"])
+
     def test_devlyn_ignore_is_checked_before_allocation(self):
         (self.anchor / ".gitignore").write_text("__pycache__/\n", encoding="utf-8")
         self.g("commit", "-qam", "base without the .devlyn/ rule")
