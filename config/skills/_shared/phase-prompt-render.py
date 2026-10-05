@@ -534,7 +534,7 @@ def verify_self_test() -> None:
         git("commit", "-qam", "change")
         (devlyn / "plan.md").write_text('<!-- devlyn:authorized-surface -->\n## Files\n```json\n{"authorized_surface": ["app.py"]}\n```\n')
         (devlyn / "spec-verify.results.json").write_text('{"commands": [], "process_evidence": null}\n')
-        (devlyn / "untracked.baseline").write_text('{"untracked": [], "sparse_absences": []}\n')
+        (devlyn / "untracked.baseline").write_text('{"untracked": [], "ignored": [], "sparse_absences": []}\n')
         state = {"run_id": "r", "mode": "spec", "base_ref": {"sha": base},
                  "source": {"type": "spec", "spec_path": "spec.md",
                             "spec_sha256": hashlib.sha256(b"# Spec\n").hexdigest()},

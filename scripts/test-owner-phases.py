@@ -438,7 +438,8 @@ class OwnerPhases(unittest.TestCase):
 
     def test_preexisting_untracked_files_survive_and_residue_cannot_seal(self):
         (self.work / "user-existing.txt").write_text("preserve")
-        (self.devlyn / "untracked.baseline").write_text(json.dumps({"untracked": ["user-existing.txt"], "sparse_absences": []}))
+        (self.devlyn / "untracked.baseline").write_text(
+            json.dumps({"untracked": ["user-existing.txt"], "ignored": [], "sparse_absences": []}))
         self.implemented()
         (self.work / "outside-plan.txt").write_text("created before MECHANICAL")
         self.mechanical()
@@ -547,7 +548,7 @@ class OwnerPhases(unittest.TestCase):
         self.git("update-index", "--skip-worktree", "excluded/x.txt")
         (self.work / "excluded" / "x.txt").unlink()
         (self.devlyn / "untracked.baseline").write_text(
-            json.dumps({"untracked": [], "sparse_absences": ["excluded/x.txt"]}))
+            json.dumps({"untracked": [], "ignored": [], "sparse_absences": ["excluded/x.txt"]}))
         self.with_spec(b"# Spec\n\n## Requirements\n\n- prints ok\n")
         self.implemented()
         result = self.mechanical()

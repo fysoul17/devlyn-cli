@@ -407,7 +407,7 @@ def self_test() -> int:
                                             '{"authorized_surface": ["app.py"]}\n```\n')
             (devlyn / "verify-mechanical.findings.jsonl").write_text("")
             (devlyn / "spec-verify.results.json").write_text('{"commands": [], "process_evidence": null}\n')
-            (devlyn / "untracked.baseline").write_text('{"untracked": [], "sparse_absences": []}\n')
+            (devlyn / "untracked.baseline").write_text('{"untracked": [], "ignored": [], "sparse_absences": []}\n')
             resolution = ROLE["resolve"](work, "claude", no_pair=no_pair, available=lambda engine: True)
             state = {"version": "3.0", "run_id": "rs-" + name, "engine": "claude", "mode": "spec",
                      "base_ref": {"sha": base}, "pair_verify": pair_verify,

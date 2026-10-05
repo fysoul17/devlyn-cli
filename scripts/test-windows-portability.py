@@ -2398,7 +2398,7 @@ assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work
         (devlyn / 'plan.md').write_bytes(b'<!-- devlyn:authorized-surface -->\n## Files\n```json\n{"authorized_surface": ["app.py"]}\n```\n')
         (devlyn / 'verify-mechanical.findings.jsonl').write_bytes(b'')
         (devlyn / 'spec-verify.results.json').write_bytes(b'{"commands": [], "process_evidence": null}\n')
-        (devlyn / 'untracked.baseline').write_bytes(b'{"untracked": [], "sparse_absences": []}\n')
+        (devlyn / 'untracked.baseline').write_bytes(b'{"untracked": [], "ignored": [], "sparse_absences": []}\n')
         resolution = role['resolve'](work, 'claude', available=lambda engine: True)
         state = {'version': '3.0', 'run_id': 'rs-native-verify', 'engine': 'claude', 'mode': 'spec', 'base_ref': {'sha': base},
                  'source': {'type': 'spec', 'spec_path': 'spec.md', 'spec_sha256': hashlib.sha256(b'# Spec\n').hexdigest()},
