@@ -1352,12 +1352,18 @@ echo OK''')
         for name in ('claude.json', 'codex.json'):
             (auth / name).write_text('{}')
         plan = json.loads((out / 'plan.json').read_text())
-        plan.update(wall_seconds=300, argv=['sh', '-c', 'mkdir -p /tmp/kept && echo kept > /tmp/kept/f && '
-                                            'codex sandbox -- sh -c "echo SANDBOXED; touch /cell/work/x || echo READ-ONLY"'])
+        plan.update(wall_seconds=300, argv=['sh', '-c', (
+            'git -c user.name=t -c user.email=t@t worktree add -q -b kept /tmp/kept && echo kept > /tmp/kept/f && '
+            'ln -s f /tmp/kept/link && printf "#!/bin/sh\\n" > /tmp/kept/run.sh && chmod 755 /tmp/kept/run.sh && '
+            'python3 -c "import socket; socket.socket(socket.AF_UNIX).bind(\'/tmp/kept/sock\')" && '
+            'codex sandbox -- sh -c "echo SANDBOXED; touch /cell/work/x || echo READ-ONLY"')])
         (out / 'plan.json').write_text(json.dumps(plan))
         record = load('cell').run(out, self.runtime)
         self.assertEqual(record['teardown'], 'CLEAN', record.get('teardown_error'))
-        self.assertEqual((out / 'tmp/kept/f').read_text(), 'kept\n')
+        kept = out / 'tmp/kept'
+        self.assertEqual(((kept / 'f').read_text(), (kept / 'link').readlink(), (kept / 'run.sh').stat().st_mode & 0o777,
+                          (kept / 'sock').exists()), ('kept\n', Path('f'), 0o755, False))  # the socket is skipped
+        self.assertEqual(locate.host(out, (out / 'cell/work/.git/worktrees/kept/gitdir').read_text().strip()), kept / '.git')
         self.assertEqual([w for w in ('SANDBOXED', 'READ-ONLY') if w in (out / 'run/stdout').read_text()], ['SANDBOXED', 'READ-ONLY'])
         self.assertNotEqual(subprocess.run(['docker', 'volume', 'inspect', record['tmp_volume']], capture_output=True).returncode, 0)
 

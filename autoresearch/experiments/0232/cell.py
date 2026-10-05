@@ -174,7 +174,9 @@ def run(out, runtime):
             preserve_tmp(volume, Path(plan['tmp']), plan['image'])
             record['teardown'] = 'CLEAN'
         except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
-            record.update(teardown='FAILED', teardown_error=' '.join(filter(None, (str(exc), getattr(exc, 'stderr', None)))))
+            stderr = getattr(exc, 'stderr', None)  # bytes on a timeout, even when the call asked for text
+            stderr = stderr.decode(errors='replace') if isinstance(stderr, bytes) else stderr
+            record.update(teardown='FAILED', teardown_error=' '.join(filter(None, (str(exc), stderr))))
         shutil.rmtree(secret)
         (record_dir / 'result.json').write_text(json.dumps(record, indent=2))
     try:
