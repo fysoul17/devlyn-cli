@@ -23,11 +23,12 @@ Start with the minimum viable solution, then improve if time allows.
 
 ## Debugging
 
-For systematic debugging, use `/devlyn-resolve [issue description]` which includes:
-- Code path mapping
-- Hypothesis-driven analysis
-- Test-driven fix validation
-- Full regression check
+For systematic debugging:
+
+```
+Debug [issue description]: map the code path, test each hypothesis against evidence until the
+root cause is confirmed, write a failing test, fix it, then run the full regression suite.
+```
 
 ## Parallel Feature Analysis
 
@@ -61,7 +62,7 @@ have working, tested code ready for PR.
 For complex bugs that need autonomous resolution:
 
 ```
-/devlyn-resolve [bug description]
+Fix [bug description].
 
 After analysis, implement the fix autonomously:
 - Write failing test first
