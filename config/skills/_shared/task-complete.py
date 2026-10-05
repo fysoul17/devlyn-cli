@@ -32,6 +32,10 @@ class WritersUnobservable(CompletionError):
     """Writer cessation cannot be observed here, so owned resources are retained, never deleted."""
 
 
+class WriterActive(CompletionError):
+    """An observed process still uses the owned files: wait for it or stop it, then resume."""
+
+
 def require(condition, message):
     if not condition:
         raise CompletionError(message)
@@ -498,7 +502,7 @@ def stopped_writers(work):
             if line.startswith("p"):
                 pid = int(line[1:])
             elif line.startswith("n") and pid != os.getpid():
-                raise CompletionError(f"active process {pid} uses task files; stop/yield actual writers before resume")
+                raise WriterActive(f"active process {pid} uses task files; stop/yield actual writers before resume")
     elif sys.platform.startswith("linux"):
         for process in Path("/proc").iterdir():
             if not process.name.isdigit() or int(process.name) == os.getpid():
@@ -512,7 +516,8 @@ def stopped_writers(work):
                         if link == process / "cwd":
                             break
                         continue
-                    require(not target.is_absolute() or not target.is_relative_to(work), f"active process {process.name} uses task files; stop/yield it before resume")
+                    if target.is_absolute() and target.is_relative_to(work):
+                        raise WriterActive(f"active process {process.name} uses task files; stop/yield it before resume")
             except FileNotFoundError:
                 continue  # Process exited during observation.
             except PermissionError as exc:
@@ -1163,7 +1168,7 @@ class CompletionTests(unittest.TestCase):
                 return str(self.work / "product")
             return readlink(path, *args, **kwargs)
         with patch.object(sys, "platform", "linux"), patch.object(Path, "iterdir", entries), patch.object(os, "readlink", target):
-            with self.assertRaisesRegex(CompletionError, "active process " + process.name):
+            with self.assertRaisesRegex(WriterActive, "active process " + process.name):
                 stopped_writers(self.work)
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")

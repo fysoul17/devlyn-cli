@@ -39,8 +39,9 @@ with config_path.with_name("calls-" + packet["task"]).open("a", encoding="utf-8"
     calls.write("call\n")
 if behavior.get("hang"):
     config_path.with_name("hang.pid").write_text(str(os.getpid()))
-    while True:
-        time.sleep(1)
+    while not config_path.with_name("release").exists():
+        time.sleep(0.1)
+    config_path.with_name("hang.pid").unlink()
 work = pathlib.Path(packet["worktree"])
 def git(*args):
     return subprocess.run(["git", "-C", str(work), *args], check=True, capture_output=True, text=True, encoding="utf-8").stdout.strip()
@@ -404,6 +405,19 @@ class LoopFixture(unittest.TestCase):
         receipt = self.receipt("a.t1")
         self.assertTrue(Path(receipt["worktree"]).is_dir())
         self.assertIn("— interrupted-unobservable: ", self.rows(receipt["publish_sha"])["a.t1"]["rest"])
+
+    @unittest.skipIf(os.name == "nt", "writer observation requires POSIX")
+    def test_interrupted_execution_waits_for_the_live_executor_and_adopts_its_submission(self):
+        self.plan("a", [CHAIN[0]], {"a.t1": {"product": "greeting", "hang": True}})
+        driver = next(self.drain_until("a.t1: executing"))
+        while not self.config.with_name("hang.pid").exists():
+            time.sleep(0.05)
+        driver.kill()  # The controller dies after the spawn; its executor lives on.
+        driver.wait()
+        resumed = next(self.drain_until("a.t1: waiting"))
+        self.config.with_name("release").write_text("go", encoding="utf-8")
+        out, _ = resumed.communicate(timeout=120)
+        self.assertEqual((self.tasks(json.loads(out))["a.t1"]["result"], self.calls("a.t1")), ("accepted", 1))
 
     def test_changed_contract_of_an_active_task_fails_only_that_task(self):
         self.plan("a", CHAIN, {"a.t1": {"product": "greeting"}, "a.t2": {"product": "app"}})

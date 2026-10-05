@@ -23,6 +23,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 SKILLS = Path(__file__).resolve().parents[2]
@@ -674,38 +675,60 @@ def ensure_packet(v, row, path, receipt):
     return packet_path, packet
 
 
+def record(log, event):
+    """Append one execution event durably, before the drain acts on it."""
+    with log.open("a", encoding="utf-8") as stream:
+        stream.write(f"{datetime.datetime.now(datetime.timezone.utc).isoformat()} {event}\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
 def ensure_submission(identity, packet_path, packet, executor):
-    """Run the executor once unless its submission exists; returns a drain-recorded failure reason, else None."""
+    """Run the executor once unless its submission exists; returns a drain-recorded failure reason, else None.
+
+    An attempt's start is recorded before the spawn and its exit after the wait, so a start without an exit may have
+    left a live executor: drain waits until no process uses the worktree, then adopts its submission or runs the
+    executor again. Where writers cannot be observed the task fails as interrupted-unobservable."""
     submission = Path(packet["submission"])
+    worktree = Path(packet["worktree"])
+    log = submission.with_name("executions.log")
+    events = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+    if events and events[-1].partition(" ")[2] == "start":
+        helper = shared("task-complete")
+        waiting = False
+        while True:
+            try:
+                helper["stopped_writers"](worktree)
+                break
+            except helper["WritersUnobservable"] as exc:
+                return f"interrupted-unobservable: an interrupted executor may still be writing ({exc})"
+            except helper["WriterActive"] as exc:
+                if not waiting:
+                    progress(identity, f"waiting for an interrupted execution to stop ({exc})")
+                waiting = True
+                time.sleep(2)
+            except helper["CompletionError"] as exc:
+                raise LoopError(f"{identity}: cannot establish that an interrupted execution stopped ({exc})") from exc
     if submission.exists():
         return None
-    worktree = Path(packet["worktree"])
-    attempts = submission.with_name("executions.log")
-    if attempts.exists():
-        helper = shared("task-complete")
-        try:
-            helper["stopped_writers"](worktree)
-        except helper["WritersUnobservable"] as exc:
-            return f"interrupted-unobservable: an interrupted executor may still be writing ({exc})"
-        except helper["CompletionError"] as exc:
-            raise LoopError(f"{identity}: an earlier executor may still be writing ({exc}); stop it, then drain again") from exc
     argv = [part.replace("{packet}", str(packet_path)) for part in executor]
     output = Path(packet["evidence_dir"])
     output.mkdir(parents=True, exist_ok=True)
+    record(log, "start")
     try:
         # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout.
         with (output / "executor.stdout").open("ab") as stdout, (output / "executor.stderr").open("ab") as stderr:
             child = subprocess.Popen(shared("platform-support")["native_argv"](argv), cwd=worktree, stdout=stdout, stderr=stderr)
     except OSError as exc:
+        record(log, f"not started: {one_line(str(exc))}")
         raise LoopError(f"executor could not start: {exc}") from exc
-    with attempts.open("a", encoding="utf-8") as log:
-        log.write(f"{datetime.datetime.now(datetime.timezone.utc).isoformat()} executor pid {child.pid} started\n")
     progress(identity, f"executing; output in {output}")
     code = child.wait()
     if not submission.exists():
         write_json(submission, {"schema_version": 1, "task": identity, "source_sha": packet["inputs_sha"],
                                 "summary": "recorded by the drain, not the executor",
                                 "blockers": [{"kind": "blocked-infrastructure", "detail": f"executor exited {code} without a submission"}]})
+    record(log, f"exit {code} (pid {child.pid})")
     return None
 
 
@@ -1152,6 +1175,69 @@ class QueueTests(unittest.TestCase):
                         self.assertIn("another drain is active", json.loads(out)["reason"])
                         held.stdin.close()
         self.assertEqual(parse_queue((linked / QUEUE).read_bytes())[0]["identity"], "inv.t1")
+
+    def test_a_crash_on_either_side_of_the_spawn_never_starts_a_second_executor(self):
+        """The attempt's start is durable before the spawn, so a resumed drain observes writers first: it waits while
+        an executor lives and adopts its submission, runs the executor once when none did, and fails the task where
+        writers cannot be observed."""
+        from unittest import mock
+        helper = shared("task-complete")
+        work, records = self.root / "work", self.root / "records"
+        work.mkdir()
+        records.mkdir()
+        packet = {"worktree": str(work), "submission": str(records / "submission.json"), "inputs_sha": "0" * 40,
+                  "evidence_dir": str(work / ".devlyn/loop")}
+        spawns, checks = [], []
+
+        class Crash(BaseException):
+            """The controller dies here."""
+
+        class Child:
+            pid = 4242
+
+            def wait(self):
+                return 0
+
+        def spawn(argv, **kwargs):
+            spawns.append(argv)
+            return Child()
+
+        def crash_after_spawn(argv, **kwargs):
+            spawns.append(argv)
+            raise Crash
+
+        def crash_before_spawn(argv, **kwargs):
+            raise Crash
+
+        def drain(popen, observe=lambda count: None):
+            def stopped_writers(path):
+                checks.append(path)
+                observe(len(checks))
+            with mock.patch.dict(helper, {"stopped_writers": stopped_writers}), mock.patch("subprocess.Popen", popen), \
+                    mock.patch("time.sleep"):
+                return ensure_submission("l.t", records / "packet.json", packet, ["executor", "{packet}"])
+
+        def survivor(count):
+            if count < 3:
+                raise helper["WriterActive"]("active process 4242 uses task files")
+            Path(packet["submission"]).write_text('{"by": "executor"}', encoding="utf-8")
+
+        def unobservable(count):
+            raise helper["WritersUnobservable"]("writer observation unsupported on this platform; retain workspace")
+
+        for crash, observe, outcome in ((crash_after_spawn, survivor, (1, 3, None)), (crash_before_spawn, lambda count: None, (1, 1, None)),
+                                        (crash_before_spawn, unobservable, (0, 1, "interrupted-unobservable"))):
+            with self.subTest(crash=crash.__name__, observe=getattr(observe, "__name__", "nothing")):
+                spawns.clear()
+                checks.clear()
+                for path in records.iterdir():
+                    path.unlink()
+                with self.assertRaises(Crash):
+                    drain(crash)
+                failure = drain(spawn, observe)
+                self.assertEqual((len(spawns), len(checks), failure and failure.split(":")[0]), outcome)
+                if crash is crash_after_spawn:
+                    self.assertEqual(read_json(Path(packet["submission"])), {"by": "executor"})
 
 
 def main():
