@@ -31,7 +31,7 @@ def load(name, path=None):
 prepare, cell_run, usage, locate, check, assess, quota, obligations, compliance = (load(n) for n in (
     'prepare', 'cell', 'record_usage', 'locate', 'check', 'assess', 'quota', 'obligations', 'compliance'))
 base = load('run_cell0222', HERE.parent / '0222/run_cell.py')
-HEADROOM_BYTES = 20 * 2**30  # free space on the output volume before a cell; traces keep full request payloads
+HEADROOM_BYTES = 8 * 2**30  # free space on the output volume before a cell: one cell's traces (full request payloads) with margin
 
 
 def digest(path):

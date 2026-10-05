@@ -43,6 +43,8 @@ Stage 1 of [0232](../../iterations/0232-harness-ladder.md) §6 runs A/I/F on the
   methodology, not identity, so a same-engine review is non-compliant rather than a STOP in either config.
 - **Quota** (`quota.py`): review records' raw stdout and stderr are execution evidence, so a reviewer's account limit
   STOPs the cell like any other execution fault.
+- **Storage** (`run_cell.py`): the free-space floor before each cell is 8 GiB, not 0231's 20 GiB. It covers one cell's
+  writes on this host's nearly full volume, and every verdict records `trace_bytes`.
 - **Snapshot** (`locate.py`): Git's view of each tree reads the cell home, as the container does, never the host
   user's ignore files. F keeps 0231's selection exactly; a receipt-less F run is its anchor. A and I are
   native: the anchor (the session's working directory) when its product differs from the allocation, else the one
