@@ -482,8 +482,8 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()},
                          {"a.t1": "failed", "a.t2": "blocked", "b.t1": "accepted", "c.t1": "pending", "c.t2": "pending"})
         self.assertTrue(tasks["a.t1"]["reason"].startswith(f"inputs-changed: {changed} changed"))
-        for identity, reason in reasons.items():
-            self.assertIn(reason, tasks[identity]["reason"])
+        for identity, reason in reasons.items():  # validation errors name the file by its native path
+            self.assertIn(reason.replace("/", os.sep), tasks[identity]["reason"])
         self.assertEqual([self.calls(identity) for identity in ("a.t1", "a.t2", "b.t1", "c.t1", "c.t2")], [0, 0, 1, 0, 0])
         self.assertIn("— inputs-changed:", self.rows(self.receipt("a.t1")["publish_sha"])["a.t1"]["rest"])
 
