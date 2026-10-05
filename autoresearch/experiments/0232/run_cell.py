@@ -178,7 +178,7 @@ def run(runtime_path, name, task, arm, config):
                   quota=limits, trace_bytes=trace_bytes, evidence_manifest_sha256=sealed,
                   collection_failures=collection_failures)
     baseline = json.loads((out / 'baseline.json').read_text())
-    stop = ('container survived teardown' if owner['teardown'] != 'CLEAN' else
+    stop = ('teardown failed: ' + str(owner.get('teardown_error')) if owner['teardown'] != 'CLEAN' else
             'harness changed' if not harness_unchanged(out, baseline) else
             'shared account fault during execution: ' + ', '.join(sorted({h['kind'] for h in limits['execution']}))
             if limits['execution'] else

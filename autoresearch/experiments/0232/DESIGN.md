@@ -30,6 +30,8 @@ Stage 1 of [0232](../../iterations/0232-harness-ladder.md) §6 runs A/I/F on the
     each uncovered transcript's lower bound.
   - A missing Claude counter is a named gap, never zero. An empty usage map is missing too: it covers no transcript,
     whose usage then counts as a lower bound.
+- **Claude result envelopes** are the `*.output.json` files under `.devlyn`. 4.1.0 saves each raw Claude result there
+  (judges, SURFACE_CLOSE); a `.stdout` beside one holds extracted result text.
 - **Review launcher calls** (`home/.devlyn/reviews/<UTC timestamp>-<engine>/`) are inventoried as launches:
   - A Codex call's JSON `thread.started` ids bind its traces (seat `reviewer`), so they are never unbound traces.
   - A Claude call's final stream event is a result envelope, deduplicated by session; it covers that session's
@@ -43,6 +45,9 @@ Stage 1 of [0232](../../iterations/0232-harness-ladder.md) §6 runs A/I/F on the
   methodology, not identity, so a same-engine review is non-compliant rather than a STOP in either config.
 - **Quota** (`quota.py`): review records' raw stdout and stderr are execution evidence, so a reviewer's account limit
   STOPs the cell like any other execution fault.
+- **Cell `/tmp`** (`cell.py`) is a per-cell Docker volume. After teardown it is copied into `<cell-out>/tmp`, then
+  removed. Codex's Linux sandbox refuses every command when `/tmp` is a host bind mount, which would disable every
+  sandboxed Codex reviewer, judge and worker. A failed copy keeps the volume and STOPs the cell.
 - **Storage** (`run_cell.py`): the free-space floor before each cell is 8 GiB, not 0231's 20 GiB. It covers one cell's
   writes on this host's nearly full volume, and every verdict records `trace_bytes`.
 - **Snapshot** (`locate.py`): Git's view of each tree reads the cell home, as the container does, never the host

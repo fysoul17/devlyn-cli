@@ -79,14 +79,13 @@ def judge_headers(out):
 
 
 def claude_envelopes(out):
-    """Separate `claude -p` result envelopes anywhere under .devlyn, deduplicated by session id."""
+    """Separate `claude -p` result envelopes anywhere under .devlyn, deduplicated by session id. 4.1.0 saves every
+    raw Claude result as `<stem>.output.json` (judges, SURFACE_CLOSE); a `.stdout` beside it holds the extracted
+    result text, never an envelope."""
     found, unreadable, conflicts = {}, [], []
     for devlyn in devlyn_dirs(out):
-        for path in sorted(p for p in devlyn.rglob('*') if p.is_file() and 'judge' in p.name
-                           and (p.name.endswith('.output.json') or p.name.endswith('.stdout'))):
+        for path in sorted(p for p in devlyn.rglob('*.output.json') if p.is_file()):
             text = path.read_text(errors='replace').strip()
-            if not text.startswith('{'):
-                continue  # a Codex judge's plain stdout, not a Claude envelope
             try:
                 value = json.loads(text)
             except ValueError:
