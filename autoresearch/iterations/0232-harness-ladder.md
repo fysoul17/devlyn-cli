@@ -277,3 +277,16 @@ From `m08` on, cells use apparatus `cce71305`. That change affects only the asse
 - Compliance records "failed review", and the killed reviewer's usage is a named gap, so the cell's usage is PARTIAL. Its product verdict is COMPLETE.
 - This is not the pre-authorized contingency, which covers a cut-off by the default two-minute timeout. The treatment stays frozen.
 - Such cells are evidence about rung I, a failure that can license a later rung.
+
+### Addendum 2026-10-05 — venue change at m11
+
+**What happened.** After `m10`, the host's Claude login changed. The preflight refused `m11` with "account/organization mismatch", as 0231's rule requires: the account never switches automatically.
+- Before: account `cc43a4e02ede`, organization `2905f4abf05b`.
+- After: account `45eff57aaa45`, organization `b6b7768fd228`, `claude_max`, rate tier `default_claude_max_20x`.
+
+**What root did.**
+- Recorded the switch as a venue change.
+- Set the runtime's account to the new fingerprint.
+- Resumed from `m11`.
+
+`m01`–`m10` ran on the first account, and `m11`–`m36` run on the second. Models, CLIs, image, apparatus and treatments are unchanged. The balanced cell order puts every arm on both accounts. The account change can affect only wall time, through provider-side throughput, and RESULT reports it per cell.
