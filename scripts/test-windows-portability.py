@@ -870,16 +870,16 @@ init({options});
         self.assertIn(b'already queued: loop.t1', add(code=1).stdout)
         self.assertEqual(queue.read_bytes(), expected)
         # The helper writes only while it holds <common Gitdir>/devlyn-loops/queue.lock, so concurrent adds serialize.
-        queue.unlink()
+        second = loop['write_package'](self.project, 'next', [('t1', [], 'Next', [{'argv': [sys.executable, '-c', 'pass'], 'contract_refs': ['R1']}])])
         lock = self.project / '.git/devlyn-loops/queue.lock'
         with runpy.run_path(str(self.package / 'config/skills/_shared/platform-support.py'))['file_lock'](lock, blocking=True):
-            proc = subprocess.Popen([sys.executable, str(helper), 'add', str(meta)], cwd=self.project, env=env,
+            proc = subprocess.Popen([sys.executable, str(helper), 'add', str(second)], cwd=self.project, env=env,
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             time.sleep(1.5)
             self.assertIsNone(proc.poll())
-            self.assertFalse(queue.exists())
+            self.assertEqual(queue.read_bytes(), expected)
         self.assertEqual(proc.wait(timeout=20), 0)
-        self.assertEqual(queue.read_bytes(), expected)
+        self.assertEqual(queue.read_bytes(), expected + loop['row_line']('next.t1', 'Next').encode('utf-8') + b'\n')
 
     def test_retired_skill_name_is_removed_only_as_shipped(self):
         # 0.2.0-1.15.0 shipped workflow-routing; a folder of that name the user wrote stays.

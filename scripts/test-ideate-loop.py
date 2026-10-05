@@ -289,6 +289,43 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(result["status"], "BLOCKED")
         self.assertIn("conflicting receipts for inv.t1", result["reason"])
 
+    def merge_ff(self, rev):
+        return subprocess.run(["git", "-C", str(self.anchor), "merge", "--ff-only", rev], env=self.env, capture_output=True,
+                              text=True, encoding="utf-8")
+
+    def added(self, loop):
+        return json.loads((self.common / f"devlyn-loops/{loop}/added.json").read_text(encoding="utf-8"))
+
+    def test_local_loop_fast_forwards_the_anchor_branch(self):
+        # The loop starts from add's commit, so the final frontier fast-forwards the branch it was added on (e2e D1).
+        self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}})
+        self.drain()
+        first, final = self.receipt("inv.t1"), self.receipt("inv.t2")
+        merged = self.merge_ff(final["branch"])
+        self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
+        self.assertEqual((self.g("rev-parse", "HEAD"), self.g("status", "--porcelain", "--untracked-files=all")), (final["publish_sha"], ""))
+        self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"inv.t1": "x", "inv.t2": "x"})
+        # Scoped inputs are what a base lacks: nothing for the first task, the predecessor's [x] row for its dependent.
+        added = self.added("inv")["commit"]
+        self.assertEqual((first["baseline"], first["acceptance"]["inputs_sha"]), (added, added))
+        self.assertEqual(self.g("diff", "--name-only", final["baseline"], final["acceptance"]["inputs_sha"]), "docs/specs/queue.md")
+        report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")
+        self.assertIn(f"- Bring into main: git merge --ff-only {final['branch']} (a fast-forward)", report)
+
+    def test_add_commits_only_the_package_and_queue(self):
+        # add commits exactly the package and the queue; unrelated staged and unstaged changes stay as they were.
+        (self.anchor / "staged.txt").write_text("staged\n", encoding="utf-8")
+        self.g("add", "staged.txt")
+        with (self.anchor / ".gitignore").open("a", encoding="utf-8") as ignore:
+            ignore.write("# unstaged edit\n")
+        self.plan("inv", CHAIN, {})
+        self.assertEqual(self.g("log", "-1", "--format=%s"), "devlyn loop: add inv")
+        self.assertEqual(self.g("rev-parse", "HEAD^"), self.base)
+        package = ["docs/specs/inv/meta.md"] + [f"docs/specs/inv/{task}/{name}" for task in ("t1", "t2") for name in ("spec.expected.json", "spec.md")]
+        self.assertEqual(self.g("diff", "--name-only", self.base, "HEAD").splitlines(), package + ["docs/specs/queue.md"])
+        self.assertEqual((self.g("diff", "--cached", "--name-only"), self.g("diff", "--name-only")), ("staged.txt", ".gitignore"))
+        self.assertEqual(self.added("inv"), {"schema_version": 1, "loop_id": "inv", "branch": "main", "commit": self.g("rev-parse", "HEAD")})
+
     def test_frontier_is_the_latest_accepted_source_and_divergence_is_refused(self):
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1"], "Greeting app", [APP_CHECK]), ("t4", ["t2", "t3"], "Notes again", [NOTES_CHECK])]
         self.plan("fr", tasks, {"fr.t1": {"product": "greeting"}, "fr.t2": {"product": "notes"}, "fr.t3": {"product": "app"}, "fr.t4": {"product": "notes"}})
@@ -398,11 +435,11 @@ class LoopFixture(unittest.TestCase):
             self.assertEqual(self.g("rev-parse", receipt["recovery_ref"]), receipt["publish_sha"])
         # Receipt-proven failed and prerequisite-blocked marks enter the next checkout of the same loop,
         # in queue order, with unrelated rows byte-identical.
-        failed = self.receipt("dd.t1")
+        failed, dd2 = self.receipt("dd.t1"), self.receipt("dd.t2")
         failed_row = self.rows(failed["publish_sha"])["dd.t1"]["line"]
         blocked_row = "- [F] " + self.queue["row_line"]("dd.t3", "Greeting app")[6:] + f" — blocked-prerequisite:dd.t1 (receipt {failed['id']})"
-        dd2_inputs = self.queue_at(self.receipt("dd.t2")["acceptance"]["inputs_sha"])
-        self.assertEqual(dd2_inputs, "\n".join([self.base_queue.decode("utf-8") + failed_row, self.queue["row_line"]("dd.t2", "Notes"), blocked_row]))
+        self.assertEqual(self.queue_at(dd2["acceptance"]["inputs_sha"]), self.queue_at(dd2["baseline"]).replace(
+            self.queue["row_line"]("dd.t1", "Greeting interface 인사"), failed_row).replace(self.queue["row_line"]("dd.t3", "Greeting app"), blocked_row))
         reports = {loop: (self.common / f"devlyn-loops/{loop}/drain-report.md").read_text(encoding="utf-8") for loop in ("dd", "ee")}
         self.assertIn("Whole-loop acceptance: INCOMPLETE — ee.t2 failed", reports["ee"])
         self.assertIn("blocked-prerequisite:dd.t1", reports["dd"])
@@ -582,10 +619,12 @@ class LoopFixture(unittest.TestCase):
         queue.write_bytes(planned.replace((self.queue["row_line"]("inv.t2", "Greeting app [cli]") + "\n").encode(), b""))
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t1"]["delivery"], "COMPLETE")
         queue.write_bytes(planned)
-        # A checkout of the refreshed base: T1's merged publication carries the manifest and T1's row, not T2's.
+        # A checkout of the refreshed base whose queue lacks T2's row: whole-loop acceptance reads the manifest.
         refreshed = self.root / "refreshed"
         self.g("fetch", "-q", str(bare), "main")
         self.g("worktree", "add", "-q", "--detach", str(refreshed), "FETCH_HEAD")
+        stale = refreshed / "docs/specs/queue.md"
+        stale.write_bytes(stale.read_bytes().replace((self.queue["row_line"]("inv.t2", "Greeting app [cli]") + "\n").encode(), b""))
         self.drain(local=False, repo=refreshed)
         report = self.common / "devlyn-loops/inv/drain-report.md"
         self.assertIn("- Whole-loop acceptance: INCOMPLETE — inv.t2 not yet run", report.read_text(encoding="utf-8"))
@@ -593,6 +632,32 @@ class LoopFixture(unittest.TestCase):
         data.write_text(json.dumps({key: value for key, value in json.loads(data.read_text()).items() if key != "pr"}))
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t2"]["result"], "accepted")
         self.assertIn("- Whole-loop acceptance: ACCEPTED", report.read_text(encoding="utf-8"))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_auto_delivery_fast_forwards_the_anchor_on_pull(self):
+        # The first task's PR carries add's commit, so after delivery the branch it was added on fast-forwards on pull.
+        bare, data = self.remote(pending=False)
+        self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
+        queue = self.anchor / "docs/specs/queue.md"
+        planned = queue.read_bytes()
+        # The fake server keeps one PR at a time: deliver inv.t1 alone, then inv.t2.
+        queue.write_bytes(planned.replace((self.queue["row_line"]("inv.t2", "Greeting app [cli]") + "\n").encode(), b""))
+        self.assertEqual(self.tasks(self.drain(local=False))["inv.t1"]["delivery"], "COMPLETE")
+        queue.write_bytes(planned)
+        data.write_text(json.dumps({key: value for key, value in json.loads(data.read_text()).items() if key != "pr"}))
+        self.assertEqual(self.tasks(self.drain(local=False))["inv.t2"]["delivery"], "COMPLETE")
+        self.g("fetch", "-q", str(bare), "main")
+        merged = self.merge_ff("FETCH_HEAD")
+        self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
+        self.assertEqual((self.g("rev-parse", "HEAD"), self.g("status", "--porcelain", "--untracked-files=all")), (self.g("rev-parse", "FETCH_HEAD"), ""))
+        self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"inv.t1": "x", "inv.t2": "x"})
+        first, second = self.receipt("inv.t1"), self.receipt("inv.t2")
+        added = self.added("inv")["commit"]
+        self.assertEqual((first["baseline"], first["acceptance"]["inputs_sha"]), (added, added))
+        # The dependent starts from the refreshed remote base, which the first merge gave the package: no inputs commit.
+        self.assertEqual((second["baseline"], second["acceptance"]["inputs_sha"]), (first["merge"]["mergeCommit"]["oid"],) * 2)
+        report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")
+        self.assertIn("- Bring into main: git pull --ff-only origin main after delivery (a fast-forward)", report)
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_delivery_pending_keeps_acceptance_resources_and_resume(self):

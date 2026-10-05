@@ -202,7 +202,7 @@ def allocate(args):
         policy(receipt, None)
         receipt["remote_url"] = remote_url(receipt)
         require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
-    receipt["baseline"] = local or remote_base(receipt)
+    receipt["baseline"] = local or exact_commit(receipt, args.start, "--start") or remote_base(receipt)
     target = Path(args.worktree).absolute()
     require(target == target.resolve(), "worktree path must not traverse symlinks")
     require(not target.exists() and all(not target.is_relative_to(p) and not p.is_relative_to(target) for p in map(Path, registrations(receipt))), "linked worktree must be an absent path disjoint from every registered worktree")
@@ -228,9 +228,15 @@ def allocate(args):
             "reconciled": [] if local else reconcile(common, path, work)}
 
 
+def exact_commit(receipt, value, flag):
+    require(value is None or re.fullmatch(r"[0-9a-f]{40,64}", value) and ref_sha(receipt, value+"^{commit}") == value,
+            f"{flag} must name an exact local commit")
+    return value
+
+
 def local_baseline(receipt, args):
     """A local loop starts from its recorded base commit or a receipt-bound accepted predecessor, never a fetch."""
-    require(not (args.local_base and args.from_receipt), "use --local-base or --from-receipt, not both")
+    require(sum(map(bool, (args.local_base, args.from_receipt, args.start))) <= 1, "use one of --local-base, --from-receipt or --start")
     if args.from_receipt:
         with locked_receipt(Path(args.from_receipt).absolute(), blocking=False) as predecessor:
             require(predecessor["common_gitdir"] == receipt["common_gitdir"], "predecessor receipt belongs to another repository")
@@ -239,10 +245,7 @@ def local_baseline(receipt, args):
             gref(predecessor, "merge-base", "--is-ancestor", predecessor["source_sha"], predecessor["publish_sha"])
             receipt["allocated_from"] = {"receipt": predecessor["id"], "source_sha": predecessor["source_sha"]}
             return predecessor["source_sha"]
-    if args.local_base:
-        require(re.fullmatch(r"[0-9a-f]{40,64}", args.local_base) and ref_sha(receipt, args.local_base+"^{commit}") == args.local_base,
-                "--local-base must name an exact local commit")
-    return args.local_base
+    return exact_commit(receipt, args.local_base, "--local-base")
 
 
 def refuse_retired_pipeline(receipt, path, supplied, local, flags):
@@ -778,6 +781,7 @@ def main():
     allocation.add_argument("--worktree", required=True)
     allocation.add_argument("--local-base")
     allocation.add_argument("--from-receipt")
+    allocation.add_argument("--start")
     binding = actions.add_parser("accept")
     binding.add_argument("--receipt", required=True)
     binding.add_argument("--acceptance", required=True)
@@ -1996,6 +2000,21 @@ class CompletionTests(unittest.TestCase):
         self.assertIn("exact local commit", result["reason"])
         self.assertEqual(self.g("branch", "--list", "task/next"), "")
         self.assertFalse((self.root / "next").exists())
+
+    def test_remote_allocation_starts_from_an_exact_commit(self):
+        # An ideate loop's first task starts from add's local commit, which its PR then carries.
+        (self.work / "product").write_text("added locally\n", encoding="utf-8")
+        self.g("commit", "-qam", "devlyn loop: add fixture")
+        start = self.g("rev-parse", "HEAD")
+        args = ["allocate", "--repo", self.work, "--task", "first", "--branch", "task/first", "--repository", "test/project",
+                "--base", "main", "--worktree", self.root / "first"]
+        for extra, reason in ((["--start", "main"], "--start must name an exact local commit"),
+                              (["--start", start, "--local-base", start], "use one of --local-base, --from-receipt or --start")):
+            self.assertIn(reason, self.cli(*args, *extra, success=False)[0]["reason"])
+        result, _ = self.cli(*args, "--start", start)
+        receipt = json.loads(Path(result["receipt"]).read_text(encoding="utf-8"))
+        self.assertEqual((receipt["baseline"], receipt.get("local_only"), self.g("rev-parse", "HEAD", work=Path(result["worktree"]))),
+                         (start, None, start))
 
     def test_failed_loop_result_keeps_custody_and_recovery_but_never_publishes(self):
         self.allocate()

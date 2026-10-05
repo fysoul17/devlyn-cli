@@ -420,6 +420,19 @@ def receipt_path(common, identity):
     return common / "devlyn-completion" / hashlib.sha256(branch_of(identity).encode()).hexdigest()[:24] / "receipt.json"
 
 
+def added_path(common, loop):
+    return common / "devlyn-loops" / loop / "added.json"
+
+
+def add_record(common, loop):
+    """`add`'s record of the commit on the anchor branch that carries the loop's package and rows."""
+    path = added_path(common, loop)
+    require(path.is_file(), f"{loop}: no add commit is recorded at {path}; queue loops only with queue.py add")
+    record = read_json(path)
+    require(isinstance(record, dict) and all(isinstance(record.get(key), str) for key in ("branch", "commit")), f"{path}: malformed add record")
+    return record
+
+
 def task_complete(action, **values):
     helper = shared("task-complete")
     try:
@@ -578,7 +591,11 @@ def build_tree(worktree, parent, files):
 
 
 def commit_files(worktree, branch, parent, files, message, *, checkout):
-    commit = git(worktree, "commit-tree", build_tree(worktree, parent, files), "-p", parent, "-m", message)
+    """Commit `files` atop `parent` on `branch`; when `parent` already carries them there is no commit to make."""
+    tree = build_tree(worktree, parent, files)
+    if tree == git(worktree, "rev-parse", parent + "^{tree}"):
+        return parent
+    commit = git(worktree, "commit-tree", tree, "-p", parent, "-m", message)
     git(worktree, "update-ref", "refs/heads/" + branch, commit, parent)
     if checkout:
         sync(worktree, branch, parent, commit)
@@ -630,12 +647,13 @@ def allocate(v, row, opts):
     manifest = package["manifest"]
     anchor, common = v["anchor"], v["common"]
     deps = [v["states"][f"{loop}.{dep}"] for dep in package["tasks"][task]["depends_on"]]
+    added = add_record(common, loop)["commit"]
     values = {"repo": str(anchor), "task": identity, "branch": branch_of(identity), "repository": None,
               "base": manifest["base_ref"], "remote": "origin", "worktree": str(opts.worktree_root / loop / task),
-              "local_base": None, "from_receipt": None}
+              "local_base": None, "from_receipt": None, "start": None}
     if is_local(v, loop):
         tip = frontier(v, loop)
-        start = tip["receipt"]["source_sha"] if tip else manifest["base_sha"]
+        start = tip["receipt"]["source_sha"] if tip else added
         for dep in deps:
             require(ancestor(anchor, dep["receipt"]["source_sha"], start),
                     f"{identity}: prerequisite source {dep['receipt']['source_sha']} is not in the accepted frontier {start}; plan an integration task")
@@ -650,6 +668,11 @@ def allocate(v, row, opts):
             start = helper["remote_base"]({"common_gitdir": str(common), "remote": "origin", "base": manifest["base_ref"]})
         except helper["CompletionError"] as exc:
             raise LoopError(f"{identity}: cannot refresh base {manifest['base_ref']}: {exc}") from exc
+        # Until a merged task brings the package to the remote base (by any merge method), start from the add commit:
+        # the task's PR then carries it.
+        if show(anchor, start, f"docs/specs/{loop}/meta.md") is None:
+            start = added
+        values["start"] = start
         require_merged(v, row, start)
     require(evidence_ignored(anchor, common, start),
             f"{identity}: .devlyn/ is not ignored in its start commit {start}, so loop evidence would dirty task source; commit a "
@@ -874,13 +897,28 @@ def loop_acceptance(v, loop, items):
     return "INCOMPLETE — " + ", ".join(gaps) if gaps else "ACCEPTED"
 
 
+def bring_in(v, loop):
+    """The command that brings the loop's accepted frontier into the branch `add` committed the loop to."""
+    tip = frontier(v, loop)
+    if tip is None or not added_path(v["common"], loop).is_file():
+        return None
+    branch, receipt = add_record(v["common"], loop)["branch"], tip["receipt"]
+    if not is_local(v, loop):
+        return f"{branch}: git pull --ff-only {receipt['remote']} {receipt['base']} after delivery (a fast-forward)"
+    # The frontier descends from the add commit, so it fast-forwards the branch unless something else moved it since.
+    if git_run(v["anchor"], "merge-base", "--is-ancestor", "refs/heads/" + branch, receipt["publish_sha"], ok=(0, 1, 128)).returncode:
+        return f"{branch}: git merge {receipt['branch']} ({branch} moved since the add commit, so this merges instead of fast-forwarding)"
+    return f"{branch}: git merge --ff-only {receipt['branch']} (a fast-forward)"
+
+
 def write_reports(v, status, reason):
     paths = []
     for loop in dict.fromkeys(row["loop"] for row in v["rows"] if row["identity"]):
         items = [summary(v, row) for row in v["rows"] if row.get("loop") == loop]
         lines = [f"# Drain report — {loop}", "", f"- Generated: {datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}",
                  f"- Queue: {v['anchor'] / QUEUE}", f"- Drain: {status}" + (f" — {reason}" if reason else ""),
-                 f"- Whole-loop acceptance: {loop_acceptance(v, loop, items)}", ""]
+                 f"- Whole-loop acceptance: {loop_acceptance(v, loop, items)}",
+                 *([f"- Bring into {line}"] if (line := bring_in(v, loop)) else []), ""]
         labels = (("result", "Product"), ("reason", "Reason"), ("receipt", "Receipt"), ("custody", "Evidence custody"),
                   ("recovery_ref", "Recovery ref"), ("allocation_base", "Allocation base"), ("source", "Accepted source"), ("candidate", "Unaccepted source"),
                   ("terminal", "Terminal commit"), ("delivery", "Delivery"), ("pr", "PR"), ("resume", "Resume"),
@@ -950,6 +988,15 @@ def add(args):
     loop = package["loop_id"]
     rows = [row_line(f"{loop}.{task['id']}", task["title"]) for task in package["tasks"].values()]
     queue = anchor / QUEUE
+    paths = [f"docs/specs/{loop}", QUEUE]
+    # The loop starts from a commit on the current branch that carries its package and rows (loop.md step 3).
+    branch = git_run(anchor, "symbolic-ref", "-q", "--short", "HEAD", ok=(0, 1)).stdout.decode("utf-8").strip()
+    require(branch, f"add commits the loop package on the current branch, but HEAD is detached in {anchor}")
+    base = package["manifest"]["base_sha"]
+    require(ancestor(anchor, base, "HEAD"), f"the current branch {branch} does not descend from the manifest base_sha {base}")
+    if tracked := git(anchor, "diff", "--name-only", "--no-renames", "--diff-filter=MDT", "HEAD", "--", paths[0]):
+        raise LoopError(f"{paths[0]} is committed with different content ({', '.join(tracked.splitlines())}); add never overwrites "
+                        "committed package files, so plan the revision as a new loop")
     with lock(common, "queue.lock", blocking=True):
         data = queue.read_bytes() if queue.exists() else None
         existing = parse_queue(data or b"")
@@ -972,7 +1019,22 @@ def add(args):
         else:
             with queue.open("ab") as stream:
                 stream.write((b"" if data.endswith(b"\n") or not data else b"\n") + "".join(row + "\n" for row in rows).encode("utf-8"))
-    return {"status": "ADDED", "queue": str(queue), "tasks": identities}
+        try:
+            git(anchor, "add", "--", *paths)
+            require(git_run(anchor, "diff", "--cached", "--quiet", "HEAD", "--", *paths, ok=(0, 1)).returncode,
+                    f"{loop}'s package and rows are already committed at HEAD; restore {QUEUE} from HEAD instead of adding them again")
+            git(anchor, "commit", "--only", "-q", "-m", f"devlyn loop: add {loop}", "--", *paths)
+        except LoopError:
+            # No row is queued without its commit.
+            if data is None:
+                queue.unlink()
+            else:
+                acceptance()["atomic_write"](queue, data)
+            git(anchor, "reset", "-q", "--", *paths)
+            raise
+        commit = git(anchor, "rev-parse", "HEAD")
+        write_json(added_path(common, loop), {"schema_version": 1, "loop_id": loop, "branch": branch, "commit": commit})
+    return {"status": "ADDED", "queue": str(queue), "tasks": identities, "commit": commit}
 
 
 def check(args):
@@ -1195,20 +1257,68 @@ class QueueTests(unittest.TestCase):
         write_package(self.anchor, "rep", [("t1", [], "Weekly", self.tasks[0][3])], intent="User asked: Make the report weekly.")
         self.cli("add", second, "--materialize", 5)
         self.assertEqual(queue.read_bytes(), expected + row_line("rep.t1", "Weekly").encode())
+        # Each add commits its package and the queue, and records that commit; nothing is left uncommitted.
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        self.assertEqual(git(self.anchor, "log", "-2", "--format=%s").splitlines(), ["devlyn loop: add rep", "devlyn loop: add inv"])
+        self.assertEqual(read_json(added_path(common, "rep"))["commit"], git(self.anchor, "rev-parse", "HEAD"))
+        self.assertEqual(git(self.anchor, "status", "--porcelain", "--untracked-files=all"), "")
+
+    def test_add_refuses_without_writing(self):
+        """add commits on the current branch, descending from base_sha, never over committed package files; a failed
+        commit leaves nothing queued, staged or recorded."""
+        self.cli("add", self.meta)
+        queue, common = self.anchor / QUEUE, Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+
+        def g(*args):
+            subprocess.run(["git", "-C", str(self.anchor), *args], check=True, env=self.env, capture_output=True)
+
+        def edit_committed():
+            g("add", "docs/specs/trk")
+            g("commit", "-qm", "commit the package by hand")
+            spec = self.anchor / "docs/specs/trk/t1/spec.md"
+            spec.write_text(spec.read_text(encoding="utf-8").replace(" works.", " works for every caller."), encoding="utf-8")
+
+        def failing_hook():
+            hook = common / "hooks" / "pre-commit"
+            hook.parent.mkdir(exist_ok=True)
+            hook.write_text("#!/bin/sh\necho hook says no >&2\nexit 1\n", encoding="utf-8")
+            hook.chmod(0o755)
+
+        queue.unlink()  # A queue that lost committed rows: adding them again would be an empty commit.
+        self.assertIn("inv's package and rows are already committed at HEAD", self.cli("add", self.meta, code=1)["reason"])
+        self.assertEqual((queue.exists(), git(self.anchor, "diff", "--cached", "--name-only")), (False, ""))
+        g("checkout", "--", QUEUE)
+        g("checkout", "-q", "-b", "elsewhere")
+        g("commit", "-q", "--allow-empty", "-m", "elsewhere")
+        elsewhere = git(self.anchor, "rev-parse", "HEAD")
+        g("checkout", "-q", "main")
+        for loop, base, prepare, message in (
+                ("dt", None, lambda: g("checkout", "-q", "--detach"), "HEAD is detached"),
+                ("far", elsewhere, lambda: None, f"does not descend from the manifest base_sha {elsewhere}"),
+                ("trk", None, edit_committed, "docs/specs/trk is committed with different content (docs/specs/trk/t1/spec.md)"),
+                ("hk", None, failing_hook, "hook says no")):
+            with self.subTest(loop=loop):
+                meta = write_package(self.anchor, loop, [self.tasks[0]], base=base)
+                prepare()
+                head, before = git(self.anchor, "rev-parse", "HEAD"), queue.read_bytes()
+                self.assertIn(message, self.cli("add", meta, code=1)["reason"])
+                self.assertEqual((git(self.anchor, "rev-parse", "HEAD"), queue.read_bytes()), (head, before))
+                self.assertEqual((git(self.anchor, "diff", "--cached", "--name-only"), added_path(common, loop).exists()), ("", False))
+                g("checkout", "-q", "main")
 
     def test_handwritten_marks_never_satisfy_dependencies(self):
         queue = self.anchor / QUEUE
-        for delivery in ("local-only", "auto"):
+        for delivery, loop in (("local-only", "hw"), ("auto", "hwa")):
             with self.subTest(delivery=delivery):
                 queue.unlink(missing_ok=True)
-                self.cli("add", write_package(self.anchor, "hw", self.tasks, delivery=delivery))
-                queue.write_bytes(queue.read_bytes().replace(b"- [ ] hw.t1", b"- [x] hw.t1"))
+                self.cli("add", write_package(self.anchor, loop, self.tasks, delivery=delivery))
+                queue.write_bytes(queue.read_bytes().replace(f"- [ ] {loop}.t1".encode(), f"- [x] {loop}.t1".encode()))
                 status = self.cli("status")
                 self.assertEqual(status["next"], None)
-                self.assertIn("hw.t2: prerequisite hw.t1 has no receipt-bound accepted source", status["blockers"])
+                self.assertIn(f"{loop}.t2: prerequisite {loop}.t1 has no receipt-bound accepted source", status["blockers"])
                 self.cli("drain", "--", "executor", "{packet}")
-                report = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "devlyn-loops/hw/drain-report.md"
-                self.assertIn("- Whole-loop acceptance: INCOMPLETE — hw.t1 accepted without a receipt, hw.t2 pending",
+                report = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir")) / f"devlyn-loops/{loop}/drain-report.md"
+                self.assertIn(f"- Whole-loop acceptance: INCOMPLETE — {loop}.t1 accepted without a receipt, {loop}.t2 pending",
                               report.read_text(encoding="utf-8"))
 
     def test_common_gitdir_locks_span_worktrees(self):

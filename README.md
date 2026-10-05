@@ -55,7 +55,7 @@ Give ideate an intent or a document. It writes a loop package — a meta-prompt 
 | Command | What it does |
 |---|---|
 | `/devlyn-ideate plan <intent or document>` | Inspects the project, asks only what it must, and writes a validated package to `docs/specs/<loop-id>/`. Nothing is queued or run. |
-| `/devlyn-ideate add <intent or package>` | Plans when needed, then appends the package's tasks to `docs/specs/queue.md` in dependency order. |
+| `/devlyn-ideate add <intent or package>` | Plans when needed, then appends the package's tasks to `docs/specs/queue.md` in dependency order and commits the package and the queue, only those paths, on your current branch. |
 | `/devlyn-ideate status` | Pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
 | `/devlyn-ideate drain` | Runs the queue serially and hands-free. |
 
