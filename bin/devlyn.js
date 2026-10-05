@@ -119,28 +119,6 @@ function hasDevlynClaude(global) {
       && holdsDevlynDefaults('CLAUDE.md', fs.readFileSync(instructions, 'utf8')));
 }
 
-// Commands removed in previous versions; the project Claude install deletes them from .claude/.
-const DEPRECATED_FILES = [
-  'commands/devlyn.handoff.md', // removed in v0.2.0
-  'commands/devlyn.clean.md', // migrated to skills in v0.6.0
-  'commands/devlyn.design-system.md',
-  'commands/devlyn.design-ui.md',
-  'commands/devlyn.discover-product.md',
-  'commands/devlyn.evaluate.md',
-  'commands/devlyn.feature-spec.md',
-  'commands/devlyn.implement-ui.md',
-  'commands/devlyn.product-spec.md',
-  'commands/devlyn.recommend-features.md',
-  'commands/devlyn.resolve.md',
-  'commands/devlyn.review.md',
-  'commands/devlyn.team-design-ui.md',
-  'commands/devlyn.team-resolve.md',
-  'commands/devlyn.team-review.md',
-  'commands/devlyn.update-docs.md',
-  'commands/devlyn.pencil-pull.md', // migrated to skills/devlyn:pencil-pull
-  'commands/devlyn.pencil-push.md', // migrated to skills/devlyn:pencil-push
-];
-
 // Skill directories renamed from devlyn-* to devlyn:* in v0.7.x, plus
 // iter-0034 Phase 4 cutover (2026-05-03): 15 user skills deleted and 3 moved
 // to optional-skills/. Listed here so post-cutover `npx devlyn-cli` upgrades
@@ -678,22 +656,19 @@ function installCoreSkills(skillsDir) {
   writeInstallMarker(skillsDir);
 }
 
-// Keep installer-managed pipeline state and install metadata out of git.
-function ignoreInGit(gitignoreEntries) {
-  const gitignorePath = path.join(projectDir(), '.gitignore');
-  let gitignoreContent = fs.existsSync(gitignorePath)
-    ? fs.readFileSync(gitignorePath, 'utf8')
-    : '';
-  const gitignoreLines = gitignoreContent.split('\n').map((line) => line.trim());
-  const missingGitignoreEntries = gitignoreEntries.filter((entry) =>
-    !gitignoreLines.includes(entry) && !(entry === '.devlyn/' && gitignoreLines.includes('.devlyn')));
-  if (missingGitignoreEntries.length > 0) {
-    const prefix = gitignoreContent && !gitignoreContent.endsWith('\n') ? '\n' : '';
-    const hasManagedHeader = gitignoreLines.includes('# devlyn-cli pipeline state');
-    const header = hasManagedHeader ? '' : gitignoreContent ? '\n# devlyn-cli pipeline state\n' : '# devlyn-cli pipeline state\n';
-    fs.writeFileSync(gitignorePath, gitignoreContent + prefix + header + missingGitignoreEntries.join('\n') + '\n');
-    log(`  → .gitignore (added ${missingGitignoreEntries.join(', ')})`, 'dim');
+// The review launcher the instructions name, at a fixed path outside any project. Copied under a temporary
+// name, then renamed: an interrupted install leaves the previous launcher or the new one, never a partial file.
+function installReviewLauncher() {
+  const dest = path.join(os.homedir(), '.devlyn', 'review.js');
+  const temp = `${dest}.${crypto.randomUUID()}.tmp`;
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  try {
+    fs.copyFileSync(path.join(__dirname, 'review.js'), temp, fs.constants.COPYFILE_EXCL);
+    fs.renameSync(temp, dest);
+  } finally {
+    fs.rmSync(temp, { force: true });
   }
+  log(`  → ${dest.replace(os.homedir(), '~')}`, 'dim');
 }
 
 // With the Claude target in the same run, an AGENTS.md that links to this project's CLAUDE.md (a
@@ -722,126 +697,10 @@ function installAgentsProject(withClaude) {
     throw new InstructionError('AGENTS.md is CLAUDE.md under another name here. Choose CLAUDE.md as well '
       + '(npx devlyn-cli -y --claude) so the devlyn block is written once, into CLAUDE.md.');
   }
-  installCoreSkills(skillRoots('agents', false)[0]);
-  ignoreInGit(['.devlyn/', '.agents/skills/.devlyn-install.json']);
 }
 
-// Project CLAUDE.md and .claude/: skills, templates, commit conventions and settings.
-function installClaudeCore() {
-  updateInstructions('CLAUDE.md');
-  const skillsDir = skillRoots('claude', false)[0];
-  const targetDir = path.dirname(skillsDir);
-  for (const entry of fs.readdirSync(CONFIG_SOURCE)) {
-    if (entry !== 'skills') copyRecursive(path.join(CONFIG_SOURCE, entry), path.join(targetDir, entry), targetDir);
-  }
-  for (const relPath of DEPRECATED_FILES) {
-    const fullPath = path.join(targetDir, relPath);
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-      log(`  ✕ ${relPath} (deprecated)`, 'dim');
-    }
-  }
-  installCoreSkills(skillsDir);
-  ignoreInGit(['.devlyn/', '.claude/skills/.devlyn-install.json']);
-
-  // Enable agent teams in project settings
-  const settingsPath = path.join(targetDir, 'settings.json');
-  let settings = {};
-  if (fs.existsSync(settingsPath)) {
-    try {
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    } catch (error) {
-      throw new Error(`Cannot merge .claude/settings.json: ${error.message}`);
-    }
-  }
-  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
-    throw new Error('Cannot merge .claude/settings.json: root must be a JSON object');
-  }
-  const hasOwnSetting = (key) => Object.prototype.hasOwnProperty.call(settings, key);
-  let settingsChanged = false;
-  if (!hasOwnSetting('env')) {
-    settings.env = {};
-    settingsChanged = true;
-  }
-  if (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env)) {
-    throw new Error('Cannot merge .claude/settings.json: env must be a JSON object');
-  }
-  // Auto-allow pipeline state directory and common git commands so resolve doesn't prompt
-  if (!hasOwnSetting('permissions')) {
-    settings.permissions = {};
-    settingsChanged = true;
-  }
-  if (!settings.permissions || typeof settings.permissions !== 'object' || Array.isArray(settings.permissions)) {
-    throw new Error('Cannot merge .claude/settings.json: permissions must be a JSON object');
-  }
-  if (!Object.prototype.hasOwnProperty.call(settings.permissions, 'allow')) {
-    settings.permissions.allow = [];
-    settingsChanged = true;
-  }
-  if (!Array.isArray(settings.permissions.allow)) {
-    throw new Error('Cannot merge .claude/settings.json: permissions.allow must be an array');
-  }
-  const pipelinePermissions = [
-    'Write(.devlyn/**)',
-    'Edit(.devlyn/**)',
-    'Bash(git add *)',
-    'Bash(git commit *)',
-    'Bash(git diff *)',
-    'Bash(git status *)',
-    'Bash(git log *)',
-  ];
-  for (const perm of pipelinePermissions) {
-    if (!settings.permissions.allow.includes(perm)) {
-      settings.permissions.allow.push(perm);
-      settingsChanged = true;
-    }
-  }
-  if (!settings.env.ENABLE_PROMPT_CACHING_1H) {
-    settings.env.ENABLE_PROMPT_CACHING_1H = 'true';
-    settingsChanged = true;
-  }
-  if (!settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) {
-    settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1';
-    settingsChanged = true;
-  }
-  const bashMaxTimeoutMs = Number.parseInt(settings.env.BASH_MAX_TIMEOUT_MS, 10);
-  if (!Number.isFinite(bashMaxTimeoutMs) || bashMaxTimeoutMs < 3600000) {
-    settings.env.BASH_MAX_TIMEOUT_MS = '3600000';
-    settingsChanged = true;
-  }
-  if (!hasOwnSetting('hooks')) {
-    settings.hooks = {};
-    settingsChanged = true;
-  }
-  if (!settings.hooks || typeof settings.hooks !== 'object' || Array.isArray(settings.hooks)) {
-    throw new Error('Cannot merge .claude/settings.json: hooks must be a JSON object');
-  }
-  if (!Object.prototype.hasOwnProperty.call(settings.hooks, 'Stop')) {
-    settings.hooks.Stop = [];
-    settingsChanged = true;
-  }
-  if (!Array.isArray(settings.hooks.Stop)) {
-    throw new Error('Cannot merge .claude/settings.json: hooks.Stop must be an array');
-  }
-  const stopHookCommand = 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"';
-  const stopHookInstalled = settings.hooks.Stop.some((entry) => (
-    entry && Array.isArray(entry.hooks) && entry.hooks.some((hook) => (
-      hook && hook.type === 'command' && hook.command === stopHookCommand
-    ))
-  ));
-  if (!stopHookInstalled) {
-    settings.hooks.Stop.push({
-      hooks: [{ type: 'command', command: stopHookCommand, timeout: 30 }],
-    });
-    settingsChanged = true;
-  }
-  if (settingsChanged) {
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-    log('  → settings.json (agent teams + one-hour Bash max + 1h prompt caching + pipeline permissions + Stop hook)', 'dim');
-  }
-}
-
-// Installs the targets in one scope; returns the skill roots written.
+// Installs the targets in one scope; returns the scope's skill roots. A project gets only the instruction
+// blocks and the review launcher; --global installs the skills.
 function install(targets, global) {
   // In the home folder CLAUDE.md, AGENTS.md (agents read a parent folder's too) and
   // .claude/settings.json (permissions, Stop hook) would apply to every project. Same folder by
@@ -853,10 +712,11 @@ function install(targets, global) {
       + 'would apply to every project. Run from a project folder, or use --global for skills only.');
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
+  if (!global) installReviewLauncher();
   for (const target of targets) {
     if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));
     else if (target === 'agents') installAgentsProject(targets.includes('claude'));
-    else installClaudeCore();
+    else updateInstructions('CLAUDE.md');
   }
   log(`\n✅ devlyn ${PKG.version} installed`, 'green');
   noticeGlobalDrift(roots);
