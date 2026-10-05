@@ -214,6 +214,16 @@ init({options});
                 self.assertEqual(dest.read_bytes(), first)
         self.assertFalse((self.home / '.claude').exists())
 
+    def test_claude_install_ships_no_unreferenced_commit_conventions(self):
+        # The managed block no longer points to commit conventions, so a new install adds none;
+        # a copy an earlier release installed is the user's now and stays as it is.
+        self.invoke('installClaudeCore();')
+        conventions = self.project / '.claude/commit-conventions.md'
+        self.assertFalse(conventions.exists())
+        conventions.write_bytes(b'team conventions\n')
+        self.invoke('installClaudeCore();')
+        self.assertEqual(conventions.read_bytes(), b'team conventions\n')
+
     def test_agents_command_is_removed_with_replacement(self):
         (self.project / 'keep.txt').write_bytes(b'project user bytes\r\n')
         keep = self.home / '.codex/skills/user-skill/keep'

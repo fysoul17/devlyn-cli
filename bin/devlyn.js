@@ -734,7 +734,7 @@ function installAgentsProject(withClaude) {
   ignoreInGit(['.devlyn/', '.agents/skills/.devlyn-install.json']);
 }
 
-// Project CLAUDE.md and .claude/: skills, templates, commit conventions and settings.
+// Project CLAUDE.md and .claude/: skills, templates and settings.
 function installClaudeCore() {
   updateInstructions('CLAUDE.md');
   const skillsDir = skillRoots('claude', false)[0];
