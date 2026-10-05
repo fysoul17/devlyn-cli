@@ -274,6 +274,6 @@ Measured cells use apparatus `a8b18137`.
 From `m08` on, cells use apparatus `cce71305`. That change affects only the assessment tree and the regrade.
 
 **A measured observation, not a fault.** In `m02-D4-claude-I-r1` the Claude owner started the required review with `run_in_background: true` and a 600000 ms timeout. It said it would pick up the findings when the review finished, then ended its session. Headless Claude Code terminates background tasks at the final response, so the review was killed before it answered.
-- Compliance records "failed review", and the killed reviewer's usage is a named gap, so the cell is PARTIAL.
+- Compliance records "failed review", and the killed reviewer's usage is a named gap, so the cell's usage is PARTIAL. Its product verdict is COMPLETE.
 - This is not the pre-authorized contingency, which covers a cut-off by the default two-minute timeout. The treatment stays frozen.
 - Such cells are evidence about rung I, a failure that can license a later rung.
