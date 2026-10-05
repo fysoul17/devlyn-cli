@@ -333,7 +333,10 @@ def bind_acceptance(receipt, path, supplied):
     require(isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{40,64}", sha), "acceptance must name an exact commit")
     require(gref(receipt, "rev-parse", sha+"^{commit}") == sha, "source is not a commit")
     gref(receipt, "merge-base", "--is-ancestor", receipt["baseline"], sha)
-    require(ref_sha(receipt, "refs/heads/"+receipt["branch"]) == sha and git(work, "rev-parse", "HEAD") == sha, "unverified source delta or changed task ref")
+    # A failed loop result is never published, so its checkout stays as the executor left it (as in attach).
+    failed = acceptance.get("kind") == "loop" and acceptance.get("verdict") == "FAILED"
+    require(ref_sha(receipt, "refs/heads/"+receipt["branch"]) == sha and (failed or git(work, "rev-parse", "HEAD") == sha),
+            "unverified source delta or changed task ref")
     paths = [str(acceptance_path.relative_to(work))]
     kind = acceptance.get("kind")
     if kind == "direct":
@@ -2136,6 +2139,23 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(result["status"], "FAILED")
         d = json.loads(self.data.read_text())
         self.assertEqual((d.get("pushs", 0), d.get("creates", 0)), (0, 0))
+
+    def test_bind_requires_the_source_checkout_only_for_a_publishable_result(self):
+        for verdict in ("ACCEPTED", "FAILED"):
+            with self.subTest(verdict=verdict):
+                self.allocate(verdict.lower() + "-detached")
+                (self.task / "product").write_text("source\n", encoding="utf-8")
+                self.g("add", "product", work=self.task)
+                self.g("commit", "-m", "loop source", work=self.task)
+                sha = self.g("rev-parse", "HEAD", work=self.task)
+                self.g("checkout", "-q", "--detach", "HEAD~1", work=self.task)  # The executor left HEAD at another commit.
+                acceptance = self.task / ".devlyn/loop/acceptance.json"
+                acceptance.parent.mkdir(parents=True, exist_ok=True)
+                (self.task / ".devlyn/loop/out.txt").write_text("check output\n", encoding="utf-8")
+                acceptance.write_text(json.dumps({"kind": "loop", "task": json.loads(self.receipt.read_text())["task"], "source_sha": sha,
+                                                  "verdict": verdict, "evidence": [".devlyn/loop/out.txt"]}), encoding="utf-8")
+                result, _ = self.cli("accept", "--receipt", self.receipt, "--acceptance", acceptance, success=False)
+                self.assertEqual(result["status"], "FAILED" if verdict == "FAILED" else "BLOCKED", result)
 
     def test_attach_requires_the_terminal_checkout_only_for_a_publishable_result(self):
         for verdict in ("ACCEPTED", "FAILED"):
