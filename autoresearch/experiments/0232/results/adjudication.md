@@ -1,95 +1,111 @@
-# 0232 stage 1: severe-finding dispositions (prepared for root)
+# 0232 stage 1: severe-finding dispositions and `release` adjudications (prepared for root)
 
-State as of 2026-10-05T15:24Z (drive still running).
+State: all 36 measured cells have verdicts (the drive finished 2026-10-05T18:33Z). `.stop-` files are ignored.
 
-- **Available measured cells** (each has a `verdict-<cell>.json`, `.stop-` files ignored): m01–m30, 30 cells.
-- **Severe findings:** 29, from `witness.py findings`, in 10 cells: 25 for I0185 (9 cells) and 4 for D3 (m18 only). No available D4 cell has a severe finding.
-- **Distinct claims:** 8, all binding: K1–K5 for I0185 and J1–J3 for D3. One supplementary check, K6, tests a mechanism that one finding guessed.
-- **Dispositions:** all 29 findings are `reproduced` on their own tree.
-- **Pending trees:**
-  - I0185: m31-I0185-codex-I-r2, m32-I0185-codex-F-r2, m33-I0185-codex-A-r2
-  - D4: m34–m36
-  - D3: none pending (all 12 trees run)
+- **Severe findings:** 34, from `witness.py findings`: 30 for I0185 (all 12 cells) and 4 for D3 (m18 only). No D4 cell has a severe finding (12 of 12 checked, both assessments each), so no D4 witness is needed.
+- **Distinct claims:** 8, all binding: K1–K5 for I0185 and J1–J3 for D3. One supplementary check, K6, tests a mechanism one finding guessed.
+- **Dispositions:** all 34 findings are `reproduced` on their own tree. The 5 findings from m31–m33 map to existing claims (K3, K2), so no new claim or witness was needed.
+- **Release adjudications:** m31-I0185-codex-I-r2 and m33-I0185-codex-A-r2 had `release` NOT_TRIGGERED. Both are adjudicated **FAIL** under 0224 rule 1 (see the `release` section).
+- **Pending trees:** none; `pending_trees` is cleared.
+- **decide.py audit-gap check over all 36 cells:** no gap.
 
 Witnesses are in `/Users/aipalm/.local/share/nx01/0232-live/witnesses/`:
 
 - Each runs from `/work` in the cell image, with no network.
 - Each exits 1 when the defect reproduces, 0 when the tree is correct, and 2 on a witness error.
-- The I0185 witnesses share a byte-identical fixture header that mirrors the supplied `tests/support.js`, so each file is self-contained. The D3 witnesses share a D3 header in the same way.
+- The I0185 witnesses share a byte-identical fixture header that mirrors the supplied `tests/support.js`. That file is byte-identical in all 12 I0185 trees.
 
-Every witness ran through `witness.py run` on every available tree of its task, three times with identical results. The recorded results are in `scratch/adj/runs/`.
+Final recorded runs are in `scratch/adj/runs/`:
+
+- I0185: `*.pass4.json` and `*.pass5.json`, each witness on all 12 trees, the two passes identical.
+- D3: `*.pass2.json` and `*.pass3.json`.
+
+The release variants and their results are in `adjudication/`.
 
 ## How findings were grouped and read
 
 - **Grouping.** A claim is a pair: a trigger, and the requirement the findings cite as violated. Findings that share both form one claim and get one witness.
 - **Findings with a concrete mechanism** are read by that mechanism.
 - **Findings that only restate a failing root oracle row** are read as claiming the defect that row detects. These are m05 claude:0, m06 claude:0, m13 claude:0, m14 claude:0, m14 claude:1, m23 claude:0 and m24 claude:0. They typically say "root cause not independently confirmed".
-  - The rows are in `control/oracle/experiments/0222/oracle/` and `0185/heldout.js`.
   - `release` maps to K3 and `terminal-alias` maps to K2.
   - `heldout` maps to K3 as well. Its recorded failure in `out/<cell>/checks-raw.json` is `swallowed N` in the one-shot fault sweep for m13, m23 and m24, which is the lock-release failure being retried into success.
-- **Locating the lock.** "Lock naming is internal", so K3 and K4 identify the lock as the first removed path under the fixture whose name contains `lock`. This is the same convention as the registrants' `release` replay. Every tree's fired path confirms it: `.skills.devlyn-lock`, `skills.devlyn-install.lock`, `.skills.devlyn-install.lock` and `skills/.devlyn-install.lock`. A tree with a differently named lock makes the witness exit 2. It never silently passes.
+- **Locating the lock.** "Lock naming is internal", so K3 and K4 locate the lock as the first removed path whose name contains `lock`. Every tree names its lock `…lock`.
+- **Witness change after m31–m33.** m31 and m33 keep their lock under the system temp directory (`/tmp/devlyn-skills-<sha256>.lock`). K3 and K4 originally looked only inside the fixture, so I widened them to match the lock wherever it lives. K3 now also requires that the lock no longer exists after recovery.
+  - Both witnesses were re-run on all 12 trees. The booleans for the 9 earlier trees are unchanged.
+
+## Per-tree reproduction (all 12 I0185 trees)
+
+✓ = the defect reproduces.
+
+| config / rep | arm | cell | K1 exdev | K2 lock-alias | K3 release-restore | K4 stuck | K5 mkdir-before-lock | K6 physical-alias |
+|---|---|---|---|---|---|---|---|---|
+| codex r1 | A | m04 | ✓ | ✓ | ✓ | – | – | – |
+| codex r1 | I | m06 | – | – | ✓ | – | – | – |
+| codex r1 | F | m05 | ✓ | ✓ | ✓ | ✓ | – | – |
+| claude r1 | A | m15 | – | – | ✓ | ✓ | – | – |
+| claude r1 | I | m13 | – | – | ✓ | – | – | – |
+| claude r1 | F | m14 | ✓ | ✓ | ✓ | ✓ | – | – |
+| claude r2 | A | m22 | ✓ | ✓ | ✓ | ✓ | – | – |
+| claude r2 | I | m24 | – | – | ✓ | – | ✓ | – |
+| claude r2 | F | m23 | ✓ | – | ✓ | – | – | – |
+| codex r2 | A | m33 | ✓ | ✓ | ✓ | – | – | – |
+| codex r2 | I | m31 | – | – | ✓ | – | – | – |
+| codex r2 | F | m32 | ✓ | ✓ | – | – | – | – |
+
+D3: J1 `d3-delimiter-dropped`, J2 `d3-later-delimiter` and J3 `d3-alias-default` reproduce only on m18 (codex F r1, the unmodified base tree). They pass on the other 11 D3 trees.
 
 ## Claims
 
 ### K1: cross-filesystem rename (EXDEV)
 
-**Claim.** The staging and backup directories live in the skills directory's parent. Every backup and publish step therefore renames across the skills-directory boundary. When the skills directory is on another filesystem (a mount point, or a symlink to another volume), every install fails with EXDEV. The pre-change in-place installer succeeded on that layout.
+**Claim.** The staging and backup directories live in the skills directory's parent, so backup and publish renames cross the skills-directory boundary. When the skills directory is on another filesystem (a mount point, or a symlink to another volume), every install fails with EXDEV. The pre-change in-place installer succeeded on that layout.
 
 **Binds: yes, to the keep-existing-behavior clause.**
 
 - The task requires: "Upgrade the real `bin/devlyn.js` function `installSkillsForCLI(cliKey)` … This function is called by the existing CLI installation flow. Keep its synchronous API, return count, …"
-- The original installer copies in place. Its only rename is the marker temp file renamed within the skills directory, so it returns 6 on this layout. A local mount-simulation run of the original passes with 0 crossing renames.
-- The trigger is plausible: a Docker bind-mounted `~/.codex/skills`, or a symlink to another volume. Symlinked skills directories are explicitly in scope (the `terminal-alias` and `alias` rows).
-- **Judgment call.** The registrants' own I0185 reference also fails the mount variant, because it renames the skills directory itself into `<parent>/.devlyn-install-*/old`. They may not have considered this layout in scope.
+- The original installer copies in place. Its only rename stays inside the skills directory, so it returns 6 on this layout. A local mount-simulation run of the original shows 0 crossing renames.
+- The trigger is plausible: a Docker bind-mounted `~/.codex/skills`, or a symlink to another volume. Symlinked skills directories are explicitly in scope (the `alias` and `terminal-alias` rows).
+- **Judgment call.** The registrants' I0185 reference also fails the mount variant, because it renames the skills directory itself. They may not have considered this layout in scope.
 
-**Witness:** `witnesses/i0185-exdev.js`. Two scenarios run against the standard fixture with a prior installation and a deprecated command:
+**Witness:** `witnesses/i0185-exdev.js`. Two scenarios run against the standard fixture:
 
-- **symlink:** `<root>/agent/skills` is a symlink to a directory on `/dev/shm` (tmpfs), while the fixture lives on the overlay `/tmp`. This produces a real kernel EXDEV with no injection.
+- **symlink:** `<root>/agent/skills` is a symlink to a directory on `/dev/shm` (tmpfs), while the fixture lives on the overlay `/tmp`. This produces a real kernel EXDEV.
 - **mount:** `fs.renameSync` throws EXDEV for every rename between the inside and the outside of the skills directory.
 
-**Required behaviour:** the install returns 6 and leaves a complete new installation.
+**Required behaviour:** the install returns 6 with a complete new installation.
 
-**Results** (true means the defect reproduces):
+**Results:** reproduces on m04, m05, m14, m22, m23, m32 and m33. The docker detail runs show EXDEV on the first backup rename, for example m32 `skills/.devlyn-install.json -> agent/.devlyn-install-*/backup/0`.
 
-| tree | arm/config/rep | result | observed (docker detail run) |
-|---|---|---|---|
-| m04 | A codex r1 | **true** | both scenarios: `rename skills/.devlyn-install.json -> agent/.skills.devlyn-update-*/backup/0` EXDEV |
-| m05 | F codex r1 | **true** | both: `skills/devlyn:auto-resolve -> agent/skills.devlyn-install-*/backup/1` EXDEV |
-| m06 | I codex r1 | false | both return 6; stages inside the destination, so no rename crosses |
-| m13 | I claude r1 | false | both return 6 |
-| m14 | F claude r1 | **true** | both: marker `-> agent/.skills.devlyn-work-*/backup-0` EXDEV |
-| m15 | A claude r1 | false | both return 6 |
-| m22 | A claude r2 | **true** | both: marker `-> agent/.skills.devlyn-install-*/backup/0` EXDEV |
-| m23 | F claude r2 | **true** | symlink: deprecated `commands/devlyn.handoff.md` moved to the work dir beside the real destination on `/dev/shm`, EXDEV. mount: marker `-> agent/.skills.devlyn-install-*/...`, EXDEV |
-| m24 | I claude r2 | false | both return 6; the mount scenario's single crossing is handled by its EXDEV copy fallback |
-| I0185 reference | sanity (docker) | true | mount scenario fails (renames the skills dir itself); the reference does not meet K1 |
+- m23 fails in the symlink scenario on its deprecated-command backup, which goes to the work dir beside the real destination on `/dev/shm`.
+- **Passes:** m06, m13, m15, m24 and m31.
+  - m06, m13, m15 and m31 stage inside the destination or back up each path beside itself.
+  - m24 copies when a rename returns EXDEV.
+- **Reference (docker sanity):** reproduces (mount scenario).
 
 ### K2: lock-path aliasing through a symlinked skills directory
 
-**Claim.** The lock is derived from the lexical path. Two configured skills directories that are one physical directory, one being a symlink to the other, therefore take different locks. A reentrant installation through the other spelling proceeds and mutates the same installation instead of failing busy.
+**Claim.** The lock is derived from the path spelling, not the physical directory. Two configured skills directories that are one physical directory, one being a symlink to the other, therefore take different locks. A reentrant installation through the other spelling proceeds instead of failing busy.
 
-**Binds: yes, to requirement 3.** "Exclude simultaneous cooperating installations to the same destination with an exclusive filesystem lock … Another process or reentrant invocation must fail promptly with a clear busy error and leave the owner's lock/data intact." The registrants' `terminal-alias` row encodes the same scenario.
+**Binds: yes, to requirement 3.** "Exclude simultaneous cooperating installations to the same destination with an exclusive filesystem lock … Another process or reentrant invocation must fail promptly with a clear busy error and leave the owner's lock/data intact." The `terminal-alias` row encodes the same scenario.
 
 **Witness:** `witnesses/i0185-lock-alias.js`.
 
-- **Setup:** `<root>/alias-agent/skills` is a symlink to `<root>/agent/skills`. The codex and omp targets get the two spellings, tried in both directions: owner via the real path with contender via the alias, then the reverse.
-- **Trigger:** on the owner's first copy from the source bundle, the contender reenters.
-- **Required behaviour:** the contender throws `/busy|lock|progress/i`, the physical directory is unchanged by it, and the owner returns 6.
+- **Setup:** `<root>/alias-agent/skills` is a symlink to `<root>/agent/skills`, tried in both directions (owner via the real path, then via the alias).
+- **Trigger:** the contender reenters on the owner's first source copy.
+- **Required behaviour:** the contender throws `/busy|lock|progress/i`, the installation is unchanged by it, and the owner returns 6.
 
 **Results:**
 
-| tree | result | observed |
-|---|---|---|
-| m04 (A codex r1), m05 (F codex r1), m14 (F claude r1), m22 (A claude r2) | **true** | in both directions the contender returned 6 and changed the installation |
-| m06 (I codex r1), m13 (I claude r1), m15 (A claude r1), m23 (F claude r2) | false | contender refused busy (realpath-keyed lock), data unchanged, owner 6 |
-| m24 (I claude r2) | false | the lock sits inside the physical directory, so the contender is refused busy |
-| I0185 reference | true | local run only; consistent with calibration `terminal-alias` FAIL |
-
-A correct implementation passes this witness (m06, m13, m15, m23, m24).
+- **Reproduces on m04, m05, m14, m22, m32 and m33.** In both directions the contender returned 6 and changed the installation.
+  - m32's lock is `${skillsDir}.devlyn-install.lock` (bin/devlyn.js:672).
+  - m33's lock is `<os.tmpdir()>/devlyn-skills-<sha256(path.resolve(skillsDir))>.lock` (bin/devlyn.js:675-676), keyed lexically.
+- **Passes:** m06, m13, m15, m23, m24 and m31. Their locks are keyed by realpath, or sit inside the physical directory (m24).
+- **Reference:** reproduces (local run; calibration `terminal-alias` FAIL).
+- **Note on m33.** Its findings also name the parent-alias configuration, and its `alias` row is FAIL. The witness uses the terminal-symlink configuration, which both m33 findings also name and which reproduces.
 
 ### K3: post-commit lock-release failure is not recovered as requirement 2 demands
 
-**Claim.** After publication, one ordinary failure of the operation that removes the invocation's own lock leaves the new installation in place, and the prior installation is not restored. Some trees throw after already deleting their backups (m04, m06). Others retry the release and report success (m13, m23, m24).
+**Claim.** After publication, one ordinary failure of the operation that removes the invocation's own lock leaves the new installation in place, and the prior installation is not restored. Some trees throw after already deleting their backups (m04, m06, m31, m33). Others retry the release and report success (m13, m23, m24).
 
 **Binds: yes, to requirement 2:**
 
@@ -100,66 +116,65 @@ Requirement 4 also applies: "Remove task-created staging/backup/lock debris afte
 **This is the most consequential judgment.** I adopted the literal reading:
 
 - The only exemption from rollback after commit is "only disposal of backup data". Lock release is not that, so it falls under the general restore-and-report rule.
-- This is exactly the registrants' post-seal adjudication for 0185, the `release` replay ("Post-seal source-adjudication replay"), which 0222/0232 carry as an oracle row.
-- The strongest opposing reading is the held-out fault sweep's lenient rule: any post-commit removal failure may keep the new installation if it is reported.
-  - Under that reading, m04 codex:0 and m06 codex:0 would not bind.
-  - The silent-success findings (m13 codex:0, m23 codex:0, m24 codex:1) would bind only to "report the failure".
-  - A separate report-only witness would then reproduce on m13, m23 and m24 but not on m15 or m22. That would turn the claude I-vs-A severe-witness condition from pass to fail in replicate 1 as well.
-- I treated the throw-without-restore and silent-success findings as one claim because all five cite the same requirement 2 recovery obligation and the same backup-disposal-exemption argument.
+- This is the registrants' post-seal adjudication for 0185, the `release` replay, which 0222/0232 carry as an oracle row.
+- The strongest opposing reading is the held-out fault sweep's lenient rule: any post-commit removal failure may keep the new installation if it is reported. Under that reading:
+  - m04, m06 and m31 codex:0 would not bind;
+  - only "report the failure" would bind, through a report-only witness that reproduces on m13, m23 and m24;
+  - the severe-witness subsets would then fail claude r1 I-vs-A, and hold for codex r2 I-vs-F, instead of the reverse.
+- In both affected pairings, the oracle-row counts already fail the quality condition (see the decide.py section). The reading therefore changes which severe subsets hold, not the per-task quality outcome.
+- The throw-without-restore and silent-success findings are one claim because all cite the same requirement 2 recovery obligation and the same backup-disposal-exemption argument.
 
 **Witness:** `witnesses/i0185-lock-release-restore.js`.
 
-- **Trigger:** the first `rmdirSync`/`rmSync`/`unlinkSync` of a path under the fixture whose name contains `lock` fails once with EIO.
-- **Required behaviour:** the call throws, and `agent/` is byte-, mode- and symlink-identical to its state before the call.
+- **Trigger:** the first `rmdirSync`/`rmSync`/`unlinkSync` of a path whose name contains `lock` fails once with EIO, wherever the tree keeps its lock.
+- **Required behaviour:** the call throws, `agent/` is byte-, mode- and symlink-identical to its state before the call, and the lock no longer exists.
 
-The requirement is satisfiable. A minimally corrected copy of the reference (`scratch/adj/trees/ref-k3/bin/devlyn.js`) passes this witness and K4, plus 5/5 acceptance, the registrants' `release` replay and `heldout` 4/4 (all run locally). The correction releases the lock before disposing of the backups, and on a release failure rolls back under the still-held lock, retries the release, and throws.
-
-**Results:** true on all 9 trees. Observed:
+**Results:** reproduces on 11 of 12 trees.
 
 | tree | call result | other observed state |
 |---|---|---|
-| m04 | threw "committed, but cleanup failed" | lock retried and released |
-| m05 | threw raw EIO | lock left |
-| m06 | threw "Could not release installation lock" | lock retried and released |
-| m13 | **returned 6** | release retried |
-| m14 | threw raw EIO | lock left |
+| m04, m06, m31, m33 | threw | lock retried and released, but backups already disposed, nothing restored |
+| m05, m14, m22 | threw raw EIO | lock left |
 | m15 | threw `EDEVLYN_CLEANUP` | lock left |
-| m22 | threw raw EIO | lock left |
-| m23 | **returned 6** | — |
-| m24 | **returned 6** | — |
+| m13, m23, m24 | **returned 6** | release retried |
 
-In every case the prior installation was gone. The I0185 reference also reproduces (local run; calibration `release` FAIL). Because the witness reproduces on every tree, it does not discriminate between arms.
+**Passes:** m32 (codex F r2).
+
+- It releases the lock before disposing of its backups: `try { fs.rmdirSync(lock); } catch` at bin/devlyn.js:773.
+- On a failed release it rolls back under the still-held lock (:774-776), retries the release (:778), and throws.
+- Its `release` row is PASS.
+
+This is a real-tree demonstration that the requirement is satisfiable. A locally run corrected copy of the reference (`scratch/adj/trees/ref-k3/bin/devlyn.js`) also passes, together with acceptance, the `release` replay and `heldout`.
 
 ### K4: one transient fault strands the invocation's lock, so later installs are busy forever
 
 **Claim.** A single failure while releasing or creating the invocation's own lock leaves the lock behind. Because an existing lock is never treated as stale, every later installation fails busy.
 
-**Binds: yes, to requirement 3,** under requirement 2's failure model ("one ordinary filesystem operation fails and subsequent recovery operations can succeed"). Requirement 3 says: "Release only the current invocation's lock on success or ordinary failure; a later invocation must work."
+**Binds: yes, to requirement 3,** under requirement 2's failure model. Requirement 3 says: "Release only the current invocation's lock on success or ordinary failure; a later invocation must work."
 
-**Witness:** `witnesses/i0185-lock-release-stuck.js`. Each trigger runs in a fresh fixture and fails exactly once with EIO:
+**Witness:** `witnesses/i0185-lock-release-stuck.js`. Each trigger runs in a fresh fixture and fails exactly once:
 
 - **remove:** the first lock removal;
-- **read:** the first `readFileSync` of the lock after copying began, which is the ownership check at release;
-- **close:** the first `closeSync` of a descriptor opened on the lock.
+- **read:** the first `readFileSync` of the lock after copying began;
+- **close:** the first `closeSync` of a descriptor on the lock.
 
-A trigger that never fires is not applicable. **Required behaviour:** a second plain call returns 6.
+**Required behaviour:** a second plain call returns 6.
 
 **Results:**
 
 | tree | result | observed |
 |---|---|---|
-| m05 (F codex r1), m14 (F claude r1) | **true** | remove scenario: later call busy |
-| m15 (A claude r1) | **true** | remove and read scenarios: later call busy; close scenario ok |
-| m22 (A claude r2) | **true** | remove, read and close scenarios: later call busy |
-| m04 (A codex r1), m06 (I codex r1) | false | one retry releases the lock |
-| m13 (I claude r1), m23 (F claude r2), m24 (I claude r2) | false | retry releases the lock; read and close scenarios also ok where applicable |
-| I0185 reference | true | local run; bare `rmdirSync` in `finally` |
+| m05, m14 | **reproduces** | remove: later call busy |
+| m15 | **reproduces** | remove and read: later call busy; close ok |
+| m22 | **reproduces** | remove, read and close: later call busy |
+| m04, m06, m13, m23, m24, m31, m32, m33 | passes | one retry releases the lock |
+| I0185 reference | reproduces | local run; bare `finally` release |
 
 ### K5: destination created before the lock
 
-**Claim.** m24 runs `mkdirSync(skillsDir, {recursive})` before acquiring its lock, and the lock lives inside the skills directory. The failing sequence:
+**Claim.** m24 runs `mkdirSync(skillsDir, {recursive})` before taking its lock, and its lock lives inside the skills directory. The failing sequence:
 
-1. A creates the absent skills directory and pauses before taking its lock.
+1. A creates the absent skills directory and pauses.
 2. B takes its lock inside that directory.
 3. A fails busy and cannot remove the directory, because it is not empty.
 4. B fails with an ordinary copy error and keeps the directory, since it existed when B started.
@@ -168,48 +183,72 @@ The initially absent skills directory remains although both installations failed
 
 **Binds: yes, to two requirements:**
 
-- requirement 3: "an exclusive filesystem lock acquired before inspecting or mutating destination contents";
+- requirement 3: "lock acquired before inspecting or mutating destination contents";
 - requirement 2: "An initially absent skills directory must again be absent after failure".
 
-The trigger is two cooperating installations, which requirement 3 contemplates, plus one ordinary failure, which requirement 2 contemplates. The registrants' `absence-lock` row encodes the same expectation that the destination directory's lifecycle is protected by the lock. m24 fails that row for the same root cause.
+The trigger is two cooperating installations plus one ordinary failure, both contemplated by the requirements. The registrants' `absence-lock` row encodes the same expectation, and m24 fails it for the same root cause.
 
-**Witness:** `witnesses/i0185-mkdir-before-lock.js`. Two real processes hand-shake through files, with no timing assumptions:
-
-- A runs in-process and pauses right after its first mkdir that creates the skills directory or an ancestor, until B is copying or has finished.
-- B runs as a child process. It starts after A's mkdir, and its first source copy waits for A to finish, then fails once.
-
-**Required behaviour:** when both fail, the skills directory does not exist. If B never reaches its copy, because A already held the lock, the tree passes.
+**Witness:** `witnesses/i0185-mkdir-before-lock.js`. Two real processes hand-shake through files, with no timing assumptions. If B never reaches its copy because A already held the lock, the tree passes.
 
 **Results:**
 
-- **m24 (I claude r2): true.** A failed busy, B failed with the injected copy error, and the skills directory was left present.
-- **All other 8 trees: false.** Each takes its lock beside the skills directory before creating it. The parent A created may remain, which the requirement does not cover.
-- **I0185 reference (docker sanity): false (exit 0).**
+- **Reproduces only on m24.**
+- **The other 11 trees pass.** They take their lock before creating the skills directory; m31 and m33 take it before creating any directory.
+- **Reference (docker sanity):** passes.
 
 ### K6 (supplementary, no disposition references it): physical skill alias kept
 
-m14 claude:1 guessed that its `terminal-alias` failure meant "Req 1: existing physical aliases must not remain alongside their canonical replacements". The assessor itself states the alias path "looks correct" and the root cause is unconfirmed.
+m14 claude:1 guessed that its `terminal-alias` failure meant "Req 1: existing physical aliases must not remain alongside their canonical replacements". `witnesses/i0185-physical-alias.js` tests that guess.
 
-`witnesses/i0185-physical-alias.js` tests that guess. A prior `devlynresolve` must be replaced by `devlyn:resolve`, both directly and through a terminal symlink.
-
-**Results:** false on all 9 trees and on the reference (docker sanity, exit 0). The finding itself is disposed through K2, the defect its cited row detects. K2 reproduces on m14.
+**Results:** passes on all 12 trees and on the reference (docker sanity). The finding itself is disposed through K2, the defect its cited row detects.
 
 ### J1–J3 (D3): the delimiter is dropped on executable dispatch (m18, the unmodified base tree)
 
-m18's `checks.json` lists no changed files. All three claims bind verbatim to the D3 obligations.
-
-The shared harness:
-
-- the parent is real Commander from `/work/index.js`, with executable subcommand `child` (`isDefault`, alias `c`);
-- the child is real Commander with `--child` and `[values...]`, and prints its raw argv and what it parsed.
+m18's `checks.json` lists no changed files.
 
 | claim and witness | obligation (quoted) | trigger | m18 | other 11 D3 trees |
 |---|---|---|---|---|
-| J1 `d3-delimiter-dropped.js` | "Real spawned child receives -- before --not-an-option and parses it as an operand." | `parent child -- --not-an-option` | **true**: child exits 1 `error: unknown option '--not-an-option'` | false |
-| J2 `d3-later-delimiter.js` | "Ordinary operands before/after the first delimiter retain order; subsequent -- tokens remain literal." | `parent child before -- after -- --tail` | **true**: child argv `[before, after, --, --tail]`, operands `[before, after, --tail]` | false |
-| J3 `d3-alias-default.js` | "Alias and default executable routes preserve the same boundary." | `parent c -- --not-an-option` and `parent -- --not-an-option` | **true**: both routes, child exits 1 unknown option | false |
+| J1 `d3-delimiter-dropped.js` | "Real spawned child receives -- before --not-an-option and parses it as an operand." | `parent child -- --not-an-option` | **reproduces**: child exits 1 `unknown option '--not-an-option'` | pass |
+| J2 `d3-later-delimiter.js` | "Ordinary operands before/after the first delimiter retain order; subsequent -- tokens remain literal." | `parent child before -- after -- --tail` | **reproduces**: child argv `[before, after, --, --tail]` | pass |
+| J3 `d3-alias-default.js` | "Alias and default executable routes preserve the same boundary." | `parent c -- …` and `parent -- …` | **reproduces**: both routes, unknown option | pass |
 
-The other 11 trees are m07, m08, m09, m16, m17, m19, m20, m21, m28, m29 and m30.
+## `release` adjudications (0224 rule 1): m31 FAIL, m33 FAIL
+
+**Why the row did not trigger.**
+
+- The `release` replay (`control/oracle/experiments/0222/oracle/replay.js`) injects `REPLAY_LOCK_RELEASE` at the first `rmdirSync`/`rmSync`/`unlinkSync` whose path is under `<fixture>/agent` and whose name contains `lock`.
+- It passes only if `!!fired && !!error && restored`, where `restored` means the `agent/` snapshot equals its pre-call state.
+- m31 and m33 keep their owned lock outside the fixture:
+  - **m31:** `/tmp/devlyn-skills-<sha256(realpath(skillsDir))>.lock`, defined at bin/devlyn.js:717-722 and released at :837.
+  - **m33:** `<os.tmpdir()>/devlyn-skills-<sha256(path.resolve(skillsDir))>.lock`, defined at bin/devlyn.js:675-676 and released at :797.
+- Their `checks-raw.json` replay output shows `fired: null`, no lock among the 34 recorded removals under `agent/`, and `returned: 6`. Hence NOT_TRIGGERED.
+
+**Procedure** (0224 DESIGN rule 1): "root writes a variant of that replay that moves only the injection hook to the product's equivalent step (cited file:line: … the owned-lock release for `release`) and keeps every assertion byte-identical. The row is PASS only if the variant fires and passes."
+
+The variants are `adjudication/replay-release-<cell>.js`. Each differs from `replay.js` only in:
+
+- the hook predicate: `|| target===OWNED_LOCK`, with `OWNED_LOCK` computed exactly as the product computes it;
+- the support `require`, pointed at the tree's byte-identical `tests/support.js`;
+- fixed `product`/`kind` instead of argv, so `witness.py` can run it from the tree root.
+
+The assertions are byte-identical (see `diff` against `replay.js`). Both ran twice in the cell image through `witness.py` via `adjudication/show-release-<cell>.js`. The results are in `adjudication/release-variant-results.json`.
+
+| cell | fired | error | restored | passed | adjudication |
+|---|---|---|---|---|---|
+| m31-I0185-codex-I-r2 | `rmdirSync /tmp/devlyn-skills-<sha256>.lock` (owned lock; 2 lock removals = failed attempt + retry) | `Could not release installation lock …: REPLAY_LOCK_RELEASE` | false | false | **FAIL** |
+| m33-I0185-codex-A-r2 | `rmdirSync /tmp/devlyn-skills-<sha256>.lock` (owned lock; failed attempt + retry) | `Cannot release skill installation lock …: REPLAY_LOCK_RELEASE` | false | false | **FAIL** |
+
+**Cause.** Both trees dispose of their backups before releasing the lock, then retry the release and throw. The prior installation cannot be restored.
+
+- m31 disposes at bin/devlyn.js:821-822 and releases at :837-842.
+- m33 disposes at :766 inside the `try`, then releases in `finally` at :795-803.
+
+The K3 witness, which tests the same requirement with the fault at the real lock, independently reproduces on both (docker: `restored:false`, `lockLeft:false`, error thrown).
+
+**Consequence for the oracle-row counts (codex, I0185):**
+
+- release passes: A = 0 (m04 FAIL, m33 FAIL), I = 0 (m06 FAIL, m31 FAIL), F = 1 (m32 PASS).
+- A PASS for m33 would have put I below A. A PASS for m31 would have made I equal to F.
 
 ## Finding → claim → disposition
 
@@ -244,37 +283,38 @@ The other 11 trees are m07, m08, m09, m16, m17, m19, m20, m21, m28, m29 and m30.
 | m24-I0185-claude-I-r2 | claude:0 | K3 (restates `heldout`, `release`, `absence-lock`) | reproduced | i0185-lock-release-restore |
 | m24-I0185-claude-I-r2 | codex:0 | K5 mkdir before lock | reproduced | i0185-mkdir-before-lock |
 | m24-I0185-claude-I-r2 | codex:1 | K3 (silent success) | reproduced | i0185-lock-release-restore |
+| m31-I0185-codex-I-r2 | codex:0 | K3 lock-release restore (throws after disposing backups) | reproduced | i0185-lock-release-restore |
+| m32-I0185-codex-F-r2 | claude:0 | K2 lock aliasing (`${skillsDir}.devlyn-install.lock`) | reproduced | i0185-lock-alias |
+| m32-I0185-codex-F-r2 | codex:0 | K2 lock aliasing | reproduced | i0185-lock-alias |
+| m33-I0185-codex-A-r2 | claude:0 | K2 lock aliasing (lexical sha256 key; parent and terminal alias) | reproduced | i0185-lock-alias |
+| m33-I0185-codex-A-r2 | codex:0 | K2 lock aliasing | reproduced | i0185-lock-alias |
 
-## Effect on the severe-witness quality condition
+## decide.py checks (scratch copy, all 36 cells)
 
-Checked with a scratch copy of decide.py's `audit_gaps` and subset logic:
+- **`audit_gaps`, severe part:** no gap in any of the 36 cells.
+- **`load()`:** with root's other judgments (`audited`, `false_completion`, `user_data_harm`) stubbed only for this check, it raises no error. In particular, no NOT_TRIGGERED row lacks an adjudication.
 
-- The 30 available cells have no audit gaps.
-- In every I0185 r1 and D3 pairing, the I tree's witness set is a subset of A's and of F's.
-- **The one exception is claude r2 I0185:** m24 has `i0185-mkdir-before-lock`, which m22 (A) and m23 (F) lack.
-- codex r2 I0185 cannot be evaluated until m31–m33 exist.
+Severe-witness subset condition (an I tree's witness set must be contained in its A and F counterparts'):
 
-## Pending work and what I could not establish
+- **Holds:** codex r1 vs A and F; claude r1 vs A and F; codex r2 vs A; D3 everywhere.
+- **Fails:**
+  - claude r2, m24 vs m22 (A) and m23 (F): `i0185-mkdir-before-lock`.
+  - codex r2, m31 vs m32 (F): `i0185-lock-release-restore`.
+- In both failing pairings, the I0185 oracle-row counts already fail:
+  - claude: heldout I = 0 vs A = 2 and F = 1; absence-lock I = 1 vs A = 2 and F = 2.
+  - codex I-vs-F: release I = 0 vs F = 1.
 
-**To finish the pending trees:**
+## What I could not establish
 
-1. When m31–m33 have verdicts, run each of the six I0185 witnesses with `python3 witness.py run witnesses/<id>.js m31-I0185-codex-I-r2 m32-I0185-codex-F-r2 m33-I0185-codex-A-r2`.
-2. Merge the results into `"witnesses"`, then dispose their findings. A new claim needs a new witness, run on all 12 I0185 trees.
-3. If D4 cells m34–m36 bring severe findings, they need Python witnesses run on all D4 trees.
-
-**Not established:**
-
-- No reference sanity exists for K1–K4, because the reference does not meet those requirements:
-  - K1: mount scenario, docker.
-  - K2 and K3: also its calibration failures.
-  - K4: bare `finally` release.
-- In their place, the following show the witnesses can pass:
-  - passing trees for K1, K2 and K4;
+- **Reference sanity for K1–K4:** the reference does not meet those requirements. In its place, the following show the witnesses can pass:
+  - passing trees: K1 m06, m13, m15, m24, m31; K2 m06, m13, m15, m23, m24, m31; K3 m32; K4 m04, m06, m13, m23, m24, m31, m32, m33;
   - the locally run corrected reference for K3;
   - the locally run original installer for K1's mount scenario.
-- The original installer's K1 symlink scenario was not run, because the host has no second filesystem. Code inspection shows it has no crossing rename.
+- **The original installer's K1 symlink scenario was not run,** because the host has no second filesystem. Code inspection shows it has no crossing rename.
 
-**Docker use beyond the witness runs:**
+**Docker use beyond the witness runs.** All went through `witness.py`'s own runner, with the same flags:
 
-- one environment probe and nine K1 detail runs, through `witness.py run` with probe scripts that exit 2 to print their output;
-- three reference sanity runs (K1, K5, K6), through `witness.py`'s own `run()` pointed at a copy of the reference tree.
+- one environment probe;
+- fifteen detail runs (probe scripts that exit 2 to print output);
+- four `release` variant runs;
+- three reference sanity runs (K1, K5, K6), via `run()` pointed at a copy of the reference tree.

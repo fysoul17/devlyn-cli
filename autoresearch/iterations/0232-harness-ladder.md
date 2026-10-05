@@ -338,7 +338,8 @@ A "≥" value is a lower bound. Its usage gaps are named in the verdicts: a kill
   - K4 (lock left behind): 4;
   - K5: 1 (`m24`).
   - The three D3 witnesses reproduce only on `m18`, F's unchanged base tree.
-  - Reading of requirement 2: a failed lock release is not "disposal of backup data", so rollback is required, which matches the registrants' `release` row. Under this reading K3 does not separate the arms.
+  - Reading of requirement 2: a failed lock release is not "disposal of backup data", so rollback is required, which matches the registrants' `release` row. Under this reading K3 reproduces on every A and I tree, so it does not separate A from I. Only F's codex replicate-2 tree (`m32`) passes it.
+  - The K3 and K4 witnesses were widened to find a lock kept outside the fixture, as `m31` and `m33` do. All I0185 witnesses were then re-run on every tree, and the earlier trees did not change.
 - **Adjudicated oracle rows.** `release` is NOT_TRIGGERED in `m31` and `m33`, and is adjudicated FAIL in both on the K3 evidence. Neither cell's completion changes.
 
 ### Methodology (reported, not part of the rule)

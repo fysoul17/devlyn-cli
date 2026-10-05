@@ -1,0 +1,34 @@
+{
+ "rule": "0224 DESIGN rule 1: replay variant with only the injection hook moved to the owned-lock release; assertions byte-identical; PASS only if it fires and passes",
+ "runner": "python3 witness.py run adjudication/show-release-<cell>.js <cell> (cell image, same flags as witness.py)",
+ "results": {
+  "m31-I0185-codex-I-r2": {
+   "fired": {
+    "method": "rmdirSync",
+    "path": "/tmp/devlyn-skills-9fb118f8242743816610a475175b8fa8796a23d9467f57ae956fa7e1c0b2e54d.lock"
+   },
+   "error": "Error: Could not release installation lock /tmp/devlyn-skills-9fb118f8242743816610a475175b8fa8796a23d9467f57ae956fa7e1c0b2e54d.lock: REPLAY_LOCK_RELEASE",
+   "returned": null,
+   "restored": false,
+   "passed": false,
+   "removals": 36,
+   "lockRemovals": 2
+  },
+  "m33-I0185-codex-A-r2": {
+   "fired": {
+    "method": "rmdirSync",
+    "path": "/tmp/devlyn-skills-7b0a4bf1070c08ad4ae89dc3dcdcba62a1a527d0b9e645fe3cfa51d00a3b0bd2.lock"
+   },
+   "error": "Error: Cannot release skill installation lock /tmp/devlyn-skills-7b0a4bf1070c08ad4ae89dc3dcdcba62a1a527d0b9e645fe3cfa51d00a3b0bd2.lock: REPLAY_LOCK_RELEASE",
+   "returned": null,
+   "restored": false,
+   "passed": false,
+   "removals": 36,
+   "lockRemovals": 2
+  }
+ },
+ "adjudication": {
+  "m31-I0185-codex-I-r2": "FAIL",
+  "m33-I0185-codex-A-r2": "FAIL"
+ }
+}
