@@ -451,6 +451,42 @@ class LoopFixture(unittest.TestCase):
         self.assertTrue(Path(receipt["worktree"]).is_dir())
         self.assertIn("— inputs-changed:", self.rows(receipt["publish_sha"])["a.t1"]["rest"])
 
+    def assert_invalid_inputs_stop_only_their_tasks(self, active, pending):
+        """active(loop root) breaks active a.t1's committed contract and returns its path; pending(loop root) breaks
+        loop c, queued while a.t1 is active, and returns the reasons c.t1 and c.t2 must report."""
+        self.plan("a", CHAIN, {"a.t1": {"product": "greeting"}, "a.t2": {"product": "app"}})
+        self.plan("b", [("t1", [], "Notes", [NOTES_CHECK])], {"b.t1": {"product": "notes"}})
+        blocked = self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "no executor"), "{packet}", code=1)
+        self.assertIn("executor could not start", blocked["reason"])  # a.t1 stays active with committed inputs.
+        self.plan("c", CHAIN, {"c.t1": {"product": "greeting"}, "c.t2": {"product": "app"}})
+        changed, reasons = active(self.anchor / "docs/specs/a"), pending(self.anchor / "docs/specs/c")
+        self.assertIn(f"a.t1: inputs-changed: {changed} changed", " ".join(self.cli("status", "--repo", self.anchor)["blockers"]))
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()},
+                         {"a.t1": "failed", "a.t2": "blocked", "b.t1": "accepted", "c.t1": "pending", "c.t2": "pending"})
+        self.assertTrue(tasks["a.t1"]["reason"].startswith(f"inputs-changed: {changed} changed"))
+        for identity, reason in reasons.items():
+            self.assertIn(reason, tasks[identity]["reason"])
+        self.assertEqual([self.calls(identity) for identity in ("a.t1", "a.t2", "b.t1", "c.t1", "c.t2")], [0, 0, 1, 0, 0])
+        self.assertIn("— inputs-changed:", self.rows(self.receipt("a.t1")["publish_sha"])["a.t1"]["rest"])
+
+    def test_a_deleted_active_contract_and_a_malformed_pending_meta_stop_only_their_tasks(self):
+        def active(root):
+            (root / "t1/spec.md").unlink()
+            return "docs/specs/a/t1/spec.md"
+
+        def pending(root):
+            (root / "meta.md").write_text("# Loop c\n", encoding="utf-8")
+            return {"c.t1": "docs/specs/c/meta.md: missing or empty section(s)", "c.t2": "docs/specs/c/meta.md: missing or empty section(s)"}
+        self.assert_invalid_inputs_stop_only_their_tasks(active, pending)
+
+    def test_malformed_active_and_pending_acceptance_stop_only_their_tasks(self):
+        def malform(root):
+            (root / "t1/spec.expected.json").write_text("{", encoding="utf-8")
+            return f"docs/specs/{root.name}/t1/spec.expected.json"
+        self.assert_invalid_inputs_stop_only_their_tasks(
+            malform, lambda root: {"c.t1": malform(root), "c.t2": "waiting for c.t1 (pending)"})
+
     def test_devlyn_ignore_is_checked_before_allocation(self):
         (self.anchor / ".gitignore").write_text("__pycache__/\n", encoding="utf-8")
         self.g("commit", "-qam", "base without the .devlyn/ rule")

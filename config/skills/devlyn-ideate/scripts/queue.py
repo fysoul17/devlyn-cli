@@ -312,6 +312,7 @@ def load_task(anchor, manifest, entry):
 
 
 def load_package(anchor, loop_id):
+    """The manifest and each task's contract, or under `invalid` the task's validation error."""
     meta = anchor / "docs/specs" / loop_id / "meta.md"
     text = read_text(meta)
     require_sections(sections(text, meta), META_SECTIONS, meta)
@@ -322,15 +323,23 @@ def load_package(anchor, loop_id):
     except ValueError as exc:
         raise LoopError(f"{meta}: manifest is not strict JSON: {exc}") from exc
     check_manifest(anchor, manifest, loop_id, meta)
-    return {"loop_id": loop_id, "meta_text": text, "manifest": manifest,
-            "tasks": {entry["id"]: load_task(anchor, manifest, entry) for entry in manifest["tasks"]}}
+    tasks, invalid = {}, {}
+    for entry in manifest["tasks"]:
+        try:
+            tasks[entry["id"]] = load_task(anchor, manifest, entry)
+        except LoopError as exc:
+            invalid[entry["id"]] = str(exc)
+    return {"loop_id": loop_id, "meta_text": text, "manifest": manifest, "tasks": tasks, "invalid": invalid}
 
 
 def package_of(anchor, meta):
     meta = Path(meta).resolve()
     loop_id = meta.parent.name
     require(meta.name == "meta.md" and meta.parent.parent == anchor / "docs/specs", f"package must be <repo>/docs/specs/<loop-id>/meta.md: {meta}")
-    return load_package(anchor, loop_id)
+    package = load_package(anchor, loop_id)
+    if package["invalid"]:
+        raise LoopError(next(iter(package["invalid"].values())))
+    return package
 
 
 def escape(title):
@@ -463,16 +472,25 @@ def view(anchor, common, local_only=False):
             unreadable.append(f"{path}: {exc}")
     v = {"anchor": anchor, "common": common, "data": data, "rows": parse_queue(data), "packages": {}, "states": {},
          "unreadable": unreadable, "local_only": local_only}
+    errors = {}
     for row in v["rows"]:
         if row["identity"]:
             state = v["states"][row["identity"]] = derive_state(anchor, common, row, claims.get(row["identity"], []))
-            if state["kind"] in {"pending", "active"} and row["loop"] not in v["packages"]:
-                v["packages"][row["loop"]] = load_package(anchor, row["loop"])
-            if row["loop"] in v["packages"]:
-                require(row["task"] in v["packages"][row["loop"]]["tasks"], f"{row['identity']} is not a task of loop {row['loop']}")
+            # A changed active task needs no current package text; a validation failure stops only its own task.
+            if state["kind"] == "pending" or state["kind"] == "active" and "inputs_changed" not in state:
+                loop = row["loop"]
+                if loop not in v["packages"] and loop not in errors:
+                    try:
+                        v["packages"][loop] = load_package(anchor, loop)
+                    except LoopError as exc:
+                        errors[loop] = str(exc)
+                package = v["packages"].get(loop)
+                if problem := errors.get(loop) or package["invalid"].get(row["task"]) or (
+                        None if row["task"] in package["tasks"] else f"{row['identity']} is not a task of loop {loop}"):
+                    state["invalid"] = problem
     for row in v["rows"]:
         state = v["states"].get(row["identity"])
-        for dep in v["packages"][row["loop"]]["tasks"][row["task"]]["depends_on"] if state and state["kind"] == "pending" else []:
+        for dep in v["packages"][row["loop"]]["tasks"][row["task"]]["depends_on"] if state and state["kind"] == "pending" and "invalid" not in state else []:
             dep_state = v["states"].get(f"{row['loop']}.{dep}")
             require(dep_state is not None, f"{row['identity']} depends on {row['loop']}.{dep}, which is not queued")
             if dep_state["kind"] in {"failed", "blocked"}:
@@ -492,6 +510,8 @@ def delivered(receipt):
 
 
 def waiting(v, row):
+    if invalid := v["states"][row["identity"]].get("invalid"):
+        return invalid
     local = is_local(v, row["loop"])
     for dep in v["packages"][row["loop"]]["tasks"][row["task"]]["depends_on"]:
         identity = f"{row['loop']}.{dep}"
@@ -509,7 +529,7 @@ def next_task(v, attempted):
     """Earliest unsettled receipt first, then the earliest eligible pending row in physical order."""
     for row in v["rows"]:
         state = v["states"].get(row["identity"])
-        if state and state["receipt"] and row["identity"] not in attempted and (
+        if state and state["receipt"] and row["identity"] not in attempted and "invalid" not in state and (
                 state["kind"] == "active" or not state["receipt"].get("queue") or state["receipt"].get("delivery") not in SETTLED):
             return row
     return next((row for row in v["rows"] if row["identity"] not in attempted and v["states"].get(row["identity"], {}).get("kind") == "pending"
@@ -779,10 +799,11 @@ def advance(v, row, opts):
         allocate(v, row, opts)
     receipt = read_json(path)
     if not receipt.get("acceptance"):
-        if not receipt.get("local_only"):
+        failure = v["states"][identity].get("inputs_changed")
+        if not failure and not receipt.get("local_only"):
             require_merged(v, row, receipt["baseline"])
         packet_path, packet = ensure_packet(v, row, path, receipt)
-        failure = v["states"][identity].get("inputs_changed") or ensure_submission(identity, packet_path, packet, opts.executor)
+        failure = failure or ensure_submission(identity, packet_path, packet, opts.executor)
         try:
             result = acceptance()["accept"](packet_path, packet["submission"], failure)
         except acceptance()["AcceptanceError"] as exc:
@@ -809,8 +830,8 @@ def summary(v, row):
         item["reason"] = row["rest"].lstrip(" —") if row["mark"] == "F" else (receipt.get("acceptance") or {}).get("reasons", ["failed"])[0]
     if state["kind"] == "blocked":
         item["reason"] = f"blocked-prerequisite:{state['blocker']}"
-    if state.get("waiting") or state.get("inputs_changed"):
-        item["reason"] = state.get("waiting") or state["inputs_changed"]
+    if reason := state.get("waiting") or state.get("inputs_changed") or state.get("invalid"):
+        item["reason"] = reason
     if receipt:
         acceptance_record = receipt.get("acceptance") or {}
         item.update(allocation_base=receipt.get("baseline"), **{"source" if state["kind"] == "accepted" else "candidate": receipt.get("source_sha")},
