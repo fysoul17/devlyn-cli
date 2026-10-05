@@ -35,6 +35,8 @@ behavior = config["behaviors"][packet["task"]]
 if behavior.get("refuse_pipe") and stat.S_ISFIFO(os.fstat(1).st_mode):
     print("stdout is a pipe", file=sys.stderr)  # codex-monitored.sh refuses this shape with exit 64
     sys.exit(64)
+if behavior.get("stdin_eof") and sys.stdin.read():
+    sys.exit("stdin carries the driver's input")
 with config_path.with_name("calls-" + packet["task"]).open("a", encoding="utf-8") as calls:
     calls.write("call\n")
 if behavior.get("hang"):
@@ -161,8 +163,9 @@ class LoopFixture(unittest.TestCase):
         return [sys.executable, *(["-c", UNOBSERVABLE] if unobservable else []), str(self.queue_py), "drain", "--repo", str(repo or self.anchor),
                 *(["--local-only"] if local else []), "--", sys.executable, str(self.config.parent / "executor.py"), str(self.config), "{packet}"]
 
-    def drain(self, local=True, code=0, unobservable=False, repo=None):
-        result = subprocess.run(self.drain_argv(local, unobservable, repo), cwd=self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
+    def drain(self, local=True, code=0, unobservable=False, repo=None, stdin=None):
+        result = subprocess.run(self.drain_argv(local, unobservable, repo), cwd=self.root, env=self.env, capture_output=True, text=True,
+                                encoding="utf-8", input=stdin)
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
         return json.loads(result.stdout)
 
@@ -227,9 +230,11 @@ class LoopFixture(unittest.TestCase):
         return {task["identity"]: task for task in result["tasks"]}
 
     def test_successful_local_chain_keeps_custody_and_transfers_metadata(self):
-        # Both executors refuse a piped stdout, as codex-monitored.sh does; the driver gives them files.
-        self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", "refuse_pipe": True}, "inv.t2": {"product": "app", "refuse_pipe": True}})
-        result = self.drain()
+        # Both executors refuse a piped stdout, as codex-monitored.sh does, and the driver's stdin; the driver gives them
+        # files and the null device.
+        behavior = {"refuse_pipe": True, "stdin_eof": True}
+        self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", **behavior}, "inv.t2": {"product": "app", **behavior}})
+        result = self.drain(stdin="driver input\n")
         tasks = self.tasks(result)
         self.assertEqual((result["status"], tasks["inv.t1"]["result"], tasks["inv.t2"]["result"]), ("WAITING", "accepted", "accepted"))
         self.assertEqual((self.calls("inv.t1"), self.calls("inv.t2")), (1, 1))

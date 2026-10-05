@@ -106,6 +106,8 @@ Follow [loop.md](references/loop.md). The executor is the configured route, the 
 python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" drain --repo . [--local-only] -- <executor argv>
 ```
 
+A drain can run for hours. Do not end the turn until it exits: run it in the foreground with the longest allowed timeout, or in the background and await its completion notice, because a headless host kills background tasks at its final response.
+
 - `WAITING` on legacy rows: plan and materialize each under the autonomous policy, then drain again; a row whose planning stops on material ambiguity stays pending and its question is reported.
 - `WAITING` on a delivery or `BLOCKED`: report the reason and resume commands; never edit receipts, refs or queue rows to get past them.
 - An interrupted drain is resumed by running `drain` again; accepted work is never replayed.

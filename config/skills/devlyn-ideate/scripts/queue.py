@@ -745,9 +745,10 @@ def ensure_submission(identity, packet_path, packet, executor):
     output.mkdir(parents=True, exist_ok=True)
     record(log, "start")
     try:
-        # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout.
+        # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout. The driver's stdin is not the executor's.
         with (output / "executor.stdout").open("ab") as stdout, (output / "executor.stderr").open("ab") as stderr:
-            child = subprocess.Popen(shared("platform-support")["native_argv"](argv), cwd=worktree, stdout=stdout, stderr=stderr)
+            child = subprocess.Popen(shared("platform-support")["native_argv"](argv), cwd=worktree, stdin=subprocess.DEVNULL,
+                                     stdout=stdout, stderr=stderr)
     except OSError as exc:
         record(log, f"not started: {one_line(str(exc))}")
         raise LoopError(f"executor could not start: {exc}") from exc
