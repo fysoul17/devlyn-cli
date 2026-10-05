@@ -245,6 +245,28 @@ def local_baseline(receipt, args):
     return args.local_base
 
 
+def refuse_retired_pipeline(receipt, path, supplied, local, flags):
+    """Refuse an unbound acceptance of an archived resolve run before anything is written: binding its archive
+    needed the retired helpers. An unreadable acceptance is not classified here; binding reports it as before."""
+    if receipt.get("acceptance") or not supplied:
+        return
+    acceptance_path = Path(supplied).absolute()
+    try:
+        acceptance = read_json(acceptance_path)
+    except (CompletionError, OSError, ValueError):
+        return
+    if not isinstance(acceptance, dict) or acceptance.get("kind") != "pipeline":
+        return
+    command = shlex.join(["python3", "package/config/skills/_shared/task-complete.py", "complete", "--receipt", str(path),
+                          "--acceptance", str(acceptance_path), *(["--local-only"] if local else []), *flags])
+    raise CompletionError(
+        "pipeline acceptance (an archived resolve run) was retired after devlyn-cli 4.1.0; nothing was changed. Finish the run "
+        f"with that release: run `npm pack devlyn-cli@4.1.0`, extract the tarball, then run `{command}` there. "
+        + ("That local-only completion ends as LOCAL_ONLY without binding the acceptance, as every 4.1.0 local-only completion did."
+           if local else "That completion binds the pipeline acceptance before publishing; delivery of a receipt it binds then "
+           "resumes with this helper."))
+
+
 def bind_acceptance(receipt, path, supplied):
     work = Path(receipt["worktree"])
     if receipt.get("acceptance"):
@@ -258,11 +280,6 @@ def bind_acceptance(receipt, path, supplied):
     safe_path(work, str(acceptance_path.relative_to(work)))
     acceptance = read_json(acceptance_path)
     require(acceptance.get("task") == receipt["task"], "acceptance belongs to another task")
-    # Binding a run's archive needed the retired resolve helpers; a receipt bound before then resumes above.
-    require(acceptance.get("kind") != "pipeline", "pipeline acceptance (an archived resolve run) was retired after devlyn-cli 4.1.0; "
-            "bind it with that release: run `npm pack devlyn-cli@4.1.0`, extract the tarball, then run `" + shlex.join(
-                ["python3", "package/config/skills/_shared/task-complete.py", "complete", "--receipt", str(path),
-                 "--acceptance", str(acceptance_path)]) + "`; delivery of a receipt it binds also resumes with this helper")
     sha = acceptance.get("source_sha")
     require(isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{40,64}", sha), "acceptance must name an exact commit")
     require(gref(receipt, "rev-parse", sha+"^{commit}") == sha, "source is not a commit")
@@ -310,6 +327,7 @@ def accept(args):
     """Bind a result's source and evidence custody before terminal metadata or any delivery decision."""
     path = Path(args.receipt).absolute()
     with locked_receipt(path) as receipt:
+        refuse_retired_pipeline(receipt, path, args.acceptance, receipt.get("local_only"), [])
         bind_acceptance(receipt, path, args.acceptance)
         return {"status": "FAILED" if receipt.get("product") == "FAILED" else "ACCEPTED", "receipt": str(path),
                 "source_sha": receipt["source_sha"], "recovery_ref": receipt["recovery_ref"]}
@@ -648,6 +666,9 @@ def reconcile(common, allocated, anchor):
 def complete(args):
     path = Path(args.receipt).absolute()
     with locked_receipt(path) as receipt:
+        local = args.local_only or receipt.get("local_only")
+        refuse_retired_pipeline(receipt, path, args.acceptance, local, [*(["--mode", args.mode] if args.mode and not local else []),
+                                                                       *(["--writers-stopped"] if args.writers_stopped else [])])
         if args.writers_stopped:
             if receipt["linked"]:
                 outside(Path(receipt["worktree"]))
@@ -1820,23 +1841,33 @@ class CompletionTests(unittest.TestCase):
         self.assertNotIn("local_only", json.loads(self.receipt.read_text(encoding="utf-8")))
 
     def test_pipeline_acceptance_is_refused_with_recovery_instruction(self):
-        # Binding an archived resolve run needed the retired helpers. It is refused with the release that
-        # can bind it, before custody, a recovery ref or any delivery; it never becomes direct acceptance.
+        # Binding an archived resolve run needed the retired helpers. Whatever completion flags come with it,
+        # it is refused before the receipt, a ref or the worktree changes, with the 4.1.0 command that finishes
+        # it in the requested delivery mode; it never becomes direct acceptance.
         self.allocate(); self.accept()
         self.acceptance.write_text(json.dumps({"kind": "pipeline", "task": "fixture", "source_sha": self.sha,
                                                "run_id": "fixture-run"}), encoding="utf-8")
-        before = self.receipt.read_bytes()
-        for action in (["accept", "--receipt", self.receipt, "--acceptance", self.acceptance],
-                       ["complete", "--receipt", self.receipt, "--acceptance", self.acceptance]):
-            with self.subTest(action=action[0]):
-                result, r = self.cli(*action, success=False)
+        def state():
+            return (self.receipt.read_bytes(), self.g("show-ref"), self.g("rev-parse", "HEAD", work=self.task),
+                    self.g("status", "--porcelain", "--untracked-files=all", work=self.task),
+                    sorted(p.name for p in self.receipt.parent.iterdir() if p.name != "lock"))
+        before = state()
+        publish, local = "binds the pipeline acceptance before publishing", "ends as LOCAL_ONLY without binding"
+        for flags, outcome in (((), publish), (("--mode", "pr"), publish), (("--mode", "auto", "--writers-stopped"), publish),
+                               (("--local-only",), local), (("--local-only", "--writers-stopped"), local)):
+            with self.subTest(flags=flags):
+                result, r = self.complete(*flags, success=False)
                 self.assertEqual((r.returncode, result["status"]), (1, "BLOCKED"))
+                self.assertEqual(state(), before)
                 self.assertIn("`npm pack devlyn-cli@4.1.0`", result["reason"])
-                self.assertIn(f"--receipt {self.receipt} --acceptance {self.acceptance}", result["reason"])
-                self.assertEqual(self.receipt.read_bytes(), before)
-        recovery = json.loads(before)["recovery_ref"]
-        self.assertNotEqual(self.run_cmd(["git", "-C", str(self.work), "rev-parse", "--verify", "--quiet", recovery], success=False).returncode, 0)
-        self.assertFalse((self.receipt.parent / "custody").exists())
+                self.assertIn(shlex.join(["complete", "--receipt", str(self.receipt), "--acceptance", str(self.acceptance), *flags]) + "`",
+                              result["reason"])
+                self.assertIn(outcome, result["reason"])
+        result, r = self.cli("accept", "--receipt", self.receipt, "--acceptance", self.acceptance, success=False)
+        self.assertEqual((r.returncode, result["status"]), (1, "BLOCKED"))
+        self.assertEqual(state(), before)
+        self.assertIn(publish, result["reason"])
+        self.assertNotIn(json.loads(before[0])["recovery_ref"], before[1])
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs", 0), 0)
 
     def test_bound_pipeline_receipt_resumes_delivery(self):

@@ -76,8 +76,11 @@ and source before push; changed acceptance/evidence or subsequent product
 commits require a new accepted task, never implicit descendant approval.
 
 `pipeline` acceptance of an archived resolve run was retired after devlyn-cli
-4.1.0. The helper refuses it, changes nothing, and prints the 4.1.0 command that
-binds it; a receipt bound earlier resumes delivery here.
+4.1.0. The helper refuses it before changing anything and prints the 4.1.0
+command that finishes the run in the requested delivery mode: a PR/merge
+completion there binds the acceptance before publishing, and a local-only one
+ends as LOCAL_ONLY without binding, as 4.1.0 always did. A receipt bound earlier
+resumes delivery here.
 
 Queue drains follow ideate's loop protocol
 (`../devlyn-ideate/references/loop.md`): its evidence-derived `loop` result is

@@ -119,11 +119,13 @@ your own hooks, and names the other settings it once added for the pipeline
 deleting them. `/devlyn-engines` keeps only the executor pin: `pair_judge_priority` and
 `roles` in `.devlyn/engines.json` stay as written, select nothing, and `clear` removes them.
 `task-complete.py` refuses acceptance that points at an archived resolve run
-(`kind: pipeline`). Bind such a run with the release that produced it: `npm pack
-devlyn-cli@4.1.0`, extract the tarball, and run `python3
-package/config/skills/_shared/task-complete.py complete --receipt <receipt> --acceptance
-<acceptance>`; a receipt it binds resumes delivery with the current helper. To keep using
-resolve itself, stay on `devlyn-cli@4.1.0`.
+(`kind: pipeline`) before changing anything, and prints the command that finishes the run
+with the release that produced it: `npm pack devlyn-cli@4.1.0`, extract the tarball, and run
+`python3 package/config/skills/_shared/task-complete.py complete --receipt <receipt>
+--acceptance <acceptance>` with your delivery flags. A PR/merge completion there binds the
+acceptance before publishing, and a receipt it binds resumes delivery with the current
+helper; with `--local-only` it ends as LOCAL_ONLY without binding, as 4.1.0 always did. To
+keep using resolve itself, stay on `devlyn-cli@4.1.0`.
 
 Upgrading to 4.0.0: every devlyn skill is renamed to the Agent Skills standard
 (`/devlyn:ideate` → `/devlyn-ideate`; the full list is in the table below). Run the
