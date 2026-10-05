@@ -281,6 +281,27 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(result["status"], "BLOCKED")
         self.assertIn("conflicting receipts for inv.t1", result["reason"])
 
+    def test_frontier_is_the_latest_accepted_source_and_divergence_is_refused(self):
+        tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1"], "Greeting app", [APP_CHECK]), ("t4", ["t2", "t3"], "Notes again", [NOTES_CHECK])]
+        self.plan("fr", tasks, {"fr.t1": {"product": "greeting"}, "fr.t2": {"product": "notes"}, "fr.t3": {"product": "app"}, "fr.t4": {"product": "notes"}})
+        rows = {task: self.queue["row_line"](f"fr.{task}", title) for task, _, title, _ in tasks}
+        queue = self.anchor / "docs/specs/queue.md"
+        queue.write_bytes(queue.read_bytes().replace((rows["t4"] + "\n").encode(), b""))
+        self.drain()
+        t1, t2, t3 = (self.receipt(f"fr.{task}") for task in ("t1", "t2", "t3"))
+        # Each later task starts from the latest accepted source, not the first.
+        self.assertEqual((t2["baseline"], t3["baseline"]), (t1["source_sha"], t2["source_sha"]))
+        # Reordered rows put the frontier at fr.t2, which lacks fr.t3's source: a divergent prerequisite is refused.
+        queue.write_bytes(self.base_queue + "".join(rows[task] + "\n" for task in ("t3", "t1", "t2", "t4")).encode())
+        blocked = self.drain(code=1)
+        self.assertIn(f"fr.t4: prerequisite source {t3['source_sha']} is not in the accepted frontier {t2['source_sha']}; plan an integration task",
+                      blocked["reason"])
+        self.assertEqual(self.calls("fr.t4"), 0)
+        # A receipt whose attached terminal commit lacks its result's mark stops selection.
+        receipt = self.receipt_path("fr.t1")
+        receipt.write_text(json.dumps(dict(json.loads(receipt.read_text(encoding="utf-8")), product="FAILED")), encoding="utf-8")
+        self.assertIn(f"fr.t1: terminal commit {t1['publish_sha']} does not carry its failed mark", self.cli("status", "--repo", self.anchor, code=1)["reason"])
+
     def test_interruption_after_acceptance_writes_only_the_missing_transition(self):
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", "hold": True}, "inv.t2": {"product": "app"}})
         driver = self.drain_until("inv.t1: bound")
