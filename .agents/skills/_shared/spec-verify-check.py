@@ -9,8 +9,8 @@ Default mode (BUILD_GATE invocation, no args):
       `BENCH_WORKDIR` is set AND `.devlyn/spec-verify.json` already exists
       at script start, trust it as the run-fixture.sh-staged contract from
       `expected.json` and skip source-extract entirely. Without this guard,
-      an ideate-generated spec's `## Verification` ```json``` block (e.g.
-      F9 e2e novice flow generates `commitCount`/`topAuthors` while
+      a run-generated spec's `## Verification` ```json``` block (e.g. the
+      retired F9 fixture generated `commitCount`/`topAuthors` while
       benchmark truth is `commits`/`authors`) silently overwrote the
       authoritative benchmark contract. For benchmarks, expected.json is
       canonical.
@@ -48,7 +48,8 @@ Check mode (`--check <markdown_path>`):
   its own inline validation and must not use this sibling-precedence route.
 
 Expected-contract check mode (`--check-expected <json_path>`):
-- Used by /devlyn-ideate after writing sibling `spec.expected.json`.
+- Used by `scripts/lint-fixtures.sh` for benchmark fixture contracts; ideate
+  loop packages are validated by its `queue.py check` instead.
 - Exits 0 if the file is valid JSON and matches `_shared/expected.schema.json`
   shape, and if sibling `spec.md` has supported `complexity` frontmatter.
   Exits 2 on unreadable, malformed, unsupported fields, or unsupported sibling
@@ -1522,8 +1523,8 @@ def run_check_mode(md_path: Path) -> int:
         return 0
     section_found, block = extract_verification_block(text)
     if not section_found:
-        # Sentinel absent entirely — opt-in nature preserved for ideate (a
-        # spec without machine verification is still valid; it just won't
+        # Sentinel absent entirely — opt-in nature preserved (a spec
+        # without machine verification is still valid; it just won't
         # activate the BUILD_GATE gate).
         return 0
     if block is None:
