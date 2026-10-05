@@ -6,67 +6,6 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "process_evidence": {
-      "type": "array",
-      "description": "Declared process obligations captured during implementation. Each id is unique within its phase; the shared process-evidence runner records raw streams and validates the expectation before IMPLEMENT can pass.",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "phase"],
-        "oneOf": [
-          { "required": ["cmd"], "not": { "required": ["argv"] } },
-          { "required": ["argv"], "not": { "required": ["cmd"] } }
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
-            "description": "Stable evidence id, unique within its phase and safe as one path component."
-          },
-          "phase": {
-            "const": "implement",
-            "description": "The phase that must produce this expected-contract obligation."
-          },
-          "cmd": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Exact shell command executed by the shared runner."
-          },
-          "argv": {
-            "type": "array",
-            "minItems": 1,
-            "items": { "type": "string" },
-            "description": "Exact argv executed without a shell; argv[0] must be non-empty."
-          },
-          "exit_code": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Required exit code. Default 0 if omitted.",
-            "default": 0
-          },
-          "timeout_sec": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 600,
-            "description": "Per-command timeout in seconds. Default 60 if omitted.",
-            "default": 60
-          },
-          "stdout_contains": {
-            "type": "array",
-            "items": { "type": "string", "minLength": 1 },
-            "description": "Each UTF-8 substring must occur in the concatenated raw stdout and stderr bytes.",
-            "default": []
-          },
-          "stdout_not_contains": {
-            "type": "array",
-            "items": { "type": "string", "minLength": 1 },
-            "description": "No UTF-8 substring may occur in the concatenated raw stdout and stderr bytes.",
-            "default": []
-          }
-        }
-      },
-      "default": []
-    },
     "verification_commands": {
       "type": "array",
       "description": "Each command is executed against the post-BUILD code. Each pass/fail contributes to verify_score. At least one entry is required when the spec has any observable runtime check (CLI, test command, HTTP request).",
@@ -87,7 +26,7 @@
             "type": "array",
             "minItems": 1,
             "items": { "type": "string" },
-            "description": "Exact argv executed without a shell; argv[0] must be non-empty. Preferred for generated and Windows contracts. The resolve spec-verify gate executes cmd only; the ideate loop acceptance runner executes both."
+            "description": "Exact argv executed without a shell; argv[0] must be non-empty. Preferred for generated and Windows contracts."
           },
           "exit_code": {
             "type": "integer",
@@ -166,18 +105,6 @@
       "items": { "type": "string", "minLength": 1 },
       "default": []
     },
-    "tier_a_waivers": {
-      "type": "array",
-      "description": "Optional fnmatch globs exempted from Tier A scope-oracle path checks when the spec explicitly authorizes those files.",
-      "items": { "type": "string", "minLength": 1 },
-      "default": []
-    },
-    "spec_output_files": {
-      "type": "array",
-      "description": "Files or globs that define the spec-authorized output surface for scope oracles. Touched files outside this set must be reachable from it via static imports or separately waived.",
-      "items": { "type": "string", "minLength": 1 },
-      "default": []
-    },
     "max_deps_added": {
       "type": "integer",
       "description": "Hard cap on new entries under dependencies/devDependencies in package.json. Exceeds → DQ.",
@@ -188,27 +115,6 @@
       "type": "boolean",
       "description": "Declares that every Requirement is pure-design (no observable runtime check). Lets verification_commands stay empty without failing shape validation. Contradictory (and rejected) when true alongside a non-empty verification_commands.",
       "default": false
-    },
-    "required_risk_probe_requirements": {
-      "type": "array",
-      "description": "Language-neutral replacement for prose-keyword risk-probe classification: explicit {tag, derived_from} obligations the spec author declares directly. When `--risk-probes` is enabled, risk-probes.jsonl must include a probe whose tags include `tag` and whose derived_from exactly equals `derived_from` for each entry.",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["tag", "derived_from"],
-        "properties": {
-          "tag": {
-            "type": "string",
-            "description": "One of the risk-probe tags defined in _shared/expected-contract.py:RISK_PROBE_TAGS (e.g. ordering_inversion, rollback_state, shape_contract)."
-          },
-          "derived_from": {
-            "type": "string",
-            "description": "Exact substring of the sibling spec.md's visible verification section that demands this tag.",
-            "minLength": 1
-          }
-        }
-      },
-      "default": []
     }
   }
 }

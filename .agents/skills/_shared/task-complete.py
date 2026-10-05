@@ -245,75 +245,26 @@ def local_baseline(receipt, args):
     return args.local_base
 
 
-def pipeline_acceptance(work, acceptance, files, directory):
-    run_id = acceptance["run_id"]
-    require(re.fullmatch(r"[A-Za-z0-9_.-]+", run_id) and run_id not in {".", ".."}, "invalid intended run id")
-    archive = safe_path(work, ".devlyn/runs/" + run_id)
-    state_file = archive / "pipeline.state.json"
-    classifier = shared("terminal-claim-check")
-    classification, state = classifier["classify_state_bytes"](work, state_file, state_file.read_bytes(), archived=True)
-    require(classification.status == "CLEAN" and state["run_id"] == run_id, "intended archive is not terminal CLEAN")
-    require(state.get("mode") in {"spec", "free-form"}, "only normal archived runs may publish")
-    require((state.get("source") or {}).get("type") in {"spec", "generated"}, "normal archive must bind its source contract")
-    phases = state["phases"]
-    success = {"PASS", "PASS_WITH_ISSUES"}
-    verify = phases.get("verify") or {}
-    final = phases.get("final_report") or {}
-    require(verify.get("verdict") in success and final.get("verdict") == verify["verdict"], "archive did not finish successfully")
-    require(not any(str((phase or {}).get("verdict", "")).startswith("BLOCKED") for phase in phases.values()), "blocked phase takes terminal precedence")
-    for name in ("plan", "implement", "cleanup", "verify", "final_report", "build_gate"):
-        if name == "build_gate" and "build-gate" in (state.get("bypasses") or []):
-            continue
-        phase = phases.get(name) or {}
-        require(phase.get("completed_at") and phase.get("verdict") in success, f"required {name} evidence is incomplete")
-    require(phases["cleanup"].get("post_sha") == acceptance["source_sha"], "accepted source must equal cleanup.post_sha")
-    report_digest = shared("state-phase-write")["final_report_digest"](state, archive, str(archive / "final-report.md"))
-    require(final.get("output_sha256") == report_digest and final.get("artifacts", {}).get("log_file") == ".devlyn/final-report.md", "final report binding mismatch")
-    finish = read_json(archive / "finish-gate.summary.json")
-    require(finish.get("mode") == state["mode"] and finish.get("exit") == 0 and finish.get("offenders") == 0 and not finish.get("skipped") and not finish.get("malformed"), "finish gate was not clean")
-    require(read_json(archive / "verify-merge.summary.json").get("verdict") == verify["verdict"], "VERIFY summary disagrees with terminal result")
-    # Existing evidence validators expect the pre-archive .devlyn layout. Rebuild
-    # it in a temporary directory; never move or mutate the original archive.
-    with tempfile.TemporaryDirectory(prefix="validate-", dir=directory) as tmp:
-        reconstructed = Path(tmp)
-        devlyn = reconstructed / ".devlyn"
-        devlyn.mkdir()
-        prefix = f".devlyn/runs/{run_id}/"
-        for rel in files:
-            if rel.startswith(prefix):
-                dest = safe_path(devlyn, rel[len(prefix):])
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(safe_path(work, rel), dest)
-        archive_module = shared("archive_run")
-        try:
-            for validator in ("dynamic_evidence_artifacts", "dynamic_invocation_artifacts", "dynamic_judge_role_artifacts"):
-                archive_module[validator](devlyn, state)
-        except archive_module["ArchiveError"] as exc:
-            raise CompletionError(str(exc)) from exc
-        evidence_module = shared("process-evidence")
-        for carrier in state.get("process_evidence") or []:
-            if carrier["round"] == (phases.get(carrier["phase"]) or {}).get("round"):
-                require(evidence_module["bound_carrier_outcome"](reconstructed, carrier)["verdict"] == "PASS", "required process evidence failed")
-        source = state.get("source") or {}
-        if source.get("spec_path"):
-            expected = Path(source["spec_path"]).with_name("spec.expected.json")
-            original = safe_path(work, str(expected))
-            if original.exists():
-                dest = safe_path(reconstructed, str(expected))
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(original, dest)
-                for phase in ("implement", "build_gate", "verify"):
-                    obligations = evidence_module["declared_obligations"](reconstructed, state, phase)
-                    if obligations:
-                        carriers = [c for c in state.get("process_evidence") or [] if c.get("phase") == phase and c.get("round") == (phases.get(phase) or {}).get("round")]
-                        require(len(carriers) == 1, f"missing/ambiguous current {phase} process evidence")
-                        carrier = carriers[0]
-                        evidence_module["validate_manifest"](reconstructed, carrier["manifest"]["path"], run_id, phase, carrier["round"], obligations)
-        if evidence_module["mechanical_evidence_required"](reconstructed, state):
-            require((devlyn / "spec-verify.results.json").is_file(), "required MECHANICAL results are missing")
-        carrier = shared("verify-merge-findings")["mechanical_evidence_carrier"](devlyn)
-        if carrier:
-            require(evidence_module["bound_carrier_outcome"](reconstructed, carrier)["verdict"] == "PASS", "MECHANICAL checks did not pass")
+def refuse_retired_pipeline(receipt, path, supplied, local, flags):
+    """Refuse an unbound acceptance of an archived resolve run before anything is written: binding its archive
+    needed the retired helpers. An unreadable acceptance is not classified here; binding reports it as before."""
+    if receipt.get("acceptance") or not supplied:
+        return
+    acceptance_path = Path(supplied).absolute()
+    try:
+        acceptance = read_json(acceptance_path)
+    except (CompletionError, OSError, ValueError):
+        return
+    if not isinstance(acceptance, dict) or acceptance.get("kind") != "pipeline":
+        return
+    command = shlex.join(["python3", "package/config/skills/_shared/task-complete.py", "complete", "--receipt", str(path),
+                          "--acceptance", str(acceptance_path), *(["--local-only"] if local else []), *flags])
+    raise CompletionError(
+        "pipeline acceptance (an archived resolve run) was retired after devlyn-cli 4.1.0; nothing was changed. Finish the run "
+        f"with that release: run `npm pack devlyn-cli@4.1.0`, extract the tarball, then run `{command}` there. "
+        + ("That local-only completion ends as LOCAL_ONLY without binding the acceptance, as every 4.1.0 local-only completion did."
+           if local else "That completion binds the pipeline acceptance before publishing; delivery of a receipt it binds then "
+           "resumes with this helper."))
 
 
 def bind_acceptance(receipt, path, supplied):
@@ -345,38 +296,14 @@ def bind_acceptance(receipt, path, supplied):
         for check in checks:
             require(isinstance(check.get("command"), str) and check["command"].strip(), "direct check must name its command")
             paths.append(check["evidence"])
-    elif kind == "pipeline":
-        paths.append(".devlyn/runs/" + acceptance["run_id"])
-        state = read_json(safe_path(work, paths[-1]) / "pipeline.state.json")
-        source = state.get("source") or {}
-        for key in ("spec_path", "criteria_path"):
-            if source.get(key):
-                if key == "criteria_path" and source.get("type") == "generated":
-                    require(source[key] == ".devlyn/criteria.generated.md", "generated criteria path is not canonical")
-                    relative = f".devlyn/runs/{acceptance['run_id']}/criteria.generated.md"
-                else:
-                    relative = source[key]
-                paths.append(relative)
-                source_file = safe_path(work, relative)
-                if relative == source[key]:
-                    committed = subprocess.run(["git", "--git-dir", receipt["common_gitdir"], "show", sha+":"+relative], capture_output=True)
-                    require(committed.returncode == 0 and committed.stdout == source_file.read_bytes(), "source contract changed since accepted commit")
-                bound_digest = source.get(key.replace("_path", "_sha256"))
-                require(file_record(source_file)["sha256"] == bound_digest, "source contract differs from run binding")
-                source_path = Path(source[key])
-                expected = str(source_path.with_name("spec.expected.json") if key == "spec_path" else source_path.with_suffix(".expected.json"))
-                if safe_path(work, expected).exists():
-                    paths.append(expected)
     elif kind == "loop":
         require(acceptance.get("verdict") in {"ACCEPTED", "FAILED"}, "loop result verdict must be ACCEPTED or FAILED")
         evidence = acceptance.get("evidence")
         require(isinstance(evidence, list) and all(isinstance(p, str) for p in evidence), "loop result must list its evidence files")
         paths.extend(evidence)
     else:
-        raise CompletionError("acceptance kind must be direct|pipeline|loop")
+        raise CompletionError("acceptance kind must be direct|loop")
     files = snapshot_files(work, paths)
-    if kind == "pipeline":
-        pipeline_acceptance(work, acceptance, files, path.parent)
     custody(work, path.parent / "custody", files)
     recovery = ref_sha(receipt, receipt["recovery_ref"])
     require(recovery in {None, sha}, "recovery ref changed")
@@ -400,6 +327,7 @@ def accept(args):
     """Bind a result's source and evidence custody before terminal metadata or any delivery decision."""
     path = Path(args.receipt).absolute()
     with locked_receipt(path) as receipt:
+        refuse_retired_pipeline(receipt, path, args.acceptance, receipt.get("local_only"), [])
         bind_acceptance(receipt, path, args.acceptance)
         return {"status": "FAILED" if receipt.get("product") == "FAILED" else "ACCEPTED", "receipt": str(path),
                 "source_sha": receipt["source_sha"], "recovery_ref": receipt["recovery_ref"]}
@@ -738,6 +666,9 @@ def reconcile(common, allocated, anchor):
 def complete(args):
     path = Path(args.receipt).absolute()
     with locked_receipt(path) as receipt:
+        local = args.local_only or receipt.get("local_only")
+        refuse_retired_pipeline(receipt, path, args.acceptance, local, [*(["--mode", args.mode] if args.mode and not local else []),
+                                                                       *(["--writers-stopped"] if args.writers_stopped else [])])
         if args.writers_stopped:
             if receipt["linked"]:
                 outside(Path(receipt["worktree"]))
@@ -1273,11 +1204,7 @@ class CompletionTests(unittest.TestCase):
             with self.assertRaisesRegex(CompletionError, "cannot parse mount table"):
                 scratch_mounts()
 
-    def accept(self, pipeline=False, spec_expected=None, spec_name="spec.md"):
-        if spec_expected is not None:
-            (self.task / spec_name).write_text("# Fixture\nProduct contains accepted bytes.\n", encoding="utf-8")
-            (self.task / "spec.expected.json").write_text(json.dumps(spec_expected), encoding="utf-8")
-            self.g("add", spec_name, "spec.expected.json", work=self.task)
+    def accept(self):
         (self.task / "product").write_text("accepted\n", encoding="utf-8")
         self.g("add", "product", work=self.task)
         self.g("commit", "-m", "scoped task", work=self.task)
@@ -1288,27 +1215,6 @@ class CompletionTests(unittest.TestCase):
         a = {"kind": "direct", "task": "fixture", "source_sha": self.sha,
              "checks": [{"command": "fixture byte assertion", "evidence": ".devlyn/checks.txt"}]}
         self.assertEqual((self.task / "product").read_text(encoding="utf-8"), "accepted\n")
-        if pipeline:
-            a = {"kind": "pipeline", "task": "fixture", "source_sha": self.sha, "run_id": "fixture-run"}
-            archive = evidence / "runs" / a["run_id"]
-            archive.mkdir(parents=True)
-            self.archive = archive
-            report = "<!-- devlyn:final-report run_id=fixture-run -->\nFixture completed.\n"
-            (archive / "final-report.md").write_text(report, encoding="utf-8")
-            phases = {n: {"started_at": "2026-09-10T00:00:00Z", "completed_at": "2026-09-10T00:00:01Z", "verdict": "PASS"}
-                      for n in ("plan", "implement", "build_gate", "cleanup", "verify", "final_report")}
-            phases["cleanup"]["post_sha"] = self.sha
-            phases["final_report"].update(output_sha256=hashlib.sha256(report.encode()).hexdigest(), artifacts={"log_file": ".devlyn/final-report.md"})
-            criteria = "# Fixture acceptance\nProduct contains accepted bytes.\n"
-            (archive / "criteria.generated.md").write_text(criteria, encoding="utf-8")
-            source = {"type": "generated", "criteria_path": ".devlyn/criteria.generated.md", "criteria_sha256": hashlib.sha256(criteria.encode()).hexdigest()}
-            self.state = {"run_id": a["run_id"], "mode": "free-form", "source": source, "phases": phases, "process_evidence": None}
-            if spec_expected is not None:
-                self.state["mode"] = "spec"
-                self.state["source"] = {"type": "spec", "spec_path": spec_name, "spec_sha256": hashlib.sha256((self.task / spec_name).read_bytes()).hexdigest()}
-            (archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
-            (archive / "finish-gate.summary.json").write_text(json.dumps({"mode": self.state["mode"], "exit": 0, "offenders": 0, "checked": 1}), encoding="utf-8")
-            (archive / "verify-merge.summary.json").write_text(json.dumps({"verdict": "PASS"}), encoding="utf-8")
         self.acceptance = evidence / "acceptance.json"
         self.acceptance.write_text(json.dumps(a), encoding="utf-8")
 
@@ -1787,36 +1693,21 @@ class CompletionTests(unittest.TestCase):
         self.assertFalse(self.task.exists())
 
     def test_linked_custody_and_interrupted_removal(self):
-        self.allocate(); self.accept(pipeline=True)
+        self.allocate(); self.accept()
         self.configure(interrupt_remove=True)
         result, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertFalse(self.task.exists())
         saved = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertNotIn("cleanup_started", saved)
-        recovered = self.receipt.parent / "custody" / ".devlyn/runs/fixture-run/final-report.md"
-        self.assertEqual(hashlib.sha256(recovered.read_bytes()).hexdigest(), saved["files"][".devlyn/runs/fixture-run/final-report.md"]["sha256"])
+        recovered = self.receipt.parent / "custody" / ".devlyn/checks.txt"
+        self.assertEqual(hashlib.sha256(recovered.read_bytes()).hexdigest(), saved["files"][".devlyn/checks.txt"]["sha256"])
         result, _ = self.complete("--writers-stopped", acceptance=False)
         self.assertEqual(result["status"], "COMPLETE")
         self.assertEqual(self.g("show", saved["recovery_ref"]+":product"), "accepted")
 
-    def test_reject_acceptance_and_policy_before_push(self):
-        self.allocate(); self.accept(pipeline=True)
-        original = json.loads(json.dumps(self.state))
-        for case in ("failed", "verify-only", "blocked", "unfinished", "digest", "source"):
-            state = json.loads(json.dumps(original))
-            if case == "failed": state["phases"]["verify"]["verdict"] = "NEEDS_WORK"
-            if case == "verify-only": state["mode"] = "verify-only"
-            if case == "blocked": state["phases"]["implement"]["verdict"] = "BLOCKED"
-            if case == "unfinished": state["phases"]["verify"]["completed_at"] = None
-            if case == "digest": state["phases"]["final_report"]["output_sha256"] = "0"*64
-            if case == "source": state["phases"]["cleanup"]["post_sha"] = self.g("rev-parse", "main")
-            (self.archive / "pipeline.state.json").write_text(json.dumps(state), encoding="utf-8")
-            with self.subTest(case=case):
-                _, r = self.complete(success=False)
-                self.assertNotEqual(r.returncode, 0)
-                self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
-        (self.archive / "pipeline.state.json").write_text(json.dumps(original), encoding="utf-8")
+    def test_reject_invalid_policy_before_push(self):
+        self.allocate(); self.accept()
         for value in ("typo", "", " auto"):
             self.g("config", "--local", "devlyn.completionMode", value)
             _, r = self.complete("--mode", "pr", success=False)
@@ -1826,7 +1717,7 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("creates", 0), 0)
 
     def test_unverified_descendant_is_never_merged(self):
-        self.allocate(); self.accept(pipeline=True)
+        self.allocate(); self.accept()
         result, _ = self.complete("--mode", "pr")
         self.assertEqual(result["status"], "PR")
         (self.task / "product").write_text("unverified", encoding="utf-8")
@@ -1949,28 +1840,47 @@ class CompletionTests(unittest.TestCase):
         self.assertIn("fixture already has a pushed PR https://github.com/test/project/pull/1", result["reason"])
         self.assertNotIn("local_only", json.loads(self.receipt.read_text(encoding="utf-8")))
 
-    def test_pipeline_sealed_process_evidence(self):
-        self.allocate(); self.accept(pipeline=True)
-        evidence_module = shared("process-evidence")
-        obligation = {"id": "actual-check", "phase": "verify", "argv": [sys.executable, "-c", "print('fixture passed')"], "exit_code": 0, "stdout_contains": ["fixture passed"], "timeout_sec": 10}
-        relative = ".devlyn/process-evidence/fixture-run/verify/round-0/manifest.json"
-        evidence_module["capture_process"](self.task, self.task / relative, "fixture-run", "verify", 0, obligation)
-        carrier = evidence_module["validate_manifest"](self.task, relative, "fixture-run", "verify", 0, [obligation])
-        results = {"commands": evidence_module["bound_carrier_summary_commands"](self.task, carrier), "process_evidence": carrier}
-        self.state["phases"]["verify"]["round"] = 0
-        self.state["process_evidence"] = [carrier]
-        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
-        (self.archive / "spec-verify.results.json").write_text(json.dumps(results), encoding="utf-8")
-        shutil.move(str(self.task / ".devlyn/process-evidence"), str(self.archive / "process-evidence"))
-        stdout = self.archive / carrier["streams"][0]["stdout"]["path"].removeprefix(".devlyn/")
-        before = stdout.read_bytes()
-        stdout.write_text("tampered", encoding="utf-8")
-        _, r = self.complete(success=False)
-        self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
-        stdout.write_bytes(before)
-        result, _ = self.complete("--mode", "pr")
-        self.assertEqual(result["status"], "PR")
+    def test_pipeline_acceptance_is_refused_with_recovery_instruction(self):
+        # Binding an archived resolve run needed the retired helpers. Whatever completion flags come with it,
+        # it is refused before the receipt, a ref or the worktree changes, with the 4.1.0 command that finishes
+        # it in the requested delivery mode; it never becomes direct acceptance.
+        self.allocate(); self.accept()
+        self.acceptance.write_text(json.dumps({"kind": "pipeline", "task": "fixture", "source_sha": self.sha,
+                                               "run_id": "fixture-run"}), encoding="utf-8")
+        def state():
+            return (self.receipt.read_bytes(), self.g("show-ref"), self.g("rev-parse", "HEAD", work=self.task),
+                    self.g("status", "--porcelain", "--untracked-files=all", work=self.task),
+                    sorted(p.name for p in self.receipt.parent.iterdir() if p.name != "lock"))
+        before = state()
+        publish, local = "binds the pipeline acceptance before publishing", "ends as LOCAL_ONLY without binding"
+        for flags, outcome in (((), publish), (("--mode", "pr"), publish), (("--mode", "auto", "--writers-stopped"), publish),
+                               (("--local-only",), local), (("--local-only", "--writers-stopped"), local)):
+            with self.subTest(flags=flags):
+                result, r = self.complete(*flags, success=False)
+                self.assertEqual((r.returncode, result["status"]), (1, "BLOCKED"))
+                self.assertEqual(state(), before)
+                self.assertIn("`npm pack devlyn-cli@4.1.0`", result["reason"])
+                self.assertIn(shlex.join(["complete", "--receipt", str(self.receipt), "--acceptance", str(self.acceptance), *flags]) + "`",
+                              result["reason"])
+                self.assertIn(outcome, result["reason"])
+        result, r = self.cli("accept", "--receipt", self.receipt, "--acceptance", self.acceptance, success=False)
+        self.assertEqual((r.returncode, result["status"]), (1, "BLOCKED"))
+        self.assertEqual(state(), before)
+        self.assertIn(publish, result["reason"])
+        self.assertNotIn(json.loads(before[0])["recovery_ref"], before[1])
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs", 0), 0)
+
+    def test_bound_pipeline_receipt_resumes_delivery(self):
+        # A receipt an earlier release bound to a resolve run keeps its custody; delivery resumes here.
+        self.allocate(); self.accept()
+        self.cli("accept", "--receipt", self.receipt, "--acceptance", self.acceptance)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        receipt["acceptance"] = {"kind": "pipeline", "task": "fixture", "source_sha": self.sha, "run_id": "fixture-run"}
+        self.receipt.write_text(json.dumps(receipt), encoding="utf-8")
+        result, _ = self.complete("--writers-stopped", "--mode", "auto", acceptance=False)
+        self.assertEqual((result["status"], result["acceptance"]), ("COMPLETE", "pipeline"))
+        self.assertFalse(self.task.exists())
+        self.assertEqual(self.g("show", receipt["recovery_ref"] + ":product"), "accepted")
 
     def test_legacy_in_place_resume_does_not_overwrite_ignored_collision(self):
         self.allocate_legacy(); self.accept()
@@ -2015,46 +1925,6 @@ class CompletionTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("replaced", json.loads(r.stdout)["reason"])
         self.assertTrue(self.task.exists())
-        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
-
-    def test_spec_source_and_report_binding(self):
-        self.allocate(); self.accept(pipeline=True, spec_expected={"verification_commands": []})
-        report = self.archive / "final-report.md"
-        original = report.read_bytes()
-        report.write_text("<!-- devlyn:final-report run_id=another-run -->\nBody\n", encoding="utf-8")
-        self.state["phases"]["final_report"]["output_sha256"] = hashlib.sha256(report.read_bytes()).hexdigest()
-        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
-        _, r = self.complete(success=False)
-        self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
-        report.write_bytes(original)
-        self.state["phases"]["final_report"]["output_sha256"] = hashlib.sha256(original).hexdigest()
-        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
-        result, _ = self.complete("--mode", "pr")
-        self.assertEqual(result["status"], "PR")
-
-    def test_missing_required_process_evidence(self):
-        expected = {"process_evidence": [{"id": "red-first", "phase": "implement", "argv": [sys.executable, "-c", "print('red')"], "exit_code": 0, "timeout_sec": 10}]}
-        self.allocate(); self.accept(pipeline=True, spec_expected=expected)
-        _, r = self.complete(success=False)
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn("implement process evidence", json.loads(r.stdout)["reason"])
-        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
-
-    def test_named_spec_custody(self):
-        self.allocate(); self.accept(pipeline=True, spec_expected={"pure_design": True}, spec_name="X.md")
-        result, _ = self.complete("--mode", "pr")
-        self.assertEqual(result["status"], "PR")
-        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
-        self.assertIn("spec.expected.json", receipt["files"])
-        self.assertEqual((self.receipt.parent / "custody/spec.expected.json").read_bytes(), (self.task / "spec.expected.json").read_bytes())
-
-    def test_named_spec_missing_required_process_evidence(self):
-        expected = {"process_evidence": [{"id": "red-first", "phase": "implement", "argv": [sys.executable, "-c", "print('red')"], "exit_code": 0, "timeout_sec": 10}]}
-        self.allocate(); self.accept(pipeline=True, spec_expected=expected, spec_name="X.md")
-        _, r = self.complete(success=False)
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn("implement process evidence", json.loads(r.stdout)["reason"])
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
 
     def allocate_local(self, name, **source):

@@ -1,9 +1,9 @@
 # Outer-owner task completion
 
 Completion belongs to the outer task owner after source acceptance. It does not
-add a phase or change product verdicts, finish-gate/archive authority or worker
-isolation. Explicit local-only/no-push instructions win. Otherwise delivery is
-authorized by the task scope; no additional approval ceremony is required.
+change product verdicts or worker isolation. Explicit local-only/no-push
+instructions win. Otherwise delivery is authorized by the task scope; no
+additional approval ceremony is required.
 
 ## Allocate before work
 
@@ -14,7 +14,7 @@ BLOCKED:skill-source-unresolved; a missing task-complete.py is
 BLOCKED:shared-dir-unresolved. Never select another installation.
 
 Run the bound task-complete.py before committing owner inputs or
-starting direct/full work:
+starting direct work:
 
 ```sh
 python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \
@@ -71,20 +71,16 @@ root acceptance file in the checkout (usually ignored `.devlyn/acceptance.json`)
 ```
 
 The owner accepts these checks; the helper preserves evidence bytes and does not
-claim to have independently proved the assertions. No synthetic pipeline state
-or full resolve run is needed to deliver a direct task.
+claim to have independently proved the assertions. Acceptance binds exact bytes
+and source before push; changed acceptance/evidence or subsequent product
+commits require a new accepted task, never implicit descendant approval.
 
-For full resolve, use only its intended successfully archived normal run:
-
-```json
-{"kind":"pipeline","task":"<task identity>","source_sha":"<cleanup.post_sha>","run_id":"<exact archived run_id>"}
-```
-
-Terminal CLEAN alone is insufficient. Successful VERIFY and terminal precedence,
-the run-bound report/digest, clean finish summary and required evidence must
-agree. Failed, incomplete and verify-only runs are ineligible. Acceptance binds
-exact bytes and source before push; changed acceptance/evidence or subsequent
-product commits require a new accepted task, never implicit descendant approval.
+`pipeline` acceptance of an archived resolve run was retired after devlyn-cli
+4.1.0. The helper refuses it before changing anything and prints the 4.1.0
+command that finishes the run in the requested delivery mode: a PR/merge
+completion there binds the acceptance before publishing, and a local-only one
+ends as LOCAL_ONLY without binding, as 4.1.0 always did. A receipt bound earlier
+resumes delivery here.
 
 Queue drains follow ideate's loop protocol
 (`../devlyn-ideate/references/loop.md`): its evidence-derived `loop` result is
@@ -123,7 +119,7 @@ the PR waits for a person. Command success alone never proves merge.
 `BLOCKED` includes the cause and the same retry path; repair the reported condition
 before retrying. Resume reobserves Git/PR state under a per-receipt lock, reuses
 the original acceptance, and performs only missing eligible effects. Delivery results remain separate from the
-immutable product result; do not rewrite an archived PASS for a delivery error.
+immutable product result; do not rewrite an accepted result for a delivery error.
 
 ## Yield and retain recoverability
 
@@ -137,7 +133,7 @@ affected resources. Use `git worktree lock` to keep a tree.
 On native Windows, locking and file durability are supported, but the helper cannot prove writer cessation and reports `writer observation unsupported on this platform; retain workspace`. Even `--writers-stopped` cannot authorize deletion without that observation: retain the workspace, its task refs and external receipt/custody, report delivery separately, and preserve the receipt-based resume command. A merged delivery therefore reports `CLEANUP_PENDING` (delivery `COMPLETE`) with `workspace_cleanup` naming the reason and resume. Do not kill unknown processes or force worktree removal to make completion pass.
 
 The receipt directory holds byte-verified `custody/`, `manifest.json` and a guarded
-`refs/devlyn/completed/<id>` recovery ref. Archive/check evidence is copied there
+`refs/devlyn/completed/<id>` recovery ref. Check evidence is copied there
 before publication; removal rechecks it, the recovery ref and the merge commit on base.
 Ignored build output and other ignored files are disposable under native
 non-force worktree removal. The tree's `.devlyn/` files are byte/mode-verified

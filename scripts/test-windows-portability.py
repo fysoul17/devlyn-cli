@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = None
 SHORT_PAYLOAD = '한국어 프롬프트 — “정확 바이트” …\r\n마지막\n\n'.encode('utf-8')
 PAYLOAD = SHORT_PAYLOAD * 1024
+CURRENT_DEFAULTS = b'Without a pin, you are the executor.'
 
 
 def environment():
@@ -158,57 +159,6 @@ init({options});
     def markers(self, base):
         return {p.parent.parent.name for p in base.glob('.*/skills/.devlyn-install.json')}
 
-    def test_terminal_claim_invalid_verdicts(self):
-        checker = self.package / 'config/skills/_shared/terminal-claim-check.py'
-        state_path = self.project / '.devlyn/pipeline.state.json'
-        state_path.parent.mkdir()
-        for verdict in ([], {}, ['PASS'], {'verdict': 'PASS'}, False, True, 0, 1.5, '', 'UNKNOWN', None):
-            with self.subTest(verdict=verdict):
-                state = {'run_id': 'invalid-verdict', 'phases': {
-                    'verify': {'started_at': 'start', 'completed_at': 'end', 'verdict': verdict}}}
-                original = (json.dumps(state) + '\n').encode('utf-8')
-                state_path.write_bytes(original)
-                result = run([sys.executable, checker, self.project], env=self.env, code=79)
-                receipt = json.loads(result.stdout)
-                self.assertEqual(receipt, {
-                    'status': 'INCOMPLETE:verify' if verdict is None else 'MALFORMED',
-                    'phase': 'verify' if verdict is None else None,
-                    'reason': 'verify completed without verdict' if verdict is None else 'verify has invalid verdict',
-                    'run_id': 'invalid-verdict',
-                })
-                self.assertEqual(result.stderr, b'')
-                self.assertEqual(state_path.read_bytes(), original)
-        run([sys.executable, checker, '--self-test'], env=self.env)
-
-    def test_terminal_claim_run_id_path_components(self):
-        checker = self.package / 'config/skills/_shared/terminal-claim-check.py'
-        state_path = self.project / '.devlyn/pipeline.state.json'
-        runs = self.project / '.devlyn/runs'
-        runs.mkdir(parents=True)
-        for run_id in ('.', '..', 'valid..name', '.valid', 'valid.name'):
-            with self.subTest(run_id=run_id):
-                state = {'run_id': run_id, 'phases': {
-                    name: {'started_at': 'start', 'completed_at': 'end', 'verdict': 'PASS'}
-                    for name in ('verify', 'final_report')}}
-                original = (json.dumps(state) + '\n').encode('utf-8')
-                state_path.write_bytes(original)
-                invalid = run_id in ('.', '..')
-                result = run([sys.executable, checker, self.project], env=self.env, code=79)
-                receipt = json.loads(result.stdout)
-                self.assertEqual(receipt['status'], 'MALFORMED' if invalid else 'INCOMPLETE:archive')
-                self.assertEqual(result.stderr, b'')
-                self.assertEqual(state_path.read_bytes(), original)
-                if not invalid:
-                    archive = runs / run_id / 'pipeline.state.json'
-                    archive.parent.mkdir()
-                    archive.write_bytes(original)
-                    result = run([sys.executable, checker, self.project], env=self.env)
-                    self.assertEqual(result.stdout, b'')
-                    self.assertEqual(result.stderr, b'')
-                    self.assertEqual(archive.read_bytes(), original)
-                    archive.unlink()
-                    archive.parent.rmdir()
-
     def test_claude_target_leaves_user_claude_files_alone(self):
         # 4.1.0 sets prompt caching in the project settings; ~/.claude/settings.json is the user's.
         # A global install writes skills only, so the user's ~/.claude/commands stay too.
@@ -244,24 +194,35 @@ init({options});
                     self.assertEqual(list(self.project.iterdir()), [])
 
     def test_claude_project_settings_merge_and_reinstall(self):
+        # A new install sets only what the drain host needs — one-hour foreground Bash calls and
+        # one-hour prompt caching — and keeps every other key as it was.
         dest = self.project / '.claude/settings.json'; dest.parent.mkdir()
-        for value in ({'custom': {'keep': [1, 2]}},
+        for value in (None, {'custom': {'keep': [1, 2]}},
                       {'custom': True, 'env': {'TEAM_VAR': 'keep', 'ENABLE_PROMPT_CACHING_1H': 'false',
                                                'BASH_MAX_TIMEOUT_MS': '7200000'}}):
             with self.subTest(value=value):
-                dest.write_text(json.dumps(value), encoding='utf-8')
-                self.invoke('installClaudeCore();')
+                dest.unlink(missing_ok=True)
+                if value is not None:
+                    dest.write_text(json.dumps(value), encoding='utf-8')
+                result = self.invoke('installClaudeCore();')
                 settings = json.loads(dest.read_bytes())
-                self.assertEqual(settings['custom'], value['custom'])
-                self.assertEqual(settings['env'], {'ENABLE_PROMPT_CACHING_1H': 'true', 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
-                                                   'BASH_MAX_TIMEOUT_MS': '3600000', **value.get('env', {})})
-                self.assertIn('Write(.devlyn/**)', settings['permissions']['allow'])
-                self.assertTrue(any('resolve-stop-hook.py' in hook['command']
-                                    for entry in settings['hooks']['Stop'] for hook in entry['hooks']))
+                self.assertEqual(settings, {**(value or {}), 'env': {'ENABLE_PROMPT_CACHING_1H': 'true', 'BASH_MAX_TIMEOUT_MS': '3600000',
+                                                                     **(value or {}).get('env', {})}})
+                self.assertNotIn(b'Retired devlyn settings', result.stdout)
                 first = dest.read_bytes()
                 self.invoke('installClaudeCore();')
                 self.assertEqual(dest.read_bytes(), first)
         self.assertFalse((self.home / '.claude').exists())
+
+    def test_claude_install_ships_no_unreferenced_commit_conventions(self):
+        # The managed block no longer points to commit conventions, so a new install adds none;
+        # a copy an earlier release installed is the user's now and stays as it is.
+        self.invoke('installClaudeCore();')
+        conventions = self.project / '.claude/commit-conventions.md'
+        self.assertFalse(conventions.exists())
+        conventions.write_bytes(b'team conventions\n')
+        self.invoke('installClaudeCore();')
+        self.assertEqual(conventions.read_bytes(), b'team conventions\n')
 
     def test_agents_command_is_removed_with_replacement(self):
         (self.project / 'keep.txt').write_bytes(b'project user bytes\r\n')
@@ -333,7 +294,8 @@ init({options});
                 if claude:
                     marker = json.loads((self.project / '.claude/skills/.devlyn-install.json').read_bytes())
                     self.assertEqual(marker['version'], version)
-                    self.assertTrue((self.project / '.claude/skills/devlyn-resolve/SKILL.md').is_file())
+                    self.assertTrue((self.project / '.claude/skills/devlyn-ideate/SKILL.md').is_file())
+                    self.assertFalse((self.project / '.claude/skills/devlyn-resolve').exists())
         if os.name != 'nt':
             # A CLAUDE.md linked to AGENTS.md is AGENTS.md's; the Claude target refuses links.
             self.project = self.case / 'linked'; self.project.mkdir()
@@ -349,7 +311,7 @@ init({options});
             self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
             self.assertEqual(json.loads((self.project / '.claude/skills/.devlyn-install.json').read_bytes())['version'], version)
             self.assertEqual(os.readlink(self.project / 'AGENTS.md'), 'CLAUDE.md')
-            self.assertIn(b'Default to direct execution when inspection makes', (self.project / 'CLAUDE.md').read_bytes())
+            self.assertIn(CURRENT_DEFAULTS, (self.project / 'CLAUDE.md').read_bytes())
             # Without the Claude target the user is told to add it.
             result = self.invoke('installAgentsProject();', code=None)
             self.assertNotEqual(result.returncode, 0)
@@ -368,7 +330,7 @@ init({options});
         (self.project / 'CLAUDE.md').write_bytes(block); (self.project / 'AGENTS.md').write_bytes(b'CLAUDE.md')
         self.cli('-y')
         self.assertEqual((self.project / 'AGENTS.md').read_bytes(), b'CLAUDE.md')
-        self.assertIn(b'Default to direct execution when inspection makes', (self.project / 'CLAUDE.md').read_bytes())
+        self.assertIn(CURRENT_DEFAULTS, (self.project / 'CLAUDE.md').read_bytes())
         self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
         self.assertEqual(self.markers(self.home), set())
 
@@ -445,7 +407,7 @@ init({options});
     def test_pack_install_reinstall_optional_is_byte_identical(self):
         install = ("const roots = [...install(['agents', 'claude'], false), ...install(['agents', 'claude'], true)];"
                    " installLocalSkill('devlyn-reap', roots);")
-        name, optional = 'devlyn-resolve', 'devlyn-reap'
+        name, optional = 'devlyn-ideate', 'devlyn-reap'
         core = self.package / 'config/skills'
         sources = {skill.name: core for skill in core.iterdir()
                    if (skill / 'SKILL.md').is_file() or skill.name == '_shared'}
@@ -463,10 +425,21 @@ init({options});
 
         self.invoke(install)
         assert_package_bytes()
-        # Every target in both scopes writes exactly these roots.
+        # Every target in both scopes writes exactly these roots, with the core skills and the opted-in one.
         self.assertEqual({p.parent for base in (self.project, self.home)
                           for p in base.glob('.*/skills/.devlyn-install.json')}, set(self.roots()))
         for root in self.roots():
+            self.assertEqual({p.name for p in root.iterdir()},
+                             {'devlyn-ideate', 'devlyn-engines', '_shared', optional, '.devlyn-install.json'}, root)
+        # Everything the resolve retirement removed from the package: a copy it still shipped would return on reinstall.
+        retired = ['devlyn-resolve', *(f'_shared/{name}' for name in (
+            'archive_run.py', 'codex-config.md', 'collect-codex-findings.py', 'finish-gate.py', 'grok-anchor-guard.py',
+            'judge-output-parser.py', 'judge-role-evidence.py', 'phase-prompt-render.py', 'process-evidence.py',
+            'resolve-bootstrap.py', 'resolve-stop-hook.py', 'run-bounded.py', 'spec-verify-check.py', 'state-phase-write.py',
+            'terminal-claim-check.py', 'verify-merge-findings.py', 'adapters/grok.md', 'adapters/README.md'))]
+        for root in self.roots():
+            for relative in retired:
+                (root / relative).parent.mkdir(exist_ok=True); (root / relative).write_bytes(b'from an older release')
             (root / name / 'stale').write_bytes(b'old')
             (root / optional / 'stale').write_bytes(b'old')
             (root / 'user-skill').mkdir(); (root / 'user-skill/keep').write_bytes(b'user')
@@ -476,6 +449,7 @@ init({options});
         assert_package_bytes()
         for root in self.roots():
             self.assertFalse((root / name / 'stale').exists())
+            self.assertFalse(any((root / relative).exists() for relative in retired), root)
             self.assertFalse((root / optional / 'stale').exists())
             self.assertEqual((root / 'user-skill/keep').read_bytes(), b'user')
             self.assertFalse((root / old).exists())
@@ -490,7 +464,7 @@ init({options});
             data = (self.project / name).read_bytes()
             self.assertTrue(data.startswith(custom))
             self.assertEqual(data.count(b'devlyn:instructions:begin'), 1)
-            self.assertIn(b'Default to direct execution when inspection makes', data)
+            self.assertIn(CURRENT_DEFAULTS, data)
             self.assertIn(custom, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
             installed[name] = data
         self.invoke("installClaudeCore(); installAgentsProject();")
@@ -533,7 +507,7 @@ init({options});
                 self.assertTrue(after.startswith(prefix.replace('\n', eol).encode()))
                 self.assertTrue(after.endswith(suffix.replace('\n', eol).encode()))
                 self.assertNotIn(b'installs old defaults', after)
-                self.assertIn(b'Default to direct execution when inspection makes', after)
+                self.assertIn(CURRENT_DEFAULTS, after)
                 self.invoke("updateInstructions('AGENTS.md');", package=copy)
                 self.assertEqual(dest.read_bytes(), after)
 
@@ -721,32 +695,36 @@ init({options});
                     self.assertEqual(custom.strip(), user_rules.strip())
                     self.assertNotIn(b'engine downgraded:', block)
                     self.assertNotIn(b'Default to direct execution only for clear, local', block)
-                    self.assertIn(b'Default to direct execution when inspection makes', block)
+                    self.assertIn(CURRENT_DEFAULTS, block)
                     self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
                     self.invoke(command)
                     self.assertEqual(dest.read_bytes(), after)
 
-    def test_instruction_4_x_agents_blocks_are_replaced_in_place(self):
-        # 4.1.0 renamed the AGENTS.md title and intro; design-ui and the queue skill were retired
-        # after it. A 4.0.1 or 4.1.0 block is replaced, never stacked, and an edited one keeps only
-        # the edits: its stock paragraphs, the retired ones too, are registered fingerprints.
+    def test_instruction_4_x_blocks_are_replaced_in_place(self):
+        # 4.1.0 renamed the AGENTS.md title and intro; design-ui, the queue skill and resolve were
+        # retired after it. A 4.0.1, 4.1.0 or main (9ecbe51c) block is replaced, never stacked, and an
+        # edited one keeps only the edits: its stock paragraphs, the retired ones too, are registered
+        # fingerprints.
         prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
-        dest = self.project / 'AGENTS.md'
-        for version in ('4.0.1', '4.1.0'):
-            block = (Path(__file__).resolve().parent / f'fixtures/instructions/agents-{version}.md').read_bytes()
+        for name, version in (('AGENTS.md', '4.0.1'), ('AGENTS.md', '4.1.0'), ('AGENTS.md', '9ecbe51c'),
+                              ('CLAUDE.md', '4.1.0'), ('CLAUDE.md', '9ecbe51c')):
+            dest = self.project / name
+            block = (Path(__file__).resolve().parent / f'fixtures/instructions/{name[:-3].lower()}-{version}.md').read_bytes()
             for edited in (False, True):
                 for eol in (b'\n', b'\r\n'):
-                    with self.subTest(version=version, edited=edited, eol=eol):
+                    with self.subTest(name=name, version=version, edited=edited, eol=eol):
                         old = block.replace(b'This contract serves one goal:', b'Team changed this body sentence:') if edited else block
                         dest.write_bytes((prefix + old + suffix).replace(b'\n', eol))
-                        self.invoke("updateInstructions('AGENTS.md');")
+                        self.invoke(f"updateInstructions('{name}');")
                         after = dest.read_bytes()
                         custom, managed = after.split(b'<!-- devlyn:instructions:begin', 1)
                         self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
                         self.assertTrue(after.endswith(suffix.replace(b'\n', eol)))
                         self.assertIn(b'# Project Instructions' + eol, managed)
+                        self.assertIn(CURRENT_DEFAULTS, managed)
                         for stale in (b'Codex CLI reads this file', b'design-ui', b'devlyn-queue', b'references/task-completion.md',
-                                      b'outer-loop.md', b'queue drains retain', b'--quick', b'--from-spec', b'per item: spec it'):
+                                      b'outer-loop.md', b'queue drains retain', b'--quick', b'--from-spec', b'per item: spec it',
+                                      b'devlyn-resolve', b'VERIFY'):
                             self.assertNotIn(stale, after)
                         if edited:
                             self.assertTrue(custom.startswith(prefix.replace(b'\n', eol)))
@@ -754,7 +732,7 @@ init({options});
                             self.assertNotIn(b'unstructured idea', custom)
                         else:
                             self.assertEqual(custom, prefix.replace(b'\n', eol))
-                        self.invoke("updateInstructions('AGENTS.md');")
+                        self.invoke(f"updateInstructions('{name}');")
                         self.assertEqual(dest.read_bytes(), after)
 
     def test_instruction_custom_content_survives_legacy_and_edited_managed_blocks(self):
@@ -931,8 +909,7 @@ init({options});
 
     def test_incomplete_source_has_no_marker(self):
         copy = self.case / 'broken'; shutil.copytree(self.package, copy)
-        skill = next((copy / 'config/skills').glob('devlyn*resolve'))
-        (skill / 'SKILL.md').unlink()
+        (copy / 'config/skills/devlyn-ideate/SKILL.md').unlink()
         stale = self.home / '.agents/skills/.devlyn-install.json'
         stale.parent.mkdir(parents=True); stale.write_text('{"version": "stale"}', encoding='utf-8')
         result = self.invoke("install(['agents'], true);", package=copy, code=None)
@@ -943,11 +920,11 @@ init({options});
     def test_upgrade_retires_pre_4_names_only_where_it_installs(self):
         # Before 4.0.0 each skill was `devlyn:<name>`; npm extracts ':' as U+F03A on Windows.
         spellings = ['\uf03a'] if os.name == 'nt' else [':', '\uf03a']
-        core = ['resolve', 'ideate', 'engines']
+        core = ['ideate', 'engines']
         claude = self.project / '.claude/skills'
         agents, codex, grok = (self.home / name / 'skills' for name in ('.agents', '.codex', '.grok'))
-        planted = {claude: core + ['pencil-pull', 'pencil-push', 'reap'], codex: core + ['pencil-pull'],
-                   agents: core, grok: ['resolve', 'reap']}
+        planted = {claude: core + ['resolve', 'pencil-pull', 'pencil-push', 'reap'], codex: core + ['resolve', 'pencil-pull'],
+                   agents: core + ['resolve'], grok: ['resolve', 'reap']}
         for root, names in planted.items():
             (root / 'my-skill').mkdir(parents=True); (root / 'my-skill/keep').write_bytes(b'mine')
             for name in names:
@@ -978,14 +955,14 @@ init({options});
         self.invoke("installClaudeCore();")
         self.assertTrue(edited.read_text(encoding='utf-8').endswith('my rule\n'))
 
-    def test_upgrade_removes_retired_design_ui_and_queue(self):
+    def test_upgrade_removes_retired_resolve_design_ui_and_queue(self):
         # Core skills through 4.1.0, `devlyn:<name>` before 4.0.0 (npm extracts ':' as U+F03A on
         # Windows): each root an install writes loses every spelling, another root keeps them.
         spellings = ['-', '\uf03a'] if os.name == 'nt' else ['-', ':', '\uf03a']
         other = self.home / '.grok/skills'
         for root in [*self.roots(), other]:
             (root / 'my-skill').mkdir(parents=True); (root / 'my-skill/keep').write_bytes(b'mine')
-            for name in (f'devlyn{c}{skill}' for c in spellings for skill in ('design-ui', 'queue')):
+            for name in (f'devlyn{c}{skill}' for c in spellings for skill in ('resolve', 'design-ui', 'queue')):
                 (root / name / 'scripts').mkdir(parents=True)
                 (root / name / 'SKILL.md').write_text(f'---\nname: {name}\n---\n', encoding='utf-8')
                 (root / name / 'scripts/append.py').write_bytes(b'print(1)\n')
@@ -995,7 +972,7 @@ init({options});
         install()
         for root in self.roots():
             self.assertEqual({p.name for p in root.iterdir() if p.name.startswith('devlyn')},
-                             {'devlyn-resolve', 'devlyn-ideate', 'devlyn-engines'}, root)
+                             {'devlyn-ideate', 'devlyn-engines'}, root)
             self.assertEqual((root / 'my-skill/keep').read_bytes(), b'mine')
             self.assertTrue((root / '.devlyn-install.json').is_file())
         self.assertEqual(snapshot(other), kept)
@@ -1020,7 +997,7 @@ init({options});
         (copy / 'optional-skills/devlyn-pencil-pull/SKILL.md').unlink()
         root = self.project / '.claude/skills'
         colon = '\uf03a' if os.name == 'nt' else ':'
-        old, old_core = root / f'devlyn{colon}pencil-pull', root / f'devlyn{colon}resolve'
+        old, old_core = root / f'devlyn{colon}pencil-pull', root / f'devlyn{colon}ideate'
         for folder in (old, old_core):
             folder.mkdir(parents=True); (folder / 'keep').write_bytes(b'old')
         result = self.invoke("installClaudeCore();", package=copy, code=None)
@@ -1028,7 +1005,7 @@ init({options});
         self.assertIn(b'Incomplete devlyn skill install', result.stderr)
         self.assertEqual((old / 'keep').read_bytes(), b'old')
         # Old names go only after the new core skills are in place.
-        self.assertTrue((root / 'devlyn-resolve/SKILL.md').is_file())
+        self.assertTrue((root / 'devlyn-ideate/SKILL.md').is_file())
         self.assertFalse((root / '.devlyn-install.json').exists())
         self.invoke("installClaudeCore();")
         self.assertFalse(old.exists() or old_core.exists())
@@ -1066,10 +1043,10 @@ init({options});
         path = folder / 'engines.json'
         actions = (lambda: module['read_config'](path, optional=True),
                    lambda: module['read_config'](path),
-                   lambda: module['resolve'](self.project, 'codex', for_status=True, available=lambda _: True),
-                   lambda: module['resolve'](self.project, 'codex', no_pair=True, available=lambda _: True),
-                   lambda: module['edit'](self.project, 'worker', '{"engine":"codex"}'),
-                   lambda: module['edit'](self.project, 'clear', None))
+                   lambda: module['resolve'](self.project, 'codex', available=lambda _: True),
+                   lambda: module['select'](self.project, 'codex', available=lambda _: True),
+                   lambda: module['edit'](self.project, 'codex'),
+                   lambda: module['edit'](self.project, None))
         def blocked():
             for index, action in enumerate(actions):
                 with self.subTest(action=index):
@@ -1131,10 +1108,10 @@ init({options});
             for index, action in enumerate((
                 lambda: module['read_config'](path, optional=True),
                 lambda: module['read_config'](path),
-                lambda: module['resolve'](self.project, 'codex', for_status=True, available=lambda _: True),
-                lambda: module['resolve'](self.project, 'codex', flag_engine='claude', no_pair=True, available=lambda _: True),
-                lambda: module['edit'](self.project, 'worker', '{"engine":"codex"}'),
-                lambda: module['edit'](self.project, 'clear', None),
+                lambda: module['resolve'](self.project, 'codex', available=lambda _: True),
+                lambda: module['select'](self.project, 'claude', available=lambda _: True),
+                lambda: module['edit'](self.project, 'codex'),
+                lambda: module['edit'](self.project, None),
             )):
                 with self.subTest(target=target, action=index):
                     with self.assertRaisesRegex(ValueError, 'BLOCKED:invalid-engine-config') as caught:
@@ -1149,71 +1126,118 @@ init({options});
         config, binding = module['read_config'](path, optional=True)
         self.assertEqual(config, {'executor': 'claude', 'custom': 7})
         self.assertEqual(binding, {'path': str(shared.resolve()), 'sha256': hashlib.sha256(raw).hexdigest()})
-        module['edit'](self.project, 'worker', '{"engine":"codex"}')
+        module['edit'](self.project, 'codex')
         self.assertFalse(path.is_symlink()); self.assertEqual(shared.read_bytes(), raw)
         self.assertEqual(path.stat().st_mode & 0o777, 0o640)
-        self.assertEqual(json.loads(path.read_bytes()), {'executor': 'claude', 'custom': 7, 'roles': {'worker': {'engine': 'codex'}}})
+        self.assertEqual(json.loads(path.read_bytes()), {'executor': 'codex', 'custom': 7})
         self.assertEqual(sorted(p.name for p in folder.iterdir()), ['engines.json'])
+    def test_executor_pin_status_select_and_clear(self):
+        # The executor is the one engine setting. A pin binds; keys earlier releases wrote for the
+        # retired pipeline roles stay as written and are reported inactive; an unavailable pin is
+        # reported by status and stops dispatch selection.
+        script = self.package / 'config/skills/_shared/role-config.py'
+        engines = self.project / '.devlyn/engines.json'; engines.parent.mkdir()
+        bins = self.case / 'bin'; bins.mkdir()
+        for name in ('codex', 'claude'):
+            launcher = bins / (name + ('.cmd' if os.name == 'nt' else ''))
+            launcher.write_text('@echo off\r\n' if os.name == 'nt' else '#!/bin/sh\n', encoding='utf-8'); launcher.chmod(0o755)
 
-    def test_archive_partial_transfer_recovers_and_retries(self):
-        import errno
-        module = runpy.run_path(str(self.package / 'config/skills/_shared/archive_run.py'))
-        real_move, real_copy, real_stat, real_unlink = shutil.move, shutil.copyfile, shutil.copystat, os.unlink
+        def role(*args, path=None, code=0):
+            env = dict(self.env, PATH=str(path or self.case / 'no-binaries'))
+            result = run([sys.executable, script, '--workdir', self.project, '--default-engine', 'claude', *args], env=env, code=code)
+            return json.loads(result.stdout) if code == 0 else result.stderr.decode('utf-8')
 
-        def snapshot(root):
-            return {p.relative_to(root).as_posix(): (p.read_bytes(), p.stat().st_mode & 0o777)
-                    for p in root.rglob('*') if p.is_file()}
+        legacy = b'{"executor":"codex","pair_judge_priority":["claude"],"roles":{"worker":{"engine":"claude","model":"x"}},"custom":7}\n'
+        engines.write_bytes(legacy)
+        status = role(path=bins)
+        self.assertEqual(status['executor'], {'engine': 'codex', 'source': 'engines.json', 'availability': 'CLI-present/auth-unchecked'})
+        self.assertEqual(status['inactive'], ['pair_judge_priority', 'roles'])
+        self.assertEqual(role('--select', path=bins)['executor']['engine'], 'codex')
+        self.assertEqual(engines.read_bytes(), legacy)
+        # Unavailable: status reports it; dispatch selection fails visibly and substitutes nothing.
+        self.assertEqual(role()['executor']['availability'], 'CLI-unavailable')
+        error = role('--select', code=1)
+        self.assertTrue(error.startswith('BLOCKED:codex-unavailable:'), error)
+        self.assertNotIn('Traceback', error)
+        # A worker profile is never an executor pin; the invoking CLI is reported, never blocked.
+        engines.write_bytes(b'{"roles":{"worker":{"engine":"codex"}}}')
+        self.assertEqual(role('--select')['executor'], {'engine': 'claude', 'source': 'default', 'availability': 'CLI-unavailable'})
+        # Pins are validated before any byte changes; clear keeps unrelated keys and drops the inactive ones.
+        engines.write_bytes(legacy)
+        self.assertIn('BLOCKED:invalid-engine-config: no adapter for grok', role('--set-executor', 'grok', code=1))
+        self.assertEqual(engines.read_bytes(), legacy)
+        role('--set-executor', 'claude', path=bins)
+        self.assertEqual(json.loads(engines.read_bytes()), {**json.loads(legacy), 'executor': 'claude'})
+        role('--clear')
+        self.assertEqual(json.loads(engines.read_bytes()), {'custom': 7})
+        engines.write_bytes(b'{"executor":"codex"}')
+        role('--clear')
+        self.assertFalse(engines.exists())
 
-        for boundary in ('before-copy', 'copy', 'metadata', 'unlink', 'success'):
-            for selected in (('a.log.md',) if boundary == 'success' else ('a.log.md', 'probes/P1.py')):
-                with self.subTest(boundary=boundary, selected=selected):
-                    with tempfile.TemporaryDirectory(dir=self.case) as temporary:
-                        devlyn = Path(temporary).resolve() / '.devlyn'; devlyn.mkdir()
-                        files = {'a.log.md': b'alpha\r\n', 'probes/P1.py': b'print(1)\n',
-                                 'pipeline.state.json': b'{"run_id":"recovery","phases":{},"process_evidence":null}'}
-                        for name, raw in files.items():
-                            source = devlyn / name; source.parent.mkdir(parents=True, exist_ok=True)
-                            source.write_bytes(raw); source.chmod(0o600)
-                        dest = devlyn / 'runs/recovery'; dest.mkdir(parents=True)
-                        (dest / 'unrelated.txt').write_bytes(b'preserve')
-                        before = snapshot(devlyn); fired = []
-                        failure = OSError(errno.ENOSPC, 'injected archive transfer failure')
-
-                        def copy(src, dst):
-                            if Path(src) == devlyn / selected and not fired:
-                                if boundary == 'before-copy':
-                                    fired.append(boundary); raise failure
-                                if boundary == 'copy':
-                                    Path(dst).write_bytes(b'partial'); fired.append(boundary); raise failure
-                                if boundary == 'metadata':
-                                    real_copy(src, dst); fired.append(boundary); raise failure
-                            real_copy(src, dst); real_stat(src, dst)
-
-                        def unlink(src, *args, **kwargs):
-                            if boundary == 'unlink' and Path(src) == devlyn / selected and not fired:
-                                fired.append(boundary); raise failure
-                            return real_unlink(src, *args, **kwargs)
-
-                        def move(src, dst):
-                            # Inject EXDEV and use the documented copy_function seam on
-                            # Windows too, where copy2 may otherwise use CopyFile2.
-                            with patch.object(os, 'rename', side_effect=OSError(errno.EXDEV, 'cross-device')):
-                                return real_move(src, dst, copy_function=copy)
-
-                        with patch.object(shutil, 'move', side_effect=move), patch.object(os, 'unlink', side_effect=unlink):
-                            if boundary == 'success':
-                                self.assertEqual(module['move_artifacts'](devlyn, dest), len(files))
-                            else:
-                                with self.assertRaises(OSError) as caught:
-                                    module['move_artifacts'](devlyn, dest)
-                                self.assertIs(caught.exception, failure)
-                        if boundary != 'success':
-                            self.assertEqual(fired, [boundary])
-                            self.assertEqual(snapshot(devlyn), before)
-                            self.assertEqual(module['move_artifacts'](devlyn, dest), len(files))
-                        expected = {('runs/recovery/' + n if n in files else n): value for n, value in before.items()}
-                        self.assertEqual(snapshot(devlyn), expected)
-                        self.assertFalse((devlyn / 'probes').exists())
+    def test_upgrade_from_4_1_0_and_main_retires_resolve(self):
+        # A 4.1.0 or main (9ecbe51c) install: resolve as a core skill, beside leftovers under its 3.x
+        # name and npm's U+F03A extraction alias; resolve-only helpers in _shared; the retired Stop
+        # hook among the user's own hooks; and instruction blocks between project rules.
+        spellings = ['-', '\uf03a'] if os.name == 'nt' else ['-', ':', '\uf03a']
+        helpers = ['resolve-stop-hook.py', 'archive_run.py', 'spec-verify-check.py', 'run-bounded.py', 'codex-config.md']
+        managed = {'type': 'command', 'command': 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"', 'timeout': 30}
+        mine = {'type': 'command', 'command': 'echo keep'}
+        allow = ['Write(.devlyn/**)', 'Edit(.devlyn/**)', 'Bash(git add *)', 'Bash(git commit *)',
+                 'Bash(git diff *)', 'Bash(git status *)', 'Bash(git log *)']
+        old_settings = {
+            'env': {'ENABLE_PROMPT_CACHING_1H': 'true', 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1', 'BASH_MAX_TIMEOUT_MS': '3600000'},
+            'permissions': {'allow': [*allow, 'Bash(npm test)']},
+            'hooks': {'Stop': [{'hooks': [managed, mine]}, {'hooks': [managed]}, {'matcher': '*', 'hooks': [managed]}],
+                      'PreToolUse': [{'hooks': [managed]}]}}
+        prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
+        fixtures = Path(__file__).resolve().parent / 'fixtures/instructions'
+        shipped = {p.name for p in (self.package / 'config/skills/_shared').iterdir() if p.name != '__pycache__'}
+        for version in ('4.1.0', '9ecbe51c'):
+            with self.subTest(version=version):
+                self.project = self.case / f'project-{version}'; self.project.mkdir()
+                self.home = self.case / f'home-{version}'; self.home.mkdir()
+                self.env['DEVLYN_TEST_HOME'] = str(self.home)
+                other = self.home / '.grok/skills'
+                for root in [*self.roots(), other]:
+                    (root / 'my-skill').mkdir(parents=True); (root / 'my-skill/keep').write_bytes(b'mine')
+                    for c in spellings:
+                        (root / f'devlyn{c}resolve/references').mkdir(parents=True)
+                        (root / f'devlyn{c}resolve/SKILL.md').write_bytes(b'---\nname: devlyn-resolve\n---\n')
+                    (root / '_shared').mkdir()
+                    for helper in helpers:
+                        (root / '_shared' / helper).write_bytes(version.encode())
+                    (root / '.devlyn-install.json').write_text(json.dumps({'version': version}), encoding='utf-8')
+                settings = self.project / '.claude/settings.json'
+                settings.write_text(json.dumps(old_settings), encoding='utf-8')
+                for name in ('AGENTS.md', 'CLAUDE.md'):
+                    block = (fixtures / f'{name[:-3].lower()}-{version}.md').read_bytes()
+                    self.assertIn(b'devlyn-resolve', block)
+                    (self.project / name).write_bytes(prefix + block + suffix)
+                result = self.cli('-y')
+                self.cli('-y', '--global', '--claude')
+                for root in self.roots():
+                    self.assertEqual({p.name for p in root.iterdir() if p.name.startswith('devlyn')}, {'devlyn-ideate', 'devlyn-engines'}, root)
+                    self.assertEqual({p.name for p in (root / '_shared').iterdir()}, shipped, root)
+                    self.assertEqual((root / 'my-skill/keep').read_bytes(), b'mine')
+                self.assertEqual({p.name for p in other.iterdir()},
+                                 {'my-skill', '_shared', '.devlyn-install.json', *(f'devlyn{c}resolve' for c in spellings)})
+                upgraded = json.loads(settings.read_bytes())
+                self.assertEqual((upgraded['env'], upgraded['permissions']), (old_settings['env'], old_settings['permissions']))
+                self.assertEqual(upgraded['hooks'], {'Stop': [{'hooks': [mine]}, {'matcher': '*', 'hooks': []}],
+                                                     'PreToolUse': [{'hooks': [managed]}]})
+                notices = [line for line in result.stdout.decode('utf-8').splitlines() if 'Retired devlyn settings' in line]
+                self.assertEqual(len(notices), 1, notices)
+                for setting in ('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS', *allow):
+                    self.assertIn(setting, notices[0])
+                for name in ('AGENTS.md', 'CLAUDE.md'):
+                    data = (self.project / name).read_bytes()
+                    self.assertTrue(data.startswith(prefix)); self.assertTrue(data.endswith(suffix))
+                    self.assertEqual(data.count(b'devlyn:instructions:begin'), 1)
+                    self.assertIn(CURRENT_DEFAULTS, data); self.assertNotIn(b'devlyn-resolve', data)
+                # Upgrading again changes nothing.
+                tree = {p: p.read_bytes() if p.is_file() else None for base in (self.project, self.home) for p in base.rglob('*')}
+                self.cli('-y'); self.cli('-y', '--global', '--claude')
+                self.assertEqual({p: p.read_bytes() if p.is_file() else None for base in (self.project, self.home) for p in base.rglob('*')}, tree)
 
 
 class ProcessTests(unittest.TestCase):
@@ -1222,51 +1246,6 @@ class ProcessTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.work = Path(self.temp.name).resolve()
         self.shared = (PACKAGE_ROOT or ROOT) / 'config/skills/_shared'
-        self.bounded = self.shared / 'run-bounded.py'
-        self.prompt = self.work / '한국어 prompt'; self.prompt.write_bytes(PAYLOAD)
-
-    def test_binary_stdin_and_no_dispatch_errors(self):
-        binary = PAYLOAD + b'\x00\xff'
-        self.prompt.write_bytes(binary)
-        child = self.work / 'child.py'
-        child.write_text("import pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(sys.stdin.buffer.read()); sys.exit(7)", encoding='utf-8')
-        out = self.work / 'received'
-        run([sys.executable, self.bounded, '10', '--stdin-file', self.prompt, '--', sys.executable, child, out], code=7)
-        self.assertEqual(out.read_bytes(), binary)
-        out.unlink()
-        for path in (self.work / '없는 파일', self.work):
-            result = run([sys.executable, self.bounded, '10', '--stdin-file', path, '--', sys.executable, child, out], code=2)
-            self.assertIn(b'error:', result.stderr); self.assertFalse(out.exists())
-        run([sys.executable, self.bounded, '10', '--', sys.executable, child, out], code=7)
-        self.assertEqual(out.read_bytes(), b'')
-        result = run([sys.executable, self.bounded, '10', '--', str(self.work / 'missing-command')], code=2)
-        self.assertIn(b'error:', result.stderr)
-
-    def test_large_stdin_reuse_without_evidence_output(self):
-        self.assertGreaterEqual(len(PAYLOAD), 64 * 1024)
-        command = [sys.executable, self.bounded, '10', '--stdin-file', self.prompt, '--',
-                   sys.executable, '-c', 'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())']
-        for _ in range(2):
-            self.assertEqual(run(command).stdout, PAYLOAD)
-            self.assertEqual(list(self.work.iterdir()), [self.prompt])
-        carrier = self.prompt.with_name(self.prompt.name + '.transport.json')
-        carrier.write_bytes(b'prior sealed invocation')
-        self.assertEqual(run(command).stdout, PAYLOAD)
-        self.assertEqual(carrier.read_bytes(), b'prior sealed invocation')
-
-    def test_explicit_transport_is_fresh_and_ordinary_read_preserves_it(self):
-        child = [sys.executable, '-c', 'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())']
-        command = [sys.executable, self.bounded, '10', '--stdin-file', self.prompt, '--record-transport', '--', *child]
-        self.assertEqual(run(command).stdout, PAYLOAD)
-        carrier = self.prompt.with_name(self.prompt.name + '.transport.json')
-        original = carrier.read_bytes()
-        record = helper('invocation-receipt')['validate_transport'](carrier, PAYLOAD)
-        self.assertEqual(record['exit_code'], 0)
-        rejected = run(command, code=2)
-        self.assertIn(b'transport already exists', rejected.stderr)
-        self.assertEqual(rejected.stdout, b'')
-        self.assertEqual(run([sys.executable, self.bounded, '10', '--stdin-file', self.prompt, '--', *child]).stdout, PAYLOAD)
-        self.assertEqual(carrier.read_bytes(), original)
 
     def test_utf8_imports_and_cli_with_utf8_mode_disabled(self):
         program = r'''
@@ -1288,11 +1267,8 @@ completion = runpy.run_path(shared / 'task-complete.py')
 p = work / '한국어.json'
 completion['atomic_json'](p, {'message':payload})
 assert completion['read_json'](p)['message'] == payload
-spec = runpy.run_path(shared / 'spec-verify-check.py')
-md = work / 'spec.md'
-md.write_text('# 한국어\n<!-- devlyn:verification -->\n## Verification\n```json\n'+json.dumps({'verification_commands':[{'cmd':'echo 한국어'}]},ensure_ascii=False)+'\n```\n', encoding='utf-8')
-assert spec['stage_from_source'](md, work / '.devlyn') == (True, True, None)
-assert json.loads((work / '.devlyn/spec-verify.json').read_text(encoding='utf-8'))['verification_commands'][0]['cmd'] == 'echo 한국어'
+contract = runpy.run_path(shared / 'expected-contract.py')
+assert contract['loads_strict_json'](p.read_text(encoding='utf-8'))['message'] == payload
 # Explicit cp949 streams are distinct from the observed native ANSI default.
 sys.stdout.reconfigure(encoding='cp949', errors='strict')
 sys.stderr.reconfigure(encoding='cp949', errors='strict')
@@ -1307,37 +1283,20 @@ print(payload, file=sys.stderr)
         if os.name != 'nt': print('SKIP native Windows ANSI defaults; cp949 streams and UTF8-disabled imports exercised', flush=True)
         self.assertIn('한국어 — “판정” …'.encode(), result.stdout)
         self.assertIn('한국어 — “판정” …'.encode(), result.stderr)
-        env = environment(); env['PYTHONUTF8'] = '0'
-        error = run([sys.executable, '-X', 'utf8=0', self.bounded, '5', '--stdin-file', self.work / '없는 파일', '--', sys.executable, '-c', 'raise AssertionError()'], env=env, code=2)
+        env = environment(); env.update(PYTHONUTF8='0', DEVLYN_CODEX_PROMPT_FILE=str(self.work / '없는 파일'))
+        error = run([sys.executable, '-X', 'utf8=0', self.shared / 'invocation-receipt.py', 'dispatch', '--binary', sys.executable,
+                     '--timeout', '5', '--heartbeat', '0', '--', '-'], env=env, code=2)
         self.assertIn('없는 파일'.encode(), error.stderr)
 
-    def test_bootstrap_and_completion_native_locks(self):
+    def test_completion_native_locks(self):
         repo = self.work / 'repo'; repo.mkdir()
-        run(['git', 'init', '-q', repo])
-        run(['git', '-C', repo, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '--allow-empty', '-qm', 'base'])
         ready = self.work / 'ready'
-        script = self.shared / 'resolve-bootstrap.py'
-        holder = "import pathlib,runpy,sys,time; m=runpy.run_path(sys.argv[1]);\nwith m['admission_lock'](pathlib.Path(sys.argv[2])):\n pathlib.Path(sys.argv[3]).touch(); time.sleep(20)"
-        proc = subprocess.Popen([sys.executable, '-c', holder, str(script), str(repo), str(ready)], env=environment(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        try:
-            wait_for(ready.exists)
-            blocked = json.loads(run([sys.executable, script, '한국어 goal'], cwd=repo, code=1).stdout)
-            self.assertEqual(blocked['blocked'], 'BLOCKED:bootstrap-contended')
-            self.assertFalse((repo / '.devlyn').exists())
-        finally:
-            proc.kill(); proc.communicate(timeout=5)
-        self.assertTrue(json.loads(run([sys.executable, script, '한국어 goal'], cwd=repo).stdout)['ok'])
-        shutil.rmtree(repo / '.devlyn'); lock = repo / '.git/devlyn-bootstrap.lock'; lock.unlink(); lock.mkdir()
-        blocked = json.loads(run([sys.executable, script, 'retry'], cwd=repo, code=1).stdout)
-        self.assertEqual(blocked['blocked'], 'BLOCKED:bootstrap-lock-unavailable')
-        self.assertFalse((repo / '.devlyn').exists())
         complete = helper('task-complete')
         branch = 'task/native-lock'; ident = hashlib.sha256(branch.encode()).hexdigest()[:24]
         receipt = self.work / 'common/devlyn-completion' / ident / 'receipt.json'; receipt.parent.mkdir(parents=True)
         complete['atomic_json'](receipt, {'common_gitdir': str(self.work / 'common'), 'id': ident,
                                         'branch': branch, 'base': 'main', 'allocation': 'owned'})
         holder = "import pathlib,runpy,sys,time; m=runpy.run_path(sys.argv[1]);\nwith m['locked_receipt'](pathlib.Path(sys.argv[2])):\n pathlib.Path(sys.argv[3]).touch(); time.sleep(20)"
-        ready.unlink()
         proc = subprocess.Popen([sys.executable, '-c', holder, str(self.shared / 'task-complete.py'), str(receipt), str(ready)], env=environment(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         contender = None
         try:
@@ -1364,36 +1323,6 @@ print(payload, file=sys.stderr)
         if os.name == 'nt':
             with self.assertRaisesRegex(complete['CompletionError'], 'unsupported.*retain workspace'):
                 complete['stopped_writers'](repo)
-
-    @unittest.skipUnless(os.name == 'nt', 'native Windows junction invariant')
-    def test_bootstrap_directory_junction(self):
-        repo = self.work / 'repo'; repo.mkdir()
-        run(['git', 'init', '-q', repo]); run(['git', '-C', repo, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '--allow-empty', '-qm', 'base'])
-        target = self.work / 'elsewhere'; target.mkdir(); (target / 'keep').write_bytes(PAYLOAD)
-        for relative in ('.devlyn', '.devlyn/runs'):
-            link = repo / relative; link.parent.mkdir(exist_ok=True)
-            run(['cmd.exe', '/d', '/c', 'mklink', '/J', link, target])
-            try:
-                print(f'junction observed: is_symlink={link.is_symlink()} resolved={link.resolve()}', flush=True)
-                self.assertFalse(link.is_symlink()); self.assertEqual(link.resolve(), target)
-                result = run([sys.executable, self.shared / 'resolve-bootstrap.py', 'goal'], cwd=repo, code=1)
-                self.assertEqual(json.loads(result.stdout)['blocked'], 'BLOCKED:devlyn-path-redirect')
-                self.assertEqual(list(target.iterdir()), [target / 'keep']); self.assertEqual((target / 'keep').read_bytes(), PAYLOAD)
-            finally:
-                link.rmdir()
-
-    def test_bounded_timeout_stops_descendants(self):
-        leaf = self.work / 'leaf.py'
-        leaf.write_text("import pathlib,sys,time,os,signal\nif sys.argv[2] == 'True': signal.signal(signal.SIGTERM, signal.SIG_IGN)\np=pathlib.Path(sys.argv[1]); p.with_suffix('.pid').write_text(str(os.getpid()),encoding='utf-8')\nwhile True:\n p.write_bytes(str(time.monotonic_ns()).encode()); time.sleep(.03)\n", encoding='utf-8')
-        parent = 'import subprocess,sys,time; subprocess.Popen([sys.executable,*sys.argv[1:]]); time.sleep(30)'
-        for stubborn in ((False,) if os.name == 'nt' else (False, True)):
-            with self.subTest(stubborn=stubborn):
-                marker = self.work / ('ticks-' + str(stubborn))
-                result = run([sys.executable, self.bounded, '1', '--', sys.executable, '-c', parent, leaf, marker, str(stubborn)], code=124, timeout=15)
-                self.assertEqual(result.returncode, 124); self.assertTrue(marker.exists())
-                before = marker.read_bytes(); time.sleep(.2); self.assertEqual(marker.read_bytes(), before)
-                wait_for(lambda: not process_running(int(marker.with_suffix('.pid').read_text(encoding='utf-8'))))
-                print('bounded descendant ceased stubborn=' + str(stubborn) + ' native pid=' + marker.with_suffix('.pid').read_text(encoding='utf-8'), flush=True)
 
 
 @unittest.skipUnless(os.name == 'nt', 'native Windows job ownership and DWORD exit codes')
@@ -1955,21 +1884,17 @@ else:
         prompt = self.work / 'prompt'; prompt.write_bytes(PAYLOAD + b'\x00\xff')
         target = 'import ctypes,sys; sys.stdout.buffer.write(sys.stdin.buffer.read()); sys.stdout.buffer.flush(); exit=ctypes.windll.kernel32.ExitProcess; exit.argtypes=[ctypes.c_uint]; exit.restype=None; exit(int(sys.argv[-1]))'
         for code in (0x80000000, 0xC0000005, 0xFFFFFFFF):
-            for route in ('bounded', 'monitored-dispatch', 'monitored-bash'):
+            for route in ('monitored-dispatch', 'monitored-bash'):
                 with self.subTest(code=hex(code), route=route):
                     carrier = prompt.with_name(prompt.name + '.transport.json')
                     carrier.unlink(missing_ok=True)
                     env = environment()
-                    if route == 'bounded':
-                        command = [sys.executable, self.shared / 'run-bounded.py', '10', '--stdin-file', prompt,
-                                   '--record-transport', '--', sys.executable, '-c', target, str(code)]
-                    else:
-                        # Native dispatcher used by codex-monitored.sh; preserve real Python CLI finalization.
-                        env['DEVLYN_CODEX_PROMPT_FILE'] = str(prompt)
-                        command = [sys.executable, self.shared / 'invocation-receipt.py', 'dispatch', '--binary', sys.executable,
-                                   '--timeout', '10', '--heartbeat', '0', '--', '-c', target, '-']
-                        # Python receives "exec" as a script name from the dispatcher.
-                        (self.work / 'exec').write_text(target.replace('int(sys.argv[-1])', str(code)), encoding='utf-8')
+                    # Native dispatcher used by codex-monitored.sh; preserve real Python CLI finalization.
+                    env['DEVLYN_CODEX_PROMPT_FILE'] = str(prompt)
+                    command = [sys.executable, self.shared / 'invocation-receipt.py', 'dispatch', '--binary', sys.executable,
+                               '--timeout', '10', '--heartbeat', '0', '--', '-c', target, '-']
+                    # Python receives "exec" as a script name from the dispatcher.
+                    (self.work / 'exec').write_text(target.replace('int(sys.argv[-1])', str(code)), encoding='utf-8')
                     if route == 'monitored-bash':
                         bash = shutil.which('bash')
                         self.assertIsNotNone(bash, 'Git Bash is required for the monitored boundary')
@@ -2140,7 +2065,6 @@ class EngineTests(unittest.TestCase):
         engine_source = r"""#!/usr/bin/env node
 const fs = require('fs');
 const a = process.argv.slice(2);
-if (a.includes('--version')) { console.log('fixture-cli 1.2.3'); process.exit(0); }
 if (process.env.DEVLYN_TEST_REPLACE_PROMPT) fs.writeFileSync(process.env.DEVLYN_TEST_REPLACE_PROMPT, 'changed after dispatch');
 if (process.env.DEVLYN_TEST_LEAF) {
   const cp = require('child_process');
@@ -2153,22 +2077,15 @@ if (process.env.DEVLYN_TEST_LEAF) {
  process.stdin.on('end', () => {
   const data = Buffer.concat(chunks);
   fs.writeFileSync(process.env.DEVLYN_TEST_SEEN, JSON.stringify({argv:a, stdin:data.toString('hex')}));
-  if (a.includes('read-only')) {
-   const val = key => a[a.indexOf(key)+1];
-   console.error('OpenAI Codex v1.2.3\n--------\nworkdir: '+val('-C')+'\nmodel: '+val('-m')+'\nsandbox: read-only\nreasoning effort: high\nsession id: fixture-session\n--------\nuser\n'+data.toString('utf8'));
-   console.log('PASS');
-  } else if (a.includes('--output-format')) {
-   console.log(JSON.stringify({type:'result',subtype:'success',is_error:false,stop_reason:'end_turn',session_id:'fixture-claude',result:'PASS',modelUsage:{'fixture-claude-model':{}}}));
-  } else console.log(JSON.stringify({type:'fixture'}));
+  console.log(JSON.stringify({type:'fixture'}));
  });
 }
 """
-        for engine, package in [('codex', '@openai/codex'), ('claude', '@anthropic-ai/claude-code')]:
-            folder = cls.root / engine; folder.mkdir()
-            (folder / 'package.json').write_text(json.dumps({'name': package, 'version':'1.2.3', 'bin':{engine:'cli.js'}}), encoding='utf-8')
-            (folder / 'cli.js').write_text(engine_source, encoding='utf-8'); (folder / 'cli.js').chmod(0o755)
-            npm(['install', '--global', '--prefix', str(cls.prefix), '--offline', '--ignore-scripts',
-                 '--no-audit', '--no-fund', str(folder)], cls.root)
+        folder = cls.root / 'codex'; folder.mkdir()
+        (folder / 'package.json').write_text(json.dumps({'name': '@openai/codex', 'version':'1.2.3', 'bin':{'codex':'cli.js'}}), encoding='utf-8')
+        (folder / 'cli.js').write_text(engine_source, encoding='utf-8'); (folder / 'cli.js').chmod(0o755)
+        npm(['install', '--global', '--prefix', str(cls.prefix), '--offline', '--ignore-scripts',
+             '--no-audit', '--no-fund', str(folder)], cls.root)
         cls.bins = cls.prefix if os.name == 'nt' else cls.prefix / 'bin'
 
     @classmethod
@@ -2177,7 +2094,6 @@ if (process.env.DEVLYN_TEST_LEAF) {
 
     def setUp(self):
         self.work = Path(tempfile.mkdtemp(dir=self.root, prefix='work-')).resolve()
-        self.devlyn = self.work / '.devlyn'; self.devlyn.mkdir()
         self.shared = (PACKAGE_ROOT or ROOT) / 'config/skills/_shared'
         self.env = environment(); self.env['PATH'] = str(self.bins) + os.pathsep + self.env['PATH']
         self.env.update(CODEX_BIN=str(self.bins / ('codex.cmd' if os.name == 'nt' else 'codex')),
@@ -2199,184 +2115,65 @@ if (process.env.DEVLYN_TEST_LEAF) {
         return result.returncode
 
     def worker(self):
-        prompt = self.devlyn / 'implement.prompt.0'; prompt.write_bytes(PAYLOAD)
-        session = self.devlyn / 'implement.worker-session.0.jsonl'
-        receipt = self.devlyn / 'implement.invocation.0.json'
-        self.env.update(DEVLYN_CODEX_PROMPT_FILE=str(prompt), DEVLYN_INVOCATION_RUN_ID='rs-native',
-                        DEVLYN_INVOCATION_PHASE='implement', DEVLYN_INVOCATION_ROUND='0',
-                        DEVLYN_INVOCATION_WORKDIR=str(self.work), DEVLYN_INVOCATION_PROMPT_FILE=str(prompt),
-                        DEVLYN_INVOCATION_SESSION_FILE=str(session), DEVLYN_INVOCATION_RECEIPT=str(receipt))
-        args = ['-C', str(self.work), '-s', 'workspace-write', '-m', 'fixture-model', '--json',
-                '-c', 'sandbox_workspace_write.network_access=false']
-        return prompt, session, receipt, args
+        # A multiline prompt goes as exact file bytes on stdin, with the sole prompt argument `-`.
+        prompt = self.work / 'prompt.md'; prompt.write_bytes(PAYLOAD)
+        self.env['DEVLYN_CODEX_PROMPT_FILE'] = str(prompt)
+        return prompt, ['-C', str(self.work), '-s', 'workspace-write', '-m', 'fixture-model', '--json']
 
-    def test_worker_exact_transport_legacy_and_tampering(self):
+    def test_file_transport_delivers_exact_bytes_once(self):
         self.assertGreaterEqual(len(PAYLOAD), 64 * 1024)
-        prompt, session, receipt, args = self.worker()
-        self.monitor([*args, '-'], session)
+        prompt, args = self.worker()
+        self.monitor([*args, '-'])
         self.assertEqual(bytes.fromhex(self.seen()['stdin']), PAYLOAD)
-        receipts = helper('invocation-receipt')
-        validate = lambda: receipts['validate_receipt_artifacts'](self.work, receipt, run_id='rs-native', phase='implement')
-        record = validate()[0]
-        self.assertEqual(record['argv_sha256'], hashlib.sha256(json.dumps(self.seen()['argv'][1:], separators=(',', ':')).encode()).hexdigest())
-        carrier = prompt.with_name(prompt.name + '.transport.json')
-        for path in (prompt, session, carrier):
-            before = path.read_bytes(); path.write_bytes(before + b'changed')
-            with self.assertRaises((ValueError, OSError)):
-                validate()
-            path.write_bytes(before)
-        original = carrier.read_bytes(); obj = json.loads(original)
-        obj['argv'][-1] = 'tampered'; carrier.write_text(json.dumps(obj), encoding='utf-8')
-        with self.assertRaisesRegex(ValueError, 'digest mismatch'):
-            validate()
-        carrier.write_bytes(original)
-        self.assertNotEqual(self.monitor([*args, '-'], session, code=None), 0)  # Same-round receipt reuse.
+        self.assertEqual(self.seen()['argv'], ['exec', *args, '-'])
+        record = json.loads(prompt.with_name(prompt.name + '.transport.json').read_text(encoding='utf-8'))
+        self.assertEqual((record['status'], record['exit_code'], record['command'][1:]), ('completed', 0, ['exec', *args, '-']))
+        self.assertEqual(record['prompt']['sha256'], hashlib.sha256(PAYLOAD).hexdigest())
+        self.assertNotEqual(self.monitor([*args, '-'], code=None), 0)  # A sealed prompt file is delivered once.
         self.env.pop('DEVLYN_CODEX_PROMPT_FILE')
-        for key in tuple(self.env):
-            if key.startswith('DEVLYN_INVOCATION_'): self.env.pop(key)
         self.monitor([*args, SHORT_PAYLOAD.decode().rstrip('\n')])
         self.assertEqual(bytes.fromhex(self.seen()['stdin']), b'')
 
-    def test_rejects_competing_missing_and_mismatched_before_launch(self):
-        prompt, session, receipt, args = self.worker()
+    def test_rejects_competing_and_missing_before_launch(self):
+        prompt, args = self.worker()
+        carrier = prompt.with_name(prompt.name + '.transport.json')
         for arguments in ([*args, '-', 'competing'], [*args, '-', '-'], [*args, SHORT_PAYLOAD.decode()], [*args, '--unknown', '-']):
-            self.assertNotEqual(self.monitor(arguments, session, code=None), 0)
-            self.assertFalse((self.work / 'seen.json').exists()); self.assertFalse(receipt.exists())
-        self.env['DEVLYN_CODEX_PROMPT_FILE'] = ''
-        self.assertNotEqual(self.monitor([*args, '-'], session, code=None), 0)
-        self.assertFalse((self.work / 'seen.json').exists()); self.assertFalse(receipt.exists())
-        for source in (self.work / 'missing', self.work, self.work / 'other'):
-            if source.name == 'other': source.write_bytes(PAYLOAD + b'mismatch')
+            self.assertNotEqual(self.monitor(arguments, code=None), 0)
+            self.assertFalse((self.work / 'seen.json').exists()); self.assertFalse(carrier.exists())
+        for source in ('', self.work / 'missing', self.work):
             self.env['DEVLYN_CODEX_PROMPT_FILE'] = str(source)
-            self.assertNotEqual(self.monitor([*args, '-'], session, code=None), 0)
-            self.assertFalse((self.work / 'seen.json').exists()); self.assertFalse(receipt.exists())
+            self.assertNotEqual(self.monitor([*args, '-'], code=None), 0)
+            self.assertFalse((self.work / 'seen.json').exists())
 
     def test_snapshot_delivers_bytes_even_if_source_changes_after_dispatch(self):
-        prompt, session, receipt, args = self.worker()
+        prompt, args = self.worker()
         self.env['DEVLYN_TEST_REPLACE_PROMPT'] = str(prompt)
-        self.monitor([*args, '-'], session)
+        self.monitor([*args, '-'])
         self.assertEqual(bytes.fromhex(self.seen()['stdin']), PAYLOAD)
-        with self.assertRaisesRegex(ValueError, 'prompt digest mismatch'):
-            helper('invocation-receipt')['validate_receipt_artifacts'](self.work, receipt, run_id='rs-native', phase='implement')
+        self.assertEqual(prompt.read_bytes(), b'changed after dispatch')
+        record = json.loads(prompt.with_name(prompt.name + '.transport.json').read_text(encoding='utf-8'))
+        self.assertEqual(record['prompt']['sha256'], hashlib.sha256(PAYLOAD).hexdigest())
 
-    def test_archived_transport_completion_uses_custody_bytes(self):
-        prompt, session, receipt, args = self.worker()
-        self.monitor([*args, '-'], session)
-        binding = helper('invocation-receipt')['validate_receipt'](
-            self.work, receipt, run_id='rs-native', phase='implement', round_=0, model='fixture-model',
-            prompt_sha256=hashlib.sha256(PAYLOAD).hexdigest(), session_path=session)
-        phases = {name: {'started_at': '2026-09-10T00:00:00Z', 'completed_at': '2026-09-10T00:00:01Z', 'verdict': 'PASS'}
-                  for name in ('plan', 'implement', 'build_gate', 'cleanup', 'verify', 'final_report')}
-        phases['implement']['invocation_receipt'] = binding
-        phases['cleanup']['post_sha'] = 'a' * 40
-        report = b'<!-- devlyn:final-report run_id=rs-native -->\nTransport fixture completed.\n'
-        (self.devlyn / 'final-report.md').write_bytes(report)
-        phases['final_report'].update(output_sha256=hashlib.sha256(report).hexdigest(),
-                                      artifacts={'log_file': '.devlyn/final-report.md'})
-        (self.devlyn / 'criteria.generated.md').write_bytes(SHORT_PAYLOAD)
-        state = {'run_id': 'rs-native', 'mode': 'free-form', 'phases': phases, 'process_evidence': None,
-                 'source': {'type': 'generated', 'criteria_path': '.devlyn/criteria.generated.md',
-                            'criteria_sha256': hashlib.sha256(SHORT_PAYLOAD).hexdigest()}}
-        for name, value in (('pipeline.state.json', state), ('verify-merge.summary.json', {'verdict': 'PASS'}),
-                            ('finish-gate.summary.json', {'mode': 'free-form', 'exit': 0, 'offenders': 0})):
-            (self.devlyn / name).write_text(json.dumps(value), encoding='utf-8')
-        helper('archive_run')['move_artifacts'](self.devlyn, self.devlyn / 'runs/rs-native')
-        self.assertFalse(prompt.exists())
-        complete = helper('task-complete')
-        files = {path.relative_to(self.work).as_posix(): complete['file_record'](path)
-                 for path in self.devlyn.rglob('*') if path.is_file()}
-        custody = self.root / ('custody-' + self.work.name)
-        complete['custody'](self.work, custody, files)
-        prompt.write_bytes(b'mutable prompt from a later invocation')
-        acceptance = {'run_id': 'rs-native', 'source_sha': 'a' * 40}
-        complete['pipeline_acceptance'](custody, acceptance, files, self.root)
-        retained = custody / '.devlyn/runs/rs-native' / prompt.name
-        retained.write_bytes(b'tampered custody prompt')
-        with self.assertRaisesRegex(complete['CompletionError'], 'prompt digest mismatch'):
-            complete['pipeline_acceptance'](custody, acceptance, files, self.root)
-
-    def test_native_shim_literal_argv_and_version(self):
+    def test_native_shim_literal_argv(self):
         argv = ['', '한국어 space', '"quotes"', "'single'", 'a&b|c>sentinel', '%PATH%', '$(touch sentinel)', '^', 'line\nline']
-        prompt = self.work / 'prompt'; prompt.write_bytes(PAYLOAD)
-        self.assertGreaterEqual(len(PAYLOAD), 64 * 1024)
-        command = [sys.executable, self.shared / 'run-bounded.py', '10', '--stdin-file', prompt, '--', 'codex', *argv]
+        dispatch = [sys.executable, self.shared / 'invocation-receipt.py', 'dispatch', '--timeout', '10', '--heartbeat', '0']
         for _ in range(2):
-            run(command, env=self.env)
-            self.assertEqual(self.seen()['argv'], argv); self.assertEqual(bytes.fromhex(self.seen()['stdin']), PAYLOAD)
-        self.assertFalse(prompt.with_name(prompt.name + '.transport.json').exists())
+            run([*dispatch, '--binary', 'codex', '--', *argv], cwd=self.work, env=self.env)
+            self.assertEqual(self.seen()['argv'], ['exec', *argv]); self.assertEqual(bytes.fromhex(self.seen()['stdin']), b'')
         self.assertFalse((self.work / 'sentinel').exists())
-        code = "import runpy,sys; print(runpy.run_path(sys.argv[1])['native_version']('codex'))"
-        self.assertEqual(run([sys.executable, '-c', code, self.shared / 'role-config.py'], env=self.env).stdout.strip(), b'1.2.3')
-        capture = r'''import pathlib,runpy,sys
-m=runpy.run_path(sys.argv[1]); work=pathlib.Path(sys.argv[2])
-manifest=work/'.devlyn/process-evidence/rs-native/implement/round-0/manifest.json'
-item={'id':'shim','phase':'implement','argv':['codex','--version'],'exit_code':0,'timeout_sec':10}
-e=m['capture_process'](work,manifest,'rs-native','implement',0,item)
-assert e['expectation_met'] and (work/e['stdout']['path']).read_bytes()==b'fixture-cli 1.2.3\n',e
-item.update(id='missing',argv=[str(work/'없는 명령')])
-e=m['capture_process'](work,manifest,'rs-native','implement',0,item)
-assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work/e['stderr']['path']).read_bytes(),e
-'''
-        run([sys.executable, '-c', capture, self.shared / 'process-evidence.py', self.work], env=self.env)
         if os.name == 'nt':
             bad = self.work / 'unknown.cmd'; bad.write_text('@echo unsafe\n', encoding='utf-8')
-            error = run([sys.executable, self.shared / 'run-bounded.py', '5', '--', bad], code=2)
+            error = run([*dispatch, '--binary', bad, '--'], code=2)
             self.assertIn(b'unsupported native command shim', error.stderr)
             shim = self.bins / 'codex.cmd'; raw = shim.read_bytes()
             try:
                 shim.write_bytes(b'@echo malformed\r\n')
-                error = run([sys.executable, self.shared / 'run-bounded.py', '5', '--', 'codex'], env=self.env, code=2)
+                error = run([*dispatch, '--binary', 'codex', '--'], env=self.env, code=2)
                 self.assertIn(b'unsupported native command shim', error.stderr)
             finally:
                 shim.write_bytes(raw)
         else:
-            print('SKIP Windows .cmd resolution/tamper branch; real POSIX npm argv/version exercised', flush=True)
-
-    def test_both_judge_file_transports_authenticate_actual_dispatch(self):
-        role = helper('role-config'); judge = helper('judge-role-evidence')
-        config = {'roles': {'primary_judge': {'engine':'claude','model':'fixture-claude-model','effort':'high'},
-                            'pair_judge': {'engine':'codex','model':'fixture-model','effort':'high'}}}
-        (self.devlyn / 'engines.json').write_bytes(role['encoded'](config))
-        state = {'run_id':'fixture', 'engine':'codex', 'role_resolution':role['resolve'](self.work, 'codex', available=lambda e: True),
-                 'phases': {'verify': {'engine':'claude','round':0}}}
-        for engine, selected in [('claude','primary_judge'), ('codex','pair_judge')]:
-            stem = engine + '-judge.r0'; prompt = self.devlyn / (stem + '.prompt'); prompt.write_bytes(PAYLOAD)
-            if engine == 'claude':
-                argv = [sys.executable, str(self.shared / 'run-bounded.py'), '600', '--stdin-file', str(prompt), '--record-transport', '--', 'claude', '-p',
-                        '--model','fixture-claude-model','--effort','high','--permission-mode','dontAsk','--tools','Read,Grep,Glob',
-                        '--allowedTools','Read,Grep,Glob','--setting-sources','project','--output-format','json',
-                        '--strict-mcp-config','--mcp-config','{"mcpServers":{}}']
-                result = run(argv, cwd=self.work, env=self.env)
-                (self.devlyn / (stem + '.output.json')).write_bytes(result.stdout)
-                (self.devlyn / (stem + '.stderr')).write_bytes(result.stderr)
-            else:
-                argv = [self.bash, str(self.shared / 'codex-monitored.sh'), '-C', str(self.work), '-s', 'read-only', '-m', 'fixture-model', '-c', 'model_reasoning_effort=high', '-']
-                self.env.update(DEVLYN_CODEX_PROMPT_FILE=str(prompt), CODEX_MONITORED_ISOLATED='1', CODEX_MONITORED_TIMEOUT_SEC='600')
-                self.monitor(argv[2:], self.devlyn / (stem + '.stdout'))
-                (self.devlyn / (stem + '.stderr')).write_bytes((self.work / 'stderr').read_bytes())
-            self.assertEqual(bytes.fromhex(self.seen()['stdin']), PAYLOAD)
-            argv_path = self.devlyn / (stem + '.argv.json')
-            argv_path.write_bytes(role['encoded'](argv))
-            if engine == 'claude':
-                argv_path.write_bytes(role['encoded']([arg for arg in argv if arg != '--record-transport']))
-                with self.assertRaisesRegex(ValueError, 'invalid bounded file transport'):
-                    judge['describe'](self.devlyn, state, selected, 0)
-                argv_path.write_bytes(role['encoded'](argv))
-            disguised = argv[:-1] + [PAYLOAD.decode()] if engine == 'codex' else argv[:3] + argv[5:] + [PAYLOAD.decode()]
-            argv_path.write_bytes(role['encoded'](disguised))
-            with self.assertRaises(ValueError):
-                judge['describe'](self.devlyn, state, selected, 0)
-            argv_path.write_bytes(role['encoded'](argv))
-            record, derived = judge['describe'](self.devlyn, state, selected, 0)
-            (self.devlyn / (stem + '.stdout')).write_bytes(derived)
-            (self.devlyn / (engine + '-judge.stdout')).write_bytes(derived)
-            (self.devlyn / (stem + '.role-evidence.json')).write_bytes(role['encoded'](record))
-            judge['authenticate'](self.devlyn, state, selected)
-            for suffix in ('.prompt.transport.json', '.argv.json', '.prompt', '.stderr'):
-                path = self.devlyn / (stem + suffix); original = path.read_bytes(); path.write_bytes(original + b'tamper')
-                with self.assertRaises((ValueError, OSError)):
-                    judge['authenticate'](self.devlyn, state, selected)
-                path.write_bytes(original)
+            print('SKIP Windows .cmd resolution/tamper branch; real POSIX npm argv exercised', flush=True)
 
     def test_git_bash_timeout_stops_native_node_and_python(self):
         leaf = self.work / 'leaf.py'

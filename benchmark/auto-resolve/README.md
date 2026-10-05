@@ -1,5 +1,7 @@
 # devlyn-cli resolve Benchmark Suite
 
+> **RETIRED.** `/devlyn-resolve` left the product after devlyn-cli 4.1.0, and this suite no longer gates any change. It stays as research history: its scripts call helpers and lint scripts that were removed, so run them from a checkout before the retirement (`v4.1.0` or `9ecbe51c`).
+
 One-command resolve benchmark that gates every harness change with a ship/rollback decision.
 
 ## Quick start

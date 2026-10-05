@@ -8,7 +8,7 @@
 
 ### Context, Harness & Loop Engineering Toolkit for AI Coding Agents
 
-**Structured prompts, agent orchestration, and automated pipelines — debugging, code review, product specs, and more.**
+**Engineering principles for every coding agent, and a loop designer that turns one intent into tasks agents drain without you.**
 
 [![npm version](https://img.shields.io/npm/v/devlyn-cli.svg)](https://www.npmjs.com/package/devlyn-cli)
 [![npm downloads](https://img.shields.io/npm/dw/devlyn-cli.svg)](https://www.npmjs.com/package/devlyn-cli)
@@ -32,21 +32,21 @@ That's it. The installer asks two things:
 1. **What** — `AGENTS.md — Codex · omp · Pi · Grok` (checked) and `CLAUDE.md — Claude Code` (checked when this project already has a devlyn Claude install). Space toggles, Enter confirms.
 2. **Where** — `This project` (default) or `Global — every project on this machine`.
 
-In a project, AGENTS.md readers load the skills from `.agents/skills/`; Claude Code loads only `.claude/skills/` and reads AGENTS.md when the project has no CLAUDE.md. Global installs skills only: `~/.agents/skills/` (omp, Pi, Grok) and `~/.codex/skills/` (Codex), plus `~/.claude/skills/` for Claude Code. Every target gets the `devlyn-resolve` and `devlyn-ideate` skills plus the `devlyn-engines` utility. In Codex / omp / Pi, invoke them as skills (`$devlyn-resolve`, `$devlyn-ideate`); in Claude Code and Grok they're slash commands (`/devlyn-resolve`). Rerunning refreshes skills and the managed instruction block while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery.
+In a project, AGENTS.md readers load the skills from `.agents/skills/`; Claude Code loads only `.claude/skills/` and reads AGENTS.md when the project has no CLAUDE.md. Global installs skills only: `~/.agents/skills/` (omp, Pi, Grok) and `~/.codex/skills/` (Codex), plus `~/.claude/skills/` for Claude Code. Every target gets the `devlyn-ideate` skill and the `devlyn-engines` utility. In Codex / omp / Pi, invoke them as skills (`$devlyn-ideate`); in Claude Code and Grok they're slash commands (`/devlyn-ideate`). Rerunning refreshes skills and the managed instruction block while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery.
 
 Without prompts, `npx devlyn-cli -y` installs AGENTS.md + `.agents/skills/` plus every target this project already has; add `--claude` for Claude Code. With `--global` it installs for every project on this machine, plus `~/.claude/skills/` with `--claude` or when it already has a devlyn install.
 
 ---
 
-## How It Works — Direct Work, Full Pipeline or Loop
+## How It Works — Principles and Loops
 
-devlyn-cli supports direct execution for clear, low-risk work with decisive checks, a full pipeline for work that needs it, and loops that split one intent into tasks agents drain without you:
+The managed `CLAUDE.md` / `AGENTS.md` block carries the North Star, seven principles (no workaround, no overengineering, no guesswork, worldclass, best practice, optimized, production ready) and three discipline rules, plus short pointers to the skills. Agents do the work directly under it; for work that splits into tasks, ideate designs a loop and drains it:
 
 ```
-inspect intent  →  direct work, full resolve or an ideate loop  →  ship
+intent  →  direct work under the installed principles, or an ideate loop  →  ship
 ```
 
-Non-Claude agents (Codex / omp / Pi / Grok): the AGENTS.md choice installs the workflows as their skills. In Codex / omp / Pi, use `$devlyn-ideate` or `$devlyn-resolve`; in Grok, use `/devlyn-ideate` or `/devlyn-resolve`, the same slash-command form as Claude Code.
+Non-Claude agents (Codex / omp / Pi / Grok): the AGENTS.md choice installs the skills for them. In Codex / omp / Pi, use `$devlyn-ideate`; in Grok, use `/devlyn-ideate`, the same slash-command form as Claude Code.
 
 ### Plan and drain loops — `/devlyn-ideate`
 
@@ -61,85 +61,24 @@ Give ideate an intent or a document. It writes a loop package — a meta-prompt 
 
 A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without them, taking only scope-narrowing, reversible, non-user-visible defaults. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened) under your installed CLAUDE.md/AGENTS.md instructions. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it, never on the executor's say-so; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local.
 
-### Choose direct execution or `/devlyn-resolve`
-
-Inspect the requested behavior, affected callers and tests first. Default to direct work when its scope and verification are tractable, including bounded multi-file changes; honor constraints and executor pins, run risk-proportionate checks and independent review for consequential changes, then review the diff and deliver. Automatically use full `/devlyn-resolve` only for concrete interacting requirements or verification too complex to manage reliably in the current context, such as coupled durable state, concurrent ownership and failure recovery. Domain labels, file count and a spec document alone do not trigger it. Investigate or clarify missing intent/access first. Explicit resolve (including small tasks) and explicit spec-mode workflows keep the full workflow below.
-
-```
-/devlyn-resolve "fix the login bug"                                # free-form
-/devlyn-resolve --spec docs/specs/2026-05-04-auth/spec.md          # spec mode
-/devlyn-resolve --verify-only <diff-or-PR-ref> --spec <path>       # verify-only
-```
-
-Internal phases run sequentially with file-based handoff via `.devlyn/pipeline.state.json`:
-
-```
-PLAN  →  IMPLEMENT  →  BUILD_GATE  →  CLEANUP  →  VERIFY (fresh subagent, findings-only)
-```
-
-- **PLAN** runs in the owner context and freezes requirements, verification and the authorized file surface before implementation.
-- **BUILD_GATE** runs commands in the owner context without another model invocation, using your project's real compilers, typecheckers, linters, and `python3 .claude/skills/_shared/spec-verify-check.py` (verification commands literal-match). Auto-detects Next.js, Rust, Go, Solidity, Expo, Swift, and Dockerfiles. Browser flows route through Chrome MCP → Playwright → curl tier.
-- **VERIFY** runs in a fresh subagent context with no code-mutation tools — findings only, structurally independent.
-- Git checkpoints at every phase for safe rollback. Fix-loop budget shared across BUILD_GATE, CLEANUP and VERIFY (`--max-rounds N`, default 4).
-
-Common flags: `--engine claude|codex|omp` (default: the orchestrator-supported default), `--role-config <path>` (one-run worker/judge profiles, see below), `--bypass build-gate,cleanup`, `--pair-verify` (force pair-mode JUDGE in VERIFY), `--no-pair` (intentional solo VERIFY), `--risk-probes` / `--no-risk-probes`, `--perf` (per-phase timing).
-`--pair-verify` and `--no-pair` are mutually exclusive; using both stops with `BLOCKED:invalid-flags`.
+### Delivery
 
 Each task gets its own linked worktree; accepted tasks default to scoped commit → push → PR
 → merge when the repository allows it (otherwise the PR waits for a person). After the
 PR merges, the worktree and branch its session released are cleaned; anything in use is
 kept. Set `git config --local devlyn.completionMode pr` to stop at the PR; `task-complete.py complete --mode auto|pr`
 overrides one task. Local-only/no-push instructions take precedence; existing
-branches cannot be adopted. Full runs require successful archive before delivery;
-direct tasks use their actual checks and root acceptance. Verify-only never
-publishes. Pending checks or unsupported merge policy retain resources and
+branches cannot be adopted. Direct tasks use their actual checks and root
+acceptance. Pending checks or unsupported merge policy retain resources and
 report a receipt-based resume command separately from product verification.
 See [task completion](config/skills/_shared/task-completion.md)
 for allocation, acceptance, writer cessation and recovery.
 
-### Engine roles — auto-detected, pinnable with `/devlyn-engines`
+### Executor — `/devlyn-engines`
 
-devlyn separates three engine roles:
+The orchestrator is the CLI you opened (Claude Code, Codex, or omp); the contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the loop's file artifacts carry over if you switch. The executor does the implementation work, direct or drained: the engine pinned in machine-local `.devlyn/engines.json`, else the CLI you opened.
 
-- **Orchestrator** — the CLI you opened (Claude Code, Codex, or omp) that drives the conversation and loop. The contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the same phase-gated pipeline runs whichever you launch; the file artifacts (spec, queue, state) carry over if you switch.
-- **Executor** (legacy) — the worker for IMPLEMENT, its included code/doc cleanup, and their repair rounds, and the primary VERIFY judge, unless either is separately profiled (below). Defaults to the orchestrator-supported default. PLAN is orchestrator-fixed and never inherits `--engine` or an executor pin. An absent primary profile follows the legacy executor, not an opt-in worker profile.
-- **Pair judge** — the first available *other* engine, default for VERIFY and conditional for risk probes.
-
-`--engine <name>` sets the legacy executor for one run as an engine-only entry (it clears any lower-precedence profile's model/effort). PLAN stays in the owner context; BUILD_GATE/CLEANUP run owner commands; risk-probe derivation keeps its existing route. VERIFY/JUDGE runs pair mode by default when the OTHER engine is available.
-
-Pin roles durably with `/devlyn-engines` (no args shows the role table + detected engines; `executor <name>` / `pair <name>,...` / `role <worker|primary_judge|pair_judge> <JSON object>` / `role <name> clear` manage the pins, stored machine-local in `.devlyn/engines.json`; `clear` removes all legacy and role pins, preserves unrelated keys, and deletes an empty file). Pins fail closed: an unavailable pinned engine stops with `BLOCKED:<engine>-unavailable`, and a name with no `_shared/adapters/<name>.md` adapter stops with `BLOCKED:invalid-engine-config`. New engines plug in by shipping an adapter file — no skill changes.
-
-#### Explicit worker and judge profiles
-
-`.devlyn/engines.json` may add a `roles` object with `worker`, `primary_judge`, and `pair_judge` entries. Each entry requires `engine` and accepts an optional exact `model` ID and `effort`; unknown fields, aliases (`default`, `auto`, `opus`, `sonnet`, `fable`, `codex` as a model), null/empty values, and duplicate keys stop with `BLOCKED:invalid-engine-config`. Only the project's own `.devlyn/engines.json` is read — no parent or global lookup. Example (an example, not a default or ranking):
-
-```json
-{
-  "executor": "codex",
-  "pair_judge_priority": ["claude"],
-  "roles": {
-    "worker": {"engine": "codex", "model": "gpt-6-astra", "effort": "xhigh"},
-    "primary_judge": {"engine": "codex", "model": "gpt-6-astra", "effort": "high"},
-    "pair_judge": {"engine": "claude", "model": "claude-fable-5-1", "effort": "medium"}
-  }
-}
-```
-
-`--role-config <path>` supplies the same `{"roles": {...}}` object for one run only, with no other top-level keys; the flag may appear once.
-
-- **Precedence** — an entry replaces the lower one as a whole; model/effort never merge across engines. Worker and primary judge: run `--role-config` entry > `--engine` (engine-only) > project role entry > legacy executor/default. Pair judge: run entry > project entry > `pair_judge_priority` / the OTHER-engine complement. A missing `model`/`effort` keeps that route's current default and is shown as inherited/unresolved.
-- **Boundaries** — `worker` covers IMPLEMENT, its included code/doc cleanup, and their repair rounds; `primary_judge` and `pair_judge` cover VERIFY only. PLAN stays orchestrator-fixed, BUILD_GATE/CLEANUP run owner commands, and risk-probe derivation stays outside these controls. OTHER must differ from the primary by engine: an explicit same-engine pair is `BLOCKED:invalid-engine-config`. `--no-pair` is unchanged — explicit solo VERIFY; an unused pair entry is neither dispatched nor availability-checked.
-- **Initial explicit routes** — Codex worker/primary/pair accept exact `model` + `effort` (dispatched as `-m` / `-c model_reasoning_effort=`, validated against the installed Codex CLI's native model metadata for its version). Claude primary/pair judges pass an exact `model` as `--model` and validate native result identity; model-only selection needs no source update for a new ID. Explicit `effort` separately requires the adapter's version/model support declaration. The Claude worker stays the native `Agent` route and is engine-only: explicit `model`/`effort` on a Claude worker is `BLOCKED:unsupported-role-option` — a supported-route boundary, not a claim that Claude cannot implement. Other adapters (omp, grok) are engine-only for their eligible roles.
-- **Errors** — `BLOCKED:unsupported-role-option` names the role, engine and field with guidance; there is no clamp, fallback, substituted model, or weaker retry. An explicitly selected engine (flag, pin, or profile) that is unavailable stops with `BLOCKED:<engine>-unavailable`. A native warning that a requested option was ignored is a failed promise even at exit 0.
-- **Requested vs observed** — `/devlyn-engines` status prints each role's requested engine/model/effort, source and dispatch channel before dispatch; it describes a request and does not prove a native invocation happened. Effective model is reported only with native evidence; a Codex worker receipt binds requested dispatch and leaves effective model unknown. A reported worker model reroute blocks completion even at exit 0. SURFACE_CLOSE inherits native Claude model settings and records the model from its required JSON result. Effective effort stays unknown unless native evidence establishes it — invocation arguments prove dispatch, not provider-internal reasoning.
-
-`--engine codex` routes IMPLEMENT and its included code/doc cleanup to Codex as a supported engine-only route (exact model/effort via the profiles above). Historical record: iter-0020 closed Codex BUILD/IMPLEMENT below the quality floor on the 9-fixture suite (L2 vs L1 = −3.6, 3/8 gated fixtures cleared the +5 margin floor — release-readiness FAIL). Separately, PLAN-pair remains research-only: iter-0033g + iter-0034 closed it with explicit unblock conditions (container/sandbox infra OR production telemetry capturing positive evidence of subagent introspection). Install the Codex CLI (https://platform.openai.com/docs/codex) and pass the flag explicitly to opt in:
-
-```
-/devlyn-resolve "fix the auth bug" --engine codex
-```
-
-If an engine is absent when explicitly selected by flag, pin, or role profile, or OTHER engine is absent under `--pair-verify`, the harness stops with `BLOCKED:<engine>-unavailable` and prints setup guidance. Automatic VERIFY absence is a reported solo route. Use `--no-pair` only when intentionally accepting solo VERIFY; use `--no-risk-probes` only when intentionally disabling automatic high-risk probes.
+`/devlyn-engines` with no arguments shows the executor and the engines detected on this machine; `executor <name>` pins one and `clear` removes the pin. A pin is a promise: an unavailable pinned engine stops dispatch with `BLOCKED:<engine>-unavailable`, and a name with no executor-eligible `_shared/adapters/<name>.md` stops with `BLOCKED:invalid-engine-config`. New engines plug in by shipping an adapter file.
 
 ### Migration from earlier versions
 
@@ -170,9 +109,26 @@ install no longer refreshes them and names each one it finds. Refresh them with 
 or delete them; delete `~/.grok/skills`, since Grok now reads `~/.agents/skills`.
 `npx devlyn-cli agents` was removed.
 
-<!-- legacy-surface-map:begin — retired command names below are documented as OLD, not current; lint Check 10c skips this block -->
+<!-- legacy-surface-map:begin — retired command names below are documented as OLD, not current; lint Checks 5e and 10c skip this block -->
+Upgrading past 4.1.0: `/devlyn-resolve` and the pipeline helpers only it used are retired;
+no measured replacement ships in their place. Run the installer again where devlyn is
+installed. It removes the `devlyn-resolve` folders (and pre-4.0.0 `devlyn:resolve` ones)
+where it installs, removes the Stop hook it added to `.claude/settings.json` while keeping
+your own hooks, and names the other settings it once added for the pipeline
+(`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` and its `.devlyn` and git permissions) without
+deleting them. `/devlyn-engines` keeps only the executor pin: `pair_judge_priority` and
+`roles` in `.devlyn/engines.json` stay as written, select nothing, and `clear` removes them.
+`task-complete.py` refuses acceptance that points at an archived resolve run
+(`kind: pipeline`) before changing anything, and prints the command that finishes the run
+with the release that produced it: `npm pack devlyn-cli@4.1.0`, extract the tarball, and run
+`python3 package/config/skills/_shared/task-complete.py complete --receipt <receipt>
+--acceptance <acceptance>` with your delivery flags. A PR/merge completion there binds the
+acceptance before publishing, and a receipt it binds resumes delivery with the current
+helper; with `--local-only` it ends as LOCAL_ONLY without binding, as 4.1.0 always did. To
+keep using resolve itself, stay on `devlyn-cli@4.1.0`.
+
 Upgrading to 4.0.0: every devlyn skill is renamed to the Agent Skills standard
-(`/devlyn:resolve` → `/devlyn-resolve`; the full list is in the table below). Run the
+(`/devlyn:ideate` → `/devlyn-ideate`; the full list is in the table below). Run the
 installer in each project that has devlyn (`npx devlyn-cli`, or `-y` with `--claude` and
 `--global` as needed): each run removes the old folders
 where it installs and keeps an optional skill you had under its new name. A 3.x installer run
@@ -183,14 +139,15 @@ devlyn skill by its old name or path (for example Codex `[[skills.config]]` or o
 `disabledExtensions`) needs the new name. A project that committed the old `devlyn:*`
 folders checks out on Windows once that re-sync is committed.
 
-Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4 cutover (2026-05-04) and the 2026-05-14 follow-up consolidated them down to the three current commands, and 4.0.0 renamed every devlyn skill to the Agent Skills naming standard (`devlyn-<name>`: lowercase, digits and hyphens, the same as its folder). Upgrades automatically purge the legacy skill directories.
+Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4 cutover (2026-05-04) and the 2026-05-14 follow-up consolidated them, 4.0.0 renamed every devlyn skill to the Agent Skills naming standard (`devlyn-<name>`: lowercase, digits and hyphens, the same as its folder), and after 4.1.0 resolve and design-ui were retired and the queue moved into ideate. Upgrades automatically purge the legacy skill directories.
 
 | Old command | Now use |
 |---|---|
-| `/devlyn:auto-resolve`, `/devlyn:preflight`, `/devlyn:evaluate`, `/devlyn:review`, `/devlyn:team-resolve`, `/devlyn:team-review`, `/devlyn:clean`, `/devlyn:update-docs`, `/devlyn:browser-validate`, `/devlyn:implement-ui` | `/devlyn-resolve` (folds them into PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY) |
+| `/devlyn:auto-resolve`, `/devlyn:preflight`, `/devlyn:evaluate`, `/devlyn:review`, `/devlyn:team-resolve`, `/devlyn:team-review`, `/devlyn:clean`, `/devlyn:update-docs`, `/devlyn:browser-validate`, `/devlyn:implement-ui` | Folded into resolve, now retired — work directly under the installed principles |
 | `/devlyn:product-spec`, `/devlyn:feature-spec`, `/devlyn:recommend-features`, `/devlyn:discover-product` | `/devlyn-ideate` |
 | `/devlyn:design-system` | Removed 2026-05-14 — no replacement |
-| `/devlyn:resolve`, `/devlyn:ideate`, `/devlyn:engines`, `devlyn:pencil-pull`, `devlyn:pencil-push`, `devlyn:reap` (3.x and earlier) | `/devlyn-resolve`, `/devlyn-ideate`, `/devlyn-engines`, `devlyn-pencil-pull`, `devlyn-pencil-push`, `devlyn-reap` (4.0.0) |
+| `/devlyn:ideate`, `/devlyn:engines`, `devlyn:pencil-pull`, `devlyn:pencil-push`, `devlyn:reap` (3.x and earlier) | `/devlyn-ideate`, `/devlyn-engines`, `devlyn-pencil-pull`, `devlyn-pencil-push`, `devlyn-reap` (4.0.0) |
+| `/devlyn:resolve` (3.x and earlier), `/devlyn-resolve` (4.0.0–4.1.0) | Retired — work directly under the installed principles; `/devlyn-ideate` plans and drains multi-task work |
 | `/devlyn:queue` (3.x and earlier), `/devlyn-queue` (4.0.0–4.1.0) | `/devlyn-ideate add`, `status` and `drain` |
 | `/devlyn-ideate --quick`, `--from-spec`, `--project` (4.1.0 and earlier) | `/devlyn-ideate plan`; `--autonomous` replaces `--quick` |
 | `/devlyn:team-design-ui`, `/devlyn:design-ui` (3.x and earlier), `/devlyn-design-ui` (4.0.0–4.1.0) | Retired — no replacement |
@@ -242,9 +199,9 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 | Server | Description |
 |---|---|
-| `playwright` | Playwright MCP — powers `/devlyn-resolve` BUILD_GATE browser tier (Chrome MCP → Playwright → curl fallback) |
+| `playwright` | Playwright MCP for browser testing |
 
-> `--engine codex` and default-when-available VERIFY pair mode use the local `codex` CLI binary, not MCP. Install from https://platform.openai.com/docs/codex, run the current Codex auth/login flow, verify `codex --version`, then rerun.
+> A Codex executor uses the local `codex` CLI binary, not MCP. Install it from https://platform.openai.com/docs/codex, run the current Codex auth/login flow and verify `codex --version`.
 
 </details>
 
@@ -258,7 +215,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 - **Python 3.11+** available as `python3`, and Git for the harness
 - **An agent CLI** installed and configured: Codex, omp, Pi or Grok (AGENTS.md), or [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLAUDE.md)
 
-On native Windows, use native Node/npm and Python plus Git for Windows Bash for the shipped shell wrapper. Run `npx devlyn-cli -y` in the project (add `--claude` for Claude Code). Skill folders follow the Agent Skills naming standard (for example `devlyn-resolve`), so a project that commits them checks out on Windows. Harness text is UTF-8 without requiring `PYTHONUTF8`.
+On native Windows, use native Node/npm and Python plus Git for Windows Bash for the shipped shell wrapper. Run `npx devlyn-cli -y` in the project (add `--claude` for Claude Code). Skill folders follow the Agent Skills naming standard (for example `devlyn-ideate`), so a project that commits them checks out on Windows. Harness text is UTF-8 without requiring `PYTHONUTF8`.
 
 Windows completion preserves the workspace, owned refs and recovery receipt when writer cessation cannot be proved, even after merge; resume guidance and delivery status remain separate from product verification. The portability workflow checks out the repository on native Windows and tests the POSIX-packed npm artifact there. A POSIX pass alone does not establish Windows support: acceptance requires the passing Windows job for the exact source SHA/artifact hashes.
 
@@ -270,7 +227,7 @@ Windows completion preserves the workspace, owned refs and recovery receipt when
 
 ## Supercharge it — pair devlyn with persistent agent memory
 
-devlyn-cli gives your agent a world-class **harness**. Give it a world-class **memory** and the loop compounds — decisions, corrections, and hard-won context survive across sessions instead of resetting every conversation.
+devlyn-cli gives your agent a **harness**. Give it a world-class **memory** and the loop compounds — decisions, corrections, and hard-won context survive across sessions instead of resetting every conversation.
 
 > [!TIP]
 > ### 🧠 [pyx-memory](https://memory.pyxmate.com) — world-class agentic memory (hybrid RAG) for coding agents
@@ -280,7 +237,7 @@ devlyn-cli gives your agent a world-class **harness**. Give it a world-class **m
 - **Hybrid retrieval** — semantic *and* graph recall: find by meaning *and* by relationship
 - **Learns the loop** — reinforces what works, records corrections when it doesn't
 
-**Harness (devlyn) + Memory (pyx-memory) = agents that don't just execute — they improve.** Wire up **pyx-memory** as an MCP server and `/devlyn-resolve` recalls prior decisions before it plans and stores what it learns after it ships.
+**Harness (devlyn) + Memory (pyx-memory) = agents that don't just execute — they improve.** Wire up **pyx-memory** as an MCP server so your agent recalls prior decisions before it plans and stores what it learns after it ships.
 
 ## Support & Attribution
 

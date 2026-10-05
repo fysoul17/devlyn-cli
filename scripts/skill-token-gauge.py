@@ -11,7 +11,7 @@ config/skills/ and optional-skills/, plus config/skills/_shared/**/*.md and
 the root CLAUDE.md / AGENTS.md.
 
 A gauge, not a gate: reports current cost, does not compare, threshold, or
-fail. See scripts/static-ab.sh for before/after delta checks.
+fail.
 
 Usage:
     python3 scripts/skill-token-gauge.py [--json]
