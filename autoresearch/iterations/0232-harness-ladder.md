@@ -119,7 +119,7 @@ Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함")
 
 ## 6. Registration (stage 1)
 
-**FROZEN 2026-10-05.** Astra's stage-1 readiness review (`stage1-app-v1-astra.out.md`) required four apparatus fixes, made in `a1d48e53`; its freeze verification is `stage1-freeze-v1-astra.out.md`. Any later change is a dated addendum at the end of this section.
+**FROZEN 2026-10-05.** Astra's stage-1 readiness review (`stage1-app-v1-astra.out.md`) required four apparatus fixes, made in `a1d48e53`; its freeze verification is `stage1-freeze-v1-astra.out.md` (REVISE: the SMOKE criterion for I) and `stage1-freeze-v2-astra.out.md`. Any later change is a dated addendum at the end of this section.
 
 - **Cells:** A/I/F × D3/D4/I0185 × claude/codex × 2 replicates = 36 measured cells, run one at a time in `experiments/0232/cells.tsv` order. Six SMOKE cells (`smoke.tsv`) run first and stay outside every sum and decision.
 - **Arms**, the same way in both configurations:
@@ -131,6 +131,7 @@ Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함")
   - I: `candidate/0232-rung1` at `5bf3dc740773851bee787a4f69c05b02ae0d62b6`; pack sha256 `3ee56995952ec6b4bf0335f37ba7161dee1f061ab7281b6a01c0752772225427`.
   - F: `4056ebe24cba16c03bc447a8fbd4bb92cbf21edb`; pack sha256 `48d21558e717a8b833b619d7ea696d07512cb78b6f29d13b0ccfb063ac263806`, file for file the published 4.1.0 tarball.
   - Image `devlyn-0231` `sha256:1a1c68897b18960e56f176ce03e8209f5b6c9950efc0d2631b7290d9de25a283`: Claude Code 2.1.281, Codex 0.156.1, Node 22.23.2.
+  - Every cell gets the same frozen Codex models cache, sha256 `0968c49e13f086fb4211c5a1a2d20255f0bfd96ac8588054894f7956c885c794`.
   - Apparatus `experiments/0232/` at `5dbdd4b3`. Control-tree manifest digest `fcc5b8acb3bfcdc49e17c8da47ef07b55912fcd31b2c87d202ffd33948c9d633`; its public and oracle trees are identical to 0231's.
   - Routes (`experiments/0222/tasks.json`):
     - claude config: owner claude-opus-5-5 high; reviewer codex gpt-6-astra high;
@@ -161,12 +162,12 @@ Also on 2026-10-05, before this redirection, the owner approved R5 ("보호함")
   - allocation from the mirror;
   - snapshot selection;
   - usage reconciled, or its gaps named;
-  - for I, at least one review launch with its record;
+  - in each I SMOKE configuration, at least one review by the registered other engine completes successfully: exit zero, native terminal success, a nonempty final answer, and its retained launch record;
   - clean teardown.
 
-  A failed SMOKE blocks measurement. A treatment change that SMOKE requires re-freezes that arm, with the new commit and pack digest recorded as an addendum, and repeats its SMOKE cells. One such change is pre-registered from Astra's readiness review: if the Bash tool's default two-minute timeout cuts off a Claude owner's review, I's block gains the instruction to run the review in the foreground with a 600000 ms timeout. Nothing else changes.
-- **Accounts:** cells run on the host's Claude and Codex logins, each cell behind 0231's preflight (fresh login, identity, limits, free space). Root's monitoring and reviews share those accounts; no other model-heavy work runs during measured cells.
-- **Faults:** as in [0231](0231-bundle-live-comparison.md) "Faults".
+  A failed SMOKE blocks measurement. Final-tree compliance stays reported methodology there, and SMOKE requires neither product success nor full instruction compliance. The only pre-authorized treatment adjustment comes from Astra's readiness review: if the Bash tool's default two-minute timeout cuts off a Claude owner's review, I's block gains the instruction to run the review in the foreground with a 600000 ms timeout. That change is recorded as an addendum with its new commit and pack digest, and both I SMOKE cells repeat. Any other treatment change needs a separate registration.
+- **Accounts:** cells run on the host's Claude and Codex logins. Each cell is behind 0231's preflight (fresh login, identity, limits and free space), except that the free-space floor is 8 GiB instead of 20 GiB. Root's monitoring and reviews share those accounts; no other model-heavy work runs during measured cells.
+- **Faults:** as in [0231](0231-bundle-live-comparison.md) "Faults". One exception: I's review launcher has no deadline of its own. The owner's tool timeouts and the common owner watchdog govern it.
 - **After stage 1:** later rungs, the easy-task panel and ideate's loop experiment are each registered separately, under this rule against the last admitted rung.
 
 ### Predictions (before any run)
