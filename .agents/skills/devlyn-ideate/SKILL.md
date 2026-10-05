@@ -100,7 +100,7 @@ Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" status --repo .` and report it
 
 ## drain
 
-Follow [loop.md](references/loop.md). The executor is the configured route, the `.devlyn/engines.json` `executor` pin or else this CLI, checked per `_shared/engine-preflight.md`. Pass it after `--` as an argv that starts one fresh non-interactive session of that engine, able without prompts to edit, run commands and commit in its task worktree and to write the packet's submission file, with the prompt `Execute the devlyn loop task packet {packet}: meet its obligations, then write its submission and any review records as "Executor exchange" and "Review records" in <absolute DEVLYN_SKILL_DIR>/references/loop.md specify.`
+Follow [loop.md](references/loop.md). The executor is the configured route, the `.devlyn/engines.json` `executor` pin or else this CLI, checked per `_shared/engine-preflight.md`. Pass it after `--` as an argv that starts one fresh non-interactive session of that engine, able without prompts to edit, run commands and commit in its task worktree and to write the packet's submission file, with the prompt `Execute the devlyn loop task packet {packet}: work only in its owned worktree under the installed instructions and never start /devlyn-resolve; meet its obligations, then write its submission and any review records as "Executor exchange" and "Review records" in <absolute DEVLYN_SKILL_DIR>/references/loop.md specify.`
 
 ```sh
 python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" drain --repo . [--local-only] -- <executor argv>

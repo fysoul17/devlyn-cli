@@ -745,7 +745,8 @@ init({options});
                         self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
                         self.assertTrue(after.endswith(suffix.replace(b'\n', eol)))
                         self.assertIn(b'# Project Instructions' + eol, managed)
-                        for stale in (b'Codex CLI reads this file', b'design-ui', b'devlyn-queue', b'references/task-completion.md'):
+                        for stale in (b'Codex CLI reads this file', b'design-ui', b'devlyn-queue', b'references/task-completion.md',
+                                      b'outer-loop.md', b'queue drains retain', b'--quick', b'--from-spec', b'per item: spec it'):
                             self.assertNotIn(stale, after)
                         if edited:
                             self.assertTrue(custom.startswith(prefix.replace(b'\n', eol)))
