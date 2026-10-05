@@ -1,0 +1,7 @@
+# name task arm config — 0232 route smoke (outside every sum and decision)
+smoke-claude-A SMOKE A claude
+smoke-claude-I SMOKE I claude
+smoke-claude-F SMOKE F claude
+smoke-codex-A SMOKE A codex
+smoke-codex-I SMOKE I codex
+smoke-codex-F SMOKE F codex

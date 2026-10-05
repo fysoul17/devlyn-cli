@@ -1,0 +1,39 @@
+# name task arm config replicate — 0232 measured cells, registered order. Each (task, config) group of three runs back
+# to back; per config and replicate the groups form a Latin square of arm positions, and replicate 2 runs the groups
+# in reverse order with each arm order reversed, so each config sees all six arm orders once.
+m01-D4-claude-A-r1 D4 A claude 1
+m02-D4-claude-I-r1 D4 I claude 1
+m03-D4-claude-F-r1 D4 F claude 1
+m04-I0185-codex-A-r1 I0185 A codex 1
+m05-I0185-codex-F-r1 I0185 F codex 1
+m06-I0185-codex-I-r1 I0185 I codex 1
+m07-D3-claude-F-r1 D3 F claude 1
+m08-D3-claude-A-r1 D3 A claude 1
+m09-D3-claude-I-r1 D3 I claude 1
+m10-D4-codex-F-r1 D4 F codex 1
+m11-D4-codex-I-r1 D4 I codex 1
+m12-D4-codex-A-r1 D4 A codex 1
+m13-I0185-claude-I-r1 I0185 I claude 1
+m14-I0185-claude-F-r1 I0185 F claude 1
+m15-I0185-claude-A-r1 I0185 A claude 1
+m16-D3-codex-I-r1 D3 I codex 1
+m17-D3-codex-A-r1 D3 A codex 1
+m18-D3-codex-F-r1 D3 F codex 1
+m19-D3-codex-F-r2 D3 F codex 2
+m20-D3-codex-A-r2 D3 A codex 2
+m21-D3-codex-I-r2 D3 I codex 2
+m22-I0185-claude-A-r2 I0185 A claude 2
+m23-I0185-claude-F-r2 I0185 F claude 2
+m24-I0185-claude-I-r2 I0185 I claude 2
+m25-D4-codex-A-r2 D4 A codex 2
+m26-D4-codex-I-r2 D4 I codex 2
+m27-D4-codex-F-r2 D4 F codex 2
+m28-D3-claude-I-r2 D3 I claude 2
+m29-D3-claude-A-r2 D3 A claude 2
+m30-D3-claude-F-r2 D3 F claude 2
+m31-I0185-codex-I-r2 I0185 I codex 2
+m32-I0185-codex-F-r2 I0185 F codex 2
+m33-I0185-codex-A-r2 I0185 A codex 2
+m34-D4-claude-F-r2 D4 F claude 2
+m35-D4-claude-I-r2 D4 I claude 2
+m36-D4-claude-A-r2 D4 A claude 2

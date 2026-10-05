@@ -1,4 +1,4 @@
-# 0232 harness ladder — owner direction 2026-10-05; next: build rung 1 and the apparatus, then stage 1
+# 0232 harness ladder — stage 1 FROZEN; next: SMOKE, then the 36 measured cells
 
 ## The owner's direction (2026-10-05)
 
@@ -16,16 +16,19 @@ Wall, input and output are judged per correctly completed task, failures include
 - **0230 bundle** (`bundle/0225-steps-2-5`, head `f71a17d3`): parked, unmerged.
   - The v7 review-fix round is kept for reference and for reusing primitives. It consists of `candidate/bundle-review-fix-v7` at `3eed3956`, plus uncommitted wave 2 in the worktrees `~/.local/share/nx01/v7-w5` and `v7-w6`.
   - Owner decision R5 (2026-10-05) carries into `intent`: a PHASE 0 ignored inventory protects pre-run user files.
-- **0231** (`candidate/0231-registration`, `dd29d664`, APPARATUS-SHIP): superseded by 0232. Its apparatus is the base for 0232's.
+- **0231:** superseded by 0232 and never run. Its apparatus (`dd29d664`) is the base of 0232's.
+- **0232 stage 1 is frozen** (0232 §6):
+  - Rung 1 (I) is `candidate/0232-rung1` at `5bf3dc74`. It stays unmerged until the ladder admits it.
+  - The apparatus is `experiments/0232/`.
+  - The runtime is `~/.local/share/nx01/0232-live`: `runtime.json`, the control tree (manifest digest `fcc5b8ac…`) and the model-free calibration.
+- **Product track:** the ideate loop (Astra D6) and the retirement of design-ui and the queue skill. It is being built on `candidate/ideate-*` and is verified and merged separately.
 
 **Next:**
 
-1. Build rung 1, the instruction-only block plus a cross-engine review helper.
-2. Build the apparatus extension for A (native), I (instruction treatment) and an unchanged F (main resolve), including Claude input/cache accounting. N/intent preparation is deferred.
-3. Astra check.
-4. SMOKE.
-5. Stage 1.
-6. Ladder rungs, each by the promotion rule.
+1. **SMOKE:** the six cells in `smoke.tsv`, each run with `python3 run_cell.py <runtime.json> <name> SMOKE <arm> <config>` from `experiments/0232`. Check the SMOKE criteria in §6.
+2. **Measurement:** the 36 cells in `cells.tsv` order, one at a time.
+3. **Decision:** `decide.py` on the verdicts plus root's recorded judgments. Write RESULT, get Astra's verification, then open the PR.
+4. **Ladder:** later rungs only where the result licenses them.
 
 ## Open user decisions and carried notes
 
