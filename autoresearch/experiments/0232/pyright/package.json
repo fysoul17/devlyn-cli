@@ -1,0 +1,7 @@
+{
+  "name": "devlyn-0231-pyright",
+  "private": true,
+  "dependencies": {
+    "pyright": "1.1.408"
+  }
+}
