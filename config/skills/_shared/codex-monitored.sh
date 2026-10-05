@@ -22,9 +22,9 @@
 #      (Round 2 finding #1 fix: shim alone does not defeat `| tail`; the
 #      wrapper must reject the pipe shape directly.)
 #   2. Closes stdin unless DEVLYN_CODEX_PROMPT_FILE supplies the sole prompt.
-#   3. Streams codex stdout to OUR stdout line-by-line — the orchestrator reads
-#      stdout as the subagent reply (per `_shared/codex-config.md`) so we MUST
-#      NOT swallow it (e.g. `tail -n 200`). codex stderr forwards to OUR stderr.
+#   3. Streams codex stdout to OUR stdout line-by-line — the caller reads
+#      stdout as the Codex reply, so we MUST NOT swallow it (e.g.
+#      `tail -n 200`). codex stderr forwards to OUR stderr.
 #   4. Emits a `[codex-monitored] heartbeat` line every CODEX_MONITORED_HEARTBEAT
 #      seconds (default 30s) on STDERR while codex is alive. Heartbeat-on-stderr
 #      keeps the orchestrator's combined-output stream non-silent without
@@ -47,18 +47,10 @@
 #                                     CODEX_REAL_BIN when set, else `codex`.
 #                                     Set this when the shim has put us first
 #                                     on PATH.
-#   CODEX_MONITORED_ISOLATED       — set non-empty for bounded read-only
-#                                     probe/judge calls that must ignore
-#                                     user config, project rules, session
-#                                     persistence, and hook side effects.
 #   CODEX_MONITORED_ALLOW_PIPED    — set non-empty to skip the pipe-stdout
 #                                     refusal. Reserved for tests; don't use
 #                                     in skill prompts.
 #   DEVLYN_CODEX_PROMPT_FILE      — exact binary stdin prompt; requires sole `-`.
-#   DEVLYN_INVOCATION_*             — run/phase/round/workdir/prompt/session/
-#                                     receipt identity. When any is set, all
-#                                     are required and the wrapper seals a
-#                                     canonical invocation receipt.
 
 set -uo pipefail
 
@@ -119,45 +111,6 @@ require_positive_int() {
 
 require_positive_int CODEX_MONITORED_HEARTBEAT "$HEARTBEAT_SEC"
 require_nonnegative_int CODEX_MONITORED_TIMEOUT_SEC "$TIMEOUT_SEC"
-
-RECEIPT_ENABLED=""
-for receipt_value in \
-  "${DEVLYN_INVOCATION_RUN_ID:-}" \
-  "${DEVLYN_INVOCATION_PHASE:-}" \
-  "${DEVLYN_INVOCATION_ROUND:-}" \
-  "${DEVLYN_INVOCATION_WORKDIR:-}" \
-  "${DEVLYN_INVOCATION_PROMPT_FILE:-}" \
-  "${DEVLYN_INVOCATION_SESSION_FILE:-}" \
-  "${DEVLYN_INVOCATION_RECEIPT:-}"; do
-  if [ -n "$receipt_value" ]; then
-    RECEIPT_ENABLED=1
-  fi
-done
-if [ -n "$RECEIPT_ENABLED" ]; then
-  for receipt_name in \
-    DEVLYN_INVOCATION_RUN_ID DEVLYN_INVOCATION_PHASE DEVLYN_INVOCATION_ROUND \
-    DEVLYN_INVOCATION_WORKDIR DEVLYN_INVOCATION_PROMPT_FILE \
-    DEVLYN_INVOCATION_SESSION_FILE DEVLYN_INVOCATION_RECEIPT; do
-    eval "receipt_value=\${$receipt_name:-}"
-    if [ -z "$receipt_value" ]; then
-      printf '[codex-monitored] error: %s is required for invocation receipt\n' \
-        "$receipt_name" >&2
-      exit 64
-    fi
-  done
-  require_nonnegative_int DEVLYN_INVOCATION_ROUND "$DEVLYN_INVOCATION_ROUND"
-fi
-
-if [ -n "${CODEX_MONITORED_ISOLATED:-}" ]; then
-  CODEX_ARGS=(
-    --ignore-user-config
-    --ignore-rules
-    --ephemeral
-    --disable codex_hooks
-    --disable hooks
-    "${CODEX_ARGS[@]}"
-  )
-fi
 
 # --- Pipe-stdout refusal (iter-0009 R2 finding #1) -------------------------
 # `[ -p /dev/stdout ]` is the POSIX test for "is fd 1 a FIFO/pipe". Verified
@@ -266,9 +219,6 @@ trap cleanup EXIT
 
 printf '[codex-monitored] start: ts=%s heartbeat=%ds timeout=%ss bin=%s\n' \
   "$(date -u +%FT%TZ)" "$HEARTBEAT_SEC" "$TIMEOUT_SEC" "$CODEX_BIN" >&2
-if [ -n "${CODEX_MONITORED_ISOLATED:-}" ]; then
-  printf '[codex-monitored] isolated=1\n' >&2
-fi
 
 RECEIPT_HELPER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/invocation-receipt.py"
 # Native Python owns Windows PIDs and the timeout tree; MSYS PIDs are different.
@@ -304,7 +254,7 @@ if [ -n "$TIMEOUT_FLAG" ] && [ -f "$TIMEOUT_FLAG" ]; then
   EXIT=124
 fi
 
-if [ -n "$RECEIPT_ENABLED" ] || [ -n "${DEVLYN_CODEX_PROMPT_FILE:-}" ]; then
+if [ -n "${DEVLYN_CODEX_PROMPT_FILE:-}" ]; then
   python3 "$RECEIPT_HELPER" complete-dispatch --exit-code "$EXIT" || exit 64
 fi
 
