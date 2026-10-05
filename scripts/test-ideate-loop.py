@@ -111,8 +111,7 @@ class LoopFixture(unittest.TestCase):
         (self.anchor / "docs/specs/queue.md").write_bytes(self.base_queue)
         self.g("add", ".")
         self.g("commit", "-qm", "base")
-        self.g("remote", "add", "origin", "https://github.com/test/project.git")
-        self.base = self.g("rev-parse", "HEAD")
+        self.base = self.g("rev-parse", "HEAD")  # No remote: local loops neither need nor touch one.
         self.common = Path(self.g("rev-parse", "--path-format=absolute", "--git-common-dir"))
         self.config = self.root / "executor" / "behaviors.json"
         self.config.parent.mkdir()
@@ -299,6 +298,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.g("rev-parse", settled["recovery_ref"]), terminal)
 
     def test_failures_never_reach_accepted(self):
+        self.g("remote", "add", "origin", "https://gitlab.com/team/project.git")  # Local loops need no GitHub remote.
         greeting, notes = CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK])
         self.plan("aa", CHAIN, {"aa.t1": {"product": "bad-greeting", "runner": False, "review": False}, "aa.t2": {"product": "app"}})
         self.plan("bb", CHAIN, {"bb.t1": {"product": "greeting", "change_after_review": True}, "bb.t2": {"product": "app"}})
@@ -358,6 +358,7 @@ class LoopFixture(unittest.TestCase):
         data = self.root / "gh.json"
         data.write_text(json.dumps({"bare": str(bare), "pending": True}), encoding="utf-8")
         self.env.update(PATH=str(bin_dir) + os.pathsep + self.env["PATH"], FIXTURE_GH=str(data), REAL_GIT=shutil.which("git"))
+        self.g("remote", "add", "origin", "https://github.com/test/project.git")
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
         result = self.drain(local=False)
         tasks = self.tasks(result)

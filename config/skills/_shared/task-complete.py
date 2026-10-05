@@ -186,14 +186,15 @@ def allocate(args):
     receipt = {"task": args.task, "repository": args.repository, "remote": args.remote,
                "base": args.base, "branch": args.branch, "common_gitdir": str(common),
                "anchor": str(work), "linked": True, "allocation": "allocating"}
-    policy(receipt, None)
-    receipt["remote_url"] = remote_url(receipt)
-    require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
     require(not ref_sha(receipt, "refs/heads/"+args.branch), "existing branch cannot be adopted")
     local = local_baseline(receipt, args)
-    receipt["baseline"] = local or remote_base(receipt)
     if local:
-        receipt["local_only"] = True
+        receipt["local_only"] = True  # Local work needs no remote: nothing is fetched or pushed.
+    else:
+        policy(receipt, None)
+        receipt["remote_url"] = remote_url(receipt)
+        require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
+    receipt["baseline"] = local or remote_base(receipt)
     target = Path(args.worktree).absolute()
     require(target == target.resolve(), "worktree path must not traverse symlinks")
     require(not target.exists() and all(not target.is_relative_to(p) and not p.is_relative_to(target) for p in map(Path, registrations(receipt))), "linked worktree must be an absent path disjoint from every registered worktree")

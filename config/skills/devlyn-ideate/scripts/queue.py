@@ -577,12 +577,8 @@ def allocate(v, row, opts):
     package = v["packages"][loop]
     manifest = package["manifest"]
     anchor = v["anchor"]
-    try:
-        repository_name = shared("task-complete")["repository_from_url"](git(anchor, "config", "--get", "remote.origin.url"))
-    except (LoopError, shared("task-complete")["CompletionError"]) as exc:
-        raise LoopError(f"task-complete needs an origin remote naming one GitHub repository: {exc}") from exc
     deps = [v["states"][f"{loop}.{dep}"] for dep in package["tasks"][task]["depends_on"]]
-    values = {"repo": str(anchor), "task": identity, "branch": branch_of(identity), "repository": repository_name,
+    values = {"repo": str(anchor), "task": identity, "branch": branch_of(identity), "repository": None,
               "base": manifest["base_ref"], "remote": "origin", "worktree": str(opts.worktree_root / loop / task),
               "local_base": None, "from_receipt": None}
     if is_local(v, loop):
@@ -592,6 +588,11 @@ def allocate(v, row, opts):
             require(ancestor(anchor, dep["receipt"]["source_sha"], start),
                     f"{identity}: prerequisite source {dep['receipt']['source_sha']} is not in the accepted frontier {start}; plan an integration task")
         values["from_receipt" if tip else "local_base"] = str(tip["path"]) if tip else start
+    else:
+        try:
+            values["repository"] = shared("task-complete")["repository_from_url"](git(anchor, "config", "--get", "remote.origin.url"))
+        except (LoopError, shared("task-complete")["CompletionError"]) as exc:
+            raise LoopError(f"{identity}: {manifest['delivery']} delivery needs an origin remote naming one GitHub repository: {exc}") from exc
     result = task_complete("allocate", **values)
     progress(identity, f"allocated {result['worktree']}")
     if not is_local(v, loop):
