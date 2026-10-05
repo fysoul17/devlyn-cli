@@ -428,7 +428,10 @@ def derive_state(anchor, common, row, claims):
             f"conflicting terminal state for {identity}: queue row [{row['mark']}] but receipt {path} is {result or 'unbound'}")
     if result:
         recovery = ref_value(anchor, receipt["recovery_ref"])
-        require(recovery == receipt["publish_sha"], f"{identity}: recovery ref {receipt['recovery_ref']} is {recovery or 'missing'}, receipt binds {receipt['publish_sha']}")
+        # An attachment interrupted after moving the recovery ref, before saving the receipt; drain completes it.
+        interrupted = not receipt.get("queue") and bool(recovery) and is_terminal(anchor, receipt, identity, recovery)
+        require(recovery == receipt["publish_sha"] or interrupted,
+                f"{identity}: recovery ref {receipt['recovery_ref']} is {recovery or 'missing'}, receipt binds {receipt['publish_sha']}")
         if receipt.get("queue"):
             marks = [r["mark"] for r in parse_queue(show(anchor, receipt["publish_sha"], QUEUE) or b"") if r["identity"] == identity]
             require(marks == ["x" if result == "accepted" else "F"], f"{identity}: terminal commit {receipt['publish_sha']} does not carry its {result} mark")
@@ -732,22 +735,33 @@ def ensure_submission(identity, packet_path, packet, executor):
     return None
 
 
+def terminal_queue(cwd, receipt, identity):
+    """The queue of this bound result's only legal terminal transition: its row becomes [x] or [F] — <reason>."""
+    failed = receipt.get("product") == "FAILED"
+    suffix = f" — {one_line(receipt['acceptance']['reasons'][0])} (receipt {receipt['id']})" if failed else ""
+    return transition(show(cwd, receipt["acceptance"]["inputs_sha"], QUEUE) or b"", identity, "F" if failed else "x", suffix)
+
+
+def is_terminal(cwd, receipt, identity, commit):
+    """Whether `commit` is that transition: its sole parent is the bound source and its only change is the row."""
+    source = receipt["source_sha"]
+    return (git(cwd, "rev-list", "--parents", "-n", "1", commit).split() == [commit, source]
+            and git(cwd, "diff", "--name-only", source, commit) == QUEUE and show(cwd, commit, QUEUE) == terminal_queue(cwd, receipt, identity))
+
+
 def settle(v, row, receipt_file):
     """Create (or adopt) the queue-only terminal commit atop the bound source, then attach it."""
     identity = row["identity"]
     receipt = read_json(receipt_file)
     worktree, source, branch = Path(receipt["worktree"]), receipt["source_sha"], receipt["branch"]
     failed = receipt.get("product") == "FAILED"
-    suffix = f" — {one_line(receipt['acceptance']['reasons'][0])} (receipt {receipt['id']})" if failed else ""
     with lock(v["common"], "queue.lock", blocking=True):
-        after = transition(show(worktree, receipt["acceptance"]["inputs_sha"], QUEUE) or b"", identity, "F" if failed else "x", suffix)
         head = git(worktree, "rev-parse", "refs/heads/" + branch)
         if head == source:
-            commit = commit_files(worktree, branch, source, {QUEUE: after}, f"devlyn loop: {identity} {'failed' if failed else 'accepted'}",
-                                  checkout=not failed)
+            commit = commit_files(worktree, branch, source, {QUEUE: terminal_queue(worktree, receipt, identity)},
+                                  f"devlyn loop: {identity} {'failed' if failed else 'accepted'}", checkout=not failed)
         else:
-            require(git(worktree, "rev-parse", head + "^") == source and show(worktree, head, QUEUE) == after
-                    and git(worktree, "diff", "--name-only", source, head) == QUEUE,
+            require(is_terminal(worktree, receipt, identity, head),
                     f"{identity}: owned branch moved past the bound source without its terminal transition; inspect {worktree}")
             commit = head
             if not failed:

@@ -322,25 +322,40 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((settled["source_sha"], settled["acceptance_digest"]), (bound["source_sha"], bound["acceptance_digest"]))
         self.assertEqual(self.rows(settled["publish_sha"])["inv.t1"]["mark"], "x")
 
-    def test_interruption_after_terminal_commit_attaches_and_delivers_only(self):
+    def kill_before_attachment(self):
+        """Kill the driver after inv.t1's terminal commit, while attachment waits for the receipt lock."""
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", "hold": True}, "inv.t2": {"product": "app"}})
         driver = self.drain_until("inv.t1: bound", "inv.t1: terminal")
         next(driver)
         receipt_lock = self.hold(self.receipt_path("inv.t1").with_name("lock"))
         self.release_executor_holder()
         next(driver).kill()
+        receipt_lock.kill()
+        receipt_lock.wait()
         partial = self.receipt("inv.t1")
         terminal = self.g("rev-parse", "refs/heads/devlyn/inv/t1")
         self.assertNotEqual(terminal, partial["source_sha"])
         self.assertNotIn("queue", partial)
         self.assertEqual(self.g("rev-parse", partial["recovery_ref"]), partial["source_sha"])
-        receipt_lock.kill()
-        receipt_lock.wait()
-        result = self.drain()
+        return partial, terminal
+
+    def assert_attached_once(self, result, terminal):
         self.assertEqual(self.tasks(result)["inv.t1"]["result"], "accepted")
         settled = self.receipt("inv.t1")
         self.assertEqual((settled["queue"]["commit"], settled["delivery"], self.calls("inv.t1")), (terminal, "LOCAL_ONLY", 1))
         self.assertEqual(self.g("rev-parse", settled["recovery_ref"]), terminal)
+
+    def test_interruption_after_terminal_commit_attaches_and_delivers_only(self):
+        _, terminal = self.kill_before_attachment()
+        self.assert_attached_once(self.drain(), terminal)
+
+    def test_interrupted_attachment_is_completed_on_resume(self):
+        partial, terminal = self.kill_before_attachment()
+        # Attachment's first write moves the recovery ref; a crash before its receipt save leaves this state.
+        self.g("update-ref", partial["recovery_ref"], terminal, partial["source_sha"])
+        resume = {t["identity"]: t["resume"] for t in self.cli("status", "--repo", self.anchor)["delivery"]}["inv.t1"]
+        self.assertIn("drain again", resume)
+        self.assert_attached_once(self.drain(), terminal)
 
     def test_failures_never_reach_accepted(self):
         self.g("remote", "add", "origin", "https://gitlab.com/team/project.git")  # Local loops need no GitHub remote.
