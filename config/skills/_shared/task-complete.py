@@ -349,8 +349,11 @@ def bind_acceptance(receipt, path, supplied):
                 expected = (source_path.with_name("spec.expected.json") if key == "spec_path" else source_path.with_suffix(".expected.json")).as_posix()
                 if key == "spec_path" and "expected_sha256" in source:
                     contract = safe_path(work, expected)
-                    bound = file_record(contract)["sha256"] if contract.exists() else None
-                    require(bound == source["expected_sha256"], "verification contract differs from run binding")
+                    # Absence means no directory entry; an inspection error raises instead of reading as absence.
+                    present = shared("spec-verify-check")["_present"](contract)
+                    require(present == (source["expected_sha256"] is not None)
+                            and (not present or file_record(contract)["sha256"] == source["expected_sha256"]),
+                            "verification contract differs from run binding")
                 if safe_path(work, expected).exists():
                     if key == "spec_path":
                         committed = subprocess.run(["git", "--git-dir", receipt["common_gitdir"], "show", sha+":"+expected], capture_output=True)
@@ -1983,6 +1986,32 @@ class CompletionTests(unittest.TestCase):
         _, r = self.complete(success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("verification contract differs from run binding", json.loads(r.stdout)["reason"])
+
+    def test_bound_contract_absence_refuses_any_entry(self):
+        """Bound absence means no directory entry: a planted directory or dangling symlink is refused, an inspection
+        error is never read as absence, and genuine absence delivers."""
+        from unittest.mock import patch
+        self.allocate(); self.accept(pipeline=True, spec_expected={"pure_design": True}, spec_name="X.md", contract_committed=False)
+        self.state["source"]["expected_sha256"] = None
+        (self.archive / "pipeline.state.json").write_text(json.dumps(self.state), encoding="utf-8")
+        contract = self.task / "spec.expected.json"
+        contract.unlink()
+        for plant, remove, reason in ((Path.mkdir, Path.rmdir, "verification contract differs from run binding"),
+                                      (lambda path: path.symlink_to("missing"), Path.unlink, "symlink is not owned evidence")):
+            plant(contract)
+            _, r = self.complete(success=False)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn(reason, json.loads(r.stdout)["reason"])
+            remove(contract)
+        real_lstat = os.lstat
+        def lstat(path, *args, **kwargs):
+            if os.fspath(path) == os.fspath(contract):
+                raise PermissionError("injected inspection error")
+            return real_lstat(path, *args, **kwargs)
+        with patch.object(os, "lstat", lstat), self.assertRaisesRegex(PermissionError, "injected inspection error"):
+            bind_acceptance(json.loads(self.receipt.read_text(encoding="utf-8")), self.receipt, str(self.acceptance))
+        result, _ = self.complete("--mode", "pr")
+        self.assertEqual(result["status"], "PR")
 
     def test_named_spec_publishes_the_committed_contract(self):
         self.allocate(); self.accept(pipeline=True, spec_expected={"pure_design": True}, spec_name="X.md", contract_committed=False)

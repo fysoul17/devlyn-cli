@@ -499,7 +499,8 @@ def write_final_report(state: dict, devlyn: pathlib.Path, work: pathlib.Path, su
     verdict = terminal_verdict(state, devlyn, work, supplied)
     text = render_final_report(state, devlyn, work, verdict, detail)
     with tempfile.NamedTemporaryFile("wb", dir=devlyn, delete=False, suffix=".tmp") as handle:
-        handle.write(text.encode("utf-8"))
+        # A finding can carry a non-UTF-8 name as a lone surrogate; escape it instead of failing the report.
+        handle.write(text.encode("utf-8", "backslashreplace"))
     os.replace(handle.name, path)
     return verdict, final_report_digest(state, devlyn, str(path))
 
@@ -1717,8 +1718,9 @@ def final_report_self_test() -> None:
         old_block = json.dumps({"run_id": "rs-older", "round": 0, "skips": [{"gate": "tests", "reason": "old"}]})
         (matrix[0][1][1] / "mechanical.log.md").write_text(
             "".join(f"<!-- devlyn:mechanical-skips -->\n```json\n{b}\n```\n" for b in (old_block, pass_block)), encoding="utf-8")
+        # The gate records a non-UTF-8 name as a lone surrogate; the report shows it escaped.
         (matrix[5][1][1] / "finish-gate.findings.jsonl").write_text(json.dumps({
-            "severity": "HIGH", "rule_id": "scope.finish-unaudited-file", "file": "notes.txt", "line": 1,
+            "severity": "HIGH", "rule_id": "scope.finish-unaudited-file", "file": "caf\udce9.txt", "line": 1,
             "message": "outside | surface", "confidence": "high"}) + "\n", encoding="utf-8")
         # Evidence is rehashed: a dispatch record or VERIFY carrier altered after binding refuses completion.
         for label, (work, devlyn), target in (("dispatch", unavailable, "verify-judge.r0.dispatch.json"),
@@ -1747,7 +1749,7 @@ def final_report_self_test() -> None:
             if name == "pass":
                 assert "skipped: lint (no linter)" in report and "old" not in report, report
             if name == "finish-unclean":
-                assert "outside \\| surface" in report, report
+                assert "outside \\| surface" in report and "caf\\udce9.txt:1" in report, report
             if name == "judge-unavailable":
                 assert "setup: install and authenticate codex" in report, report
                 assert "- pair: blocked: BLOCKED:codex-unavailable" in report, report

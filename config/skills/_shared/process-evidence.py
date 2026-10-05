@@ -194,7 +194,15 @@ def _source_expected_path(work: pathlib.Path, state: dict) -> pathlib.Path | Non
     except (OSError, ValueError) as exc:
         raise EvidenceError("source expected contract escapes the worktree") from exc
     if "expected_sha256" in source:
-        actual = _sha256(expected.read_bytes()) if expected.is_file() else None
+        # Absence means no directory entry: any entry that is not a regular file matches no binding.
+        try:
+            expected.lstat()
+        except (FileNotFoundError, NotADirectoryError):
+            actual = None
+        except OSError as exc:
+            raise EvidenceError(f"cannot inspect the source expected contract: {exc}") from exc
+        else:
+            actual = _sha256(expected.read_bytes()) if expected.is_file() else "not a regular file"
         if actual != source["expected_sha256"]:
             raise EvidenceError("source expected contract differs from its bootstrap binding")
     return expected if expected.is_file() else None
@@ -957,6 +965,26 @@ def self_test() -> int:
                 assert "differs from its bootstrap binding" in str(exc), exc
             else:
                 raise AssertionError("an unbound verification contract declared obligations")
+        # Bound absence means no directory entry: a directory or a dangling symlink differs, and an
+        # inspection error (here a too-long name) is never read as absence.
+        def refused(state: dict, needle: str) -> None:
+            try:
+                declared_obligations(work, state, "verify")
+            except EvidenceError as exc:
+                assert needle in str(exc), exc
+            else:
+                raise AssertionError(f"an entry or an inspection error was read as the bound absence: {needle}")
+
+        contract = work / "spec.expected.json"
+        contract.unlink()
+        absent = {"source": {"type": "spec", "spec_path": "spec.md", "expected_sha256": None}}
+        assert declared_obligations(work, absent, "verify") == []
+        contract.mkdir()
+        refused(absent, "differs from its bootstrap binding")
+        contract.rmdir()
+        contract.symlink_to("missing")
+        refused(absent, "differs from its bootstrap binding")
+        refused({"source": {**absent["source"], "spec_path": "a" * 300 + "/spec.md"}}, "cannot inspect")
         print("PASS undeclared VERIFY gate denial: absent results surface, existing fields and entries retained")
     return 0
 

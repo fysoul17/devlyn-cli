@@ -1287,8 +1287,21 @@ def self_test() -> int:
             diverged, "diff", "--binary", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", trunk)
         diverged_state = strict_json((diverged / ".devlyn/pipeline.state.json").read_text(encoding="utf-8"))
         assert diverged_state["base_ref"]["sha"] == git_text(diverged, "rev-parse", "HEAD")
+        # An annotated tag binds the commit it peels to; a tree or a range is neither a patch file nor a commit.
+        git(diverged, "-c", "tag.gpgSign=false", "tag", "-a", "-m", "trunk", "trunk-tag", "trunk")
+        complete_prior(diverged)
+        tag_result = bootstrap(["--verify-only", "trunk-tag", "--spec", "spec.md"], diverged, script_shared)
+        assert tag_result["source"]["diff_base_sha"] == trunk
+        for supplied in ("HEAD^{tree}", "trunk..HEAD"):
+            try:
+                capture_external_diff(diverged, supplied)
+            except BootstrapBlocked as exc:
+                assert (exc.reason, exc.detail) == (
+                    "BLOCKED:invalid-flags", f"--verify-only {supplied} is neither a patch file nor a commit"), exc
+            else:
+                raise AssertionError(f"--verify-only {supplied} was captured")
         print("PASS bootstrap self-test patch lifecycle: full-mode removal + dirty verify-only exact capture;"
-              " diff base is the supplied ref's own commit, null for a patch file")
+              " diff base is the supplied ref's own commit (a tag peeled), null for a patch file; a tree or range refused")
 
         for valid_named in (True, False):
             named_work = root / f"named-spec-{valid_named}"
