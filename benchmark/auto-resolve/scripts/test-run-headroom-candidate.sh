@@ -146,10 +146,6 @@ expect_fail_contains rejected-f8-fixture \
   'fixture rejected for pair-candidate runs: F8-known-limit-ambiguous' \
   bash "$RUNNER" --run-id "$TEST_RUN-rejected-f8" --dry-run --min-fixtures 1 F8-known-limit-ambiguous
 
-expect_fail_contains rejected-f9-fixture \
-  'fixture rejected for pair-candidate runs: F9-e2e-ideate-to-resolve' \
-  bash "$RUNNER" --run-id "$TEST_RUN-rejected-f9" --dry-run --min-fixtures 1 F9-e2e-ideate-to-resolve
-
 expect_fail_contains rejected-f10-fixture \
   'fixture rejected for pair-candidate runs: F10-persist-write-collision' \
   bash "$RUNNER" --run-id "$TEST_RUN-rejected-f10" --dry-run --min-fixtures 1 F10-persist-write-collision

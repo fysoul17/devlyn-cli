@@ -68,21 +68,21 @@ _shared/collect-codex-findings.py
 _shared/verify-merge-findings.py
 _shared/archive_run.py
 _shared/task-complete.py
+_shared/task-completion.md
+_shared/expected-contract.py
 _shared/state-phase-write.py
 _shared/terminal-claim-check.py
 _shared/resolve-stop-hook.py
 _shared/resolve-bootstrap.py
 devlyn-ideate/SKILL.md
-devlyn-ideate/references/spec-template.md
 devlyn-ideate/references/elicitation.md
-devlyn-ideate/references/project-mode.md
-devlyn-ideate/references/from-spec-mode.md
+devlyn-ideate/references/package-format.md
+devlyn-ideate/references/loop.md
+devlyn-ideate/scripts/queue.py
+devlyn-ideate/scripts/acceptance.py
 devlyn-resolve/SKILL.md
-devlyn-queue/SKILL.md
 devlyn-engines/SKILL.md
 devlyn-resolve/references/state-schema.md
-devlyn-resolve/references/task-completion.md
-devlyn-resolve/references/outer-loop.md
 devlyn-resolve/references/free-form-mode.md
 devlyn-resolve/references/phases/plan.md
 devlyn-resolve/references/phases/probe-derive.md
@@ -280,8 +280,8 @@ fi
 # ---------------------------------------------------------------------------
 # 5c. Live text does not use a pre-4.0.0 skill name. History (benchmark/,
 #     autoresearch/, docs/), the legacy instruction fixtures and fingerprints,
-#     the README legacy map, the installer's rename table and comments, and the
-#     tests that plant old installs keep them.
+#     the README legacy map, the installer's rename and removal tables and
+#     comments, and the tests that plant old installs keep them.
 # ---------------------------------------------------------------------------
 section "Check 5c: no pre-4.0.0 skill names in live text"
 old_names='devlyn:(pencil-pull|pencil-push|design-ui|resolve|ideate|engines|queue|reap)([^a-z0-9-]|$)'
@@ -293,7 +293,7 @@ offenders=$(
     sed '/<!-- legacy-surface-map:begin/,/<!-- legacy-surface-map:end/s/.*//' README.md \
       | grep -nE "$old_names" | sed 's#^#README.md:#' || true
     sed 's#//.*##' bin/devlyn.js | grep -nE "$old_names" \
-      | grep -vE "^[0-9]+: *'devlyn:[a-z-]+': 'devlyn-[a-z-]+',$" | sed 's#^#bin/devlyn.js:#' || true
+      | grep -vE "^[0-9]+: *('devlyn:[a-z-]+': 'devlyn-[a-z-]+'|'skills/devlyn:[a-z-]+'),$" | sed 's#^#bin/devlyn.js:#' || true
   } | sed -E 's#$# — pre-4.0.0 skill name in live text#'
 )
 if [ -z "$offenders" ]; then
@@ -323,29 +323,27 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 5a. devlyn-design-ui is a required skill, not an optional addon.
+# 5a. design-ui and queue are retired: every skill root gets the same core
+#     bundle without them, and upgrades remove their 3.x and 4.x folders
+#     (Check 5d keeps a removed name from shipping again).
 # ---------------------------------------------------------------------------
-section "Check 5a: devlyn-design-ui is required"
-if [ -f "config/skills/devlyn-design-ui/SKILL.md" ]; then
-  ok "devlyn-design-ui source lives in config/skills"
-else
-  bad "devlyn-design-ui must be a required skill under config/skills"
-fi
-if [ ! -e "optional-skills/devlyn-design-ui" ]; then
-  ok "devlyn-design-ui is not in optional-skills"
-else
-  bad "devlyn-design-ui must not be installed as an optional addon"
-fi
-if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn-resolve', 'devlyn-ideate', 'devlyn-design-ui', 'devlyn-engines', 'devlyn-queue', '_shared'];" bin/devlyn.js \
+section "Check 5a: design-ui and queue are retired"
+if grep -Fq "const DEVLYN_CORE_SKILLS = ['devlyn-resolve', 'devlyn-ideate', 'devlyn-engines', '_shared'];" bin/devlyn.js \
    && grep -Fq "for (const skillName of DEVLYN_CORE_SKILLS) {" bin/devlyn.js; then
-  ok "every skill root install includes devlyn-design-ui (via shared DEVLYN_CORE_SKILLS bundle)"
+  ok "every skill root install gets the shared DEVLYN_CORE_SKILLS bundle, without design-ui or queue"
 else
-  bad "every skill root install must include devlyn-design-ui (shared DEVLYN_CORE_SKILLS bundle)"
+  bad "DEVLYN_CORE_SKILLS must be exactly devlyn-resolve, devlyn-ideate, devlyn-engines and _shared, installed by its shared loop"
 fi
-if ! grep -F "name: 'devlyn-design-ui'" bin/devlyn.js >/dev/null 2>&1; then
-  ok "devlyn-design-ui is absent from OPTIONAL_ADDONS"
+offenders=$(
+  for name in devlyn-design-ui devlyn:design-ui devlyn-queue devlyn:queue; do
+    sed -n '/^const DEPRECATED_DIRS = \[/,/^\];/p' bin/devlyn.js | grep -Fq "'skills/$name'," \
+      || echo "DEPRECATED_DIRS must remove skills/$name from downstream skill roots"
+  done
+)
+if [ -z "$offenders" ]; then
+  ok "DEPRECATED_DIRS removes design-ui and queue under their 3.x and 4.x names"
 else
-  bad "devlyn-design-ui must not be listed in OPTIONAL_ADDONS"
+  while IFS= read -r f; do bad "$f"; done <<< "$offenders"
 fi
 
 # ---------------------------------------------------------------------------
@@ -427,15 +425,15 @@ PY
   incomplete="$tmp_install_marker/incomplete"
   mkdir -p "$incomplete/package" "$incomplete/home/.agents/skills" "$incomplete/project/.agents/skills"
   cp -R bin config package.json AGENTS.md CLAUDE.md "$incomplete/package/"
-  rm -rf "$incomplete/package/config/skills/devlyn-queue"
+  rm -rf "$incomplete/package/config/skills/devlyn-engines"
   printf '{"version":"stale"}\n' > "$incomplete/home/.agents/skills/.devlyn-install.json"
   printf '{"version":"stale"}\n' > "$incomplete/project/.agents/skills/.devlyn-install.json"
   if ! (cd "$incomplete/project" \
       && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y >"$incomplete/project.log" 2>&1) \
       && ! (cd "$incomplete/project" \
       && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y --global >"$incomplete/global.log" 2>&1) \
-      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-queue' "$incomplete/project.log" \
-      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-queue' "$incomplete/global.log" \
+      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-engines' "$incomplete/project.log" \
+      && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-engines' "$incomplete/global.log" \
       && [ -d "$incomplete/project/.agents/skills/devlyn-resolve" ] \
       && [ -d "$incomplete/home/.agents/skills/devlyn-resolve" ] \
       && [ ! -e "$incomplete/project/.agents/skills/.devlyn-install.json" ] \
@@ -475,11 +473,12 @@ check_skill_mirror_parity \
 
 # ---------------------------------------------------------------------------
 # 6b. VERIFY merge verdict binding self-test.
-for helper in role-config judge-role-evidence task-complete; do
-  if python3 "config/skills/_shared/$helper.py" --self-test; then
-    ok "$helper.py self-test passed"
+for helper in _shared/role-config.py _shared/judge-role-evidence.py _shared/task-complete.py _shared/expected-contract.py \
+  devlyn-ideate/scripts/queue.py devlyn-ideate/scripts/acceptance.py; do
+  if python3 "config/skills/$helper" --self-test; then
+    ok "$helper self-test passed"
   else
-    bad "$helper.py self-test failed"
+    bad "$helper self-test failed"
   fi
 done
 
@@ -855,18 +854,17 @@ if ! grep -Fq 'def resolve_required_risk_probe_requirements' config/skills/_shar
   || ! grep -Fq 'risk-probes.jsonl covering a declared required_risk_probe_requirements' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'required_risk_probe_requirements with an unknown tag was accepted' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'required_risk_probe_requirements.derived_from not present in the' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'required_risk_probe_requirements' config/skills/_shared/expected.schema.json \
-  || ! grep -Fq 'required_risk_probe_requirements' config/skills/devlyn-ideate/references/spec-template.md; then
+  || ! grep -Fq 'required_risk_probe_requirements' config/skills/_shared/expected.schema.json; then
   bad "spec-verify-check.py must enforce declared required_risk_probe_requirements (iter-0049 language-neutral F3 replacement)"
 fi
 if ! grep -Fq 'spec.expected.json top-level array produced a traceback' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'invalid spec.expected.json produced a traceback' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'NaN spec.expected.json did not report invalid numeric constant' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'NaN risk-probes JSONL did not report invalid numeric constant' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'def reject_json_constant' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'def reject_json_constant' config/skills/_shared/expected-contract.py \
   || ! grep -Fq 'loads_strict_json(line)' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'loads_strict_json(expected_path.read_text(encoding="utf-8"))' config/skills/_shared/spec-verify-check.py \
-  || ! grep -Fq 'top-level must be a JSON object' config/skills/_shared/spec-verify-check.py \
+  || ! grep -Fq 'loads_strict_json(expected_path.read_text(encoding="utf-8"))' config/skills/_shared/expected-contract.py \
+  || ! grep -Fq 'top-level must be a JSON object' config/skills/_shared/expected-contract.py \
   || ! grep -Fq 'has invalid JSON' config/skills/_shared/spec-verify-check.py; then
   bad "spec-verify-check.py self-test must fail malformed spec.expected.json cleanly without traceback"
 fi
@@ -926,85 +924,27 @@ if ! grep -Fq '"atomic_batch_state"' config/skills/_shared/spec-verify-check.py 
   bad "risk-probe atomic batch contracts must require concrete mixed-failure and success-order markers"
 fi
 
-section "Check 6f: ideate validates sibling spec.expected.json"
-expected_check_missing=0
-for file in \
-  config/skills/devlyn-ideate/SKILL.md \
-  config/skills/devlyn-ideate/references/elicitation.md \
-  config/skills/devlyn-ideate/references/from-spec-mode.md \
-  config/skills/devlyn-ideate/references/project-mode.md \
-  config/skills/devlyn-ideate/references/spec-template.md
-do
-  if ! grep -Fq -- '--check-expected <expected-path>' "$file"; then
-    bad "$file — missing spec.expected.json mechanical validation command"
-    expected_check_missing=1
-  fi
-done
-if [ $expected_check_missing -eq 0 ]; then
-  ok "ideate docs require --check-expected for sibling expected contracts"
-fi
-if ! grep -Fq "legacy inline \`## Verification\` JSON carrier" config/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" .agents/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" config/skills/devlyn-ideate/references/from-spec-mode.md \
-  || ! grep -Fq "legacy inline \`## Verification\` JSON carrier" .agents/skills/devlyn-ideate/references/from-spec-mode.md; then
-  bad "ideate docs must keep sibling spec.expected.json precedence over the legacy inline carrier"
+section "Check 6f: ideate validates loop packages and keeps its normative policies"
+if ! grep -Fq 'scripts/queue.py" check' config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq 'Ask only when the unresolved answer changes authorized behavior, scope, data semantics, acceptance or delivery.' config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq 'Material ambiguity stops the affected work as needs-review with a concrete question' config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq 'add one compound check that exercises the interaction end to end' config/skills/devlyn-ideate/references/elicitation.md; then
+  bad "ideate must validate packages with queue.py check, keep its question and autonomous policies, and require compound checks for interacting requirements"
 else
-  ok "ideate docs keep sibling spec.expected.json precedence over the legacy inline carrier"
+  ok "ideate validates packages, keeps its question and autonomous policies, and requires compound checks for interacting requirements"
 fi
 if ! grep -Fq 'def validate_expected_against_sibling_spec' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'empty verification_commands should fail for runtime specs' config/skills/_shared/spec-verify-check.py \
   || ! grep -Fq 'empty verification_commands should be valid for pure-design specs' config/skills/_shared/spec-verify-check.py; then
   bad "spec-verify-check.py must reject empty expected runtime contracts and preserve pure-design escape"
 fi
-if ! grep -Fq 'Verification includes at least one compound scenario that exercises the interaction end-to-end' \
-  config/skills/devlyn-ideate/references/spec-template.md \
-  || ! grep -Fq 'Verification includes at least one compound scenario that exercises the interaction end-to-end' .agents/skills/devlyn-ideate/references/spec-template.md; then
-  bad "ideate spec template must require compound interaction verification for pair-relevant high-risk specs"
-else
-  ok "ideate spec template requires compound interaction verification for pair-relevant specs"
-fi
-if ! grep -Fq 'ask for one concrete compound' config/skills/devlyn-ideate/references/elicitation.md \
-  || ! grep -Fq 'ask for one concrete compound' .agents/skills/devlyn-ideate/references/elicitation.md; then
-  bad "ideate elicitation must ask for compound interaction scenarios when pair-relevant risks appear"
-else
-  ok "ideate elicitation asks for compound interaction scenarios when pair-relevant risks appear"
-fi
-if ! grep -Fq 'complexity: medium' config/skills/devlyn-ideate/references/spec-template.md \
-  || ! grep -Fq 'complexity: medium' .agents/skills/devlyn-ideate/references/spec-template.md \
-  || ! grep -Fq 'Complexity signal' config/skills/devlyn-ideate/references/elicitation.md \
-  || ! grep -Fq 'Complexity signal' .agents/skills/devlyn-ideate/references/elicitation.md \
-  || ! grep -Fq 'downstream VERIFY pair-trigger signal' config/skills/devlyn-ideate/references/elicitation.md \
-  || ! grep -Fq 'downstream VERIFY pair-trigger signal' .agents/skills/devlyn-ideate/references/elicitation.md \
-  || ! grep -Fq 'complexity=medium default' config/skills/devlyn-ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'complexity=medium default' .agents/skills/devlyn-ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'supported `complexity` frontmatter' config/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq 'supported `complexity` frontmatter' .agents/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq 'supported `complexity` frontmatter' config/skills/devlyn-ideate/references/elicitation.md \
-  || ! grep -Fq 'supported `complexity` frontmatter' .agents/skills/devlyn-ideate/references/elicitation.md \
-  || ! grep -Fq 'supported `complexity` frontmatter' config/skills/devlyn-resolve/SKILL.md \
+if ! grep -Fq 'supported `complexity` frontmatter' config/skills/devlyn-resolve/SKILL.md \
   || ! grep -Fq 'supported `complexity` frontmatter' .agents/skills/devlyn-resolve/SKILL.md \
-  || ! grep -Fq 'sibling spec `complexity` frontmatter' config/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq 'sibling spec `complexity` frontmatter' .agents/skills/devlyn-ideate/SKILL.md \
   || ! grep -Fq 'sibling spec `complexity` frontmatter' config/skills/devlyn-resolve/SKILL.md \
-  || ! grep -Fq 'sibling spec `complexity` frontmatter' .agents/skills/devlyn-resolve/SKILL.md \
-  || ! grep -Fq 'Frontmatter has `id`, `title`, `kind`, `status: planned`, `complexity`' config/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq 'Frontmatter has `id`, `title`, `kind`, `status: planned`, `complexity`' .agents/skills/devlyn-ideate/SKILL.md; then
-  bad "ideate specs must emit complexity frontmatter for resolve pair triggers"
+  || ! grep -Fq 'sibling spec `complexity` frontmatter' .agents/skills/devlyn-resolve/SKILL.md; then
+  bad "resolve spec staging must validate complexity frontmatter for pair triggers"
 else
-  ok "ideate specs emit complexity frontmatter for resolve pair triggers"
-fi
-if ! grep -Fq 'warning: Verification may need one compound end-to-end scenario before pair-relevant risks are measurable' \
-  config/skills/devlyn-ideate/references/from-spec-mode.md \
-  || ! grep -Fq 'warning: Verification may need one compound end-to-end scenario before pair-relevant risks are measurable' .agents/skills/devlyn-ideate/references/from-spec-mode.md; then
-  bad "ideate from-spec mode must warn when preserved high-risk specs lack compound verification"
-else
-  ok "ideate from-spec mode warns on pair-relevant specs with weak verification"
-fi
-if ! grep -Fq 'per-feature Verification must' config/skills/devlyn-ideate/references/project-mode.md \
-  || ! grep -Fq 'per-feature Verification must' .agents/skills/devlyn-ideate/references/project-mode.md; then
-  bad "ideate project mode must require compound verification inside each pair-relevant feature spec"
-else
-  ok "ideate project mode keeps compound verification inside pair-relevant feature specs"
+  ok "resolve spec staging validates complexity frontmatter for pair triggers"
 fi
 
 if ! grep -Fq 'The `--engine` flag does not disable default pairing' config/skills/devlyn-resolve/references/phases/verify.md \
@@ -1659,14 +1599,12 @@ for pattern in 'high` or `xhigh` effort' 'report every issue you find' 'do not f
     adapter_missing=1
   fi
 done
-for file in config/skills/devlyn-resolve/SKILL.md config/skills/devlyn-ideate/SKILL.md; do
-  if ! grep -Fq '_shared/adapters/<engine>.md' "$file"; then
-    bad "$file — missing per-engine adapter injection contract"
-    adapter_missing=1
-  fi
-done
+if ! grep -Fq '_shared/adapters/<engine>.md' config/skills/devlyn-resolve/SKILL.md; then
+  bad "config/skills/devlyn-resolve/SKILL.md — missing per-engine adapter injection contract"
+  adapter_missing=1
+fi
 if [ $adapter_missing -eq 0 ]; then
-  ok "adapters cite official GPT/Claude guidance, carry model-specific tactics, and both skills inject them"
+  ok "adapters cite official GPT/Claude guidance, carry model-specific tactics, and resolve injects them"
 fi
 
 # ---------------------------------------------------------------------------
@@ -1810,9 +1748,7 @@ if ! grep -Fq '_load_json_object' benchmark/auto-resolve/scripts/check-f9-artifa
   offenders="${offenders}"$'\n'"benchmark/auto-resolve/scripts/check-f9-artifacts.py: F9 timing/state JSON must fail closed on non-object payloads"
 fi
 if grep -RInE 'asserts variant/solo|Variant-only artifact checks|Variant artifact check' \
-  benchmark/auto-resolve/scripts/check-f9-artifacts.py \
-  benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve/NOTES.md \
-  benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve/spec.md >/dev/null 2>&1; then
+  benchmark/auto-resolve/scripts/check-f9-artifacts.py >/dev/null 2>&1; then
   offenders="${offenders}"$'\n'"F9 artifact docs/checker wording must describe skill-driven arms, not variant-only checks"
 fi
 if grep -Fq '<variant|bare>' benchmark/auto-resolve/scripts/run-fixture.sh; then
@@ -2048,7 +1984,7 @@ if ! grep -Fq '20260512-f7-scope-headroom' benchmark/auto-resolve/fixtures/F7-ou
   || ! grep -Fq '20260512-f7-scope-headroom' benchmark/auto-resolve/run-real-benchmark.md; then
   offenders="${offenders}"$'\n'"F7 docs must cite the measured headroom rejection before anyone counts it"
 fi
-if ! grep -Fq '20260512-f9-e2e-headroom' benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve/NOTES.md \
+if ! grep -Fq '20260512-f9-e2e-headroom' benchmark/auto-resolve/fixtures/retired/F9-e2e-ideate-to-resolve/NOTES.md \
   || ! grep -Fq '20260512-f9-e2e-headroom' benchmark/auto-resolve/BENCHMARK-RESULTS.md \
   || ! grep -Fq '20260512-f9-e2e-headroom' benchmark/auto-resolve/README.md \
   || ! grep -Fq '20260512-f9-e2e-headroom' benchmark/auto-resolve/run-real-benchmark.md; then
@@ -3163,7 +3099,7 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'F16-cli-quote-tax-rules: bare=50 solo_claude=75 pair=96 arm=l2_risk_probes margin=+21' benchmark/auto-resolve/scripts/test-pair-candidate-frontier.sh \
   || ! grep -Fq 'verdict=pair_evidence_passed' benchmark/auto-resolve/scripts/test-pair-candidate-frontier.sh \
   || ! grep -Fq '[audit] frontier' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq 'fixtures=21 rejected=17 candidates=4 pair_evidence=4 unmeasured=0 verdict=PASS' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
+  || ! grep -Fq 'fixtures=20 rejected=16 candidates=4 pair_evidence=4 unmeasured=0 verdict=PASS' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
   || ! grep -Fq 'F16-cli-quote-tax-rules: bare=50 solo_claude=75 pair=96 arm=l2_risk_probes margin=+21' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
   || ! grep -Fq 'frontier.stdout' benchmark/auto-resolve/scripts/audit-pair-evidence.py \
   || ! grep -Fq 'headroom-rejections.stdout' benchmark/auto-resolve/scripts/audit-pair-evidence.py \
@@ -3671,23 +3607,17 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 14. F9 fixture id matches the shipped 2-skill contract (iter-0033a, 2026-04-30).
-#     `/devlyn:preflight` was folded into `/devlyn-resolve`'s VERIFY phase; the
-#     legacy F9 dir name (`F9-e2e-ideate-to-preflight`) is misleading once
-#     preflight is gone. The retired copy lives under `fixtures/retired/` for
-#     replay; the live fixture must be `F9-e2e-ideate-to-resolve`. Any other
+# 14. No stale F9 preflight id (iter-0033a, 2026-04-30). `/devlyn:preflight` was
+#     folded into `/devlyn-resolve`'s VERIFY phase and the legacy F9 dir name
+#     (`F9-e2e-ideate-to-preflight`) retired; its successor
+#     `F9-e2e-ideate-to-resolve` is retired too (ideate loop, 2026-10-05). Any
 #     non-retired reference to the old id is a stale rename.
 # ---------------------------------------------------------------------------
-section "Check 14: F9 fixture id matches 2-skill contract"
+section "Check 14: no stale F9 preflight id outside retired/"
 f9_drift=0
-if [ ! -d "benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve" ]; then
-  bad "live F9 fixture missing at benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve"
-  f9_drift=1
-fi
 # Stale references outside fixtures/retired/ are bugs. Examine line content
 # (not just filename) so files that legitimately mention the retired *path*
-# (e.g. fixtures/F9-e2e-ideate-to-resolve/NOTES.md explaining where the OLD
-# version lives) pass while genuine stale references fail. Excluded scopes:
+# pass while genuine stale references fail. Excluded scopes:
 # benchmark/auto-resolve/results/ (historical run artifacts, frozen) and
 # scripts/lint-skills.sh itself (carries the pattern in this check).
 stale=$(git grep -In -- 'F9-e2e-ideate-to-preflight' -- \
@@ -3707,7 +3637,7 @@ if [ -n "$stale" ]; then
   f9_drift=1
 fi
 if [ $f9_drift -eq 0 ]; then
-  ok "F9 fixture id is canonical (F9-e2e-ideate-to-resolve); no stale refs outside retired/"
+  ok "no stale F9-e2e-ideate-to-preflight refs outside retired/"
 fi
 
 # ---------------------------------------------------------------------------

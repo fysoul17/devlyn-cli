@@ -22,7 +22,7 @@ After establishing DEVLYN_SHARED_DIR in a Bash invocation:
 CODEX_MONITORED_PATH="$DEVLYN_SHARED_DIR/codex-monitored.sh"
 ```
 
-**Read-only critique / adversarial review / debate** (`/devlyn-resolve` VERIFY pair-mode, plus any future ideate read-only critique). Codex returns findings on stdout; the orchestrator writes files.
+**Read-only critique / adversarial review / debate** (`/devlyn-resolve` VERIFY pair-mode). Codex returns findings on stdout; the orchestrator writes files.
 
 ```bash
 DEVLYN_CODEX_PROMPT_FILE="<prompt-file>" CODEX_MONITORED_ISOLATED=1 CODEX_MONITORED_TIMEOUT_SEC=600 bash "$CODEX_MONITORED_PATH" \
@@ -32,7 +32,7 @@ DEVLYN_CODEX_PROMPT_FILE="<prompt-file>" CODEX_MONITORED_ISOLATED=1 CODEX_MONITO
   -
 ```
 
-**Workspace-write implementation** (`/devlyn-resolve` IMPLEMENT phase when `--engine codex` or `--engine auto` routes to Codex, plus codex-routed `/devlyn-ideate` phases):
+**Workspace-write implementation** (`/devlyn-resolve` IMPLEMENT phase when `--engine codex` or `--engine auto` routes to Codex):
 
 ```bash
 DEVLYN_CODEX_PROMPT_FILE="<prompt-file>" bash "$CODEX_MONITORED_PATH" \

@@ -447,7 +447,8 @@ init({options});
                    " installLocalSkill('devlyn-reap', roots);")
         name, optional = 'devlyn-resolve', 'devlyn-reap'
         core = self.package / 'config/skills'
-        sources = {skill.name: core for skill in core.iterdir() if skill.is_dir()}
+        sources = {skill.name: core for skill in core.iterdir()
+                   if (skill / 'SKILL.md').is_file() or skill.name == '_shared'}
         sources[optional] = self.package / 'optional-skills'
 
         def assert_package_bytes():
@@ -725,32 +726,36 @@ init({options});
                     self.invoke(command)
                     self.assertEqual(dest.read_bytes(), after)
 
-    def test_instruction_4_0_1_agents_block_is_replaced_in_place(self):
-        # 4.1.0 renamed the AGENTS.md title and intro. A 4.0.1 block is replaced, never stacked,
-        # and an edited one keeps only the edits: its stock paragraphs sit under the old title.
-        block = (Path(__file__).resolve().parent / 'fixtures/instructions/agents-4.0.1.md').read_bytes()
+    def test_instruction_4_x_agents_blocks_are_replaced_in_place(self):
+        # 4.1.0 renamed the AGENTS.md title and intro; design-ui and the queue skill were retired
+        # after it. A 4.0.1 or 4.1.0 block is replaced, never stacked, and an edited one keeps only
+        # the edits: its stock paragraphs, the retired ones too, are registered fingerprints.
         prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
         dest = self.project / 'AGENTS.md'
-        for edited in (False, True):
-            for eol in (b'\n', b'\r\n'):
-                with self.subTest(edited=edited, eol=eol):
-                    old = block.replace(b'This contract serves one goal:', b'Team changed this body sentence:') if edited else block
-                    dest.write_bytes((prefix + old + suffix).replace(b'\n', eol))
-                    self.invoke("updateInstructions('AGENTS.md');")
-                    after = dest.read_bytes()
-                    custom, managed = after.split(b'<!-- devlyn:instructions:begin', 1)
-                    self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
-                    self.assertTrue(after.endswith(suffix.replace(b'\n', eol)))
-                    self.assertIn(b'# Project Instructions' + eol, managed)
-                    self.assertNotIn(b'Codex CLI reads this file', after)
-                    if edited:
-                        self.assertTrue(custom.startswith(prefix.replace(b'\n', eol)))
-                        self.assertIn(b'Team changed this body sentence:', custom)
-                        self.assertNotIn(b'unstructured idea', custom)
-                    else:
-                        self.assertEqual(custom, prefix.replace(b'\n', eol))
-                    self.invoke("updateInstructions('AGENTS.md');")
-                    self.assertEqual(dest.read_bytes(), after)
+        for version in ('4.0.1', '4.1.0'):
+            block = (Path(__file__).resolve().parent / f'fixtures/instructions/agents-{version}.md').read_bytes()
+            for edited in (False, True):
+                for eol in (b'\n', b'\r\n'):
+                    with self.subTest(version=version, edited=edited, eol=eol):
+                        old = block.replace(b'This contract serves one goal:', b'Team changed this body sentence:') if edited else block
+                        dest.write_bytes((prefix + old + suffix).replace(b'\n', eol))
+                        self.invoke("updateInstructions('AGENTS.md');")
+                        after = dest.read_bytes()
+                        custom, managed = after.split(b'<!-- devlyn:instructions:begin', 1)
+                        self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
+                        self.assertTrue(after.endswith(suffix.replace(b'\n', eol)))
+                        self.assertIn(b'# Project Instructions' + eol, managed)
+                        for stale in (b'Codex CLI reads this file', b'design-ui', b'devlyn-queue', b'references/task-completion.md',
+                                      b'outer-loop.md', b'queue drains retain', b'--quick', b'--from-spec', b'per item: spec it'):
+                            self.assertNotIn(stale, after)
+                        if edited:
+                            self.assertTrue(custom.startswith(prefix.replace(b'\n', eol)))
+                            self.assertIn(b'Team changed this body sentence:', custom)
+                            self.assertNotIn(b'unstructured idea', custom)
+                        else:
+                            self.assertEqual(custom, prefix.replace(b'\n', eol))
+                        self.invoke("updateInstructions('AGENTS.md');")
+                        self.assertEqual(dest.read_bytes(), after)
 
     def test_instruction_custom_content_survives_legacy_and_edited_managed_blocks(self):
         for name, command in [('AGENTS.md', "updateInstructions('AGENTS.md');"), ('CLAUDE.md', 'installClaudeCore();')]:
@@ -870,47 +875,33 @@ init({options});
                     self.assertEqual(dest.read_bytes(), installed)
                     self.assertEqual(entry.read_bytes(), b'keep obstruction')
 
-    def test_queue_add_helper_appends_one_literal_line_at_the_end(self):
-        helper = self.package / 'config/skills/devlyn-queue/scripts/append.py'
+    def test_queue_add_appends_literal_rows_under_the_common_gitdir_lock(self):
+        helper = self.package / 'config/skills/devlyn-ideate/scripts/queue.py'
+        loop = runpy.run_path(str(helper))
+        env = dict(self.env, GIT_AUTHOR_NAME='Fixture', GIT_AUTHOR_EMAIL='fixture@example.invalid',
+                   GIT_COMMITTER_NAME='Fixture', GIT_COMMITTER_EMAIL='fixture@example.invalid')
+        run(['git', 'init', '-q', '--initial-branch=main', self.project], env=env)
+        run(['git', '-C', self.project, 'commit', '-q', '--allow-empty', '-m', 'base'], env=env)
+        title = 'Keep "quotes", $HOME, `ticks` and 한글'
+        meta = loop['write_package'](self.project, 'loop', [('t1', [], title, [{'argv': [sys.executable, '-c', 'pass'], 'contract_refs': ['R1']}])])
         queue = self.project / 'docs/specs/queue.md'
-        handoff = self.project / '.devlyn/queue-intent-a1.txt'
-        add = lambda code=0: run([sys.executable, helper, '.devlyn/queue-intent-a1.txt'], cwd=self.project, code=code)
-        handoff.parent.mkdir(); handoff.write_text('Keep "quotes", $HOME and `ticks`\n  on two lines\n', encoding='utf-8')
+        expected = b'# Intent Queue\n\n' + loop['row_line']('loop.t1', title).encode('utf-8') + b'\n'
+        add = lambda code=0: run([sys.executable, helper, 'add', meta], cwd=self.project, env=env, code=code)
         add()
-        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [ ] Keep "quotes", $HOME and `ticks` on two lines\n')
-        self.assertFalse(handoff.exists())
-        queue.write_bytes(b'# Intent Queue\n\n- [x] done')
-        handoff.write_text('(spec: docs/specs/a/spec.md) next', encoding='utf-8')
-        add()
-        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [x] done\n- [ ] (spec: docs/specs/a/spec.md) next\n')
-        handoff.write_text(' \n', encoding='utf-8')
-        self.assertIn(b'queue add failed', add(code=1).stderr)
-        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [x] done\n- [ ] (spec: docs/specs/a/spec.md) next\n')
-        # The helper writes only while it holds .devlyn/queue.lock, so concurrent adds serialize.
+        self.assertEqual(queue.read_bytes(), expected)
+        self.assertIn(b'already queued: loop.t1', add(code=1).stdout)
+        self.assertEqual(queue.read_bytes(), expected)
+        # The helper writes only while it holds <common Gitdir>/devlyn-loops/queue.lock, so concurrent adds serialize.
         queue.unlink()
-        (self.project / '.devlyn/queue-intent-held.txt').write_text('waits for the lock', encoding='utf-8')
-        lock = os.open(self.project / '.devlyn/queue.lock', os.O_RDWR | os.O_CREAT)
-        try:
-            if os.name == 'nt':
-                import msvcrt
-                os.write(lock, b'\0'); os.lseek(lock, 0, os.SEEK_SET)
-                msvcrt.locking(lock, msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(lock, fcntl.LOCK_EX)
-            proc = subprocess.Popen([sys.executable, str(helper), '.devlyn/queue-intent-held.txt'], cwd=self.project)
+        lock = self.project / '.git/devlyn-loops/queue.lock'
+        with runpy.run_path(str(self.package / 'config/skills/_shared/platform-support.py'))['file_lock'](lock, blocking=True):
+            proc = subprocess.Popen([sys.executable, str(helper), 'add', str(meta)], cwd=self.project, env=env,
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             time.sleep(1.5)
             self.assertIsNone(proc.poll())
             self.assertFalse(queue.exists())
-            if os.name == 'nt':
-                os.lseek(lock, 0, os.SEEK_SET)
-                msvcrt.locking(lock, msvcrt.LK_UNLCK, 1)
-        finally:
-            os.close(lock)
         self.assertEqual(proc.wait(timeout=20), 0)
-        self.assertEqual(queue.read_bytes(), b'# Intent Queue\n\n- [ ] waits for the lock\n')
-        for name in ('notes.txt', '.devlyn/queue-intent.txt'):
-            self.assertIn(b'handoff must be', run([sys.executable, helper, name], cwd=self.project, code=2).stderr)
+        self.assertEqual(queue.read_bytes(), expected)
 
     def test_retired_skill_name_is_removed_only_as_shipped(self):
         # 0.2.0-1.15.0 shipped workflow-routing; a folder of that name the user wrote stays.
@@ -952,7 +943,7 @@ init({options});
     def test_upgrade_retires_pre_4_names_only_where_it_installs(self):
         # Before 4.0.0 each skill was `devlyn:<name>`; npm extracts ':' as U+F03A on Windows.
         spellings = ['\uf03a'] if os.name == 'nt' else [':', '\uf03a']
-        core = ['resolve', 'ideate', 'design-ui', 'engines', 'queue']
+        core = ['resolve', 'ideate', 'engines']
         claude = self.project / '.claude/skills'
         agents, codex, grok = (self.home / name / 'skills' for name in ('.agents', '.codex', '.grok'))
         planted = {claude: core + ['pencil-pull', 'pencil-push', 'reap'], codex: core + ['pencil-pull'],
@@ -986,6 +977,32 @@ init({options});
         edited.write_text(edited.read_text(encoding='utf-8') + 'my rule\n', encoding='utf-8')
         self.invoke("installClaudeCore();")
         self.assertTrue(edited.read_text(encoding='utf-8').endswith('my rule\n'))
+
+    def test_upgrade_removes_retired_design_ui_and_queue(self):
+        # Core skills through 4.1.0, `devlyn:<name>` before 4.0.0 (npm extracts ':' as U+F03A on
+        # Windows): each root an install writes loses every spelling, another root keeps them.
+        spellings = ['-', '\uf03a'] if os.name == 'nt' else ['-', ':', '\uf03a']
+        other = self.home / '.grok/skills'
+        for root in [*self.roots(), other]:
+            (root / 'my-skill').mkdir(parents=True); (root / 'my-skill/keep').write_bytes(b'mine')
+            for name in (f'devlyn{c}{skill}' for c in spellings for skill in ('design-ui', 'queue')):
+                (root / name / 'scripts').mkdir(parents=True)
+                (root / name / 'SKILL.md').write_text(f'---\nname: {name}\n---\n', encoding='utf-8')
+                (root / name / 'scripts/append.py').write_bytes(b'print(1)\n')
+        snapshot = lambda base: {p: p.read_bytes() if p.is_file() else None for p in base.rglob('*')}
+        kept = snapshot(other)
+        install = lambda: (self.cli('-y', '--claude'), self.cli('-y', '--global', '--claude'))
+        install()
+        for root in self.roots():
+            self.assertEqual({p.name for p in root.iterdir() if p.name.startswith('devlyn')},
+                             {'devlyn-resolve', 'devlyn-ideate', 'devlyn-engines'}, root)
+            self.assertEqual((root / 'my-skill/keep').read_bytes(), b'mine')
+            self.assertTrue((root / '.devlyn-install.json').is_file())
+        self.assertEqual(snapshot(other), kept)
+        # Upgrading again changes nothing.
+        before = snapshot(self.case)
+        install()
+        self.assertEqual(snapshot(self.case), before)
 
     @unittest.skipIf(os.name == 'nt', 'creating a symlink needs a privilege on native Windows')
     def test_upgrade_leaves_a_linked_optional_skill_alone(self):
@@ -2309,7 +2326,7 @@ assert e['outcome']['kind']=='spawn_error' and '없는 명령'.encode() in (work
             try:
                 shim.write_bytes(b'@echo malformed\r\n')
                 error = run([sys.executable, self.shared / 'run-bounded.py', '5', '--', 'codex'], env=self.env, code=2)
-                self.assertIn(b'unrecognized npm engine shim', error.stderr)
+                self.assertIn(b'unsupported native command shim', error.stderr)
             finally:
                 shim.write_bytes(raw)
         else:

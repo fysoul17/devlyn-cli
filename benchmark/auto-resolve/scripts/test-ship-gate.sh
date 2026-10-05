@@ -301,7 +301,7 @@ JSON
 python3 "$COMPILE" --run-id "$AXIS_RUN" > "$TMP_DIR/axis-compile.out" 2>&1
 grep -Fq '| Fixture | Category | variant (L2) | solo_claude (L1) | bare (L0) | variant-bare | solo_claude-bare | variant-solo_claude | Winner | Wall variant/solo_claude/bare | Wall variant/solo_claude | Wall variant/bare |' \
   "$TMP_DIR/axis-compile.out"
-grep -Fq '| F9-e2e-ideate-to-resolve | e2e | 70 | 60 | 50 | +20 | +10 | +10 | variant | 10s/10s/10s | 1.0x | 1.0x |' \
+grep -Fq '| F9-e2e-ideate-to-resolve | unknown | 70 | 60 | 50 | +20 | +10 | +10 | variant | 10s/10s/10s | 1.0x | 1.0x |' \
   "$TMP_DIR/axis-compile.out"
 grep -Fq '**Fixtures with margin ≥ +5:**   1 / 1 (gate: ≥ 7)' "$TMP_DIR/axis-compile.out"
 grep -Fq '**variant (L2) vs bare (L0) margin avg:** +20.0' "$TMP_DIR/axis-compile.out"
@@ -1185,5 +1185,26 @@ PY
 expect_fail_contains nan-result-artifact-disqualifies \
   "variant disqualifier(s)" \
   python3 "$GATE" --run-id "$NAN_RESULT_RUN" --accept-missing
+
+# Hard floors apply to active fixtures: a retired one leaves the gate with a note, while an active one without
+# results still fails. A copy of the gate reads its own fixtures/ so both states are exercised.
+FLOOR_ROOT="$TMP_DIR/floor-bench"
+mkdir -p "$FLOOR_ROOT/scripts" "$FLOOR_ROOT/fixtures/retired/F9-e2e-ideate-to-resolve" "$FLOOR_ROOT/results/floor"
+cp "$GATE" "$SCRIPT_DIR/pair_evidence_contract.py" "$FLOOR_ROOT/scripts/"
+write_summary "$RUN_PREFIX-floor" 8
+python3 - "$BENCH_ROOT/results/$RUN_PREFIX-floor/summary.json" "$FLOOR_ROOT/results/floor/summary.json" <<'PY'
+import json
+import sys
+
+summary = json.load(open(sys.argv[1], encoding="utf8"))
+summary["rows"] = [row for row in summary["rows"] if row["fixture"] != "F9-e2e-ideate-to-resolve"]
+json.dump(summary, open(sys.argv[2], "w", encoding="utf8"))
+PY
+expect_pass retired-fixture-floor python3 "$FLOOR_ROOT/scripts/ship-gate.py" --run-id floor
+grep -Fq "F9-e2e-ideate-to-resolve is retired (fixtures/retired/)" "$TMP_DIR/retired-fixture-floor.out"
+mv "$FLOOR_ROOT/fixtures/retired/F9-e2e-ideate-to-resolve" "$FLOOR_ROOT/fixtures/"
+expect_fail_contains active-fixture-floor \
+  "F9 (E2E novice flow) missing" \
+  python3 "$FLOOR_ROOT/scripts/ship-gate.py" --run-id floor
 
 echo "PASS test-ship-gate"

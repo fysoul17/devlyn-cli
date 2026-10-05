@@ -1,6 +1,6 @@
 ---
 name: devlyn-resolve
-description: Default to direct work after inspecting scope and verification, including bounded multi-file changes. Use full resolve for explicit resolve/spec-mode requests, queue drains, or concrete interacting requirements or verification too complex for the current context. Domain labels, file count, spec documents and quoted skill paths alone do not trigger it. Investigate or clarify missing intent/access first. Explicit small resolve retains all phases and independent verification. Verify dual-judge is default-when-available.
+description: Default to direct work after inspecting scope and verification, including bounded multi-file changes. Use full resolve for explicit resolve/spec-mode requests, or for concrete interacting requirements or verification too complex for the current context. Domain labels, file count, spec documents and quoted skill paths alone do not trigger it. Investigate or clarify missing intent/access first. Explicit small resolve retains all phases and independent verification. Verify dual-judge is default-when-available.
 ---
 
 The current CLI owns PHASE 0, state transitions, Git checkpoints and final report/archive. Spawn the canonical phase workers from this process; never delegate the whole run to another parent orchestrator. VERIFY uses a fresh, findings-only worker.
@@ -96,7 +96,7 @@ For every direct complete→spawn handoff, call `state-phase-write.py ... --phas
 
 ## PHASE 0: PARSE + CLASSIFY + ROUTE
 
-Outer-owner boundary: before normal task writes, follow `references/task-completion.md` for prospective task-branch ownership (own linked worktree) and `references/outer-loop.md` for owner-input commits. Existing branches cannot be retroactively adopted. Verify-only does not allocate or publish; phase workers never own delivery.
+Outer-owner boundary: before normal task writes, follow `_shared/task-completion.md` for prospective task-branch ownership (own linked worktree); the outer owner, never bootstrap or resolve, commits any scoped spec bundle or accepted verification amendment before each full run. Existing branches cannot be retroactively adopted. Verify-only does not allocate or publish; phase workers never own delivery.
 
 1. Run the bootstrap once with the exact tokenized `<pipeline_config>` and this orchestrator's default engine from `<engine_routing>`:
 
@@ -372,7 +372,7 @@ Open the `final_report` span through the predecessor's `state-phase-write.py --d
 
 6. **Archive** — invoke the deterministic script: `python3 "$DEVLYN_SHARED_DIR/archive_run.py"`. The script reads `run_id` from `.devlyn/pipeline.state.json`, moves the static per-run artifact set (`PER_RUN_PATTERNS` remains the single ownership list) plus every state-bound process-evidence manifest/raw stream into `.devlyn/runs/<run_id>/`, preserves evidence-relative layout, and rehashes bound bytes before any move. An unsafe/missing/altered evidence path or destination collision reports archive failure without changing the already-derived product verdict. It then best-effort prunes to the last 10 completed runs. Archive must run; running this step as deterministic-script-not-prose ensures the move actually happens (iter-0033a Smoke 3 caught a case where the agent claimed archive ran without moving the files).
 
-After successful normal-run archive, return to the outer owner for `references/task-completion.md`. A queue owner first commits its terminal queue transition, then completes once. Honor local-only/no-push; report delivery pending/failure separately from the archived product verdict. This is outside the phase graph.
+After successful normal-run archive, return to the outer owner, who completes once per `_shared/task-completion.md`. Honor local-only/no-push; report delivery pending/failure separately from the archived product verdict. This is outside the phase graph.
 
 ## State management
 

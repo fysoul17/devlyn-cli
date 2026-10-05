@@ -380,7 +380,7 @@ PY
 
 python3 "$ROOT/benchmark/auto-resolve/scripts/audit-pair-evidence.py" --out-dir "$TMP/audit" > "$TMP/devlyn-benchmark-audit.out" 2>&1
 grep -Fq '[audit] frontier' "$TMP/devlyn-benchmark-audit.out"
-grep -Fq 'fixtures=21 rejected=17 candidates=4 pair_evidence=4 unmeasured=0 verdict=PASS' "$TMP/devlyn-benchmark-audit.out"
+grep -Fq 'fixtures=20 rejected=16 candidates=4 pair_evidence=4 unmeasured=0 verdict=PASS' "$TMP/devlyn-benchmark-audit.out"
 grep -Fq 'F16-cli-quote-tax-rules: bare=50 solo_claude=75 pair=96 arm=l2_risk_probes margin=+21' "$TMP/devlyn-benchmark-audit.out"
 grep -Fq 'verdict=pair_evidence_passed' "$TMP/devlyn-benchmark-audit.out"
 grep -Fq 'headroom_rejections=PASS verdict=PASS unrecorded=0 unsupported=0' "$TMP/devlyn-benchmark-audit.out"

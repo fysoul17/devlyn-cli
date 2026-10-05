@@ -143,13 +143,19 @@ def main() -> int:
             "that could not be mapped to an arm — re-judge before trusting margins"
         )
 
-    # Hard floor 2: F9 must pass (skipped during bootstrap via --accept-missing)
+    # Hard floor 2: F9 must pass while it is an active fixture (skipped during
+    # bootstrap via --accept-missing); a fixture moved to fixtures/retired/ is
+    # out of the gate, not missing.
     # Variant arm legacy gate kept for L2 baseline comparability.
     # iter-0033a (2026-04-30): renamed F9 dir from -to-preflight to -to-resolve to
     # match the shipped 2-skill contract (no preflight). The OLD pre-rename id
     # is preserved in fixtures/retired/ for replay.
-    f9_row = next((r for r in rows if r.get("fixture") == "F9-e2e-ideate-to-resolve"), None)
-    if f9_row is None:
+    f9 = "F9-e2e-ideate-to-resolve"
+    f9_retired = not (root / "fixtures" / f9).is_dir() and (root / "fixtures" / "retired" / f9).is_dir()
+    f9_row = None if f9_retired else next((r for r in rows if r.get("fixture") == f9), None)
+    if f9_retired:
+        print(f"note: {f9} is retired (fixtures/retired/); its hard floor is out of the gate")
+    elif f9_row is None:
         if not args.accept_missing:
             failures.append("F9 (E2E novice flow) missing — add fixture or run with --accept-missing")
     else:

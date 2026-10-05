@@ -15,7 +15,7 @@ const { updateInstructions, InstructionError, holdsDevlynDefaults } = require('.
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
 // skill here installs it everywhere.
-const DEVLYN_CORE_SKILLS = ['devlyn-resolve', 'devlyn-ideate', 'devlyn-design-ui', 'devlyn-engines', 'devlyn-queue', '_shared'];
+const DEVLYN_CORE_SKILLS = ['devlyn-resolve', 'devlyn-ideate', 'devlyn-engines', '_shared'];
 // 4.0.0 renamed the colon-named skills to the Agent Skills standard (`[a-z0-9-]`, name ==
 // folder): Git for Windows cannot check out a folder with ':' in its name. Installs from 3.x
 // and earlier keep the old folder under either spelling (':' or npm's U+F03A extraction
@@ -24,9 +24,7 @@ const DEVLYN_CORE_SKILLS = ['devlyn-resolve', 'devlyn-ideate', 'devlyn-design-ui
 const RENAMED_SKILLS = {
   'devlyn:resolve': 'devlyn-resolve',
   'devlyn:ideate': 'devlyn-ideate',
-  'devlyn:design-ui': 'devlyn-design-ui',
   'devlyn:engines': 'devlyn-engines',
-  'devlyn:queue': 'devlyn-queue',
   'devlyn:pencil-pull': 'devlyn-pencil-pull',
   'devlyn:pencil-push': 'devlyn-pencil-push',
   'devlyn:reap': 'devlyn-reap',
@@ -183,6 +181,12 @@ const DEPRECATED_DIRS = [
   // so users who previously opted in get their stale copies purged on upgrade.
   'skills/devlyn:team-design-ui',
   'skills/devlyn:design-system',
+  // Retired after 4.1.0 (design-ui deleted; the intent queue moved into
+  // devlyn-ideate). Both were core skills, so their 3.x and 4.x folders go.
+  'skills/devlyn-design-ui',
+  'skills/devlyn:design-ui',
+  'skills/devlyn-queue',
+  'skills/devlyn:queue',
 ];
 
 function projectDir() {

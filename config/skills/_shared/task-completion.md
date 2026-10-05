@@ -8,9 +8,8 @@ authorized by the task scope; no additional approval ceremony is required.
 ## Allocate before work
 
 Use the caller's DEVLYN_SHARED_DIR. When this reference is opened
-directly, derive that binding from ../../_shared relative to this
-reference's reader-supplied containing directory, resolving directory
-symlinks first. Missing source identity is
+directly, bind it to this reference's reader-supplied containing
+directory, resolving directory symlinks first. Missing source identity is
 BLOCKED:skill-source-unresolved; a missing task-complete.py is
 BLOCKED:shared-dir-unresolved. Never select another installation.
 
@@ -87,13 +86,11 @@ agree. Failed, incomplete and verify-only runs are ineligible. Acceptance binds
 exact bytes and source before push; changed acceptance/evidence or subsequent
 product commits require a new accepted task, never implicit descendant approval.
 
-For a queue drain, resolve returns the acceptance/archive to the queue owner.
-Commit the terminal queue transition first, then add
-`"queue":{"commit":"<full terminal commit>","file":"docs/specs/queue.md"}` to
-acceptance. This commit must have only the verified source as parent and change
-exactly the declared queue file. The owner reviews the transition; the helper
-does not infer that arbitrary edits to that file are valid queue metadata.
-Complete once per item after that commit. Failed items are never published.
+Queue drains follow ideate's loop protocol
+(`../devlyn-ideate/references/loop.md`): its evidence-derived `loop` result is
+bound with `accept` before the queue-only terminal commit is attached with
+`attach`, and dependent local tasks allocate from the accepted predecessor's
+source. Failed results keep custody and a recovery ref but are never published.
 
 ## Deliver and resume
 
@@ -110,7 +107,7 @@ python3 "$DEVLYN_SHARED_DIR/task-complete.py" complete \
 Project policy is `git config --local devlyn.completionMode auto|pr`; absent means
 `auto`. Invalid local values fail before external effects, even with an override.
 Use `complete --mode auto|pr` for one task, or `--local-only`/`--no-push` to honor
-the user's delivery restriction. These per-task choices persist in the receipt.
+the user's delivery restriction. These per-task choices persist in the receipt; `--local-only` is refused once the task ref is pushed.
 
 `pr` pushes the exact accepted task ref and creates/reuses its exact repository,
 head and base PR. While OPEN, it cancels owned auto-merge, reports `PR` with its URL
@@ -137,7 +134,7 @@ files inside the tree, inaccessible process state (on Linux, other users'
 processes unless run as root), caller cwd inside the tree, dirty/untracked files,
 a nested repository or worktree, or changed refs/Gitdir/registration retain
 affected resources. Use `git worktree lock` to keep a tree.
-On native Windows, locking and file durability are supported, but the helper cannot prove writer cessation and reports `writer observation unsupported on this platform; retain workspace`. Even `--writers-stopped` cannot authorize deletion without that observation: retain the workspace, its task refs and external receipt/custody, report delivery separately, and preserve the receipt-based resume command. Do not kill unknown processes or force worktree removal to make completion pass.
+On native Windows, locking and file durability are supported, but the helper cannot prove writer cessation and reports `writer observation unsupported on this platform; retain workspace`. Even `--writers-stopped` cannot authorize deletion without that observation: retain the workspace, its task refs and external receipt/custody, report delivery separately, and preserve the receipt-based resume command. A merged delivery therefore reports `CLEANUP_PENDING` (delivery `COMPLETE`) with `workspace_cleanup` naming the reason and resume. Do not kill unknown processes or force worktree removal to make completion pass.
 
 The receipt directory holds byte-verified `custody/`, `manifest.json` and a guarded
 `refs/devlyn/completed/<id>` recovery ref. Archive/check evidence is copied there
@@ -153,8 +150,3 @@ the expected SHA; remote deletion uses an exact force-with-lease solely as
 compare-and-delete, never for product publication. A changed remote branch is
 retained. Retry uses the external receipt/evidence after removal. Recovery
 refs/evidence have no automatic expiry.
-
-Queue drains remain serial. Record source verdict and delivery status separately;
-retain pending/PR workspaces. Before advancing, use a separate owned branch from
-base; do not put the next item's commits on a retained pending branch. If safe
-placement is unavailable, report remaining items pending and stop the drain.

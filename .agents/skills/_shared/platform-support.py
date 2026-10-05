@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import contextlib
 import errno
-import json
 import os
 from pathlib import Path
 import re
@@ -62,8 +61,15 @@ def file_lock(path, *, blocking=False):
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
-def native_argv(argv):
-    """Resolve supported npm engine shims to their package's Node bin, never cmd /c."""
+SHIM_NODE = re.compile(r'IF EXIST "%(?:~dp0|dp0%)\\node\.exe"')
+SHIM_RUN = re.compile(r'(?:"%_prog%"|"%~dp0\\node\.exe"|\bnode)\s+"%(?:~dp0|dp0%)\\([^"\r\n]+)"\s+%\*')
+SHIM_SET = re.compile(r'(?im)^[ \t]*@?SET[ \t]+"?([^=" \t]+)=')
+NPM_CLI = re.compile(r'SET "(NP[MX]_CLI_JS)=%~dp0\\([^"\r\n]+)"')
+
+
+def native_argv(argv, cwd=None):
+    """Resolve argv as Windows does, for a command that will run in cwd; a Node command shim runs its Node and script
+    directly, never cmd /c."""
     if os.name != "nt":
         return list(argv)
     binary = shutil.which(argv[0])
@@ -72,33 +78,36 @@ def native_argv(argv):
     shim = Path(binary)
     if shim.suffix.lower() not in {".cmd", ".bat"}:
         return [binary, *argv[1:]]
-    packages = {"codex": "@openai/codex", "claude": "@anthropic-ai/claude-code"}
-    package = packages.get(shim.stem.lower())
-    if shim.suffix.lower() != ".cmd" or package is None:
-        raise OSError(f"unsupported native command shim: {shim}")
-    root = (shim.parent.parent if shim.parent.name == ".bin" else shim.parent / "node_modules") / package
-    try:
-        manifest = json.loads((root / "package.json").read_text(encoding="utf-8"))
-    except (ValueError, UnicodeError) as exc:
-        raise OSError(f"invalid npm engine manifest: {shim}") from exc
-    if not isinstance(manifest, dict):
-        raise OSError(f"invalid npm engine manifest: {shim}")
-    entry = manifest.get("bin")
-    entry = entry.get(shim.stem.lower()) if isinstance(entry, dict) else entry
-    if manifest.get("name") != package or not isinstance(entry, str):
-        raise OSError(f"invalid npm engine bin: {shim}")
-    target = (root / entry).resolve(strict=True)
-    if not target.is_relative_to(root.resolve()) or target.suffix not in {".js", ".cjs", ".mjs"}:
-        raise OSError(f"unsupported npm engine bin: {target}")
-    raw = shim.read_text(encoding="utf-8")
-    matches = re.findall(r'"%_prog%"\s+"%dp0%\\([^"\r\n]+)"\s+%\*', raw)
-    if len(matches) != 1 or (shim.parent / matches[0]).resolve() != target:
-        raise OSError(f"unrecognized npm engine shim: {shim}")
     node = shim.parent / "node.exe"
-    binary = str(node) if node.is_file() else shutil.which("node.exe")
-    if binary is None:
+    node = str(node) if node.is_file() else shutil.which("node.exe")
+    script = shim_script(shim, shim.read_text(encoding="utf-8", errors="replace"), node, cwd)
+    if script is None:
+        raise OSError(f"unsupported native command shim: {shim}; use argv with an explicit interpreter, such as node and the script")
+    if node is None:
         raise FileNotFoundError(f"node.exe unavailable for {shim}")
-    return [binary, str(target), *argv[1:]]
+    return [node, str(script.resolve(strict=True)), *argv[1:]]
+
+
+def shim_script(shim, raw, node, cwd=None):
+    """The script a Node command shim runs, as cmd.exe would resolve it, else None: the one target of an npm, pnpm
+    or corepack cmd-shim that sets no environment, or for Node.js's own npm.cmd and npx.cmd the global prefix's
+    npm when installed there, else the bundled one."""
+    targets = set(SHIM_RUN.findall(raw))
+    if SHIM_NODE.search(raw) and len(targets) == 1 and set(SHIM_SET.findall(raw)) <= {"dp0", "_prog", "PATHEXT"}:
+        return shim.parent / targets.pop().replace("\\", "/")
+    cli = NPM_CLI.search(raw)
+    if not cli or f'"%NODE_EXE%" "%{cli[1]}%" %*' not in raw:
+        return None
+    prefix_js = re.search(r'SET "NPM_PREFIX_JS=%~dp0\\([^"\r\n]+)"', raw)
+    global_cli = re.search(rf'SET "NPM_PREFIX_{cli[1]}=%%F\\([^"\r\n]+)"', raw)
+    if prefix_js and global_cli and node:
+        # As the shim's FOR /F does: the last nonempty line npm-prefix.js prints names the global prefix.
+        output = subprocess.run([node, str(shim.parent / prefix_js[1].replace("\\", "/"))], cwd=cwd, capture_output=True,
+                                text=True, encoding="utf-8").stdout
+        prefix = [line for line in output.splitlines() if line]
+        if prefix and (installed := Path(prefix[-1]) / global_cli[1].replace("\\", "/")).is_file():
+            return installed
+    return shim.parent / cli[2].replace("\\", "/")
 
 
 def system_exit_code(code):
