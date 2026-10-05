@@ -54,7 +54,9 @@ if behavior.get("review", True):
     review.parent.mkdir(parents=True, exist_ok=True)
     review.write_text(json.dumps({"schema_version": 1, "kind": "devlyn-review", "task": packet["task"], "engine": "fake-engine",
         "model": "fake-model", "source_sha": source, "contract_sha256": packet["contract"]["sha256"],
-        "expected_sha256": packet["expected"]["sha256"], "requirements": packet["review_requirements"], "findings": []}), encoding="utf-8")
+        "expected_sha256": packet["expected"]["sha256"], "findings": [],
+        "requirements": [{"id": r} for r in packet["review_requirements"]] if behavior.get("malformed_review") else packet["review_requirements"]}),
+        encoding="utf-8")
     submission["reviews"] = [str(review)]
 if behavior.get("change_after_review"):
     submission["source_sha"] = commit({"late.txt": "late change\n"}, "change after checks and review")
@@ -298,12 +300,16 @@ class LoopFixture(unittest.TestCase):
         self.plan("dd", [greeting, notes, ("t3", ["t1", "t2"], "Greeting app", [APP_CHECK])],
                   {"dd.t1": {"product": "bad-greeting"}, "dd.t2": {"product": "notes"}, "dd.t3": {"product": "app"}})
         self.plan("ee", CHAIN, {"ee.t1": {"product": "greeting"}, "ee.t2": {"product": "bad-app"}})
+        self.plan("ff", CHAIN, {"ff.t1": {"product": "greeting", "malformed_review": True}, "ff.t2": {"product": "app"}})
         result = self.drain()
         tasks = self.tasks(result)
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {
             "aa.t1": "failed", "aa.t2": "blocked", "bb.t1": "failed", "bb.t2": "blocked", "cc.t1": "failed", "cc.t2": "blocked",
-            "dd.t1": "failed", "dd.t2": "accepted", "dd.t3": "blocked", "ee.t1": "accepted", "ee.t2": "failed"})
-        self.assertEqual([self.calls(identity) for identity in ("aa.t2", "bb.t2", "cc.t2", "dd.t3")], [0, 0, 0, 0])
+            "dd.t1": "failed", "dd.t2": "accepted", "dd.t3": "blocked", "ee.t1": "accepted", "ee.t2": "failed",
+            "ff.t1": "failed", "ff.t2": "blocked"})
+        self.assertEqual([self.calls(identity) for identity in ("aa.t2", "bb.t2", "cc.t2", "dd.t3", "ff.t2")], [0, 0, 0, 0, 0])
+        # A malformed executor record fails its task with a named reason; it never crashes the driver.
+        self.assertIn("malformed review record", tasks["ff.t1"]["reason"])
         self.assertIn("failed: command 0 (R1) exit 1", tasks["aa.t1"]["reason"])
         self.assertEqual(tasks["aa.t2"]["reason"], "blocked-prerequisite:aa.t1")
         for identity in ("bb.t1", "cc.t1"):

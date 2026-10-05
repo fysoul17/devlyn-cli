@@ -3,10 +3,11 @@
 
 `run` executes the declared checks on the committed candidate; the executor may
 call it before review. `accept` derives the drain result: it binds the contract,
-requires the owned committed source, reuses intact passed runner outcomes for the
-same source and contract, executes the rest, evaluates file/diff guards, confirms
-the source is unchanged and checks review records. An executor's summary verdict
-is never evidence. Protocol: ../references/loop.md.
+requires the owned committed source, reuses the intact outcomes of a wholly clean
+runner result for the same source and contract, executes the rest, evaluates
+file/diff guards, confirms the source is unchanged and checks review records. A
+malformed executor record fails acceptance with its reason. An executor's summary
+verdict is never evidence. Protocol: ../references/loop.md.
 """
 from __future__ import annotations
 
@@ -27,7 +28,7 @@ SKILLS = Path(__file__).resolve().parents[2]
 LOOP_DIR = ".devlyn/loop"
 QUEUE = "docs/specs/queue.md"
 SHA_RE = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
-BLOCKERS = {"failed", "needs-review", "blocked-infrastructure"}
+BLOCKERS = ("failed", "needs-review", "blocked-infrastructure")
 REVIEW_KEYS = {"schema_version", "kind", "task", "engine", "model", "source_sha", "contract_sha256",
                "expected_sha256", "requirements", "findings"}
 FINDING_KEYS = {"id", "binding", "disposition", "requirement", "summary", "reason"}
@@ -133,9 +134,10 @@ def source_problems(packet, source):
     if not SHA_RE.fullmatch(source) or git(work, "cat-file", "-e", source + "^{commit}", ok=(0, 1, 128)).returncode:
         return [f"candidate {source!r} is not a commit"]
     problems = []
-    head, branch = text(work, "rev-parse", "HEAD"), text(work, "rev-parse", "refs/heads/" + packet["branch"])
-    if not source == head == branch:
-        problems.append(f"candidate {source} is not the owned task commit (branch {branch}, HEAD {head})")
+    head = git(work, "symbolic-ref", "-q", "HEAD", ok=(0, 1)).stdout.decode("utf-8").strip()
+    branch = text(work, "rev-parse", "refs/heads/" + packet["branch"])
+    if (source, head) != (branch, "refs/heads/" + packet["branch"]):
+        problems.append(f"candidate {source} is not the owned task commit checked out on its branch (branch {branch}, HEAD {head or 'detached'})")
     if git(work, "merge-base", "--is-ancestor", packet["inputs_sha"], source, ok=(0, 1)).returncode:
         problems.append(f"candidate {source} does not descend from the committed inputs")
     else:
@@ -210,17 +212,21 @@ def intact(work, record):
 
 
 def reusable(packet, source, paths):
-    """Passed outcomes from runner results for this exact source and contract, with intact raw streams."""
+    """Passed outcomes of wholly clean runner results (no reasons, so no failed check or source change during
+    the checks) for this exact source and contract, with intact raw streams."""
     work = Path(packet["worktree"])
     reused = {}
     for path in paths:
         result_path = evidence_file(work, path)
         result = read_json(result_path)
-        if not isinstance(result, dict) or (result.get("kind"), result.get("task"), result.get("source_sha"), result.get("contract")) != (
-                "loop-checks", packet["task"], source, contract_digests(packet)):
+        if not isinstance(result, dict) or (result.get("kind"), result.get("task"), result.get("source_sha"), result.get("contract"),
+                                            result.get("reasons")) != ("loop-checks", packet["task"], source, contract_digests(packet), []):
             continue
-        for record in result.get("commands") or []:
-            if isinstance(record, dict) and record.get("passed") is True and intact(work, record):
+        records = result.get("commands")
+        if not isinstance(records, list) or not all(isinstance(record, dict) and type(record.get("index")) is int for record in records):
+            raise AcceptanceError(f"runner result {relative(work, result_path)} has malformed command records")
+        for record in records:
+            if record.get("passed") is True and intact(work, record):
                 reused.setdefault(record["index"], dict(record, reused_from=relative(work, result_path)))
     return reused
 
@@ -265,26 +271,29 @@ def guard_results(packet, expected, source):
 
 
 def review_problem(packet, record, source):
+    """(problem, malformed): a malformed record fails acceptance; a well-formed record bound elsewhere does not count."""
     if not isinstance(record, dict) or not REVIEW_KEYS <= set(record) <= REVIEW_KEYS | {"summary"}:
-        return f"review record keys must be {sorted(REVIEW_KEYS)} (optional summary)"
-    if (record["schema_version"], record["kind"], record["task"]) != (1, "devlyn-review", packet["task"]):
-        return "review record is not a schema 1 devlyn-review for this task"
+        return f"review record keys must be {sorted(REVIEW_KEYS)} (optional summary)", True
+    if (record["schema_version"], record["kind"]) != (1, "devlyn-review"):
+        return "review record is not a schema 1 devlyn-review", True
     if not all(isinstance(record[key], str) and record[key].strip() for key in ("engine", "model")):
-        return "review record must name its engine and model"
-    if record["source_sha"] != source:
-        return f"review is bound to source {record['source_sha']}, not {source}"
-    if (record["contract_sha256"], record["expected_sha256"]) != (packet["contract"]["sha256"], packet["expected"]["sha256"]):
-        return "review is bound to a different contract"
-    if not isinstance(record["requirements"], list) or not set(record["requirements"]) <= set(packet["requirements"]):
-        return "review requirements must name task requirement IDs"
+        return "review record must name its engine and model", True
+    if not isinstance(record["requirements"], list) or not all(req in packet["requirements"] for req in record["requirements"]):
+        return "review requirements must name task requirement IDs", True
     findings = record["findings"]
     if not isinstance(findings, list) or not all(
             isinstance(f, dict) and {"id", "binding", "disposition"} <= set(f) <= FINDING_KEYS and isinstance(f["id"], str)
-            and isinstance(f["binding"], bool) and f["disposition"] in {"open", "resolved", "rejected"}
+            and isinstance(f["binding"], bool) and f["disposition"] in ("open", "resolved", "rejected")
             and (f["disposition"] != "rejected" or (isinstance(f.get("reason"), str) and f["reason"].strip()))
             for f in findings):
-        return "findings need id, boolean binding and disposition open|resolved|rejected (rejected needs a reason)"
-    return None
+        return "findings need id, boolean binding and disposition open|resolved|rejected (rejected needs a reason)", True
+    if record["task"] != packet["task"]:
+        return f"review is for task {record['task']!r}, not {packet['task']}", False
+    if record["source_sha"] != source:
+        return f"review is bound to source {record['source_sha']}, not {source}", False
+    if (record["contract_sha256"], record["expected_sha256"]) != (packet["contract"]["sha256"], packet["expected"]["sha256"]):
+        return "review is bound to a different contract", False
+    return None, False
 
 
 def review_results(packet, paths, source):
@@ -295,9 +304,11 @@ def review_results(packet, paths, source):
             record_path = evidence_file(work, path, ".devlyn")
             raw = record_path.read_bytes()
             record = shared("expected-contract")["loads_strict_json"](raw.decode("utf-8"))
-            problem = review_problem(packet, record, source)
+            problem, malformed = review_problem(packet, record, source)
         except (AcceptanceError, OSError, UnicodeError, ValueError) as exc:
-            problem = str(exc)
+            problem, malformed = str(exc), True
+        if malformed:
+            raise AcceptanceError(f"malformed review record {path}: {problem}")
         if problem:
             ignored.append({"path": str(path), "reason": problem})
             continue
@@ -497,6 +508,9 @@ class AcceptanceTests(unittest.TestCase):
         self.write("untracked.txt", "delta")
         self.assertIn("undeclared source delta", " ".join(self.submit(source)["reasons"]))
         (self.work / "untracked.txt").unlink()
+        self.g("checkout", "-q", "--detach", source)
+        self.assertIn("is not the owned task commit", " ".join(self.submit(source)["reasons"]))
+        self.g("switch", "-q", "devlyn/l/t")
         self.assertIn("is not the owned task commit", " ".join(self.submit(self.packet["inputs_sha"])["reasons"]))
         self.write("docs/specs/l/t/spec.md", "# weakened\n")
         weakened = self.commit("weaken")
@@ -513,7 +527,7 @@ class AcceptanceTests(unittest.TestCase):
         for reviews, message in (
             ([stale], "required review coverage missing for R2"),
             ([self.review(source, "contract.json", expected_sha256="0" * 64)], "required review coverage missing for R2"),
-            ([self.review(source, "rejected.json", findings=[{"id": "F1", "binding": True, "disposition": "rejected"}])], "coverage missing"),
+            ([self.review(source, "rejected.json", findings=[{"id": "F1", "binding": True, "disposition": "rejected"}])], "malformed review record"),
             ([self.review(source, "open.json", findings=[{"id": "F2", "binding": True, "disposition": "open"}])], "unresolved binding review findings F2"),
         ):
             result = self.submit(source, reviews=reviews)
@@ -522,6 +536,37 @@ class AcceptanceTests(unittest.TestCase):
         result = self.submit(source, reviews=[stale, self.review(source, findings=[{"id": "F3", "binding": False, "disposition": "open"}])])
         self.assertEqual(result["verdict"], "ACCEPTED")
         self.assertEqual([item["path"] for item in result["ignored_reviews"]], [stale])
+
+    def test_runner_result_with_a_source_change_is_never_reused(self):
+        mutate = [sys.executable, "-c", "import pathlib; p = pathlib.Path('product.txt'); p.write_text(p.read_text() + '!'); print('ok')"]
+        self.inputs({"verification_commands": [{"argv": mutate, "stdout_contains": ["ok"], "contract_refs": ["R1", "R2"]}]})
+        source = self.product()
+        path, checks = run(self.packet_path)
+        self.assertTrue(checks["commands"][0]["passed"])
+        self.assertIn("failed: source changed during checks", " ".join(checks["reasons"]))
+        self.g("checkout", "--", "product.txt")
+        result = self.submit(source, runner_results=[relative(self.work, path)])
+        self.assertEqual(result["verdict"], "FAILED")
+        self.assertNotIn("reused_from", result["commands"][0])
+        self.assertIn("failed: source changed during checks", " ".join(result["reasons"]))
+
+    def test_malformed_executor_records_fail_with_a_named_reason(self):
+        self.inputs(review=["R2"])
+        source = self.product()
+        malformed = self.review(source, "malformed.json", requirements=[{"id": "R2"}])
+        result = self.submit(source, reviews=[malformed])
+        self.assertEqual(result["verdict"], "FAILED")
+        self.assertIn(f"malformed review record {malformed}", " ".join(result["reasons"]))
+        path, _ = run(self.packet_path)
+        checks = json.loads(path.read_text(encoding="utf-8"))
+        del checks["commands"][0]["index"]
+        path.write_text(json.dumps(checks), encoding="utf-8")
+        result = self.submit(source, runner_results=[relative(self.work, path)], reviews=[self.review(source)])
+        self.assertEqual(result["verdict"], "FAILED")
+        self.assertIn("malformed command records", " ".join(result["reasons"]))
+        blocked = self.submit(source, blockers=[{"kind": ["failed"], "detail": "unhashable kind"}])
+        self.assertEqual(blocked["verdict"], "FAILED")
+        self.assertIn("submission blockers must be", " ".join(blocked["reasons"]))
 
     def test_reuses_intact_runner_results_and_reexecutes_altered_evidence(self):
         counter = [sys.executable, "-c", "import pathlib; p = pathlib.Path('.devlyn/count'); p.parent.mkdir(exist_ok=True); "
