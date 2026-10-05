@@ -418,6 +418,18 @@ else
   ok "ideate validates packages, keeps its question and autonomous policies, and requires compound checks for interacting requirements"
 fi
 
+section "Check 6g: ideate gives the exact drain executor argv"
+# A Codex executor denied its commit in the linked worktree (e2e smoke): workspace-write keeps .git read-only.
+claude_argv='claude -p "<prompt>" --dangerously-skip-permissions --add-dir "<git dir>"'
+codex_root="-c 'sandbox_workspace_write.writable_roots=[\"<git dir>\"]'"
+if ! grep -Fq -- "$claude_argv" config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq -- "--skip-git-repo-check -s workspace-write $codex_root \"<prompt>\"" config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq -- "$codex_root" config/skills/_shared/adapters/codex.md; then
+  bad "ideate SKILL.md must give the exact Claude and Codex executor argv, and the Codex adapter the common Git directory as a writable root"
+else
+  ok "ideate gives the exact Claude and Codex executor argv; the Codex adapter makes the common Git directory writable"
+fi
+
 section "Check 6h: No undocumented spec.expected.json.browser_flows field"
 browser_flow_refs=$(grep -RInF 'spec.expected.json.browser_flows' \
   config/skills README.md bin/ package.json 2>/dev/null || true)

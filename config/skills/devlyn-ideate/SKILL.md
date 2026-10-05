@@ -100,7 +100,18 @@ Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" status --repo .` and report it
 
 ## drain
 
-Follow [loop.md](references/loop.md). The executor is the configured route, the `.devlyn/engines.json` `executor` pin or else this CLI, checked per `_shared/engine-preflight.md`. Pass it after `--` as an argv that starts one fresh non-interactive session of that engine, able without prompts to edit, run commands and commit in its task worktree and to write the packet's submission file, with the prompt `Execute the devlyn loop task packet {packet}: work only in its owned worktree under the installed instructions; meet its obligations, then write its submission and any review records as "Executor exchange" and "Review records" in <absolute DEVLYN_SKILL_DIR>/references/loop.md specify.`
+Follow [loop.md](references/loop.md). The executor is the configured route, the `.devlyn/engines.json` `executor` pin or else this CLI, checked per `_shared/engine-preflight.md`. Pass its argv after `--`. `<git dir>` is the output of `git rev-parse --path-format=absolute --git-common-dir`, where the executor commits and writes its submission:
+
+| Executor | argv |
+|---|---|
+| Claude | `claude -p "<prompt>" --dangerously-skip-permissions --add-dir "<git dir>"` |
+| Codex | `bash "<DEVLYN_SHARED_DIR>/codex-monitored.sh" --skip-git-repo-check -s workspace-write -c 'sandbox_workspace_write.writable_roots=["<git dir>"]' "<prompt>"` |
+
+Another engine needs an argv that starts one fresh non-interactive session able, without prompts, to edit, run commands and commit in its task worktree and to write the packet's submission file. `<prompt>` carries the absolute binding values, while `{packet}` stays literal for the drain to fill:
+
+```text
+Execute the devlyn loop task packet {packet}: work only in its owned worktree under the installed instructions; meet its obligations, then write its submission and any review records as "Executor exchange" and "Review records" in <DEVLYN_SKILL_DIR>/references/loop.md specify. Set DEVLYN_SKILL_DIR=<DEVLYN_SKILL_DIR> and DEVLYN_SHARED_DIR=<DEVLYN_SHARED_DIR> from these literal values, never from your inherited environment. Never push, open a pull request or merge: the drain delivers.
+```
 
 ```sh
 python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" drain --repo . [--local-only] -- <executor argv>
