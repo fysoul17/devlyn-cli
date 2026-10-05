@@ -163,11 +163,21 @@ def command(out, folder):
     return ['git', *SAFE, '--git-dir', str(gitdir), '--work-tree', str(folder)]
 
 
+def cell_env(out):
+    """Host Git reading the cell home, as the container does, never the host user's ignore files."""
+    return {k: v for k, v in ENV.items() if k != 'XDG_CONFIG_HOME'} | dict(HOME=str(out / 'home'))
+
+
+def gitlinks(listing):
+    """The paths of the commit entries (gitlinks) in a NUL-separated recursive ls-tree listing."""
+    return [entry.split('\t', 1)[1] for entry in listing.split('\0') if entry.split(' ')[1:2] == ['commit']]
+
+
 def tree_files(out, folder):
     """Tracked and untracked files Git does not ignore in the anchor or a linked worktree (Git's own view of the
-    product), read from the host."""
+    product), read from the host with the cell home."""
     listed = subprocess.run([*command(out, folder), 'ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-                            capture_output=True, text=True, env=ENV)
+                            capture_output=True, text=True, env=cell_env(out))
     if listed.returncode:
         raise LocatorError('git ls-files failed: ' + listed.stderr.strip())
     return sorted({n for n in listed.stdout.split('\0') if n and n.split('/')[0] != '.devlyn'})
@@ -196,18 +206,18 @@ def copy_tree(out, folder, dest):
 
 def final_tree(out, folder):
     """The review launcher's tree of a run location's whole working-tree state, by its algorithm (HEAD read into a
-    temporary index, `add -A -- .`, write-tree) on the host. Git reads the cell home as the container does, not the
-    host user's ignore files. The index and every new object stay in a temporary directory, so no evidence is written.
-    No participant command runs: every filter key the repository configures is blanked, and a tracked submodule is
-    refused because adding it would run `git status` inside it."""
+    temporary index, `add -A -- .`, write-tree) on the host with the cell home. The index and every new object stay in
+    a temporary directory, so no evidence is written. No participant command runs: every filter key the repository
+    configures is blanked, and a tracked submodule is refused because adding it would run `git status` inside it. A
+    nested repository the add records as a gitlink is refused too: the tree would hold only its commit, while the
+    snapshot copies its live files."""
     prefix = command(out, folder)
-    env = {k: v for k, v in ENV.items() if k != 'XDG_CONFIG_HOME'} | dict(HOME=str(out / 'home'))
+    env = cell_env(out)
     listing = subprocess.run([*prefix, 'ls-tree', '-r', '-z', '--full-tree', 'HEAD'], capture_output=True, text=True, env=env)
     filters = subprocess.run([*prefix, 'config', '-z', '--get-regexp', r'^filter\.'], capture_output=True, text=True, env=env)
     if listing.returncode or filters.returncode not in (0, 1):  # config exits 1 when nothing matches
         raise LocatorError(f'git in {folder.relative_to(out)}: {(listing.stderr + filters.stderr).strip()}')
-    submodules = [e.split('\t', 1)[1] for e in listing.stdout.split('\0') if e.split(' ')[1:2] == ['commit']]
-    if submodules:
+    if submodules := gitlinks(listing.stdout):
         raise LocatorError('the run location tracks a submodule: ' + ', '.join(submodules))
     keys = [entry.split('\n', 1)[0] for entry in filters.stdout.split('\0') if entry]
     with tempfile.TemporaryDirectory() as temp:
@@ -220,7 +230,13 @@ def final_tree(out, folder):
             done = subprocess.run([*prefix, *args], cwd=folder, capture_output=True, text=True, env=env)
             if done.returncode:
                 raise LocatorError(f'git {" ".join(args)} in {folder.relative_to(out)}: {done.stderr.strip()}')
-    return done.stdout.strip()
+        tree = done.stdout.strip()
+        listing = subprocess.run([*prefix, 'ls-tree', '-r', '-z', tree], capture_output=True, text=True, env=env)
+        if listing.returncode:
+            raise LocatorError(f'git ls-tree in {folder.relative_to(out)}: {listing.stderr.strip()}')
+    if nested := gitlinks(listing.stdout):
+        raise LocatorError('the run location holds a nested repository recorded only by its commit: ' + ', '.join(nested))
+    return tree
 
 
 def materialize(out, selection):

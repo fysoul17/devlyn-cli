@@ -14,7 +14,7 @@ Stage 1 of [0232](../../iterations/0232-harness-ladder.md) §6 runs A/I/F on the
 | F | 0231's control package (4.1.0) | 0231's resolve command and committed `.task/goal.txt`, unchanged |
 
 - `control.py` ARMS holds F at `4056ebe2` with the sha256 its 0231 build recorded (also the published 4.1.0
-  tarball's), and I as a marked placeholder. Packing an unfrozen I fails explicitly.
+  tarball's), and I at the frozen rung-1 commit `5bf3dc74` with its pack's sha256. A pack that differs is refused.
 - Preparing I fails unless its installer put the launcher at `$HOME/.devlyn/review.js`. Its sha256 goes into
   `baseline.json` (`review_sha256`). The 0231 arm names are refused.
 - Every arm's anchor gets `origin/main` and `origin/HEAD` at the allocation commit (`git fetch origin` and
@@ -28,7 +28,8 @@ Stage 1 of [0232](../../iterations/0232-harness-ladder.md) §6 runs A/I/F on the
   - Codex: `input_tokens` already include cached and cache-write tokens (0208's validated counter semantics).
   - Claude: uncached input + cache reads + cache writes, from the owner's result, every separate result envelope and
     each uncovered transcript's lower bound.
-  - A missing Claude counter is a named gap, never zero.
+  - A missing Claude counter is a named gap, never zero. An empty usage map is missing too: it covers no transcript,
+    whose usage then counts as a lower bound.
 - **Review launcher calls** (`home/.devlyn/reviews/<UTC timestamp>-<engine>/`) are inventoried as launches:
   - A Codex call's JSON `thread.started` ids bind its traces (seat `reviewer`), so they are never unbound traces.
   - A Claude call's final stream event is a result envelope, deduplicated by session; it covers that session's
@@ -42,7 +43,8 @@ Stage 1 of [0232](../../iterations/0232-harness-ladder.md) §6 runs A/I/F on the
   methodology, not identity, so a same-engine review is non-compliant rather than a STOP in either config.
 - **Quota** (`quota.py`): review records' raw stdout and stderr are execution evidence, so a reviewer's account limit
   STOPs the cell like any other execution fault.
-- **Snapshot** (`locate.py`): F keeps 0231's selection exactly; a receipt-less F run is its anchor. A and I are
+- **Snapshot** (`locate.py`): Git's view of each tree reads the cell home, as the container does, never the host
+  user's ignore files. F keeps 0231's selection exactly; a receipt-less F run is its anchor. A and I are
   native: the anchor (the session's working directory) when its product differs from the allocation, else the one
   linked worktree whose product does. Changed products in more than one worktree beside an unchanged anchor are a
   locator STOP, never a silent choice. A baseline-witness worktree beside a changed anchor keeps the anchor. A
@@ -59,11 +61,12 @@ Stage 1 of [0232](../../iterations/0232-harness-ladder.md) §6 runs A/I/F on the
   - its `meta.json` `reviewed_tree` equals the final tree of the selected run location;
   - its `meta.json` `base` is the allocation commit (a later base reviewed only part of the change).
 - Otherwise the record names why: no review, or per call wrong engine, failed review, tree mismatch or partial base.
-- The final tree is the launcher's algorithm run on the host (`locate.final_tree`): HEAD read into a temporary index,
-  `add -A -- .`, write-tree. Git reads the cell home, as the container does, rather than the host user's ignore files.
-  The index and new objects stay in a temporary directory, so the sealed evidence is never written. No participant
-  command runs: every configured filter key is blanked, and a tracked submodule is refused (adding it would run
-  `git status` inside it). A refusal or Git failure leaves no final tree; it is recorded, and no call matches.
+- The final tree is the launcher's algorithm run on the host (`locate.final_tree`) with the cell home: HEAD read into
+  a temporary index, `add -A -- .`, write-tree. The index and new objects stay in a temporary directory, so the sealed
+  evidence is never written. No participant command runs: every configured filter key is blanked, and a tracked
+  submodule is refused (adding it would run `git status` inside it). A nested repository the add records as a gitlink
+  is refused too: the tree would hold only its commit while the snapshot copies its live files. A refusal or Git
+  failure leaves no final tree; it is recorded, and no call matches.
 - A has no methodology obligation. All arms get the same checks, oracle rows and blinded assessors on one snapshot.
 
 ## Decision (`decide.py`)
@@ -84,7 +87,8 @@ The record's O4 rule per configuration, over each arm's six cells:
   - candidate usage that is not COMPLETE makes its test INCONCLUSIVE;
   - a reference's PARTIAL sum is a lower bound: it can prove a test, never disprove one.
 - `decisions.json` must record `user_data_harm` as well as 0231's judgments. Raw sums, per-success costs and every
-  cell's methodology record are printed beside the outcomes.
+  cell's methodology record are printed beside the outcomes. A token sum over any usage that is not COMPLETE prints as
+  unknown, its observed amount only as a labeled lower bound.
 
 ## Cells
 
@@ -95,11 +99,12 @@ The record's O4 rule per configuration, over each arm's six cells:
 
 ## Tests and limits
 
-- `test_apparatus.py` runs model-free and Docker-free, except the container cases. Those need the image and the 0232
-  control tree, so they cannot run before FREEZE fills I.
+- `test_apparatus.py` runs model-free and Docker-free, except the container cases, which need the image and the 0232
+  control tree.
 - The obligation meter's fixtures need the 0231 bundle package, so they stay in 0231's suite.
 - **Host tree.** A participant filter that changes content, Git configuration the host path does not match (an
   `includeIf gitdir:` on a container path) or replacement refs can make the host tree differ from the reviewed one, and a
-  tracked submodule leaves no final tree: each reads as non-compliant, never as compliant.
+  tracked submodule or a gitlinked nested repository leaves no final tree: each reads as non-compliant, never as
+  compliant.
 - **Reviewer children.** A Codex reviewer's traced native children would be checked against the owner's child pin,
   which would make the cell a STOP. This case is unobserved.

@@ -22,9 +22,9 @@ _spec = importlib.util.spec_from_file_location('control0222', HERE.parent / '022
 base = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(base)
 # Source commit -> sha256 of its `npm pack`. F is 0231's control package at the digest its 0231 build recorded
-# (0231-live/control.manifest.json), which is also the published 4.1.0 tarball's. I is candidate/0232-rung1.
+# (0231-live/control.manifest.json), which is also the published 4.1.0 tarball's. I is candidate/0232-rung1 at FREEZE.
 ARMS = {'F': ('4056ebe24cba16c03bc447a8fbd4bb92cbf21edb', '48d21558e717a8b833b619d7ea696d07512cb78b6f29d13b0ccfb063ac263806'),
-        'I': (None, None)}  # PLACEHOLDER: the rung-1 commit and its pack's sha256 are filled at FREEZE
+        'I': ('5bf3dc740773851bee787a4f69c05b02ae0d62b6', '3ee56995952ec6b4bf0335f37ba7161dee1f061ab7281b6a01c0752772225427')}
 PUBLISHED = ('https://registry.npmjs.org/devlyn-cli/-/devlyn-cli-4.1.0.tgz', None)
 ORACLE = [name for name in base.TRACKED if name.startswith('autoresearch/experiments/')]
 
@@ -38,8 +38,6 @@ def pack(cache, arm):
     `scripts/update-instruction-templates.js` (it rebuilds the migration fingerprints from first-parent history),
     then `npm pack`."""
     commit, pinned = ARMS[arm]
-    if commit is None:
-        raise ValueError(f'{arm}: its commit is a placeholder until FREEZE')
     path = cache / f'{arm}.tgz'
     if not path.exists():
         with tempfile.TemporaryDirectory() as temp:
@@ -50,7 +48,7 @@ def pack(cache, arm):
             name = subprocess.run(['npm', 'pack', '--silent', '--ignore-scripts', '--pack-destination', str(cache)],
                                   cwd=clone, check=True, capture_output=True, text=True).stdout.split()[-1]
             (cache / name).rename(path)
-    if pinned and digest(path) != pinned:
+    if digest(path) != pinned:
         raise ValueError(f'{arm}.tgz: sha256 mismatch')
     return path
 

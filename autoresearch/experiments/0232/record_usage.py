@@ -121,9 +121,9 @@ def claude(inv, plan):
         for key, value in values.items():
             row[key] += value
     owner = inv['claude_owner']
-    covered = set(inv['envelopes'])
+    covered = {session for session, envelope in inv['envelopes'].items() if envelope['usage']}  # empty usage covers nothing
     if plan['engine'] == 'claude':
-        if owner['usage'] is None:
+        if not owner['usage']:
             gaps.append('owner result without usage')
         else:
             covered.add(owner['session'])

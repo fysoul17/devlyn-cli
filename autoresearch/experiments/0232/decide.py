@@ -155,9 +155,14 @@ def compare(cells, candidate, reference, wall_factor, strict):
 
 
 def report(cells):
-    """Raw sums with per-success costs, and each cell's methodology record (I's compliance, F's obligations)."""
+    """Raw sums with per-success costs, and each cell's methodology record (I's compliance, F's obligations). A token
+    sum is unknown (None) unless every cell's usage is COMPLETE; its observed amount is then only a lower bound."""
     group = sums(cells)
-    per = {key: float(group[key] / group['S']) if group['S'] else None for key in ('wall', 'input', 'output')}
+    known = dict(wall=True, input=group.pop('input_complete'), output=group.pop('output_complete'))
+    for key in ('input', 'output'):
+        if not known[key]:
+            group[key + '_lower_bound'], group[key] = group[key], None
+    per = {key: float(group[key] / group['S']) if group['S'] and known[key] else None for key in known}
     return dict(group, wall=float(group['wall']), per_success=per, methodology={c['name']: c['methodology'] for c in cells})
 
 

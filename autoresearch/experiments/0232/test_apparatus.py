@@ -262,6 +262,23 @@ class Binding(unittest.TestCase):
         self.assertIn('owner result: claude-opus-5-5 usage lacks a counter', recorded['gaps'])
         self.assertEqual(recorded['completeness'], 'UNKNOWN')
 
+    def test_an_empty_usage_map_is_missing_and_its_transcript_a_lower_bound(self):  # Astra stage-1 #2
+        init = dict(type='system', subtype='init', model='claude-opus-5-5', session_id='OWNER')
+        (self.out / 'run/stdout').write_text(json.dumps(init) + '\n' + json.dumps(dict(type='result', session_id='OWNER', modelUsage={})) + '\n')
+        (self.out / 'cell/work/.devlyn/claude-judge.r0.output.json').write_text(json.dumps(dict(
+            type='result', session_id='J1', modelUsage={})))
+        (self.out / 'home/.claude/projects/x').mkdir()
+        for session, counts in (('OWNER', (1, 20, 10, 17)), ('J1', (2, 0, 0, 5))):
+            (self.out / f'home/.claude/projects/x/{session}.jsonl').write_text(json.dumps(dict(
+                type='assistant', sessionId=session, message=dict(id='m-' + session, model='claude-opus-5-5', usage=dict(zip(
+                    ('input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens', 'output_tokens'), counts))))) + '\n')
+        recorded = usage.record(self.out)
+        for expected in ('owner result without usage', 'Claude result J1 without usage',
+                         'Claude session OWNER has no result; its transcript usage is a lower bound',
+                         'Claude session J1 has no result; its transcript usage is a lower bound'):
+            self.assertIn(expected, recorded['gaps'])
+        self.assertEqual((recorded['completeness'], recorded['input_tokens'], recorded['output_tokens']), ('PARTIAL', 31 + 2, 17 + 5))
+
     def test_a_codex_review_call_is_bound_to_its_trace_and_counted(self):
         review(self.out, '2026-10-05T01-02-03Z', 'codex', codex_review('RV'), meta=dict(engine='codex', exit_code=0))
         self.trace('RV')
@@ -584,6 +601,24 @@ class Locator(unittest.TestCase):
         with self.assertRaises(locate.LocatorError):
             locate.select(self.out, self.baseline())
 
+    def test_the_snapshot_reads_the_cell_home_never_the_host_users_ignore_files(self):  # Astra stage-1 #1
+        (self.out / 'cell/work/repro.txt').write_text('agent file\n')
+        user = self.out / 'host-user'
+        (user / '.config/git').mkdir(parents=True)
+        (user / '.config/git/ignore').write_text('repro.txt\n')
+        for key, value in (('HOME', user), ('XDG_CONFIG_HOME', user / '.config')):
+            shutil.rmtree(self.out / 'snapshot', ignore_errors=True)
+            original = locate.ENV
+            locate.ENV = dict(original, **{key: str(value)})
+            try:
+                locate.locate(self.out)
+            finally:
+                locate.ENV = original
+            self.assertTrue((self.out / 'snapshot/repro.txt').is_file(), key)
+        (self.out / 'home/.config/git').mkdir(parents=True)  # the cell's own ignore file applies, as in the container
+        (self.out / 'home/.config/git/ignore').write_text('repro.txt\n')
+        self.assertNotIn('repro.txt', locate.tree_files(self.out, self.out / 'cell/work'))
+
     def test_participant_git_configuration_never_executes_during_native_selection(self):
         self.linked('/tmp/witness', 'baseline witness\n')
         marker = self.out / 'fsmonitor-ran'
@@ -665,6 +700,13 @@ class Decision(unittest.TestCase):
         self.assertEqual(admission['outcome'], 'PASS')
         admission = self.write(wall=dict(I=90), tokens=dict(I=1100), usage=partial_a)['configs']['claude']['admission']
         self.assertEqual((admission['tests']['input'], admission['outcome']), (None, 'INCONCLUSIVE'))
+
+    def test_unknown_token_sums_are_published_as_unknown_with_their_lower_bounds(self):  # Astra stage-1 #3
+        sums = self.write(usage=lambda name, arm: 'PARTIAL' if name == 'm02-D4-claude-I-r1' else 'COMPLETE')['configs']['claude']['sums']
+        self.assertEqual({k: sums['I'][k] for k in ('input', 'input_lower_bound', 'output', 'output_lower_bound', 'per_success')},
+                         dict(input=None, input_lower_bound=6000, output=None, output_lower_bound=600,
+                              per_success=dict(wall=100.0, input=None, output=None)))
+        self.assertEqual((sums['A']['input'], sums['A']['per_success']['input'], 'input_lower_bound' in sums['A']), (6000, 1000.0, False))
 
     def test_replacement_needs_seventy_percent_of_F_wall_per_success_and_no_more_tokens(self):
         self.assertEqual(self.write(wall=dict(I=70))['configs']['claude']['replacement']['outcome'], 'PASS')  # inclusive
@@ -1024,6 +1066,19 @@ class Compliance(unittest.TestCase):
             finally:
                 compliance.locate.ENV = original
 
+    def test_a_nested_repository_recorded_only_by_its_commit_leaves_no_final_tree(self):  # Astra stage-1 #4
+        nested = self.work / 'fixture'
+        nested.mkdir()
+        self.git('init', '-q', '-b', 'main', cwd=nested)
+        (nested / 'n.txt').write_text('n\n')
+        self.git('add', '.', cwd=nested)
+        self.git('commit', '-q', '-m', 'n', cwd=nested)
+        self.call('codex')  # the launcher's tree holds the nested repository's commit, not its files
+        (nested / 'n.txt').write_text('edited after the review\n')
+        result = compliance.read(self.out)
+        self.assertEqual((result['compliant'], result['final_tree'], result['reasons']), (False, None, ['tree mismatch']))
+        self.assertIn('nested repository recorded only by its commit: fixture', result['final_tree_error'])
+
     def test_a_tracked_submodule_is_refused_before_git_could_run_status_inside_it(self):
         nested = self.work / 'sub'
         nested.mkdir()
@@ -1144,11 +1199,13 @@ class Prepare(unittest.TestCase):
 
 
 class Control(unittest.TestCase):
-    def test_F_is_pinned_and_an_unfrozen_I_is_never_packed(self):
+    def test_both_installing_arms_are_pinned_and_a_changed_pack_is_refused(self):
         control = load('control')
-        self.assertEqual((sorted(control.ARMS), control.ARMS['F']), (['F', 'I'], (
-            '4056ebe24cba16c03bc447a8fbd4bb92cbf21edb', '48d21558e717a8b833b619d7ea696d07512cb78b6f29d13b0ccfb063ac263806')))
-        with tempfile.TemporaryDirectory() as cache, self.assertRaisesRegex(ValueError, 'placeholder'):
+        self.assertEqual(control.ARMS, dict(
+            F=('4056ebe24cba16c03bc447a8fbd4bb92cbf21edb', '48d21558e717a8b833b619d7ea696d07512cb78b6f29d13b0ccfb063ac263806'),
+            I=('5bf3dc740773851bee787a4f69c05b02ae0d62b6', '3ee56995952ec6b4bf0335f37ba7161dee1f061ab7281b6a01c0752772225427')))
+        with tempfile.TemporaryDirectory() as cache, self.assertRaisesRegex(ValueError, 'sha256 mismatch'):
+            (Path(cache) / 'I.tgz').write_bytes(b'not the frozen pack')
             control.pack(Path(cache), 'I')
 
 
