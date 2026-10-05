@@ -43,7 +43,6 @@ jobs:
           mkdir -p "$RUNNER_TEMP/portability/logs"
           checks_failed=0
           bash scripts/lint-skills.sh 2>&1 | tee "$RUNNER_TEMP/portability/logs/lint.log" || checks_failed=1
-          python3 config/skills/_shared/resolve-bootstrap.py --self-test 2>&1 | tee "$RUNNER_TEMP/portability/logs/bootstrap.log" || checks_failed=1
           python3 scripts/test-ideate-loop.py 2>&1 | tee "$RUNNER_TEMP/portability/logs/ideate-loop.log" || checks_failed=1
           git diff --check 2>&1 | tee "$RUNNER_TEMP/portability/logs/diff.log" || checks_failed=1
           exit "$checks_failed"
@@ -192,18 +191,24 @@ jobs:
           child_env = dict(os.environ, DEVLYN_TEST_HOME=str(agent_home))
           checked('cli-entrypoint', ['node', '--require', str(preload), str(package / 'bin/devlyn.js'), '-y', '--claude'],
                   cwd=project, env=child_env)
+          # Exactly the retained core skills: a retired skill is neither shipped nor installed.
+          core = ['_shared', 'devlyn-engines', 'devlyn-ideate']
+          assert sorted(p.name for p in (package / 'config/skills').iterdir()) == core
+          shared = sorted(p.name for p in (package / 'config/skills/_shared').iterdir())
           for skills in (project / '.agents/skills', project / '.claude/skills'):
               marker = json.loads((skills / '.devlyn-install.json').read_text(encoding='utf-8'))
               assert marker['package'] == 'devlyn-cli', marker
-              resolve = skills / 'devlyn-resolve'
-              assert resolve.is_dir() and 'name: devlyn-resolve' in (resolve / 'SKILL.md').read_text(encoding='utf-8')
-          print('Real CLI complete-install marker and resolve directory passed', flush=True)
+              assert sorted(p.name for p in skills.iterdir() if p.name != '.devlyn-install.json') == core, skills
+              assert sorted(p.name for p in (skills / '_shared').iterdir()) == shared, skills
+              for skill in core[1:]:
+                  assert f'name: {skill}\n' in (skills / skill / 'SKILL.md').read_text(encoding='utf-8'), skill
+          print('Real CLI complete-install marker and retained skill set passed', flush=True)
 
           failed = []
           for label, command in (
               ('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)]),
-              ('bootstrap-self-test', [sys.executable, '-X', 'utf8=0',
-                  str(package / 'config/skills/_shared/resolve-bootstrap.py'), '--self-test']),
+              ('engines-self-test', [sys.executable, '-X', 'utf8=0',
+                  str(package / 'config/skills/_shared/role-config.py'), '--self-test']),
               ('ideate-loop', [sys.executable, '-X', 'utf8=0', str(driver.parent / 'test-ideate-loop.py'),
                   '--package-root', str(package)]),
           ):
