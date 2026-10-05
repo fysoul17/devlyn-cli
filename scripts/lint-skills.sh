@@ -1748,9 +1748,7 @@ if ! grep -Fq '_load_json_object' benchmark/auto-resolve/scripts/check-f9-artifa
   offenders="${offenders}"$'\n'"benchmark/auto-resolve/scripts/check-f9-artifacts.py: F9 timing/state JSON must fail closed on non-object payloads"
 fi
 if grep -RInE 'asserts variant/solo|Variant-only artifact checks|Variant artifact check' \
-  benchmark/auto-resolve/scripts/check-f9-artifacts.py \
-  benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve/NOTES.md \
-  benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve/spec.md >/dev/null 2>&1; then
+  benchmark/auto-resolve/scripts/check-f9-artifacts.py >/dev/null 2>&1; then
   offenders="${offenders}"$'\n'"F9 artifact docs/checker wording must describe skill-driven arms, not variant-only checks"
 fi
 if grep -Fq '<variant|bare>' benchmark/auto-resolve/scripts/run-fixture.sh; then
@@ -1986,7 +1984,7 @@ if ! grep -Fq '20260512-f7-scope-headroom' benchmark/auto-resolve/fixtures/F7-ou
   || ! grep -Fq '20260512-f7-scope-headroom' benchmark/auto-resolve/run-real-benchmark.md; then
   offenders="${offenders}"$'\n'"F7 docs must cite the measured headroom rejection before anyone counts it"
 fi
-if ! grep -Fq '20260512-f9-e2e-headroom' benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve/NOTES.md \
+if ! grep -Fq '20260512-f9-e2e-headroom' benchmark/auto-resolve/fixtures/retired/F9-e2e-ideate-to-resolve/NOTES.md \
   || ! grep -Fq '20260512-f9-e2e-headroom' benchmark/auto-resolve/BENCHMARK-RESULTS.md \
   || ! grep -Fq '20260512-f9-e2e-headroom' benchmark/auto-resolve/README.md \
   || ! grep -Fq '20260512-f9-e2e-headroom' benchmark/auto-resolve/run-real-benchmark.md; then
@@ -3101,7 +3099,7 @@ if ! grep -Fq 'pair-candidate-frontier.py' benchmark/auto-resolve/README.md \
   || ! grep -Fq 'F16-cli-quote-tax-rules: bare=50 solo_claude=75 pair=96 arm=l2_risk_probes margin=+21' benchmark/auto-resolve/scripts/test-pair-candidate-frontier.sh \
   || ! grep -Fq 'verdict=pair_evidence_passed' benchmark/auto-resolve/scripts/test-pair-candidate-frontier.sh \
   || ! grep -Fq '[audit] frontier' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
-  || ! grep -Fq 'fixtures=21 rejected=17 candidates=4 pair_evidence=4 unmeasured=0 verdict=PASS' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
+  || ! grep -Fq 'fixtures=20 rejected=16 candidates=4 pair_evidence=4 unmeasured=0 verdict=PASS' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
   || ! grep -Fq 'F16-cli-quote-tax-rules: bare=50 solo_claude=75 pair=96 arm=l2_risk_probes margin=+21' benchmark/auto-resolve/scripts/test-benchmark-arg-parsing.sh \
   || ! grep -Fq 'frontier.stdout' benchmark/auto-resolve/scripts/audit-pair-evidence.py \
   || ! grep -Fq 'headroom-rejections.stdout' benchmark/auto-resolve/scripts/audit-pair-evidence.py \
@@ -3609,23 +3607,17 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 14. F9 fixture id matches the shipped 2-skill contract (iter-0033a, 2026-04-30).
-#     `/devlyn:preflight` was folded into `/devlyn-resolve`'s VERIFY phase; the
-#     legacy F9 dir name (`F9-e2e-ideate-to-preflight`) is misleading once
-#     preflight is gone. The retired copy lives under `fixtures/retired/` for
-#     replay; the live fixture must be `F9-e2e-ideate-to-resolve`. Any other
+# 14. No stale F9 preflight id (iter-0033a, 2026-04-30). `/devlyn:preflight` was
+#     folded into `/devlyn-resolve`'s VERIFY phase and the legacy F9 dir name
+#     (`F9-e2e-ideate-to-preflight`) retired; its successor
+#     `F9-e2e-ideate-to-resolve` is retired too (ideate loop, 2026-10-05). Any
 #     non-retired reference to the old id is a stale rename.
 # ---------------------------------------------------------------------------
-section "Check 14: F9 fixture id matches 2-skill contract"
+section "Check 14: no stale F9 preflight id outside retired/"
 f9_drift=0
-if [ ! -d "benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve" ]; then
-  bad "live F9 fixture missing at benchmark/auto-resolve/fixtures/F9-e2e-ideate-to-resolve"
-  f9_drift=1
-fi
 # Stale references outside fixtures/retired/ are bugs. Examine line content
 # (not just filename) so files that legitimately mention the retired *path*
-# (e.g. fixtures/F9-e2e-ideate-to-resolve/NOTES.md explaining where the OLD
-# version lives) pass while genuine stale references fail. Excluded scopes:
+# pass while genuine stale references fail. Excluded scopes:
 # benchmark/auto-resolve/results/ (historical run artifacts, frozen) and
 # scripts/lint-skills.sh itself (carries the pattern in this check).
 stale=$(git grep -In -- 'F9-e2e-ideate-to-preflight' -- \
@@ -3645,7 +3637,7 @@ if [ -n "$stale" ]; then
   f9_drift=1
 fi
 if [ $f9_drift -eq 0 ]; then
-  ok "F9 fixture id is canonical (F9-e2e-ideate-to-resolve); no stale refs outside retired/"
+  ok "no stale F9-e2e-ideate-to-preflight refs outside retired/"
 fi
 
 # ---------------------------------------------------------------------------

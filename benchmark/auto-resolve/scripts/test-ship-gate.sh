@@ -301,7 +301,7 @@ JSON
 python3 "$COMPILE" --run-id "$AXIS_RUN" > "$TMP_DIR/axis-compile.out" 2>&1
 grep -Fq '| Fixture | Category | variant (L2) | solo_claude (L1) | bare (L0) | variant-bare | solo_claude-bare | variant-solo_claude | Winner | Wall variant/solo_claude/bare | Wall variant/solo_claude | Wall variant/bare |' \
   "$TMP_DIR/axis-compile.out"
-grep -Fq '| F9-e2e-ideate-to-resolve | e2e | 70 | 60 | 50 | +20 | +10 | +10 | variant | 10s/10s/10s | 1.0x | 1.0x |' \
+grep -Fq '| F9-e2e-ideate-to-resolve | unknown | 70 | 60 | 50 | +20 | +10 | +10 | variant | 10s/10s/10s | 1.0x | 1.0x |' \
   "$TMP_DIR/axis-compile.out"
 grep -Fq '**Fixtures with margin ≥ +5:**   1 / 1 (gate: ≥ 7)' "$TMP_DIR/axis-compile.out"
 grep -Fq '**variant (L2) vs bare (L0) margin avg:** +20.0' "$TMP_DIR/axis-compile.out"

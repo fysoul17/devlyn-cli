@@ -348,10 +348,8 @@ fi
 # committed to the work repo as a separate pre-model commit so the model's
 # diff shows only its own work.
 #
-# Per-arm prompt selection is:
-#   1. Fixture-id-aware for F9 (end-to-end novice fixture, no pre-placed spec).
-#   2. Spec-mode `/devlyn-resolve --spec <path>` for the rest (post iter-0034
-#      Phase 4 cutover the OLD `/devlyn:auto-resolve` route was deleted).
+# Skill arms run spec-mode `/devlyn-resolve --spec <path>` (post iter-0034
+# Phase 4 cutover the OLD `/devlyn:auto-resolve` route was deleted).
 PROMPT_FILE="$RESULT_DIR/input.md"
 # Variant uses the current measured risk-probes pair path; solo_claude uses
 # --engine claude explicitly so the orchestrator routes every implementation
@@ -398,61 +396,30 @@ if [ "$ARM" = "variant" ] || [ "$ARM" = "solo_claude" ] \
       ENGINE_PROMPT_HINT="Run with \`--engine claude --pair-verify\` so VERIFY pair-mode fires unconditionally. Codex is the OTHER-engine pair-JUDGE."
       ;;
   esac
-  if [ "$FIXTURE" = "F9-e2e-ideate-to-resolve" ]; then
-    # F9 NEW chain (iter-0033a): /devlyn-ideate --quick → /devlyn-resolve
-    # --spec <emitted-path>. No pre-placed spec; the variant arm generates it
-    # via ideate. No preflight (folded into resolve's VERIFY phase).
-    #
-    # --quick is mandatory in autonomous (claude -p) mode: default ideate
-    # invokes interactive Q&A which has no human to answer in a benchmark
-    # subprocess — the agent asks questions and stops. --quick uses
-    # single-turn assume-and-confirm: AI synthesizes the spec from the goal
-    # plus an explicit assumptions block, so the chain proceeds end-to-end
-    # without user input. Smoke 3 (iter-0033a, 2026-04-30) caught this:
-    # default-mode F9 produced empty diffs after 54s of Q&A waiting.
-    cat > "$PROMPT_FILE" <<EOF
-You are a first-time devlyn-cli user. You have a vague idea and want the 2-skill harness to take it from unstructured ask to shipped, verified feature. Run the chain:
-
-1. Invoke \`/devlyn-ideate --quick ${ENGINE_CLAUSE}\` to turn the idea into a verifiable spec. \`--quick\` is mandatory: this is an autonomous run with no human to answer interactive questions, so ideate must synthesize the spec single-turn from the goal text and emit assumptions explicitly. The skill announces \`spec ready — /devlyn-resolve --spec <emitted-path>\` when done. The emitted spec lives at \`docs/specs/<id>-<slug>/spec.md\` with a sibling \`spec.expected.json\`.
-2. Take the emitted spec path verbatim from the announce line and invoke \`/devlyn-resolve --spec <that-path> ${ENGINE_CLAUSE}\` to run PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → VERIFY (VERIFY is the fresh-subagent final phase — there is no separate preflight skill in the 2-skill design).
-
-${ENGINE_PROMPT_HINT}
-
-Follow the skills to completion. Do not short-circuit. Do not invoke \`/devlyn:auto-resolve\` or \`/devlyn:preflight\` — they are not part of the 2-skill chain. Do not stop after ideate; the chain only counts as complete after \`/devlyn-resolve\` returns a terminal verdict.
-
-After the whole chain, briefly report: (a) the spec path ideate produced, (b) the resolve terminal verdict, (c) whether VERIFY surfaced any findings.
-
-RAW IDEA:
-$(cat "$TASK")
-EOF
-  else
-    # Spec-mode /devlyn-resolve: spec pre-placed at the canonical roadmap path
-    # the harness has used since iter-0019. Pre-Phase-4 this branch shared
-    # staging with the OLD /devlyn:auto-resolve route; iter-0034 deleted the
-    # OLD branch and this is now the only non-F9 path.
-    mkdir -p "$WORK_DIR/docs/roadmap/phase-1"
-    cp "$SPEC" "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
-    # iter-0049: fixtures keep spec.md prose-only (expected.json is the real
-    # carrier, validated separately by lint-fixtures.sh) but spec-verify-check.py
-    # now locates the visible ## Verification prose via a <!-- devlyn:verification -->
-    # sentinel rather than the English header text. Inject it into the WORK_DIR
-    # copy only, so risk-probe derived_from substring matching still finds the
-    # section during a run; the source fixture repo stays untouched.
-    if ! grep -q '<!-- devlyn:verification -->' "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"; then
-      sed -i.bak 's/^## Verification\b/<!-- devlyn:verification -->\n## Verification/' \
-        "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
-      rm -f "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md.bak"
-    fi
-    cat > "$PROMPT_FILE" <<EOF
+  # Spec-mode /devlyn-resolve: spec pre-placed at the canonical roadmap path
+  # the harness has used since iter-0019.
+  mkdir -p "$WORK_DIR/docs/roadmap/phase-1"
+  cp "$SPEC" "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
+  # iter-0049: fixtures keep spec.md prose-only (expected.json is the real
+  # carrier, validated separately by lint-fixtures.sh) but spec-verify-check.py
+  # now locates the visible ## Verification prose via a <!-- devlyn:verification -->
+  # sentinel rather than the English header text. Inject it into the WORK_DIR
+  # copy only, so risk-probe derived_from substring matching still finds the
+  # section during a run; the source fixture repo stays untouched.
+  if ! grep -q '<!-- devlyn:verification -->' "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"; then
+    sed -i.bak 's/^## Verification\b/<!-- devlyn:verification -->\n## Verification/' \
+      "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md"
+    rm -f "$WORK_DIR/docs/roadmap/phase-1/$FIXTURE.md.bak"
+  fi
+  cat > "$PROMPT_FILE" <<EOF
 Use the \`/devlyn-resolve --spec docs/roadmap/phase-1/$FIXTURE.md ${ENGINE_CLAUSE}\` skill to implement the spec. ${ENGINE_PROMPT_HINT}
 
 The 2-skill design folds verification into resolve's VERIFY phase — there is no separate \`/devlyn:preflight\`, \`/devlyn:auto-resolve\`, or other 3-skill orchestrator at HEAD.
 
 After the pipeline finishes, report the terminal verdict and list of files changed so the benchmark runner can capture state.
 EOF
-  fi
 else
-  # Bare — same prompt for F9 as any other fixture: task.txt with anti-skill rules.
+  # Bare — task.txt with anti-skill rules.
   cat > "$PROMPT_FILE" <<EOF
 You are acting as a smart engineer implementing the following request directly. No skill pipeline.
 
