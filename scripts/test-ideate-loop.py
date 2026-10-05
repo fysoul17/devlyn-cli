@@ -486,13 +486,12 @@ class LoopFixture(unittest.TestCase):
         report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")
         self.assertIn("Delivery: PENDING", report)
         self.assertIn("Resume: ", report)
-        # A later --local-only drain honors the no-push restriction for every delivery and chains locally.
+        # A later --local-only drain cannot rewrite the delivery of a task whose PR is already pushed.
         server = json.loads(data.read_text())
-        tasks = self.tasks(self.drain())
-        self.assertEqual((tasks["inv.t1"]["delivery"], tasks["inv.t2"]["result"], tasks["inv.t2"]["delivery"]), ("LOCAL_ONLY", "accepted", "LOCAL_ONLY"))
-        self.assertEqual(self.receipt("inv.t2")["baseline"], receipt["source_sha"])
-        self.assertEqual({key: json.loads(data.read_text()).get(key) for key in ("pushs", "creates", "merges")},
-                         {key: server.get(key) for key in ("pushs", "creates", "merges")})
+        blocked = self.drain(code=1)
+        self.assertIn("inv.t1 already has a pushed PR", blocked["reason"])
+        self.assertEqual((self.receipt("inv.t1")["delivery"], self.receipt("inv.t1").get("local_only"), self.calls("inv.t2")), ("PENDING", None, 0))
+        self.assertEqual(json.loads(data.read_text()), server)
 
 
 def main():

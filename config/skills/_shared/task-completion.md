@@ -107,7 +107,7 @@ python3 "$DEVLYN_SHARED_DIR/task-complete.py" complete \
 Project policy is `git config --local devlyn.completionMode auto|pr`; absent means
 `auto`. Invalid local values fail before external effects, even with an override.
 Use `complete --mode auto|pr` for one task, or `--local-only`/`--no-push` to honor
-the user's delivery restriction. These per-task choices persist in the receipt.
+the user's delivery restriction. These per-task choices persist in the receipt; `--local-only` is refused once the task ref is pushed.
 
 `pr` pushes the exact accepted task ref and creates/reuses its exact repository,
 head and base PR. While OPEN, it cancels owned auto-merge, reports `PR` with its URL

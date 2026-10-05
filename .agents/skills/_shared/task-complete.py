@@ -743,6 +743,8 @@ def complete(args):
         if receipt.get("product") == "FAILED":
             return result("FAILED")
         if args.local_only or receipt.get("local_only"):
+            require(not receipt.get("pushed"), f"{receipt['task']} already has a pushed PR {receipt.get('pr_url') or receipt['branch']}; "
+                    "--local-only cannot rewrite its delivery, resume it without --local-only")
             receipt["local_only"] = True
             atomic_json(path, receipt)
             if args.acceptance or receipt.get("acceptance"):
@@ -1942,10 +1944,10 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(result["status"], "PR")
         self.assertIn("disallows auto merge", result["merge_refused"])
         self.assertTrue(self.task.exists())
-        result, _ = self.complete("--no-push")
-        self.assertEqual(result["status"], "LOCAL_ONLY")
-        result, _ = self.complete(acceptance=False)
-        self.assertEqual(result["status"], "LOCAL_ONLY")
+        # Local-only cannot rewrite the delivery of a pushed PR; a local allocation keeps it (test_local_chain_*).
+        result, _ = self.complete("--no-push", success=False)
+        self.assertIn("fixture already has a pushed PR https://github.com/test/project/pull/1", result["reason"])
+        self.assertNotIn("local_only", json.loads(self.receipt.read_text(encoding="utf-8")))
 
     def test_queue_commit_cannot_hide_product_changes(self):
         self.allocate(); self.accept(pipeline=True, queue=True)
