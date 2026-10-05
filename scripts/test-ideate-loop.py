@@ -270,6 +270,10 @@ class LoopFixture(unittest.TestCase):
         self.assertTrue(bound["acceptance"] and "queue" not in bound)
         self.assertEqual(self.g("rev-parse", "refs/heads/devlyn/inv/t1"), bound["source_sha"])
         self.release_executor_holder()
+        # Until the terminal commit is attached the resume is another drain, never task-complete delivery.
+        resume = {t["identity"]: t["resume"] for t in self.cli("status", "--repo", self.anchor)["delivery"]}["inv.t1"]
+        self.assertNotIn("task-complete", resume)
+        self.assertIn("drain again", resume)
         result = self.drain()
         self.assertEqual({identity: task["result"] for identity, task in self.tasks(result).items()}, {"inv.t1": "accepted", "inv.t2": "accepted"})
         self.assertEqual((self.calls("inv.t1"), self.calls("inv.t2")), (1, 1))

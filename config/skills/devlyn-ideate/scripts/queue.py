@@ -747,8 +747,9 @@ def summary(v, row):
         acceptance_record = receipt.get("acceptance") or {}
         item.update(allocation_base=receipt.get("baseline"), **{"source" if state["kind"] == "accepted" else "candidate": receipt.get("source_sha")},
                     terminal=(receipt.get("queue") or {}).get("commit"), delivery=receipt.get("delivery"), pr=receipt.get("pr_url"),
-                    resume=shlex.join([sys.executable, str(SKILLS / "_shared/task-complete.py"), "complete", "--receipt", str(state["path"])])
-                    if receipt.get("acceptance") and receipt.get("delivery") not in SETTLED else None,
+                    resume=None if not receipt.get("acceptance") or receipt.get("delivery") in SETTLED
+                    else shlex.join([sys.executable, str(SKILLS / "_shared/task-complete.py"), "complete", "--receipt", str(state["path"])])
+                    if receipt.get("queue") else "drain again: the terminal commit is not attached yet",
                     assumptions=acceptance_record.get("assumptions", []),
                     questions=[r.removeprefix("needs-review: ") for r in acceptance_record.get("reasons", []) if r.startswith("needs-review: ")],
                     worktree=receipt["worktree"] if receipt.get("worktree") and Path(receipt["worktree"]).exists() else None,

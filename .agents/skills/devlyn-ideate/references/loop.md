@@ -11,7 +11,7 @@ python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" drain --repo . [--local-only] [--wo
 
 Both print one JSON object; exit 1 is `BLOCKED` with a `reason`.
 
-- `status` is read-only: reconciled counts (`pending`, `active`, `accepted`, `failed`, `blocked`, `legacy_pending`), the `next` task, `blockers`, and deliveries still pending with their resume commands.
+- `status` is read-only: reconciled counts (`pending`, `active`, `accepted`, `failed`, `blocked`, `legacy_pending`), the `next` task, `blockers`, and deliveries still pending with their resume: drain again until the terminal commit is attached, then `task-complete.py complete --receipt <receipt>`.
 - `drain` ends `DRAINED` (nothing pending), `WAITING` (pending work waits on a delivery, or legacy rows need planning) or `BLOCKED` (conflict, invalid input or a recovery blocker). Progress lines `devlyn-loop: <task>: <event>` go to stderr.
 - `--local-only` (alias `--no-push`) keeps the loop local. A manifest `delivery: local-only` and any earlier local receipt of the loop keep that restriction for later drains. A local loop needs no remote; nothing is fetched or pushed.
 - Worktrees default to `<repo parent>/<repo name>.devlyn/<loop-id>/<task-id>`.
