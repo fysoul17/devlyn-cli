@@ -12,7 +12,7 @@ python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" drain --repo . [--local-only] [--wo
 Both print one JSON object; exit 1 is `BLOCKED` with a `reason`.
 
 - `status` writes nothing beyond finishing `add`'s cleanup (step 1): reconciled counts (`pending`, `active`, `accepted`, `failed`, `blocked`, `legacy_pending`), the `next` task, `blockers`, deliveries still pending with their resume (drain again until the terminal commit is attached, then `task-complete.py complete --receipt <receipt>`), and under `cleanup` the package copies `add` kept or could not remove.
-- `drain` ends `DRAINED` (nothing pending), `WAITING` (a task waits with its reason, or legacy rows need planning) or `BLOCKED` (conflict, invalid input or a recovery blocker). Progress lines `devlyn-loop: <task>: <event>` go to stderr.
+- `drain` ends `DRAINED` (no runnable task remains; open deliveries show per task), `WAITING` (a task waits with its reason, or legacy rows need planning) or `BLOCKED` (conflict, invalid input or a recovery blocker). Progress lines `devlyn-loop: <task>: <event>` go to stderr.
 - `--local-only` (alias `--no-push`) keeps the loop local. A manifest `delivery: local-only` and any earlier local receipt of the loop keep that restriction for later drains. A local loop needs no remote; nothing is fetched or pushed. An `auto`/`pr` loop none of whose tasks has a pushed PR runs as a local loop from its capture and the branch it was added on. Once one has, that PR is never rewritten to local and the loop is never run locally: its tasks wait, naming the PR, while other work continues.
 - Worktrees default to `<repo parent>/<repo name>.devlyn/<loop-id>/<task-id>`.
 
