@@ -463,7 +463,7 @@ class LoopFixture(unittest.TestCase):
     def test_instructions_git_reports_unchanged_are_the_checkouts(self):
         # Prediction: instruction files `git status` reports unchanged are the checkout's, so each of the installer's
         # layouts, AGENTS.md committed as a link to CLAUDE.md (-y --claude) and CLAUDE.md as a link to AGENTS.md (-y), and a
-        # CLAUDE.md committed with CRLF line endings under core.autocrlf=true lets add commit a loop whose task is accepted
+        # CLAUDE.md committed with CRLF line endings under core.autocrlf=true lets add capture a loop whose task is accepted
         # with the files in its methodology. Before: each blob was compared with `git hash-object` of the file, which
         # follows a link and, reading no index, normalizes a CRLF blob, so add refused although nothing was left to commit.
         def install(loop, message, links=(), crlf=False):
@@ -968,9 +968,9 @@ class LoopFixture(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_independent_pending_prs_merge_one_after_the_other(self):
-        # Prediction (A2): once the carrier's PR landed the plan, two independent tasks' PRs pending at once each change
-        # only their own row, one blank line from the next, so they merge one after the other without conflict and the
-        # remote queue shows both rows [x]. Before: the rows were adjacent, so the second merge conflicted in the queue.
+        # Prediction (A2): once the carrier's PR landed the package, two independent tasks' PRs pending at once each change
+        # only their own row of the loop's queue file, one blank line from the next, so they merge one after the other
+        # without conflict and the remote rows show both [x]. Before: the rows were adjacent, so the second merge conflicted.
         bare, data = self.remote(pending=True)
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", [], "Todo", [TODO_CHECK]),
                  ("t4", ["t1", "t2", "t3"], "Greeting app", [APP_CHECK])]
@@ -1015,10 +1015,9 @@ class LoopFixture(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_squash_delivery_leaves_the_anchor_pull_ready(self):
-        # Prediction (A3): the fake squash-merges every PR; the anchor holds no loop commit and the drain removes its plan
-        # copies once the loop settled, so `git pull --ff-only` fast-forwards the anchor to the remote base with a clean
-        # tree and both rows [x]. Before: add's commit stayed on the anchor and no squash merge descends from it, so the
-        # pull could not fast-forward.
+        # Prediction (A3): the fake squash-merges every PR; the anchor holds no loop commit and, after add, no package copy,
+        # so `git pull --ff-only` fast-forwards the anchor to the remote base with a clean tree and both rows [x]. Before:
+        # add's commit stayed on the anchor and no squash merge descends from it, so the pull could not fast-forward.
         bare, data = self.remote(pending=False, squash=True)
         self.plan("sq", CHAIN, {"sq.t1": {"product": "greeting"}, "sq.t2": {"product": "app"}}, delivery="auto")
         tasks = self.tasks(self.drain(local=False))
@@ -1036,8 +1035,8 @@ class LoopFixture(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_failed_carrier_hands_the_plan_to_the_next_task(self):
         # Prediction (A4): the carrier fails and is never published; the next task then starts from the same remote base,
-        # its inputs commit carries the whole package and every row of the loop, the failed carrier's receipt-proven [F]
-        # row included, its PR merges, and the loop settles. Before: both tasks started from add's local commit.
+        # its inputs commit carries the captured package directory with the loop's queue file, the failed carrier's
+        # receipt-proven [F] row included, its PR merges, and the loop settles. Before: both tasks started from add's local commit.
         bare, data = self.remote(pending=False)
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1", "t2"], "Greeting app", [APP_CHECK])]
         self.plan("cf", tasks, {"cf.t1": {"product": "bad-greeting"}, "cf.t2": {"product": "notes"}, "cf.t3": {"product": "app"}},

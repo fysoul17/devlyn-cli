@@ -637,16 +637,11 @@ def delivered(receipt):
     return receipt.get("delivery") == "COMPLETE" or bool(receipt.get("merge"))
 
 
-def lacks_package(v, loop, commit):
-    """Whether `commit` lacks the loop's package: an auto/pr task starting there carries it."""
-    return show(v["anchor"], commit, loop_queue(loop)) is None
-
-
 def carrier(v, loop):
-    """The auto/pr task whose undelivered, unfailed PR carries the loop's package, if any (loop.md step 2)."""
+    """The auto/pr task whose undelivered, unfailed PR carries the loop's package, which its base lacked (loop.md step 2)."""
     return None if is_local(v, loop) else next((
         row["identity"] for row in v["rows"] if row.get("loop") == loop and (state := v["states"][row["identity"]])["receipt"]
-        and state["kind"] != "failed" and not delivered(state["receipt"]) and lacks_package(v, loop, state["receipt"]["baseline"])), None)
+        and state["kind"] != "failed" and not delivered(state["receipt"]) and show(v["anchor"], state["receipt"]["baseline"], loop_queue(loop)) is None), None)
 
 
 def waiting(v, row):
