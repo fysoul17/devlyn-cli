@@ -5,12 +5,6 @@
 # just what's pinned. This script never writes .devlyn/engines.json, never
 # installs anything, never changes pin validation — it only reports.
 #
-# CATALOG NOTE: `pi` (bin/devlyn.js's Pi/earendil-works install target) has
-# no verified CLI binary name anywhere in this repo — its own installer
-# detect() only checks project marker files, never shells out to a binary.
-# Fabricating a `command -v pi` check would be a guess this repo's evidence
-# rule forbids, so its binary column reports "unknown" rather than "no".
-#
 # macOS-safe bash 3.2: no associative arrays, no mapfile/readarray.
 set -uo pipefail
 
@@ -45,8 +39,8 @@ check_executor() {
   if grep -q '^executor: no' "$1" 2>/dev/null; then printf 'no'; else printf 'yes'; fi
 }
 
-printf '%-8s %-17s %-8s %-8s %-9s %-12s %s\n' \
-  'target' 'kind' 'binary' 'adapter' 'executor' 'pin_eligible' 'note'
+printf '%-8s %-17s %-8s %-8s %-9s %s\n' \
+  'target' 'kind' 'binary' 'adapter' 'executor' 'note'
 
 for i in "${!TARGETS[@]}"; do
   target="${TARGETS[$i]}"
@@ -54,11 +48,6 @@ for i in "${!TARGETS[@]}"; do
   binary="$(check_binary "${BINARIES[$i]}")"
   adapter="$(check_adapter "$target")"
   executor="$(check_executor "$ADAPTERS_DIR/$target.md")"
-
-  pin_eligible='no'
-  case "$kind" in
-    cli-engine) [ "$binary" = 'yes' ] && [ "$adapter" = 'yes' ] && [ "$executor" = 'yes' ] && pin_eligible='yes' ;;
-  esac
 
   note='-'
   case "$kind" in
@@ -76,6 +65,6 @@ for i in "${!TARGETS[@]}"; do
       ;;
   esac
 
-  printf '%-8s %-17s %-8s %-8s %-9s %-12s %s\n' \
-    "$target" "$kind" "$binary" "$adapter" "$executor" "$pin_eligible" "$note"
+  printf '%-8s %-17s %-8s %-8s %-9s %s\n' \
+    "$target" "$kind" "$binary" "$adapter" "$executor" "$note"
 done
