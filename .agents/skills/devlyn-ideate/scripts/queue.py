@@ -476,7 +476,7 @@ def queue_view(anchor, recorded):
     raw = [row for row in parse_queue(legacy.read_bytes() if legacy.exists() else b"") if not row["identity"]]
     loops = {loop: parse_loop(show(anchor, added["commit"], loop_queue(loop)), loop, f"{CAPTURES}{loop}:{loop_queue(loop)}")
              for loop, added in recorded.items()}
-    for rel in sorted(filter(None, git(anchor, "ls-files", "-z", "--", ":(glob)docs/specs/*/queue.md").split("\0"))):
+    for rel in sorted(filter(None, git(anchor, "ls-files", "-z", "--", ":(glob)docs/specs/*/queue.md").split("\0")), key=lambda rel: rel.split("/")[2]):
         loop, data = rel.split("/")[2], (anchor / rel).read_bytes() if (anchor / rel).is_file() else None
         # A file holding no task row of its directory's loop is not a loop's queue file.
         if loop not in recorded and data and any(row.get("loop") == loop for row in parse_queue(data, anchor / rel)):
@@ -1551,16 +1551,17 @@ class QueueTests(unittest.TestCase):
     def test_a_legacy_row_is_replaced_only_by_its_one_exact_claim(self):
         """Q. Prediction: a loop's queue file hides the legacy row whose exact text and occurrence it records, line endings
         aside, showing the loop's rows in its place; a claim on a missing occurrence, and a row two loops claim, replace
-        nothing, so no other row disappears; loops without a record follow in loop-id order. Before: the first row equal
-        to the recorded text was replaced, whatever its occurrence."""
+        nothing, so no other row disappears; loops without a record follow in loop-id order, two-b after two. Before: the
+        first row equal to the recorded text was replaced, whatever its occurrence; two-b came first, its queue file's path
+        sorting before two's since '-' sorts before '/'."""
         (self.anchor / QUEUE).write_bytes(b"# Intent Queue\n\n- [ ] alpha\r\n- [ ] alpha\n- [ ] beta\n")
-        for loop, occurrence, line in (("one", 2, "- [ ] alpha"), ("two", 1, "- [ ] beta"), ("three", 1, "- [ ] beta"), ("four", 3, "- [ ] alpha")):
+        for loop, occurrence, line in (("one", 2, "- [ ] alpha"), ("two", 1, "- [ ] beta"), ("two-b", 1, "- [ ] beta"), ("four", 3, "- [ ] alpha")):
             (self.anchor / "docs/specs" / loop).mkdir(parents=True)
             (self.anchor / loop_queue(loop)).write_text(f"<!-- replaces {QUEUE} row (occurrence {occurrence}): {line} -->\n\n{row_line(f'{loop}.t1', 'T')}\n",
                                                          encoding="utf-8")
         git(self.anchor, "add", "docs/specs", env=self.env)
         self.assertEqual([(row["identity"], row["index"]) for row in queue_view(self.anchor, {})],
-                         [(None, 2), ("one.t1", 2), (None, 4), ("four.t1", 2), ("three.t1", 2), ("two.t1", 2)])
+                         [(None, 2), ("one.t1", 2), (None, 4), ("four.t1", 2), ("two.t1", 2), ("two-b.t1", 2)])
 
     def test_handwritten_marks_never_satisfy_dependencies(self):
         """A loop without a record here, as in a fresh clone, is read from its tracked queue file, after the recorded loops
