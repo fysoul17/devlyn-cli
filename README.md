@@ -46,7 +46,7 @@ The managed `CLAUDE.md` / `AGENTS.md` block carries the North Star, seven princi
 intent  →  direct work under the installed principles, or an ideate loop  →  ship
 ```
 
-Non-Claude agents (Codex / omp / Pi / Grok): the AGENTS.md choice installs the skills for them. In Codex / omp / Pi, use `$devlyn-ideate`; in Grok, use `/devlyn-ideate`, the same slash-command form as Claude Code.
+Non-Claude agents (Codex / omp / Pi / Grok): the AGENTS.md choice installs the skills for them. In Codex / omp / Pi, use `$devlyn-ideate`; in Grok, use `/devlyn-ideate`, the same slash-command form as Claude Code. A drain from Pi or Grok needs [a pinned executor](#executor--devlyn-engines).
 
 ### Plan and drain loops — `/devlyn-ideate`
 
@@ -76,9 +76,9 @@ for allocation, acceptance, writer cessation and recovery.
 
 ### Executor — `/devlyn-engines`
 
-The orchestrator is the CLI you opened (Claude Code, Codex, or omp); the contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the loop's file artifacts carry over if you switch. The executor does the implementation work, direct or drained: the engine pinned in machine-local `.devlyn/engines.json`, else the CLI you opened.
+The orchestrator is the CLI you opened (Claude Code, Codex, omp, Pi or Grok); the contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the loop's file artifacts carry over if you switch. The executor does the implementation work, direct or drained: the engine pinned in machine-local `.devlyn/engines.json`, else the CLI you opened. Pi and Grok have no executor adapter, so a drain from them needs `devlyn-engines executor <claude|codex|omp>`.
 
-`/devlyn-engines` with no arguments shows the executor and the engines detected on this machine; `executor <name>` pins one and `clear` removes the pin. A pin is a promise: an unavailable pinned engine stops dispatch with `BLOCKED:<engine>-unavailable`, and a name with no executor-eligible `_shared/adapters/<name>.md` stops with `BLOCKED:invalid-engine-config`. New engines plug in by shipping an adapter file.
+`/devlyn-engines` with no arguments shows the executor and the engines detected on this machine; `executor <name>` pins one and `clear` removes the pin. A pin is a promise: an unavailable pinned engine stops dispatch with `BLOCKED:<engine>-unavailable`, and a name with no executor-eligible `_shared/adapters/<name>.md` stops with `BLOCKED:invalid-engine-config`. Adapters ship with devlyn-cli releases; a reinstall replaces `_shared`.
 
 ### Migration from earlier versions
 
