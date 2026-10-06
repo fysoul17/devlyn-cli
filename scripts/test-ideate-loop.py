@@ -382,6 +382,32 @@ class LoopFixture(unittest.TestCase):
             checked = subprocess.run([sys.executable, str(checks)], input=data, capture_output=True)
             self.assertEqual((name, checked.returncode, data.endswith(b"\n" + self.queue["TRAILER"] + b"\n")), (name, 0, True), checked.stderr)
 
+    def methodology(self, identity):
+        return [Path(entry["path"]).name for entry in json.loads(self.receipt_path(identity).with_name("packet.json").read_text(encoding="utf-8"))["methodology"]]
+
+    def test_add_refuses_a_head_without_the_checkouts_instructions(self):
+        # Prediction (E3): a checkout with neither CLAUDE.md nor AGENTS.md drains normally, its packet listing no
+        # methodology; an uncommitted CLAUDE.md makes add refuse, naming the file, HEAD and the remedy, with no queue, index,
+        # ref or record change; once CLAUDE.md is committed, add succeeds and the task's packet lists it. Before: add
+        # committed the loop from a HEAD without CLAUDE.md, and its task ran without the installed instructions.
+        self.plan("nf", [("t1", [], "Notes", [NOTES_CHECK])], {"nf.t1": {"product": "notes"}})
+        self.assertEqual((self.tasks(self.drain())["nf.t1"]["result"], self.methodology("nf.t1")), ("accepted", []))
+        (self.anchor / "CLAUDE.md").write_text("# Installed instructions\n", encoding="utf-8")
+        meta = self.queue["write_package"](self.anchor, "ci", [("t1", [], "Todo", [TODO_CHECK])], base=self.base)
+        self.behaviors.update({"ci.t1": {"product": "todo"}})
+
+        def state():
+            return (self.g("for-each-ref"), self.g("ls-files", "-s"), (self.anchor / "docs/specs/queue.md").read_bytes(),
+                    (self.common / "devlyn-loops/ci").exists())
+        before, head = state(), self.g("rev-parse", "HEAD")
+        self.assertEqual(self.cli("add", meta, code=1)["reason"], f"the installed instructions (CLAUDE.md) in this checkout differ from those "
+                         f"in HEAD {head}, so the loop's tasks would run without them; commit them, then add the loop")
+        self.assertEqual(state(), before)
+        self.g("add", "CLAUDE.md")
+        self.g("commit", "-qm", "install instructions")
+        self.cli("add", meta)
+        self.assertEqual((self.tasks(self.drain())["ci.t1"]["result"], self.methodology("ci.t1")), ("accepted", ["CLAUDE.md"]))
+
     def test_add_commits_only_the_package_and_queue(self):
         # add commits exactly the package and the queue; unrelated staged and unstaged changes stay as they were.
         (self.anchor / "staged.txt").write_text("staged\n", encoding="utf-8")
@@ -755,6 +781,22 @@ class LoopFixture(unittest.TestCase):
         self.env.update(PATH=str(bin_dir) + os.pathsep + self.env["PATH"], FIXTURE_GH=str(data), REAL_GIT=shutil.which("git"))
         self.g("remote", "add", "origin", "https://github.com/test/project.git")
         return bare, data
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_an_auto_task_is_refused_until_the_instructions_are_pushed(self):
+        # Prediction (E3): with AGENTS.md committed but not pushed, an auto loop's add passes, but its task is refused at
+        # allocation, naming AGENTS.md, the refreshed base and the push remedy, with no receipt; after the push the drain
+        # delivers it and its packet lists AGENTS.md. Before: the task ran from the refreshed base without AGENTS.md.
+        bare, _ = self.remote(pending=False)
+        (self.anchor / "AGENTS.md").write_text("# Installed instructions\n", encoding="utf-8")
+        self.g("add", "AGENTS.md")
+        self.g("commit", "-qm", "install instructions")
+        self.plan("ai", [CHAIN[0]], {"ai.t1": {"product": "greeting"}}, delivery="auto")
+        self.assertEqual(self.drain(local=False, code=1)["reason"], f"ai.t1: the installed instructions (AGENTS.md) in this checkout differ from "
+                         f"those in its start commit {self.base}, so it would run without them; commit them and push them to origin/main")
+        self.assertFalse(self.receipt_path("ai.t1").exists())
+        self.run_ok(["git", "-C", str(self.anchor), "push", "-q", str(bare), "main"])
+        self.assertEqual((self.tasks(self.drain(local=False))["ai.t1"]["delivery"], self.methodology("ai.t1")), ("COMPLETE", ["AGENTS.md"]))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_unobservable_post_merge_cleanup_retains_the_workspace_and_drain_continues(self):

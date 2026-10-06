@@ -788,6 +788,13 @@ def require_merged(v, row, base):
         require(merge and ancestor(v["anchor"], merge, base), f"{row['identity']}: base {base} lacks the delivered prerequisite merge {merge}")
 
 
+def instruction_drift(anchor, rev):
+    """The installed instruction files whose content at `rev` differs from the anchor checkout's (both absent is equal): a
+    task starting at `rev` would run without them. Content is compared as Git stores it, so line-ending conversion is moot."""
+    return ", ".join(name for name in ("CLAUDE.md", "AGENTS.md")
+                     if ref_value(anchor, f"{rev}:{name}") != (git(anchor, "hash-object", "--", name) if (anchor / name).exists() else ""))
+
+
 def evidence_ignored(anchor, common, start):
     """Whether a checkout of `start` ignores .devlyn/: its .gitignore files on that path, info/exclude, core.excludesFile."""
     with tempfile.TemporaryDirectory(prefix="devlyn-loop-ignore-") as temp:
@@ -830,6 +837,10 @@ def allocate(v, row, opts):
     require(evidence_ignored(anchor, common, start),
             f"{identity}: .devlyn/ is not ignored in its start commit {start}, so loop evidence would dirty task source; commit a "
             f"`.devlyn/` entry to .gitignore in the base the task starts from, or add `.devlyn/` to {common / 'info' / 'exclude'}")
+    if drift := instruction_drift(anchor, start):
+        raise LoopError(f"{identity}: the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it "
+                        "would run without them; " + (f"commit them and push them to origin/{manifest['base_ref']}" if values["start"] else
+                                                      "restore them to their bytes at that commit, or plan the remaining work as a new loop"))
     result = task_complete("allocate", **values)
     progress(identity, f"allocated {result['worktree']}")
 
@@ -1197,6 +1208,10 @@ def add(args):
     if tracked := git(anchor, "diff", "--name-only", "--no-renames", "--diff-filter=MDT", "HEAD", "--", paths[0]):
         raise LoopError(f"{paths[0]} is committed with different content ({', '.join(tracked.splitlines())}); add never overwrites "
                         "committed package files, so plan the revision as a new loop")
+    if drift := instruction_drift(anchor, head := git(anchor, "rev-parse", "HEAD")):
+        # Tasks start from committed state: a local loop from its add commit atop HEAD, auto/pr from the pushed base.
+        raise LoopError(f"the installed instructions ({drift}) in this checkout differ from those in HEAD {head}, so the loop's tasks would "
+                        f"run without them; commit {'them' if local else 'and push them'}, then add the loop")
     if local:
         # A local loop starts from a commit on the current branch that carries its package and rows (loop.md step 3).
         branch = git_run(anchor, "symbolic-ref", "-q", "--short", "HEAD", ok=(0, 1)).stdout.decode("utf-8").strip()
