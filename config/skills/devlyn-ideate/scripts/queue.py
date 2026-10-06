@@ -681,6 +681,8 @@ def waiting(v, row):
             return f"prerequisite {identity} has no receipt-bound accepted source"
         if not local and not delivered(state["receipt"]):
             return f"awaiting delivery of {identity}"
+    if local and not frontier(v, row["loop"]) and (delivery := v["packages"][row["loop"]]["manifest"]["delivery"]) != "local-only":
+        return f"{row['loop']} was added for {delivery} delivery, so no add commit carries its package for a local drain; drain it without --local-only"
     if not local:
         # One carrier in flight across the queue: until a delivered task has landed its loop's plan, a task waits for any.
         landed = any(other.get("loop") == row["loop"] and (receipt := v["states"][other["identity"]]["receipt"]) and delivered(receipt)
@@ -808,8 +810,6 @@ def allocate(v, row, opts):
               "local_base": None, "from_receipt": None, "start": None}
     if is_local(v, loop):
         tip = frontier(v, loop)
-        require(tip or manifest["delivery"] == "local-only", f"{identity}: {loop} was added for {manifest['delivery']} delivery, so no add "
-                "commit carries its package for a local drain; drain it without --local-only")
         start = tip["receipt"]["source_sha"] if tip else add_record(common, loop, ("branch", "commit"))["commit"]
         for dep in deps:
             require(ancestor(anchor, dep["receipt"]["source_sha"], start),

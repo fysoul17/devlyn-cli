@@ -493,6 +493,22 @@ class LoopFixture(unittest.TestCase):
                 self.cli("status", "--repo", self.anchor)
                 self.assertEqual((self.added(loop)["commit"], self.g("status", "--porcelain", "--untracked-files=all")), (commit, ""))
 
+    def test_a_local_only_drain_waits_the_auto_loop_it_cannot_start(self):
+        # Prediction (R4): an auto loop queued ahead of a local loop (it materializes the legacy row above the local loop's
+        # rows) and drained with --local-only waits with its reason and no executor call, while the local loop is accepted
+        # and the drain ends WAITING. Before: allocating the auto loop's first task raised, so the drain ended BLOCKED and the
+        # local loop never ran.
+        meta = self.queue["write_package"](self.anchor, "au", [CHAIN[0]], delivery="auto", base=self.base,
+                                           intent="User asked: unrelated legacy intent.")
+        self.cli("add", meta, "--materialize", 4)
+        self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
+        result = self.drain()
+        tasks = self.tasks(result)
+        self.assertEqual(list(tasks), ["au.t1", "lo.t1"])
+        self.assertEqual((result["status"], tasks["lo.t1"]["result"], tasks["au.t1"]["result"], self.calls("au.t1")), ("WAITING", "accepted", "pending", 0))
+        self.assertEqual(tasks["au.t1"]["reason"], "au was added for auto delivery, so no add commit carries its package for a local drain; "
+                         "drain it without --local-only")
+
     def test_frontier_is_the_latest_accepted_source_and_divergence_is_refused(self):
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1"], "Greeting app", [APP_CHECK]), ("t4", ["t2", "t3"], "Notes again", [NOTES_CHECK])]
         self.plan("fr", tasks, {"fr.t1": {"product": "greeting"}, "fr.t2": {"product": "notes"}, "fr.t3": {"product": "app"}, "fr.t4": {"product": "notes"}})
