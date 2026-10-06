@@ -408,6 +408,32 @@ class LoopFixture(unittest.TestCase):
         self.cli("add", meta)
         self.assertEqual((self.tasks(self.drain())["ci.t1"]["result"], self.methodology("ci.t1")), ("accepted", ["CLAUDE.md"]))
 
+    @unittest.skipIf(os.name == "nt", "a symbolic link needs a privilege on Windows")
+    def test_instructions_git_reports_unchanged_are_the_checkouts(self):
+        # Prediction: instruction files `git status` reports unchanged are the checkout's, so each of the installer's
+        # layouts, AGENTS.md committed as a link to CLAUDE.md (-y --claude) and CLAUDE.md as a link to AGENTS.md (-y), and a
+        # CLAUDE.md committed with CRLF line endings under core.autocrlf=true lets add commit a loop whose task is accepted
+        # with the files in its methodology. Before: each blob was compared with `git hash-object` of the file, which
+        # follows a link and, reading no index, normalizes a CRLF blob, so add refused although nothing was left to commit.
+        def install(loop, message, links=(), crlf=False):
+            for name in ("CLAUDE.md", "AGENTS.md"):
+                (self.anchor / name).unlink(missing_ok=True)
+            (self.anchor / "CLAUDE.md").write_bytes(b"# Installed\r\nUse tabs.\r\n" if crlf else b"# Installed\n")
+            for name, target in links:
+                (self.anchor / name).unlink(missing_ok=True)
+                (self.anchor / target).write_bytes(b"# Installed\n")
+                os.symlink(target, self.anchor / name)
+            self.g("-c", "core.autocrlf=false", "add", "-A", "--", "CLAUDE.md", "AGENTS.md")
+            self.g("commit", "-qm", message)
+            if crlf:
+                self.g("config", "core.autocrlf", "true")
+            self.assertEqual(self.g("status", "--porcelain", "--", "CLAUDE.md", "AGENTS.md"), "")
+            self.plan(loop, [("t1", [], "Notes", [NOTES_CHECK])], {f"{loop}.t1": {"product": "notes"}})
+            return self.tasks(self.drain())[f"{loop}.t1"]["result"], self.methodology(f"{loop}.t1")
+        self.assertEqual(install("la", "AGENTS.md links to CLAUDE.md", [("AGENTS.md", "CLAUDE.md")]), ("accepted", ["CLAUDE.md", "AGENTS.md"]))
+        self.assertEqual(install("lb", "CLAUDE.md links to AGENTS.md", [("CLAUDE.md", "AGENTS.md")]), ("accepted", ["CLAUDE.md", "AGENTS.md"]))
+        self.assertEqual(install("lc", "CLAUDE.md with CRLF line endings", crlf=True), ("accepted", ["CLAUDE.md"]))
+
     def test_add_commits_only_the_package_and_queue(self):
         # add commits exactly the package and the queue; unrelated staged and unstaged changes stay as they were.
         (self.anchor / "staged.txt").write_text("staged\n", encoding="utf-8")

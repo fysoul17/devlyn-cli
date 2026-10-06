@@ -790,9 +790,12 @@ def require_merged(v, row, base):
 
 def instruction_drift(anchor, rev):
     """The installed instruction files whose content at `rev` differs from the anchor checkout's (both absent is equal): a
-    task starting at `rev` would run without them. Content is compared as Git stores it, so line-ending conversion is moot."""
-    return ", ".join(name for name in ("CLAUDE.md", "AGENTS.md")
-                     if ref_value(anchor, f"{rev}:{name}") != (git(anchor, "hash-object", "--", name) if (anchor / name).exists() else ""))
+    task starting at `rev` would run without them. Git compares them as `git status` does: a link by its target, line endings
+    under the checkout's conversion rules, and an untracked or ignored file as one still to commit."""
+    names = ("CLAUDE.md", "AGENTS.md")
+    differ = git(anchor, "diff", "--name-only", "--no-renames", rev, "--", *names).split("\n")
+    differ += git(anchor, "ls-files", "--others", "--", *names).split("\n")
+    return ", ".join(name for name in names if name in differ)
 
 
 def evidence_ignored(anchor, common, start):
