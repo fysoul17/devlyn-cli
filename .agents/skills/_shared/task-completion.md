@@ -27,8 +27,9 @@ exact fetched remote base, independent of the anchor's branch or dirty state;
 allocation leaves the anchor's HEAD, index and files untouched. For local-only
 work, or an origin that is not one GitHub repository, allocate with
 `--local-base "$(git rev-parse HEAD)"` and no `--repository`/`--remote`, then
-complete with `--local-only`: that commit is the baseline, and nothing is
-fetched or pushed. Save the returned
+complete with `--local-only`: that commit is the baseline, nothing is fetched
+or pushed, and `git merge --ff <task branch>` brings the change into the
+user's branch. Save the returned
 receipt path under the common Gitdir. `reconciled` reports earlier accepted,
 PR-delivered tasks whose merged resources were cleaned or retained; it is
 informational, so never resume or release a receipt you do not own. Existing
