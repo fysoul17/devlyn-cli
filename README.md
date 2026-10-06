@@ -214,6 +214,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 - **Node.js 18+** and npm
 - **Python 3.11+** available as `python3`, and Git for the harness
 - **An agent CLI** installed and configured: Codex, omp, Pi or Grok (AGENTS.md), or [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLAUDE.md)
+- **For `auto`/`pr` delivery**, an `origin` remote naming one GitHub repository and an authenticated [`gh`](https://cli.github.com/)
 
 On native Windows, use native Node/npm and Python plus Git for Windows Bash for the shipped shell wrapper. Run `npx devlyn-cli -y` in the project (add `--claude` for Claude Code). Skill folders follow the Agent Skills naming standard (for example `devlyn-ideate`), so a project that commits them checks out on Windows. Harness text is UTF-8 without requiring `PYTHONUTF8`.
 

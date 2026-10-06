@@ -199,6 +199,7 @@ def allocate(args):
     if local:
         receipt["local_only"] = True  # Local work needs no remote: nothing is fetched or pushed.
     else:
+        require(args.repository, "a remote allocation needs --repository <owner/repo>; allocate local work with --local-base or --from-receipt")
         policy(receipt, None)
         receipt["remote_url"] = remote_url(receipt)
         require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
@@ -775,8 +776,9 @@ def main():
     actions = parser.add_subparsers(dest="action")
     allocation = actions.add_parser("allocate")
     allocation.add_argument("--repo", default=".")
-    for name in ("task", "branch", "repository", "base"):
+    for name in ("task", "branch", "base"):
         allocation.add_argument("--"+name, required=True)
+    allocation.add_argument("--repository")
     allocation.add_argument("--remote", default="origin")
     allocation.add_argument("--worktree", required=True)
     allocation.add_argument("--local-base")
@@ -2007,6 +2009,23 @@ class CompletionTests(unittest.TestCase):
         self.assertIn("exact local commit", result["reason"])
         self.assertEqual(self.g("branch", "--list", "task/next"), "")
         self.assertFalse((self.root / "next").exists())
+
+    def test_local_allocation_needs_no_repository(self):
+        """E4. Prediction: without --repository, a remote allocation is refused naming it, with nothing created, while a
+        local allocation, here beside an origin that is not GitHub, is ALLOCATED and its local-only completion returns
+        LOCAL_ONLY with nothing pushed. Before: argparse required --repository, so both failed as an argparse error."""
+        args = ["allocate", "--repo", self.work, "--base", "main"]
+        refused, _ = self.cli(*args, "--task", "next", "--branch", "task/next", "--worktree", self.root / "next", success=False)
+        self.assertIn("--repository", refused["reason"])
+        self.assertEqual((self.g("branch", "--list", "task/next"), (self.root / "next").exists()), ("", False))
+        self.g("remote", "set-url", "origin", "https://gitlab.com/team/project.git")
+        result, _ = self.cli(*args, "--task", "fixture", "--branch", "task/fixture", "--worktree", self.root / "linked",
+                             "--local-base", self.g("rev-parse", "HEAD"))
+        self.assertEqual(result["status"], "ALLOCATED")
+        self.receipt, self.task = Path(result["receipt"]), Path(result["worktree"])
+        self.accept()
+        self.assertEqual(self.complete("--local-only")[0]["status"], "LOCAL_ONLY")
+        self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs", 0), 0)
 
     def test_remote_allocation_starts_from_an_exact_commit(self):
         # An ideate auto/pr task starts from the exact refreshed remote base the drain checked, never a second fetch.
