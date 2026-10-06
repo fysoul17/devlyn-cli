@@ -321,6 +321,19 @@ class LoopFixture(unittest.TestCase):
         report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")
         self.assertIn(f"- Bring into main: git merge --ff-only {final['branch']} (a fast-forward)", report)
 
+    def test_two_local_loops_bring_in_as_reported(self):
+        # Prediction: add commits a blank line after the rows it appends, so a second local loop's rows follow an unchanged
+        # line; following both reports, the later loop fast-forwards and the earlier one merges without a conflict, every
+        # row [x]. Before: the second add's rows touched the first loop's last row, so the reported merge conflicted in
+        # docs/specs/queue.md.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}})
+        self.drain()
+        for loop, command in (("bb", "merge --ff-only devlyn/bb/t1"), ("aa", "merge devlyn/aa/t1")):
+            self.assertIn(f"- Bring into main: git {command} (", (self.common / f"devlyn-loops/{loop}/drain-report.md").read_text(encoding="utf-8"))
+            self.g(*command.split())
+        self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"aa.t1": "x", "bb.t1": "x"})
+
     def test_add_commits_only_the_package_and_queue(self):
         # add commits exactly the package and the queue; unrelated staged and unstaged changes stay as they were.
         (self.anchor / "staged.txt").write_text("staged\n", encoding="utf-8")
@@ -822,6 +835,28 @@ class LoopFixture(unittest.TestCase):
             self.assertEqual(merged.returncode, 0, merged.stderr)
         rows = self.remote_rows(bare)
         self.assertEqual((rows["par.t2"], rows["par.t3"]), ("x", "x"))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_carrier_and_another_loops_pending_last_row_pr_both_merge(self):
+        # Prediction: a carrier's plan ends with a blank line after the loop's last row, so the next loop's carrier inserts
+        # after an unchanged line; with that last row's PR and the next carrier's PR pending together, the two heads merge
+        # with each other (so in either order), they merge one after the other, and the next drain completes both. Before:
+        # the next carrier's rows touched that last row, so the second merge conflicted and the carrier stayed in flight.
+        bare, data = self.remote(pending=True)
+        self.plan("la", [("t1", [], "Notes", [NOTES_CHECK]), ("t2", ["t1"], "Todo", [TODO_CHECK])],
+                  {"la.t1": {"product": "notes"}, "la.t2": {"product": "todo"}}, delivery="auto")
+        self.drain(local=False)
+        self.assertEqual(self.merge_pr(data, 1).returncode, 0)
+        self.plan("lb", [("t1", [], "Greeting", [GREET_CHECK])], {"lb.t1": {"product": "greeting"}}, delivery="auto")
+        self.drain(local=False)
+        prs = json.loads(data.read_text(encoding="utf-8"))["prs"]
+        self.assertEqual([pr["headRefName"] for pr in prs if pr["state"] == "OPEN"], ["devlyn/la/t2", "devlyn/lb/t1"])
+        self.run_ok(["git", "--git-dir", str(bare), "merge-tree", "--write-tree", prs[1]["headRefOid"], prs[2]["headRefOid"]])
+        for number in (2, 3):
+            merged = self.merge_pr(data, number)
+            self.assertEqual(merged.returncode, 0, merged.stderr)
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"la.t1": "COMPLETE", "la.t2": "COMPLETE", "lb.t1": "COMPLETE"})
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_squash_delivery_leaves_the_anchor_pull_ready(self):

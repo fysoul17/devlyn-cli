@@ -397,13 +397,20 @@ def spaced(rows, blank=b""):
     return lines
 
 
+def framed(lines, start, end, block, blank=b""):
+    """`block` for lines[start:end], one blank line from each neighbouring line and from the end of the queue, so rows
+    added later follow an unchanged line."""
+    last = end >= len(lines) - (lines[-1] == b"")
+    return ([blank] * bool(start and lines[start - 1].strip()) + block + [blank] * bool(last or lines[end].strip())
+            + [b""] * (last and lines[-1] != b""))  # A queue without a final newline gains it.
+
+
 def replace_row(data, index, rows):
-    """`data` with line `index` replaced by `rows`, one blank line from each neighbouring line; returns the new bytes,
-    the lines that replaced it and the replaced line."""
+    """`data` with line `index` replaced by framed `rows`; returns the new bytes, the lines that replaced it and the
+    replaced line."""
     lines = data.split(b"\n")
     blank = b"\r" if lines[index].endswith(b"\r") else b""
-    block = spaced([row + blank for row in rows], blank)
-    block = [blank] * bool(index and lines[index - 1].strip()) + block + [blank] * bool(index + 1 < len(lines) and lines[index + 1].strip())
+    block = framed(lines, index, index + 1, spaced([row + blank for row in rows], blank), blank)
     replaced, lines[index:index + 1] = lines[index], block
     return b"\n".join(lines), b"\n".join(block), replaced
 
@@ -422,7 +429,7 @@ def merge_rows(base, order, include):
         earlier = [where[i] for i in order[:position] if i in where]
         later = [where[i] for i in order[position + 1:] if i in where]
         at = max(earlier) + 1 if earlier else min(later) if later else len(lines) - (lines[-1] == b"")
-        lines[at:at] = [b""] * bool(at and lines[at - 1].strip()) + [line] + [b""] * bool(at < len(lines) and lines[at].strip())
+        lines[at:at] = framed(lines, at, at, [line])
     return b"\n".join(lines)
 
 
@@ -1181,9 +1188,9 @@ def add(args):
             require(" ".join(target["text"].split()) in intent, "meta.md '## Intent' must reproduce the legacy row's intent verbatim")
             new, inserted, replaced = replace_row(data, target["index"], rows)
         else:
-            # Appended one blank line after the queue's last line; a new queue starts with its header.
+            # Appended one blank line after the queue's last line, and followed by one; a new queue starts with its header.
             lead = HEADER if data is None else b"" if not data or data.endswith(b"\n\n") else b"\n" if data.endswith(b"\n") else b"\n\n"
-            inserted, replaced = lead + b"\n".join(spaced(rows)) + b"\n", b""
+            inserted, replaced = lead + b"\n".join(spaced(rows)) + b"\n\n", b""
             new = (data or b"") + inserted
         if not local:
             # An auto/pr loop's rows stay uncommitted: its first task's PR carries the plan, and once the plan has landed the
@@ -1403,20 +1410,20 @@ class QueueTests(unittest.TestCase):
         queue = self.anchor / QUEUE
         added = self.cli("add", self.meta)
         self.assertEqual(added["tasks"], ["inv.t1", "inv.t2"])
-        expected = HEADER + f"{row_line('inv.t1', 'Interface 인터페이스')}\n\n{row_line('inv.t2', 'Consumer [app]')}\n".encode()
+        expected = HEADER + f"{row_line('inv.t1', 'Interface 인터페이스')}\n\n{row_line('inv.t2', 'Consumer [app]')}\n\n".encode()
         self.assertEqual(queue.read_bytes(), expected)
         self.assertEqual(self.cli("add", self.meta)["commit"], added["commit"])  # its recorded add, so a retry succeeds
         self.assertEqual(queue.read_bytes(), expected)
         self.assertEqual({path: path.read_bytes() for path in package}, package)
         queue.write_bytes(expected + b"- [ ] Make   the  report weekly")
         second = write_package(self.anchor, "rep", [("t1", [], "Weekly", self.tasks[0][3])], intent="Wrong intent.")
-        self.assertIn("reproduce the legacy row's intent", self.cli("add", second, "--materialize", 6, code=1)["reason"])
+        self.assertIn("reproduce the legacy row's intent", self.cli("add", second, "--materialize", 7, code=1)["reason"])
         write_package(self.anchor, "rep", [("t1", [], "Weekly", self.tasks[0][3])], intent="User asked: make the report weekly.")
         self.assertIn("not a pending legacy row", self.cli("add", second, "--materialize", 3, code=1)["reason"])
-        self.assertIn("reproduce", self.cli("add", second, "--materialize", 6, code=1)["reason"])
+        self.assertIn("reproduce", self.cli("add", second, "--materialize", 7, code=1)["reason"])
         write_package(self.anchor, "rep", [("t1", [], "Weekly", self.tasks[0][3])], intent="User asked: Make the report weekly.")
-        self.cli("add", second, "--materialize", 6)
-        self.assertEqual(queue.read_bytes(), expected + b"\n" + row_line("rep.t1", "Weekly").encode())
+        self.cli("add", second, "--materialize", 7)
+        self.assertEqual(queue.read_bytes(), expected + row_line("rep.t1", "Weekly").encode() + b"\n\n")
         # Each add commits its package and the queue, and records that commit; nothing is left uncommitted.
         common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
         self.assertEqual(git(self.anchor, "log", "-2", "--format=%s").splitlines(), ["devlyn loop: add rep", "devlyn loop: add inv"])
@@ -1430,26 +1437,28 @@ class QueueTests(unittest.TestCase):
 
     def test_generated_rows_are_separated_by_one_blank_line(self):
         """S1. Prediction: add and --materialize separate each row they generate from every neighbouring row by exactly one
-        blank line, at append boundaries too, and so do rows a task's inputs insert; a transition changes only its row's
-        line; a legacy queue without separators still parses. Before: generated rows were adjacent."""
+        blank line, at append boundaries and the end of the queue too, and so do rows a task's inputs insert; a transition
+        changes only its row's line; a legacy queue without separators still parses. Before: generated rows were adjacent,
+        then no blank line followed the queue's last generated row."""
         queue = self.anchor / QUEUE
         legacy = HEADER + b"- [x] old work\n- [ ] legacy intent\n- [ ] other intent\n"
         self.assertEqual([(row["mark"], row["identity"]) for row in parse_queue(legacy)], [("x", None), (" ", None), (" ", None)])
         queue.write_bytes(legacy)
         self.cli("add", self.meta)
         inv = [row_line("inv.t1", "Interface 인터페이스").encode(), row_line("inv.t2", "Consumer [app]").encode()]
-        self.assertEqual(queue.read_bytes(), legacy + b"\n" + inv[0] + b"\n\n" + inv[1] + b"\n")
+        self.assertEqual(queue.read_bytes(), legacy + b"\n" + inv[0] + b"\n\n" + inv[1] + b"\n\n")
         command = self.tasks[0][3]
         meta = write_package(self.anchor, "rep", [("t1", [], "Weekly", command), ("t2", ["t1"], "Monthly", command)],
                              intent="User asked: legacy intent.")
         self.cli("add", meta, "--materialize", 4)
         rep = [row_line("rep.t1", "Weekly").encode(), row_line("rep.t2", "Monthly").encode()]
         expected = (HEADER + b"- [x] old work\n\n" + rep[0] + b"\n\n" + rep[1] + b"\n\n- [ ] other intent\n\n" + inv[0] + b"\n\n"
-                    + inv[1] + b"\n")
+                    + inv[1] + b"\n\n")
         self.assertEqual(queue.read_bytes(), expected)
         self.assertEqual(transition(expected, "rep.t1", "x"), expected.replace(b"- [ ] rep.t1", b"- [x] rep.t1"))
         self.assertEqual(merge_rows(legacy, ["inv.t1", "inv.t2"], {"inv.t1": inv[0].decode(), "inv.t2": inv[1].decode()}),
-                         legacy + b"\n" + inv[0] + b"\n\n" + inv[1] + b"\n")
+                         legacy + b"\n" + inv[0] + b"\n\n" + inv[1] + b"\n\n")
+        self.assertEqual(replace_row(b"- [x] old\n- [ ] last\n", 1, inv)[0], b"- [x] old\n\n" + inv[0] + b"\n\n" + inv[1] + b"\n\n")
 
     def test_add_refuses_without_writing(self):
         """add commits on the current branch, descending from base_sha, never over committed package files; a failed

@@ -863,7 +863,7 @@ init({options});
         title = 'Keep "quotes", $HOME, `ticks` and 한글'
         meta = loop['write_package'](self.project, 'loop', [('t1', [], title, [{'argv': [sys.executable, '-c', 'pass'], 'contract_refs': ['R1']}])])
         queue = self.project / 'docs/specs/queue.md'
-        expected = b'# Intent Queue\n\n' + loop['row_line']('loop.t1', title).encode('utf-8') + b'\n'
+        expected = b'# Intent Queue\n\n' + loop['row_line']('loop.t1', title).encode('utf-8') + b'\n\n'
         add = lambda code=0: run([sys.executable, helper, 'add', meta], cwd=self.project, env=env, code=code)
         add()
         self.assertEqual(queue.read_bytes(), expected)
@@ -879,7 +879,7 @@ init({options});
             self.assertIsNone(proc.poll())
             self.assertEqual(queue.read_bytes(), expected)
         self.assertEqual(proc.wait(timeout=20), 0)
-        self.assertEqual(queue.read_bytes(), expected + b'\n' + loop['row_line']('next.t1', 'Next').encode('utf-8') + b'\n')
+        self.assertEqual(queue.read_bytes(), expected + loop['row_line']('next.t1', 'Next').encode('utf-8') + b'\n\n')
 
     def test_retired_skill_name_is_removed_only_as_shipped(self):
         # 0.2.0-1.15.0 shipped workflow-routing; a folder of that name the user wrote stays.

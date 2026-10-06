@@ -101,7 +101,7 @@ Coverage proves that every obligation has evidence. Whether the checks express t
 
 - Links are repository-relative and exactly `docs/specs/<loop-id>/<task-id>/spec.md`; titles escape `\`, `[` and `]`. Packets and reports carry absolute paths.
 - `[ ]` is pending or active (the receipt tells which). `[x]` is an accepted product. `[F]` is failed, infrastructure-blocked, prerequisite-blocked or needs-review and ends with ` — <reason> (receipt <id>)`. Delivery state lives in receipts and the drain report; a pending PR never turns `[x]` into `[F]`.
-- The rows `add` writes and a task's inputs insert ([loop.md](loop.md) step 4) sit one blank line from each other and from neighbouring lines, so transitions of adjacent rows merge without conflict. Any blank-line pattern parses, legacy queues without separators included.
+- The rows `add` writes and a task's inputs insert ([loop.md](loop.md) step 4) sit one blank line from each other and from neighbouring lines, the end of the queue included, so rows added later follow an unchanged line and transitions of adjacent rows merge without conflict. Any blank-line pattern parses, legacy queues without separators included.
 - The only legal transition turns one pending row into `[x]` or `[F]` with every other byte unchanged. Terminal rows are never reinterpreted or rerun.
 - Identities are unique; equal titles are fine.
 - A row that does not fully match this grammar (trailing whitespace aside) is a legacy raw intent: readable, never executed. `add --materialize <line>` replaces one pending legacy row, at its position, with a package whose `## Intent` reproduces that intent verbatim (whitespace may reflow).
