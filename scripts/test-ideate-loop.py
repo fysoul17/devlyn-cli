@@ -818,16 +818,16 @@ class LoopFixture(unittest.TestCase):
         # naming the file, its start commit and both remedies, with no executor call, while a loop added under v3 is
         # accepted in the same drain; status names that wait and offers no next task; with v2 restored aa.t2 is accepted.
         # Before: the start was add's commit under v1, so the v2 commit made before the first allocation stranded the loop.
-        (self.anchor / "CLAUDE.md").write_text("# Installed v1\n", encoding="utf-8")
+        (self.anchor / "CLAUDE.md").write_bytes(b"# Installed v1\n")
         self.g("add", "CLAUDE.md")
         self.g("commit", "-qm", "install v1")
         self.plan("aa", [("t1", [], "Notes", [NOTES_CHECK]), ("t2", ["t1"], "Todo", [TODO_CHECK])], {"aa.t1": {"product": "notes"}, "aa.t2": {"product": "todo"}})
-        (self.anchor / "CLAUDE.md").write_text("# Installed v2\n", encoding="utf-8")
+        (self.anchor / "CLAUDE.md").write_bytes(b"# Installed v2\n")
         self.g("commit", "-qam", "install v2")
         # aa.t1 is allocated, then its executor cannot start: the loop's start is now fixed.
         blocked = self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "no executor"), "{packet}", code=1)
         self.assertIn("executor could not start", blocked["reason"])
-        (self.anchor / "CLAUDE.md").write_text("# Installed v3\n", encoding="utf-8")
+        (self.anchor / "CLAUDE.md").write_bytes(b"# Installed v3\n")
         self.g("commit", "-qam", "install v3")
         self.plan("bb", [("t1", [], "Greeting", [GREET_CHECK])], {"bb.t1": {"product": "greeting"}})
         tasks = self.tasks(self.drain())
@@ -839,7 +839,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual([entry["sha256"] for entry in methodology], [hashlib.sha256(b"# Installed v2\n").hexdigest()])
         status = self.cli("status", "--repo", self.anchor)
         self.assertEqual((status["next"], f"aa.t2: {reason}" in status["blockers"]), (None, True))
-        (self.anchor / "CLAUDE.md").write_text("# Installed v2\n", encoding="utf-8")
+        (self.anchor / "CLAUDE.md").write_bytes(b"# Installed v2\n")
         self.assertEqual(self.tasks(self.drain())["aa.t2"]["result"], "accepted")
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
