@@ -544,21 +544,22 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.g("show", "refs/devlyn/captures/gc:docs/specs/gc/meta.md"), meta)
         self.assertEqual(self.tasks(self.drain())["gc.t1"]["result"], "accepted")
 
-    def test_a_local_only_drain_waits_the_auto_loop_it_cannot_start(self):
-        # Prediction (R4): an auto loop queued ahead of a local loop (it materializes the legacy row above the local loop's
-        # rows) and drained with --local-only waits with its reason and no executor call, while the local loop is accepted
-        # and the drain ends WAITING. Before: allocating the auto loop's first task raised, so the drain ended BLOCKED and the
-        # local loop never ran.
+    def test_a_local_only_drain_runs_an_unpublished_auto_loop_locally(self):
+        # Prediction (A): an auto loop whose tasks have not published, drained with --local-only, runs as a local loop from
+        # its capture and the branch it was added on: its task, in the place of the legacy row it materializes, is accepted
+        # LOCAL_ONLY beside a local loop's, no remote is needed, and its report brings it into main with `git merge --ff`.
+        # Before (b3774008): it waited, "au was added for auto delivery, so no add commit carries its package".
         meta = self.queue["write_package"](self.anchor, "au", [CHAIN[0]], delivery="auto", base=self.base,
                                            intent="User asked: unrelated legacy intent.")
+        self.behaviors.update({"au.t1": {"product": "greeting"}})
         self.cli("add", meta, "--materialize", 4)
         self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
         result = self.drain()
         tasks = self.tasks(result)
-        self.assertEqual(list(tasks), ["au.t1", "lo.t1"])
-        self.assertEqual((result["status"], tasks["lo.t1"]["result"], tasks["au.t1"]["result"], self.calls("au.t1")), ("WAITING", "accepted", "pending", 0))
-        self.assertEqual(tasks["au.t1"]["reason"], "au was added for auto delivery, so no add commit carries its package for a local drain; "
-                         "drain it without --local-only")
+        self.assertEqual([(identity, task["result"], task["delivery"]) for identity, task in tasks.items()],
+                         [("au.t1", "accepted", "LOCAL_ONLY"), ("lo.t1", "accepted", "LOCAL_ONLY")])
+        self.assertEqual((result["status"], self.receipt("au.t1")["baseline"]), ("DRAINED", self.base))
+        self.assertIn("- Bring into main: git merge --ff devlyn/au/t1\n", self.report("au"))
 
     def test_frontier_is_the_latest_accepted_source(self):
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1"], "Greeting app", [APP_CHECK]), ("t4", ["t2", "t3"], "Notes again", [NOTES_CHECK])]
@@ -1168,12 +1169,34 @@ class LoopFixture(unittest.TestCase):
         report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")
         self.assertIn("Delivery: PENDING", report)
         self.assertIn("Resume: ", report)
-        # A later --local-only drain cannot rewrite the delivery of a task whose PR is already pushed.
+        # Prediction (A): a later --local-only drain never rewrites the delivery of a task whose PR is already pushed; only
+        # that task waits, with its reason, while its dependent runs locally on its accepted source, and nothing reaches the
+        # remote. Before (b3774008): the drain ended BLOCKED on inv.t1.
         server = json.loads(data.read_text())
-        blocked = self.drain(code=1)
-        self.assertIn("inv.t1 already has a pushed PR", blocked["reason"])
-        self.assertEqual((self.receipt("inv.t1")["delivery"], self.receipt("inv.t1").get("local_only"), self.calls("inv.t2")), ("PENDING", None, 0))
+        result = self.drain()
+        tasks = self.tasks(result)
+        self.assertEqual((result["status"], tasks["inv.t1"]["reason"], tasks["inv.t2"]["delivery"]), ("WAITING", f"inv.t1 already has a pushed PR "
+                         f"{receipt['pr_url']}, which --local-only never rewrites; drain without --local-only to deliver it", "LOCAL_ONLY"))
+        self.assertEqual((self.receipt("inv.t1")["delivery"], self.receipt("inv.t1").get("local_only"), self.calls("inv.t2")), ("PENDING", None, 1))
         self.assertEqual(json.loads(data.read_text()), server)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_local_task_refuses_a_prerequisite_its_frontier_lacks(self):
+        # Prediction (prerequisite ancestry): after squash delivery, pr.t2 started from pr.t1's squash, so its source lacks
+        # pr.t1's. A --local-only drain leaves pr.t2, whose PR is pushed, waiting, and refuses the integration task pr.t3,
+        # whose frontier pr.t2 lacks that prerequisite source, with no executor call. Before (b3774008): the drain ended
+        # BLOCKED on pr.t2's pushed PR and never reached pr.t3.
+        bare, data = self.remote(pending=True, squash=True)
+        tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1", "t2"], "Greeting app", [APP_CHECK])]
+        self.plan("pr", tasks, {"pr.t1": {"product": "greeting"}, "pr.t2": {"product": "notes"}, "pr.t3": {"product": "app"}}, delivery="auto")
+        self.drain(local=False)
+        self.assertEqual(self.merge_pr(data, 1).returncode, 0)
+        self.assertEqual(self.tasks(self.drain(local=False))["pr.t2"]["delivery"], "PENDING")
+        first, second = self.receipt("pr.t1"), self.receipt("pr.t2")
+        blocked = self.drain(code=1)
+        self.assertIn(f"pr.t3: prerequisite source {first['source_sha']} is not in the accepted frontier {second['source_sha']}; plan an integration task",
+                      blocked["reason"])
+        self.assertEqual(self.calls("pr.t3"), 0)
 
 
 def main():

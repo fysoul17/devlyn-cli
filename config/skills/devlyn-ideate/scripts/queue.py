@@ -662,8 +662,6 @@ def waiting(v, row):
             return f"prerequisite {identity} has no receipt-bound accepted source"
         if not local and not delivered(state["receipt"]):
             return f"awaiting delivery of {identity}"
-    if local and not frontier(v, row["loop"]) and (delivery := v["packages"][row["loop"]]["manifest"]["delivery"]) != "local-only":
-        return f"{row['loop']} was added for {delivery} delivery, so no add commit carries its package for a local drain; drain it without --local-only"
     if local:
         return local_start(v, row["loop"])[1]
     if plan := carrier(v, row["loop"]):
@@ -683,10 +681,10 @@ def next_task(v, attempted):
 
 
 def annotate(v, refused):
-    """Name each pending task's wait: its reason from waiting(), else why this drain's allocation refused it."""
+    """Name each task's wait: a pending task's reason from waiting(), else why this drain did not advance it."""
     for row in v["rows"]:
         state = v["states"].get(row["identity"])
-        if state and state["kind"] == "pending" and (reason := waiting(v, row) or refused.get(row["identity"])):
+        if state and (reason := state["kind"] == "pending" and waiting(v, row) or refused.get(row["identity"])):
             state["waiting"] = reason
 
 
@@ -993,7 +991,7 @@ def settle(v, row, receipt_file):
 
 
 def advance(v, row, opts):
-    """Run or resume one task from its durable state; never replays a bound result. Returns why allocation refused it."""
+    """Run or resume one task from its durable state; never replays a bound result. Returns why it waits instead."""
     identity = row["identity"]
     path = receipt_path(v["common"], identity)
     if not path.exists() and (refused := allocate(v, row, opts)):
@@ -1018,6 +1016,9 @@ def advance(v, row, opts):
     if receipt.get("delivery") not in SETTLED:
         packet = read_json(path.parent / "packet.json")
         local = opts.local_only or bool(receipt.get("local_only")) or packet["delivery"] == "local-only"
+        if local and receipt.get("pushed"):
+            return (f"{identity} already has a pushed PR {receipt.get('pr_url') or receipt['branch']}, which --local-only never rewrites; "
+                    "drain without --local-only to deliver it")
         result = task_complete("complete", receipt=str(path), acceptance=None, mode=None if local else packet["delivery"],
                                local_only=local, writers_stopped=True)
         progress(identity, f"delivery {result['status']}")
@@ -1140,7 +1141,7 @@ def drain(args):
                 attempted.add(row["identity"])
                 if wait := advance(last, row, args):
                     refused[row["identity"]] = wait
-            if any(state["kind"] in {"pending", "active"} for state in last["states"].values()) or counts(last)["legacy_pending"]:
+            if any(state["kind"] in {"pending", "active"} for state in last["states"].values()) or counts(last)["legacy_pending"] or refused:
                 status = "WAITING"
         except (LoopError, OSError) as exc:
             status, reason = "BLOCKED", str(exc)
