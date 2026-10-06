@@ -383,7 +383,8 @@ init({options});
         result = self.cli('-y', '--claude')
         installed = files()
         self.assertEqual(installed['CLAUDE.md'], b'@AGENTS.md\n')
-        self.assertIn(b'Created CLAUDE.md importing AGENTS.md', result.stdout)
+        self.assertIn(b'Created CLAUDE.md\n', result.stdout)
+        self.assertIn(b'CLAUDE.md imports AGENTS.md, which holds the devlyn block', result.stdout)
         self.assertTrue(installed['AGENTS.md'].startswith(rules))
         self.assertIn(CURRENT_DEFAULTS, installed['AGENTS.md'])
         self.assertEqual(blocks(), 1)
@@ -421,6 +422,45 @@ init({options});
         (self.project / 'AGENTS.md').write_bytes(rules)
         self.interact([[' ', ' ', '\r'], ['\r'], ['\r']])
         self.assertEqual((files()['CLAUDE.md'], blocks()), (b'@AGENTS.md\n', 1))
+
+    def test_claude_target_holds_no_copy_beside_the_block_it_imports(self):
+        # Prediction: installed alone in an AGENTS.md-only repo, the Claude target gives CLAUDE.md the block beside its
+        # `@AGENTS.md` import, since AGENTS.md lacks it; the update the installer suggests (-y, or the menu's defaults,
+        # which now select both targets) puts the block in AGENTS.md, so the Claude target removes CLAUDE.md's copy and
+        # keeps CLAUDE.md's own lines. A new CLAUDE.md then ends as -y --claude makes it directly, an importing one as it
+        # was, and later updates change nothing. Before (da682f47): CLAUDE.md kept its copy, so Claude Code loaded the block
+        # twice, after that update and every later one.
+        rules = b'# Team rules\n\nAlways use pnpm, never npm.\n'
+        claude = b'@AGENTS.md\n\n# Claude only\n\nPrefer the Read tool.\n'
+        def files():
+            return {name: (self.project / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
+        (self.project / 'AGENTS.md').write_bytes(rules)
+        self.cli('-y', '--claude')
+        direct = files()
+        for case, before, update in (('new', None, lambda: self.cli('-y')),
+                                     ('imports', claude, lambda: self.interact([['\r'], ['\r'], ['\r']]))):
+            with self.subTest(case=case):
+                self.project = self.case / case; self.project.mkdir()
+                (self.project / 'AGENTS.md').write_bytes(rules)
+                if before is not None:
+                    (self.project / 'CLAUDE.md').write_bytes(before)
+                self.invoke('installClaudeCore();')
+                self.assertIn(CURRENT_DEFAULTS, files()['CLAUDE.md'])
+                result = update()
+                expected = {**direct, 'CLAUDE.md': before or direct['CLAUDE.md']}
+                self.assertEqual(files(), expected)
+                self.assertIn(b'Removed Devlyn defaults from CLAUDE.md', result.stdout)
+                for args in (['-y'], ['-y', '--claude']):
+                    self.cli(*args)
+                    self.assertEqual(files(), expected)
+        if os.name != 'nt':
+            # Where AGENTS.md links to CLAUDE.md, an `@AGENTS.md` line imports CLAUDE.md itself, whose block is the only
+            # one: every update keeps it. Without that exception, every second update removed it.
+            self.project = self.case / 'self-import'; self.project.mkdir()
+            (self.project / 'CLAUDE.md').write_bytes(claude); (self.project / 'AGENTS.md').symlink_to('CLAUDE.md')
+            for _ in range(3):
+                self.cli('-y', '--claude')
+                self.assertEqual((self.project / 'CLAUDE.md').read_bytes().count(b'devlyn:instructions:begin'), 1)
 
     def test_interactive_what_and_where(self):
         down, enter, space = '\x1b[B', '\r', ' '

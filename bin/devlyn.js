@@ -734,25 +734,24 @@ function installAgentsProject(withClaude) {
   ignoreInGit(['.devlyn/', '.agents/skills/.devlyn-install.json']);
 }
 
+// Whether Claude Code reads the devlyn defaults of AGENTS.md through an `@AGENTS.md` import in this CLAUDE.md text.
+// An AGENTS.md that is CLAUDE.md under another name holds CLAUDE.md's own defaults.
+function importsAgentsDefaults(claude) {
+  const agents = path.join(projectDir(), 'AGENTS.md');
+  return importsAgentsMd(claude) && !agentsMdIsClaudeMd() && fs.statSync(agents, { throwIfNoEntry: false })?.isFile() === true
+    && holdsDevlynDefaults('AGENTS.md', fs.readFileSync(agents, 'utf8'));
+}
+
 // Claude Code reads AGENTS.md only where no CLAUDE.md exists, or through a CLAUDE.md that imports it. So a new
-// CLAUDE.md imports an existing AGENTS.md and holds the devlyn block only when AGENTS.md does not, and a CLAUDE.md
-// importing an AGENTS.md that holds the block gets no second copy.
+// CLAUDE.md imports an existing AGENTS.md, and a CLAUDE.md importing an AGENTS.md that holds the devlyn block holds no
+// copy of its own, not even one it got while AGENTS.md lacked the block.
 function installClaudeInstructions() {
-  const file = (name) => path.join(projectDir(), name);
-  const agents = fs.statSync(file('AGENTS.md'), { throwIfNoEntry: false })?.isFile()
-    ? fs.readFileSync(file('AGENTS.md'), 'utf8') : null;
-  const stat = fs.lstatSync(file('CLAUDE.md'), { throwIfNoEntry: false });
-  const initial = !stat && agents !== null ? '@AGENTS.md\n' : '';
-  const claude = stat?.isFile() ? fs.readFileSync(file('CLAUDE.md'), 'utf8') : initial;
-  if (agents === null || !holdsDevlynDefaults('AGENTS.md', agents) || !importsAgentsMd(claude)
-      || holdsDevlynDefaults('CLAUDE.md', claude)) {
-    updateInstructions('CLAUDE.md', initial);
-  } else if (stat) {
-    log('  → CLAUDE.md imports AGENTS.md, which holds the devlyn block', 'dim');
-  } else {
-    fs.writeFileSync(file('CLAUDE.md'), initial, { flag: 'wx', mode: 0o644 });
-    log('  → Created CLAUDE.md importing AGENTS.md, which holds the devlyn block');
-  }
+  const file = path.join(projectDir(), 'CLAUDE.md');
+  const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+  const initial = !stat && fs.statSync(path.join(projectDir(), 'AGENTS.md'), { throwIfNoEntry: false })?.isFile() ? '@AGENTS.md\n' : '';
+  const imported = importsAgentsDefaults(stat?.isFile() ? fs.readFileSync(file, 'utf8') : initial);
+  updateInstructions('CLAUDE.md', initial, !imported);
+  if (imported) log('  → CLAUDE.md imports AGENTS.md, which holds the devlyn block', 'dim');
 }
 
 // Project CLAUDE.md and .claude/: skills, templates and settings.

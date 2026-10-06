@@ -180,7 +180,8 @@ function retainFile(file, bytes) {
   }
 }
 
-function updateInstructions(name, initial = '') {
+// `withBlock` false removes the devlyn defaults the file holds, keeping everything else.
+function updateInstructions(name, initial = '', withBlock = true) {
   const templatePath = path.join(__dirname, '..', name);
   const template = fs.readFileSync(templatePath, 'utf8');
   if (template.includes(BEGIN) || template.includes(END)) {
@@ -207,6 +208,7 @@ function updateInstructions(name, initial = '') {
   }
   const eol = current.match(/\r?\n/)?.[0] || '\n';
   const block = managedBlock(template, eol);
+  const inserted = withBlock ? block : '';
   const recovery = path.join(process.cwd(), '.devlyn', 'instructions');
   const conflict = (reason) => {
     const incoming = path.join(recovery, `${name}.${digest(block)}.incoming`);
@@ -243,8 +245,11 @@ function updateInstructions(name, initial = '') {
     const custom = digest(normalize(previous)) === start[1] ? ''
       : customInstructions(previous, name,
         'Project-specific instructions outside this managed block take precedence over these defaults.\n\n' + template, true);
+    const after = current.slice(end.index + end[0].length);
     content = current.slice(0, start.index + (start[0].startsWith('\uFEFF') ? 1 : 0))
-      + custom + (custom ? eol : '') + block + current.slice(end.index + end[0].length);
+      + custom + (custom ? eol : '') + inserted + after;
+    // A block removed from the end takes along the blank lines that set it apart.
+    if (!inserted && !after) content = content.replace(/(\r?\n)(?:\r?\n)+$/, '$1');
   } else {
     const normalized = normalize(template);
     const bodyStart = normalized.indexOf('## North Star\n');
@@ -258,10 +263,10 @@ function updateInstructions(name, initial = '') {
     if (ranges.length === 1 && !LEGACY.test(current.slice(0, ranges[0].start)
         + ranges[0].custom + current.slice(ranges[0].end))) {
       const { start, end, custom } = ranges[0];
-      content = current.slice(0, start) + custom + block + current.slice(end);
+      content = current.slice(0, start) + custom + inserted + current.slice(end);
     } else {
       const custom = customInstructions(current, name, template);
-      content = custom + (custom ? eol + eol : '') + block;
+      content = custom + (custom && inserted ? eol + eol : '') + inserted;
     }
   }
   const bytes = Buffer.from(content);
@@ -282,7 +287,8 @@ function updateInstructions(name, initial = '') {
   } finally {
     if (fs.existsSync(temp)) fs.unlinkSync(temp);
   }
-  console.log(exists ? `  → Updated Devlyn defaults in ${name}; project-specific instructions preserved` : `  → Created ${name}`);
+  console.log(!exists ? `  → Created ${name}`
+    : `  → ${withBlock ? 'Updated Devlyn defaults in' : 'Removed Devlyn defaults from'} ${name}; project-specific instructions preserved`);
   return true;
 }
 
