@@ -115,7 +115,7 @@ def select(work, default_engine, *, available=None, shared=SHARED):
     executor = result["executor"]
     if executor["source"] == "engines.json" and executor["availability"] == "CLI-unavailable":
         fail(f"pinned executor {executor['engine']} is unavailable; install and authenticate its CLI, "
-             f"verify `{executor['engine']} --version`, and retry, or clear the pin with /devlyn-engines clear",
+             f"verify `{executor['engine']} --version`, and retry, or clear the pin with `devlyn-engines clear`",
              f"{executor['engine']}-unavailable")
     return result
 
