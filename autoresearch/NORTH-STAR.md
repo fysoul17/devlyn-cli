@@ -104,7 +104,7 @@ Since [0232 §8](iterations/0232-harness-ladder.md) (PR #171), the installed pro
 
 ### Optional utility
 
-- **`/devlyn:reap`** — lives in `optional-skills/` (moved 2026-05-04 in iter-0034 Phase 4 cutover). Process hygiene only.
+- **`devlyn-reap`** — lives in `optional-skills/` (moved 2026-05-04 in iter-0034 Phase 4 cutover). Process hygiene only.
 
 ### Historical April deprecation plan
 
@@ -112,9 +112,9 @@ Since [0232 §8](iterations/0232-harness-ladder.md) (PR #171), the installed pro
 
 The historical creative-plugin proposal named `/design-system` and `/team-design-ui`.
 
-### Multi-LLM evolution direction (binding for `/devlyn:resolve`)
+### Multi-LLM evolution direction
 
-`/devlyn:resolve` and `/devlyn:ideate` are **the surfaces where multi-LLM mixing keeps evolving**. Current routes are defined by `_shared/engine-preflight.md` and each skill, with exact seats re-certified on model/version changes. Longer-term: a **pi-agent** abstraction that lets the skills swap in additional LLMs (Qwen, Gemini, Gemma, future frontier models) wherever empirical evidence shows lift.
+`devlyn-ideate` and `devlyn-engines` are **the surfaces where multi-LLM mixing keeps evolving**. Current routes are defined by `_shared/engine-preflight.md` and each skill, with exact seats re-certified on model/version changes. Longer-term: a **pi-agent** abstraction that lets the skills swap in additional LLMs (Qwen, Gemini, Gemma, future frontier models) wherever empirical evidence shows lift.
 
 **Architectural commitments**:
 - Pair-mode is **measurement-gated by phase; VERIFY/JUDGE is the default-when-available exception**. The Pair-mode policy section below names the candidate phases, the deterministic-vs-judgment distinction, and the gate every shipped pair surface must clear.

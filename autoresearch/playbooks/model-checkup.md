@@ -13,7 +13,7 @@ the binding, the registration template (§9), and the tightening lane (§7).
 
 **Trigger**: a new model ID becomes available for a seat this repo pins
 (`.devlyn/engines.json`), or an existing pin's model version changes under it —
-[`NORTH-STAR.md`](../NORTH-STAR.md#multi-llm-evolution-direction-binding-for-devlynresolve)
+[`NORTH-STAR.md`](../NORTH-STAR.md#multi-llm-evolution-direction)
 requires seat re-certification on model/version changes before re-pinning. The
 user shorthand is "모델 체크업".
 
