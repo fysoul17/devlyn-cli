@@ -813,16 +813,46 @@ class LoopFixture(unittest.TestCase):
         # Prediction (E3): with AGENTS.md committed but not pushed, an auto loop's add passes, but its task is refused at
         # allocation, naming AGENTS.md, the refreshed base and the push remedy, with no receipt; after the push the drain
         # delivers it and its packet lists AGENTS.md. Before: the task ran from the refreshed base without AGENTS.md.
+        # Prediction: the refused task, queued ahead of a local loop, waits with that reason while the local loop is
+        # accepted in the same drain. Before: allocation raised, so the drain ended BLOCKED and the local loop never ran.
         bare, _ = self.remote(pending=False)
         (self.anchor / "AGENTS.md").write_text("# Installed instructions\n", encoding="utf-8")
         self.g("add", "AGENTS.md")
         self.g("commit", "-qm", "install instructions")
-        self.plan("ai", [CHAIN[0]], {"ai.t1": {"product": "greeting"}}, delivery="auto")
-        self.assertEqual(self.drain(local=False, code=1)["reason"], f"ai.t1: the installed instructions (AGENTS.md) in this checkout differ from "
-                         f"those in its start commit {self.base}, so it would run without them; commit them and push them to origin/main")
+        installed = self.g("rev-parse", "HEAD")
+        meta = self.queue["write_package"](self.anchor, "ai", [CHAIN[0]], delivery="auto", base=self.base,
+                                           intent="User asked: unrelated legacy intent.")
+        self.behaviors.update({"ai.t1": {"product": "greeting"}})
+        self.cli("add", meta, "--materialize", 4)
+        self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual([(identity, task["result"], task.get("reason")) for identity, task in tasks.items()], [
+            ("ai.t1", "pending", f"the installed instructions (AGENTS.md) in this checkout differ from those in its start commit {self.base}, "
+                                 "so it would run without them; commit them and push them to origin/main"), ("lo.t1", "accepted", None)])
         self.assertFalse(self.receipt_path("ai.t1").exists())
-        self.run_ok(["git", "-C", str(self.anchor), "push", "-q", str(bare), "main"])
+        self.run_ok(["git", "-C", str(self.anchor), "push", "-q", str(bare), f"{installed}:main"])
         self.assertEqual((self.tasks(self.drain(local=False))["ai.t1"]["delivery"], self.methodology("ai.t1")), ("COMPLETE", ["AGENTS.md"]))
+
+    def test_a_local_task_whose_start_lacks_the_checkouts_instructions_waits_while_other_loops_run(self):
+        # Prediction: a local loop added under CLAUDE.md v1, whose checkout then holds a committed v2, waits, naming the file,
+        # its start commit and both remedies, with no executor call, while a loop added under v2 is accepted in the same
+        # drain; status names that wait and offers no next task; with v1 restored the waiting task is accepted. Before:
+        # allocation raised, so every drain ended BLOCKED on the first loop and the new loop never ran.
+        (self.anchor / "CLAUDE.md").write_text("# Installed v1\n", encoding="utf-8")
+        self.g("add", "CLAUDE.md")
+        self.g("commit", "-qm", "install v1")
+        self.plan("aa", [("t1", [], "Notes", [NOTES_CHECK])], {"aa.t1": {"product": "notes"}})
+        (self.anchor / "CLAUDE.md").write_text("# Installed v2\n", encoding="utf-8")
+        self.g("commit", "-qam", "install v2")
+        self.plan("bb", [("t1", [], "Todo", [TODO_CHECK])], {"bb.t1": {"product": "todo"}})
+        reason = (f"the installed instructions (CLAUDE.md) in this checkout differ from those in its start commit {self.added('aa')['commit']}, "
+                  "so it would run without them; restore them to their bytes at that commit, or plan the remaining work as a new loop")
+        tasks = self.tasks(self.drain())
+        self.assertEqual((tasks["aa.t1"].get("reason"), self.calls("aa.t1"), tasks["bb.t1"]["result"]), (reason, 0, "accepted"))
+        status = self.cli("status", "--repo", self.anchor)
+        self.assertEqual((status["next"], f"aa.t1: {reason}" in status["blockers"]), (None, True))
+        (self.anchor / "CLAUDE.md").write_text("# Installed v1\n", encoding="utf-8")
+        self.assertEqual(self.tasks(self.drain())["aa.t1"]["result"], "accepted")
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_unobservable_post_merge_cleanup_retains_the_workspace_and_drain_continues(self):

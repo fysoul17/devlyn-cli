@@ -685,6 +685,9 @@ def waiting(v, row):
             return f"awaiting delivery of {identity}"
     if local and not frontier(v, row["loop"]) and (delivery := v["packages"][row["loop"]]["manifest"]["delivery"]) != "local-only":
         return f"{row['loop']} was added for {delivery} delivery, so no add commit carries its package for a local drain; drain it without --local-only"
+    if local and (drift := instruction_drift(v["anchor"], start := local_start(v, row["loop"]))):
+        return (f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run "
+                "without them; restore them to their bytes at that commit, or plan the remaining work as a new loop")
     if not local:
         # One carrier in flight across the queue: until a delivered task has landed its loop's plan, a task waits for any.
         landed = any(other.get("loop") == row["loop"] and (receipt := v["states"][other["identity"]]["receipt"]) and delivered(receipt)
@@ -706,10 +709,11 @@ def next_task(v, attempted):
                  and waiting(v, row) is None), None)
 
 
-def annotate(v):
+def annotate(v, refused):
+    """Name each pending task's wait: its reason from waiting(), else why this drain's allocation refused it."""
     for row in v["rows"]:
         state = v["states"].get(row["identity"])
-        if state and state["kind"] == "pending" and (reason := waiting(v, row)):
+        if state and state["kind"] == "pending" and (reason := waiting(v, row) or refused.get(row["identity"])):
             state["waiting"] = reason
 
 
@@ -717,6 +721,12 @@ def frontier(v, loop):
     accepted = [v["states"][row["identity"]] for row in v["rows"] if row.get("loop") == loop
                 and v["states"][row["identity"]]["kind"] == "accepted" and v["states"][row["identity"]]["receipt"]]
     return accepted[-1] if accepted else None
+
+
+def local_start(v, loop):
+    """The commit a local loop's next task starts from: its latest accepted source, else its add commit (loop.md step 3)."""
+    tip = frontier(v, loop)
+    return tip["receipt"]["source_sha"] if tip else add_record(v["common"], loop, ("branch", "commit"))["commit"]
 
 
 def terminal_line(v, identity):
@@ -812,6 +822,8 @@ def evidence_ignored(anchor, common, start):
 
 
 def allocate(v, row, opts):
+    """Allocate the task's owned worktree, or return why it waits: its refreshed remote base lacks the checkout's
+    instructions (waiting() checks a local start, which is fixed)."""
     identity, loop, task = row["identity"], row["loop"], row["task"]
     package = v["packages"][loop]
     manifest = package["manifest"]
@@ -821,8 +833,7 @@ def allocate(v, row, opts):
               "base": manifest["base_ref"], "remote": "origin", "worktree": str(opts.worktree_root / loop / task),
               "local_base": None, "from_receipt": None, "start": None}
     if is_local(v, loop):
-        tip = frontier(v, loop)
-        start = tip["receipt"]["source_sha"] if tip else add_record(common, loop, ("branch", "commit"))["commit"]
+        tip, start = frontier(v, loop), local_start(v, loop)
         for dep in deps:
             require(ancestor(anchor, dep["receipt"]["source_sha"], start),
                     f"{identity}: prerequisite source {dep['receipt']['source_sha']} is not in the accepted frontier {start}; plan an integration task")
@@ -842,12 +853,12 @@ def allocate(v, row, opts):
     require(evidence_ignored(anchor, common, start),
             f"{identity}: .devlyn/ is not ignored in its start commit {start}, so loop evidence would dirty task source; commit a "
             f"`.devlyn/` entry to .gitignore in the base the task starts from, or add `.devlyn/` to {common / 'info' / 'exclude'}")
-    if drift := instruction_drift(anchor, start):
-        raise LoopError(f"{identity}: the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it "
-                        "would run without them; " + (f"commit them and push them to origin/{manifest['base_ref']}" if values["start"] else
-                                                      "restore them to their bytes at that commit, or plan the remaining work as a new loop"))
+    if values["start"] and (drift := instruction_drift(anchor, start)):
+        return (f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run "
+                f"without them; commit them and push them to origin/{manifest['base_ref']}")
     result = task_complete("allocate", **values)
     progress(identity, f"allocated {result['worktree']}")
+    return None
 
 
 def ensure_packet(v, row, path, receipt):
@@ -994,11 +1005,11 @@ def settle(v, row, receipt_file):
 
 
 def advance(v, row, opts):
-    """Run or resume one task from its durable state; never replays a bound result."""
+    """Run or resume one task from its durable state; never replays a bound result. Returns why allocation refused it."""
     identity = row["identity"]
     path = receipt_path(v["common"], identity)
-    if not path.exists():
-        allocate(v, row, opts)
+    if not path.exists() and (refused := allocate(v, row, opts)):
+        return refused
     receipt = read_json(path)
     if not receipt.get("acceptance"):
         failure = v["states"][identity].get("inputs_changed")
@@ -1022,6 +1033,7 @@ def advance(v, row, opts):
         result = task_complete("complete", receipt=str(path), acceptance=None, mode=None if local else packet["delivery"],
                                local_only=local, writers_stopped=True)
         progress(identity, f"delivery {result['status']}")
+    return None
 
 
 def summary(v, row):
@@ -1166,7 +1178,7 @@ def drain(args):
     require(any("{packet}" in part for part in args.executor), "executor argv must contain {packet}, replaced by the task packet path")
     args.worktree_root = Path(args.worktree_root).resolve() if args.worktree_root else anchor.parent / f"{anchor.name}.devlyn"
     with lock(common, "drain.lock", blocking=False):
-        attempted, last, status, reason, synced = set(), None, "DRAINED", None, {}
+        attempted, last, status, reason, synced, refused = set(), None, "DRAINED", None, {}, {}
         try:
             while True:
                 last = view(anchor, common, args.local_only)
@@ -1174,7 +1186,8 @@ def drain(args):
                 if row is None:
                     break
                 attempted.add(row["identity"])
-                advance(last, row, args)
+                if wait := advance(last, row, args):
+                    refused[row["identity"]] = wait
             if any(state["kind"] in {"pending", "active"} for state in last["states"].values()) or counts(last)["legacy_pending"]:
                 status = "WAITING"
             synced = {loop: sync_anchor(last, loop) for loop in dict.fromkeys(row["loop"] for row in last["rows"] if row["identity"])}
@@ -1184,7 +1197,7 @@ def drain(args):
                 last = view(anchor, common, args.local_only)
         if last is None:
             return {"status": status, "reason": reason}
-        annotate(last)
+        annotate(last, refused)
         return {"status": status, "reason": reason, "reports": write_reports(last, status, reason, synced), "counts": counts(last),
                 "tasks": [summary(last, row) for row in last["rows"] if row["identity"]]}
 
@@ -1193,7 +1206,7 @@ def status(args):
     anchor, common = repository(args.repo)
     v = view(anchor, common, args.local_only)
     row = next_task(v, set())
-    annotate(v)
+    annotate(v, {})
     tasks = [summary(v, r) for r in v["rows"] if r["identity"]]
     return {"status": "OK", "queue": str(anchor / QUEUE), "counts": counts(v), "next": row["identity"] if row else None,
             "blockers": [f"{t['identity']}: {t['reason']}" for t in tasks if t.get("reason") and t["result"] in {"pending", "active", "blocked"}]

@@ -120,7 +120,7 @@ python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" drain --repo . [--local-only] -- <e
 A drain can run for hours. Do not end the turn until it exits: run it in the foreground with the longest allowed timeout, or in the background and await its completion notice, because a headless host kills background tasks at its final response.
 
 - `WAITING` on legacy rows: plan and materialize each under the autonomous policy, then drain again; a row whose planning stops on material ambiguity stays pending and its question is reported.
-- `WAITING` on a delivery or `BLOCKED`: report the reason and resume commands; never edit receipts, refs or queue rows to get past them.
+- `WAITING` on anything else, or `BLOCKED`: report the reason and resume commands; never edit receipts, refs or queue rows to get past them.
 - An interrupted drain is resumed by running `drain` again; accepted work is never replayed.
 
 Report each task's product result, delivery status, PR URL, resume command, assumptions and unresolved questions, plus the drain report paths and its exact `Bring into` command: a local loop's final task branch fast-forwards the branch the loop was added on unless that branch has moved since; for `auto`/`pr`, once the loop has settled and its plan has landed, the drain removes the anchor's untracked package copies and the command is `git pull --ff-only origin <base>`, or `git merge origin/<base>` when that branch has commits the remote base lacks.
