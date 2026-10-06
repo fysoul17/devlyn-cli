@@ -833,6 +833,7 @@ FAKE_GH = r'''#!/usr/bin/env python3
 import json, os, pathlib, subprocess, sys
 p = pathlib.Path(os.environ['FIXTURE_GH'])
 d = json.loads(p.read_text(encoding="utf-8")); a = sys.argv[1:]
+prs = d.setdefault('prs', [])  # PR number n is prs[n-1]; several may be open at once.
 def save(): p.write_text(json.dumps(d), encoding="utf-8")
 def remote(ref):
     r = subprocess.run([os.environ['REAL_GIT'], '--git-dir', d['bare'], 'rev-parse', '--verify', ref], capture_output=True, text=True, encoding="utf-8")
@@ -842,38 +843,44 @@ if a[:2] == ['repo', 'view']:
     print(json.dumps({'nameWithOwner':'test/project', 'url':'https://github.com/test/project', 'defaultBranchRef':{'name':d.get('default_branch','main')}, 'mergeCommitAllowed':d.get('merge_allowed',True)}))
 elif a[:2] == ['pr', 'list']:
     assert '--repo' in a and a[a.index('--repo')+1] == 'github.com/test/project'
-    print(json.dumps([d['pr']] if d.get('pr') else []))
+    print(json.dumps([pr for pr in prs if pr['headRefName'] == a[a.index('--head')+1]]))
 elif a[:2] == ['pr', 'create']:
     d['creates'] = d.get('creates',0)+1
-    assert not d.get('pr'), 'duplicate PR'
     head = a[a.index('--head')+1]; base = a[a.index('--base')+1]
-    d['pr'] = {'number':1,'url':'https://github.com/test/project/pull/1','headRefName':head,'baseRefName':base,'headRefOid':remote('refs/heads/'+head),'headRepository':{'name':'project','owner':{'login':'test'}}, 'headRepositoryOwner':{'login':'test'},'isCrossRepository':False,'state':'OPEN','mergedAt':None,'mergeCommit':None,'autoMergeRequest':None}
+    assert not [pr for pr in prs if pr['headRefName'] == head], 'duplicate PR'
+    url = 'https://github.com/test/project/pull/%d' % (len(prs)+1)
+    prs.append({'number':len(prs)+1,'url':url,'headRefName':head,'baseRefName':base,'headRefOid':remote('refs/heads/'+head),'headRepository':{'name':'project','owner':{'login':'test'}}, 'headRepositoryOwner':{'login':'test'},'isCrossRepository':False,'state':'OPEN','mergedAt':None,'mergeCommit':None,'autoMergeRequest':None})
     save()
-    print(d['pr']['url'])
+    print(url)
     if d.pop('interrupt_create',False): save(); sys.exit(1)
 elif a[:2] == ['pr', 'view']:
-    print(json.dumps(d['pr']))
+    print(json.dumps(prs[int(a[2])-1]))
 elif a[:2] == ['pr', 'merge'] and '--disable-auto' in a:
     d['disables'] = d.get('disables',0)+1
-    d['pr']['autoMergeRequest'] = None
+    prs[int(a[2])-1]['autoMergeRequest'] = None
     save()
 elif a[:2] == ['pr', 'merge']:
     assert '--admin' not in a and '--delete-branch' not in a
     assert '--auto' in a and '--merge' in a and '--match-head-commit' in a
+    pr = prs[int(a[2])-1]
     sha = a[a.index('--match-head-commit')+1]
-    assert sha == remote('refs/heads/'+d['pr']['headRefName'])
+    assert sha == remote('refs/heads/'+pr['headRefName'])
     d['merges'] = d.get('merges',0)+1
     if not d.get('auto_allowed',True) and d.get('pending'):
         save(); print('repository disallows auto merge',file=sys.stderr); sys.exit(1)
     if d.get('pending'):
-        d['pr']['autoMergeRequest'] = {'enabledAt':'now'}
+        pr['autoMergeRequest'] = {'enabledAt':'now'}
     else:
         g = [os.environ['REAL_GIT'],'--git-dir',d['bare']]
         base = remote('refs/heads/main')
-        tree = subprocess.check_output(g+['rev-parse',sha+'^{tree}'],text=True, encoding="utf-8").strip()
-        merge = subprocess.check_output(g+['commit-tree',tree,'-p',base,'-p',sha,'-m','merge fixture'],text=True, encoding="utf-8").strip()
+        # A three-way merge into the current base, as GitHub makes it; a conflicting PR does not merge.
+        merged = subprocess.run(g+['merge-tree','--write-tree',base,sha],capture_output=True,text=True,encoding="utf-8")
+        if merged.returncode:
+            save(); print('pull request is not mergeable: '+merged.stdout,file=sys.stderr); sys.exit(1)
+        parents = ['-p',base] if d.get('squash') else ['-p',base,'-p',sha]
+        merge = subprocess.check_output(g+['commit-tree',merged.stdout.split()[0],*parents,'-m','merge fixture'],text=True, encoding="utf-8").strip()
         subprocess.check_call(g+['update-ref','refs/heads/main',merge,base])
-        d['pr'].update(state='MERGED',mergedAt='now',mergeCommit={'oid':merge})
+        pr.update(state='MERGED',mergedAt='now',mergeCommit={'oid':merge})
     save()
     if d.pop('interrupt_merge',False): save(); sys.exit(1)
 else:
@@ -893,7 +900,7 @@ import json, os, pathlib, subprocess, sys
 a = sys.argv[1:]
 p = pathlib.Path(os.environ['FIXTURE_GH']); d = json.loads(p.read_text(encoding="utf-8"))
 if 'push' in a and any(x.startswith('--force-with-lease=') for x in a) and d.pop('remote_delete_race',False):
-    subprocess.check_call([os.environ['REAL_GIT'],'--git-dir',d['bare'],'update-ref','refs/heads/'+d['pr']['headRefName'],d['race_sha']])
+    subprocess.check_call([os.environ['REAL_GIT'],'--git-dir',d['bare'],'update-ref','refs/heads/'+d['prs'][0]['headRefName'],d['race_sha']])
     p.write_text(json.dumps(d), encoding="utf-8")
 for operation in ('push', 'fetch', 'ls-remote'):
     if operation in a and 'origin' in a:
@@ -1259,7 +1266,7 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(result["status"], "PR")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
         d = json.loads(self.data.read_text(encoding="utf-8"))
-        self.assertEqual((d["pushs"], d.get("merges", 0), d["pr"]["autoMergeRequest"]), (1, 0, None))
+        self.assertEqual((d["pushs"], d.get("merges", 0), d["prs"][0]["autoMergeRequest"]), (1, 0, None))
 
     def test_pr_mode_disables_only_owned_auto_merge(self):
         self.allocate(); self.accept()
@@ -1269,12 +1276,12 @@ class CompletionTests(unittest.TestCase):
         result, _ = self.complete("--mode", "pr")
         self.assertEqual(result["status"], "PR")
         d = json.loads(self.data.read_text(encoding="utf-8"))
-        self.assertEqual((d["disables"], d["pr"]["autoMergeRequest"]), (1, None))
-        self.configure(pr=dict(d["pr"], isCrossRepository=True, autoMergeRequest={"enabledAt": "now"}))
+        self.assertEqual((d["disables"], d["prs"][0]["autoMergeRequest"]), (1, None))
+        self.configure(prs=[dict(d["prs"][0], isCrossRepository=True, autoMergeRequest={"enabledAt": "now"})])
         _, r = self.complete("--mode", "pr", success=False)
         self.assertIn("PR head repository differs", json.loads(r.stdout)["reason"])
         d = json.loads(self.data.read_text(encoding="utf-8"))
-        self.assertEqual((d["disables"], d["pr"]["autoMergeRequest"]), (1, {"enabledAt": "now"}))
+        self.assertEqual((d["disables"], d["prs"][0]["autoMergeRequest"]), (1, {"enabledAt": "now"}))
 
     def test_remote_rewrite_after_allocation_is_rejected(self):
         self.allocate(); self.accept()
@@ -1428,8 +1435,8 @@ class CompletionTests(unittest.TestCase):
         tree = self.run_cmd(bare + ["rev-parse", self.sha + "^{tree}"]).stdout.strip()
         squash = self.run_cmd(bare + ["commit-tree", tree, "-p", base, "-m", "squash fixture"]).stdout.strip()
         self.run_cmd(bare + ["update-ref", "refs/heads/main", squash, base])
-        pr = json.loads(self.data.read_text(encoding="utf-8"))["pr"]
-        self.configure(pr=dict(pr, state="MERGED", mergedAt="now", mergeCommit={"oid": squash}))
+        pr = json.loads(self.data.read_text(encoding="utf-8"))["prs"][0]
+        self.configure(prs=[dict(pr, state="MERGED", mergedAt="now", mergeCommit={"oid": squash})])
         result, _ = self.complete()
         self.assertEqual(result["status"], "COMPLETE")
         self.assertFalse(self.task.exists())
@@ -1476,7 +1483,7 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
         # Reopen only the fixture PR to exercise the owner's pre-merge release.
         d = json.loads(self.data.read_text())
-        self.configure(pr=dict(d["pr"], state="OPEN", mergedAt=None, mergeCommit=None))
+        self.configure(prs=[dict(d["prs"][0], state="OPEN", mergedAt=None, mergeCommit=None)])
         self.receipt, self.task = receipt, task
         result, _ = self.complete("--mode", "pr", "--writers-stopped")
         self.assertEqual(result["status"], "PR")
@@ -1518,13 +1525,13 @@ class CompletionTests(unittest.TestCase):
         saved.update(pr_number=1, writers_released=True)
         unaccepted.write_text(json.dumps(saved))
         unaccepted_before = unaccepted.read_bytes()
-        pr = json.loads(self.data.read_text())["pr"]
-        self.configure(pr=dict(pr, state="CLOSED"))
+        pr = json.loads(self.data.read_text())["prs"][0]
+        self.configure(prs=[dict(pr, state="CLOSED")])
         result = self.allocate("closed")
         self.assertEqual(result["reconciled"], [])
         self.assertEqual(receipt.read_bytes(), before)
         self.assertTrue(task.exists())
-        self.configure(pr=pr)
+        self.configure(prs=[pr])
         self.merge_pr()
         self.g("worktree", "lock", str(task))
         result = self.allocate("locked")
@@ -2085,7 +2092,7 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual((receipt["source_sha"], receipt["publish_sha"]), (source, terminal))
         result, _ = self.complete("--mode", "pr", acceptance=False)
         self.assertEqual(result["status"], "PR")
-        self.assertEqual(json.loads(self.data.read_text())["pr"]["headRefOid"], terminal)
+        self.assertEqual(json.loads(self.data.read_text())["prs"][0]["headRefOid"], terminal)
 
 
 if __name__ == "__main__":

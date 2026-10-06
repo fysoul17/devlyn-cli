@@ -628,8 +628,7 @@ class LoopFixture(unittest.TestCase):
         self.drain(local=False, repo=refreshed)
         report = self.common / "devlyn-loops/inv/drain-report.md"
         self.assertIn("- Whole-loop acceptance: INCOMPLETE — inv.t2 not yet run", report.read_text(encoding="utf-8"))
-        # The original checkout runs T2, the integration task (the fake server keeps one PR at a time).
-        data.write_text(json.dumps({key: value for key, value in json.loads(data.read_text()).items() if key != "pr"}))
+        # The original checkout runs T2, the integration task.
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t2"]["result"], "accepted")
         self.assertIn("- Whole-loop acceptance: ACCEPTED", report.read_text(encoding="utf-8"))
 
@@ -640,11 +639,10 @@ class LoopFixture(unittest.TestCase):
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
         queue = self.anchor / "docs/specs/queue.md"
         planned = queue.read_bytes()
-        # The fake server keeps one PR at a time: deliver inv.t1 alone, then inv.t2.
+        # Deliver inv.t1 alone, then inv.t2.
         queue.write_bytes(planned.replace((self.queue["row_line"]("inv.t2", "Greeting app [cli]") + "\n").encode(), b""))
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t1"]["delivery"], "COMPLETE")
         queue.write_bytes(planned)
-        data.write_text(json.dumps({key: value for key, value in json.loads(data.read_text()).items() if key != "pr"}))
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t2"]["delivery"], "COMPLETE")
         self.g("fetch", "-q", str(bare), "main")
         merged = self.merge_ff("FETCH_HEAD")
@@ -670,7 +668,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.calls("inv.t2"), 0)
         receipt = self.receipt("inv.t1")
         self.assertTrue(Path(receipt["worktree"]).is_dir())
-        self.assertEqual(json.loads(data.read_text())["pr"]["headRefOid"], receipt["publish_sha"])
+        self.assertEqual(json.loads(data.read_text())["prs"][0]["headRefOid"], receipt["publish_sha"])
         self.assertIn("task-complete.py complete --receipt", tasks["inv.t1"]["resume"])
         report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")
         self.assertIn("Delivery: PENDING", report)
