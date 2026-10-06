@@ -470,8 +470,8 @@ def records(common):
 def queue_view(anchor, recorded):
     """The rows status and drain read (loop.md step 1): the legacy queue's raw rows in file order, a row that one loop
     replaces shown as that loop's rows in its place; then the other recorded loops in add order; then the loops without a
-    record, as in a fresh clone, from the checkout's tracked queue files in loop-id order. A legacy row claimed by more than
-    one loop, or a claim matching no row, replaces nothing."""
+    record, as in a fresh clone, from the checkout's tracked queue files in loop-id order. A claim matching no row replaces
+    nothing; a row two loops claim is hidden, neither loop taking its place."""
     legacy = anchor / QUEUE
     raw = [row for row in parse_queue(legacy.read_bytes() if legacy.exists() else b"") if not row["identity"]]
     loops = {loop: parse_loop(show(anchor, added["commit"], loop_queue(loop)), loop, f"{CAPTURES}{loop}:{loop_queue(loop)}")
@@ -488,11 +488,11 @@ def queue_view(anchor, recorded):
     placed = {}
     for (occurrence, line), owners in claims.items():
         matches = [row["index"] for row in raw if row["line"] == line]
-        if len(owners) == 1 and len(matches) >= occurrence:
-            placed[matches[occurrence - 1]] = owners[0]
+        if len(matches) >= occurrence:
+            placed[matches[occurrence - 1]] = owners[0] if len(owners) == 1 else None
     rows = []
     for row in raw:
-        rows += loops[placed[row["index"]]][0] if row["index"] in placed else [row]
+        rows += [row] if row["index"] not in placed else loops[placed[row["index"]]][0] if placed[row["index"]] else []
     return rows + [row for loop, (own, _) in loops.items() if loop not in placed.values() for row in own]
 
 
@@ -1550,10 +1550,12 @@ class QueueTests(unittest.TestCase):
 
     def test_a_legacy_row_is_replaced_only_by_its_one_exact_claim(self):
         """Q. Prediction: a loop's queue file hides the legacy row whose exact text and occurrence it records, line endings
-        aside, showing the loop's rows in its place; a claim on a missing occurrence, and a row two loops claim, replace
-        nothing, so no other row disappears; loops without a record follow in loop-id order, two-b after two. Before: the
-        first row equal to the recorded text was replaced, whatever its occurrence; two-b came first, its queue file's path
-        sorting before two's since '-' sorts before '/'."""
+        aside, showing the loop's rows in its place; a claim on a missing occurrence replaces nothing, so no other row
+        disappears; a row two loops claim, as two clones each materializing it leave it, is hidden with neither loop in its
+        place, so materializing it once more is refused; loops without a record follow in loop-id order, two-b after two.
+        Before: the first row equal to the recorded text was replaced, whatever its occurrence; two-b came first, its queue
+        file's path sorting before two's since '-' sorts before '/'; the row two loops claim stayed pending, and every
+        further --materialize of it was added."""
         (self.anchor / QUEUE).write_bytes(b"# Intent Queue\n\n- [ ] alpha\r\n- [ ] alpha\n- [ ] beta\n")
         for loop, occurrence, line in (("one", 2, "- [ ] alpha"), ("two", 1, "- [ ] beta"), ("two-b", 1, "- [ ] beta"), ("four", 3, "- [ ] alpha")):
             (self.anchor / "docs/specs" / loop).mkdir(parents=True)
@@ -1561,7 +1563,9 @@ class QueueTests(unittest.TestCase):
                                                          encoding="utf-8")
         git(self.anchor, "add", "docs/specs", env=self.env)
         self.assertEqual([(row["identity"], row["index"]) for row in queue_view(self.anchor, {})],
-                         [(None, 2), ("one.t1", 2), (None, 4), ("four.t1", 2), ("two.t1", 2), ("two-b.t1", 2)])
+                         [(None, 2), ("one.t1", 2), ("four.t1", 2), ("two.t1", 2), ("two-b.t1", 2)])
+        again = write_package(self.anchor, "rep", self.tasks[:1], intent="User asked: beta.")
+        self.assertIn(f"{QUEUE} line 5 is not a pending legacy row", self.cli("add", again, "--materialize", 5, code=1)["reason"])
 
     def test_handwritten_marks_never_satisfy_dependencies(self):
         """A loop without a record here, as in a fresh clone, is read from its tracked queue file, after the recorded loops
