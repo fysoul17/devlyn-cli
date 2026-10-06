@@ -204,8 +204,7 @@ def allocate(args):
         receipt["remote_url"] = remote_url(receipt)
         require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
     receipt["baseline"] = local or exact_commit(receipt, args.start, "--start") or remote_base(receipt)
-    target = Path(args.worktree).absolute()
-    require(target == target.resolve(), "worktree path must not traverse symlinks")
+    target = Path(args.worktree).resolve()  # A relative, `..` or symlinked (macOS /tmp) path names its real location.
     require(not target.exists() and all(not target.is_relative_to(p) and not p.is_relative_to(target) for p in map(Path, registrations(receipt))), "linked worktree must be an absent path disjoint from every registered worktree")
     receipt["worktree"] = str(target)
     key = hashlib.sha256(args.branch.encode()).hexdigest()[:24]
@@ -2029,6 +2028,20 @@ class CompletionTests(unittest.TestCase):
         self.accept()
         self.assertEqual(self.complete("--local-only")[0]["status"], "LOCAL_ONLY")
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs", 0), 0)
+
+    def test_allocation_canonicalizes_symlinked_and_dotted_worktree_paths(self):
+        """P4-2. Prediction: an absent worktree path reached through a symlinked directory (macOS /tmp) or written with
+        `..` (`../work-x`, `$(pwd -P)/../work-x`) is ALLOCATED at its canonical path, and that path, now present, is
+        refused through the link as not absent."""
+        alias = self.root / "alias"
+        alias.symlink_to(self.root, target_is_directory=True)
+        args = ["allocate", "--repo", self.work, "--base", "main", "--local-base", self.g("rev-parse", "HEAD")]
+        for name, given in (("linked", alias / "linked"), ("dotted", Path("..") / "dotted")):
+            result, _ = self.cli(*args, "--task", name, "--branch", "task/" + name, "--worktree", given, cwd=self.work)
+            self.assertEqual((result["status"], result["worktree"]), ("ALLOCATED", str(self.root / name)))
+            self.assertEqual(self.g("rev-parse", "--show-toplevel", work=self.root / name), str(self.root / name))
+        refused, _ = self.cli(*args, "--task", "again", "--branch", "task/again", "--worktree", alias / "dotted", success=False)
+        self.assertIn("linked worktree must be an absent path", refused["reason"])
 
     def test_remote_allocation_starts_from_an_exact_commit(self):
         # An ideate auto/pr task starts from the exact refreshed remote base the drain checked, never a second fetch.
