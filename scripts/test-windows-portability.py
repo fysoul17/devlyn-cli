@@ -329,6 +329,20 @@ init({options});
                     self.assertEqual(marker['version'], version)
                     self.assertTrue((self.project / '.claude/skills/devlyn-ideate/SKILL.md').is_file())
                     self.assertFalse((self.project / '.claude/skills/devlyn-resolve').exists())
+        # Beside an AGENTS.md, the CLAUDE.md the Claude target writes only imports it. Prediction: in a clone of such a
+        # project, with .claude/ ignored, -y installs the Claude target and the menu preselects it, leaving both files as
+        # committed. Before (da682f47): neither saw a Claude install, so .claude/skills stayed absent.
+        for case, update in (('import-clone', lambda: self.cli('-y')), ('import-clone-menu', lambda: self.interact([['\r'], ['\r'], ['\r']]))):
+            with self.subTest(case=case):
+                self.project = self.case / case; self.project.mkdir()
+                self.cli('-y', '--claude')
+                shutil.rmtree(self.project / '.claude')
+                committed = {name: (self.project / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
+                self.assertEqual(committed['CLAUDE.md'], b'@AGENTS.md\n')
+                update()
+                self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
+                self.assertTrue((self.project / '.claude/skills/devlyn-ideate/SKILL.md').is_file())
+                self.assertEqual({name: (self.project / name).read_bytes() for name in committed}, committed)
         if os.name != 'nt':
             # A CLAUDE.md linked to AGENTS.md is AGENTS.md's; the Claude target refuses links.
             self.project = self.case / 'linked'; self.project.mkdir()

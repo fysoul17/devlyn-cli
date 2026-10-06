@@ -104,21 +104,21 @@ function skillRoots(target, global) {
 
 // A devlyn Claude install in this scope. Globally only the marker a `--global --claude` run
 // writes counts; in a project also a devlyn skill (0.6.0 and later), command (0.2-0.5) or
-// CLAUDE.md with devlyn defaults, which a team may commit while ignoring .claude/. An optional
-// devlyn skill is not one: 4.0.1 put those into .claude/skills without the Claude target. A
-// CLAUDE.md link (often to AGENTS.md) is not the Claude target's file: updateInstructions
-// refuses links.
+// CLAUDE.md with devlyn defaults, held or imported from AGENTS.md, which a team may commit
+// while ignoring .claude/. An optional devlyn skill is not one: 4.0.1 put those into
+// .claude/skills without the Claude target. A CLAUDE.md link (often to AGENTS.md) is not the
+// Claude target's file: updateInstructions refuses links.
 function hasDevlynClaude(global) {
   const claudeDir = path.dirname(skillRoots('claude', global)[0]);
   if (global) return fs.existsSync(path.join(claudeDir, 'skills', DEVLYN_INSTALL_MARKER));
   const names = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir) : []);
   const optional = new Set(OPTIONAL_ADDONS.map((addon) => addon.name));
   const instructions = path.join(path.dirname(claudeDir), 'CLAUDE.md');
+  const claude = fs.lstatSync(instructions, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(instructions, 'utf8') : '';
   return names(path.join(claudeDir, 'skills')).some((name) => name === DEVLYN_INSTALL_MARKER
       || (name.startsWith('devlyn') && !optional.has(name.replace(/[:\uF03A]/g, '-'))))
     || names(path.join(claudeDir, 'commands')).some((name) => name.startsWith('devlyn.'))
-    || (fs.lstatSync(instructions, { throwIfNoEntry: false })?.isFile() === true
-      && holdsDevlynDefaults('CLAUDE.md', fs.readFileSync(instructions, 'utf8')));
+    || holdsDevlynDefaults('CLAUDE.md', claude) || importsAgentsDefaults(claude);
 }
 
 // Commands removed in previous versions; the project Claude install deletes them from .claude/.
