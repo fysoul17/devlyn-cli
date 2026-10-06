@@ -578,20 +578,28 @@ class LoopFixture(unittest.TestCase):
         # LOCAL_ONLY beside a local loop's, no remote is needed, and its report brings it into main with `git merge --ff`.
         # Before (b3774008): it waited, "au was added for auto delivery, so no add commit carries its package".
         # Prediction (H5): first, drained without --local-only, au.t1 waits with no receipt or executor call, its reason
-        # naming origin (a GitLab URL, then none) and both remedies, while lo.t1 is accepted. Before: allocation raised, so
+        # naming the origin forms auto delivery takes and both remedies, while lo.t1 is accepted; an origin URL holding a
+        # token, a GitLab or a GitHub one, reaches neither the drain's output nor its report. Before: allocation raised, so
         # the drain ended BLOCKED with "git config --get: " or the URL check's error, never naming --local-only, and lo.t1
-        # never ran.
+        # never ran; then (da682f47) the reason quoted origin, token included, and told a GitHub origin to add one.
         meta = self.queue["write_package"](self.anchor, "au", [CHAIN[0]], delivery="auto", base=self.base,
                                            intent="User asked: unrelated legacy intent.")
         self.behaviors.update({"au.t1": {"product": "greeting"}})
         self.cli("add", meta, "--materialize", 4)
         self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
-        needs = "auto delivery needs an origin remote naming one GitHub repository ({}); add a GitHub origin, or drain with --local-only"
-        self.g("remote", "add", "origin", "https://gitlab.com/team/project.git")
-        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in self.tasks(self.drain(local=False)).items()},
-                         {"au.t1": ("pending", needs.format("https://gitlab.com/team/project.git")), "lo.t1": ("accepted", None)})
+        needs = ("auto delivery needs an origin remote of the form https://github.com/<owner>/<repo>, git@github.com:<owner>/<repo> "
+                 "or ssh://git@github.com/<owner>/<repo>; set one, or drain with --local-only")
+        self.g("remote", "add", "origin", "https://oauth2:glpat-SECRET@gitlab.com/team/project.git")
+        result = self.drain(local=False)
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in self.tasks(result).items()},
+                         {"au.t1": ("pending", needs), "lo.t1": ("accepted", None)})
+        seen = json.dumps(result) + self.report("au")
+        self.g("remote", "set-url", "origin", "https://x-access-token:ghp_SECRET@github.com/test/project.git")
+        result = self.drain(local=False)
+        seen += json.dumps(result) + self.report("au")
         self.g("remote", "remove", "origin")
-        self.assertEqual(self.tasks(self.drain(local=False))["au.t1"].get("reason"), needs.format("no origin is set"))
+        self.assertEqual([self.tasks(drained)["au.t1"].get("reason") for drained in (result, self.drain(local=False))], [needs, needs])
+        self.assertNotIn("SECRET", seen)
         self.assertEqual((self.receipt_path("au.t1").exists(), self.calls("au.t1")), (False, 0))
         result = self.drain()
         tasks = self.tasks(result)

@@ -859,8 +859,8 @@ def allocate(v, row, opts):
         try:
             values["repository"] = helper["repository_from_url"](origin)
         except helper["CompletionError"]:
-            return (f"{manifest['delivery']} delivery needs an origin remote naming one GitHub repository ({origin or 'no origin is set'}); "
-                    "add a GitHub origin, or drain with --local-only")
+            return (f"{manifest['delivery']} delivery needs an origin remote of the form https://github.com/<owner>/<repo>, "
+                    "git@github.com:<owner>/<repo> or ssh://git@github.com/<owner>/<repo>; set one, or drain with --local-only")
         try:
             start = helper["remote_base"]({"common_gitdir": str(common), "remote": "origin", "base": manifest["base_ref"]})
         except helper["CompletionError"] as exc:
