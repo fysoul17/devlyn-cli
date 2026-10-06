@@ -22,7 +22,7 @@ This test runs FIRST because principles 1-6 measure *how well* an iter is execut
 - "Measurement infrastructure" iters are allowed only as the *last* attribution run before a cost/policy/correctness decision. If a measurement iter is followed by another measurement iter, the second one violates pre-flight 0 unless it's closing a measurement bug the first one surfaced.
 - Aggregate margin movement is not user-visible. The user-visible signals are: (i) a previously-failing fixture now passes, (ii) a routing decision changes, (iii) a real-project trial regression / improvement, (iv) wall-time per fixture drops materially.
 
-**Source**: Codex GPT-5.5 R2 (2026-04-28) on iter-0019 alignment audit. The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) explicitly forbids score-only work; this pre-flight is its operational anchor.
+**Source**: Codex GPT-5.5 R2 (2026-04-28) on iter-0019 alignment audit.
 
 **Failure mode this catches:** Iter chains where each step is principled but the chain as a whole drifts away from user pain. Symptoms: many iters in a row touch only `benchmark/` and `autoresearch/`; no fixture verify_score moves; no skill prompt that the end user actually exercises gets edited; HANDOFF queue item count grows faster than queue item completion.
 

@@ -1,8 +1,6 @@
 # Intent Queue
 
-Ordered backlog for the loop-engineering drain (`/devlyn:queue`; contract in
-CLAUDE.md / AGENTS.md "Intent queue"). One line per intent; link a spec dir
-once specced. `[x]` done · `[F]` blocked/needs-review.
+Ordered backlog for the loop-engineering drain. `[x]` done · `[F]` blocked/needs-review.
 
 - [x] Activate + measure Tier-1 headroom fixtures F34/F35 (written and
   self-validated in `benchmark/auto-resolve/fixtures/staging/` — follow
@@ -182,7 +180,7 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   re-register a focused HTML-reference A/B only after an observed fidelity
   miss. (No overengineering: no generic references block without an
   observed failure.)
-- [ ] Measurement phase 3 (user direction 2026-08-05; starts AFTER
+- [x] Measurement phase 3 (user direction 2026-08-05; starts AFTER
   context-engineering item 2 closes): bare < solo < pair performance
   measurement + improvement on Lane A (benchmark/auto-resolve gates).
   Pair seats per user: opus (claude), codex gpt-5.6-terra, grok 4.5 —
@@ -192,5 +190,9 @@ once specced. `[x]` done · `[F]` blocked/needs-review.
   fires only where measured lift); fable is never a test arm; grok
   emission remains uncertified — no durable `pair grok` pin. Scope:
   measure first, then register improvements from the observed deltas.
+  — superseded 2026-10-06, never drained: 0232 §8 retired resolve and its
+  Lane A gates (PR #171).
 
-- [ ] Direct/full routing efficiency (user priority2026-09-14): 0172 announced and completed the scoped entry clarification after0171 direct repair. Removed blanket summaries, exposed direct eligibility in shortened skill descriptions and distinguished logs from invocation requests; retained full-route/check/pin obligations. Candidate supplied-fact classification14/14; no isolated A/B or actual completion-speed gain established. 0173 completed the prepared-task execution comparison: original bare/solo/pair and supplemental devlyn-metadata-disabled bare all69/69; no observed full-route product-quality gain. This does not establish ordinary-request routing improvement. 0174 applied shipped entry rules to the active project/core skill copies and verified two native direct completions plus four FULL inspection decisions per engine; no routing-rate or speed improvement claim. Next-session difficulty-boundary study is prepared at autoresearch/NEXT-SESSION-routing-boundary.md and NOT RUN. Remaining: matched actual routing, correctness/regressions, observed tokens and wall time, using a reproduced over-routing case and verified skill-catalog isolation. No blanket resolve or weakened quality floor; do not repeat already-direct toy tasks to manufacture savings.
+- [x] Direct/full routing efficiency (user priority2026-09-14): 0172 announced and completed the scoped entry clarification after0171 direct repair. Removed blanket summaries, exposed direct eligibility in shortened skill descriptions and distinguished logs from invocation requests; retained full-route/check/pin obligations. Candidate supplied-fact classification14/14; no isolated A/B or actual completion-speed gain established. 0173 completed the prepared-task execution comparison: original bare/solo/pair and supplemental devlyn-metadata-disabled bare all69/69; no observed full-route product-quality gain. This does not establish ordinary-request routing improvement. 0174 applied shipped entry rules to the active project/core skill copies and verified two native direct completions plus four FULL inspection decisions per engine; no routing-rate or speed improvement claim. Next-session difficulty-boundary study is prepared at autoresearch/NEXT-SESSION-routing-boundary.md and NOT RUN. Remaining: matched actual routing, correctness/regressions, observed tokens and wall time, using a reproduced over-routing case and verified skill-catalog isolation. No blanket resolve or weakened quality floor; do not repeat already-direct toy tasks to manufacture savings.
+  — superseded 2026-10-06, never drained: 0232 §8 retired resolve (PR #171), so no
+  direct/full routing remains; the prepared study was deleted unrun.

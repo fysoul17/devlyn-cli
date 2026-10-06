@@ -7,7 +7,7 @@ Current work: [0232 harness ladder](iterations/0232-harness-ladder.md) (2026-10-
 - **resolve is retired** as a product-scope decision (§8). The installed product becomes the principles plus ideate's loop.
 - **Next:** measure that installed baseline, then add mechanisms one rung at a time, only where they improve the measured outcome.
 - **Parked and superseded:** the 0230 bundle (`bundle/0225-steps-2-5`) is parked unmerged. The 0231 registration is superseded by 0232 and was never run.
-Latest closed unit: [0229 existing-behavior re-screen](iterations/0229-verify-existing-behavior-rescreen.md) (2026-10-02, PASS).
+Latest closed unit: [0232 stage 1](iterations/0232-harness-ladder.md) (2026-10-06, §7).
 Priority: accuracy/completeness → verified-resolution speed → tokens; since 2026-10-05, harness mechanisms follow the per-success non-regression rule below.
 Tests carry no token budgets. The independent CLI core comes first; optional Pyx and
 OS/fleet are later. Historical gates, frozen results and current customer policy are not
@@ -100,16 +100,7 @@ The 5 hard NOs in `MISSIONS.md` Mission 1 list are absolute during Mission 1.
 
 ## The product surface
 
-The April 2026 redesign reduced the surface to two core workflow entrypoints. That inventory and its deprecation list are historical; current auxiliary skills are defined by `DEVLYN_CORE_SKILLS` in [`bin/devlyn.js`](../bin/devlyn.js).
-
-### Core workflow entrypoints (2)
-
-- **`/devlyn:ideate`** — OPTIONAL. Used for greenfield, multi-feature projects, or when the user wants a formal spec before building. Output: `spec.md` (human contract) + `spec.expected.json` (mechanical verifications). Modes: `default` | `--quick` (assume-and-confirm) | `--from-spec <path>` (lint+normalize external spec) | `--project` (plan.md index + N specs). spec lint mandatory. `spec.kind = feature | spike | prototype` escape hatch.
-- **`/devlyn:resolve`** — the hands-free pipeline entrypoint for new feature, modify, debug, refactor, chore, PR review. Inputs: free-form goal OR `--spec <path>` OR `--verify-only <diff>`. Internal phases: PLAN → IMPLEMENT → BUILD_GATE → CLEANUP → **VERIFY (fresh subagent context, findings-only)**. Conversational implementation remains authorized by DECISIONS 0069.1; entering resolve binds its phase machinery, including on Codex. Executor pins bind both routes (AGENTS.md § Quick Start).
-
-### Internal kernel (`_shared/`, NOT a user skill)
-
-`expected.schema.json` (load-bearing LLM-agnostic decoupler), `pipeline.state.json` (pipeline state), `spec-verify-check.py`, `forbidden-pattern-check.py`, `scope-check.py`, the classifier in `devlyn:resolve/references/free-form-mode.md` (mini-spec depth, not general phase omission), `browser-runner.sh`, `engine-preflight.md`, `adapters/<model>.md` (per-engine prompt deltas).
+Since [0232 §8](iterations/0232-harness-ladder.md) (PR #171), the installed product is the managed CLAUDE.md/AGENTS.md block plus `devlyn-ideate` (loop designer and intent queue) and `devlyn-engines` (executor pin), with their `_shared` helpers; `DEVLYN_CORE_SKILLS` in [`bin/devlyn.js`](../bin/devlyn.js) is authoritative. `devlyn-resolve` is retired, and the April 2026 two-entrypoint inventory and its kernel list are history.
 
 ### Optional utility
 

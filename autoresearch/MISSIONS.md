@@ -6,8 +6,6 @@ The contract is hard:
 
 > **Do not start the next mission until the current one is unblocked. One mission, one focus.**
 
-The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the source of truth above this file. If a mission gate conflicts with the standing directive, the directive wins.
-
 ---
 
 ## 🎯 MISSION 1 (active, 2026-04-29 →) — Single-task skill excellence on `main`
@@ -32,14 +30,12 @@ The user's standing directive (HANDOFF "STANDING USER DIRECTIVE" block) is the s
 
 **0118 exception — accepted 2026-09-07 KST:** the user's concurrent same-project tasks/sessions request permits bounded bootstrap admission protection. [Current0118 checkpoint](iterations/0118-concurrent-admission.md#current-continuation--2026-09-06) owns full R5 PASS_WITH_ISSUES, BUILD6/6 plus independent MECHANICAL6/6, actual final trio, two retained LOW advisories and pushed implementation `9d70cd8`. Original/failed acceptance histories are preserved. Mission1 floor/ceiling and frozen A16 remain open and separate; no fleet, lifetime lease, automatic placement or merge/shared-resource guarantee follows. Main73919fa adopts exact0118/0119 sources after integration checks;0115/0116 remain separate candidates.
 
-**Current work (2026-09-29):** [0227 re-screen](iterations/0227-verify-rescreen.md) fixes the two causes that made [0226](iterations/0226-verify-recall-screen.md) NOT PASS and decides, on fresh tasks, whether the scripted VERIFY held by [0225 resolve cost cuts](iterations/0225-resolve-cost-cuts.md) may re-enter the cost-cut bundle.
+**Current work (2026-10-06):** [0232 harness ladder](iterations/0232-harness-ladder.md): register the installed baseline (the principles block plus ideate), then add mechanisms one rung at a time under its ladder rule.
 
-**Latest closed unit (2026-09-24, closed 2026-09-26):** [0221 subtraction direction](iterations/0221-subtraction-direction.md)
-ran the session-ordered cleanup and the budget-free comparison (native / `/devlyn:intent`
-candidate / native+review / current full). Neither candidate continued (0224), so
-`/devlyn:intent` was removed and full resolve stays; a next Mission1 direction needs its
-own registration. Root decides after independent advice. Do not start fleet/platform work or
-reopen frozen A16.
+**Latest closed unit (2026-10-06):** [0232](iterations/0232-harness-ladder.md) stage 1 kept native A as the admitted rung in both
+configurations; rung I was not admitted, and full resolve completed fewer cells at far higher cost. §8 retired resolve as a
+product-scope decision (PR #171; the owner can veto it by reverting PR #171 before any release). Do not start fleet/platform
+work or reopen frozen A16.
 Current no-resolve instructions include comparison controls. Historical evidence
 is retained; new candidate results cannot certify legacy parity or gate15.
 The external-developer trial and broader Mission1 superiority remain open.
