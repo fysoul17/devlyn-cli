@@ -1277,6 +1277,39 @@ class LoopFixture(unittest.TestCase):
             "pr.t1": ("accepted", None), "pr.t2": ("accepted", reason), "pr.t3": ("pending", reason), "lo.t1": ("accepted", None)}))
         self.assertEqual((self.calls("pr.t3"), self.calls("lo.t1")), (0, 1))
 
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_refused_delivery_waits_while_independent_loops_run(self):
+        # Prediction (H1): a delivery task-complete refuses leaves its task waiting with the refusal and its resume command,
+        # and the drain goes on: dv.t1, whose base_ref is not the repository's default branch, is accepted, then waits "base/
+        # default branch changed" while the local loop lo is accepted, and the drain ends WAITING; once a person closes
+        # pm.t1's PR, the next drain leaves pm.t1 waiting "PR is closed without merge" and accepts the local loop lp; no task
+        # runs twice. Before: each refusal ended the whole drain BLOCKED, and since unsettled receipts resume first, every
+        # later drain stopped at the same receipt before any independent loop ran.
+        bare, data = self.remote(pending=True)
+        self.run_ok(["git", "-C", str(self.anchor), "push", "-q", str(bare), "main:develop"])
+        self.plan("pm", [CHAIN[0]], {"pm.t1": {"product": "greeting"}}, delivery="pr")
+        meta = self.queue["write_package"](self.anchor, "dv", [("t1", [], "Todo", [TODO_CHECK])], delivery="auto", base=self.base)
+        meta.write_text(meta.read_text(encoding="utf-8").replace('"base_ref": "main"', '"base_ref": "develop"'), encoding="utf-8")
+        self.behaviors["dv.t1"] = {"product": "todo"}
+        self.cli("add", meta)
+        self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
+        refused = "delivery blocked: task-complete complete: "
+        result = self.drain(local=False)
+        tasks = self.tasks(result)
+        self.assertEqual((result["status"], {identity: (task["result"], task.get("delivery"), task.get("reason")) for identity, task in tasks.items()}),
+                         ("WAITING", {"pm.t1": ("accepted", "PR", None), "lo.t1": ("accepted", "LOCAL_ONLY", None),
+                                      "dv.t1": ("accepted", None, refused + "base/default branch changed; retain resources")}))
+        self.assertIn("task-complete.py complete --receipt", tasks["dv.t1"]["resume"])
+        server = json.loads(data.read_text(encoding="utf-8"))
+        server["prs"][0]["state"] = "CLOSED"
+        data.write_text(json.dumps(server), encoding="utf-8")
+        self.plan("lp", [("t1", [], "Greeting", [GREET_CHECK])], {"lp.t1": {"product": "greeting"}})
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, {
+            "pm.t1": ("accepted", refused + "PR is closed without merge; retain task"), "lo.t1": ("accepted", None),
+            "dv.t1": ("accepted", refused + "base/default branch changed; retain resources"), "lp.t1": ("accepted", None)})
+        self.assertEqual([self.calls(identity) for identity in ("pm.t1", "dv.t1", "lo.t1", "lp.t1")], [1, 1, 1, 1])
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

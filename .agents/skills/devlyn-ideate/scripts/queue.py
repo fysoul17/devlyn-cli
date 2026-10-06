@@ -1041,8 +1041,11 @@ def advance(v, row, opts):
     receipt = read_json(path)
     if receipt.get("delivery") not in SETTLED:
         packet = read_json(path.parent / "packet.json")
-        result = task_complete("complete", receipt=str(path), acceptance=None, mode=None if local else packet["delivery"],
-                               local_only=local, writers_stopped=True)
+        try:
+            result = task_complete("complete", receipt=str(path), acceptance=None, mode=None if local else packet["delivery"],
+                                   local_only=local, writers_stopped=True)
+        except LoopError as exc:
+            return f"delivery blocked: {exc}"
         progress(identity, f"delivery {result['status']}")
     return None
 
