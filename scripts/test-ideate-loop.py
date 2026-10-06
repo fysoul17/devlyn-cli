@@ -41,6 +41,9 @@ if behavior.get("stdin_eof") and sys.stdin.read():
     sys.exit("stdin carries the driver's input")
 with config_path.with_name("calls-" + packet["task"]).open("a", encoding="utf-8") as calls:
     calls.write(json.dumps(sys.argv[2:]) + "\n")
+if "exit_now" in behavior:  # an engine that stops at once, as on a usage limit
+    print("API Error: 429 usage limit reached", file=sys.stderr)
+    sys.exit(behavior["exit_now"])
 if behavior.get("hang"):
     config_path.with_name("hang.pid").write_text(str(os.getpid()))
     while not config_path.with_name("release").exists():
@@ -703,6 +706,25 @@ class LoopFixture(unittest.TestCase):
         receipt = self.receipt("a.t1")
         self.assertEqual((receipt["delivery"], receipt["queue"]["commit"], self.calls("a.t1")), ("FAILED", receipt["publish_sha"], 1))
         self.assertEqual(self.rows(receipt["publish_sha"])["a.t1"]["mark"], "F")
+
+    def test_an_executor_that_exits_without_a_submission_leaves_its_task_waiting(self):
+        # Prediction (H2): an executor that exits 1 without a submission, as on a usage limit, leaves aa.t1 active, waiting
+        # with "executor exited 1 without a submission (see <evidence_dir>/executor.stderr); the next drain runs it again",
+        # with no terminal commit and its dependent pending, while the independent loop bb is accepted; once the executor
+        # works, the next drain runs aa.t1 again and accepts the loop. Before: the drain wrote a stand-in submission, so aa.t1
+        # became [F] blocked-infrastructure, aa.t2 blocked-prerequisite, and no drain ran either again.
+        self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting", "exit_now": 1}, "aa.t2": {"product": "app"}})
+        self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}})
+        tasks = self.tasks(self.drain())
+        stderr = Path(self.receipt("aa.t1")["worktree"]) / ".devlyn/loop/executor.stderr"
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, {
+            "aa.t1": ("active", f"executor exited 1 without a submission (see {stderr}); the next drain runs it again"),
+            "aa.t2": ("pending", "waiting for aa.t1 (active)"), "bb.t1": ("accepted", None)})
+        self.assertEqual((tasks["aa.t1"].get("terminal"), "429 usage limit" in stderr.read_text(encoding="utf-8")), (None, True))
+        self.behaviors["aa.t1"] = {"product": "greeting"}
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "aa.t2": "accepted", "bb.t1": "accepted"})
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), self.calls("bb.t1")), (2, 1, 1))
 
     def test_unobservable_interrupted_execution_fails_only_that_task(self):
         self.plan("a", CHAIN, {"a.t1": {"product": "greeting", "hang": True}, "a.t2": {"product": "app"}})
