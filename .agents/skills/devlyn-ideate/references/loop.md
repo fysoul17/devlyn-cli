@@ -16,7 +16,7 @@ Both print one JSON object; exit 1 is `BLOCKED` with a `reason`.
 - `--local-only` (alias `--no-push`) keeps the loop local. A manifest `delivery: local-only` and any earlier local receipt of the loop keep that restriction for later drains. A local loop needs no remote; nothing is fetched or pushed. A task whose PR is already pushed is refused, never rewritten to local.
 - Worktrees default to `<repo parent>/<repo name>.devlyn/<loop-id>/<task-id>`.
 
-The host supplies the executor and maps its configured engine to the argv; the loop has no model preference. Each `{packet}` in the argv is replaced by the task packet path. The executor runs with the task worktree as its working directory and the null device as stdin; its stdout and stderr are appended to `executor.stdout` and `executor.stderr` in the packet's `evidence_dir`, never a pipe.
+The host supplies the executor and maps its configured engine to the argv; the loop has no model preference. Each `{packet}` in the argv is replaced by the task packet path, and each `{worktree_git_dir}` by the task worktree's absolute Git directory. The executor runs with the task worktree as its working directory and the null device as stdin; its stdout and stderr are appended to `executor.stdout` and `executor.stderr` in the packet's `evidence_dir`, never a pipe.
 
 `<common Gitdir>/devlyn-loops/drain.lock` is held for the controller's lifetime, so a second drain from any worktree of the repository is refused. `queue.lock` is held only to read the queue, append and make terminal transitions, so `add` works during a drain.
 

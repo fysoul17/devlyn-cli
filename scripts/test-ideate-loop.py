@@ -38,7 +38,7 @@ if behavior.get("refuse_pipe") and stat.S_ISFIFO(os.fstat(1).st_mode):
 if behavior.get("stdin_eof") and sys.stdin.read():
     sys.exit("stdin carries the driver's input")
 with config_path.with_name("calls-" + packet["task"]).open("a", encoding="utf-8") as calls:
-    calls.write("call\n")
+    calls.write(json.dumps(sys.argv[2:]) + "\n")
 if behavior.get("hang"):
     config_path.with_name("hang.pid").write_text(str(os.getpid()))
     while not config_path.with_name("release").exists():
@@ -297,6 +297,19 @@ class LoopFixture(unittest.TestCase):
         result = self.drain(code=1)
         self.assertEqual(result["status"], "BLOCKED")
         self.assertIn("conflicting receipts for inv.t1", result["reason"])
+
+    def test_the_drain_fills_the_task_worktree_git_dir(self):
+        # Prediction (E1): {worktree_git_dir} in the executor argv arrives as the task worktree's
+        # `git rev-parse --path-format=absolute --git-dir`, the directory a Codex sandbox must list for the executor to
+        # commit there, and {packet} still arrives as the packet path. Before: the literal placeholder arrived.
+        self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting"}})
+        drained = subprocess.run(self.drain_argv() + ["{worktree_git_dir}"], cwd=self.root, env=self.env, capture_output=True,
+                                 text=True, encoding="utf-8")
+        self.assertEqual(drained.returncode, 0, drained.stdout + drained.stderr)
+        worktree = Path(self.receipt("inv.t1")["worktree"])
+        self.assertEqual(json.loads(self.config.with_name("calls-inv.t1").read_text(encoding="utf-8")),
+                         [str(self.receipt_path("inv.t1").with_name("packet.json")),
+                          self.g("rev-parse", "--path-format=absolute", "--git-dir", work=worktree)])
 
     def merge_ff(self, rev):
         return subprocess.run(["git", "-C", str(self.anchor), "merge", "--ff-only", rev], env=self.env, capture_output=True,

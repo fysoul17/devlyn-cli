@@ -419,15 +419,17 @@ else
 fi
 
 section "Check 6g: ideate gives the exact drain executor argv"
-# A Codex executor denied its commit in the linked worktree (e2e smoke): workspace-write keeps .git read-only.
+# A Codex executor denied its commit in the linked worktree (e2e smoke, then again with the common Git directory
+# writable): workspace-write keeps .git read-only, and the worktree's own Git directory unless listed exactly.
 claude_argv='claude -p "<prompt>" --dangerously-skip-permissions --add-dir "<git dir>"'
-codex_root="-c 'sandbox_workspace_write.writable_roots=[\"<git dir>\"]'"
+codex_roots="-c 'sandbox_workspace_write.writable_roots=[\"<git dir>\",\"{worktree_git_dir}\"]'"
+adapter_roots="-c 'sandbox_workspace_write.writable_roots=[\"<git dir>\",\"<worktree git dir>\"]'"
 if ! grep -Fq -- "$claude_argv" config/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq -- "--skip-git-repo-check -s workspace-write $codex_root \"<prompt>\"" config/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq -- "$codex_root" config/skills/_shared/adapters/codex.md; then
-  bad "ideate SKILL.md must give the exact Claude and Codex executor argv, and the Codex adapter the common Git directory as a writable root"
+  || ! grep -Fq -- "--skip-git-repo-check -s workspace-write $codex_roots \"<prompt>\"" config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq -- "$adapter_roots" config/skills/_shared/adapters/codex.md; then
+  bad "ideate SKILL.md must give the exact Claude and Codex executor argv, and the Codex adapter the common and worktree Git directories as writable roots"
 else
-  ok "ideate gives the exact Claude and Codex executor argv; the Codex adapter makes the common Git directory writable"
+  ok "ideate gives the exact Claude and Codex executor argv; the Codex adapter makes the common and worktree Git directories writable"
 fi
 
 section "Check 6h: No undocumented spec.expected.json.browser_flows field"

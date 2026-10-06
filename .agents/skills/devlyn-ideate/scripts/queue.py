@@ -884,6 +884,9 @@ def ensure_submission(identity, packet_path, packet, executor):
     if submission.exists():
         return None
     argv = [part.replace("{packet}", str(packet_path)) for part in executor]
+    if any("{worktree_git_dir}" in part for part in argv):  # Optional: a Codex executor lists it as a writable root.
+        git_dir = git(worktree, "rev-parse", "--path-format=absolute", "--git-dir")
+        argv = [part.replace("{worktree_git_dir}", git_dir) for part in argv]
     output = Path(packet["evidence_dir"])
     output.mkdir(parents=True, exist_ok=True)
     record(log, "start")
