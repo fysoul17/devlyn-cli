@@ -1056,8 +1056,9 @@ def advance(v, row, opts):
     if receipt.get("delivery") not in SETTLED:
         packet = read_json(path.parent / "packet.json")
         try:
-            result = task_complete("complete", receipt=str(path), acceptance=None, mode=None if local else packet["delivery"],
-                                   local_only=local, writers_stopped=True)
+            # The plan's mode seeds the first delivery call; a later per-task --mode persists in the receipt.
+            result = task_complete("complete", receipt=str(path), acceptance=None,
+                                   mode=None if local or receipt.get("mode_override") else packet["delivery"], local_only=local, writers_stopped=True)
         except LoopError as exc:
             return f"delivery blocked: {exc}"
         progress(identity, f"delivery {result['status']}")

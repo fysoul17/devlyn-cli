@@ -1370,6 +1370,21 @@ class LoopFixture(unittest.TestCase):
             "dv.t1": ("accepted", refused + "base/default branch changed; retain resources"), "lp.t1": ("accepted", None)})
         self.assertEqual([self.calls(identity) for identity in ("pm.t1", "dv.t1", "lo.t1", "lp.t1")], [1, 1, 1, 1])
 
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_per_task_mode_survives_later_drains(self):
+        # Prediction (H6): the plan's mode seeds an auto task's first delivery call (auto-merge requested, PENDING); after the
+        # user's `task-complete.py complete --mode pr`, which cancels that request, the next drain keeps the receipt's pr:
+        # delivery PR, no new merge request and mode_override pr. Before: every drain passed the manifest's mode again, so the
+        # drain re-requested auto-merge and reset mode_override to auto, merging what the user held back.
+        _, data = self.remote(pending=True)
+        self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting"}}, delivery="auto")
+        self.assertEqual(self.tasks(self.drain(local=False))["inv.t1"]["delivery"], "PENDING")
+        held = json.loads(self.run_ok([sys.executable, str(self.helper), "complete", "--receipt", str(self.receipt_path("inv.t1")), "--mode", "pr"]))
+        self.assertEqual((held["status"], json.loads(data.read_text(encoding="utf-8"))["prs"][0]["autoMergeRequest"]), ("PR", None))
+        self.assertEqual(self.tasks(self.drain(local=False))["inv.t1"]["delivery"], "PR")
+        server = json.loads(data.read_text(encoding="utf-8"))
+        self.assertEqual((server["merges"], server["prs"][0]["autoMergeRequest"], self.receipt("inv.t1")["mode_override"]), (1, None, "pr"))
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
