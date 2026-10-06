@@ -663,8 +663,9 @@ def lacks_plan(v, loop, commit):
 
 def carrier(v, loop):
     """The auto/pr task whose undelivered, unfailed PR carries the loop's plan, if any (loop.md step 2)."""
-    return next((row["identity"] for row in v["rows"] if row.get("loop") == loop and (state := v["states"][row["identity"]])["receipt"]
-                 and state["kind"] != "failed" and not delivered(state["receipt"]) and lacks_plan(v, loop, state["receipt"]["baseline"])), None)
+    return None if is_local(v, loop) else next((
+        row["identity"] for row in v["rows"] if row.get("loop") == loop and (state := v["states"][row["identity"]])["receipt"]
+        and state["kind"] != "failed" and not delivered(state["receipt"]) and lacks_plan(v, loop, state["receipt"]["baseline"])), None)
 
 
 def waiting(v, row):
@@ -680,8 +681,13 @@ def waiting(v, row):
             return f"prerequisite {identity} has no receipt-bound accepted source"
         if not local and not delivered(state["receipt"]):
             return f"awaiting delivery of {identity}"
-    if not local and (plan := carrier(v, row["loop"])):
-        return f"awaiting delivery of {plan}, whose PR carries the loop's plan"
+    if not local:
+        # One carrier in flight across the queue: until a delivered task has landed its loop's plan, a task waits for any.
+        landed = any(other.get("loop") == row["loop"] and (receipt := v["states"][other["identity"]]["receipt"]) and delivered(receipt)
+                     for other in v["rows"])
+        for loop in dict.fromkeys(other["loop"] for other in v["rows"] if other["identity"]):
+            if (loop == row["loop"] or not landed) and (plan := carrier(v, loop)):
+                return f"awaiting delivery of {plan}, whose PR carries its loop's plan"
     return None
 
 

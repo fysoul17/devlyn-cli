@@ -911,6 +911,26 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"la.t1": "COMPLETE", "la.t2": "COMPLETE", "lb.t1": "COMPLETE"})
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_one_carrier_is_in_flight_across_the_queue(self):
+        # Prediction (R2): while the first auto loop's carrier PR is pending, the second auto loop's first task waits with
+        # that carrier named and no executor call; once that PR merges, the second loop's carrier runs, its PR merges without
+        # conflict, and both rows on the remote base end [x]. Before: the second carrier ran at once, so two carriers
+        # inserted rows above the same trailer and the second PR could not merge.
+        bare, data = self.remote(pending=True)
+        self.plan("la", [("t1", [], "Notes", [NOTES_CHECK])], {"la.t1": {"product": "notes"}}, delivery="auto")
+        self.plan("lb", [("t1", [], "Todo", [TODO_CHECK])], {"lb.t1": {"product": "todo"}}, delivery="auto")
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual((tasks["la.t1"]["delivery"], tasks["lb.t1"]["result"], tasks["lb.t1"].get("reason"), self.calls("lb.t1")),
+                         ("PENDING", "pending", "awaiting delivery of la.t1, whose PR carries its loop's plan", 0))
+        self.assertEqual(self.merge_pr(data, 1).returncode, 0)
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual((tasks["la.t1"]["delivery"], tasks["lb.t1"]["delivery"]), ("COMPLETE", "PENDING"))
+        merged = self.merge_pr(data, 2)
+        self.assertEqual(merged.returncode, 0, merged.stderr)
+        self.assertEqual(self.tasks(self.drain(local=False))["lb.t1"]["delivery"], "COMPLETE")
+        self.assertEqual(self.remote_rows(bare), {"la.t1": "x", "lb.t1": "x"})
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_squash_delivery_leaves_the_anchor_pull_ready(self):
         # Prediction (A3): the fake squash-merges every PR; the anchor holds no loop commit and the drain removes its plan
         # copies once the loop settled, so `git pull --ff-only` fast-forwards the anchor to the remote base with a clean
