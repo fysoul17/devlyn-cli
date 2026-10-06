@@ -744,13 +744,17 @@ function importsAgentsDefaults(claude) {
 
 // Claude Code reads AGENTS.md only where no CLAUDE.md exists, or through a CLAUDE.md that imports it. So a new
 // CLAUDE.md imports an existing AGENTS.md, and a CLAUDE.md importing an AGENTS.md that holds devlyn defaults holds no
-// copy of its own, not even one it got while AGENTS.md lacked the block; the Claude target brings those defaults current.
+// copy of its own, not even one it got while AGENTS.md lacked the block. Only the AGENTS.md target updates those defaults,
+// together with .agents/skills, so the Claude target stops while they need an update.
 function installClaudeInstructions() {
   const file = path.join(projectDir(), 'CLAUDE.md');
   const stat = fs.lstatSync(file, { throwIfNoEntry: false });
   const initial = !stat && fs.statSync(path.join(projectDir(), 'AGENTS.md'), { throwIfNoEntry: false })?.isFile() ? '@AGENTS.md\n' : '';
   const imported = importsAgentsDefaults(stat?.isFile() ? fs.readFileSync(file, 'utf8') : initial);
-  if (imported) updateInstructions('AGENTS.md');
+  if (imported && updateInstructions('AGENTS.md', '', true, false)) {
+    throw new InstructionError('Claude Code reads AGENTS.md here, and its devlyn defaults need an update. Codex, omp, Pi and Grok '
+      + 'read them too, with .agents/skills, so choose AGENTS.md as well (npx devlyn-cli -y --claude) to update both together.');
+  }
   updateInstructions('CLAUDE.md', initial, !imported);
   if (imported) log('  → CLAUDE.md imports AGENTS.md, which holds the devlyn block', 'dim');
 }

@@ -180,8 +180,9 @@ function retainFile(file, bytes) {
   }
 }
 
-// `withBlock` false removes the devlyn defaults the file holds, keeping everything else.
-function updateInstructions(name, initial = '', withBlock = true) {
+// `withBlock` false removes the devlyn defaults the file holds, keeping everything else. `write` false writes nothing
+// and returns whether the file needs an update, a merge included.
+function updateInstructions(name, initial = '', withBlock = true, write = true) {
   const templatePath = path.join(__dirname, '..', name);
   const template = fs.readFileSync(templatePath, 'utf8');
   if (template.includes(BEGIN) || template.includes(END)) {
@@ -211,6 +212,7 @@ function updateInstructions(name, initial = '', withBlock = true) {
   const inserted = withBlock ? block : '';
   const recovery = path.join(process.cwd(), '.devlyn', 'instructions');
   const conflict = (reason) => {
+    if (!write) return true;
     const incoming = path.join(recovery, `${name}.${digest(block)}.incoming`);
     const backup = path.join(recovery, `${name}.${digest(before)}.backup`);
     const guide = path.join(recovery, `${name}.${digest(before)}.${digest(block)}.merge.md`);
@@ -271,6 +273,7 @@ function updateInstructions(name, initial = '', withBlock = true) {
   }
   const bytes = Buffer.from(content);
   if (bytes.equals(before)) return false;
+  if (!write) return true;
   if (exists) {
     const backup = path.join(recovery, `${name}.${digest(before)}.backup`);
     retainFile(backup, before);

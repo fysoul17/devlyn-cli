@@ -476,23 +476,37 @@ init({options});
                 self.cli('-y', '--claude')
                 self.assertEqual((self.project / 'CLAUDE.md').read_bytes().count(b'devlyn:instructions:begin'), 1)
 
-    def test_claude_target_alone_migrates_the_block_it_imports(self):
-        # Prediction (final audit, Astra): beside an AGENTS.md holding the 4.1.0 block, or a template a release before managed
-        # blocks copied in whole, and no CLAUDE.md, the Claude target alone (AGENTS.md deselected in the menu) brings AGENTS.md's
-        # devlyn defaults current, keeping the project text once and saving the exact backup, and creates CLAUDE.md as exactly
-        # `@AGENTS.md`; reruns change nothing. Before (f03ad983): AGENTS.md kept the old defaults, so through the import Claude
-        # Code read the retired contract, which requires the deleted resolve.
+    def test_claude_target_alone_leaves_agents_md_to_its_target(self):
+        # Prediction (final audit): beside an AGENTS.md holding the 4.1.0 block next to a 4.1.0 .agents/skills, a template a
+        # release before managed blocks copied in whole, or the 4.1.0 block twice, and no CLAUDE.md, the Claude target alone
+        # (AGENTS.md deselected in the menu) stops before any write and names the AGENTS.md choice. With both targets, AGENTS.md
+        # and .agents/skills come current together, AGENTS.md keeps the project text once and its exact backup, and CLAUDE.md is
+        # exactly `@AGENTS.md`; a Claude-only rerun and -y change nothing. Before (bc43d834): the Claude target alone rewrote
+        # AGENTS.md and left .agents/skills at 4.1.0, so Codex, omp, Pi and Grok loaded a contract their skills could not serve.
         prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
-        def files():
-            return {name: (self.project / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
-        for fixture in ('agents-4.1.0.md', 'legacy-july-agents.md'):
-            with self.subTest(fixture=fixture):
-                self.project = self.case / fixture[:-3]; self.project.mkdir()
-                before = prefix + (Path(__file__).resolve().parent / 'fixtures/instructions' / fixture).read_bytes() + suffix
+        fixtures = Path(__file__).resolve().parent / 'fixtures/instructions'
+        def tree():
+            return {str(p.relative_to(self.project)): p.read_bytes() if p.is_file() else None for p in self.project.rglob('*')}
+        for case, before in (('4.1.0', prefix + (fixtures / 'agents-4.1.0.md').read_bytes() + suffix),
+                             ('legacy-july', prefix + (fixtures / 'legacy-july-agents.md').read_bytes() + suffix),
+                             ('conflict', (fixtures / 'agents-4.1.0.md').read_bytes() * 2)):
+            with self.subTest(case=case):
+                self.project = self.case / case; self.project.mkdir()
                 (self.project / 'AGENTS.md').write_bytes(before)
-                result = self.interact([[' ', '\x1b[B', ' ', '\r'], ['\r'], ['\r']])
-                self.assertEqual(self.markers(self.project), {'.claude'})
-                installed = files()
+                if case == '4.1.0':
+                    skills = self.project / '.agents/skills'; (skills / 'devlyn-resolve').mkdir(parents=True)
+                    (skills / 'devlyn-resolve/SKILL.md').write_bytes(b'4.1.0 resolve\n')
+                planted = tree()
+                result = self.interact([[' ', '\x1b[B', ' ', '\r'], ['\r'], ['\r']], code=None)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(b'choose AGENTS.md as well (npx devlyn-cli -y --claude)', result.stderr)
+                self.assertEqual(tree(), planted)
+                if case == 'conflict':
+                    continue  # Its merge is the AGENTS.md target's.
+                result = self.interact([['\x1b[B', ' ', '\r'], ['\r'], ['\r']])
+                self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
+                self.assertFalse((self.project / '.agents/skills/devlyn-resolve').exists())
+                installed = tree()
                 self.assertEqual(installed['CLAUDE.md'], b'@AGENTS.md\n')
                 # No retired resolve; one current block, and the project text once.
                 self.assertEqual([installed['AGENTS.md'].count(text) for text in (b'devlyn-resolve', b'devlyn:resolve',
@@ -501,7 +515,7 @@ init({options});
                 self.assertIn(b'Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved', result.stdout)
                 for rerun in (lambda: self.interact([[' ', '\r'], ['\r'], ['\r']]), lambda: self.cli('-y')):
                     rerun()
-                    self.assertEqual(files(), installed)
+                    self.assertEqual(tree(), installed)
 
     def test_interactive_what_and_where(self):
         down, enter, space = '\x1b[B', '\r', ' '
