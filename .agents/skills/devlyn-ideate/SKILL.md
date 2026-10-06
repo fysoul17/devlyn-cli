@@ -92,7 +92,7 @@ A removed flag stops with its instruction and selects no other behavior.
 
 ## add
 
-An absolute path to a package's `meta.md` is appended as it is; anything else is planned first. Append with `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" add '<absolute meta.md>'`, the only writer of new queue rows; never edit `docs/specs/queue.md` by hand. It commits only the package and the queue on the current branch, leaving other staged or unstaged changes as they are, and the loop starts from that commit; an add that fails, is interrupted or crashes is completed or rolled back by itself or the next add, status or drain. A pending legacy raw-intent row is replaced in place by a package whose `## Intent` reproduces the row verbatim, added with `--materialize <line>`.
+An absolute path to a package's `meta.md` is appended as it is; anything else is planned first. Append with `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" add '<absolute meta.md>'`, the only writer of new queue rows; never edit `docs/specs/queue.md` by hand. For a `local-only` loop it commits only the package and the queue on the current branch, leaving other staged or unstaged changes as they are, and the loop starts from that commit; an add that fails, is interrupted or crashes is completed or rolled back by itself or the next add, status or drain. An `auto`/`pr` loop's rows stay uncommitted: its first task's PR carries the package and rows. A pending legacy raw-intent row is replaced in place by a package whose `## Intent` reproduces the row verbatim, added with `--materialize <line>`.
 
 ## status
 
@@ -123,4 +123,4 @@ A drain can run for hours. Do not end the turn until it exits: run it in the for
 - `WAITING` on a delivery or `BLOCKED`: report the reason and resume commands; never edit receipts, refs or queue rows to get past them.
 - An interrupted drain is resumed by running `drain` again; accepted work is never replayed.
 
-Report each task's product result, delivery status, PR URL, resume command, assumptions and unresolved questions, plus the drain report paths and its exact `Bring into` command: a local loop's final task branch fast-forwards the branch the loop was added on unless that branch has moved since, and for `auto`/`pr` a pull after delivery fast-forwards it.
+Report each task's product result, delivery status, PR URL, resume command, assumptions and unresolved questions, plus the drain report paths and its exact `Bring into` command: a local loop's final task branch fast-forwards the branch the loop was added on unless that branch has moved since; for `auto`/`pr`, once the loop has settled and its plan has landed, the drain removes the anchor's uncommitted plan copies and the command is `git pull --ff-only origin <base>`, a fast-forward unless that branch has commits of its own.

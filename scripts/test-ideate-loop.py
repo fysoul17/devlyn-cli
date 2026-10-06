@@ -102,12 +102,15 @@ PRODUCTS = {
     "app": {"app.py": "import sys\nfrom greeting import greet\nfor name in sys.argv[1:]:\n    print(greet(name))\n"},
     "bad-app": {"app.py": "print('Bye')\n"},
     "notes": {"notes.txt": "notes\n"},
+    "todo": {"todo.txt": "todo\n"},
 }
 GREET_CHECK = {"argv": [sys.executable, "-c", "from greeting import greet; assert greet('Ada') == 'Hello, Ada!'; print('greet ok')"],
                "stdout_contains": ["greet ok"], "contract_refs": ["R1"]}
 APP_CHECK = {"argv": [sys.executable, "app.py", "Ada", "Lin"], "stdout_contains": ["Hello, Ada!", "Hello, Lin!"], "contract_refs": ["R1"]}
 NOTES_CHECK = {"argv": [sys.executable, "-c", "import pathlib; assert pathlib.Path('notes.txt').read_text() == 'notes\\n'; print('notes ok')"],
                "stdout_contains": ["notes ok"], "contract_refs": ["R1"]}
+TODO_CHECK = {"argv": [sys.executable, "-c", "import pathlib; assert pathlib.Path('todo.txt').read_text() == 'todo\\n'; print('todo ok')"],
+              "stdout_contains": ["todo ok"], "contract_refs": ["R1"]}
 CHAIN = [("t1", [], "Greeting interface 인사", [GREET_CHECK]), ("t2", ["t1"], "Greeting app [cli]", [APP_CHECK])]
 
 
@@ -695,30 +698,128 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t2"]["result"], "accepted")
         self.assertIn("- Whole-loop acceptance: ACCEPTED", report.read_text(encoding="utf-8"))
 
+    def pull(self, bare):
+        return subprocess.run(["git", "-C", str(self.anchor), "pull", "--ff-only", str(bare), "main"], env=self.env, capture_output=True,
+                              text=True, encoding="utf-8")
+
+    def remote_rows(self, bare):
+        queue = self.run_ok(["git", "--git-dir", str(bare), "show", "main:docs/specs/queue.md"]).encode("utf-8")
+        return {row["identity"]: row["mark"] for row in self.queue["parse_queue"](queue) if row["identity"]}
+
+    def merge_pr(self, data, number):
+        """GitHub completing PR `number`'s pending auto-merge: the fake merges it into the remote main."""
+        server = json.loads(data.read_text(encoding="utf-8"))
+        data.write_text(json.dumps(dict(server, pending=False)), encoding="utf-8")
+        try:
+            return subprocess.run(["gh", "pr", "merge", str(number), "--auto", "--merge", "--match-head-commit",
+                                   server["prs"][number - 1]["headRefOid"], "--repo", "github.com/test/project"],
+                                  env=self.env, capture_output=True, text=True, encoding="utf-8")
+        finally:
+            data.write_text(json.dumps(dict(json.loads(data.read_text(encoding="utf-8")), pending=server.get("pending", False))), encoding="utf-8")
+
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_auto_delivery_fast_forwards_the_anchor_on_pull(self):
-        # The first task's PR carries add's commit, so after delivery the branch it was added on fast-forwards on pull.
+        # add commits nothing for an auto loop. The first task carries the plan, in place of the legacy row it materializes;
+        # the dependent starts from the merged plan with no inputs commit; once the loop settles the drain removes the
+        # anchor's plan copies, so a pull fast-forwards the anchor with a clean tree (e2e D1, decision A).
         bare, data = self.remote(pending=False)
-        self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
-        queue = self.anchor / "docs/specs/queue.md"
-        planned = queue.read_bytes()
-        # Deliver inv.t1 alone, then inv.t2.
-        queue.write_bytes(planned.replace((self.queue["row_line"]("inv.t2", "Greeting app [cli]") + "\n").encode(), b""))
-        self.assertEqual(self.tasks(self.drain(local=False))["inv.t1"]["delivery"], "COMPLETE")
-        queue.write_bytes(planned)
-        self.assertEqual(self.tasks(self.drain(local=False))["inv.t2"]["delivery"], "COMPLETE")
-        self.g("fetch", "-q", str(bare), "main")
-        merged = self.merge_ff("FETCH_HEAD")
-        self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
-        self.assertEqual((self.g("rev-parse", "HEAD"), self.g("status", "--porcelain", "--untracked-files=all")), (self.g("rev-parse", "FETCH_HEAD"), ""))
-        self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"inv.t1": "x", "inv.t2": "x"})
+        meta = self.queue["write_package"](self.anchor, "inv", CHAIN, delivery="auto", base=self.base,
+                                           intent="User asked: unrelated legacy intent.")
+        self.behaviors.update({"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}})
+        self.cli("add", meta, "--materialize", 4)
+        self.assertEqual((self.g("rev-parse", "HEAD"), (self.common / "devlyn-loops/inv/adding.json").exists()), (self.base, False))
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"inv.t1": "COMPLETE", "inv.t2": "COMPLETE"})
+        pulled = self.pull(bare)
+        self.assertEqual(pulled.returncode, 0, pulled.stdout + pulled.stderr)
+        self.assertEqual((self.g("rev-parse", "HEAD"), self.g("status", "--porcelain", "--untracked-files=all")),
+                         (self.run_ok(["git", "--git-dir", str(bare), "rev-parse", "main"]), ""))
+        accepted = ["- [x] " + self.queue["row_line"](identity, title)[6:] for identity, title in
+                    (("inv.t1", "Greeting interface 인사"), ("inv.t2", "Greeting app [cli]"))]
+        self.assertEqual(self.queue_at("HEAD"), "# Intent Queue\n\n- [x] earlier legacy work\n\n" + "\n\n".join(accepted))
         first, second = self.receipt("inv.t1"), self.receipt("inv.t2")
-        added = self.added("inv")["commit"]
-        self.assertEqual((first["baseline"], first["acceptance"]["inputs_sha"]), (added, added))
-        # The dependent starts from the refreshed remote base, which the first merge gave the package: no inputs commit.
-        self.assertEqual((second["baseline"], second["acceptance"]["inputs_sha"]), (first["merge"]["mergeCommit"]["oid"],) * 2)
+        self.assertEqual((first["baseline"], second["baseline"], second["acceptance"]["inputs_sha"]),
+                         (self.base, first["merge"]["mergeCommit"]["oid"], first["merge"]["mergeCommit"]["oid"]))
         report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")
-        self.assertIn("- Bring into main: git pull --ff-only origin main after delivery (a fast-forward)", report)
+        self.assertIn("- Bring into main: git pull --ff-only origin main", report)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_no_task_pr_carries_an_unpushed_anchor_commit(self):
+        # Prediction (A1): with an unpushed commit U on the anchor branch, every auto task starts from the refreshed remote
+        # base, so no delivered PR head descends from U. Before: the first task started from add's commit atop U, and its
+        # PR carried U.
+        bare, data = self.remote(pending=False)
+        (self.anchor / "unrelated.txt").write_text("unpushed\n", encoding="utf-8")
+        self.g("add", "unrelated.txt")
+        self.g("commit", "-qm", "unpushed unrelated work")
+        unpushed = self.g("rev-parse", "HEAD")
+        self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"inv.t1": "COMPLETE", "inv.t2": "COMPLETE"})
+        heads = [pr["headRefOid"] for pr in json.loads(data.read_text(encoding="utf-8"))["prs"]]
+        self.assertEqual(len(heads), 2)
+        for head in [*heads, self.run_ok(["git", "--git-dir", str(bare), "rev-parse", "main"])]:
+            self.assertEqual(subprocess.run(["git", "-C", str(self.anchor), "merge-base", "--is-ancestor", unpushed, head],
+                                            env=self.env).returncode, 1, head)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_independent_pending_prs_merge_one_after_the_other(self):
+        # Prediction (A2): once the carrier's PR landed the plan, two independent tasks' PRs pending at once each change
+        # only their own row, one blank line from the next, so they merge one after the other without conflict and the
+        # remote queue shows both rows [x]. Before: the rows were adjacent, so the second merge conflicted in the queue.
+        bare, data = self.remote(pending=True)
+        tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", [], "Todo", [TODO_CHECK]),
+                 ("t4", ["t1", "t2", "t3"], "Greeting app", [APP_CHECK])]
+        self.plan("par", tasks, {"par.t1": {"product": "greeting"}, "par.t2": {"product": "notes"}, "par.t3": {"product": "todo"},
+                                 "par.t4": {"product": "app"}}, delivery="auto")
+        self.drain(local=False)
+        self.assertEqual(self.merge_pr(data, 1).returncode, 0)
+        self.drain(local=False)
+        pending = [pr for pr in json.loads(data.read_text(encoding="utf-8"))["prs"] if pr["state"] == "OPEN" and pr["autoMergeRequest"]]
+        self.assertEqual([pr["headRefName"] for pr in pending], ["devlyn/par/t2", "devlyn/par/t3"])
+        for pr in pending:
+            merged = self.merge_pr(data, pr["number"])
+            self.assertEqual(merged.returncode, 0, merged.stderr)
+        rows = self.remote_rows(bare)
+        self.assertEqual((rows["par.t2"], rows["par.t3"]), ("x", "x"))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_squash_delivery_leaves_the_anchor_pull_ready(self):
+        # Prediction (A3): the fake squash-merges every PR; the anchor holds no loop commit and the drain removes its plan
+        # copies once the loop settled, so `git pull --ff-only` fast-forwards the anchor to the remote base with a clean
+        # tree and both rows [x]. Before: add's commit stayed on the anchor and no squash merge descends from it, so the
+        # pull could not fast-forward.
+        bare, data = self.remote(pending=False, squash=True)
+        self.plan("sq", CHAIN, {"sq.t1": {"product": "greeting"}, "sq.t2": {"product": "app"}}, delivery="auto")
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"sq.t1": "COMPLETE", "sq.t2": "COMPLETE"})
+        main = self.run_ok(["git", "--git-dir", str(bare), "rev-parse", "main"])
+        self.assertEqual(self.run_ok(["git", "--git-dir", str(bare), "rev-list", "--parents", "-n", "1", main]).split()[1:],
+                         [self.receipt("sq.t1")["merge"]["mergeCommit"]["oid"]])  # a squash: one parent
+        pulled = self.pull(bare)
+        self.assertEqual(pulled.returncode, 0, pulled.stdout + pulled.stderr)
+        self.assertEqual((self.g("rev-parse", "HEAD"), self.g("status", "--porcelain", "--untracked-files=all")), (main, ""))
+        self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"sq.t1": "x", "sq.t2": "x"})
+        report = (self.common / "devlyn-loops/sq/drain-report.md").read_text(encoding="utf-8")
+        self.assertIn("- Bring into main: git pull --ff-only origin main", report)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_failed_carrier_hands_the_plan_to_the_next_task(self):
+        # Prediction (A4): the carrier fails and is never published; the next task then starts from the same remote base,
+        # its inputs commit carries the whole package and every row of the loop, the failed carrier's receipt-proven [F]
+        # row included, its PR merges, and the loop settles. Before: both tasks started from add's local commit.
+        bare, data = self.remote(pending=False)
+        tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1", "t2"], "Greeting app", [APP_CHECK])]
+        self.plan("cf", tasks, {"cf.t1": {"product": "bad-greeting"}, "cf.t2": {"product": "notes"}, "cf.t3": {"product": "app"}},
+                  delivery="auto")
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"cf.t1": "failed", "cf.t2": "accepted", "cf.t3": "blocked"})
+        failed, carrier = self.receipt("cf.t1"), self.receipt("cf.t2")
+        self.assertEqual((failed["baseline"], carrier["baseline"], carrier["delivery"], self.calls("cf.t3")), (self.base, self.base, "COMPLETE", 0))
+        self.assertEqual([pr["headRefName"] for pr in json.loads(data.read_text(encoding="utf-8"))["prs"]], ["devlyn/cf/t2"])
+        package = ["docs/specs/cf/meta.md"] + [f"docs/specs/cf/{task}/{name}" for task in ("t1", "t2", "t3") for name in ("spec.expected.json", "spec.md")]
+        self.assertEqual(self.g("diff", "--name-only", self.base, carrier["acceptance"]["inputs_sha"]).splitlines(), package + ["docs/specs/queue.md"])
+        self.assertEqual(self.remote_rows(bare), {"cf.t1": "F", "cf.t2": "x", "cf.t3": "F"})
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_delivery_pending_keeps_acceptance_resources_and_resume(self):

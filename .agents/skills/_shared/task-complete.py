@@ -2009,7 +2009,7 @@ class CompletionTests(unittest.TestCase):
         self.assertFalse((self.root / "next").exists())
 
     def test_remote_allocation_starts_from_an_exact_commit(self):
-        # An ideate loop's first task starts from add's local commit, which its PR then carries.
+        # An ideate auto/pr task starts from the exact refreshed remote base the drain checked, never a second fetch.
         (self.work / "product").write_text("added locally\n", encoding="utf-8")
         self.g("commit", "-qam", "devlyn loop: add fixture")
         start = self.g("rev-parse", "HEAD")

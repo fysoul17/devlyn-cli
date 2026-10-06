@@ -398,12 +398,14 @@ def spaced(rows, blank=b""):
 
 
 def replace_row(data, index, rows):
-    """`data` with line `index` replaced by `rows`, one blank line from each neighbouring line."""
+    """`data` with line `index` replaced by `rows`, one blank line from each neighbouring line; returns the new bytes,
+    the lines that replaced it and the replaced line."""
     lines = data.split(b"\n")
     blank = b"\r" if lines[index].endswith(b"\r") else b""
     block = spaced([row + blank for row in rows], blank)
-    lines[index:index + 1] = [blank] * bool(index and lines[index - 1].strip()) + block + [blank] * bool(index + 1 < len(lines) and lines[index + 1].strip())
-    return b"\n".join(lines)
+    block = [blank] * bool(index and lines[index - 1].strip()) + block + [blank] * bool(index + 1 < len(lines) and lines[index + 1].strip())
+    replaced, lines[index:index + 1] = lines[index], block
+    return b"\n".join(lines), b"\n".join(block), replaced
 
 
 def merge_rows(base, order, include):
@@ -445,12 +447,12 @@ def adding_path(common, loop):
     return common / "devlyn-loops" / loop / "adding.json"
 
 
-def add_record(common, loop):
-    """`add`'s record of the commit on the anchor branch that carries the loop's package and rows."""
+def add_record(common, loop, keys):
+    """What `add` recorded: a local loop's add commit and branch, or the rows it wrote into an auto/pr loop's queue."""
     path = added_path(common, loop)
-    require(path.is_file(), f"{loop}: no add commit is recorded at {path}; queue loops only with queue.py add")
+    require(path.is_file(), f"{loop}: no add is recorded at {path}; queue loops only with queue.py add")
     record = read_json(path)
-    require(isinstance(record, dict) and all(isinstance(record.get(key), str) for key in ("branch", "commit")), f"{path}: malformed add record")
+    require(isinstance(record, dict) and all(isinstance(record.get(key), str) for key in keys), f"{path}: malformed add record")
     return record
 
 
@@ -579,7 +581,7 @@ def view(anchor, common, local_only=False):
             claims.setdefault(receipt["task"], []).append((path, receipt))
         except (LoopError, KeyError, TypeError) as exc:
             unreadable.append(f"{path}: {exc}")
-    v = {"anchor": anchor, "common": common, "data": data, "rows": parse_queue(data), "packages": {}, "states": {},
+    v = {"anchor": anchor, "common": common, "data": data, "rows": parse_queue(data), "packages": {}, "manifests": {}, "states": {},
          "unreadable": unreadable, "local_only": local_only}
     errors = {}
     for row in v["rows"]:
@@ -618,6 +620,18 @@ def delivered(receipt):
     return receipt.get("delivery") == "COMPLETE" or bool(receipt.get("merge"))
 
 
+def lacks_plan(v, loop, commit):
+    """Whether `commit`'s queue lacks a row of the loop: an auto/pr task starting there carries the loop's plan."""
+    held = {row["identity"] for row in parse_queue(show(v["anchor"], commit, QUEUE) or b"")}
+    return any(row.get("loop") == loop and row["identity"] not in held for row in v["rows"])
+
+
+def carrier(v, loop):
+    """The auto/pr task whose undelivered, unfailed PR carries the loop's plan, if any (loop.md step 2)."""
+    return next((row["identity"] for row in v["rows"] if row.get("loop") == loop and (state := v["states"][row["identity"]])["receipt"]
+                 and state["kind"] != "failed" and not delivered(state["receipt"]) and lacks_plan(v, loop, state["receipt"]["baseline"])), None)
+
+
 def waiting(v, row):
     if invalid := v["states"][row["identity"]].get("invalid"):
         return invalid
@@ -631,6 +645,8 @@ def waiting(v, row):
             return f"prerequisite {identity} has no receipt-bound accepted source"
         if not local and not delivered(state["receipt"]):
             return f"awaiting delivery of {identity}"
+    if not local and (plan := carrier(v, row["loop"])):
+        return f"awaiting delivery of {plan}, whose PR carries the loop's plan"
     return None
 
 
@@ -700,15 +716,23 @@ def sync(worktree, branch, parent, commit):
 
 def input_files(v, row, receipt, local):
     anchor, worktree, loop = v["anchor"], Path(receipt["worktree"]), row["loop"]
-    rels = [f"docs/specs/{loop}/meta.md", f"docs/specs/{loop}/{row['task']}/spec.md", f"docs/specs/{loop}/{row['task']}/spec.expected.json"]
+    base = show(worktree, receipt["baseline"], QUEUE) or HEADER
+    # An auto/pr task whose base lacks the loop's rows carries the plan: the whole package and every row of the loop.
+    carries = not local and lacks_plan(v, loop, receipt["baseline"])
+    tasks = [entry["id"] for entry in v["packages"][loop]["manifest"]["tasks"]] if carries else [row["task"]]
+    rels = [f"docs/specs/{loop}/meta.md", *(f"docs/specs/{loop}/{task}/{name}" for task in tasks for name in ("spec.md", "spec.expected.json"))]
     files = {rel: (anchor / rel).read_bytes() for rel in rels}
+    rows = [other for other in v["rows"] if other.get("loop") == loop]
     include = {row["identity"]: row["line"]}
-    for other in v["rows"] if local else []:
-        if other["identity"] and other.get("loop") == loop and other["identity"] != row["identity"]:
-            if line := terminal_line(v, other["identity"]):
-                include[other["identity"]] = line
+    for other in rows if local or carries else []:
+        if other["identity"] != row["identity"] and (line := terminal_line(v, other["identity"]) or (other["line"] if carries else None)):
+            include[other["identity"]] = line
+    lines = base.split(b"\n")
+    if carries and (legacy := add_record(v["common"], loop, ()).get("replaced", "").encode("utf-8")) and legacy in lines:
+        # The rows take the place of the legacy row add materialized, as in the anchor's queue.
+        base = replace_row(base, lines.index(legacy), [other["line"].encode("utf-8") for other in rows])[0]
     order = [r["identity"] for r in v["rows"] if r["identity"]]
-    files[QUEUE] = merge_rows(show(worktree, receipt["baseline"], QUEUE) or HEADER, order, include)
+    files[QUEUE] = merge_rows(base, order, include)
     return files
 
 
@@ -737,13 +761,14 @@ def allocate(v, row, opts):
     manifest = package["manifest"]
     anchor, common = v["anchor"], v["common"]
     deps = [v["states"][f"{loop}.{dep}"] for dep in package["tasks"][task]["depends_on"]]
-    added = add_record(common, loop)["commit"]
     values = {"repo": str(anchor), "task": identity, "branch": branch_of(identity), "repository": None,
               "base": manifest["base_ref"], "remote": "origin", "worktree": str(opts.worktree_root / loop / task),
               "local_base": None, "from_receipt": None, "start": None}
     if is_local(v, loop):
         tip = frontier(v, loop)
-        start = tip["receipt"]["source_sha"] if tip else added
+        require(tip or manifest["delivery"] == "local-only", f"{identity}: {loop} was added for {manifest['delivery']} delivery, so no add "
+                "commit carries its package for a local drain; drain it without --local-only")
+        start = tip["receipt"]["source_sha"] if tip else add_record(common, loop, ("branch", "commit"))["commit"]
         for dep in deps:
             require(ancestor(anchor, dep["receipt"]["source_sha"], start),
                     f"{identity}: prerequisite source {dep['receipt']['source_sha']} is not in the accepted frontier {start}; plan an integration task")
@@ -758,10 +783,6 @@ def allocate(v, row, opts):
             start = helper["remote_base"]({"common_gitdir": str(common), "remote": "origin", "base": manifest["base_ref"]})
         except helper["CompletionError"] as exc:
             raise LoopError(f"{identity}: cannot refresh base {manifest['base_ref']}: {exc}") from exc
-        # Until a merged task brings the package to the remote base (by any merge method), start from the add commit:
-        # the task's PR then carries it.
-        if show(anchor, start, f"docs/specs/{loop}/meta.md") is None:
-            start = added
         values["start"] = start
         require_merged(v, row, start)
     require(evidence_ignored(anchor, common, start),
@@ -969,11 +990,18 @@ def summary(v, row):
     return item
 
 
+def manifest_of(v, loop):
+    """The loop's manifest, read once per view: the drain's anchor sync may remove meta.md before the report is written."""
+    if loop not in v["manifests"]:
+        v["manifests"][loop] = v["packages"][loop]["manifest"] if loop in v["packages"] else load_manifest(v["anchor"], loop)[1]
+    return v["manifests"][loop]
+
+
 def loop_acceptance(v, loop, items):
     """Whole-loop acceptance over the manifest's complete task set: every task, the integration task last, needs
     receipt-backed acceptance. A manifest task missing from this queue joins `items` as not yet run."""
     try:
-        manifest = v["packages"][loop]["manifest"] if loop in v["packages"] else load_manifest(v["anchor"], loop)[1]
+        manifest = manifest_of(v, loop)
     except LoopError as exc:
         return f"INCOMPLETE — manifest unreadable: {exc}"
     found, gaps = {item["identity"]: item for item in items}, []
@@ -987,28 +1015,70 @@ def loop_acceptance(v, loop, items):
     return "INCOMPLETE — " + ", ".join(gaps) if gaps else "ACCEPTED"
 
 
-def bring_in(v, loop):
-    """The command that brings the loop's accepted frontier into the branch `add` committed the loop to."""
-    tip = frontier(v, loop)
-    if tip is None or not added_path(v["common"], loop).is_file():
+def sync_anchor(v, loop):
+    """auto/pr: once every task of the loop has settled and its rows are on the remote base, remove the anchor's
+    uncommitted plan copies (package files byte-identical to the base's, and the rows add wrote) so a pull fast-forwards
+    (loop.md step 11). Returns the package and queue paths the anchor still keeps, or None before then."""
+    anchor = v["anchor"]
+    try:
+        manifest = manifest_of(v, loop)
+    except LoopError:
         return None
-    branch, receipt = add_record(v["common"], loop)["branch"], tip["receipt"]
-    if not is_local(v, loop):
-        return f"{branch}: git pull --ff-only {receipt['remote']} {receipt['base']} after delivery (a fast-forward)"
+    states = [v["states"].get(f"{loop}.{entry['id']}") for entry in manifest["tasks"]]
+    base = ref_value(anchor, f"refs/remotes/origin/{manifest['base_ref']}")
+    if manifest["delivery"] == "local-only" or is_local(v, loop) or not base or lacks_plan(v, loop, base) or not all(
+            state and (state["kind"] in {"failed", "blocked"} or state["kind"] == "accepted" and state["receipt"] and delivered(state["receipt"]))
+            for state in states):
+        return None
+    package = f"docs/specs/{loop}"
+    for rel in filter(None, git_run(anchor, "ls-files", "-o", "--exclude-standard", "-z", "--", package).stdout.decode("utf-8").split("\0")):
+        if (anchor / rel).read_bytes() == show(anchor, base, rel):
+            (anchor / rel).unlink()
+    for directory, _, _ in os.walk(anchor / package, topdown=False):
+        with contextlib.suppress(OSError):
+            os.rmdir(directory)
+    record = add_record(v["common"], loop, ())
+    with lock(v["common"], "queue.lock", blocking=True):
+        queue, inserted = anchor / QUEUE, record.get("inserted", "").encode("utf-8")
+        data = queue.read_bytes() if queue.exists() else b""
+        # Only rows still uncommitted: the anchor's HEAD never carries them unless someone committed them.
+        if inserted and data.count(inserted) == 1 and inserted not in (show(anchor, "HEAD", QUEUE) or b""):
+            data = data.replace(inserted, record["replaced"].encode("utf-8"), 1)
+            if data:
+                acceptance()["atomic_write"](queue, data)
+            else:
+                queue.unlink()
+    dirty = git_run(anchor, "status", "--porcelain", "-z", "--untracked-files=all", "--", package, QUEUE).stdout.decode("utf-8")
+    return [entry[3:] for entry in dirty.split("\0") if entry]
+
+
+def bring_in(v, loop, kept):
+    """The command that brings the loop's accepted work into the branch it was added on."""
+    tip = frontier(v, loop)
+    if tip is None:
+        return None
+    receipt = tip["receipt"]
+    if not receipt.get("local_only"):
+        # Once the drain made the anchor pull-ready: it holds no loop commit, so merge, squash and rebase delivery all pull.
+        return None if kept is None else f"{receipt['base']}: git pull --ff-only {receipt['remote']} {receipt['base']}" + (
+            f" once the anchor no longer keeps {', '.join(kept)}" if kept else "")
+    if not added_path(v["common"], loop).is_file():
+        return None
+    branch = add_record(v["common"], loop, ("branch", "commit"))["branch"]
     # The frontier descends from the add commit, so it fast-forwards the branch unless something else moved it since.
     if git_run(v["anchor"], "merge-base", "--is-ancestor", "refs/heads/" + branch, receipt["publish_sha"], ok=(0, 1, 128)).returncode:
         return f"{branch}: git merge {receipt['branch']} ({branch} moved since the add commit, so this merges instead of fast-forwarding)"
     return f"{branch}: git merge --ff-only {receipt['branch']} (a fast-forward)"
 
 
-def write_reports(v, status, reason):
+def write_reports(v, status, reason, synced):
     paths = []
     for loop in dict.fromkeys(row["loop"] for row in v["rows"] if row["identity"]):
         items = [summary(v, row) for row in v["rows"] if row.get("loop") == loop]
         lines = [f"# Drain report — {loop}", "", f"- Generated: {datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}",
                  f"- Queue: {v['anchor'] / QUEUE}", f"- Drain: {status}" + (f" — {reason}" if reason else ""),
                  f"- Whole-loop acceptance: {loop_acceptance(v, loop, items)}",
-                 *([f"- Bring into {line}"] if (line := bring_in(v, loop)) else []), ""]
+                 *([f"- Bring into {line}"] if (line := bring_in(v, loop, synced.get(loop))) else []), ""]
         labels = (("result", "Product"), ("reason", "Reason"), ("receipt", "Receipt"), ("custody", "Evidence custody"),
                   ("recovery_ref", "Recovery ref"), ("allocation_base", "Allocation base"), ("source", "Accepted source"), ("candidate", "Unaccepted source"),
                   ("terminal", "Terminal commit"), ("delivery", "Delivery"), ("pr", "PR"), ("resume", "Resume"),
@@ -1037,7 +1107,7 @@ def drain(args):
     require(any("{packet}" in part for part in args.executor), "executor argv must contain {packet}, replaced by the task packet path")
     args.worktree_root = Path(args.worktree_root).resolve() if args.worktree_root else anchor.parent / f"{anchor.name}.devlyn"
     with lock(common, "drain.lock", blocking=False):
-        attempted, last, status, reason = set(), None, "DRAINED", None
+        attempted, last, status, reason, synced = set(), None, "DRAINED", None, {}
         try:
             while True:
                 last = view(anchor, common, args.local_only)
@@ -1048,6 +1118,7 @@ def drain(args):
                 advance(last, row, args)
             if any(state["kind"] in {"pending", "active"} for state in last["states"].values()) or counts(last)["legacy_pending"]:
                 status = "WAITING"
+            synced = {loop: sync_anchor(last, loop) for loop in dict.fromkeys(row["loop"] for row in last["rows"] if row["identity"])}
         except (LoopError, OSError) as exc:
             status, reason = "BLOCKED", str(exc)
             with contextlib.suppress(LoopError, OSError):
@@ -1055,7 +1126,7 @@ def drain(args):
         if last is None:
             return {"status": status, "reason": reason}
         annotate(last)
-        return {"status": status, "reason": reason, "reports": write_reports(last, status, reason), "counts": counts(last),
+        return {"status": status, "reason": reason, "reports": write_reports(last, status, reason, synced), "counts": counts(last),
                 "tasks": [summary(last, row) for row in last["rows"] if row["identity"]]}
 
 
@@ -1076,17 +1147,19 @@ def add(args):
     anchor, common = repository(Path(args.package).resolve().parent)
     package = package_of(anchor, args.package)
     loop = package["loop_id"]
+    local = package["manifest"]["delivery"] == "local-only"
     rows = [row_line(f"{loop}.{task['id']}", task["title"]).encode("utf-8") for task in package["tasks"].values()]
     queue = anchor / QUEUE
     paths = [f"docs/specs/{loop}", QUEUE]
-    # The loop starts from a commit on the current branch that carries its package and rows (loop.md step 3).
-    branch = git_run(anchor, "symbolic-ref", "-q", "--short", "HEAD", ok=(0, 1)).stdout.decode("utf-8").strip()
-    require(branch, f"add commits the loop package on the current branch, but HEAD is detached in {anchor}")
-    base = package["manifest"]["base_sha"]
-    require(ancestor(anchor, base, "HEAD"), f"the current branch {branch} does not descend from the manifest base_sha {base}")
     if tracked := git(anchor, "diff", "--name-only", "--no-renames", "--diff-filter=MDT", "HEAD", "--", paths[0]):
         raise LoopError(f"{paths[0]} is committed with different content ({', '.join(tracked.splitlines())}); add never overwrites "
                         "committed package files, so plan the revision as a new loop")
+    if local:
+        # A local loop starts from a commit on the current branch that carries its package and rows (loop.md step 3).
+        branch = git_run(anchor, "symbolic-ref", "-q", "--short", "HEAD", ok=(0, 1)).stdout.decode("utf-8").strip()
+        require(branch, f"add commits the loop package on the current branch, but HEAD is detached in {anchor}")
+        base = package["manifest"]["base_sha"]
+        require(ancestor(anchor, base, "HEAD"), f"the current branch {branch} does not descend from the manifest base_sha {base}")
     with lock(common, "queue.lock", blocking=True):
         recover_adds(common)
         data = queue.read_bytes() if queue.exists() else None
@@ -1100,11 +1173,19 @@ def add(args):
                     f"{QUEUE} line {args.materialize} is not a pending legacy row")
             intent = " ".join(sections(package["meta_text"], "meta.md")["Intent"].split())
             require(" ".join(target["text"].split()) in intent, "meta.md '## Intent' must reproduce the legacy row's intent verbatim")
-            new = replace_row(data, target["index"], rows)
+            new, inserted, replaced = replace_row(data, target["index"], rows)
         else:
             # Appended one blank line after the queue's last line; a new queue starts with its header.
             lead = HEADER if data is None else b"" if not data or data.endswith(b"\n\n") else b"\n" if data.endswith(b"\n") else b"\n\n"
-            new = (data or b"") + lead + b"\n".join(spaced(rows)) + b"\n"
+            inserted, replaced = lead + b"\n".join(spaced(rows)) + b"\n", b""
+            new = (data or b"") + inserted
+        if not local:
+            # An auto/pr loop's rows stay uncommitted: its first task's PR carries the plan, and once the plan has landed the
+            # drain removes exactly these rows again (loop.md steps 4 and 11).
+            write_json(added_path(common, loop), {"schema_version": 1, "loop_id": loop, "inserted": inserted.decode("utf-8"),
+                                                  "replaced": replaced.decode("utf-8")})
+            acceptance()["atomic_write"](queue, new)
+            return {"status": "ADDED", "queue": str(queue), "tasks": identities}
         commit = commit_add(anchor, common, loop, branch, paths, data, new)
     return {"status": "ADDED", "queue": str(queue), "tasks": identities, "commit": commit}
 
