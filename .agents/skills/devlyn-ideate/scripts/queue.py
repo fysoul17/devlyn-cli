@@ -479,7 +479,8 @@ def settle_add(common, intent):
     tree, else restore the queue bytes and the exact index entries of its paths, never resetting them to HEAD."""
     anchor, loop = Path(intent["anchor"]), intent["loop_id"]
     later = git_run(anchor, "rev-list", "--first-parent", "--reverse", f"{intent['head']}..refs/heads/{intent['branch']}", ok=(0, 128)).stdout.split()
-    if later and git(anchor, "show", "-s", "--format=%P%n%T%n%s", later[0].decode()).split("\n") == [intent["head"], intent["tree"], f"devlyn loop: add {loop}"]:
+    if later and git(anchor, "show", "-s", "--no-show-signature", "--format=%P%n%T%n%s", later[0].decode()).split("\n") == [
+            intent["head"], intent["tree"], f"devlyn loop: add {loop}"]:
         return finish_add(common, intent, later[0].decode())
     queue = anchor / QUEUE
     if intent["queue"] is None:

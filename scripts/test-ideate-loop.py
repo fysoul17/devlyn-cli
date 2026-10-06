@@ -409,6 +409,29 @@ class LoopFixture(unittest.TestCase):
                 self.assertEqual((retried["status"], retried["commit"], retried["tasks"]), ("ADDED", commit, [f"{loop}.t1"]))
                 self.assertEqual((self.added(loop)["commit"], self.g("status", "--porcelain", "--untracked-files=all")), (commit, ""))
 
+    @unittest.skipIf(os.name == "nt" or not shutil.which("ssh-keygen"), "a commit hook signals the add's process group; ssh-keygen signs")
+    def test_recovery_completes_a_signed_add_commit(self):
+        # Prediction: with SSH-signed commits and log.showSignature, add killed, or interrupted by Ctrl-C, after its commit
+        # landed is completed: status records that commit, and the index, queue and package stay as committed. Before:
+        # `git show` printed the signature ahead of the parent, tree and subject, so recovery rolled the add back while its
+        # exact commit stayed on the branch (package staged as deleted, rows removed) and recorded no add.
+        key = self.root / "signing key"
+        self.run_ok(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "fixture", "-f", str(key)])
+        signers = self.root / "allowed signers"
+        signers.write_text("fixture@example.invalid " + key.with_name(key.name + ".pub").read_text(encoding="utf-8"), encoding="utf-8")
+        for name, value in (("user.signingKey", key), ("gpg.format", "ssh"), ("gpg.ssh.allowedSignersFile", signers),
+                            ("commit.gpgSign", "true"), ("log.showSignature", "true")):
+            self.g("config", name, str(value))
+        for loop, script in (("sk", "kill -KILL 0"), ("si", "kill -INT 0; sleep 1")):
+            with self.subTest(loop=loop):
+                meta = self.queue["write_package"](self.anchor, loop, [CHAIN[0]])
+                self.hooked_add(meta, "post-commit", script)
+                commit = self.g("rev-parse", "HEAD")
+                self.assertEqual(self.g("log", "-1", "--no-show-signature", "--format=%s"), f"devlyn loop: add {loop}")
+                self.assertIn('Good "git" signature', self.g("show", "-s", "--format=%s", commit))
+                self.cli("status", "--repo", self.anchor)
+                self.assertEqual((self.added(loop)["commit"], self.g("status", "--porcelain", "--untracked-files=all")), (commit, ""))
+
     def test_frontier_is_the_latest_accepted_source_and_divergence_is_refused(self):
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1"], "Greeting app", [APP_CHECK]), ("t4", ["t2", "t3"], "Notes again", [NOTES_CHECK])]
         self.plan("fr", tasks, {"fr.t1": {"product": "greeting"}, "fr.t2": {"product": "notes"}, "fr.t3": {"product": "app"}, "fr.t4": {"product": "notes"}})
