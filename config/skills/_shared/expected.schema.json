@@ -8,7 +8,7 @@
   "properties": {
     "verification_commands": {
       "type": "array",
-      "description": "Each command is executed against the post-BUILD code. Each pass/fail contributes to verify_score. At least one entry is required when the spec has any observable runtime check (CLI, test command, HTTP request).",
+      "description": "Each command must pass on the task's committed source. At least one entry is required when the spec has any observable runtime check (CLI, test command, HTTP request).",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -54,7 +54,7 @@
           },
           "contract_refs": {
             "type": "array",
-            "description": "Visible requirements this command verifies. Ideate loop tasks name requirement IDs (R1, R2, ...) from the task Requirements and require at least one; hidden BENCH_FIXTURE_DIR commands name exact spec.md substrings and may test only visible spec clauses.",
+            "description": "Requirements this command verifies. Ideate loop tasks name requirement IDs (R1, R2, ...) from the task Requirements and require at least one.",
             "items": { "type": "string", "minLength": 1 },
             "default": []
           }
@@ -63,7 +63,7 @@
     },
     "forbidden_patterns": {
       "type": "array",
-      "description": "Regex patterns scanned across diff.patch. Match at severity=disqualifier is a hard-floor fail; match at severity=warning is judge-only critical-finding.",
+      "description": "Regex patterns scanned across the task's diff.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -88,14 +88,14 @@
           "severity": {
             "type": "string",
             "enum": ["disqualifier", "warning"],
-            "description": "disqualifier = hard-floor fail (DQ). warning = judge-visible critical-finding only."
+            "description": "disqualifier blocks acceptance; warning is recorded."
           }
         }
       }
     },
     "required_files": {
       "type": "array",
-      "description": "Files specified by literal paths that must exist after the arm runs; globs are not expanded.",
+      "description": "Files specified by literal paths that must exist in the committed source; globs are not expanded.",
       "items": { "type": "string", "minLength": 1 },
       "default": []
     },
@@ -107,7 +107,7 @@
     },
     "max_deps_added": {
       "type": "integer",
-      "description": "Hard cap on new entries under dependencies/devDependencies in package.json. Exceeds → DQ.",
+      "description": "Hard cap on new entries under dependencies/devDependencies in package.json.",
       "minimum": 0,
       "default": 0
     },

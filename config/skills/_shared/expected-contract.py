@@ -75,8 +75,8 @@ def validate_command(command: object, label: str) -> str | None:
         return f"{label}.timeout_sec must be int from 1 to 600 (not bool)"
     for k in ("stdout_contains", "stdout_not_contains"):
         v = command.get(k, [])
-        if not isinstance(v, list) or not all(isinstance(s, str) for s in v):
-            return f"{label}.{k} must be a list of strings"
+        if not isinstance(v, list) or not all(isinstance(s, str) and s for s in v):
+            return f"{label}.{k} must be a list of non-empty strings"
     return None
 
 
@@ -88,8 +88,8 @@ def validate_shape(data) -> str | None:
     string-array `argv`; `exit_code` defaults to 0 and must be a
     non-bool int; `timeout_sec` defaults to DEFAULT_TIMEOUT_SEC and must be a
     non-bool int from 1 through 600; `stdout_contains` and `stdout_not_contains`
-    default to empty lists of strings. Bool is rejected explicitly because
-    Python's `bool` subclasses `int`.
+    default to empty lists of non-empty strings. Bool is rejected explicitly
+    because Python's `bool` subclasses `int`.
     """
     if not isinstance(data, dict):
         return "top-level must be a JSON object"
@@ -230,7 +230,9 @@ class ContractTests(unittest.TestCase):
         for command, message in (
             ({"cmd": "x", "exit_code": True}, "exit_code must be int"),
             ({"cmd": "x", "timeout_sec": 601}, "timeout_sec must be int from 1 to 600"),
-            ({"cmd": "x", "stdout_contains": "x"}, "stdout_contains must be a list of strings"),
+            ({"cmd": "x", "stdout_contains": "x"}, "stdout_contains must be a list of non-empty strings"),
+            ({"cmd": "x", "stdout_contains": [""]}, "stdout_contains must be a list of non-empty strings"),
+            ({"cmd": "x", "stdout_not_contains": [""]}, "stdout_not_contains must be a list of non-empty strings"),
             ({"cmd": "x", "contract_refs": [""]}, "contract_refs must be a list of non-empty strings"),
             ({"cmd": "x", "extra": 1}, "unknown key(s): extra"),
         ):
