@@ -169,6 +169,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 | `generate-skill` | Create Claude Code skills following Anthropic best practices |
 | `prompt-engineering` | Claude prompt optimization |
 | `better-auth-setup` | Better Auth + Hono + Drizzle + PostgreSQL |
+| `polar-billing-setup` | Polar usage-based / metered billing — setup and silent $0-billing diagnosis |
 | `pyx-scan` | Check if an AI agent skill is safe before installing |
 | `dokkit` | Document template filling for DOCX/HWPX |
 | `devlyn-pencil-pull` | Pull Pencil designs into code |
@@ -222,8 +223,7 @@ Windows completion preserves the workspace, owned refs and recovery receipt when
 
 ## Contributing
 
-- **Add a skill** — directory in `config/skills/` with `SKILL.md`
-- **Add optional skill** — add to `optional-skills/` and `OPTIONAL_ADDONS` in [`bin/devlyn.js`](bin/devlyn.js)
+- **Add a skill** — add it to `optional-skills/` and `OPTIONAL_ADDONS` in [`bin/devlyn.js`](bin/devlyn.js); the core skills are fixed by `DEVLYN_CORE_SKILLS` (lint Checks 5a and 6)
 - **Suggest a pack** — PR to the pack list
 
 ## Supercharge it — pair devlyn with persistent agent memory
