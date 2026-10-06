@@ -710,8 +710,8 @@ def local_start(v, loop):
         branch, base = added["branch"], manifest_of(v, loop)["base_sha"]
         start, remedy = ref_value(v["anchor"], "refs/heads/" + branch), f"commit them on {branch}, or restore them to their bytes at that commit"
         if not start or not ancestor(v["anchor"], base, start):
-            return None, (f"{branch}, the branch {loop} was added on, " + (f"is at {start}, which does not descend from" if start else "no longer exists, so")
-                          + f" the manifest base_sha {base}; bring that commit into {branch}, or plan the work as a new loop")
+            where = f"is at {start}, which does not descend from the manifest base_sha {base}" if start else "no longer exists"
+            return None, f"{branch}, the branch {loop} was added on, {where}; bring {base} into {branch}, or plan the work as a new loop"
     if drift := instruction_drift(v["anchor"], start):
         return start, f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run without them; {remedy}"
     return start, None
@@ -808,7 +808,7 @@ def evidence_ignored(anchor, common, start):
 
 def allocate(v, row, opts):
     """Allocate the task's owned worktree, or return why it waits: its refreshed remote base lacks the checkout's
-    instructions (waiting() checks a local start, which is fixed)."""
+    instructions (waiting() checks a local start before selection)."""
     identity, loop, task = row["identity"], row["loop"], row["task"]
     package = v["packages"][loop]
     manifest = package["manifest"]
@@ -1214,8 +1214,8 @@ def add(args):
         local = manifest["delivery"] == "local-only"
         require(show(anchor, "HEAD", loop_queue(loop)) is None, f"loop id {loop} is already used by {loop_queue(loop)}; plan revised work as a new loop")
         if tracked := git(anchor, "diff", "--name-only", "--no-renames", "--diff-filter=MDT", "HEAD", "--", package_dir):
-            raise LoopError(f"{package_dir} is committed with different content ({', '.join(tracked.splitlines())}); add captures a package "
-                            "only as committed, so plan the revision as a new loop")
+            raise LoopError(f"{package_dir} is committed with different content ({', '.join(tracked.splitlines())}); add never captures a "
+                            "revision of committed package files, so plan it as a new loop")
         branch = git_run(anchor, "symbolic-ref", "-q", "--short", "HEAD", ok=(0, 1)).stdout.decode("utf-8").strip()
         require(branch, f"add records the branch the loop is added on, but HEAD is detached in {anchor}")
         if drift := instruction_drift(anchor, head := git(anchor, "rev-parse", "HEAD")):

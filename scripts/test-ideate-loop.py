@@ -374,7 +374,7 @@ class LoopFixture(unittest.TestCase):
         tasks = self.tasks(self.drain())
         self.assertEqual((tasks["aa.t1"]["result"], self.receipt("aa.t1")["baseline"], tasks["bb.t1"].get("reason"), self.calls("bb.t1")),
                          ("accepted", self.base, f"main, the branch bb was added on, is at {self.base}, which does not descend from the manifest "
-                          f"base_sha {moved}; bring that commit into main, or plan the work as a new loop", 0))
+                          f"base_sha {moved}; bring {moved} into main, or plan the work as a new loop", 0))
         self.assertIn("- Bring into main: git merge --ff devlyn/aa/t1\n", self.report("aa"))
         self.g("branch", "-f", "main", moved)
         self.assertEqual((self.tasks(self.drain())["bb.t1"]["result"], self.receipt("bb.t1")["baseline"]), ("accepted", moved))
