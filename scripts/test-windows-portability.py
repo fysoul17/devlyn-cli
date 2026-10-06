@@ -476,6 +476,33 @@ init({options});
                 self.cli('-y', '--claude')
                 self.assertEqual((self.project / 'CLAUDE.md').read_bytes().count(b'devlyn:instructions:begin'), 1)
 
+    def test_claude_target_alone_migrates_the_block_it_imports(self):
+        # Prediction (final audit, Astra): beside an AGENTS.md holding the 4.1.0 block, or a template a release before managed
+        # blocks copied in whole, and no CLAUDE.md, the Claude target alone (AGENTS.md deselected in the menu) brings AGENTS.md's
+        # devlyn defaults current, keeping the project text once and saving the exact backup, and creates CLAUDE.md as exactly
+        # `@AGENTS.md`; reruns change nothing. Before (f03ad983): AGENTS.md kept the old defaults, so through the import Claude
+        # Code read the retired contract, which requires the deleted resolve.
+        prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
+        def files():
+            return {name: (self.project / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
+        for fixture in ('agents-4.1.0.md', 'legacy-july-agents.md'):
+            with self.subTest(fixture=fixture):
+                self.project = self.case / fixture[:-3]; self.project.mkdir()
+                before = prefix + (Path(__file__).resolve().parent / 'fixtures/instructions' / fixture).read_bytes() + suffix
+                (self.project / 'AGENTS.md').write_bytes(before)
+                result = self.interact([[' ', '\x1b[B', ' ', '\r'], ['\r'], ['\r']])
+                self.assertEqual(self.markers(self.project), {'.claude'})
+                installed = files()
+                self.assertEqual(installed['CLAUDE.md'], b'@AGENTS.md\n')
+                # No retired resolve; one current block, and the project text once.
+                self.assertEqual([installed['AGENTS.md'].count(text) for text in (b'devlyn-resolve', b'devlyn:resolve',
+                                  b'devlyn:instructions:begin', CURRENT_DEFAULTS, prefix, suffix)], [0, 0, 1, 1, 1, 1])
+                self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob('AGENTS.md.*.backup')])
+                self.assertIn(b'Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved', result.stdout)
+                for rerun in (lambda: self.interact([[' ', '\r'], ['\r'], ['\r']]), lambda: self.cli('-y')):
+                    rerun()
+                    self.assertEqual(files(), installed)
+
     def test_interactive_what_and_where(self):
         down, enter, space = '\x1b[B', '\r', ' '
         mcp = b'Playwright MCP for browser testing'
