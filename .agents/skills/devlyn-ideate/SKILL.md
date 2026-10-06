@@ -1,6 +1,6 @@
 ---
 name: devlyn-ideate
-description: Loop designer and intent queue. Turns an intent or a document into a validated loop package (a meta-prompt plus self-contained task contracts), appends its tasks to docs/specs/queue.md, reports queue status, and drains the queue serially with evidence-derived acceptance, recovery and delivery. Operations — plan, add, status, drain; a bare intent is planned and, when the request authorizes implementation, continues through add and drain; no arguments shows status. Use when the user wants an idea, goal or document planned into tasks, wants to stack work ("queue this", "큐에 넣어줘"), asks what is queued, or wants unattended execution ("drain the queue", "큐 드레인 시작", "밤새 돌려줘").
+description: Loop designer and intent queue. Turns an intent or a document into a validated loop package (a meta-prompt plus self-contained task contracts), queues its tasks, reports queue status, and drains the queue serially with evidence-derived acceptance, recovery and delivery. Operations — plan, add, status, drain; a bare intent is planned and, when the request authorizes implementation, continues through add and drain; no arguments shows status. Use when the user wants an idea, goal or document planned into tasks, wants to stack work ("queue this", "큐에 넣어줘"), asks what is queued, or wants unattended execution ("drain the queue", "큐 드레인 시작", "밤새 돌려줘").
 ---
 
 Ideate owns planning and durable serial execution. Each task runs under the installed methodology, the CLAUDE.md/AGENTS.md instruction block; ideate adds no phase graph, reviewer quota, engine router or restart cycle.
@@ -57,7 +57,7 @@ Verify DEVLYN_SKILL_DIR/scripts/queue.py before running it. In omp, use `printf 
 | Invocation | Behavior |
 |---|---|
 | `plan <intent or absolute document path>` | Inspect, elicit what is necessary and write a validated loop package. Does not enqueue or execute. |
-| `add <intent or absolute package path>` | Plan when necessary, then append the package's tasks atomically in dependency order. Does not execute. |
+| `add <intent or absolute package path>` | Plan when necessary, then capture the package and queue its tasks in dependency order. Does not execute. |
 | `status` | Reconciled pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
 | `drain` | Resume or drain the queue serially under existing execution authorization. |
 | Bare intent | Plan; when the request authorizes implementation, continue through add and drain without reconfirmation. |
@@ -92,11 +92,11 @@ A removed flag stops with its instruction and selects no other behavior.
 
 ## add
 
-An absolute path to a package's `meta.md` is appended as it is; anything else is planned first. Append with `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" add '<absolute meta.md>'`, the only writer of new queue rows; never edit `docs/specs/queue.md` by hand. For a `local-only` loop it commits only the package and the queue on the current branch, leaving other staged or unstaged changes as they are, and the loop starts from that commit; an add that fails, is interrupted or crashes is completed or rolled back by itself or the next add, status or drain. For an `auto`/`pr` loop it leaves the queue file unchanged: status and drain in this checkout show the recorded rows, the first PR that carries the plan lands them with the package, and the anchor's file shows them after the pull; tasks start from the remote base, so push whatever the plan depends on first. A pending legacy raw-intent row is replaced in place by a package whose `## Intent` reproduces the row verbatim, added with `--materialize <line>`.
+An absolute path to a package's `meta.md` is added as it is; anything else is planned first. Add with `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" add '<absolute meta.md>'`, the only writer of a loop's queue file `docs/specs/<loop-id>/queue.md`; never edit one by hand. In every delivery mode add makes no commit and leaves the branch, the index and tracked files as they are: it holds the package and its rows at `refs/devlyn/captures/<loop-id>`, records the add and removes the package copies equal to that capture. Report the capture ref and its `git show` command, any `cleanup` entry, and that a revision needs a new loop id. It refuses package changes staged in the index (unstage them and add again), and a retry of the same add reports it as added, also once the copies are gone. Tasks start from committed state, a local loop from the branch it was added on and `auto`/`pr` from the remote base, so commit, and for `auto`/`pr` push, whatever the plan depends on. A pending legacy raw-intent row of `docs/specs/queue.md` is replaced in place by a package whose `## Intent` reproduces the row verbatim, added with `--materialize <line>`.
 
 ## status
 
-Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" status --repo .` and report its counts, `next`, `blockers` and pending deliveries with their resume commands.
+Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" status --repo .` and report its counts, `next`, `blockers`, pending deliveries with their resume commands and any `cleanup` entry.
 
 ## drain
 
@@ -123,4 +123,4 @@ A drain can run for hours. Do not end the turn until it exits: run it in the for
 - `WAITING` on anything else, or `BLOCKED`: report the reason and resume commands; never edit receipts, refs or queue rows to get past them.
 - An interrupted drain is resumed by running `drain` again; accepted work is never replayed.
 
-Report each task's product result, delivery status, PR URL, resume command, assumptions and unresolved questions, plus the drain report paths and its exact `Bring into` command: a local loop's final task branch fast-forwards the branch the loop was added on unless that branch has moved since; for `auto`/`pr`, once the loop has settled and its plan has landed, the drain removes the anchor's untracked package copies and the command is `git pull --ff-only origin <base>`, or `git merge origin/<base>` when that branch has commits the remote base lacks.
+Report each task's product result, delivery status, PR URL, resume command, assumptions and unresolved questions, plus the drain report paths and its exact `Bring into` command: a local loop's `git merge --ff <final task branch>` on the branch the loop was added on; for `auto`/`pr`, once delivered, `git pull --ff-only origin <base>`, or `git merge origin/<base>` when that branch has commits the remote base lacks. Report any `cleanup` entry too: a package copy left in the checkout stops that command until it is removed.
