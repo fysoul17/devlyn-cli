@@ -257,7 +257,7 @@ class LoopFixture(unittest.TestCase):
         t1_row = self.rows(first["publish_sha"])["inv.t1"]["line"]
         self.assertTrue(t1_row.startswith("- [x] inv.t1 [Greeting interface 인사]"))
         inputs = second["acceptance"]["inputs_sha"]
-        expected = (self.base_queue.decode("utf-8") + t1_row + "\n" + self.queue["row_line"]("inv.t2", "Greeting app [cli]")).strip()
+        expected = (self.base_queue.decode("utf-8") + "\n" + t1_row + "\n\n" + self.queue["row_line"]("inv.t2", "Greeting app [cli]")).strip()
         self.assertEqual(self.queue_at(inputs), expected)
         self.assertEqual(self.run_ok([sys.executable, "app.py", "Ada"], cwd=second["worktree"]), "Hello, Ada!")
         report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")

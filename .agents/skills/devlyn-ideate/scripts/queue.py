@@ -389,6 +389,23 @@ def transition(before, identity, mark, suffix=""):
     return b"\n".join(lines)
 
 
+def spaced(rows, blank=b""):
+    """Rows one blank line apart, so changes to neighbouring rows merge without conflict (package-format.md, Queue rows)."""
+    lines = []
+    for row in rows:
+        lines += [blank, row] if lines else [row]
+    return lines
+
+
+def replace_row(data, index, rows):
+    """`data` with line `index` replaced by `rows`, one blank line from each neighbouring line."""
+    lines = data.split(b"\n")
+    blank = b"\r" if lines[index].endswith(b"\r") else b""
+    block = spaced([row + blank for row in rows], blank)
+    lines[index:index + 1] = [blank] * bool(index and lines[index - 1].strip()) + block + [blank] * bool(index + 1 < len(lines) and lines[index + 1].strip())
+    return b"\n".join(lines)
+
+
 def merge_rows(base, order, include):
     """Replace or insert `include` rows in `base`, placing new rows after the nearest earlier queued row."""
     lines = base.split(b"\n")
@@ -403,7 +420,7 @@ def merge_rows(base, order, include):
         earlier = [where[i] for i in order[:position] if i in where]
         later = [where[i] for i in order[position + 1:] if i in where]
         at = max(earlier) + 1 if earlier else min(later) if later else len(lines) - (lines[-1] == b"")
-        lines.insert(at, line)
+        lines[at:at] = [b""] * bool(at and lines[at - 1].strip()) + [line] + [b""] * bool(at < len(lines) and lines[at].strip())
     return b"\n".join(lines)
 
 
@@ -986,7 +1003,7 @@ def add(args):
     anchor, common = repository(Path(args.package).resolve().parent)
     package = package_of(anchor, args.package)
     loop = package["loop_id"]
-    rows = [row_line(f"{loop}.{task['id']}", task["title"]) for task in package["tasks"].values()]
+    rows = [row_line(f"{loop}.{task['id']}", task["title"]).encode("utf-8") for task in package["tasks"].values()]
     queue = anchor / QUEUE
     paths = [f"docs/specs/{loop}", QUEUE]
     # The loop starts from a commit on the current branch that carries its package and rows (loop.md step 3).
@@ -1009,16 +1026,11 @@ def add(args):
                     f"{QUEUE} line {args.materialize} is not a pending legacy row")
             intent = " ".join(sections(package["meta_text"], "meta.md")["Intent"].split())
             require(" ".join(target["text"].split()) in intent, "meta.md '## Intent' must reproduce the legacy row's intent verbatim")
-            lines = data.split(b"\n")
-            ending = b"\r" if lines[target["index"]].endswith(b"\r") else b""
-            lines[target["index"]:target["index"] + 1] = [row.encode("utf-8") + ending for row in rows]
-            acceptance()["atomic_write"](queue, b"\n".join(lines))
-        elif data is None:
-            queue.parent.mkdir(parents=True, exist_ok=True)
-            queue.write_bytes(HEADER + "".join(row + "\n" for row in rows).encode("utf-8"))
+            acceptance()["atomic_write"](queue, replace_row(data, target["index"], rows))
         else:
-            with queue.open("ab") as stream:
-                stream.write((b"" if data.endswith(b"\n") or not data else b"\n") + "".join(row + "\n" for row in rows).encode("utf-8"))
+            # Appended one blank line after the queue's last line; a new queue starts with its header.
+            lead = HEADER if data is None else b"" if not data or data.endswith(b"\n\n") else b"\n" if data.endswith(b"\n") else b"\n\n"
+            acceptance()["atomic_write"](queue, (data or b"") + lead + b"\n".join(spaced(rows)) + b"\n")
         try:
             git(anchor, "add", "--", *paths)
             require(git_run(anchor, "diff", "--cached", "--quiet", "HEAD", "--", *paths, ok=(0, 1)).returncode,
@@ -1243,25 +1255,48 @@ class QueueTests(unittest.TestCase):
         package = {path: path.read_bytes() for path in (self.anchor / "docs/specs/inv").rglob("*") if path.is_file()}
         queue = self.anchor / QUEUE
         self.assertEqual(self.cli("add", self.meta)["tasks"], ["inv.t1", "inv.t2"])
-        expected = HEADER + f"{row_line('inv.t1', 'Interface 인터페이스')}\n{row_line('inv.t2', 'Consumer [app]')}\n".encode()
+        expected = HEADER + f"{row_line('inv.t1', 'Interface 인터페이스')}\n\n{row_line('inv.t2', 'Consumer [app]')}\n".encode()
         self.assertEqual(queue.read_bytes(), expected)
         self.assertIn("already queued: inv.t1, inv.t2", self.cli("add", self.meta, code=1)["reason"])
         self.assertEqual(queue.read_bytes(), expected)
         self.assertEqual({path: path.read_bytes() for path in package}, package)
         queue.write_bytes(expected + b"- [ ] Make   the  report weekly")
         second = write_package(self.anchor, "rep", [("t1", [], "Weekly", self.tasks[0][3])], intent="Wrong intent.")
-        self.assertIn("reproduce the legacy row's intent", self.cli("add", second, "--materialize", 5, code=1)["reason"])
+        self.assertIn("reproduce the legacy row's intent", self.cli("add", second, "--materialize", 6, code=1)["reason"])
         write_package(self.anchor, "rep", [("t1", [], "Weekly", self.tasks[0][3])], intent="User asked: make the report weekly.")
         self.assertIn("not a pending legacy row", self.cli("add", second, "--materialize", 3, code=1)["reason"])
-        self.assertIn("reproduce", self.cli("add", second, "--materialize", 5, code=1)["reason"])
+        self.assertIn("reproduce", self.cli("add", second, "--materialize", 6, code=1)["reason"])
         write_package(self.anchor, "rep", [("t1", [], "Weekly", self.tasks[0][3])], intent="User asked: Make the report weekly.")
-        self.cli("add", second, "--materialize", 5)
-        self.assertEqual(queue.read_bytes(), expected + row_line("rep.t1", "Weekly").encode())
+        self.cli("add", second, "--materialize", 6)
+        self.assertEqual(queue.read_bytes(), expected + b"\n" + row_line("rep.t1", "Weekly").encode())
         # Each add commits its package and the queue, and records that commit; nothing is left uncommitted.
         common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
         self.assertEqual(git(self.anchor, "log", "-2", "--format=%s").splitlines(), ["devlyn loop: add rep", "devlyn loop: add inv"])
         self.assertEqual(read_json(added_path(common, "rep"))["commit"], git(self.anchor, "rev-parse", "HEAD"))
         self.assertEqual(git(self.anchor, "status", "--porcelain", "--untracked-files=all"), "")
+
+    def test_generated_rows_are_separated_by_one_blank_line(self):
+        """S1. Prediction: add and --materialize separate each row they generate from every neighbouring row by exactly one
+        blank line, at append boundaries too, and so do rows a task's inputs insert; a transition changes only its row's
+        line; a legacy queue without separators still parses. Before: generated rows were adjacent."""
+        queue = self.anchor / QUEUE
+        legacy = HEADER + b"- [x] old work\n- [ ] legacy intent\n- [ ] other intent\n"
+        self.assertEqual([(row["mark"], row["identity"]) for row in parse_queue(legacy)], [("x", None), (" ", None), (" ", None)])
+        queue.write_bytes(legacy)
+        self.cli("add", self.meta)
+        inv = [row_line("inv.t1", "Interface 인터페이스").encode(), row_line("inv.t2", "Consumer [app]").encode()]
+        self.assertEqual(queue.read_bytes(), legacy + b"\n" + inv[0] + b"\n\n" + inv[1] + b"\n")
+        command = self.tasks[0][3]
+        meta = write_package(self.anchor, "rep", [("t1", [], "Weekly", command), ("t2", ["t1"], "Monthly", command)],
+                             intent="User asked: legacy intent.")
+        self.cli("add", meta, "--materialize", 4)
+        rep = [row_line("rep.t1", "Weekly").encode(), row_line("rep.t2", "Monthly").encode()]
+        expected = (HEADER + b"- [x] old work\n\n" + rep[0] + b"\n\n" + rep[1] + b"\n\n- [ ] other intent\n\n" + inv[0] + b"\n\n"
+                    + inv[1] + b"\n")
+        self.assertEqual(queue.read_bytes(), expected)
+        self.assertEqual(transition(expected, "rep.t1", "x"), expected.replace(b"- [ ] rep.t1", b"- [x] rep.t1"))
+        self.assertEqual(merge_rows(legacy, ["inv.t1", "inv.t2"], {"inv.t1": inv[0].decode(), "inv.t2": inv[1].decode()}),
+                         legacy + b"\n" + inv[0] + b"\n\n" + inv[1] + b"\n")
 
     def test_add_refuses_without_writing(self):
         """add commits on the current branch, descending from base_sha, never over committed package files; a failed

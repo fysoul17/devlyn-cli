@@ -879,7 +879,7 @@ init({options});
             self.assertIsNone(proc.poll())
             self.assertEqual(queue.read_bytes(), expected)
         self.assertEqual(proc.wait(timeout=20), 0)
-        self.assertEqual(queue.read_bytes(), expected + loop['row_line']('next.t1', 'Next').encode('utf-8') + b'\n')
+        self.assertEqual(queue.read_bytes(), expected + b'\n' + loop['row_line']('next.t1', 'Next').encode('utf-8') + b'\n')
 
     def test_retired_skill_name_is_removed_only_as_shipped(self):
         # 0.2.0-1.15.0 shipped workflow-routing; a folder of that name the user wrote stays.
