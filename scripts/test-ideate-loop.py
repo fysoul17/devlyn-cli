@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import runpy
+import shlex
 import shutil
 import signal
 import subprocess
@@ -744,9 +745,11 @@ class LoopFixture(unittest.TestCase):
         self.remote(pending=False)
         self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting"}}, delivery="auto")
         self.plan("loc", [("t1", [], "Notes", [NOTES_CHECK])], {"loc.t1": {"product": "notes"}})
-        for _ in range(2):
-            tasks = self.tasks(self.drain(local=False, unobservable=True))
-            self.assertEqual((tasks["inv.t1"]["result"], tasks["inv.t1"]["delivery"], tasks["loc.t1"]["result"]), ("accepted", "COMPLETE", "accepted"))
+        tasks = self.tasks(self.drain(local=False, unobservable=True))
+        self.assertEqual((tasks["inv.t1"]["result"], tasks["inv.t1"]["delivery"], tasks["loc.t1"]["result"]), ("accepted", "COMPLETE", "accepted"))
+        # The drain synced the anchor, so until a pull brings inv's rows the next drain lists only loc, and reruns nothing.
+        self.assertEqual({identity: task["result"] for identity, task in self.tasks(self.drain(local=False, unobservable=True)).items()},
+                         {"loc.t1": "accepted"})
         self.assertEqual((self.calls("inv.t1"), self.calls("loc.t1")), (1, 1))
         receipt = self.receipt("inv.t1")
         # Retained, never reported as cleaned: the worktree, task ref and receipt stay, and the report says why.
@@ -760,13 +763,13 @@ class LoopFixture(unittest.TestCase):
     def test_prerequisite_merge_is_checked_before_allocation_and_execution(self):
         bare, _ = self.remote(pending=False)
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
-        queue = self.anchor / "docs/specs/queue.md"
-        planned = queue.read_bytes()
-        queue.write_bytes(planned.replace((self.queue["row_line"]("inv.t2", "Greeting app [cli]") + "\n").encode(), b""))
+        held = self.anchor / "docs/specs/inv/t2/spec.expected.json"  # inv.t2 waits on its missing file while inv.t1 delivers.
+        saved = held.read_bytes()
+        held.unlink()
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t1"]["delivery"], "COMPLETE")
         merge = self.receipt("inv.t1")["merge"]["mergeCommit"]["oid"]
         self.run_ok(["git", "--git-dir", str(bare), "update-ref", "refs/heads/main", self.base])  # The base loses that merge.
-        queue.write_bytes(planned)
+        held.write_bytes(saved)
         for _ in range(2):
             self.assertIn(f"lacks the delivered prerequisite merge {merge}", self.drain(local=False, code=1)["reason"])
             self.assertFalse(self.receipt_path("inv.t2").exists())
@@ -780,11 +783,11 @@ class LoopFixture(unittest.TestCase):
     def test_whole_loop_acceptance_waits_for_every_manifest_task(self):
         bare, data = self.remote(pending=False)
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
-        queue = self.anchor / "docs/specs/queue.md"
-        planned = queue.read_bytes()
-        queue.write_bytes(planned.replace((self.queue["row_line"]("inv.t2", "Greeting app [cli]") + "\n").encode(), b""))
+        held = self.anchor / "docs/specs/inv/t2/spec.expected.json"  # inv.t2 waits on its missing file while inv.t1 delivers.
+        saved = held.read_bytes()
+        held.unlink()
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t1"]["delivery"], "COMPLETE")
-        queue.write_bytes(planned)
+        held.write_bytes(saved)
         # A checkout of the refreshed base whose queue lacks T2's row: whole-loop acceptance reads the manifest.
         refreshed = self.root / "refreshed"
         self.g("fetch", "-q", str(bare), "main")
@@ -972,6 +975,90 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.g("diff", "--name-only", second["baseline"], second["acceptance"]["inputs_sha"]).splitlines(),
                          ["docs/specs/mv/t2/spec.expected.json", "docs/specs/mv/t2/spec.md"])
         self.assertIn("- Whole-loop acceptance: ACCEPTED", (self.common / "devlyn-loops/mv/drain-report.md").read_text(encoding="utf-8"))
+
+    def bring_in(self, loop, bare):
+        """Run the loop's drain report `Bring into` command in the anchor, origin's URL resolving to the bare remote."""
+        report = (self.common / f"devlyn-loops/{loop}/drain-report.md").read_text(encoding="utf-8")
+        command = shlex.split(next(line for line in report.splitlines() if line.startswith("- Bring into ")).split(": ", 1)[1].split(" (")[0])
+        self.assertEqual(command[0], "git")
+        return subprocess.run(["git", "-c", f"url.{bare}.insteadOf=https://github.com/test/project.git", "-C", str(self.anchor), *command[1:]],
+                              env=self.env, capture_output=True, text=True, encoding="utf-8")
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_plan_that_never_lands_leaves_the_tracked_queue_unchanged(self):
+        # Prediction (R3a): an auto add leaves docs/specs/queue.md unchanged, so after a chain auto loop's first task fails,
+        # the anchor's tracked files stay unchanged through its drains and a later auto loop's, status still reports the
+        # failed and the blocked row, and the later loop's delivered work comes in with the report's command, a fast-forward
+        # pull. Before: add wrote the rows into the anchor's queue and only a landed plan removed them, so the queue stayed
+        # modified and the pull refused it.
+        bare, _ = self.remote(pending=False)
+        self.plan("cf", CHAIN, {"cf.t1": {"product": "bad-greeting"}, "cf.t2": {"product": "app"}}, delivery="auto")
+        for _ in range(2):
+            tasks = self.tasks(self.drain(local=False))
+            self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"cf.t1": "failed", "cf.t2": "blocked"})
+            self.assertEqual(self.g("status", "--porcelain", "--untracked-files=no"), "")
+        self.plan("lt", [("t1", [], "Notes", [NOTES_CHECK])], {"lt.t1": {"product": "notes"}}, delivery="auto")
+        self.assertEqual(self.tasks(self.drain(local=False))["lt.t1"]["delivery"], "COMPLETE")
+        self.assertEqual(self.g("status", "--porcelain", "--untracked-files=no"), "")
+        pulled = self.bring_in("lt", bare)
+        self.assertEqual(pulled.returncode, 0, pulled.stdout + pulled.stderr)
+        self.assertEqual(self.g("rev-parse", "HEAD"), self.run_ok(["git", "--git-dir", str(bare), "rev-parse", "main"]))
+        self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"lt.t1": "x"})
+        status = self.cli("status", "--repo", self.anchor)
+        self.assertEqual((status["counts"]["failed"], status["counts"]["blocked"]), (1, 1))
+        self.assertIn("cf.t2: blocked-prerequisite:cf.t1", status["blockers"])
+
+    def test_commit_all_after_an_auto_add_commits_nothing_of_the_loop(self):
+        # Prediction (R3b): an auto add leaves docs/specs/queue.md unchanged, so `git commit -am` right after it commits only
+        # the user's own tracked edit, while status shows the loop's task. Before: add wrote the rows into the anchor's
+        # queue, and the commit swept them up.
+        self.plan("ca", [CHAIN[0]], {}, delivery="auto")
+        with (self.anchor / ".gitignore").open("a", encoding="utf-8") as ignore:
+            ignore.write("# own edit\n")
+        self.g("commit", "-qam", "own edit")
+        self.assertEqual(self.g("show", "--name-only", "--format=", "HEAD"), ".gitignore")
+        self.assertEqual(self.cli("status", "--repo", self.anchor)["next"], "ca.t1")
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_local_loop_added_after_an_auto_loop_fast_forwards_while_its_pr_waits(self):
+        # Prediction (R3c, d): auto adds leave docs/specs/queue.md unchanged, so a local loop added after an auto loop
+        # commits only its own row, and with that auto loop's PR pending and another auto loop added since, the local loop's
+        # reported fast-forward applies and leaves the tracked files clean. Before: the local add's commit swept up the
+        # first auto loop's rows, and the second auto loop's uncommitted rows made the fast-forward refuse the queue.
+        bare, _ = self.remote(pending=True)
+        self.plan("au", [CHAIN[0]], {"au.t1": {"product": "greeting"}}, delivery="auto")
+        self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
+        self.assertEqual(list(self.rows("HEAD")), ["lo.t1"])
+        self.plan("aw", [("t1", [], "Todo", [TODO_CHECK])], {"aw.t1": {"product": "todo"}}, delivery="auto")
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual((tasks["au.t1"]["delivery"], tasks["lo.t1"]["delivery"]), ("PENDING", "LOCAL_ONLY"))
+        merged = self.bring_in("lo", bare)
+        self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
+        self.assertEqual((self.g("rev-parse", "HEAD"), self.g("status", "--porcelain", "--untracked-files=no")),
+                         (self.receipt("lo.t1")["publish_sha"], ""))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_used_loop_id_is_refused_before_and_after_the_sync(self):
+        # Prediction (R3e): add refuses a loop id that already has an add record, so a different package under a used auto
+        # loop id is refused while the loop is queued and again after the drain synced the anchor, which would otherwise
+        # take the old loop's receipts for the new one. Before: both re-adds were accepted, their task ids clashing with no
+        # queued row.
+        bare, _ = self.remote(pending=False)
+        self.plan("ru", [CHAIN[0]], {"ru.t1": {"product": "greeting"}}, delivery="auto")
+        package = self.anchor / "docs/specs/ru"
+        saved = {path: path.read_bytes() for path in package.rglob("*") if path.is_file()}
+
+        def readd():
+            meta = self.queue["write_package"](self.anchor, "ru", [("t9", [], "Other", [NOTES_CHECK])], delivery="auto", base=self.base)
+            return self.cli("add", meta, code=1)["reason"]
+        self.assertIn("loop id ru was already added", readd())
+        shutil.rmtree(package)
+        for path, body in saved.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(body)
+        self.assertEqual(self.tasks(self.drain(local=False))["ru.t1"]["delivery"], "COMPLETE")
+        self.assertEqual((package.exists(), self.added("ru")["synced"]), (False, True))
+        self.assertIn("loop id ru was already added", readd())
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_an_auto_loop_resumed_local_only_is_reported(self):
