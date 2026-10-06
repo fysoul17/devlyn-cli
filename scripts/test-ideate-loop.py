@@ -954,10 +954,6 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t2"]["result"], "accepted")
         self.assertIn("- Whole-loop acceptance: ACCEPTED", self.report("inv"))
 
-    def pull(self, bare):
-        return subprocess.run(["git", "-C", str(self.anchor), "pull", "--ff-only", str(bare), "main"], env=self.env, capture_output=True,
-                              text=True, encoding="utf-8")
-
     def remote_rows(self, bare):
         return {identity: row["mark"] for identity, row in self.rows("main", git_dir=bare).items()}
 
@@ -976,11 +972,11 @@ class LoopFixture(unittest.TestCase):
     def test_auto_delivery_fast_forwards_the_anchor_and_a_materialized_row_stays_replaced(self):
         # Prediction (Q, A): add commits nothing; the first task's PR carries the captured package and the loop's queue file,
         # which records the replaced legacy row's text and occurrence; the dependent starts from the merged package with no
-        # inputs commit; a pull fast-forwards the anchor with a clean tree; the legacy queue stays as it was, CRLF line
-        # endings and the duplicate row above the replaced one included. Before the drain, before the pull, after it and in
-        # a fresh clone of the remote, status shows the duplicate pending and the loop's rows in the replaced row's place,
-        # and materializing that line again is refused, so the intent never runs twice. Before: the plan rewrote the legacy
-        # queue, and once the drain had synced the anchor its record stopped replacing the row until the pull.
+        # inputs commit; the report's `Bring into` command fast-forwards the anchor with a clean tree; the legacy queue stays
+        # as it was, CRLF line endings and the duplicate row above the replaced one included. Before the drain, before that
+        # command, after it and in a fresh clone of the remote, status shows the duplicate pending and the loop's rows in the
+        # replaced row's place, and materializing that line again is refused, so the intent never runs twice. Before: the plan
+        # rewrote the legacy queue, and once the drain had synced the anchor its record stopped replacing the row until the pull.
         bare, data = self.remote(pending=False)
         legacy = b"# Intent Queue\r\n\r\n- [ ] unrelated legacy intent\r\n- [x] earlier legacy work\r\n- [ ] unrelated legacy intent\r\n"
         (self.anchor / "docs/specs/queue.md").write_bytes(legacy)
@@ -1003,8 +999,8 @@ class LoopFixture(unittest.TestCase):
         tasks = self.tasks(self.drain(local=False))
         self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"inv.t1": "COMPLETE", "inv.t2": "COMPLETE"})
         self.assertEqual(replaced(self.anchor), expected)
-        pulled = self.pull(bare)
-        self.assertEqual(pulled.returncode, 0, pulled.stdout + pulled.stderr)
+        merged = self.bring_in("inv")
+        self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
         self.assertEqual((self.g("rev-parse", "HEAD"), self.g("status", "--porcelain", "--untracked-files=all")),
                          (self.run_ok(["git", "--git-dir", str(bare), "rev-parse", "main"]), ""))
         self.assertEqual(replaced(self.anchor), expected)
@@ -1043,7 +1039,7 @@ class LoopFixture(unittest.TestCase):
         for head in [*heads, main]:
             self.assertEqual(subprocess.run(["git", "-C", str(self.anchor), "merge-base", "--is-ancestor", unpushed, head],
                                             env=self.env).returncode, 1, head)
-        merged = self.bring_in("inv", bare)
+        merged = self.bring_in("inv")
         self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
         self.assertEqual((self.g("rev-list", "--parents", "-n", "1", "HEAD").split()[1:], self.g("status", "--porcelain", "--untracked-files=all")),
                          ([unpushed, main], ""))
@@ -1100,8 +1096,9 @@ class LoopFixture(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_squash_delivery_leaves_the_anchor_pull_ready(self):
         # Prediction (A3): the fake squash-merges every PR; the anchor holds no loop commit and, after add, no package copy,
-        # so `git pull --ff-only` fast-forwards the anchor to the remote base with a clean tree and both rows [x]. Before:
-        # add's commit stayed on the anchor and no squash merge descends from it, so the pull could not fast-forward.
+        # so the report's `git merge --ff origin/main` fast-forwards the anchor to the remote base with a clean tree and both
+        # rows [x]. Before: add's commit stayed on the anchor and no squash merge descends from it, so the pull could not
+        # fast-forward.
         bare, data = self.remote(pending=False, squash=True)
         self.plan("sq", CHAIN, {"sq.t1": {"product": "greeting"}, "sq.t2": {"product": "app"}}, delivery="auto")
         tasks = self.tasks(self.drain(local=False))
@@ -1109,8 +1106,8 @@ class LoopFixture(unittest.TestCase):
         main = self.run_ok(["git", "--git-dir", str(bare), "rev-parse", "main"])
         self.assertEqual(self.run_ok(["git", "--git-dir", str(bare), "rev-list", "--parents", "-n", "1", main]).split()[1:],
                          [self.receipt("sq.t1")["merge"]["mergeCommit"]["oid"]])  # a squash: one parent
-        pulled = self.pull(bare)
-        self.assertEqual(pulled.returncode, 0, pulled.stdout + pulled.stderr)
+        merged = self.bring_in("sq")
+        self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
         self.assertEqual((self.g("rev-parse", "HEAD"), self.g("status", "--porcelain", "--untracked-files=all")), (main, ""))
         self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"sq.t1": "x", "sq.t2": "x"})
         report = (self.common / "devlyn-loops/sq/drain-report.md").read_text(encoding="utf-8")
@@ -1162,26 +1159,25 @@ class LoopFixture(unittest.TestCase):
         task = self.tasks(self.drain(local=False))["ed.t2"]
         self.assertEqual((task["result"], "output lacks ['Hello, Ada!', 'Hello, Lin!']" in task["reason"]), ("failed", True))
 
-    def bring_in(self, loop, bare=None):
-        """Run the loop's drain report `Bring into` command in the anchor, origin's URL resolving to the bare remote."""
-        command = shlex.split(next(line for line in self.report(loop).splitlines() if line.startswith("- Bring into ")).split(": ", 1)[1].split(" (")[0])
+    def bring_in(self, loop):
+        """Run the loop's drain report `Bring into` command in the anchor."""
+        command = shlex.split(next(line for line in self.report(loop).splitlines() if line.startswith("- Bring into ")).split(": ", 1)[1])
         self.assertEqual(command[0], "git")
-        return subprocess.run(["git", *(["-c", f"url.{bare}.insteadOf=https://github.com/test/project.git"] if bare else []), "-C", str(self.anchor),
-                               *command[1:]], env=self.env, capture_output=True, text=True, encoding="utf-8")
+        return subprocess.run(["git", "-C", str(self.anchor), *command[1:]], env=self.env, capture_output=True, text=True, encoding="utf-8")
 
     def apply_one_drains_reports(self, order):
         # Prediction (B): one drain delivers an auto loop and accepts a local loop, and both reports are written before
         # either command runs; the auto report's `git merge --ff origin/main` and the local report's `git merge --ff`
         # then apply in either order with every row [x] and a clean tree. Before: the auto report was chosen when it was
         # written, `git pull --ff-only origin main`, which aborts once the local merge has moved main.
-        bare, _ = self.remote(pending=False)
+        self.remote(pending=False)
         self.plan("au", [CHAIN[0]], {"au.t1": {"product": "greeting"}}, delivery="auto")
         self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
         tasks = self.tasks(self.drain(local=False))
         self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"au.t1": "COMPLETE", "lo.t1": "LOCAL_ONLY"})
         self.assertIn("- Bring into main: git merge --ff origin/main\n", self.report("au"))
         for loop in order:
-            merged = self.bring_in(loop, bare if loop == "au" else None)
+            merged = self.bring_in(loop)
             self.assertEqual(merged.returncode, 0, (loop, merged.stdout + merged.stderr))
         self.assertEqual(({identity: row["mark"] for identity, row in self.rows("HEAD").items()},
                           self.g("status", "--porcelain", "--untracked-files=all")), ({"au.t1": "x", "lo.t1": "x"}, ""))
@@ -1212,7 +1208,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.g("status", "--porcelain", "--untracked-files=no"), "")
         for pull in (False, True):
             if pull:
-                pulled = self.bring_in("lt", bare)
+                pulled = self.bring_in("lt")
                 self.assertEqual(pulled.returncode, 0, pulled.stdout + pulled.stderr)
                 self.assertEqual(self.g("rev-parse", "HEAD"), self.run_ok(["git", "--git-dir", str(bare), "rev-parse", "main"]))
                 self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"lt.t1": "x"})
@@ -1227,7 +1223,7 @@ class LoopFixture(unittest.TestCase):
         # (main now has the local loop's commits) brings them in beside it with no conflict, every row [x] and a clean tree.
         # Before: the local add commit and the carriers inserted rows at one point of docs/specs/queue.md, so that merge
         # conflicted.
-        bare, data = self.remote(pending=True)
+        _, data = self.remote(pending=True)
         self.plan("au", [CHAIN[0]], {"au.t1": {"product": "greeting"}}, delivery="auto")
         self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
         self.plan("aw", [("t1", [], "Todo", [TODO_CHECK])], {"aw.t1": {"product": "todo"}}, delivery="auto")
@@ -1240,7 +1236,7 @@ class LoopFixture(unittest.TestCase):
             self.assertEqual(self.merge_pr(data, number).returncode, 0)
         self.drain(local=False)
         self.assertIn("- Bring into main: git merge --ff origin/main\n", self.report("aw"))
-        merged = self.bring_in("aw", bare)
+        merged = self.bring_in("aw")
         self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
         self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"au.t1": "x", "aw.t1": "x", "lo.t1": "x"})
         self.assertEqual(self.g("status", "--porcelain", "--untracked-files=all"), "")
