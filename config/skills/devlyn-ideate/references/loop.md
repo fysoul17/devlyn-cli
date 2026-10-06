@@ -66,6 +66,8 @@ The packet (`<receipt dir>/packet.json`) carries everything a fresh executor nee
 | `evidence_dir`, `runner` | Where loop evidence lives (`<worktree>/.devlyn/loop`, ignored by Git) and the runner argv. |
 | `submission`, `obligations` | Where to write the submission, and the completion obligations. |
 
+Writable tool caches go under `scratch`, for example `npm_config_cache=<scratch>/npm`: Codex's sandbox keeps caches in HOME read-only.
+
 Run `runner` (`acceptance.py run --packet <packet>`) on the committed candidate before review. It prints `{"result": <path>, "passed": ..., "reasons": [...]}`; listing a wholly clean result (empty `reasons`) lets drain reuse its outcomes. Then write the submission:
 
 ```json
