@@ -80,7 +80,7 @@ A worker receives this file and its task packet only, never the planning convers
 Schema: [expected.schema.json](../../_shared/expected.schema.json), parsed strictly (duplicate keys and non-finite numbers are rejected) by `_shared/expected-contract.py`. Loop tasks use:
 
 - `verification_commands`, each with exactly one of `argv` (preferred: no shell, portable to Windows) or `cmd` (shell); `exit_code` (default 0); `timeout_sec` (1-600, default 60); `stdout_contains` and `stdout_not_contains` (UTF-8 substrings of stdout plus stderr); and non-empty `contract_refs` naming this task's requirement IDs.
-- `required_files` and `forbidden_files` (literal Git paths), `forbidden_patterns` (regex over the task's own diff; `disqualifier` blocks acceptance, `warning` is recorded), `max_deps_added` (default 0) and `pure_design`.
+- `required_files` and `forbidden_files` (literal Git paths), `forbidden_patterns` (regex over the task's own diff; `disqualifier` blocks acceptance, `warning` is recorded), `max_deps_added` (default 0; counts only the root `package.json`, so list other manifests in `forbidden_files`) and `pure_design`.
 
 Rejected otherwise:
 
