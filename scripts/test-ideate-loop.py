@@ -1222,34 +1222,36 @@ class LoopFixture(unittest.TestCase):
         report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")
         self.assertIn("Delivery: PENDING", report)
         self.assertIn("Resume: ", report)
-        # Prediction (A): a later --local-only drain never rewrites the delivery of a task whose PR is already pushed; only
-        # that task waits, with its reason, while its dependent runs locally on its accepted source, and nothing reaches the
-        # remote. Before (b3774008): the drain ended BLOCKED on inv.t1.
+        # Prediction (A): a later --local-only drain never rewrites the delivery of a task whose PR is already pushed, nor runs
+        # the rest of its loop locally on that unmerged source: inv.t1 and its dependent inv.t2 wait naming the PR, with no
+        # executor call, and nothing reaches the remote. Before: inv.t2 ran locally on inv.t1's pushed source (one call).
         server = json.loads(data.read_text())
         result = self.drain()
-        tasks = self.tasks(result)
-        self.assertEqual((result["status"], tasks["inv.t1"]["reason"], tasks["inv.t2"]["delivery"]), ("WAITING", f"inv.t1 already has a pushed PR "
-                         f"{receipt['pr_url']}, which --local-only never rewrites; drain without --local-only to deliver it", "LOCAL_ONLY"))
-        self.assertEqual((self.receipt("inv.t1")["delivery"], self.receipt("inv.t1").get("local_only"), self.calls("inv.t2")), ("PENDING", None, 1))
+        reason = f"inv.t1 already has a pushed PR {receipt['pr_url']}, so --local-only never runs loop inv; drain without --local-only"
+        self.assertEqual((result["status"], [(task["identity"], task["result"], task.get("reason")) for task in result["tasks"]]),
+                         ("WAITING", [("inv.t1", "accepted", reason), ("inv.t2", "pending", reason)]))
+        self.assertEqual((self.receipt("inv.t1")["delivery"], self.receipt("inv.t1").get("local_only"), self.calls("inv.t2")), ("PENDING", None, 0))
         self.assertEqual(json.loads(data.read_text()), server)
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
-    def test_a_local_task_refuses_a_prerequisite_its_frontier_lacks(self):
-        # Prediction (prerequisite ancestry): after squash delivery, pr.t2 started from pr.t1's squash, so its source lacks
-        # pr.t1's. A --local-only drain leaves pr.t2, whose PR is pushed, waiting, and refuses the integration task pr.t3,
-        # whose frontier pr.t2 lacks that prerequisite source, with no executor call. Before (b3774008): the drain ended
-        # BLOCKED on pr.t2's pushed PR and never reached pr.t3.
+    def test_a_local_only_drain_leaves_a_published_auto_loop_waiting(self):
+        # Prediction (A): once a task of an auto loop is published, --local-only never runs that loop: with pr.t1 squash-merged
+        # and pr.t2's PR pending, pr.t2 and the integration task pr.t3 wait naming pr.t1's PR, with no executor call, while a
+        # local loop added later is accepted, and the drain ends WAITING. Before: pr.t3 was allocated locally on pr.t2's
+        # source, which lacks pr.t1's pre-squash source, so every such drain ended BLOCKED "plan an integration task" and
+        # lo.t1 never ran.
         bare, data = self.remote(pending=True, squash=True)
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1", "t2"], "Greeting app", [APP_CHECK])]
         self.plan("pr", tasks, {"pr.t1": {"product": "greeting"}, "pr.t2": {"product": "notes"}, "pr.t3": {"product": "app"}}, delivery="auto")
         self.drain(local=False)
         self.assertEqual(self.merge_pr(data, 1).returncode, 0)
         self.assertEqual(self.tasks(self.drain(local=False))["pr.t2"]["delivery"], "PENDING")
-        first, second = self.receipt("pr.t1"), self.receipt("pr.t2")
-        blocked = self.drain(code=1)
-        self.assertIn(f"pr.t3: prerequisite source {first['source_sha']} is not in the accepted frontier {second['source_sha']}; plan an integration task",
-                      blocked["reason"])
-        self.assertEqual(self.calls("pr.t3"), 0)
+        self.plan("lo", [("t1", [], "Todo", [TODO_CHECK])], {"lo.t1": {"product": "todo"}})
+        result = self.drain()
+        reason = f"pr.t1 already has a pushed PR {self.receipt('pr.t1')['pr_url']}, so --local-only never runs loop pr; drain without --local-only"
+        self.assertEqual((result["status"], {task["identity"]: (task["result"], task.get("reason")) for task in result["tasks"]}), ("WAITING", {
+            "pr.t1": ("accepted", None), "pr.t2": ("accepted", reason), "pr.t3": ("pending", reason), "lo.t1": ("accepted", None)}))
+        self.assertEqual((self.calls("pr.t3"), self.calls("lo.t1")), (0, 1))
 
 
 def main():

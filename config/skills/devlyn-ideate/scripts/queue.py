@@ -626,10 +626,19 @@ def capture(v, loop):
     return v["records"][loop]["commit"] if loop in v["records"] else None
 
 
+def published(v, loop):
+    """Why --local-only leaves an auto/pr loop to a normal drain: a task of it already has a pushed PR (loop.md, Commands)."""
+    for identity, state in v["states"].items():
+        if identity.split(".")[0] == loop and state["receipt"] and state["receipt"].get("pushed"):
+            url = state["receipt"].get("pr_url") or state["receipt"]["branch"]
+            return f"{identity} already has a pushed PR {url}, so --local-only never runs loop {loop}; drain without --local-only"
+    return None
+
+
 def is_local(v, loop):
     added, package = v["records"].get(loop), v["packages"].get(loop)
     delivery = added["delivery"] if added else package and package["manifest"]["delivery"]
-    return (v["local_only"] or delivery == "local-only"
+    return (v["local_only"] and not published(v, loop) or delivery == "local-only"
             or any(s["receipt"] and s["receipt"].get("local_only") for i, s in v["states"].items() if i.split(".")[0] == loop))
 
 
@@ -648,6 +657,8 @@ def waiting(v, row):
     if invalid := v["states"][row["identity"]].get("invalid"):
         return invalid
     local = is_local(v, row["loop"])
+    if v["local_only"] and not local:
+        return published(v, row["loop"])
     for dep in v["packages"][row["loop"]]["tasks"][row["task"]]["depends_on"]:
         identity = f"{row['loop']}.{dep}"
         state = v["states"][identity]
@@ -1006,6 +1017,9 @@ def advance(v, row, opts):
     """Run or resume one task from its durable state; never replays a bound result. Returns why it waits instead."""
     identity = row["identity"]
     path = receipt_path(v["common"], identity)
+    local = is_local(v, row["loop"])
+    if opts.local_only and not local:
+        return published(v, row["loop"])
     if not path.exists() and (refused := allocate(v, row, opts)):
         return refused
     receipt = read_json(path)
@@ -1027,10 +1041,6 @@ def advance(v, row, opts):
     receipt = read_json(path)
     if receipt.get("delivery") not in SETTLED:
         packet = read_json(path.parent / "packet.json")
-        local = opts.local_only or bool(receipt.get("local_only")) or packet["delivery"] == "local-only"
-        if local and receipt.get("pushed"):
-            return (f"{identity} already has a pushed PR {receipt.get('pr_url') or receipt['branch']}, which --local-only never rewrites; "
-                    "drain without --local-only to deliver it")
         result = task_complete("complete", receipt=str(path), acceptance=None, mode=None if local else packet["delivery"],
                                local_only=local, writers_stopped=True)
         progress(identity, f"delivery {result['status']}")
