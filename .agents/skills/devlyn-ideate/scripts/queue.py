@@ -836,8 +836,9 @@ def evidence_ignored(anchor, common, start):
 
 
 def allocate(v, row, opts):
-    """Allocate the task's owned worktree, or return why it waits: its refreshed remote base holds another version of the
-    loop's package or lacks the checkout's instructions (waiting() checks a local start before selection)."""
+    """Allocate the task's owned worktree, or return why it waits: origin names no GitHub repository, or its refreshed
+    remote base holds another version of the loop's package or lacks the checkout's instructions (waiting() checks a local
+    start before selection)."""
     identity, loop, task = row["identity"], row["loop"], row["task"]
     package = v["packages"][loop]
     manifest = package["manifest"]
@@ -854,10 +855,12 @@ def allocate(v, row, opts):
         values["from_receipt" if tip else "local_base"] = str(tip["path"]) if tip else start
     else:
         helper = shared("task-complete")
+        origin = git_run(anchor, "config", "--get", "remote.origin.url", ok=(0, 1)).stdout.decode("utf-8").strip()
         try:
-            values["repository"] = helper["repository_from_url"](git(anchor, "config", "--get", "remote.origin.url"))
-        except (LoopError, helper["CompletionError"]) as exc:
-            raise LoopError(f"{identity}: {manifest['delivery']} delivery needs an origin remote naming one GitHub repository: {exc}") from exc
+            values["repository"] = helper["repository_from_url"](origin)
+        except helper["CompletionError"]:
+            return (f"{manifest['delivery']} delivery needs an origin remote naming one GitHub repository ({origin or 'no origin is set'}); "
+                    "add a GitHub origin, or drain with --local-only")
         try:
             start = helper["remote_base"]({"common_gitdir": str(common), "remote": "origin", "base": manifest["base_ref"]})
         except helper["CompletionError"] as exc:

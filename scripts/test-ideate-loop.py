@@ -577,11 +577,22 @@ class LoopFixture(unittest.TestCase):
         # its capture and the branch it was added on: its task, in the place of the legacy row it materializes, is accepted
         # LOCAL_ONLY beside a local loop's, no remote is needed, and its report brings it into main with `git merge --ff`.
         # Before (b3774008): it waited, "au was added for auto delivery, so no add commit carries its package".
+        # Prediction (H5): first, drained without --local-only, au.t1 waits with no receipt or executor call, its reason
+        # naming origin (a GitLab URL, then none) and both remedies, while lo.t1 is accepted. Before: allocation raised, so
+        # the drain ended BLOCKED with "git config --get: " or the URL check's error, never naming --local-only, and lo.t1
+        # never ran.
         meta = self.queue["write_package"](self.anchor, "au", [CHAIN[0]], delivery="auto", base=self.base,
                                            intent="User asked: unrelated legacy intent.")
         self.behaviors.update({"au.t1": {"product": "greeting"}})
         self.cli("add", meta, "--materialize", 4)
         self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
+        needs = "auto delivery needs an origin remote naming one GitHub repository ({}); add a GitHub origin, or drain with --local-only"
+        self.g("remote", "add", "origin", "https://gitlab.com/team/project.git")
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in self.tasks(self.drain(local=False)).items()},
+                         {"au.t1": ("pending", needs.format("https://gitlab.com/team/project.git")), "lo.t1": ("accepted", None)})
+        self.g("remote", "remove", "origin")
+        self.assertEqual(self.tasks(self.drain(local=False))["au.t1"].get("reason"), needs.format("no origin is set"))
+        self.assertEqual((self.receipt_path("au.t1").exists(), self.calls("au.t1")), (False, 0))
         result = self.drain()
         tasks = self.tasks(result)
         self.assertEqual([(identity, task["result"], task["delivery"]) for identity, task in tasks.items()],

@@ -86,7 +86,7 @@ A removed flag stops with its instruction and selects no other behavior.
 ## plan
 
 1. Inspect, then elicit, per [elicitation.md](references/elicitation.md). A document argument is the input contract: carry each substantive requirement into a task without weakening it, cite the document in `## Intent`, and never modify it.
-2. Write `docs/specs/<loop-id>/meta.md` and each task's `spec.md` and `spec.expected.json` per [package-format.md](references/package-format.md). In the manifest, `base_ref` is the delivery branch and `base_sha` the exact commit the loop builds on; `delivery` is `local-only` when the user restricted delivery, else the project's `git config --local devlyn.completionMode` (absent means `auto`). `## Execution policy` quotes the autonomous policy, which binds every task's executor.
+2. Write `docs/specs/<loop-id>/meta.md` and each task's `spec.md` and `spec.expected.json` per [package-format.md](references/package-format.md). In the manifest, `base_ref` is the delivery branch and `base_sha` the exact commit the loop builds on; `delivery` is `local-only` when the user restricted delivery or, recorded as an assumption, when `origin` does not name one GitHub repository; else the project's `git config --local devlyn.completionMode` (absent means `auto`). `## Execution policy` quotes the autonomous policy, which binds every task's executor.
 3. Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" check '<absolute meta.md>'` and repair the package until it reports `VALID`.
 4. Report the package path, the tasks with their dependencies, and every recorded assumption.
 
