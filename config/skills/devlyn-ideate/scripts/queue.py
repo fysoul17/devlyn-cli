@@ -707,6 +707,8 @@ def local_start(v, loop):
         if not start or not ancestor(v["anchor"], base, start):
             where = f"is at {start}, which does not descend from the manifest base_sha {base}" if start else "no longer exists"
             return None, f"{branch}, the branch {loop} was added on, {where}; bring {base} into {branch}, or plan the work as a new loop"
+        if drift := package_drift(v, loop, start, branch):
+            return start, drift
     if drift := instruction_drift(v["anchor"], start):
         return start, f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run without them; {remedy}"
     return start, None
@@ -780,6 +782,19 @@ def require_merged(v, row, base):
         require(merge and ancestor(v["anchor"], merge, base), f"{row['identity']}: base {base} lacks the delivered prerequisite merge {merge}")
 
 
+def package_drift(v, loop, start, where):
+    """Why a task of a recorded loop cannot start at `start` (loop.md step 3): it holds the loop's queue file, so the task
+    would bind its copy of the package, and that copy differs from the capture."""
+    added = v["records"].get(loop)
+    if added is None or show(v["anchor"], start, loop_queue(loop)) is None:
+        return None
+    files = [rel for rel in git(v["anchor"], "diff", "--name-only", "--no-renames", "--diff-filter=DMT", added["commit"], start, "--",
+                                f"docs/specs/{loop}").splitlines() if rel != loop_queue(loop)]
+    return (f"{where} holds another version of loop {loop}'s package (differing from {CAPTURES}{loop}: {', '.join(files)}), so its tasks "
+            f"cannot run their captured contracts there; plan the work as a new loop, or restore those files on {where} to the captured "
+            "bytes") if files else None
+
+
 def instruction_drift(anchor, rev):
     """The installed instruction files whose content at `rev` differs from the anchor checkout's (both absent is equal): a
     task starting at `rev` would run without them. Git compares them as `git status` does: a link by its target, line endings
@@ -802,8 +817,8 @@ def evidence_ignored(anchor, common, start):
 
 
 def allocate(v, row, opts):
-    """Allocate the task's owned worktree, or return why it waits: its refreshed remote base lacks the checkout's
-    instructions (waiting() checks a local start before selection)."""
+    """Allocate the task's owned worktree, or return why it waits: its refreshed remote base holds another version of the
+    loop's package or lacks the checkout's instructions (waiting() checks a local start before selection)."""
     identity, loop, task = row["identity"], row["loop"], row["task"]
     package = v["packages"][loop]
     manifest = package["manifest"]
@@ -830,6 +845,8 @@ def allocate(v, row, opts):
             raise LoopError(f"{identity}: cannot refresh base {manifest['base_ref']}: {exc}") from exc
         values["start"] = start
         require_merged(v, row, start)
+        if drift := package_drift(v, loop, start, f"origin/{manifest['base_ref']}"):
+            return drift
     require(evidence_ignored(anchor, common, start),
             f"{identity}: .devlyn/ is not ignored in its start commit {start}, so loop evidence would dirty task source; commit a "
             f"`.devlyn/` entry to .gitignore in the base the task starts from, or add `.devlyn/` to {common / 'info' / 'exclude'}")

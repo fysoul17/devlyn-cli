@@ -400,6 +400,31 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"cc.t1": "failed", "cc.t2": "accepted", "cc.t3": "blocked"})
         self.assertEqual((self.receipt("cc.t1")["baseline"], self.receipt("cc.t2")["baseline"]), (self.base, self.base))
 
+    def test_a_loop_id_another_clone_brought_in_makes_the_first_task_wait(self):
+        # Prediction (C, L): clone B adds a local loop dup, then pulls clone A's loop dup, so the branch B added it on holds
+        # another docs/specs/dup/. B's dup.t1 waits, naming the files that differ from B's capture and the remedies, with no
+        # executor call, status names that wait, and a loop zz added after it is accepted in the same drain. Before: dup.t1
+        # bound A's contract and was accepted on A's product, then the drain ended BLOCKED "dup.t1 has no pending queue row".
+        bare, clone = self.root / "remote.git", self.root / "clone b"
+        self.run_ok(["git", "init", "-q", "--bare", "--initial-branch=main", str(bare)])
+        self.run_ok(["git", "-C", str(self.anchor), "push", "-q", str(bare), "main"])
+        self.run_ok(["git", "clone", "-q", str(bare), str(clone)])
+        self.plan("dup", [("t1", [], "Notes", [NOTES_CHECK])], {"dup.t1": {"product": "notes"}})
+        self.drain()
+        self.assertEqual(self.bring_in("dup").returncode, 0)
+        self.run_ok(["git", "-C", str(self.anchor), "push", "-q", str(bare), "main"])
+        self.cli("add", self.queue["write_package"](clone, "dup", [("t1", [], "Todo", [TODO_CHECK])], base=self.base))
+        self.run_ok(["git", "-C", str(clone), "pull", "-q", "--ff-only", "origin", "main"])
+        self.cli("add", self.queue["write_package"](clone, "zz", [("t1", [], "Greeting", [GREET_CHECK])]))
+        self.behaviors.update({"dup.t1": {"product": "bad-app"}, "zz.t1": {"product": "greeting"}})
+        tasks = self.tasks(self.drain(repo=clone))
+        reason = ("main holds another version of loop dup's package (differing from refs/devlyn/captures/dup: docs/specs/dup/t1/spec.expected.json, "
+                  "docs/specs/dup/t1/spec.md), so its tasks cannot run their captured contracts there; plan the work as a new loop, or restore "
+                  "those files on main to the captured bytes")
+        self.assertEqual(({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, self.calls("dup.t1")),
+                         ({"dup.t1": ("pending", reason), "zz.t1": ("accepted", None)}, 1))  # the one call is A's
+        self.assertIn(f"dup.t1: {reason}", self.cli("status", "--repo", clone)["blockers"])
+
     def test_two_local_loops_bring_in_in_either_order(self):
         # Prediction (Q, B): two local loops added before draining keep their rows in their own queue files, so each
         # report's `git merge --ff <frontier branch>` applies after the other in either order without a conflict, every row
@@ -1048,6 +1073,35 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual([pr["headRefName"] for pr in json.loads(data.read_text(encoding="utf-8"))["prs"]], ["devlyn/cf/t2"])
         self.assertEqual(self.g("diff", "--name-only", self.base, carrier["acceptance"]["inputs_sha"]).splitlines(), self.package("cf", ("t1", "t2", "t3")))
         self.assertEqual(self.remote_rows(bare), {"cf.t1": "F", "cf.t2": "x", "cf.t3": "F"})
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_task_waits_while_its_base_holds_another_version_of_its_package(self):
+        # Prediction (C, A): after the carrier landed docs/specs/ed/, a commit on the remote base that weakens ed.t2's
+        # spec.expected.json makes ed.t2 wait, naming that file and the remedies, with no receipt or executor call; once the base
+        # holds the captured bytes again, ed.t2 runs its captured APP_CHECK, which its broken product fails. Before: ed.t2's
+        # packet and acceptance bound the weakened check, and its broken product was accepted.
+        bare, data = self.remote(pending=True)
+        self.plan("ed", CHAIN, {"ed.t1": {"product": "greeting"}, "ed.t2": {"product": "bad-app"}}, delivery="auto")
+        self.drain(local=False)
+        self.assertEqual(self.merge_pr(data, 1).returncode, 0)
+        editor = self.root / "editor"
+        self.run_ok(["git", "clone", "-q", str(bare), str(editor)])
+        expected = editor / "docs/specs/ed/t2/spec.expected.json"
+        captured = expected.read_bytes()
+        weak = {"argv": [sys.executable, "-c", "print('ok')"], "stdout_contains": ["ok"], "contract_refs": ["R1"]}
+        expected.write_text(json.dumps({"verification_commands": [weak]}), encoding="utf-8")
+        self.g("commit", "-qam", "weaken ed.t2's check on main", work=editor)
+        self.run_ok(["git", "-C", str(editor), "push", "-q", "origin", "main"])
+        task = self.tasks(self.drain(local=False))["ed.t2"]
+        self.assertEqual((task["result"], task.get("reason"), self.receipt_path("ed.t2").exists(), self.calls("ed.t2")), (
+            "pending", "origin/main holds another version of loop ed's package (differing from refs/devlyn/captures/ed: "
+            "docs/specs/ed/t2/spec.expected.json), so its tasks cannot run their captured contracts there; plan the work as a new loop, "
+            "or restore those files on origin/main to the captured bytes", False, 0))
+        expected.write_bytes(captured)
+        self.g("commit", "-qam", "restore ed.t2's check", work=editor)
+        self.run_ok(["git", "-C", str(editor), "push", "-q", "origin", "main"])
+        task = self.tasks(self.drain(local=False))["ed.t2"]
+        self.assertEqual((task["result"], "output lacks ['Hello, Ada!', 'Hello, Lin!']" in task["reason"]), ("failed", True))
 
     def bring_in(self, loop, bare=None):
         """Run the loop's drain report `Bring into` command in the anchor, origin's URL resolving to the bare remote."""
