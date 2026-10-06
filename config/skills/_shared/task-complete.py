@@ -188,7 +188,8 @@ def allocate(args):
     common = Path(git(work, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()
     require(args.task.strip(), "task identity is required")
     git(work, "check-ref-format", "refs/heads/" + args.branch)
-    git(work, "check-ref-format", "refs/heads/" + args.base)
+    if args.base is not None:
+        git(work, "check-ref-format", "refs/heads/" + args.base)
     require(args.branch != args.base and args.branch not in {"main", "master"}, "cannot own a base/default branch")
     require(re.fullmatch(r"[A-Za-z0-9_.-]+", args.remote), "unsafe remote name")
     receipt = {"task": args.task, "repository": args.repository, "remote": args.remote,
@@ -199,7 +200,7 @@ def allocate(args):
     if local:
         receipt["local_only"] = True  # Local work needs no remote: nothing is fetched or pushed.
     else:
-        require(args.repository, "a remote allocation needs --repository <owner/repo>; allocate local work with --local-base or --from-receipt")
+        require(args.repository and args.base, "a remote allocation needs --repository <owner/repo> and --base <branch>; allocate local work with --local-base or --from-receipt")
         policy(receipt, None)
         receipt["remote_url"] = remote_url(receipt)
         require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
@@ -775,8 +776,9 @@ def main():
     actions = parser.add_subparsers(dest="action")
     allocation = actions.add_parser("allocate")
     allocation.add_argument("--repo", default=".")
-    for name in ("task", "branch", "base"):
+    for name in ("task", "branch"):
         allocation.add_argument("--"+name, required=True)
+    allocation.add_argument("--base")
     allocation.add_argument("--repository")
     allocation.add_argument("--remote", default="origin")
     allocation.add_argument("--worktree", required=True)
@@ -2028,6 +2030,20 @@ class CompletionTests(unittest.TestCase):
         self.accept()
         self.assertEqual(self.complete("--local-only")[0]["status"], "LOCAL_ONLY")
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs", 0), 0)
+
+    def test_local_allocation_needs_no_base(self):
+        """P4-2. Prediction: a local allocation with --local-base and no --base, the form agents wrote in 3 of 3 timed
+        runs, is ALLOCATED and completes LOCAL_ONLY, while a remote allocation without --base is refused naming it, with
+        nothing created."""
+        args = ["allocate", "--repo", self.work, "--task", "fixture", "--branch", "task/fixture", "--worktree", self.root / "linked"]
+        refused, _ = self.cli(*args, "--repository", "test/project", success=False)
+        self.assertIn("--base", refused["reason"])
+        self.assertEqual((self.g("branch", "--list", "task/fixture"), (self.root / "linked").exists()), ("", False))
+        result, _ = self.cli(*args, "--local-base", self.g("rev-parse", "HEAD"))
+        self.assertEqual(result["status"], "ALLOCATED")
+        self.receipt, self.task = Path(result["receipt"]), Path(result["worktree"])
+        self.accept()
+        self.assertEqual(self.complete("--local-only")[0]["status"], "LOCAL_ONLY")
 
     def test_allocation_canonicalizes_symlinked_and_dotted_worktree_paths(self):
         """P4-2. Prediction: an absent worktree path reached through a symlinked directory (macOS /tmp) or written with
