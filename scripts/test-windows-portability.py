@@ -214,6 +214,31 @@ init({options});
                 self.assertEqual(dest.read_bytes(), first)
         self.assertFalse((self.home / '.claude').exists())
 
+    def test_claude_settings_are_read_before_any_claude_write(self):
+        # Settings the install cannot merge leave the Claude target as it was, with a clear message;
+        # a leading BOM, which Claude Code accepts, merges.
+        claude = self.project / '.claude'
+        hook = claude / 'skills/_shared/resolve-stop-hook.py'
+        hook.parent.mkdir(parents=True); hook.write_bytes(b'retired helper\n')
+        (self.project / 'CLAUDE.md').write_bytes(b'# Team rules\n\nUse pnpm.\n')
+        settings = claude / 'settings.json'
+        retired = {'type': 'command', 'command': 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'}
+        def tree():
+            return {p: p.read_bytes() if p.is_file() else None for p in [self.project / 'CLAUDE.md', *claude.rglob('*')]}
+        for invalid in (b'{"hooks": {"Stop": []},}\n', b'\xef\xbb\xbf[]', b'{"env": "x"}'):
+            with self.subTest(invalid=invalid):
+                settings.write_bytes(invalid)
+                before = tree()
+                result = self.cli('-y', '--claude', code=1)
+                self.assertIn(b'Cannot merge .claude/settings.json', result.stderr)
+                self.assertNotIn(b'    at ', result.stderr)
+                self.assertEqual(tree(), before)
+        settings.write_bytes(b'\xef\xbb\xbf' + json.dumps({'custom': 1, 'hooks': {'Stop': [{'hooks': [retired]}]}}).encode())
+        self.cli('-y', '--claude')
+        self.assertEqual(json.loads(settings.read_bytes()), {'custom': 1, 'hooks': {'Stop': []},
+                         'env': {'ENABLE_PROMPT_CACHING_1H': 'true', 'BASH_MAX_TIMEOUT_MS': '3600000'}})
+        self.assertFalse(hook.exists())
+
     def test_claude_install_ships_no_unreferenced_commit_conventions(self):
         # The managed block no longer points to commit conventions, so a new install adds none;
         # a copy an earlier release installed is the user's now and stays as it is.

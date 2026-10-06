@@ -736,9 +736,29 @@ function installAgentsProject(withClaude) {
 
 // Project CLAUDE.md and .claude/: skills, templates and settings.
 function installClaudeCore() {
-  updateInstructions('CLAUDE.md');
   const skillsDir = skillRoots('claude', false)[0];
   const targetDir = path.dirname(skillsDir);
+  // Read before any write, so settings this install cannot merge leave the Claude target as it was.
+  const settingsPath = path.join(targetDir, 'settings.json');
+  const unmergeable = (reason) => new InstructionError(`Cannot merge .claude/settings.json: ${reason}. `
+    + 'CLAUDE.md and .claude/ are unchanged; fix the file and rerun the same install command.');
+  let settings = {};
+  if (fs.existsSync(settingsPath)) {
+    try {
+      // Claude Code accepts a leading byte order mark.
+      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, ''));
+    } catch (error) {
+      throw unmergeable(error.message);
+    }
+  }
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+    throw unmergeable('root must be a JSON object');
+  }
+  if (Object.prototype.hasOwnProperty.call(settings, 'env')
+      && (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env))) {
+    throw unmergeable('env must be a JSON object');
+  }
+  updateInstructions('CLAUDE.md');
   for (const entry of fs.readdirSync(CONFIG_SOURCE)) {
     if (entry !== 'skills') copyRecursive(path.join(CONFIG_SOURCE, entry), path.join(targetDir, entry), targetDir);
   }
@@ -753,25 +773,10 @@ function installClaudeCore() {
   ignoreInGit(['.devlyn/', '.claude/skills/.devlyn-install.json']);
 
   // One-hour foreground Bash calls and one-hour prompt caching serve a drain host that waits in the foreground.
-  const settingsPath = path.join(targetDir, 'settings.json');
-  let settings = {};
-  if (fs.existsSync(settingsPath)) {
-    try {
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    } catch (error) {
-      throw new Error(`Cannot merge .claude/settings.json: ${error.message}`);
-    }
-  }
-  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
-    throw new Error('Cannot merge .claude/settings.json: root must be a JSON object');
-  }
   let settingsChanged = false;
   if (!Object.prototype.hasOwnProperty.call(settings, 'env')) {
     settings.env = {};
     settingsChanged = true;
-  }
-  if (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env)) {
-    throw new Error('Cannot merge .claude/settings.json: env must be a JSON object');
   }
   if (!settings.env.ENABLE_PROMPT_CACHING_1H) {
     settings.env.ENABLE_PROMPT_CACHING_1H = 'true';
