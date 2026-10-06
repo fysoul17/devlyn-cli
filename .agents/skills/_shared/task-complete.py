@@ -762,7 +762,7 @@ def complete(args):
         atomic_json(path, receipt)
         try:
             cleanup(receipt, path, pr)
-        except WritersUnobservable as error:
+        except (WritersUnobservable, WriterActive) as error:
             # Conservative retention: the merge settles delivery; workspace, task refs and custody stay, reported.
             receipt["workspace_cleanup"] = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
                 sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)])}
@@ -1807,13 +1807,16 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("merges",0), 0)
 
     def test_actual_foreign_writer_and_registration(self):
+        # H4. Prediction: a process still using the merged task's tree settles the delivery COMPLETE with the workspace
+        # retained (CLEANUP_PENDING) and the process named, as unobservable writers do. Before: complete ended BLOCKED
+        # "active process <pid> uses task files", so the merged delivery never settled and a drain stopped there.
         self.allocate(); self.accept()
         child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], cwd=self.task)
         try:
-            _, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
-            self.assertNotEqual(r.returncode, 0)
+            result, _ = self.complete("--writers-stopped", "--mode", "auto")
+            self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+            self.assertIn("active process", result["workspace_cleanup"]["reason"])
             self.assertTrue(self.task.exists())
-            self.assertIn("active process", json.loads(r.stdout)["reason"])
         finally:
             child.terminate(); child.wait(timeout=5)
         # A foreign branch in the same registered tree never inherits ownership.
