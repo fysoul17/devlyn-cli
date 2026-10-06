@@ -1,9 +1,10 @@
 # Outer-owner task completion
 
 Completion belongs to the outer task owner after source acceptance. It does not
-change product verdicts or worker isolation. Explicit local-only/no-push
-instructions win. Otherwise delivery is authorized by the task scope; no
-additional approval ceremony is required.
+change product verdicts or worker isolation. Direct work edits the current
+checkout and is delivered only when the user asks to ship it (commit, PR or
+merge); an ideate drain delivers every task. Explicit local-only/no-push
+instructions win.
 
 ## Allocate before work
 
@@ -13,8 +14,8 @@ directory, resolving directory symlinks first. Missing source identity is
 BLOCKED:skill-source-unresolved; a missing task-complete.py is
 BLOCKED:shared-dir-unresolved. Never select another installation.
 
-Run the bound task-complete.py before committing owner inputs or
-starting direct work:
+Run the bound task-complete.py before committing owner inputs or editing a
+change the user asked to ship:
 
 ```sh
 python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \
@@ -29,7 +30,9 @@ work, or an origin that is not one GitHub repository, allocate with
 `--local-base "$(git rev-parse HEAD)"` and no `--repository`/`--remote`, then
 complete with `--local-only`: that commit is the baseline, nothing is fetched
 or pushed, and `git merge --ff <task branch>` brings the change into the
-user's branch. Save the returned
+user's branch. A change already made in the current checkout moves over: run
+`git stash push --include-untracked -- <its paths>` there, then `git stash pop`
+in the new worktree. Save the returned
 receipt path under the common Gitdir. `reconciled` reports earlier accepted,
 PR-delivered tasks whose merged resources were cleaned or retained; it is
 informational, so never resume or release a receipt you do not own. Existing

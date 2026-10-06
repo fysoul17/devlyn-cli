@@ -27,7 +27,7 @@ Three discipline rules govern HOW the principles are applied:
 ## Quick Start
 
 - `devlyn-ideate` — loop designer and intent queue: `plan <intent or document>` writes a validated loop package, `add` queues its tasks, `status` (or no arguments) reports the queue, `drain` executes it serially.
-- Delivery — direct work follows `_shared/task-completion.md` in the installed devlyn skill root: an owned linked worktree allocated before editing, scoped commit acceptance, then PR/merge and owned-resource cleanup; the drain does the same per task. Local-only/no-push instructions win.
+- Delivery — direct work edits the current checkout. Only when the user asks to ship it (commit, PR or merge), follow `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`). An ideate drain delivers every task. Local-only/no-push instructions win.
 - Executor — `devlyn-engines` shows it and pins it in `.devlyn/engines.json`. A pinned executor does the implementation work, direct or drained: when it is not you, delegate to it, and when it is unavailable stop with `BLOCKED:<engine>-unavailable`. Without a pin, you are the executor.
 
 Each skill's `SKILL.md` is the source of truth for its flags and workflow.

@@ -887,7 +887,8 @@ init({options});
         # 4.1.0 renamed the AGENTS.md title and intro; design-ui, the queue skill and resolve were
         # retired after it. A 4.0.1, 4.1.0 or main (9ecbe51c, d2d34e3e) block is replaced, never stacked,
         # and an edited one keeps only the edits: its stock paragraphs, the retired ones too, are
-        # registered fingerprints.
+        # registered fingerprints. Prediction (P4-1): no block keeps the delivery pointer that allocated a
+        # worktree for every direct task; the new block says direct work edits the current checkout.
         prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
         for name, version in (('AGENTS.md', '4.0.1'), ('AGENTS.md', '4.1.0'), ('AGENTS.md', '9ecbe51c'), ('AGENTS.md', 'd2d34e3e'),
                               ('CLAUDE.md', '4.1.0'), ('CLAUDE.md', '9ecbe51c'), ('CLAUDE.md', 'd2d34e3e')):
@@ -905,9 +906,10 @@ init({options});
                         self.assertTrue(after.endswith(suffix.replace(b'\n', eol)))
                         self.assertIn(b'# Project Instructions' + eol, managed)
                         self.assertIn(CURRENT_DEFAULTS, managed)
+                        self.assertIn(b'direct work edits the current checkout', managed)
                         for stale in (b'Codex CLI reads this file', b'design-ui', b'devlyn-queue', b'references/task-completion.md',
                                       b'outer-loop.md', b'queue drains retain', b'--quick', b'--from-spec', b'per item: spec it',
-                                      b'devlyn-resolve', b'VERIFY', b'`/devlyn-'):
+                                      b'devlyn-resolve', b'VERIFY', b'`/devlyn-', b'allocated before editing'):
                             self.assertNotIn(stale, after)
                         if edited:
                             self.assertTrue(custom.startswith(prefix.replace(b'\n', eol)))
