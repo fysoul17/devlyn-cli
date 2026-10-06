@@ -9,7 +9,7 @@ Follow the product direction in NORTH-STAR and O1–O4 in 0232:
 - `ideate` as the loop designer;
 - `design-ui` retired.
 
-Wall, input and output are judged per correctly completed task, failures included. Incumbent replacement targets at least 30% less wall per success than F, with quality preserved and no input or output increase; §6 defines zero-success comparisons. Core routes come first. Run the registered 0232 cells when ready; no further run approval is required.
+Wall, input and output are judged per correctly completed task, failures included. Incumbent replacement targets at least 30% less wall per success than F, with quality preserved and no input or output increase; §6 defines zero-success comparisons. Core routes come first.
 
 ## State
 
@@ -34,7 +34,31 @@ Wall, input and output are judged per correctly completed task, failures include
 
 1. **The owner's decisions and release prep:** the version and release notes, a LICENSE file, whether to delete `config/templates`, whether to restore the orphan-cleanup sentence to the installed block, and a publish CI gate.
 2. **The installed-baseline registration:** the principles block plus ideate, with the easy-task panel and 0223's B5 task (0232 §8). After that, I′, licensed by I's lost final reviews and review cost.
-3. **Follow-ups** stay in their lists: `r4-followups.md` and the Deferred sections of `e2e-fix-r3-contract.md` and `final-fixes-contract.md` (all in `.devlyn/bundle/`), and the phase A audit result (`/private/tmp/claude-501/-Users-aipalm-Documents-GitHub-devlyn-cli/1fab229d-cadb-4193-a918-dd653ce2251f/tasks/wrjhsf4os.output`). Not in them: on Pi and Grok, `devlyn-engines clear` exits 1 after deleting the pin, because `role-config.py` resolves the host default after the edit.
+3. **Follow-ups:** the Known follow-ups below.
+
+## Known follow-ups
+
+One line per class. Details and reproductions are in the checkout's `.devlyn/bundle/`: `final-audit-phase-b.json` (phase B, findings quoted by title) and `final-audit-phase-a.json` (phase A).
+
+- **merge_refused:** an auto loop in a squash-only repository reports `Delivery: PR` without the refusal reason (phase B "The drain drops merge_refused").
+- **Custody binding:** a drain interrupted while binding custody never resumes a task whose checks failed or were rerun (phase B "A drain interrupted while binding custody").
+- **Retained scratch:** the drain report shows `Scratch cleanup: RETAINED` without its reason or resume command (phase B "Retained scratch is reported without its reason").
+- **Deleted branch:** the drain report prints `Branch:` for a task branch delivery already deleted (phase B "The report prints 'Branch:'").
+- **Unread submission fields:** the submission asks for `findings`, `cleanup`, `handoff` and `summary`, which nothing reads (phase B "The submission shape asks for four fields").
+- **Queued loops:** the planner reads them through status and the captures, but a later local loop starts from its add branch, never an earlier loop's unlanded frontier (an owner decision), and a queued loop cannot be withdrawn (phase B "The planner cannot see queued, unlanded loops"; "A queued loop cannot be withdrawn").
+- **Codex host permissions:** status, add and drain write the Git directory, so a Codex host in its default sandbox needs escalation, and no doc says so (phase B "A Codex host in its default workspace-write sandbox").
+- **Global install:** `--global` installs ideate without the principles block and says nothing (phase B "A global install gives ideate without the principles block").
+- **Non-default `base_ref`:** an auto/pr loop whose `base_ref` is not the default branch runs its executor, then waits on a delivery task-complete refuses; check it before allocation (phase B "One task's delivery refusal", its base_ref part).
+- **`attach --file`:** `task-complete.py attach` still defaults `--file` to the legacy `docs/specs/queue.md` (phase B "task-complete.py attach still defaults --file").
+- **loop.md and task-completion.md:** loop.md sends drain hosts to the direct-work completion contract, which points back with a duplicate summary (phase B "loop.md sends drain hosts to the 152-line direct-work completion contract").
+- **Repetition:** the block and SKILL.md repeat text other surfaces carry (phase B "The always-loaded block and SKILL.md repeat text").
+- **Research staleness:** `benchmark/ceiling/README.md` lists the tranche and the no-degradation cell as live, though both stage the retired resolve skill, and NORTH-STAR's pair-mode commitments and policy still describe resolve's VERIFY pair as shipped.
+- **`devlyn-engines clear` on Pi and Grok:** exits 1 after deleting the pin, because `role-config.py` resolves the host default after the edit.
+- **Drain-wide stops:** a failed base refresh, an executor that cannot start, a missing prerequisite merge, an unignored `.devlyn/` and a receipt directory without `receipt.json` still stop the whole drain, short of the shared rule in `final-fixes-part2-contract.md` that only an unreadable queue does.
+- **Installer layouts:** an importing CLAUDE.md that already holds a block keeps both copies, a CLAUDE.md linked to AGENTS.md is still refused, and `-y` does not detect a Claude install whose committed CLAUDE.md is only `@AGENTS.md` while `.claude/` is ignored (phase B "A CLAUDE.md that imports AGENTS.md gets the block loaded twice").
+- **`max_deps_added`:** a one-line `"dependencies"` object in the root `package.json` counts as 0 added (phase B "max_deps_added checks only package.json").
+- **Earlier lists:** `r4-followups.md` (round 4) and the Deferred sections of `e2e-fix-r3-contract.md` (round 3) and `final-fixes-contract.md` (phase A).
+- **Real-run evidence:** the real-host runs (`~/.local/share/nx01/e2e-smoke3`) cover only local-only loops in repositories with no remote and no dependencies; before release, run one auto loop on a throwaway GitHub repository (phase B "Real-host evidence covers only local-only loops").
 
 ## Open user decisions and carried notes
 
