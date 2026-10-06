@@ -1192,6 +1192,23 @@ class LoopFixture(unittest.TestCase):
             self.assertIn("- Whole-loop acceptance: ACCEPTED", report.read_text(encoding="utf-8"))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_an_auto_loop_is_drained_only_from_the_checkout_that_added_it(self):
+        # Prediction: an auto add's rows apply only in the checkout that added it, which holds the untracked package, so
+        # with the loop's first task left active by an executor that could not start, status and a drain from a linked
+        # worktree of the repository show no row of it and leave its receipt unbound, and the adding checkout's next drain
+        # delivers the task with one executor call. Before: every checkout applied the add record, so the linked worktree,
+        # lacking the package, failed the active task as inputs-changed with no executor call.
+        self.remote(pending=False)
+        self.plan("au", [CHAIN[0]], {"au.t1": {"product": "greeting"}}, delivery="auto")
+        stopped = self.cli("drain", "--repo", self.anchor, "--", str(self.root / "no executor"), "{packet}", code=1)
+        self.assertIn("executor could not start", stopped["reason"])
+        linked = self.root / "linked"
+        self.g("worktree", "add", "-q", "-b", "side", str(linked))
+        self.assertEqual((self.cli("status", "--repo", linked)["counts"]["active"], self.tasks(self.drain(local=False, repo=linked))), (0, {}))
+        self.assertNotIn("acceptance", self.receipt("au.t1"))
+        self.assertEqual((self.tasks(self.drain(local=False))["au.t1"]["delivery"], self.calls("au.t1")), ("COMPLETE", 1))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_delivery_pending_keeps_acceptance_resources_and_resume(self):
         bare, data = self.remote(pending=True)
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")

@@ -473,9 +473,10 @@ def add_record(common, loop, keys):
     return record
 
 
-def queued(common, data):
-    """The queue that add, reconcile, status and drain read: the rows of `data` plus, in add order, those of each unsynced
-    auto/pr add record that `data` lacks, a materialize record's rows in place of its legacy row (loop.md step 1)."""
+def queued(anchor, common, data):
+    """The queue that add, reconcile, status and drain read in the checkout `anchor`: the rows of `data` plus, in add
+    order, those of each unsynced auto/pr add record made there, which holds its untracked package, that `data` lacks, a
+    materialize record's rows in place of its legacy row (loop.md step 1)."""
     rows, records = parse_queue(data), []
     for path in (common / "devlyn-loops").glob("*/added.json"):
         record = read_json(path)
@@ -483,8 +484,9 @@ def queued(common, data):
             lines = record["rows"] if isinstance(record["rows"], list) and all(isinstance(line, str) for line in record["rows"]) else []
             new = [dict(row, index=None) for row in parse_queue("\n".join(lines).encode("utf-8"))]
             require(new and len(new) == len(lines) and all(row["identity"] and row["loop"] == record.get("loop_id") for row in new)
-                    and isinstance(record.get("order"), int), f"{path}: malformed add record")
-            records.append((record["order"], new, record.get("legacy")))
+                    and isinstance(record.get("order"), int) and isinstance(record.get("anchor"), str), f"{path}: malformed add record")
+            if record["anchor"] == str(anchor):
+                records.append((record["order"], new, record.get("legacy")))
     for _, new, legacy in sorted(records, key=lambda item: item[0]):
         if not {row["identity"] for row in new} & {row["identity"] for row in rows}:  # else the pulled queue carries them
             at = next((index for index, row in enumerate(rows) if not row["identity"] and row["mark"] == " " and row["line"] == legacy), len(rows))
@@ -608,7 +610,7 @@ def view(anchor, common, local_only=False):
     with lock(common, "queue.lock", blocking=True):
         recover_adds(common)
         queue = anchor / QUEUE
-        rows = queued(common, queue.read_bytes() if queue.exists() else b"")
+        rows = queued(anchor, common, queue.read_bytes() if queue.exists() else b"")
     claims, unreadable = {}, []
     for path in sorted((common / "devlyn-completion").glob("*/receipt.json")):
         try:
@@ -1224,7 +1226,7 @@ def add(args):
     with lock(common, "queue.lock", blocking=True):
         recover_adds(common)
         data = queue.read_bytes() if queue.exists() else None
-        existing = queued(common, data or b"")
+        existing = queued(anchor, common, data or b"")
         identities = [f"{loop}.{task}" for task in package["tasks"]]
         clash = sorted({row["identity"] for row in existing} & set(identities))
         if clash and local and added_path(common, loop).is_file() and (commit := add_record(common, loop, ()).get("commit")) \
@@ -1242,10 +1244,11 @@ def add(args):
             intent = " ".join(sections(package["meta_text"], "meta.md")["Intent"].split())
             require(" ".join(target["text"].split()) in intent, "meta.md '## Intent' must reproduce the legacy row's intent verbatim")
         if not local:
-            # The queue file stays unchanged: status and drain apply the recorded rows until the first PR that carries the plan
-            # lands them (loop.md steps 1, 4 and 11).
+            # The queue file stays unchanged: status and drain in this checkout, which holds the package, apply the recorded
+            # rows until the first PR that carries the plan lands them (loop.md steps 1, 4 and 11).
             order = max((record["order"] for record in map(read_json, (common / "devlyn-loops").glob("*/added.json")) if "order" in record), default=0)
-            write_json(added_path(common, loop), {"schema_version": 1, "loop_id": loop, "order": order + 1, "rows": [row.decode("utf-8") for row in rows],
+            write_json(added_path(common, loop), {"schema_version": 1, "loop_id": loop, "anchor": str(anchor), "order": order + 1,
+                                                  "rows": [row.decode("utf-8") for row in rows],
                                                   **({"legacy": target["line"]} if target else {})})
             return {"status": "ADDED", "queue": str(queue), "tasks": identities}
         if target:
