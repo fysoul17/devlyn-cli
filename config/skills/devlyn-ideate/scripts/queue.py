@@ -718,9 +718,10 @@ def sync(worktree, branch, parent, commit):
 def input_files(v, row, receipt, local):
     anchor, worktree, loop = v["anchor"], Path(receipt["worktree"]), row["loop"]
     base = show(worktree, receipt["baseline"], QUEUE) or HEADER
-    # An auto/pr task whose base lacks the loop's rows carries the plan: the whole package and every row of the loop.
+    # An auto/pr task whose base lacks the loop's rows carries the plan: every row of the loop and the package, less a task
+    # whose text fails validation, which waits and then commits its own files like any task after the carrier.
     carries = not local and lacks_plan(v, loop, receipt["baseline"])
-    tasks = [entry["id"] for entry in v["packages"][loop]["manifest"]["tasks"]] if carries else [row["task"]]
+    tasks = list(v["packages"][loop]["tasks"]) if carries else [row["task"]]
     rels = [f"docs/specs/{loop}/meta.md", *(f"docs/specs/{loop}/{task}/{name}" for task in tasks for name in ("spec.md", "spec.expected.json"))]
     files = {rel: (anchor / rel).read_bytes() for rel in rels}
     rows = [other for other in v["rows"] if other.get("loop") == loop]

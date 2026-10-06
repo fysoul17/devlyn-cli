@@ -862,6 +862,34 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.remote_rows(bare), {"cf.t1": "F", "cf.t2": "x", "cf.t3": "F"})
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_pending_task_missing_a_file_waits_alone_while_the_carrier_lands_the_plan(self):
+        # Prediction: with a pending task's spec.expected.json deleted, the carrier commits every row and the package less
+        # that task, so it and an independent loop are delivered while that task waits with the error; once the file is
+        # back, the task commits its own files and the loop is accepted. Before: the carrier read every task's files after
+        # its allocation, so each drain blocked on the missing file and no executor ran.
+        self.remote(pending=False)
+        self.plan("mv", [("t1", [], "Notes", [NOTES_CHECK]), ("t2", ["t1"], "Todo", [TODO_CHECK])],
+                  {"mv.t1": {"product": "notes"}, "mv.t2": {"product": "todo"}}, delivery="auto")
+        self.plan("ot", [("t1", [], "Greeting", [GREET_CHECK])], {"ot.t1": {"product": "greeting"}}, delivery="auto")
+        missing = self.anchor / "docs/specs/mv/t2/spec.expected.json"
+        saved = missing.read_bytes()
+        missing.unlink()
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: (task["result"], task.get("delivery")) for identity, task in tasks.items()},
+                         {"mv.t1": ("accepted", "COMPLETE"), "mv.t2": ("pending", None), "ot.t1": ("accepted", "COMPLETE")})
+        self.assertIn("spec.expected.json", tasks["mv.t2"]["reason"])
+        carrier = self.receipt("mv.t1")
+        self.assertEqual(self.g("diff", "--name-only", carrier["baseline"], carrier["acceptance"]["inputs_sha"]).splitlines(),
+                         ["docs/specs/mv/meta.md", "docs/specs/mv/t1/spec.expected.json", "docs/specs/mv/t1/spec.md", "docs/specs/queue.md"])
+        missing.write_bytes(saved)
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual((tasks["mv.t2"]["delivery"], self.calls("mv.t2")), ("COMPLETE", 1))
+        second = self.receipt("mv.t2")
+        self.assertEqual(self.g("diff", "--name-only", second["baseline"], second["acceptance"]["inputs_sha"]).splitlines(),
+                         ["docs/specs/mv/t2/spec.expected.json", "docs/specs/mv/t2/spec.md"])
+        self.assertIn("- Whole-loop acceptance: ACCEPTED", (self.common / "devlyn-loops/mv/drain-report.md").read_text(encoding="utf-8"))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_an_auto_loop_resumed_local_only_is_reported(self):
         # Prediction: an auto loop whose first task an auto drain left active and unpushed, resumed with --local-only, drains
         # both tasks to LOCAL_ONLY, and this drain and the next each end with the loop's report. Before: the report read the
