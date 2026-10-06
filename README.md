@@ -27,7 +27,7 @@ If devlyn-cli saved you time, [give it a star](https://github.com/fysoul17/devly
 npx devlyn-cli
 ```
 
-That's it. The installer asks two things:
+That's it. The installer asks:
 
 1. **What** — `AGENTS.md — Codex · omp · Pi · Grok` (checked) and `CLAUDE.md — Claude Code` (checked when this project already has a devlyn Claude install). Space toggles, Enter confirms.
 2. **Where** — `This project` (default) or `Global — every project on this machine`.
@@ -55,7 +55,7 @@ Give ideate an intent or a document. It writes a loop package — a meta-prompt 
 | Command | What it does |
 |---|---|
 | `/devlyn-ideate plan <intent or document>` | Inspects the project, asks only what it must, and writes a validated package to `docs/specs/<loop-id>/`. Nothing is queued or run. |
-| `/devlyn-ideate add <intent or package>` | Plans when needed, then queues the package's tasks in dependency order. It commits nothing: the package and its rows in `docs/specs/<loop-id>/queue.md` are held at `refs/devlyn/captures/<loop-id>` and your copies are removed. The first task's commit brings them into history, and the drain report's `Bring into` command brings the result into your branch. |
+| `/devlyn-ideate add <intent or package>` | Plans when needed, then queues the package's tasks in dependency order. It makes no commit on your branch: the package and its rows in `docs/specs/<loop-id>/queue.md` are held at `refs/devlyn/captures/<loop-id>` and your copies are removed. The first task's commit brings them into history, and the drain report's `Bring into` command brings the result into your branch. |
 | `/devlyn-ideate status` | Pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
 | `/devlyn-ideate drain` | Runs the queue serially and hands-free. |
 
