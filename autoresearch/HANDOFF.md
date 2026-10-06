@@ -32,13 +32,13 @@ Wall, input and output are judged per correctly completed task, failures include
 
 **Next:**
 
-1. **The owner's decisions and release prep:** the version and release notes, a LICENSE file, whether to delete `config/templates`, whether to restore the orphan-cleanup sentence to the installed block, and a publish CI gate.
+1. **The owner's decisions and release prep:** the version and release notes, a LICENSE file, whether to delete `config/templates`, whether to restore the orphan-cleanup sentence to the installed block, a publish CI gate, whether to veto resolve's retirement (0232 §8), and two ideate policies from phase B: the `--autonomous` rule on user-visible defaults (restore 4.1.0's parenthetical, or allow recorded literal interpretations; phase B marks it before release) and the integration-task rule that forces false dependencies.
 2. **The installed-baseline registration:** the principles block plus ideate, with the easy-task panel and 0223's B5 task (0232 §8). After that, I′, licensed by I's lost final reviews and review cost.
 3. **Follow-ups:** the Known follow-ups below.
 
 ## Known follow-ups
 
-One line per class. Details and reproductions are in the checkout's `.devlyn/bundle/`: `final-audit-phase-b.json` (phase B, findings quoted by title) and `final-audit-phase-a.json` (phase A).
+One line per class. Details, each with its reproduction described, are in the checkout's `.devlyn/bundle/`: `final-audit-phase-b.json` (phase B, findings quoted by title) and `final-audit-phase-a.json` (phase A); the scratch scripts they name were temporary.
 
 - **merge_refused:** an auto loop in a squash-only repository reports `Delivery: PR` without the refusal reason (phase B "The drain drops merge_refused").
 - **Custody binding:** a drain interrupted while binding custody never resumes a task whose checks failed or were rerun (phase B "A drain interrupted while binding custody").

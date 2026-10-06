@@ -31,6 +31,7 @@ That's it. The installer asks:
 
 1. **What** — `AGENTS.md — Codex · omp · Pi · Grok` (checked) and `CLAUDE.md — Claude Code` (checked when this project already has a devlyn Claude install). Space toggles, Enter confirms.
 2. **Where** — `This project` (default) or `Global — every project on this machine`.
+3. **Optional skills & packs** — none checked; see [Optional Add-ons](#optional-add-ons) below. MCP servers are offered only with CLAUDE.md.
 
 In a project, AGENTS.md readers load the skills from `.agents/skills/`; Claude Code loads only `.claude/skills/` and reads AGENTS.md when the project has no CLAUDE.md; a CLAUDE.md the installer creates imports an existing AGENTS.md (`@AGENTS.md`). Global installs skills only: `~/.agents/skills/` (omp, Pi, Grok) and `~/.codex/skills/` (Codex), plus `~/.claude/skills/` for Claude Code. Every target gets the `devlyn-ideate` skill and the `devlyn-engines` utility. In Codex / omp / Pi, invoke them as skills (`$devlyn-ideate`); in Claude Code and Grok they're slash commands (`/devlyn-ideate`). Rerunning refreshes skills and the managed instruction block while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery.
 
