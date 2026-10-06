@@ -800,7 +800,7 @@ function installClaudeCore() {
   }
   if (settingsChanged) {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-    log('  → settings.json (one-hour Bash max + 1h prompt caching)', 'dim');
+    log('  → settings.json', 'dim');
   }
   // Their ownership cannot be established, so the other retired settings stay; name the ones present.
   const retired = [
