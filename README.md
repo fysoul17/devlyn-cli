@@ -59,7 +59,7 @@ Give ideate an intent or a document. It writes a loop package — a meta-prompt 
 | `/devlyn-ideate status` | Pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
 | `/devlyn-ideate drain` | Runs the queue serially and hands-free. |
 
-A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without them, taking only scope-narrowing, reversible, non-user-visible defaults. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened) under your installed CLAUDE.md/AGENTS.md instructions. Tasks start from committed state, the branch you added the loop on or the remote base for `auto`/`pr`, so commit the installer's changes and whatever a plan depends on before adding a loop, and push them for `auto`/`pr`. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it, never on the executor's say-so; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local.
+A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without them, taking only scope-narrowing, reversible, non-user-visible defaults. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened; Pi and Grok need a pin) under your installed CLAUDE.md/AGENTS.md instructions. Tasks start from committed state, the branch you added the loop on or the remote base for `auto`/`pr`, so commit the installer's changes and whatever a plan depends on before adding a loop, and push them for `auto`/`pr`. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it: the drain runs those checks itself, reusing only a wholly clean runner result for that source, while review coverage is attested by records the executor submits; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local: each accepted task stays on its `devlyn/<loop-id>/<task-id>` branch in a retained worktree, nothing is merged or pushed, and the drain report's `Bring into` command is `git merge --ff <latest accepted task branch>`.
 
 ### Delivery
 
@@ -67,7 +67,8 @@ Each task gets its own linked worktree; accepted tasks default to scoped commit 
 → merge when the repository allows it (otherwise the PR waits for a person). After the
 PR merges, the worktree and branch its session released are cleaned; anything in use is
 kept. Set `git config --local devlyn.completionMode pr` to stop at the PR; `task-complete.py complete --mode auto|pr`
-overrides one task. Local-only/no-push instructions take precedence; existing
+overrides one task. Local-only/no-push instructions take precedence: accepted work stays on
+its task branch in its retained worktree, and nothing is pushed or merged. Existing
 branches cannot be adopted. Direct tasks use their actual checks and root
 acceptance. Pending checks or unsupported merge policy retain resources and
 report a receipt-based resume command separately from product verification.
