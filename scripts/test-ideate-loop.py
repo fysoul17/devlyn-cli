@@ -392,6 +392,23 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"inv.t1": "accepted", "inv.t2": "accepted"})
         self.assertEqual(self.receipt("inv.t1")["baseline"], commit)
 
+    @unittest.skipIf(os.name == "nt", "a commit hook signals the add's process group")
+    def test_a_retried_add_reports_the_commit_a_crash_or_interrupt_left(self):
+        # Prediction: add killed, or interrupted by Ctrl-C, after its commit landed is retried; the retry reports that
+        # commit as ADDED, with the add recorded and nothing left uncommitted. Before: the retry was refused as "task
+        # identity already queued", telling the host to plan the same loop again under new IDs.
+        for loop, script, stopped in (("ka", "kill -KILL 0", lambda r: r.returncode == -signal.SIGKILL),
+                                      ("ki", "kill -INT 0; sleep 1", lambda r: "KeyboardInterrupt" in r.stderr)):
+            with self.subTest(loop=loop):
+                meta = self.queue["write_package"](self.anchor, loop, [CHAIN[0]])
+                result = self.hooked_add(meta, "post-commit", script)
+                self.assertTrue(stopped(result), f"exit {result.returncode}: {result.stdout}{result.stderr}")
+                commit = self.g("rev-parse", "HEAD")
+                self.assertEqual(self.g("log", "-1", "--format=%s"), f"devlyn loop: add {loop}")
+                retried = self.cli("add", meta)
+                self.assertEqual((retried["status"], retried["commit"], retried["tasks"]), ("ADDED", commit, [f"{loop}.t1"]))
+                self.assertEqual((self.added(loop)["commit"], self.g("status", "--porcelain", "--untracked-files=all")), (commit, ""))
+
     def test_frontier_is_the_latest_accepted_source_and_divergence_is_refused(self):
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1"], "Greeting app", [APP_CHECK]), ("t4", ["t2", "t3"], "Notes again", [NOTES_CHECK])]
         self.plan("fr", tasks, {"fr.t1": {"product": "greeting"}, "fr.t2": {"product": "notes"}, "fr.t3": {"product": "app"}, "fr.t4": {"product": "notes"}})

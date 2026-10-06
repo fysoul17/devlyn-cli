@@ -1166,6 +1166,10 @@ def add(args):
         existing = parse_queue(data or b"")
         identities = [f"{loop}.{task}" for task in package["tasks"]]
         clash = sorted({row["identity"] for row in existing} & set(identities))
+        if clash and local and added_path(common, loop).is_file() and (commit := add_record(common, loop, ()).get("commit")) \
+                and planned_tree(anchor, commit, paths, show(anchor, commit, QUEUE)) == git(anchor, "rev-parse", commit + "^{tree}"):
+            # The recorded add of this very package, completed above or before an interrupt, is reported: a retry succeeds.
+            return {"status": "ADDED", "queue": str(queue), "tasks": identities, "commit": commit}
         require(not clash, f"task identity already queued: {', '.join(clash)}; plan revised work under new IDs")
         if args.materialize:
             target = next((row for row in existing if row["index"] == args.materialize - 1), None)
@@ -1395,10 +1399,11 @@ class QueueTests(unittest.TestCase):
     def test_add_is_literal_atomic_and_materializes_legacy_rows(self):
         package = {path: path.read_bytes() for path in (self.anchor / "docs/specs/inv").rglob("*") if path.is_file()}
         queue = self.anchor / QUEUE
-        self.assertEqual(self.cli("add", self.meta)["tasks"], ["inv.t1", "inv.t2"])
+        added = self.cli("add", self.meta)
+        self.assertEqual(added["tasks"], ["inv.t1", "inv.t2"])
         expected = HEADER + f"{row_line('inv.t1', 'Interface 인터페이스')}\n\n{row_line('inv.t2', 'Consumer [app]')}\n".encode()
         self.assertEqual(queue.read_bytes(), expected)
-        self.assertIn("already queued: inv.t1, inv.t2", self.cli("add", self.meta, code=1)["reason"])
+        self.assertEqual(self.cli("add", self.meta)["commit"], added["commit"])  # its recorded add, so a retry succeeds
         self.assertEqual(queue.read_bytes(), expected)
         self.assertEqual({path: path.read_bytes() for path in package}, package)
         queue.write_bytes(expected + b"- [ ] Make   the  report weekly")
@@ -1415,6 +1420,11 @@ class QueueTests(unittest.TestCase):
         self.assertEqual(git(self.anchor, "log", "-2", "--format=%s").splitlines(), ["devlyn loop: add rep", "devlyn loop: add inv"])
         self.assertEqual(read_json(added_path(common, "rep"))["commit"], git(self.anchor, "rev-parse", "HEAD"))
         self.assertEqual(git(self.anchor, "status", "--porcelain", "--untracked-files=all"), "")
+        # Revised work under queued identities is refused, also once the revision is committed.
+        spec = self.anchor / "docs/specs/inv/t1/spec.md"
+        spec.write_text(spec.read_text(encoding="utf-8").replace(" works.", " works for every caller."), encoding="utf-8")
+        git(self.anchor, "commit", "-qam", "revise inv.t1", env=self.env)
+        self.assertIn("already queued: inv.t1, inv.t2", self.cli("add", self.meta, code=1)["reason"])
 
     def test_generated_rows_are_separated_by_one_blank_line(self):
         """S1. Prediction: add and --materialize separate each row they generate from every neighbouring row by exactly one

@@ -867,7 +867,7 @@ init({options});
         add = lambda code=0: run([sys.executable, helper, 'add', meta], cwd=self.project, env=env, code=code)
         add()
         self.assertEqual(queue.read_bytes(), expected)
-        self.assertIn(b'already queued: loop.t1', add(code=1).stdout)
+        add()  # The package's recorded add is reported again, so a retried add succeeds; nothing is written.
         self.assertEqual(queue.read_bytes(), expected)
         # The helper writes only while it holds <common Gitdir>/devlyn-loops/queue.lock, so concurrent adds serialize.
         second = loop['write_package'](self.project, 'next', [('t1', [], 'Next', [{'argv': [sys.executable, '-c', 'pass'], 'contract_refs': ['R1']}])])
