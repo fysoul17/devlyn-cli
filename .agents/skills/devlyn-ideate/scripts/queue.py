@@ -556,7 +556,11 @@ def derive_state(anchor, common, row, claims, rev):
     path, receipt = claims[0]
     require(receipt.get("branch") == branch_of(identity) and path == receipt_path(common, identity),
             f"receipt {path} claims {identity} from branch {receipt.get('branch')!r}; conflicting ownership, inspect it")
-    require(receipt.get("allocation") == "owned", f"{identity}: allocation was interrupted ({path}); uncertain ownership blocks adoption, inspect it")
+    if receipt.get("allocation") != "owned":
+        # Never adopted, and no executor ran: the task waits until the user removes what the allocation left.
+        state["invalid"] = (f"allocation did not finish ({path}); remove its worktree {receipt.get('worktree')} and branch "
+                            f"{receipt['branch']} if present, delete {path.parent}, then drain again")
+        return state
     result = None if not receipt.get("acceptance") else "failed" if receipt.get("product") == "FAILED" else "accepted"
     require(row["mark"] == " " or result == state["kind"],
             f"conflicting terminal state for {identity}: queue row [{row['mark']}] but receipt {path} is {result or 'unbound'}")

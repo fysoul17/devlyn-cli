@@ -792,6 +792,33 @@ class LoopFixture(unittest.TestCase):
             exclude.write(".devlyn/\n")
         self.assertEqual(self.tasks(self.drain())["ig.t1"]["result"], "accepted")
 
+    @unittest.skipIf(os.name == "nt", "the failing allocation uses a POSIX shell hook")
+    def test_an_unfinished_allocation_waits_naming_its_recovery(self):
+        # Prediction (H3): a post-checkout hook that fails while hk.t1's worktree is added leaves its receipt short of
+        # `allocation: owned`, and that drain ends BLOCKED with the hook's error. Once the hook is gone, the next drain never
+        # adopts hk.t1: it waits, naming the recovery (remove its worktree and branch if present, delete the receipt
+        # directory, drain again), status lists that wait without repeating the identity, and the local loop lo is accepted;
+        # after that recovery, the next drain accepts hk.t1. Before: every later status and drain ended BLOCKED "allocation
+        # was interrupted (...); uncertain ownership blocks adoption, inspect it", naming no recovery, and lo never ran.
+        self.plan("hk", [CHAIN[0]], {"hk.t1": {"product": "greeting"}})
+        self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
+        hook = self.common / "hooks" / "post-checkout"
+        hook.write_text("#!/bin/sh\necho 'post-checkout: setup failed' >&2\nexit 1\n", encoding="utf-8")
+        hook.chmod(0o755)
+        self.assertIn("post-checkout: setup failed", self.drain(code=1)["reason"])
+        hook.unlink()
+        path, receipt = self.receipt_path("hk.t1"), self.receipt("hk.t1")
+        reason = (f"allocation did not finish ({path}); remove its worktree {receipt['worktree']} and branch {receipt['branch']} if present, "
+                  f"delete {path.parent}, then drain again")
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()},
+                         {"hk.t1": ("pending", reason), "lo.t1": ("accepted", None)})
+        self.assertIn(f"hk.t1: {reason}", self.cli("status", "--repo", self.anchor)["blockers"])
+        self.g("worktree", "remove", "--force", receipt["worktree"])
+        self.g("branch", "-D", receipt["branch"])
+        shutil.rmtree(path.parent)
+        self.assertEqual((self.tasks(self.drain())["hk.t1"]["result"], self.calls("hk.t1")), ("accepted", 1))
+
     def remote(self, **server):
         """GitHub stand-in: task-complete's fake gh and transport wrappers over a local bare repository."""
         helper = runpy.run_path(str(self.helper))

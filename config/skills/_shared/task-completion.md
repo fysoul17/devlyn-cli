@@ -32,9 +32,10 @@ fetched or pushed. Save the returned
 receipt path under the common Gitdir. `reconciled` reports earlier accepted,
 PR-delivered tasks whose merged resources were cleaned or retained; it is
 informational, so never resume or release a receipt you do not own. Existing
-branches/trees cannot be adopted, even when their names look generated. An
-interrupted allocation stays blocked for inspection; do not delete its receipt
-and enroll the resulting branch. Unreceipted tasks remain owner-managed.
+branches/trees cannot be adopted, even when their names look generated. Nor
+can a receipt that never reached `allocation: owned`: remove its worktree and
+branch if present, delete its receipt directory, then allocate again.
+Unreceipted tasks remain owner-managed.
 
 Allocation also returns a receipt-owned `scratch` directory. Put disposable
 build intermediates there (for example, set
