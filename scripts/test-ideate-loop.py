@@ -960,15 +960,15 @@ class LoopFixture(unittest.TestCase):
         first, second = self.receipt("inv.t1"), self.receipt("inv.t2")
         self.assertEqual((first["baseline"], second["baseline"], second["acceptance"]["inputs_sha"]),
                          (base, first["merge"]["mergeCommit"]["oid"], first["merge"]["mergeCommit"]["oid"]))
-        self.assertIn("- Bring into main: git pull --ff-only origin main", self.report("inv"))
+        self.assertIn("- Bring into main: git merge --ff origin/main\n", self.report("inv"))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_no_task_pr_carries_an_unpushed_anchor_commit(self):
         # Prediction (A1): with an unpushed commit U on the anchor branch, every auto task starts from the refreshed remote
         # base, so no delivered PR head descends from U. Before: the first task started from add's commit atop U, and its
-        # PR carried U. Prediction (R5): main has U, which origin/main lacks, so the report prints `git merge origin/main`
-        # with the reason, and running it brings the delivered work in beside U. Before R5: it printed
-        # `git pull --ff-only origin main`, which cannot fast-forward the diverged branch.
+        # PR carried U. Prediction (B): the report prints `git merge --ff origin/main`, and running it merges the delivered
+        # work in beside U. Before R5: it printed `git pull --ff-only origin main`, which cannot fast-forward the diverged
+        # branch.
         bare, data = self.remote(pending=False)
         (self.anchor / "unrelated.txt").write_text("unpushed\n", encoding="utf-8")
         self.g("add", "unrelated.txt")
@@ -988,8 +988,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((self.g("rev-list", "--parents", "-n", "1", "HEAD").split()[1:], self.g("status", "--porcelain", "--untracked-files=all")),
                          ([unpushed, main], ""))
         self.assertEqual(self.run_ok([sys.executable, "app.py", "Ada"], cwd=self.anchor), "Hello, Ada!")
-        self.assertIn("- Bring into main: git merge origin/main (main has commits origin/main lacks, so this merges instead of fast-forwarding)",
-                      (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8"))
+        self.assertIn("- Bring into main: git merge --ff origin/main\n", (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8"))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_independent_pending_prs_merge_one_after_the_other(self):
@@ -1055,7 +1054,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((self.g("rev-parse", "HEAD"), self.g("status", "--porcelain", "--untracked-files=all")), (main, ""))
         self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"sq.t1": "x", "sq.t2": "x"})
         report = (self.common / "devlyn-loops/sq/drain-report.md").read_text(encoding="utf-8")
-        self.assertIn("- Bring into main: git pull --ff-only origin main", report)
+        self.assertIn("- Bring into main: git merge --ff origin/main\n", report)
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_failed_carrier_hands_the_plan_to_the_next_task(self):
@@ -1110,6 +1109,31 @@ class LoopFixture(unittest.TestCase):
         return subprocess.run(["git", *(["-c", f"url.{bare}.insteadOf=https://github.com/test/project.git"] if bare else []), "-C", str(self.anchor),
                                *command[1:]], env=self.env, capture_output=True, text=True, encoding="utf-8")
 
+    def apply_one_drains_reports(self, order):
+        # Prediction (B): one drain delivers an auto loop and accepts a local loop, and both reports are written before
+        # either command runs; the auto report's `git merge --ff origin/main` and the local report's `git merge --ff`
+        # then apply in either order with every row [x] and a clean tree. Before: the auto report was chosen when it was
+        # written, `git pull --ff-only origin main`, which aborts once the local merge has moved main.
+        bare, _ = self.remote(pending=False)
+        self.plan("au", [CHAIN[0]], {"au.t1": {"product": "greeting"}}, delivery="auto")
+        self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"au.t1": "COMPLETE", "lo.t1": "LOCAL_ONLY"})
+        self.assertIn("- Bring into main: git merge --ff origin/main\n", self.report("au"))
+        for loop in order:
+            merged = self.bring_in(loop, bare if loop == "au" else None)
+            self.assertEqual(merged.returncode, 0, (loop, merged.stdout + merged.stderr))
+        self.assertEqual(({identity: row["mark"] for identity, row in self.rows("HEAD").items()},
+                          self.g("status", "--porcelain", "--untracked-files=all")), ({"au.t1": "x", "lo.t1": "x"}, ""))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_one_drains_reports_apply_local_first(self):
+        self.apply_one_drains_reports(("lo", "au"))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_one_drains_reports_apply_auto_first(self):
+        self.apply_one_drains_reports(("au", "lo"))
+
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_plan_that_never_lands_leaves_the_tracked_queue_unchanged(self):
         # Prediction (R3a, Q): no add, drain or carrier writes the anchor, so after a chain auto loop's first task fails, the
@@ -1139,7 +1163,7 @@ class LoopFixture(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_local_loop_and_auto_loops_bring_in_without_conflict(self):
         # Prediction (Q, B): a local loop added between two auto loops runs while their carrier PRs are pending; its
-        # report's `git merge --ff` fast-forwards main, and once both PRs merged, the auto report's `git merge origin/main`
+        # report's `git merge --ff` fast-forwards main, and once both PRs merged, the auto report's `git merge --ff origin/main`
         # (main now has the local loop's commits) brings them in beside it with no conflict, every row [x] and a clean tree.
         # Before: the local add commit and the carriers inserted rows at one point of docs/specs/queue.md, so that merge
         # conflicted.
@@ -1155,7 +1179,7 @@ class LoopFixture(unittest.TestCase):
         for number in (1, 2):
             self.assertEqual(self.merge_pr(data, number).returncode, 0)
         self.drain(local=False)
-        self.assertIn("- Bring into main: git merge origin/main (main has commits origin/main lacks", self.report("aw"))
+        self.assertIn("- Bring into main: git merge --ff origin/main\n", self.report("aw"))
         merged = self.bring_in("aw", bare)
         self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
         self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"au.t1": "x", "aw.t1": "x", "lo.t1": "x"})

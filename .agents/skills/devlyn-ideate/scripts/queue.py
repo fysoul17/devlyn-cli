@@ -1110,11 +1110,9 @@ def bring_in(v, loop):
         return f"{v['records'][loop]['branch']}: git merge --ff {receipt['branch']}" if loop in v["records"] else None
     if not delivered(receipt):
         return None
-    base, tracking = receipt["base"], f"{receipt['remote']}/{receipt['base']}"
-    # The anchor holds no loop commit, so merge, squash and rebase delivery all fast-forward it unless it has commits of its own.
-    if git_run(v["anchor"], "merge-base", "--is-ancestor", "refs/heads/" + base, "refs/remotes/" + tracking, ok=(0, 1, 128)).returncode == 0:
-        return f"{base}: git pull --ff-only {receipt['remote']} {base}"
-    return f"{base}: git merge {tracking} ({base} has commits {tracking} lacks, so this merges instead of fast-forwarding)"
+    # The anchor holds no loop commit, so after merge, squash or rebase delivery this fast-forwards unless the branch has commits
+    # of its own, and merges then; like the local form, the commands of several loops apply in any order.
+    return f"{receipt['base']}: git merge --ff {receipt['remote']}/{receipt['base']}"
 
 
 def write_reports(v, status, reason):
