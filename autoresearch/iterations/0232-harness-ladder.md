@@ -408,7 +408,7 @@ Root made this decision under the owner's direction of 2026-10-05:
 - "resolve가 없어지던지 intent로 재설계되든지 할거 같은데, 그거에 맞게 설계 되어야 하지 않겠어?"
 - "그리고 사실 resolve가 없이도 claude.md나 agents.md 로 그게 가능하면 없어도 되긴 해."
 
-The owner's final instruction asked for a releasable state on main. Astra (`result-product-a1`) recommends the same and frames it as an owner yes/no question. **The owner can veto it by reverting the product PR before any release.**
+The owner's final instruction asked for a releasable state on main. Astra (`result-product-a1`) recommends the same and frames it as an owner yes/no question. **The owner can veto it by reverting PR #171 (merge `d2d34e3e`) before any release.**
 
 **What it is not.**
 - It is not an admitted replacement. The registered replacement test failed, because I was not admitted.
@@ -418,6 +418,7 @@ The owner's final instruction asked for a releasable state on main. Astra (`resu
 **Tradeoffs recorded.**
 - F has fewer completions and much higher cost than native. But it has isolated paired quality advantages (§7). Retirement gives those up.
 - Rung I's review launcher stays experimental on `candidate/0232-rung1` and is not imported through another instruction.
+- The shipped block drops the self-created-orphan cleanup sentence that 4.1.0 and rung 1 carry. 0223's add-back of that sentence is still unrun, so its B5 task joins the installed-baseline registration.
 
 **Next measurement.**
 - Register the actual installed baseline, meaning the principles block plus ideate, before any performance or default claim. Include the easy-task panel that §4 promised.
