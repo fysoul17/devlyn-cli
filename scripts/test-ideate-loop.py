@@ -96,6 +96,11 @@ INTERRUPTIBLE = ("import runpy, signal, sys\n"
                  "signal.signal(signal.SIGINT, signal.default_int_handler)\n"
                  "sys.argv = sys.argv[1:]\n"
                  "runpy.run_path(sys.argv[0], run_name='__main__')\n")
+# Two common formatter hooks over a queue on stdin: pre-commit's end-of-file-fixer and a no-double-blank-line check.
+NEWLINE_HOOKS = ("import sys\n"
+                 "data = sys.stdin.buffer.read()\n"
+                 "if data.endswith(b'\\n\\n'):\n    sys.exit('end-of-file-fixer: the queue ends in more than one newline')\n"
+                 "if b'\\n\\n\\n' in data:\n    sys.exit('the queue has two consecutive blank lines')\n")
 PRODUCTS = {
     "greeting": {"greeting.py": "def greet(name):\n    return f\"Hello, {name}!\"\n"},
     "bad-greeting": {"greeting.py": "def greet(name):\n    return f\"Hi {name}\"\n"},
@@ -266,7 +271,8 @@ class LoopFixture(unittest.TestCase):
         t1_row = self.rows(first["publish_sha"])["inv.t1"]["line"]
         self.assertTrue(t1_row.startswith("- [x] inv.t1 [Greeting interface 인사]"))
         inputs = second["acceptance"]["inputs_sha"]
-        expected = (self.base_queue.decode("utf-8") + "\n" + t1_row + "\n\n" + self.queue["row_line"]("inv.t2", "Greeting app [cli]")).strip()
+        expected = (self.base_queue.decode("utf-8") + "\n" + t1_row + "\n\n" + self.queue["row_line"]("inv.t2", "Greeting app [cli]") + "\n\n"
+                    + self.queue["TRAILER"].decode("utf-8"))
         self.assertEqual(self.queue_at(inputs), expected)
         self.assertEqual(self.run_ok([sys.executable, "app.py", "Ada"], cwd=second["worktree"]), "Hello, Ada!")
         report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")
@@ -335,10 +341,10 @@ class LoopFixture(unittest.TestCase):
         self.assertIn(f"- Bring into main: git merge --ff-only {final['branch']} (a fast-forward)", report)
 
     def test_two_local_loops_bring_in_as_reported(self):
-        # Prediction: add commits a blank line after the rows it appends, so a second local loop's rows follow an unchanged
-        # line; following both reports, the later loop fast-forwards and the earlier one merges without a conflict, every
-        # row [x]. Before: the second add's rows touched the first loop's last row, so the reported merge conflicted in
-        # docs/specs/queue.md.
+        # Prediction: add commits a blank line between the rows it appends and the trailer line, so a second local loop's
+        # rows follow an unchanged line; following both reports, the later loop fast-forwards and the earlier one merges
+        # without a conflict, every row [x]. Before: the second add's rows touched the first loop's last row, so the
+        # reported merge conflicted in docs/specs/queue.md.
         self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
         self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}})
         self.drain()
@@ -346,6 +352,34 @@ class LoopFixture(unittest.TestCase):
             self.assertIn(f"- Bring into main: git {command} (", (self.common / f"devlyn-loops/{loop}/drain-report.md").read_text(encoding="utf-8"))
             self.g(*command.split())
         self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"aa.t1": "x", "bb.t1": "x"})
+
+    @unittest.skipIf(os.name == "nt", "the commit hook, fake gh and transport wrappers are POSIX shell scripts")
+    def test_newline_hooks_accept_every_queue_the_loop_writes(self):
+        # Prediction (R1): a pre-commit hook running end-of-file-fixer's check (no file ending in more than one newline)
+        # and a no-two-consecutive-blank-lines check accepts the queue of a local add and of a local --materialize, so both
+        # commit, and the checks also accept a carrier's inputs queue; each queue ends with the trailer line and one
+        # newline. Before: the hook refused the first add, whose queue ended in a blank line.
+        self.remote(pending=False)
+        checks = self.root / "newline hooks.py"
+        checks.write_text(NEWLINE_HOOKS, encoding="utf-8")
+        hook = self.common / "hooks" / "pre-commit"
+        hook.parent.mkdir(exist_ok=True)
+        hook.write_text("#!/bin/sh\ntest -n \"$(git diff --cached --name-only -- docs/specs/queue.md)\" || exit 0\n"
+                        f"git show :docs/specs/queue.md | \"{sys.executable}\" \"{checks}\"\n", encoding="utf-8")
+        hook.chmod(0o755)
+        self.plan("aa", [("t1", [], "Notes", [NOTES_CHECK])], {"aa.t1": {"product": "notes"}})
+        meta = self.queue["write_package"](self.anchor, "bb", [("t1", [], "Todo", [TODO_CHECK])], base=self.base,
+                                           intent="User asked: unrelated legacy intent.")
+        self.behaviors.update({"bb.t1": {"product": "todo"}})
+        self.cli("add", meta, "--materialize", 4)
+        self.plan("cc", [CHAIN[0]], {"cc.t1": {"product": "greeting"}}, delivery="auto")
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "bb.t1": "accepted", "cc.t1": "accepted"})
+        for name, rev in (("add", "HEAD~1"), ("materialize", "HEAD"), ("carrier", self.receipt("cc.t1")["acceptance"]["inputs_sha"])):
+            data = subprocess.run(["git", "-C", str(self.anchor), "cat-file", "blob", rev + ":docs/specs/queue.md"], env=self.env,
+                                  capture_output=True, check=True).stdout
+            checked = subprocess.run([sys.executable, str(checks)], input=data, capture_output=True)
+            self.assertEqual((name, checked.returncode, data.endswith(b"\n" + self.queue["TRAILER"] + b"\n")), (name, 0, True), checked.stderr)
 
     def test_add_commits_only_the_package_and_queue(self):
         # add commits exactly the package and the queue; unrelated staged and unstaged changes stay as they were.
@@ -802,7 +836,8 @@ class LoopFixture(unittest.TestCase):
                          (self.run_ok(["git", "--git-dir", str(bare), "rev-parse", "main"]), ""))
         accepted = ["- [x] " + self.queue["row_line"](identity, title)[6:] for identity, title in
                     (("inv.t1", "Greeting interface 인사"), ("inv.t2", "Greeting app [cli]"))]
-        self.assertEqual(self.queue_at("HEAD"), "# Intent Queue\n\n- [x] earlier legacy work\n\n" + "\n\n".join(accepted))
+        self.assertEqual(self.queue_at("HEAD"), "# Intent Queue\n\n- [x] earlier legacy work\n\n" + "\n\n".join(accepted) + "\n\n"
+                         + self.queue["TRAILER"].decode("utf-8"))
         first, second = self.receipt("inv.t1"), self.receipt("inv.t2")
         self.assertEqual((first["baseline"], second["baseline"], second["acceptance"]["inputs_sha"]),
                          (self.base, first["merge"]["mergeCommit"]["oid"], first["merge"]["mergeCommit"]["oid"]))
@@ -851,10 +886,11 @@ class LoopFixture(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_carrier_and_another_loops_pending_last_row_pr_both_merge(self):
-        # Prediction: a carrier's plan ends with a blank line after the loop's last row, so the next loop's carrier inserts
-        # after an unchanged line; with that last row's PR and the next carrier's PR pending together, the two heads merge
-        # with each other (so in either order), they merge one after the other, and the next drain completes both. Before:
-        # the next carrier's rows touched that last row, so the second merge conflicted and the carrier stayed in flight.
+        # Prediction: a carrier's plan leaves a blank line between the loop's last row and the trailer line, so the next
+        # loop's carrier inserts after an unchanged line; with that last row's PR and the next carrier's PR pending
+        # together, the two heads merge with each other (so in either order), they merge one after the other, and the next
+        # drain completes both. Before: the next carrier's rows touched that last row, so the second merge conflicted and
+        # the carrier stayed in flight.
         bare, data = self.remote(pending=True)
         self.plan("la", [("t1", [], "Notes", [NOTES_CHECK]), ("t2", ["t1"], "Todo", [TODO_CHECK])],
                   {"la.t1": {"product": "notes"}, "la.t2": {"product": "todo"}}, delivery="auto")
