@@ -239,6 +239,14 @@ init({options});
                          'env': {'ENABLE_PROMPT_CACHING_1H': 'true', 'BASH_MAX_TIMEOUT_MS': '3600000'}})
         self.assertFalse(hook.exists())
 
+    def test_instruction_file_creation_says_created(self):
+        created = self.invoke("updateInstructions('AGENTS.md');").stdout
+        self.assertIn(b'Created AGENTS.md', created)
+        self.assertNotIn(b'Updated', created)
+        (self.project / 'AGENTS.md').write_bytes(b'# Team rules\n\nUse pnpm.\n')
+        updated = self.invoke("updateInstructions('AGENTS.md');").stdout
+        self.assertIn(b'Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved', updated)
+
     def test_claude_install_ships_no_unreferenced_commit_conventions(self):
         # The managed block no longer points to commit conventions, so a new install adds none;
         # a copy an earlier release installed is the user's now and stays as it is.

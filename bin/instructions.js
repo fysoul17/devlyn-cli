@@ -270,7 +270,7 @@ function updateInstructions(name) {
   } finally {
     if (fs.existsSync(temp)) fs.unlinkSync(temp);
   }
-  console.log(`  → Updated Devlyn defaults in ${name}; project-specific instructions preserved`);
+  console.log(exists ? `  → Updated Devlyn defaults in ${name}; project-specific instructions preserved` : `  → Created ${name}`);
   return true;
 }
 
