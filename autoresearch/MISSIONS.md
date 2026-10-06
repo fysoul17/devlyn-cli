@@ -34,8 +34,8 @@ The contract is hard:
 
 **Latest closed unit (2026-10-06):** [0232](iterations/0232-harness-ladder.md) stage 1 kept native A as the admitted rung in both
 configurations; rung I was not admitted, and full resolve completed fewer cells at far higher cost. §8 retired resolve as a
-product-scope decision (PR #171; the owner can veto it by reverting PR #171 before any release). Do not start fleet/platform
-work or reopen frozen A16.
+product-scope decision (PR #171; the owner can veto it before any release, and root then restores resolve on top of current
+main). Do not start fleet/platform work or reopen frozen A16.
 Current no-resolve instructions include comparison controls. Historical evidence
 is retained; new candidate results cannot certify legacy parity or gate15.
 The external-developer trial and broader Mission1 superiority remain open.
