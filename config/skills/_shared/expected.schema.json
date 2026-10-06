@@ -107,7 +107,7 @@
     },
     "max_deps_added": {
       "type": "integer",
-      "description": "Hard cap on new entries under dependencies/devDependencies in package.json.",
+      "description": "Hard cap on package names the root package.json's dependencies and devDependencies gain over the task inputs; a move between them adds none.",
       "minimum": 0,
       "default": 0
     },

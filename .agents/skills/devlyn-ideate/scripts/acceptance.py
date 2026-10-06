@@ -264,10 +264,28 @@ def guard_results(packet, expected, source):
         results.append({"rule": "required_files", "subject": path, "passed": present, "blocking": True})
     for path in expected.get("forbidden_files", []):
         results.append({"rule": "forbidden_files", "subject": path, "passed": path not in changed, "blocking": True})
-    deps = contract["count_deps_in_diff"](git(work, "diff", inputs, source, "--", "package.json").stdout.decode("utf-8", "replace"))
     limit = expected.get("max_deps_added", 0)
-    results.append({"rule": "max_deps_added", "subject": f"{deps} added, limit {limit}", "passed": deps <= limit, "blocking": True})
+    try:
+        added = len(dependency_names(work, source) - dependency_names(work, inputs))
+        subject, passed = f"{added} added, limit {limit}", added <= limit
+    except ValueError as exc:
+        subject, passed = str(exc), False
+    results.append({"rule": "max_deps_added", "subject": subject, "passed": passed, "blocking": True})
     return results
+
+
+def dependency_names(work, commit):
+    """Package names under dependencies and devDependencies of the root package.json at `commit`; a missing file has none."""
+    if not git(work, "ls-tree", commit, "--", "package.json").stdout:
+        return set()
+    try:
+        data = shared("expected-contract")["loads_strict_json"](git(work, "show", f"{commit}:package.json").stdout.decode("utf-8"))
+        sections = [data.get(key, {}) for key in ("dependencies", "devDependencies")] if isinstance(data, dict) else [None]
+        if not all(isinstance(section, dict) for section in sections):
+            raise ValueError("it must be an object whose dependencies and devDependencies are objects")
+    except ValueError as exc:
+        raise ValueError(f"package.json at {commit} is invalid: {exc}") from exc
+    return {name for section in sections for name in section}
 
 
 def review_problem(packet, record, source):
@@ -689,6 +707,37 @@ class AcceptanceTests(unittest.TestCase):
         self.assertNotIn("warn only", " ".join(result["reasons"]))
         blocked = self.submit(source, blockers=[{"kind": "needs-review", "detail": "Which store wins?"}])
         self.assertEqual((blocked["verdict"], blocked["reasons"], blocked["commands"]), ("FAILED", ["needs-review: Which store wins?"], []))
+
+    def test_max_deps_added_counts_the_names_the_root_package_json_gains(self):
+        """P4-3. Prediction: under the default limit 0 with a passing check, one dependency added to a one-line
+        package.json (none at the inputs) counts 1 and fails acceptance; two appended to a multi-line one count 2; a name
+        moved from dependencies to devDependencies counts 0 and is accepted; an invalid package.json fails the guard,
+        naming it."""
+        passing = {"verification_commands": [{"argv": [sys.executable, "-c", "pass"], "contract_refs": ["R1"]}]}
+
+        def guard(inputs, source):
+            if inputs is not None:
+                self.write("package.json", json.dumps(inputs, indent=2))
+            self.inputs(passing)
+            self.write("package.json", source)
+            commit = self.commit("product")
+            result = self.submit(commit)
+            return commit, result, next(g for g in result["guards"] if g["rule"] == "max_deps_added")
+
+        with self.subTest("one-line add"):
+            _, result, deps = guard(None, json.dumps({"name": "app", "dependencies": {"left-pad": "1.0.0"}}))
+            self.assertEqual((deps["subject"], result["reasons"]), ("1 added, limit 0", ["failed: guard max_deps_added 1 added, limit 0"]))
+        with self.subTest("multi-line add of 2"):
+            _, _, deps = guard({"dependencies": {"a": "1"}}, json.dumps({"dependencies": {"a": "1", "b": "1", "c": "1"}}, indent=2))
+            self.assertEqual((deps["subject"], deps["passed"]), ("2 added, limit 0", False))
+        with self.subTest("move"):
+            _, result, deps = guard({"dependencies": {"a": "1", "b": "1"}, "devDependencies": {"c": "1"}},
+                                    json.dumps({"dependencies": {"b": "1"}, "devDependencies": {"a": "1", "c": "1"}}, indent=2))
+            self.assertEqual((deps["subject"], result["verdict"]), ("0 added, limit 0", "ACCEPTED"))
+        with self.subTest("invalid"):
+            commit, result, deps = guard({"dependencies": {"a": "1"}}, '{"dependencies": {"a": "1",}}\n')
+            self.assertEqual((deps["passed"], result["verdict"]), (False, "FAILED"))
+            self.assertIn(f"package.json at {commit} is invalid", deps["subject"])
 
 
 def main():

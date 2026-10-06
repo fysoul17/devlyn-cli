@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 import sys
 import unittest
 
@@ -189,25 +188,6 @@ def slice_diff_to_files(diff_text: str, files: list[str]) -> str:
     return "".join(out)
 
 
-def count_deps_in_diff(diff_text: str) -> int:
-    """Count added dependencies/devDependencies entries in a package.json diff."""
-    in_deps = False
-    count = 0
-    for line in diff_text.splitlines():
-        if line.startswith(("diff ", "index ", "---", "+++", "@@")):
-            continue
-        marker = line[:1]
-        content = line[1:] if marker in {"+", "-", " "} else line
-        if '"dependencies"' in content or '"devDependencies"' in content:
-            in_deps = True
-        elif content.strip().startswith("}"):
-            in_deps = False
-        elif in_deps and marker == "+":
-            if re.search(r'"[^"]+"\s*:\s*"[^"]+"', content):
-                count += 1
-    return count
-
-
 class ContractTests(unittest.TestCase):
     def test_strict_json(self):
         for text, message in (('{"a":1,"a":2}', "duplicate JSON key"), ('{"a":NaN}', "invalid JSON numeric constant")):
@@ -244,7 +224,6 @@ class ContractTests(unittest.TestCase):
         diff = ('diff --git a/package.json b/package.json\n--- a/package.json\n+++ b/package.json\n@@ -1,3 +1,5 @@\n'
                 ' {\n   "dependencies": {\n+    "left-pad": "1.0.0",\n+    "is-odd": "3.0.0"\n   }\n }\n'
                 'diff --git a/other b/other\n+x\n')
-        self.assertEqual(count_deps_in_diff(diff), 2)
         self.assertNotIn("other", slice_diff_to_files(diff, ["package.json"]))
         self.assertEqual(slice_diff_to_files(diff, []), diff)
 
