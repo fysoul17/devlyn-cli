@@ -867,7 +867,9 @@ class LoopFixture(unittest.TestCase):
     def test_no_task_pr_carries_an_unpushed_anchor_commit(self):
         # Prediction (A1): with an unpushed commit U on the anchor branch, every auto task starts from the refreshed remote
         # base, so no delivered PR head descends from U. Before: the first task started from add's commit atop U, and its
-        # PR carried U.
+        # PR carried U. Prediction (R5): main has U, which origin/main lacks, so the report prints `git merge origin/main`
+        # with the reason, and running it brings the delivered work in beside U. Before R5: it printed
+        # `git pull --ff-only origin main`, which cannot fast-forward the diverged branch.
         bare, data = self.remote(pending=False)
         (self.anchor / "unrelated.txt").write_text("unpushed\n", encoding="utf-8")
         self.g("add", "unrelated.txt")
@@ -878,9 +880,17 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"inv.t1": "COMPLETE", "inv.t2": "COMPLETE"})
         heads = [pr["headRefOid"] for pr in json.loads(data.read_text(encoding="utf-8"))["prs"]]
         self.assertEqual(len(heads), 2)
-        for head in [*heads, self.run_ok(["git", "--git-dir", str(bare), "rev-parse", "main"])]:
+        main = self.run_ok(["git", "--git-dir", str(bare), "rev-parse", "main"])
+        for head in [*heads, main]:
             self.assertEqual(subprocess.run(["git", "-C", str(self.anchor), "merge-base", "--is-ancestor", unpushed, head],
                                             env=self.env).returncode, 1, head)
+        merged = self.bring_in("inv", bare)
+        self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
+        self.assertEqual((self.g("rev-list", "--parents", "-n", "1", "HEAD").split()[1:], self.g("status", "--porcelain", "--untracked-files=all")),
+                         ([unpushed, main], ""))
+        self.assertEqual(self.run_ok([sys.executable, "app.py", "Ada"], cwd=self.anchor), "Hello, Ada!")
+        self.assertIn("- Bring into main: git merge origin/main (main has commits origin/main lacks, so this merges instead of fast-forwarding)",
+                      (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8"))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_independent_pending_prs_merge_one_after_the_other(self):

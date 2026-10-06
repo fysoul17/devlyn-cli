@@ -1097,9 +1097,14 @@ def bring_in(v, loop, kept):
         return None
     receipt = tip["receipt"]
     if not receipt.get("local_only"):
-        # Once the drain made the anchor pull-ready: it holds no loop commit, so merge, squash and rebase delivery all pull.
-        return None if kept is None else f"{receipt['base']}: git pull --ff-only {receipt['remote']} {receipt['base']}" + (
-            f" once the anchor no longer keeps {', '.join(kept)}" if kept else "")
+        if kept is None:
+            return None
+        base, tracking = receipt["base"], f"{receipt['remote']}/{receipt['base']}"
+        once = f" once the anchor no longer keeps {', '.join(kept)}" if kept else ""
+        # The anchor holds no loop commit, so merge, squash and rebase delivery all fast-forward it unless it has commits of its own.
+        if git_run(v["anchor"], "merge-base", "--is-ancestor", "refs/heads/" + base, "refs/remotes/" + tracking, ok=(0, 1, 128)).returncode == 0:
+            return f"{base}: git pull --ff-only {receipt['remote']} {base}{once}"
+        return f"{base}: git merge {tracking} ({base} has commits {tracking} lacks, so this merges instead of fast-forwarding){once}"
     if not added_path(v["common"], loop).is_file() or "commit" not in add_record(v["common"], loop, ()):
         return None  # Added for auto/pr delivery, then drained --local-only: no add commit on a branch to bring it into.
     branch = add_record(v["common"], loop, ("branch", "commit"))["branch"]
