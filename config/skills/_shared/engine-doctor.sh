@@ -55,7 +55,7 @@ for i in "${!TARGETS[@]}"; do
       if [ "$binary" = 'no' ]; then
         note="not installed; ${INSTALL_HINTS[$i]}"
       elif [ "$adapter" = 'no' ]; then
-        note="binary present, no adapter — ship _shared/adapters/$target.md"
+        note="binary present, no adapter — reinstall devlyn-cli, whose releases ship the adapters"
       elif [ "$executor" = 'no' ]; then
         note='adapter declares executor: no'
       fi
