@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Ideate loop driver: package validation, the queue, locks, reconciliation and the serial drain.
 
-`check` validates a loop package, `add` appends its tasks (or materializes one
-legacy row), `status` shows the reconciled queue and `drain -- <argv>` runs each
+`check` validates a loop package, `add` captures it with its queue rows (which may
+replace one legacy row), `status` shows the reconciled queue and `drain -- <argv>` runs each
 eligible task through allocation, committed inputs, one host-supplied executor
 exchange, evidence-derived acceptance, the terminal transition and delivery.
 Protocol and commands: ../references/loop.md; formats: ../references/package-format.md.
@@ -27,8 +27,8 @@ import time
 import unittest
 
 SKILLS = Path(__file__).resolve().parents[2]
-QUEUE = "docs/specs/queue.md"
-HEADER = b"# Intent Queue\n\n"
+QUEUE = "docs/specs/queue.md"  # The legacy queue: read for materialize, never written.
+CAPTURES = "refs/devlyn/captures/"
 SENTINEL = "<!-- devlyn:verification -->"
 ID = r"[a-z0-9][a-z0-9-]{0,62}"
 SHA_RE = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
@@ -36,6 +36,7 @@ JSON_FENCE_RE = re.compile(r"(?ms)^```json[ \t]*\n(.*?)\n```[ \t]*$")
 ROW_RE = re.compile(r"- \[(?P<mark>[ xF])\] (?P<text>.*)")
 ITEM_RE = re.compile(rf"(?P<identity>(?P<loop>{ID})\.(?P<task>{ID})) \[(?P<title>(?:[^\]\\\n]|\\.)*)\]"
                      r"\(docs/specs/(?P=loop)/(?P=task)/spec\.md\)(?P<rest>(?: — .*)?)")
+REPLACES_RE = re.compile(r"<!-- replaces docs/specs/queue\.md row \(occurrence ([1-9][0-9]*)\): (- \[ \] .*) -->")
 REQUIREMENT_RE = re.compile(r"[-*] (R[1-9][0-9]*): \S")
 META_SECTIONS = ("Intent", "Constraints and exclusions", "Tasks", "Overall acceptance", "Execution policy",
                  "Decisions and assumptions")
@@ -242,8 +243,29 @@ def check_manifest(anchor, manifest, loop_id, meta):
         fail("integration_task_id must name the last task, which depends directly or transitively on every other task")
 
 
-def load_expected(path, requirements, review):
-    data = read_json(path)
+def package_bytes(anchor, rev, rel):
+    """A package file's bytes in its loop's capture `rev`, or in the checkout when the loop has no record; None if absent."""
+    if rev is not None:
+        return show(anchor, rev, rel)
+    return (anchor / rel).read_bytes() if (anchor / rel).is_file() else None
+
+
+def package_text(anchor, rev, rel):
+    """A package file's text and the label that names it in errors."""
+    label = anchor / rel if rev is None else f"{rev}:{rel}"
+    data = package_bytes(anchor, rev, rel)
+    require(data is not None, f"{label}: no such file")
+    try:
+        return data.decode("utf-8").replace("\r\n", "\n"), label
+    except UnicodeError as exc:
+        raise LoopError(f"{label}: {exc}") from exc
+
+
+def load_expected(text, path, requirements, review):
+    try:
+        data = shared("expected-contract")["loads_strict_json"](text)
+    except ValueError as exc:
+        raise LoopError(f"{path}: {exc}") from exc
 
     def fail(message):
         raise LoopError(f"{path}: {message}")
@@ -274,10 +296,10 @@ def load_expected(path, requirements, review):
     return data
 
 
-def load_task(anchor, manifest, entry):
+def load_task(anchor, manifest, entry, rev):
     loop_id, task = manifest["loop_id"], entry["id"]
-    path = anchor / "docs/specs" / loop_id / task / "spec.md"
-    front, body = frontmatter(read_text(path), path)
+    text, path = package_text(anchor, rev, f"docs/specs/{loop_id}/{task}/spec.md")
+    front, body = frontmatter(text, path)
 
     def fail(message):
         raise LoopError(f"{path}: {message}")
@@ -306,15 +328,14 @@ def load_task(anchor, manifest, entry):
         fail("Requirements need unique stable IDs written as '- R1: <obligation>'")
     if unknown := [req for req in review if req not in requirements]:
         fail(f"review_requirements name unknown requirement(s): {', '.join(unknown)}")
-    expected_path = path.with_name("spec.expected.json")
+    expected, expected_path = package_text(anchor, rev, f"docs/specs/{loop_id}/{task}/spec.expected.json")
     return {"id": task, "title": front["title"], "kind": front["kind"], "requirements": requirements, "review": review,
-            "depends_on": entry["depends_on"], "expected": load_expected(expected_path, requirements, review)}
+            "depends_on": entry["depends_on"], "expected": load_expected(expected, expected_path, requirements, review)}
 
 
-def load_manifest(anchor, loop_id):
-    """The loop's meta.md text and its validated manifest."""
-    meta = anchor / "docs/specs" / loop_id / "meta.md"
-    text = read_text(meta)
+def load_manifest(anchor, loop_id, rev=None):
+    """The loop's meta.md text and its validated manifest, from its capture `rev` or, without a record, the checkout."""
+    text, meta = package_text(anchor, rev, f"docs/specs/{loop_id}/meta.md")
     require_sections(sections(text, meta), META_SECTIONS, meta)
     fences = JSON_FENCE_RE.findall(text)
     require(len(fences) == 1, f"{meta}: needs exactly one fenced json manifest, found {len(fences)}")
@@ -326,13 +347,13 @@ def load_manifest(anchor, loop_id):
     return text, manifest
 
 
-def load_package(anchor, loop_id):
+def load_package(anchor, loop_id, rev=None):
     """The manifest and each task's contract, or under `invalid` the task's validation error."""
-    text, manifest = load_manifest(anchor, loop_id)
+    text, manifest = load_manifest(anchor, loop_id, rev)
     tasks, invalid = {}, {}
     for entry in manifest["tasks"]:
         try:
-            tasks[entry["id"]] = load_task(anchor, manifest, entry)
+            tasks[entry["id"]] = load_task(anchor, manifest, entry, rev)
         except LoopError as exc:
             invalid[entry["id"]] = str(exc)
     return {"loop_id": loop_id, "meta_text": text, "manifest": manifest, "tasks": tasks, "invalid": invalid}
@@ -357,11 +378,11 @@ def row_line(identity, title):
     return f"- [ ] {identity} [{escape(title)}](docs/specs/{loop}/{task}/spec.md)"
 
 
-def parse_queue(data):
+def parse_queue(data, label=QUEUE):
     try:
         lines = data.decode("utf-8").split("\n")
     except UnicodeError as exc:
-        raise LoopError(f"{QUEUE} is not UTF-8: {exc}") from exc
+        raise LoopError(f"{label} is not UTF-8: {exc}") from exc
     rows = []
     for index, raw in enumerate(lines):
         match = ROW_RE.fullmatch(raw.removesuffix("\r"))
@@ -375,36 +396,47 @@ def parse_queue(data):
         rows.append(row)
     identities = [row["identity"] for row in rows if row["identity"]]
     duplicates = sorted({identity for identity in identities if identities.count(identity) > 1})
-    require(not duplicates, f"{QUEUE}: duplicate queue identity: {', '.join(duplicates)}")
+    require(not duplicates, f"{label}: duplicate queue identity: {', '.join(duplicates)}")
     return rows
+
+
+def with_rows(data, lines):
+    """`data` with each identity's row replaced by `lines[identity]`, every other byte unchanged."""
+    out = data.split(b"\n")
+    for row in parse_queue(data):
+        if row["identity"] in lines:
+            ending = b"\r" if out[row["index"]].endswith(b"\r") else b""
+            out[row["index"]] = lines[row["identity"]].encode("utf-8") + ending
+    return b"\n".join(out)
 
 
 def transition(before, identity, mark, suffix=""):
     """The only legal transition: the identity's pending row becomes [x] or [F] with every other byte unchanged."""
     row = next((row for row in parse_queue(before) if row["identity"] == identity), None)
     require(row is not None and row["mark"] == " ", f"{identity} has no pending queue row to transition")
-    lines = before.split(b"\n")
-    ending = b"\r" if lines[row["index"]].endswith(b"\r") else b""
-    lines[row["index"]] = f"- [{mark}] {row['text']}{suffix}".encode("utf-8") + ending
-    return b"\n".join(lines)
+    return with_rows(before, {identity: f"- [{mark}] {row['text']}{suffix}"})
 
 
-def merge_rows(base, order, include):
-    """Replace or insert `include` rows in `base`, placing new rows after the nearest earlier queued row."""
-    lines = base.split(b"\n")
-    for position, identity in enumerate(order):
-        if identity not in include:
-            continue
-        where = {row["identity"]: row["index"] for row in parse_queue(b"\n".join(lines)) if row["identity"]}
-        line = include[identity].encode("utf-8")
-        if identity in where:
-            lines[where[identity]] = line
-            continue
-        earlier = [where[i] for i in order[:position] if i in where]
-        later = [where[i] for i in order[position + 1:] if i in where]
-        at = max(earlier) + 1 if earlier else min(later) if later else len(lines) - (lines[-1] == b"")
-        lines.insert(at, line)
-    return b"\n".join(lines)
+def loop_queue(loop):
+    return f"docs/specs/{loop}/queue.md"
+
+
+def loop_rows(loop, package, target):
+    """The queue file add generates for a loop: the legacy row it replaces, if any, then a row per task in manifest
+    order, each line one blank line from the next (package-format.md, Queue rows)."""
+    lines = [f"<!-- replaces {QUEUE} row (occurrence {target['occurrence']}): {target['line']} -->"] if target else []
+    lines += [row_line(f"{loop}.{task['id']}", task["title"]) for task in package["tasks"].values()]
+    return ("\n\n".join(lines) + "\n").encode("utf-8")
+
+
+def parse_loop(data, loop, label):
+    """A loop's queue file: its rows, each a task row of the loop, and the legacy row it replaces as (occurrence, line)."""
+    require(data is not None, f"{label}: no such file")
+    rows = parse_queue(data, label)
+    require(all(row["identity"] and row["loop"] == loop for row in rows), f"{label}: every row must be a task row of loop {loop}")
+    targets = [(int(m[1]), m[2]) for line in data.decode("utf-8").split("\n") if (m := REPLACES_RE.fullmatch(line.removesuffix("\r")))]
+    require(len(targets) <= 1, f"{label}: replaces more than one legacy row")
+    return rows, targets[0] if targets else None
 
 
 def one_line(text):
@@ -420,6 +452,89 @@ def receipt_path(common, identity):
     return common / "devlyn-completion" / hashlib.sha256(branch_of(identity).encode()).hexdigest()[:24] / "receipt.json"
 
 
+def added_path(common, loop):
+    return common / "devlyn-loops" / loop / "added.json"
+
+
+def records(common):
+    """Each loop's add record, in add order."""
+    found = []
+    for path in (common / "devlyn-loops").glob("*/added.json"):
+        added = read_json(path)
+        require(isinstance(added, dict) and added.get("loop_id") == path.parent.name and type(added.get("sequence")) is int
+                and all(isinstance(added.get(key), str) for key in ("delivery", "commit", "origin", "branch")), f"{path}: malformed add record")
+        found.append(added)
+    return {added["loop_id"]: added for added in sorted(found, key=lambda added: added["sequence"])}
+
+
+def queue_view(anchor, recorded):
+    """The rows status and drain read (loop.md step 1): the legacy queue's raw rows in file order, a row that one loop
+    replaces shown as that loop's rows in its place; then the other recorded loops in add order; then the loops without a
+    record, as in a fresh clone, from the checkout's tracked queue files in loop-id order. A claim matching no row replaces
+    nothing; a row two loops claim is hidden, neither loop taking its place."""
+    legacy = anchor / QUEUE
+    raw = [row for row in parse_queue(legacy.read_bytes() if legacy.exists() else b"") if not row["identity"]]
+    loops = {loop: parse_loop(show(anchor, added["commit"], loop_queue(loop)), loop, f"{CAPTURES}{loop}:{loop_queue(loop)}")
+             for loop, added in recorded.items()}
+    for rel in sorted(filter(None, git(anchor, "ls-files", "-z", "--", ":(glob)docs/specs/*/queue.md").split("\0")), key=lambda rel: rel.split("/")[2]):
+        loop, data = rel.split("/")[2], (anchor / rel).read_bytes() if (anchor / rel).is_file() else None
+        # A file holding no task row of its directory's loop is not a loop's queue file.
+        if loop not in recorded and data and any(row.get("loop") == loop for row in parse_queue(data, anchor / rel)):
+            loops[loop] = parse_loop(data, loop, anchor / rel)
+    claims = {}
+    for loop, (_, target) in loops.items():
+        if target:
+            claims.setdefault(target, []).append(loop)
+    placed = {}
+    for (occurrence, line), owners in claims.items():
+        matches = [row["index"] for row in raw if row["line"] == line]
+        if len(matches) >= occurrence:
+            placed[matches[occurrence - 1]] = owners[0] if len(owners) == 1 else None
+    rows = []
+    for row in raw:
+        rows += [row] if row["index"] not in placed else loops[placed[row["index"]]][0] if placed[row["index"]] else []
+    return rows + [row for loop, (own, _) in loops.items() if loop not in placed.values() for row in own]
+
+
+def package_state(cwd, commit, loop):
+    """Each package file of the capture `commit` as the checkout `cwd` holds it: missing, equal (line endings aside) or
+    different."""
+    states = {}
+    for rel in filter(None, git(cwd, "ls-tree", "-r", "-z", "--name-only", commit).split("\0")):
+        if rel != loop_queue(loop):
+            data = (cwd / rel).read_bytes() if (cwd / rel).is_file() else None
+            states[rel] = ("missing" if data is None else "equal" if data.replace(b"\r\n", b"\n") == show(cwd, commit, rel).replace(b"\r\n", b"\n")
+                           else "different")
+    return states
+
+
+def clean(common, recorded):
+    """Remove each recorded loop's untracked package originals that equal its capture from the checkout that added it,
+    keeping and naming any other copy; returns what remains to report (package-format.md, Commands)."""
+    notes = []
+    for origin in dict.fromkeys(added["origin"] for added in recorded.values()):
+        root = Path(origin)
+        if not (root / "docs/specs").is_dir():
+            continue
+        untracked = set(filter(None, git(root, "ls-files", "--others", "-z", "--", "docs/specs").split("\0")))
+        for loop, added in recorded.items():
+            package = f"docs/specs/{loop}/"
+            if added["origin"] != origin or not any(rel.startswith(package) for rel in untracked):
+                continue
+            for rel, state in package_state(root, added["commit"], loop).items():
+                if rel in untracked and state == "different":
+                    notes.append(f"{root / rel}: kept, it differs from the captured package {CAPTURES}{loop}")
+                elif rel in untracked and state == "equal":
+                    try:
+                        (root / rel).unlink()
+                    except OSError as exc:
+                        notes.append(f"{root / rel}: incomplete cleanup: {exc}")
+            for directory, _, _ in os.walk(root / package, topdown=False):
+                with contextlib.suppress(OSError):
+                    os.rmdir(directory)
+    return notes
+
+
 def task_complete(action, **values):
     helper = shared("task-complete")
     try:
@@ -428,7 +543,7 @@ def task_complete(action, **values):
         raise LoopError(f"task-complete {action}: {exc}") from exc
 
 
-def derive_state(anchor, common, row, claims):
+def derive_state(anchor, common, row, claims, rev):
     identity = row["identity"]
     state = {"kind": {" ": "pending", "x": "accepted", "F": "failed"}[row["mark"]], "receipt": None, "path": None}
     require(len(claims) <= 1, f"conflicting receipts for {identity}: {', '.join(str(path) for path, _ in claims)}")
@@ -448,17 +563,17 @@ def derive_state(anchor, common, row, claims):
                 and is_terminal(anchor, receipt, identity, recovery),
                 f"{identity}: recovery ref {receipt['recovery_ref']} is {recovery or 'missing'}, receipt binds {receipt['publish_sha']}")
         if receipt.get("queue"):
-            marks = [r["mark"] for r in parse_queue(show(anchor, receipt["publish_sha"], QUEUE) or b"") if r["identity"] == identity]
+            marks = [r["mark"] for r in parse_queue(show(anchor, receipt["publish_sha"], receipt["queue"]["file"]) or b"") if r["identity"] == identity]
             require(marks == ["x" if result == "accepted" else "F"], f"{identity}: terminal commit {receipt['publish_sha']} does not carry its {result} mark")
     packet = path.parent / "packet.json"
     if not result and packet.exists():
         bound = read_json(packet)
         for key in ("contract", "expected"):
-            current = anchor / Path(bound[key]["path"]).relative_to(bound["worktree"])
-            if not current.is_file() or hashlib.sha256(current.read_bytes()).hexdigest() != bound[key]["sha256"]:
+            rel = Path(bound[key]["path"]).relative_to(bound["worktree"]).as_posix()
+            current = package_bytes(anchor, rev, rel)
+            if current is None or hashlib.sha256(current).hexdigest() != bound[key]["sha256"]:
                 # Drain fails this task alone; the revision is planned as a new task.
-                state["inputs_changed"] = (f"inputs-changed: {current.relative_to(anchor).as_posix()} changed after its inputs were "
-                                           "committed; plan the revision as a new task")
+                state["inputs_changed"] = f"inputs-changed: {rel} changed after its inputs were committed; plan the revision as a new task"
                 break
     state.update(kind=result or "active", path=path, receipt=receipt)
     return state
@@ -467,8 +582,9 @@ def derive_state(anchor, common, row, claims):
 def view(anchor, common, local_only=False):
     """Reconcile the queue with every receipt and recovery ref before anything is selected."""
     with lock(common, "queue.lock", blocking=True):
-        queue = anchor / QUEUE
-        data = queue.read_bytes() if queue.exists() else b""
+        recorded = records(common)
+        cleanup = clean(common, recorded)
+        rows = queue_view(anchor, recorded)
     claims, unreadable = {}, []
     for path in sorted((common / "devlyn-completion").glob("*/receipt.json")):
         try:
@@ -476,18 +592,18 @@ def view(anchor, common, local_only=False):
             claims.setdefault(receipt["task"], []).append((path, receipt))
         except (LoopError, KeyError, TypeError) as exc:
             unreadable.append(f"{path}: {exc}")
-    v = {"anchor": anchor, "common": common, "data": data, "rows": parse_queue(data), "packages": {}, "states": {},
-         "unreadable": unreadable, "local_only": local_only}
+    v = {"anchor": anchor, "common": common, "rows": rows, "records": recorded, "packages": {}, "manifests": {}, "states": {},
+         "unreadable": unreadable, "cleanup": cleanup, "local_only": local_only}
     errors = {}
     for row in v["rows"]:
         if row["identity"]:
-            state = v["states"][row["identity"]] = derive_state(anchor, common, row, claims.get(row["identity"], []))
+            state = v["states"][row["identity"]] = derive_state(anchor, common, row, claims.get(row["identity"], []), capture(v, row["loop"]))
             # A changed active task needs no current package text; a validation failure stops only its own task.
             if state["kind"] == "pending" or state["kind"] == "active" and "inputs_changed" not in state:
                 loop = row["loop"]
                 if loop not in v["packages"] and loop not in errors:
                     try:
-                        v["packages"][loop] = load_package(anchor, loop)
+                        v["packages"][loop] = load_package(anchor, loop, capture(v, loop))
                     except LoopError as exc:
                         errors[loop] = str(exc)
                 package = v["packages"].get(loop)
@@ -505,9 +621,24 @@ def view(anchor, common, local_only=False):
     return v
 
 
+def capture(v, loop):
+    """The commit holding the loop's captured package, or None for a loop with no record (its checkout's files)."""
+    return v["records"][loop]["commit"] if loop in v["records"] else None
+
+
+def published(v, loop):
+    """Why --local-only leaves an auto/pr loop to a normal drain: a task of it already has a pushed PR (loop.md, Commands)."""
+    for identity, state in v["states"].items():
+        if identity.split(".")[0] == loop and state["receipt"] and state["receipt"].get("pushed"):
+            url = state["receipt"].get("pr_url") or state["receipt"]["branch"]
+            return f"{identity} already has a pushed PR {url}, so --local-only never runs loop {loop}; drain without --local-only"
+    return None
+
+
 def is_local(v, loop):
-    package = v["packages"].get(loop)
-    return (v["local_only"] or (package is not None and package["manifest"]["delivery"] == "local-only")
+    added, package = v["records"].get(loop), v["packages"].get(loop)
+    delivery = added["delivery"] if added else package and package["manifest"]["delivery"]
+    return (v["local_only"] and not published(v, loop) or delivery == "local-only"
             or any(s["receipt"] and s["receipt"].get("local_only") for i, s in v["states"].items() if i.split(".")[0] == loop))
 
 
@@ -515,10 +646,19 @@ def delivered(receipt):
     return receipt.get("delivery") == "COMPLETE" or bool(receipt.get("merge"))
 
 
+def carrier(v, loop):
+    """The auto/pr task whose undelivered, unfailed PR carries the loop's package, which its base lacked (loop.md step 2)."""
+    return None if is_local(v, loop) else next((
+        row["identity"] for row in v["rows"] if row.get("loop") == loop and (state := v["states"][row["identity"]])["receipt"]
+        and state["kind"] != "failed" and not delivered(state["receipt"]) and show(v["anchor"], state["receipt"]["baseline"], loop_queue(loop)) is None), None)
+
+
 def waiting(v, row):
     if invalid := v["states"][row["identity"]].get("invalid"):
         return invalid
     local = is_local(v, row["loop"])
+    if v["local_only"] and not local:
+        return published(v, row["loop"])
     for dep in v["packages"][row["loop"]]["tasks"][row["task"]]["depends_on"]:
         identity = f"{row['loop']}.{dep}"
         state = v["states"][identity]
@@ -528,6 +668,10 @@ def waiting(v, row):
             return f"prerequisite {identity} has no receipt-bound accepted source"
         if not local and not delivered(state["receipt"]):
             return f"awaiting delivery of {identity}"
+    if local:
+        return local_start(v, row["loop"])[1]
+    if plan := carrier(v, row["loop"]):
+        return f"awaiting delivery of {plan}, whose PR carries its loop's package"
     return None
 
 
@@ -542,10 +686,11 @@ def next_task(v, attempted):
                  and waiting(v, row) is None), None)
 
 
-def annotate(v):
+def annotate(v, refused):
+    """Name each task's wait: a pending task's reason from waiting(), else why this drain did not advance it."""
     for row in v["rows"]:
         state = v["states"].get(row["identity"])
-        if state and state["kind"] == "pending" and (reason := waiting(v, row)):
+        if state and (reason := state["kind"] == "pending" and waiting(v, row) or refused.get(row["identity"])):
             state["waiting"] = reason
 
 
@@ -555,6 +700,31 @@ def frontier(v, loop):
     return accepted[-1] if accepted else None
 
 
+def local_start(v, loop):
+    """The commit a local loop's next task starts from, and why it waits instead (loop.md step 3): its latest accepted
+    source; else the start its first allocation fixed, kept in that receipt; else the HEAD of the branch it was added on,
+    which must descend from the manifest base_sha."""
+    tip, added = frontier(v, loop), v["records"].get(loop)
+    fixed = next((state["receipt"]["baseline"] for identity, state in v["states"].items() if identity.split(".")[0] == loop
+                  and state["receipt"] and not {"remote_url", "allocated_from"} & set(state["receipt"])), None)
+    remedy = "restore them to their bytes at that commit, or plan the remaining work as a new loop"
+    if tip or fixed:
+        start = tip["receipt"]["source_sha"] if tip else fixed
+    elif added is None:
+        return None, f"{loop} has no add record in this repository, so no branch to start it from; drain it where it was added"
+    else:
+        branch, base = added["branch"], manifest_of(v, loop)["base_sha"]
+        start, remedy = ref_value(v["anchor"], "refs/heads/" + branch), f"commit them on {branch}, or restore them to their bytes at that commit"
+        if not start or not ancestor(v["anchor"], base, start):
+            where = f"is at {start}, which does not descend from the manifest base_sha {base}" if start else "no longer exists"
+            return None, f"{branch}, the branch {loop} was added on, {where}; bring {base} into {branch}, or plan the work as a new loop"
+        if drift := package_drift(v, loop, start, branch):
+            return start, drift
+    if drift := instruction_drift(v["anchor"], start):
+        return start, f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run without them; {remedy}"
+    return start, None
+
+
 def terminal_line(v, identity):
     state = v["states"][identity]
     row = next(row for row in v["rows"] if row["identity"] == identity)
@@ -562,15 +732,16 @@ def terminal_line(v, identity):
         root = state["root"]["receipt"]
         return f"- [F] {row['text']} — blocked-prerequisite:{state['blocker']} (receipt {root['id'] if root else 'none'})"
     if state["kind"] in {"accepted", "failed"} and state["receipt"] and state["receipt"].get("queue"):
-        terminal = parse_queue(show(v["anchor"], state["receipt"]["publish_sha"], QUEUE) or b"")
+        terminal = parse_queue(show(v["anchor"], state["receipt"]["publish_sha"], state["receipt"]["queue"]["file"]) or b"")
         return next(r["line"] for r in terminal if r["identity"] == identity)
     return None
 
 
 def build_tree(worktree, parent, files):
+    """The tree of `parent` (or of nothing) with `files`, built in a temporary index so no checkout changes."""
     with tempfile.TemporaryDirectory(prefix="devlyn-loop-index-") as temp:
         env = {**os.environ, "GIT_INDEX_FILE": str(Path(temp) / "index")}
-        git(worktree, "read-tree", parent, env=env)
+        git(worktree, "read-tree", parent or "--empty", env=env)
         for rel, data in files.items():
             blob = git(worktree, "hash-object", "-w", "--stdin", data=data)
             git(worktree, "update-index", "--add", "--cacheinfo", f"100644,{blob},{rel}", env=env)
@@ -578,7 +749,11 @@ def build_tree(worktree, parent, files):
 
 
 def commit_files(worktree, branch, parent, files, message, *, checkout):
-    commit = git(worktree, "commit-tree", build_tree(worktree, parent, files), "-p", parent, "-m", message)
+    """Commit `files` atop `parent` on `branch`; when `parent` already carries them there is no commit to make."""
+    tree = build_tree(worktree, parent, files)
+    if tree == git(worktree, "rev-parse", parent + "^{tree}"):
+        return parent
+    commit = git(worktree, "commit-tree", tree, "-p", parent, "-m", message)
     git(worktree, "update-ref", "refs/heads/" + branch, commit, parent)
     if checkout:
         sync(worktree, branch, parent, commit)
@@ -592,16 +767,21 @@ def sync(worktree, branch, parent, commit):
 
 
 def input_files(v, row, receipt, local):
-    anchor, worktree, loop = v["anchor"], Path(receipt["worktree"]), row["loop"]
-    rels = [f"docs/specs/{loop}/meta.md", f"docs/specs/{loop}/{row['task']}/spec.md", f"docs/specs/{loop}/{row['task']}/spec.expected.json"]
-    files = {rel: (anchor / rel).read_bytes() for rel in rels}
-    include = {row["identity"]: row["line"]}
-    for other in v["rows"] if local else []:
-        if other["identity"] and other.get("loop") == loop and other["identity"] != row["identity"]:
-            if line := terminal_line(v, other["identity"]):
-                include[other["identity"]] = line
-    order = [r["identity"] for r in v["rows"] if r["identity"]]
-    files[QUEUE] = merge_rows(show(worktree, receipt["baseline"], QUEUE) or HEADER, order, include)
+    """The task's scoped inputs (loop.md step 4). A base lacking the loop's package gets the package directory from the
+    capture, its queue file's settled rows keeping their marks; otherwise a local task gets the base's queue file with the
+    loop's settled rows, and an auto/pr task nothing, so its PR changes only its own row."""
+    loop, rel = row["loop"], loop_queue(row["loop"])
+    data, files = show(Path(receipt["worktree"]), receipt["baseline"], rel), {}
+    if data is None:
+        package = [f"docs/specs/{loop}/meta.md", *(f"docs/specs/{loop}/{entry['id']}/{name}" for entry in v["packages"][loop]["manifest"]["tasks"]
+                                                   for name in ("spec.md", "spec.expected.json")), rel]
+        files = {path: package_bytes(v["anchor"], capture(v, loop), path) for path in package}
+        require(None not in files.values(), f"{row['identity']}: the package of loop {loop} is incomplete in this checkout")
+        data = files[rel]
+    if local or files:
+        data = with_rows(data, {other["identity"]: line for other in v["rows"] if other.get("loop") == loop
+                                and other["identity"] != row["identity"] and (line := terminal_line(v, other["identity"]))})
+    files[rel] = data
     return files
 
 
@@ -611,6 +791,29 @@ def require_merged(v, row, base):
         receipt = v["states"][f"{row['loop']}.{dep}"]["receipt"] or {}
         merge = ((receipt.get("merge") or {}).get("mergeCommit") or {}).get("oid")
         require(merge and ancestor(v["anchor"], merge, base), f"{row['identity']}: base {base} lacks the delivered prerequisite merge {merge}")
+
+
+def package_drift(v, loop, start, where):
+    """Why a task of a recorded loop cannot start at `start` (loop.md step 3): it holds the loop's queue file, so the task
+    would bind its copy of the package, and that copy differs from the capture."""
+    added = v["records"].get(loop)
+    if added is None or show(v["anchor"], start, loop_queue(loop)) is None:
+        return None
+    files = [rel for rel in git(v["anchor"], "diff", "--name-only", "--no-renames", "--diff-filter=DMT", added["commit"], start, "--",
+                                f"docs/specs/{loop}").splitlines() if rel != loop_queue(loop)]
+    return (f"{where} holds another version of loop {loop}'s package (differing from {CAPTURES}{loop}: {', '.join(files)}), so its tasks "
+            f"cannot run their captured contracts there; plan the work as a new loop, or restore those files on {where} to the captured "
+            "bytes") if files else None
+
+
+def instruction_drift(anchor, rev):
+    """The installed instruction files whose content at `rev` differs from the anchor checkout's (both absent is equal): a
+    task starting at `rev` would run without them. Git compares them as `git status` does: a link by its target, line endings
+    under the checkout's conversion rules, and an untracked or ignored file as one still to commit."""
+    names = ("CLAUDE.md", "AGENTS.md")
+    differ = git(anchor, "diff", "--name-only", "--no-renames", rev, "--", *names).split("\n")
+    differ += git(anchor, "ls-files", "--others", "--", *names).split("\n")
+    return ", ".join(name for name in names if name in differ)
 
 
 def evidence_ignored(anchor, common, start):
@@ -625,6 +828,8 @@ def evidence_ignored(anchor, common, start):
 
 
 def allocate(v, row, opts):
+    """Allocate the task's owned worktree, or return why it waits: its refreshed remote base holds another version of the
+    loop's package or lacks the checkout's instructions (waiting() checks a local start before selection)."""
     identity, loop, task = row["identity"], row["loop"], row["task"]
     package = v["packages"][loop]
     manifest = package["manifest"]
@@ -632,10 +837,9 @@ def allocate(v, row, opts):
     deps = [v["states"][f"{loop}.{dep}"] for dep in package["tasks"][task]["depends_on"]]
     values = {"repo": str(anchor), "task": identity, "branch": branch_of(identity), "repository": None,
               "base": manifest["base_ref"], "remote": "origin", "worktree": str(opts.worktree_root / loop / task),
-              "local_base": None, "from_receipt": None}
+              "local_base": None, "from_receipt": None, "start": None}
     if is_local(v, loop):
-        tip = frontier(v, loop)
-        start = tip["receipt"]["source_sha"] if tip else manifest["base_sha"]
+        tip, start = frontier(v, loop), local_start(v, loop)[0]
         for dep in deps:
             require(ancestor(anchor, dep["receipt"]["source_sha"], start),
                     f"{identity}: prerequisite source {dep['receipt']['source_sha']} is not in the accepted frontier {start}; plan an integration task")
@@ -650,12 +854,19 @@ def allocate(v, row, opts):
             start = helper["remote_base"]({"common_gitdir": str(common), "remote": "origin", "base": manifest["base_ref"]})
         except helper["CompletionError"] as exc:
             raise LoopError(f"{identity}: cannot refresh base {manifest['base_ref']}: {exc}") from exc
+        values["start"] = start
         require_merged(v, row, start)
+        if drift := package_drift(v, loop, start, f"origin/{manifest['base_ref']}"):
+            return drift
     require(evidence_ignored(anchor, common, start),
             f"{identity}: .devlyn/ is not ignored in its start commit {start}, so loop evidence would dirty task source; commit a "
             f"`.devlyn/` entry to .gitignore in the base the task starts from, or add `.devlyn/` to {common / 'info' / 'exclude'}")
+    if values["start"] and (drift := instruction_drift(anchor, start)):
+        return (f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run "
+                f"without them; commit them and push them to origin/{manifest['base_ref']}")
     result = task_complete("allocate", **values)
     progress(identity, f"allocated {result['worktree']}")
+    return None
 
 
 def ensure_packet(v, row, path, receipt):
@@ -741,6 +952,9 @@ def ensure_submission(identity, packet_path, packet, executor):
     if submission.exists():
         return None
     argv = [part.replace("{packet}", str(packet_path)) for part in executor]
+    if any("{worktree_git_dir}" in part for part in argv):  # Optional: a Codex executor lists it as a writable root.
+        git_dir = git(worktree, "rev-parse", "--path-format=absolute", "--git-dir")
+        argv = [part.replace("{worktree_git_dir}", git_dir) for part in argv]
     output = Path(packet["evidence_dir"])
     output.mkdir(parents=True, exist_ok=True)
     record(log, "start")
@@ -763,17 +977,18 @@ def ensure_submission(identity, packet_path, packet, executor):
 
 
 def terminal_queue(cwd, receipt, identity):
-    """The queue of this bound result's only legal terminal transition: its row becomes [x] or [F] — <reason>."""
+    """The loop queue file of this bound result's only legal terminal transition: its row becomes [x] or [F] — <reason>."""
     failed = receipt.get("product") == "FAILED"
     suffix = f" — {one_line(receipt['acceptance']['reasons'][0])} (receipt {receipt['id']})" if failed else ""
-    return transition(show(cwd, receipt["acceptance"]["inputs_sha"], QUEUE) or b"", identity, "F" if failed else "x", suffix)
+    rel = loop_queue(identity.split(".")[0])
+    return transition(show(cwd, receipt["acceptance"]["inputs_sha"], rel) or b"", identity, "F" if failed else "x", suffix)
 
 
 def is_terminal(cwd, receipt, identity, commit):
     """Whether `commit` is that transition: its sole parent is the bound source and its only change is the row."""
-    source = receipt["source_sha"]
+    source, rel = receipt["source_sha"], loop_queue(identity.split(".")[0])
     return (git(cwd, "rev-list", "--parents", "-n", "1", commit).split() == [commit, source]
-            and git(cwd, "diff", "--name-only", source, commit) == QUEUE and show(cwd, commit, QUEUE) == terminal_queue(cwd, receipt, identity))
+            and git(cwd, "diff", "--name-only", source, commit) == rel and show(cwd, commit, rel) == terminal_queue(cwd, receipt, identity))
 
 
 def settle(v, row, receipt_file):
@@ -785,7 +1000,7 @@ def settle(v, row, receipt_file):
     with lock(v["common"], "queue.lock", blocking=True):
         head = git(worktree, "rev-parse", "refs/heads/" + branch)
         if head == source:
-            commit = commit_files(worktree, branch, source, {QUEUE: terminal_queue(worktree, receipt, identity)},
+            commit = commit_files(worktree, branch, source, {loop_queue(row["loop"]): terminal_queue(worktree, receipt, identity)},
                                   f"devlyn loop: {identity} {'failed' if failed else 'accepted'}", checkout=not failed)
         else:
             require(is_terminal(worktree, receipt, identity, head),
@@ -794,16 +1009,19 @@ def settle(v, row, receipt_file):
             if not failed:
                 sync(worktree, branch, source, commit)
         progress(identity, f"terminal {commit}")
-        task_complete("attach", receipt=str(receipt_file), commit=commit, file=QUEUE)
+        task_complete("attach", receipt=str(receipt_file), commit=commit, file=loop_queue(row["loop"]))
     progress(identity, "attached")
 
 
 def advance(v, row, opts):
-    """Run or resume one task from its durable state; never replays a bound result."""
+    """Run or resume one task from its durable state; never replays a bound result. Returns why it waits instead."""
     identity = row["identity"]
     path = receipt_path(v["common"], identity)
-    if not path.exists():
-        allocate(v, row, opts)
+    local = is_local(v, row["loop"])
+    if opts.local_only and not local:
+        return published(v, row["loop"])
+    if not path.exists() and (refused := allocate(v, row, opts)):
+        return refused
     receipt = read_json(path)
     if not receipt.get("acceptance"):
         failure = v["states"][identity].get("inputs_changed")
@@ -823,10 +1041,10 @@ def advance(v, row, opts):
     receipt = read_json(path)
     if receipt.get("delivery") not in SETTLED:
         packet = read_json(path.parent / "packet.json")
-        local = opts.local_only or bool(receipt.get("local_only")) or packet["delivery"] == "local-only"
         result = task_complete("complete", receipt=str(path), acceptance=None, mode=None if local else packet["delivery"],
                                local_only=local, writers_stopped=True)
         progress(identity, f"delivery {result['status']}")
+    return None
 
 
 def summary(v, row):
@@ -856,11 +1074,18 @@ def summary(v, row):
     return item
 
 
+def manifest_of(v, loop):
+    """The loop's manifest, read once per view."""
+    if loop not in v["manifests"]:
+        v["manifests"][loop] = v["packages"][loop]["manifest"] if loop in v["packages"] else load_manifest(v["anchor"], loop, capture(v, loop))[1]
+    return v["manifests"][loop]
+
+
 def loop_acceptance(v, loop, items):
     """Whole-loop acceptance over the manifest's complete task set: every task, the integration task last, needs
     receipt-backed acceptance. A manifest task missing from this queue joins `items` as not yet run."""
     try:
-        manifest = v["packages"][loop]["manifest"] if loop in v["packages"] else load_manifest(v["anchor"], loop)[1]
+        manifest = manifest_of(v, loop)
     except LoopError as exc:
         return f"INCOMPLETE — manifest unreadable: {exc}"
     found, gaps = {item["identity"]: item for item in items}, []
@@ -874,13 +1099,30 @@ def loop_acceptance(v, loop, items):
     return "INCOMPLETE — " + ", ".join(gaps) if gaps else "ACCEPTED"
 
 
+def bring_in(v, loop):
+    """The command that brings the loop's accepted work into the branch it was added on (loop.md step 11)."""
+    tip = frontier(v, loop)
+    if tip is None:
+        return None
+    receipt = tip["receipt"]
+    if receipt.get("local_only"):
+        # It fast-forwards when it can and merges otherwise, so the commands of several local loops apply in any order.
+        return f"{v['records'][loop]['branch']}: git merge --ff {receipt['branch']}" if loop in v["records"] else None
+    if not delivered(receipt):
+        return None
+    # The anchor holds no loop commit, so after merge, squash or rebase delivery this fast-forwards unless the branch has commits
+    # of its own, and merges then; like the local form, the commands of several loops apply in any order.
+    return f"{receipt['base']}: git merge --ff {receipt['remote']}/{receipt['base']}"
+
+
 def write_reports(v, status, reason):
     paths = []
     for loop in dict.fromkeys(row["loop"] for row in v["rows"] if row["identity"]):
         items = [summary(v, row) for row in v["rows"] if row.get("loop") == loop]
         lines = [f"# Drain report — {loop}", "", f"- Generated: {datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}",
-                 f"- Queue: {v['anchor'] / QUEUE}", f"- Drain: {status}" + (f" — {reason}" if reason else ""),
-                 f"- Whole-loop acceptance: {loop_acceptance(v, loop, items)}", ""]
+                 f"- Queue: {f'{CAPTURES}{loop}:{loop_queue(loop)}' if loop in v['records'] else v['anchor'] / loop_queue(loop)}",
+                 f"- Drain: {status}" + (f" — {reason}" if reason else ""), f"- Whole-loop acceptance: {loop_acceptance(v, loop, items)}",
+                 *([f"- Bring into {line}"] if (line := bring_in(v, loop)) else []), ""]
         labels = (("result", "Product"), ("reason", "Reason"), ("receipt", "Receipt"), ("custody", "Evidence custody"),
                   ("recovery_ref", "Recovery ref"), ("allocation_base", "Allocation base"), ("source", "Accepted source"), ("candidate", "Unaccepted source"),
                   ("terminal", "Terminal commit"), ("delivery", "Delivery"), ("pr", "PR"), ("resume", "Resume"),
@@ -909,7 +1151,7 @@ def drain(args):
     require(any("{packet}" in part for part in args.executor), "executor argv must contain {packet}, replaced by the task packet path")
     args.worktree_root = Path(args.worktree_root).resolve() if args.worktree_root else anchor.parent / f"{anchor.name}.devlyn"
     with lock(common, "drain.lock", blocking=False):
-        attempted, last, status, reason = set(), None, "DRAINED", None
+        attempted, last, status, reason, refused = set(), None, "DRAINED", None, {}
         try:
             while True:
                 last = view(anchor, common, args.local_only)
@@ -917,8 +1159,9 @@ def drain(args):
                 if row is None:
                     break
                 attempted.add(row["identity"])
-                advance(last, row, args)
-            if any(state["kind"] in {"pending", "active"} for state in last["states"].values()) or counts(last)["legacy_pending"]:
+                if wait := advance(last, row, args):
+                    refused[row["identity"]] = wait
+            if any(state["kind"] in {"pending", "active"} for state in last["states"].values()) or counts(last)["legacy_pending"] or refused:
                 status = "WAITING"
         except (LoopError, OSError) as exc:
             status, reason = "BLOCKED", str(exc)
@@ -926,53 +1169,102 @@ def drain(args):
                 last = view(anchor, common, args.local_only)
         if last is None:
             return {"status": status, "reason": reason}
-        annotate(last)
+        annotate(last, refused)
         return {"status": status, "reason": reason, "reports": write_reports(last, status, reason), "counts": counts(last),
-                "tasks": [summary(last, row) for row in last["rows"] if row["identity"]]}
+                "tasks": [summary(last, row) for row in last["rows"] if row["identity"]], "cleanup": last["cleanup"]}
 
 
 def status(args):
     anchor, common = repository(args.repo)
     v = view(anchor, common, args.local_only)
     row = next_task(v, set())
-    annotate(v)
+    annotate(v, {})
     tasks = [summary(v, r) for r in v["rows"] if r["identity"]]
-    return {"status": "OK", "queue": str(anchor / QUEUE), "counts": counts(v), "next": row["identity"] if row else None,
+    return {"status": "OK", "counts": counts(v), "next": row["identity"] if row else None,
             "blockers": [f"{t['identity']}: {t['reason']}" for t in tasks if t.get("reason") and t["result"] in {"pending", "active", "blocked"}]
             + [f"legacy row {r['index'] + 1} needs planning: {r['text']}" for r in v["rows"] if not r["identity"] and r["mark"] == " "]
             + [f"unreadable receipt {item}" for item in v["unreadable"]],
-            "delivery": [t for t in tasks if t.get("resume")]}
+            "delivery": [t for t in tasks if t.get("resume")], "cleanup": v["cleanup"]}
+
+
+def legacy_target(anchor, number):
+    """The pending legacy row on line `number` of the legacy queue, as add records it: its exact text and its occurrence
+    among equal rows, line endings aside; None for any other line."""
+    path = anchor / QUEUE
+    rows = parse_queue(path.read_bytes() if path.exists() else b"")
+    row = next((row for row in rows if row["index"] == number - 1 and row["identity"] is None and row["mark"] == " "), None)
+    return row and {"line": row["line"], "occurrence": sum(other["line"] == row["line"] for other in rows if other["index"] <= row["index"])}
+
+
+def added_result(anchor, added, notes):
+    loop, ref = added["loop_id"], added["capture"]
+    rows, _ = parse_loop(show(anchor, added["commit"], loop_queue(loop)), loop, f"{ref}:{loop_queue(loop)}")
+    return {"status": "ADDED", "tasks": [row["identity"] for row in rows], "capture": ref, "commit": added["commit"], "cleanup": notes,
+            "message": f"The package is now held immutably at {ref}; inspect it with `git show {ref}:docs/specs/{loop}/meta.md`. "
+                       "A revision needs a new loop id."}
 
 
 def add(args):
-    anchor, common = repository(Path(args.package).resolve().parent)
-    package = package_of(anchor, args.package)
-    loop = package["loop_id"]
-    rows = [row_line(f"{loop}.{task['id']}", task["title"]) for task in package["tasks"].values()]
-    queue = anchor / QUEUE
+    """Capture the package and its queue rows under refs/devlyn/captures/<loop>, record the add, then remove the untracked
+    originals equal to the capture (package-format.md, Commands); the branch, index and tracked files stay as they are."""
+    meta = Path(args.package).resolve()
+    anchor, common = repository(next(path for path in meta.parents if path.is_dir()))
+    loop = meta.parent.name
+    ref, package_dir = CAPTURES + loop, f"docs/specs/{loop}"
+    require(meta.name == "meta.md" and meta.parent.parent == anchor / "docs/specs" and re.fullmatch(ID, loop),
+            f"package must be <repo>/docs/specs/<loop-id>/meta.md: {meta}")
     with lock(common, "queue.lock", blocking=True):
-        data = queue.read_bytes() if queue.exists() else None
-        existing = parse_queue(data or b"")
-        identities = [f"{loop}.{task}" for task in package["tasks"]]
-        clash = sorted({row["identity"] for row in existing} & set(identities))
-        require(not clash, f"task identity already queued: {', '.join(clash)}; plan revised work under new IDs")
+        recorded = records(common)
+        notes = clean(common, recorded)
+        target = legacy_target(anchor, args.materialize) if args.materialize else None
+        if loop in recorded:
+            # This package's add, also one interrupted after its record or whose originals are gone, is reported as it is.
+            added = recorded[loop]
+            differ = [rel for rel, state in package_state(anchor, added["commit"], loop).items() if state == "different"]
+            require(not differ and target == added.get("materialize"),
+                    f"loop id {loop} was already added with another package ({', '.join(differ) or '--materialize differs'}); it is held at "
+                    f"{ref}, so plan revised work as a new loop")
+            return added_result(anchor, added, notes)
+        interrupted = (f"{ref} holds the capture of an interrupted add of {loop} that differs from the checkout; inspect it with `git show "
+                       f"{ref}`, then restore that package or delete the ref with `git update-ref -d {ref}`, and add again")
+        if captured := ref_value(anchor, ref):
+            require(all(state == "equal" for state in package_state(anchor, captured, loop).values()), interrupted)
+        package = package_of(anchor, meta)
+        manifest = package["manifest"]
+        local = manifest["delivery"] == "local-only"
+        require(show(anchor, "HEAD", loop_queue(loop)) is None, f"loop id {loop} is already used by {loop_queue(loop)}; plan revised work as a new loop")
+        if tracked := git(anchor, "diff", "--name-only", "--no-renames", "--diff-filter=MDT", "HEAD", "--", package_dir):
+            raise LoopError(f"{package_dir} is committed with different content ({', '.join(tracked.splitlines())}); add never captures a "
+                            "revision of committed package files, so plan it as a new loop")
+        branch = git_run(anchor, "symbolic-ref", "-q", "--short", "HEAD", ok=(0, 1)).stdout.decode("utf-8").strip()
+        require(branch, f"add records the branch the loop is added on, but HEAD is detached in {anchor}")
+        if drift := instruction_drift(anchor, head := git(anchor, "rev-parse", "HEAD")):
+            # Tasks start from committed state: a local loop from this branch, auto/pr from the pushed base.
+            raise LoopError(f"the installed instructions ({drift}) in this checkout differ from those in HEAD {head}, so the loop's tasks would "
+                            f"run without them; commit {'them' if local else 'and push them'}, then add the loop")
+        if staged := git(anchor, "diff", "--cached", "--name-only", "--no-renames", "HEAD", "--", package_dir):
+            raise LoopError(f"the index holds package changes HEAD lacks ({', '.join(staged.splitlines())}); add leaves the index as it is, "
+                            f"so unstage them with `git restore --staged -- {package_dir}` and add again")
         if args.materialize:
-            target = next((row for row in existing if row["index"] == args.materialize - 1), None)
-            require(target is not None and target["identity"] is None and target["mark"] == " ",
-                    f"{QUEUE} line {args.materialize} is not a pending legacy row")
+            pending = {row["index"] for row in queue_view(anchor, recorded) if row["identity"] is None and row["mark"] == " "}
+            require(target and args.materialize - 1 in pending, f"{QUEUE} line {args.materialize} is not a pending legacy row")
             intent = " ".join(sections(package["meta_text"], "meta.md")["Intent"].split())
-            require(" ".join(target["text"].split()) in intent, "meta.md '## Intent' must reproduce the legacy row's intent verbatim")
-            lines = data.split(b"\n")
-            ending = b"\r" if lines[target["index"]].endswith(b"\r") else b""
-            lines[target["index"]:target["index"] + 1] = [row.encode("utf-8") + ending for row in rows]
-            acceptance()["atomic_write"](queue, b"\n".join(lines))
-        elif data is None:
-            queue.parent.mkdir(parents=True, exist_ok=True)
-            queue.write_bytes(HEADER + "".join(row + "\n" for row in rows).encode("utf-8"))
+            require(" ".join(target["line"][6:].split()) in intent, "meta.md '## Intent' must reproduce the legacy row's intent verbatim")
+        paths = [f"{package_dir}/meta.md", *(f"{package_dir}/{task}/{name}" for task in package["tasks"] for name in ("spec.md", "spec.expected.json"))]
+        files = {rel: package_bytes(anchor, None, rel) for rel in paths} | {loop_queue(loop): loop_rows(loop, package, target)}
+        tree = build_tree(anchor, None, files)
+        if captured:
+            require(tree == git(anchor, "rev-parse", captured + "^{tree}"), interrupted)
         else:
-            with queue.open("ab") as stream:
-                stream.write((b"" if data.endswith(b"\n") or not data else b"\n") + "".join(row + "\n" for row in rows).encode("utf-8"))
-    return {"status": "ADDED", "queue": str(queue), "tasks": identities}
+            # The ref keeps the commit, its tree and blobs from garbage collection once the originals are gone.
+            captured = git(anchor, "commit-tree", tree, "-m", f"devlyn loop: capture {loop}")
+            git(anchor, "update-ref", ref, captured, "0" * len(captured))
+        added = {"schema_version": 1, "loop_id": loop, "delivery": manifest["delivery"], "capture": ref, "commit": captured, "tree": tree,
+                 "origin": str(anchor), "branch": branch, "sequence": max((other["sequence"] for other in recorded.values()), default=0) + 1,
+                 **({"materialize": target} if target else {})}
+        write_json(added_path(common, loop), added)
+        notes += clean(common, {loop: added})
+    return added_result(anchor, added, notes)
 
 
 def check(args):
@@ -1151,8 +1443,8 @@ class QueueTests(unittest.TestCase):
             with self.subTest(message=message):
                 self.rejected(message, mutate)
 
-    def test_rows_transitions_and_metadata_merge(self):
-        queue = (HEADER + f"- [x] old intent\n{row_line('a.t1', 'Same')}\n- [ ] legacy intent\n{row_line('a.t2', 'Same')}\n".encode())
+    def test_rows_and_transitions(self):
+        queue = (b"# Intent Queue\n\n" + f"- [x] old intent\n{row_line('a.t1', 'Same')}\n- [ ] legacy intent\n{row_line('a.t2', 'Same')}\n".encode())
         rows = parse_queue(queue)
         self.assertEqual([row["identity"] for row in rows], [None, "a.t1", None, "a.t2"])
         after = transition(queue, "a.t2", "F", " — failed: check (receipt 1)")
@@ -1171,45 +1463,153 @@ class QueueTests(unittest.TestCase):
         spaced = row_line("a.t1", "T").encode() + b" \t\n"
         self.assertEqual(parse_queue(spaced)[0]["identity"], "a.t1")
         self.assertEqual([(r["identity"], r["mark"]) for r in parse_queue(transition(spaced, "a.t1", "F", " — failed: x (receipt 1)"))], [("a.t1", "F")])
-        order = ["a.t1", "a.t2", "a.t3"]
-        merged = merge_rows(HEADER + b"- [x] keep\n" + row_line("a.t3", "C").encode() + b"\n",
-                            order, {"a.t1": "- [x] " + row_line("a.t1", "A")[6:], "a.t2": row_line("a.t2", "B")})
-        self.assertEqual([r["identity"] for r in parse_queue(merged)], [None, "a.t1", "a.t2", "a.t3"])
-        self.assertTrue(merged.startswith(HEADER + b"- [x] keep\n"))
 
-    def test_add_is_literal_atomic_and_materializes_legacy_rows(self):
-        package = {path: path.read_bytes() for path in (self.anchor / "docs/specs/inv").rglob("*") if path.is_file()}
-        queue = self.anchor / QUEUE
-        self.assertEqual(self.cli("add", self.meta)["tasks"], ["inv.t1", "inv.t2"])
-        expected = HEADER + f"{row_line('inv.t1', 'Interface 인터페이스')}\n{row_line('inv.t2', 'Consumer [app]')}\n".encode()
-        self.assertEqual(queue.read_bytes(), expected)
-        self.assertIn("already queued: inv.t1, inv.t2", self.cli("add", self.meta, code=1)["reason"])
-        self.assertEqual(queue.read_bytes(), expected)
-        self.assertEqual({path: path.read_bytes() for path in package}, package)
-        queue.write_bytes(expected + b"- [ ] Make   the  report weekly")
+    def test_add_captures_the_package_and_materializes_legacy_rows(self):
+        """Q, C. Prediction: add makes no commit and leaves the legacy queue, the index and every tracked file as they were;
+        it points refs/devlyn/captures/inv at a commit holding exactly the package and docs/specs/inv/queue.md, its rows one
+        blank line apart, records the add and removes the untracked originals; a retry reports that capture, also after the
+        originals are gone; --materialize records the replaced legacy row's exact text and its occurrence among equal rows,
+        line endings aside, in the loop's queue file, and status shows the loop's rows in that row's place; a different
+        package under a used loop id is refused, also once committed. Before: add appended the rows to docs/specs/queue.md
+        and committed them with the package."""
+        package = {path.relative_to(self.anchor).as_posix(): path.read_bytes() for path in (self.anchor / "docs/specs/inv").rglob("*") if path.is_file()}
+        legacy = b"# Intent Queue\n\n- [ ] Make   the  report weekly\r\n- [x] done\n- [ ] Make   the  report weekly\n"
+        (self.anchor / QUEUE).write_bytes(legacy)
+        git(self.anchor, "add", QUEUE, env=self.env)
+        git(self.anchor, "commit", "-qm", "legacy queue", env=self.env)
+        head, common, ref = git(self.anchor, "rev-parse", "HEAD"), Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir")), "refs/devlyn/captures/inv"
+        added = self.cli("add", self.meta)
+        rows = f"{row_line('inv.t1', 'Interface 인터페이스')}\n\n{row_line('inv.t2', 'Consumer [app]')}\n".encode()
+        self.assertEqual((added["tasks"], added["capture"], added["commit"]), (["inv.t1", "inv.t2"], ref, git(self.anchor, "rev-parse", ref)))
+        self.assertIn(f"git show {ref}:docs/specs/inv/meta.md", added["message"])
+        self.assertEqual({rel: show(self.anchor, ref, rel) for rel in git(self.anchor, "ls-tree", "-r", "--name-only", ref).splitlines()},
+                         package | {"docs/specs/inv/queue.md": rows})
+        self.assertEqual((git(self.anchor, "rev-parse", "HEAD"), git(self.anchor, "status", "--porcelain", "--untracked-files=all"),
+                          (self.anchor / QUEUE).read_bytes(), (self.anchor / "docs/specs/inv").exists()), (head, "", legacy, False))
+        self.assertEqual(read_json(added_path(common, "inv")), {
+            "schema_version": 1, "loop_id": "inv", "delivery": "local-only", "capture": ref, "commit": added["commit"],
+            "tree": git(self.anchor, "rev-parse", ref + "^{tree}"), "origin": str(self.anchor), "branch": "main", "sequence": 1})
+        self.assertEqual(self.cli("add", self.meta)["commit"], added["commit"])  # a retry, the originals gone
+        self.assertEqual(transition(rows, "inv.t1", "x"), rows.replace(b"- [ ] inv.t1", b"- [x] inv.t1"))
         second = write_package(self.anchor, "rep", [("t1", [], "Weekly", self.tasks[0][3])], intent="Wrong intent.")
         self.assertIn("reproduce the legacy row's intent", self.cli("add", second, "--materialize", 5, code=1)["reason"])
         write_package(self.anchor, "rep", [("t1", [], "Weekly", self.tasks[0][3])], intent="User asked: make the report weekly.")
-        self.assertIn("not a pending legacy row", self.cli("add", second, "--materialize", 3, code=1)["reason"])
+        self.assertIn("not a pending legacy row", self.cli("add", second, "--materialize", 4, code=1)["reason"])
         self.assertIn("reproduce", self.cli("add", second, "--materialize", 5, code=1)["reason"])
         write_package(self.anchor, "rep", [("t1", [], "Weekly", self.tasks[0][3])], intent="User asked: Make the report weekly.")
         self.cli("add", second, "--materialize", 5)
-        self.assertEqual(queue.read_bytes(), expected + row_line("rep.t1", "Weekly").encode())
+        self.assertEqual(show(self.anchor, "refs/devlyn/captures/rep", "docs/specs/rep/queue.md"),
+                         b"<!-- replaces docs/specs/queue.md row (occurrence 2): - [ ] Make   the  report weekly -->\n\n" + row_line("rep.t1", "Weekly").encode() + b"\n")
+        status = self.cli("status")
+        self.assertEqual((status["next"], (self.anchor / QUEUE).read_bytes()), ("rep.t1", legacy))
+        self.assertEqual([blocker for blocker in status["blockers"] if blocker.startswith("legacy")], ["legacy row 3 needs planning: Make   the  report weekly"])
+        write_package(self.anchor, "inv", [("t9", [], "Other", self.tasks[0][3])])
+        for commit in (False, True):  # Revised work under a used loop id is refused, also once the revision is committed.
+            if commit:
+                git(self.anchor, "add", "docs/specs/inv", env=self.env)
+                git(self.anchor, "commit", "-qm", "revise inv", env=self.env)
+            self.assertIn("loop id inv was already added with another package (docs/specs/inv/meta.md", self.cli("add", self.meta, code=1)["reason"])
+
+    def test_add_refuses_without_writing(self):
+        """C. Each refusal leaves HEAD, the index, the files, refs and records as they were: a revised package under a used
+        loop id, a detached HEAD, package files committed with other content, a loop id a committed queue file already uses,
+        and package changes in the index, which add asks to unstage rather than losing them (Prediction for the last;
+        before: add committed the index's draft beside the checkout's text)."""
+        self.cli("add", self.meta)
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+
+        def g(*args):
+            subprocess.run(["git", "-C", str(self.anchor), *args], check=True, env=self.env, capture_output=True)
+
+        def edit_committed():
+            g("add", "docs/specs/trk")
+            g("commit", "-qm", "commit the package by hand")
+            spec = self.anchor / "docs/specs/trk/t1/spec.md"
+            spec.write_text(spec.read_text(encoding="utf-8").replace(" works.", " works for every caller."), encoding="utf-8")
+
+        def stage_draft():
+            spec = self.anchor / "docs/specs/stg/t1/spec.md"
+            final = spec.read_bytes()
+            spec.write_bytes(final.replace(b"Fixture.", b"Draft."))
+            g("add", "docs/specs/stg/t1/spec.md")
+            spec.write_bytes(final)
+
+        def commit_queue():
+            (self.anchor / "docs/specs/usd/queue.md").write_text(row_line("usd.t1", "Interface 인터페이스") + "\n", encoding="utf-8")
+            g("add", "docs/specs/usd/queue.md")
+            g("commit", "-qm", "a loop brought in from elsewhere")
+
+        def state():
+            return (git(self.anchor, "rev-parse", "HEAD"), git(self.anchor, "ls-files", "-s"), git(self.anchor, "for-each-ref"),
+                    git(self.anchor, "status", "--porcelain", "--untracked-files=all"), sorted(path.name for path in (common / "devlyn-loops").iterdir()))
+        for loop, tasks, prepare, message in (
+                ("inv", [("t9", [], "Other", self.tasks[0][3])], lambda: None, "loop id inv was already added with another package"),
+                ("dt", self.tasks[:1], lambda: g("checkout", "-q", "--detach"), "HEAD is detached"),
+                ("trk", self.tasks[:1], edit_committed, "docs/specs/trk is committed with different content (docs/specs/trk/t1/spec.md)"),
+                ("usd", self.tasks[:1], commit_queue, "loop id usd is already used by docs/specs/usd/queue.md"),
+                ("stg", self.tasks[:1], stage_draft, "the index holds package changes HEAD lacks (docs/specs/stg/t1/spec.md); add leaves "
+                 "the index as it is, so unstage them with `git restore --staged -- docs/specs/stg` and add again")):
+            with self.subTest(loop=loop):
+                meta = write_package(self.anchor, loop, tasks)
+                prepare()
+                before = state()
+                self.assertIn(message, self.cli("add", meta, code=1)["reason"])
+                self.assertEqual(state(), before)
+                g("checkout", "-q", "main")
+        self.assertIn("Draft.", git(self.anchor, "show", ":docs/specs/stg/t1/spec.md"))
+
+    def test_cleanup_reports_what_it_cannot_remove(self):
+        """C. Prediction: an original that cannot be unlinked stays and is reported as incomplete cleanup; the next cleanup
+        removes it. Before: add committed the package and removed nothing."""
+        from unittest import mock
+        saved = {path: path.read_bytes() for path in (self.anchor / "docs/specs/inv").rglob("*") if path.is_file()}
+        self.cli("add", self.meta)
+        for path, data in saved.items():  # The originals as a crash before cleanup leaves them.
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        with mock.patch.object(Path, "unlink", side_effect=PermissionError("unlink denied")):
+            notes = clean(common, records(common))
+        self.assertEqual((sorted(notes), all(path.exists() for path in saved)), (sorted(f"{path}: incomplete cleanup: unlink denied" for path in saved), True))
+        self.assertEqual((clean(common, records(common)), any(path.exists() for path in saved)), ([], False))
+
+    def test_a_legacy_row_is_replaced_only_by_its_one_exact_claim(self):
+        """Q. Prediction: a loop's queue file hides the legacy row whose exact text and occurrence it records, line endings
+        aside, showing the loop's rows in its place; a claim on a missing occurrence replaces nothing, so no other row
+        disappears; a row two loops claim, as two clones each materializing it leave it, is hidden with neither loop in its
+        place, so materializing it once more is refused; loops without a record follow in loop-id order, two-b after two.
+        Before: the first row equal to the recorded text was replaced, whatever its occurrence; two-b came first, its queue
+        file's path sorting before two's since '-' sorts before '/'; the row two loops claim stayed pending, and every
+        further --materialize of it was added."""
+        (self.anchor / QUEUE).write_bytes(b"# Intent Queue\n\n- [ ] alpha\r\n- [ ] alpha\n- [ ] beta\n")
+        for loop, occurrence, line in (("one", 2, "- [ ] alpha"), ("two", 1, "- [ ] beta"), ("two-b", 1, "- [ ] beta"), ("four", 3, "- [ ] alpha")):
+            (self.anchor / "docs/specs" / loop).mkdir(parents=True)
+            (self.anchor / loop_queue(loop)).write_text(f"<!-- replaces {QUEUE} row (occurrence {occurrence}): {line} -->\n\n{row_line(f'{loop}.t1', 'T')}\n",
+                                                         encoding="utf-8")
+        git(self.anchor, "add", "docs/specs", env=self.env)
+        self.assertEqual([(row["identity"], row["index"]) for row in queue_view(self.anchor, {})],
+                         [(None, 2), ("one.t1", 2), ("four.t1", 2), ("two.t1", 2), ("two-b.t1", 2)])
+        again = write_package(self.anchor, "rep", self.tasks[:1], intent="User asked: beta.")
+        self.assertIn(f"{QUEUE} line 5 is not a pending legacy row", self.cli("add", again, "--materialize", 5, code=1)["reason"])
 
     def test_handwritten_marks_never_satisfy_dependencies(self):
-        queue = self.anchor / QUEUE
-        for delivery in ("local-only", "auto"):
-            with self.subTest(delivery=delivery):
-                queue.unlink(missing_ok=True)
-                self.cli("add", write_package(self.anchor, "hw", self.tasks, delivery=delivery))
-                queue.write_bytes(queue.read_bytes().replace(b"- [ ] hw.t1", b"- [x] hw.t1"))
-                status = self.cli("status")
-                self.assertEqual(status["next"], None)
-                self.assertIn("hw.t2: prerequisite hw.t1 has no receipt-bound accepted source", status["blockers"])
-                self.cli("drain", "--", "executor", "{packet}")
-                report = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "devlyn-loops/hw/drain-report.md"
-                self.assertIn("- Whole-loop acceptance: INCOMPLETE — hw.t1 accepted without a receipt, hw.t2 pending",
-                              report.read_text(encoding="utf-8"))
+        """A loop without a record here, as in a fresh clone, is read from its tracked queue file, after the recorded loops
+        and in loop-id order; a hand-written [x] there is no receipt-bound acceptance, so its dependent waits and whole-loop
+        acceptance names the gap."""
+        self.cli("add", self.meta)
+        for loop in ("hw", "gw"):
+            write_package(self.anchor, loop, self.tasks)
+            rows = "\n\n".join(row_line(f"{loop}.{task}", title) for task, _, title, _ in self.tasks)
+            (self.anchor / loop_queue(loop)).write_text(rows.replace(f"- [ ] {loop}.t1", f"- [x] {loop}.t1") + "\n", encoding="utf-8")
+        git(self.anchor, "add", "docs/specs", env=self.env)
+        git(self.anchor, "commit", "-qm", "loops brought in", env=self.env)
+        status = self.cli("status")
+        self.assertEqual((status["next"], status["blockers"]), ("inv.t1", [
+            "inv.t2: waiting for inv.t1 (pending)", "gw.t2: prerequisite gw.t1 has no receipt-bound accepted source",
+            "hw.t2: prerequisite hw.t1 has no receipt-bound accepted source"]))
+        self.cli("drain", "--", sys.executable, "-c", "pass", "{packet}")
+        report = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "devlyn-loops/hw/drain-report.md"
+        self.assertIn("- Whole-loop acceptance: INCOMPLETE — hw.t1 accepted without a receipt, hw.t2 pending", report.read_text(encoding="utf-8"))
 
     def test_common_gitdir_locks_span_worktrees(self):
         linked = self.root / "linked tree"
@@ -1229,7 +1629,7 @@ class QueueTests(unittest.TestCase):
                     if check == "waits":
                         with self.assertRaises(subprocess.TimeoutExpired):
                             waiter.wait(timeout=1.5)
-                        self.assertFalse((linked / QUEUE).exists())
+                        self.assertFalse(added_path(common, "inv").exists())
                         held.stdin.close()
                         self.assertEqual(waiter.wait(timeout=30), 0, waiter.stderr.read())
                     else:
@@ -1237,7 +1637,7 @@ class QueueTests(unittest.TestCase):
                         self.assertEqual(waiter.returncode, 1)
                         self.assertIn("another drain is active", json.loads(out)["reason"])
                         held.stdin.close()
-        self.assertEqual(parse_queue((linked / QUEUE).read_bytes())[0]["identity"], "inv.t1")
+        self.assertEqual((read_json(added_path(common, "inv"))["origin"], read_json(added_path(common, "inv"))["branch"]), (str(linked), "side"))
 
     def test_a_crash_on_either_side_of_the_spawn_never_starts_a_second_executor(self):
         """The attempt's start is durable before the spawn, so a resumed drain observes writers first: it waits while

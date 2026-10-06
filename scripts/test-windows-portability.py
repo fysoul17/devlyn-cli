@@ -853,7 +853,7 @@ init({options});
                     self.assertEqual(dest.read_bytes(), installed)
                     self.assertEqual(entry.read_bytes(), b'keep obstruction')
 
-    def test_queue_add_appends_literal_rows_under_the_common_gitdir_lock(self):
+    def test_queue_add_captures_literal_rows_under_the_common_gitdir_lock(self):
         helper = self.package / 'config/skills/devlyn-ideate/scripts/queue.py'
         loop = runpy.run_path(str(helper))
         env = dict(self.env, GIT_AUTHOR_NAME='Fixture', GIT_AUTHOR_EMAIL='fixture@example.invalid',
@@ -862,24 +862,25 @@ init({options});
         run(['git', '-C', self.project, 'commit', '-q', '--allow-empty', '-m', 'base'], env=env)
         title = 'Keep "quotes", $HOME, `ticks` and 한글'
         meta = loop['write_package'](self.project, 'loop', [('t1', [], title, [{'argv': [sys.executable, '-c', 'pass'], 'contract_refs': ['R1']}])])
-        queue = self.project / 'docs/specs/queue.md'
-        expected = b'# Intent Queue\n\n' + loop['row_line']('loop.t1', title).encode('utf-8') + b'\n'
+        captured = lambda name: run(['git', '-C', self.project, 'cat-file', 'blob', f'refs/devlyn/captures/{name}:docs/specs/{name}/queue.md'],
+                                    env=env, code=None)
         add = lambda code=0: run([sys.executable, helper, 'add', meta], cwd=self.project, env=env, code=code)
         add()
-        self.assertEqual(queue.read_bytes(), expected)
-        self.assertIn(b'already queued: loop.t1', add(code=1).stdout)
-        self.assertEqual(queue.read_bytes(), expected)
+        self.assertEqual(captured('loop').stdout, loop['row_line']('loop.t1', title).encode('utf-8') + b'\n')
+        commit = run(['git', '-C', self.project, 'rev-parse', 'refs/devlyn/captures/loop'], env=env).stdout
+        add()  # The package's recorded add is reported again, so a retried add succeeds; nothing is written.
+        self.assertEqual(run(['git', '-C', self.project, 'rev-parse', 'refs/devlyn/captures/loop'], env=env).stdout, commit)
         # The helper writes only while it holds <common Gitdir>/devlyn-loops/queue.lock, so concurrent adds serialize.
-        queue.unlink()
+        second = loop['write_package'](self.project, 'next', [('t1', [], 'Next', [{'argv': [sys.executable, '-c', 'pass'], 'contract_refs': ['R1']}])])
         lock = self.project / '.git/devlyn-loops/queue.lock'
         with runpy.run_path(str(self.package / 'config/skills/_shared/platform-support.py'))['file_lock'](lock, blocking=True):
-            proc = subprocess.Popen([sys.executable, str(helper), 'add', str(meta)], cwd=self.project, env=env,
+            proc = subprocess.Popen([sys.executable, str(helper), 'add', str(second)], cwd=self.project, env=env,
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             time.sleep(1.5)
             self.assertIsNone(proc.poll())
-            self.assertFalse(queue.exists())
+            self.assertNotEqual(captured('next').returncode, 0)
         self.assertEqual(proc.wait(timeout=20), 0)
-        self.assertEqual(queue.read_bytes(), expected)
+        self.assertEqual(captured('next').stdout, loop['row_line']('next.t1', 'Next').encode('utf-8') + b'\n')
 
     def test_retired_skill_name_is_removed_only_as_shipped(self):
         # 0.2.0-1.15.0 shipped workflow-routing; a folder of that name the user wrote stays.

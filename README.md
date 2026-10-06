@@ -55,11 +55,11 @@ Give ideate an intent or a document. It writes a loop package — a meta-prompt 
 | Command | What it does |
 |---|---|
 | `/devlyn-ideate plan <intent or document>` | Inspects the project, asks only what it must, and writes a validated package to `docs/specs/<loop-id>/`. Nothing is queued or run. |
-| `/devlyn-ideate add <intent or package>` | Plans when needed, then appends the package's tasks to `docs/specs/queue.md` in dependency order. |
+| `/devlyn-ideate add <intent or package>` | Plans when needed, then queues the package's tasks in dependency order. It commits nothing: the package and its rows in `docs/specs/<loop-id>/queue.md` are held at `refs/devlyn/captures/<loop-id>` and your copies are removed. The first task's commit brings them into history, and the drain report's `Bring into` command brings the result into your branch. |
 | `/devlyn-ideate status` | Pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
 | `/devlyn-ideate drain` | Runs the queue serially and hands-free. |
 
-A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without them, taking only scope-narrowing, reversible, non-user-visible defaults. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened) under your installed CLAUDE.md/AGENTS.md instructions. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it, never on the executor's say-so; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local.
+A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without them, taking only scope-narrowing, reversible, non-user-visible defaults. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened) under your installed CLAUDE.md/AGENTS.md instructions. Tasks start from committed state, the branch you added the loop on or the remote base for `auto`/`pr`, so commit the installer's changes and whatever a plan depends on before adding a loop, and push them for `auto`/`pr`. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it, never on the executor's say-so; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local.
 
 ### Delivery
 
@@ -214,6 +214,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 - **Node.js 18+** and npm
 - **Python 3.11+** available as `python3`, and Git for the harness
 - **An agent CLI** installed and configured: Codex, omp, Pi or Grok (AGENTS.md), or [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLAUDE.md)
+- **For `auto`/`pr` delivery**, an `origin` remote naming one GitHub repository and an authenticated [`gh`](https://cli.github.com/)
 
 On native Windows, use native Node/npm and Python plus Git for Windows Bash for the shipped shell wrapper. Run `npx devlyn-cli -y` in the project (add `--claude` for Claude Code). Skill folders follow the Agent Skills naming standard (for example `devlyn-ideate`), so a project that commits them checks out on Windows. Harness text is UTF-8 without requiring `PYTHONUTF8`.
 

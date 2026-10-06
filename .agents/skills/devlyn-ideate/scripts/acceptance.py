@@ -31,7 +31,6 @@ SHA_RE = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 BLOCKERS = ("failed", "needs-review", "blocked-infrastructure")
 REVIEW_KEYS = {"schema_version", "kind", "task", "engine", "model", "source_sha", "contract_sha256",
                "expected_sha256", "requirements", "findings"}
-FINDING_KEYS = {"id", "binding", "disposition", "requirement", "summary", "reason"}
 SUBMISSION_KEYS = {"schema_version", "task", "source_sha", "runner_results", "reviews", "findings", "cleanup",
                    "handoff", "assumptions", "blockers", "summary"}
 PACKET_KEYS = {"task", "worktree", "branch", "inputs_sha", "allocation_base", "contract", "expected", "meta",
@@ -271,9 +270,10 @@ def guard_results(packet, expected, source):
 
 
 def review_problem(packet, record, source):
-    """(problem, malformed): a malformed record fails acceptance; a well-formed record bound elsewhere does not count."""
-    if not isinstance(record, dict) or not REVIEW_KEYS <= set(record) <= REVIEW_KEYS | {"summary"}:
-        return f"review record keys must be {sorted(REVIEW_KEYS)} (optional summary)", True
+    """(problem, malformed): a malformed record fails acceptance; a well-formed record bound elsewhere does not count.
+    Keys acceptance does not read are ignored: every key a blocking decision reads is required."""
+    if not isinstance(record, dict) or not REVIEW_KEYS <= set(record):
+        return f"review record keys must include {sorted(REVIEW_KEYS)}", True
     if (record["schema_version"], record["kind"]) != (1, "devlyn-review"):
         return "review record is not a schema 1 devlyn-review", True
     if not all(isinstance(record[key], str) and record[key].strip() for key in ("engine", "model")):
@@ -282,7 +282,7 @@ def review_problem(packet, record, source):
         return "review requirements must name task requirement IDs", True
     findings = record["findings"]
     if not isinstance(findings, list) or not all(
-            isinstance(f, dict) and {"id", "binding", "disposition"} <= set(f) <= FINDING_KEYS and isinstance(f["id"], str)
+            isinstance(f, dict) and {"id", "binding", "disposition"} <= set(f) and isinstance(f["id"], str)
             and isinstance(f["binding"], bool) and f["disposition"] in ("open", "resolved", "rejected")
             and (f["disposition"] != "rejected" or (isinstance(f.get("reason"), str) and f["reason"].strip()))
             for f in findings):
@@ -538,6 +538,20 @@ class AcceptanceTests(unittest.TestCase):
         result = self.submit(source, reviews=[stale, self.review(source, findings=[{"id": "F3", "binding": False, "disposition": "open"}])])
         self.assertEqual(result["verdict"], "ACCEPTED")
         self.assertEqual([item["path"] for item in result["ignored_reviews"]], [stale])
+
+    def test_review_records_and_findings_ignore_other_keys(self):
+        """E2. Prediction: a review record with an extra top-level key and an extra key in a finding counts, and an open
+        binding finding carrying an extra key still fails acceptance with its id named. Before: both records failed as
+        "malformed review record", so the outcome depended on which engine wrote the record."""
+        self.inputs(review=["R2"])
+        source = self.product()
+        extra = {"evidence": ["checks pass"]}
+        counted = self.review(source, "extra.json", **extra, findings=[{"id": "F1", "binding": True, "disposition": "resolved", **extra}])
+        result = self.submit(source, reviews=[counted])
+        self.assertEqual((result["verdict"], [review["path"] for review in result["reviews"]]), ("ACCEPTED", [counted]))
+        blocking = self.review(source, "open.json", findings=[{"id": "F2", "binding": True, "disposition": "open", **extra}])
+        result = self.submit(source, reviews=[blocking])
+        self.assertEqual((result["verdict"], result["reasons"]), ("FAILED", ["failed: unresolved binding review findings F2"]))
 
     def test_runner_result_with_a_source_change_is_never_reused(self):
         mutate = [sys.executable, "-c", "import pathlib; p = pathlib.Path('product.txt'); p.write_text(p.read_text() + '!'); print('ok')"]
