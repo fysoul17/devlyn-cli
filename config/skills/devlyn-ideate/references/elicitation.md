@@ -20,7 +20,7 @@ Lead with the recommendation and its consequence, for example: "Should `--lang f
 
 ## Autonomous planning
 
-With `--autonomous`, or when a drain plans a legacy row, take only the defaults the autonomous policy allows and record each once under `## Decisions and assumptions`. Material ambiguity that affects the whole intent stops planning with its concrete question. Ambiguity confined to separable work leaves that work out of the package, named with its question under `## Constraints and exclusions`, while the independent authorized work is planned.
+With `--autonomous`, or when a drain plans a legacy row, take only the defaults the autonomous policy allows and record each once under `## Decisions and assumptions`. Material ambiguity stops planning with its concrete question.
 
 ## Tasks and checks
 
