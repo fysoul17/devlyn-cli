@@ -862,6 +862,23 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.remote_rows(bare), {"cf.t1": "F", "cf.t2": "x", "cf.t3": "F"})
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_an_auto_loop_resumed_local_only_is_reported(self):
+        # Prediction: an auto loop whose first task an auto drain left active and unpushed, resumed with --local-only, drains
+        # both tasks to LOCAL_ONLY, and this drain and the next each end with the loop's report. Before: the report read the
+        # loop's auto add record as a local one, so every drain ended BLOCKED "malformed add record" without a report.
+        self.remote(pending=False)
+        self.plan("ri", CHAIN, {"ri.t1": {"product": "greeting"}, "ri.t2": {"product": "app"}}, delivery="auto")
+        stopped = self.cli("drain", "--repo", self.anchor, "--", str(self.root / "no executor"), "{packet}", code=1)
+        self.assertIn("executor could not start", stopped["reason"])
+        report = self.common / "devlyn-loops/ri/drain-report.md"
+        for _ in range(2):
+            report.unlink()
+            tasks = self.tasks(self.drain())
+            self.assertEqual({identity: (task["result"], task["delivery"]) for identity, task in tasks.items()},
+                             {"ri.t1": ("accepted", "LOCAL_ONLY"), "ri.t2": ("accepted", "LOCAL_ONLY")})
+            self.assertIn("- Whole-loop acceptance: ACCEPTED", report.read_text(encoding="utf-8"))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_delivery_pending_keeps_acceptance_resources_and_resume(self):
         bare, data = self.remote(pending=True)
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
