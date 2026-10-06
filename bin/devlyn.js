@@ -10,7 +10,7 @@ const { execSync } = require('child_process');
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
-const { updateInstructions, InstructionError, holdsDevlynDefaults } = require('./instructions');
+const { updateInstructions, InstructionError, holdsDevlynDefaults, importsAgentsMd } = require('./instructions');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
@@ -734,6 +734,27 @@ function installAgentsProject(withClaude) {
   ignoreInGit(['.devlyn/', '.agents/skills/.devlyn-install.json']);
 }
 
+// Claude Code reads AGENTS.md only where no CLAUDE.md exists, or through a CLAUDE.md that imports it. So a new
+// CLAUDE.md imports an existing AGENTS.md and holds the devlyn block only when AGENTS.md does not, and a CLAUDE.md
+// importing an AGENTS.md that holds the block gets no second copy.
+function installClaudeInstructions() {
+  const file = (name) => path.join(projectDir(), name);
+  const agents = fs.statSync(file('AGENTS.md'), { throwIfNoEntry: false })?.isFile()
+    ? fs.readFileSync(file('AGENTS.md'), 'utf8') : null;
+  const stat = fs.lstatSync(file('CLAUDE.md'), { throwIfNoEntry: false });
+  const initial = !stat && agents !== null ? '@AGENTS.md\n' : '';
+  const claude = stat?.isFile() ? fs.readFileSync(file('CLAUDE.md'), 'utf8') : initial;
+  if (agents === null || !holdsDevlynDefaults('AGENTS.md', agents) || !importsAgentsMd(claude)
+      || holdsDevlynDefaults('CLAUDE.md', claude)) {
+    updateInstructions('CLAUDE.md', initial);
+  } else if (stat) {
+    log('  → CLAUDE.md imports AGENTS.md, which holds the devlyn block', 'dim');
+  } else {
+    fs.writeFileSync(file('CLAUDE.md'), initial, { flag: 'wx', mode: 0o644 });
+    log('  → Created CLAUDE.md importing AGENTS.md, which holds the devlyn block');
+  }
+}
+
 // Project CLAUDE.md and .claude/: skills, templates and settings.
 function installClaudeCore() {
   const skillsDir = skillRoots('claude', false)[0];
@@ -758,7 +779,7 @@ function installClaudeCore() {
       && (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env))) {
     throw unmergeable('env must be a JSON object');
   }
-  updateInstructions('CLAUDE.md');
+  installClaudeInstructions();
   for (const entry of fs.readdirSync(CONFIG_SOURCE)) {
     if (entry !== 'skills') copyRecursive(path.join(CONFIG_SOURCE, entry), path.join(targetDir, entry), targetDir);
   }
@@ -824,7 +845,8 @@ function install(targets, global) {
       + 'would apply to every project. Run from a project folder, or use --global for skills only.');
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
-  for (const target of targets) {
+  // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
+  for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
     if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));
     else if (target === 'agents') installAgentsProject(targets.includes('claude'));
     else installClaudeCore();

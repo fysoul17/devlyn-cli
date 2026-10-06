@@ -119,6 +119,18 @@ function instructionParagraphs(text) {
   return paragraphs;
 }
 
+// Claude Code expands an `@AGENTS.md` import line, except inside a fenced code block.
+function importsAgentsMd(text) {
+  let fence = null;
+  for (const line of text.replace(/^\uFEFF/, '').split(/\r?\n/)) {
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    if (marker && !fence) fence = marker;
+    else if (marker && marker[0] === fence[0] && marker.length >= fence.length && /^ {0,3}(?:`+|~+)\s*$/.test(line)) fence = null;
+    else if (!fence && line.trimEnd() === '@AGENTS.md') return true;
+  }
+  return false;
+}
+
 function customInstructions(text, name, template, managed = false) {
   const known = new Set([
     ...legacyTemplates.paragraphs[name],
@@ -168,7 +180,7 @@ function retainFile(file, bytes) {
   }
 }
 
-function updateInstructions(name) {
+function updateInstructions(name, initial = '') {
   const templatePath = path.join(__dirname, '..', name);
   const template = fs.readFileSync(templatePath, 'utf8');
   if (template.includes(BEGIN) || template.includes(END)) {
@@ -187,9 +199,9 @@ function updateInstructions(name) {
     throw new InstructionError(`Instruction file must be a regular file; preserved: ${dest}. Move it aside and rerun, then merge your shared rules outside the managed block.`);
   }
   const before = exists ? fs.readFileSync(dest) : Buffer.alloc(0);
-  let current;
+  let current = initial;
   try {
-    current = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(before);
+    if (exists) current = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(before);
   } catch (cause) {
     throw new InstructionError(`${name} must be UTF-8; original preserved. Convert its encoding and rerun installation.`, { cause });
   }
@@ -274,4 +286,4 @@ function updateInstructions(name) {
   return true;
 }
 
-module.exports = { updateInstructions, InstructionError, instructionParagraphs, holdsDevlynDefaults };
+module.exports = { updateInstructions, InstructionError, instructionParagraphs, holdsDevlynDefaults, importsAgentsMd };

@@ -367,6 +367,61 @@ init({options});
         self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
         self.assertEqual(self.markers(self.home), set())
 
+    def test_claude_target_keeps_an_agents_md_in_force(self):
+        # Claude Code reads AGENTS.md only where no CLAUDE.md exists, or through a CLAUDE.md that imports it.
+        # Prediction (phase B audit H10): in an AGENTS.md-only repo, -y --claude creates CLAUDE.md as the one
+        # line `@AGENTS.md`, and AGENTS.md keeps its rules and holds the one block; a CLAUDE.md that already
+        # imports AGENTS.md is left as it is; the Claude target alone gives a new importing CLAUDE.md the block
+        # while AGENTS.md lacks it; an import inside a code fence is not one; every reinstall changes nothing.
+        # Before: CLAUDE.md held only the block, so Claude Code no longer read the team rules.
+        rules = b'# Team rules\n\nAlways use pnpm, never npm.\n'
+        def files():
+            return {name: (self.project / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
+        def blocks():
+            return sum(data.count(b'devlyn:instructions:begin') for data in files().values())
+        (self.project / 'AGENTS.md').write_bytes(rules)
+        result = self.cli('-y', '--claude')
+        installed = files()
+        self.assertEqual(installed['CLAUDE.md'], b'@AGENTS.md\n')
+        self.assertIn(b'Created CLAUDE.md importing AGENTS.md', result.stdout)
+        self.assertTrue(installed['AGENTS.md'].startswith(rules))
+        self.assertIn(CURRENT_DEFAULTS, installed['AGENTS.md'])
+        self.assertEqual(blocks(), 1)
+        for args in (['-y'], ['-y', '--claude']):
+            self.cli(*args)
+            self.assertEqual(files(), installed)
+        self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
+        claude = b'@AGENTS.md\n\n# Claude only\n\nPrefer the Read tool.\n'
+        fenced = b'# Notes\n\n```md\n@AGENTS.md\n```\n'
+        for case, before, install in (('imports', claude, lambda: self.cli('-y', '--claude')),
+                                      ('claude-alone', None, lambda: self.invoke('installClaudeCore();')),
+                                      ('fenced', fenced, lambda: self.cli('-y', '--claude'))):
+            with self.subTest(case=case):
+                self.project = self.case / case; self.project.mkdir()
+                (self.project / 'AGENTS.md').write_bytes(rules)
+                if before is not None:
+                    (self.project / 'CLAUDE.md').write_bytes(before)
+                install()
+                installed = files()
+                install()
+                self.assertEqual(files(), installed)
+                if case == 'imports':
+                    self.assertEqual(installed['CLAUDE.md'], claude)
+                    self.assertEqual(blocks(), 1)
+                elif case == 'claude-alone':
+                    self.assertTrue(installed['CLAUDE.md'].startswith(b'@AGENTS.md\n'))
+                    self.assertIn(CURRENT_DEFAULTS, installed['CLAUDE.md'])
+                    self.assertEqual((installed['AGENTS.md'], blocks()), (rules, 1))
+                else:
+                    self.assertTrue(installed['CLAUDE.md'].startswith(fenced))
+                    self.assertIn(CURRENT_DEFAULTS, installed['CLAUDE.md'])
+        # The AGENTS.md target installs first even when the menu selected it last (toggled off and on again).
+        self.project = self.case / 'toggled'; (self.project / '.claude/skills').mkdir(parents=True)
+        (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+        (self.project / 'AGENTS.md').write_bytes(rules)
+        self.interact([[' ', ' ', '\r'], ['\r'], ['\r']])
+        self.assertEqual((files()['CLAUDE.md'], blocks()), (b'@AGENTS.md\n', 1))
+
     def test_interactive_what_and_where(self):
         down, enter, space = '\x1b[B', '\r', ' '
         mcp = b'Playwright MCP for browser testing'
@@ -773,8 +828,9 @@ init({options});
             for managed in (False, True):
                 with self.subTest(name=name, managed=managed):
                     dest = self.project / name
-                    if dest.exists():
-                        dest.unlink()
+                    # A CLAUDE.md created beside an AGENTS.md imports it instead of holding the block.
+                    for stale in (dest, self.project / 'AGENTS.md'):
+                        stale.unlink(missing_ok=True)
                     self.invoke(command)
                     stock = dest.read_bytes() if managed else (self.package / name).read_bytes()
                     edited = '2. **No overengineering** — Team rule: keep our API stable.\n'.encode()
