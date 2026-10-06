@@ -6,7 +6,7 @@ This repo runs **three independent measurement lanes** (B, C and D); Lane A is r
 |---|---|---|
 | **A · auto-resolve** (retired) | Gated the retired resolve pipeline's pair-mode / risk-probe / headroom behavior; kept as research history. | [`auto-resolve/README.md`](auto-resolve/README.md) |
 | **B · instruction-sensitivity** | Instruction-text effect. Measures whether CLAUDE.md / AGENTS.md / runtime-principles changes shift LLM behavior (clarification, scope discipline, pushback, anti-overengineering). | [`instruction-sensitivity/README.md`](instruction-sensitivity/README.md) |
-| **C · ceiling** | 세계최고 axis (ops #17): 3-arm A/B/C moat runs, seat-fitness matrix, and the **no-degradation control cell** (`scripts/run-nodeg-cell.sh` — objective/quality/wall bars vs frozen best_B). | [`ceiling/README.md`](ceiling/README.md) |
+| **C · ceiling** | 세계최고 axis (ops #17): 3-arm A/B/C moat runs, seat-fitness matrix, and the **no-degradation control cell** (`scripts/run-nodeg-cell.sh` — objective/quality/wall bars vs frozen best_B). The moat runs and the no-degradation cell stage the retired resolve skill as arm A, so they run only from a checkout before the retirement. | [`ceiling/README.md`](ceiling/README.md) |
 | **D · noncoding** | Non-coding value axes (intent-grasp, packet quality) with hidden-oracle scoring and T0/T1 seat calibration. | [`noncoding/README.md`](noncoding/README.md) |
 
 ## Which lane do I need? — decision rule
@@ -88,6 +88,6 @@ python3 benchmark/instruction-sensitivity/scripts/score-behavior.py \
 ## Hard rules (every lane)
 
 1. **Commit-pinned only.** Working-tree benchmarks are log noise, not evidence. Pin baseline and candidate to specific SHAs.
-2. **No silent fallbacks on engine unavailability.** Lane A pair routes already emit `BLOCKED:<engine>-unavailable`. Lane B inherits the same contract.
-3. **Don't mix lanes.** Lane A fixtures are designed for pair-effect measurement; running them in Lane B mode contaminates both signals.
+2. **No silent fallbacks on engine unavailability.** Stop and report when an engine is unavailable; never substitute another.
+3. **Don't mix lanes.** Each lane's fixtures answer its own question; running them in another lane's mode contaminates both signals.
 4. **Results are evidence, not opinions.** Cite the run-id, the gate JSON path, and the exact verdict — never a paraphrase.
