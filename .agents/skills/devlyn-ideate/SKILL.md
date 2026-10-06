@@ -92,7 +92,7 @@ A removed flag stops with its instruction and selects no other behavior.
 
 ## add
 
-An absolute path to a package's `meta.md` is appended as it is; anything else is planned first. Append with `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" add '<absolute meta.md>'`, the only writer of new queue rows; never edit `docs/specs/queue.md` by hand. It commits only the package and the queue on the current branch, leaving other staged or unstaged changes as they are, and the loop starts from that commit. A pending legacy raw-intent row is replaced in place by a package whose `## Intent` reproduces the row verbatim, added with `--materialize <line>`.
+An absolute path to a package's `meta.md` is appended as it is; anything else is planned first. Append with `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" add '<absolute meta.md>'`, the only writer of new queue rows; never edit `docs/specs/queue.md` by hand. It commits only the package and the queue on the current branch, leaving other staged or unstaged changes as they are, and the loop starts from that commit; an add that fails, is interrupted or crashes is completed or rolled back by itself or the next add, status or drain. A pending legacy raw-intent row is replaced in place by a package whose `## Intent` reproduces the row verbatim, added with `--materialize <line>`.
 
 ## status
 

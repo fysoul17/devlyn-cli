@@ -441,6 +441,10 @@ def added_path(common, loop):
     return common / "devlyn-loops" / loop / "added.json"
 
 
+def adding_path(common, loop):
+    return common / "devlyn-loops" / loop / "adding.json"
+
+
 def add_record(common, loop):
     """`add`'s record of the commit on the anchor branch that carries the loop's package and rows."""
     path = added_path(common, loop)
@@ -448,6 +452,74 @@ def add_record(common, loop):
     record = read_json(path)
     require(isinstance(record, dict) and all(isinstance(record.get(key), str) for key in ("branch", "commit")), f"{path}: malformed add record")
     return record
+
+
+def planned_tree(anchor, head, paths, new):
+    """The add commit's tree: HEAD's, with the package directory as `git add` stages it and the queue as `new`."""
+    with tempfile.TemporaryDirectory(prefix="devlyn-loop-index-") as temp:
+        env = {**os.environ, "GIT_INDEX_FILE": str(Path(temp) / "index")}
+        git(anchor, "read-tree", head, env=env)
+        git(anchor, "add", "--", paths[0], env=env)
+        blob = git(anchor, "hash-object", "-w", "--stdin", f"--path={QUEUE}", data=new)
+        git(anchor, "update-index", "--add", "--cacheinfo", f"100644,{blob},{QUEUE}", env=env)
+        return git(anchor, "write-tree", env=env)
+
+
+def finish_add(common, intent, commit):
+    """Record the add commit, then drop the intent record."""
+    loop = intent["loop_id"]
+    write_json(added_path(common, loop), {"schema_version": 1, "loop_id": loop, "branch": intent["branch"], "commit": commit})
+    adding_path(common, loop).unlink()
+
+
+def settle_add(common, intent):
+    """Finish an add that failed, was interrupted or crashed: record its commit when the branch holds it with the planned
+    tree, else restore the queue bytes and the exact index entries of its paths, never resetting them to HEAD."""
+    anchor, loop = Path(intent["anchor"]), intent["loop_id"]
+    later = git_run(anchor, "rev-list", "--first-parent", "--reverse", f"{intent['head']}..refs/heads/{intent['branch']}", ok=(0, 128)).stdout.split()
+    if later and git(anchor, "show", "-s", "--format=%P%n%T%n%s", later[0].decode()).split("\n") == [intent["head"], intent["tree"], f"devlyn loop: add {loop}"]:
+        return finish_add(common, intent, later[0].decode())
+    queue = anchor / QUEUE
+    if intent["queue"] is None:
+        queue.unlink(missing_ok=True)
+    else:
+        acceptance()["atomic_write"](queue, git_run(anchor, "cat-file", "blob", intent["queue"]).stdout)
+    staged = [entry.split("\t", 1)[1] for entry in git_run(anchor, "ls-files", "-s", "-z", "--", *intent["paths"]).stdout.decode("utf-8").split("\0") if entry]
+    null = "0" * len(intent["head"])  # Mode 0 removes a path; the recorded entries then return exactly as they were.
+    entries = [f"0 {null}\t{path}" for path in staged] + intent["index"]
+    git_run(anchor, "update-index", "-z", "--index-info", data="".join(entry + "\0" for entry in entries).encode("utf-8"))
+    adding_path(common, loop).unlink()
+
+
+def recover_adds(common):
+    """Settle every add a crash left unfinished, before anything reads or writes the queue (loop.md step 1)."""
+    for path in sorted((common / "devlyn-loops").glob("*/adding.json")):
+        settle_add(common, read_json(path))
+
+
+def commit_add(anchor, common, loop, branch, paths, data, new):
+    """Commit a local loop's package and queue on the current branch, the queue's previous bytes being `data`.
+
+    The intent record is written before any change, so a failure, an interrupt or a crash at any point is settled the
+    same way: by this call, or by the next add, status or drain."""
+    head = git(anchor, "rev-parse", "HEAD")
+    tree = planned_tree(anchor, head, paths, new)
+    require(tree != git(anchor, "rev-parse", "HEAD^{tree}"),
+            f"{loop}'s package and rows are already committed at HEAD; restore {QUEUE} from HEAD instead of adding them again")
+    intent = {"schema_version": 1, "loop_id": loop, "anchor": str(anchor), "branch": branch, "head": head, "tree": tree, "paths": paths,
+              "queue": None if data is None else git(anchor, "hash-object", "-w", "--stdin", data=data),
+              "index": [entry for entry in git_run(anchor, "ls-files", "-s", "-z", "--", *paths).stdout.decode("utf-8").split("\0") if entry]}
+    write_json(adding_path(common, loop), intent)
+    try:
+        acceptance()["atomic_write"](anchor / QUEUE, new)
+        git(anchor, "add", "--", *paths)
+        git(anchor, "commit", "--only", "-q", "-m", f"devlyn loop: add {loop}", "--", *paths)
+    except BaseException:
+        settle_add(common, intent)
+        raise
+    commit = git(anchor, "rev-parse", "HEAD")
+    finish_add(common, intent, commit)
+    return commit
 
 
 def task_complete(action, **values):
@@ -497,6 +569,7 @@ def derive_state(anchor, common, row, claims):
 def view(anchor, common, local_only=False):
     """Reconcile the queue with every receipt and recovery ref before anything is selected."""
     with lock(common, "queue.lock", blocking=True):
+        recover_adds(common)
         queue = anchor / QUEUE
         data = queue.read_bytes() if queue.exists() else b""
     claims, unreadable = {}, []
@@ -1015,6 +1088,7 @@ def add(args):
         raise LoopError(f"{paths[0]} is committed with different content ({', '.join(tracked.splitlines())}); add never overwrites "
                         "committed package files, so plan the revision as a new loop")
     with lock(common, "queue.lock", blocking=True):
+        recover_adds(common)
         data = queue.read_bytes() if queue.exists() else None
         existing = parse_queue(data or b"")
         identities = [f"{loop}.{task}" for task in package["tasks"]]
@@ -1026,26 +1100,12 @@ def add(args):
                     f"{QUEUE} line {args.materialize} is not a pending legacy row")
             intent = " ".join(sections(package["meta_text"], "meta.md")["Intent"].split())
             require(" ".join(target["text"].split()) in intent, "meta.md '## Intent' must reproduce the legacy row's intent verbatim")
-            acceptance()["atomic_write"](queue, replace_row(data, target["index"], rows))
+            new = replace_row(data, target["index"], rows)
         else:
             # Appended one blank line after the queue's last line; a new queue starts with its header.
             lead = HEADER if data is None else b"" if not data or data.endswith(b"\n\n") else b"\n" if data.endswith(b"\n") else b"\n\n"
-            acceptance()["atomic_write"](queue, (data or b"") + lead + b"\n".join(spaced(rows)) + b"\n")
-        try:
-            git(anchor, "add", "--", *paths)
-            require(git_run(anchor, "diff", "--cached", "--quiet", "HEAD", "--", *paths, ok=(0, 1)).returncode,
-                    f"{loop}'s package and rows are already committed at HEAD; restore {QUEUE} from HEAD instead of adding them again")
-            git(anchor, "commit", "--only", "-q", "-m", f"devlyn loop: add {loop}", "--", *paths)
-        except LoopError:
-            # No row is queued without its commit.
-            if data is None:
-                queue.unlink()
-            else:
-                acceptance()["atomic_write"](queue, data)
-            git(anchor, "reset", "-q", "--", *paths)
-            raise
-        commit = git(anchor, "rev-parse", "HEAD")
-        write_json(added_path(common, loop), {"schema_version": 1, "loop_id": loop, "branch": branch, "commit": commit})
+            new = (data or b"") + lead + b"\n".join(spaced(rows)) + b"\n"
+        commit = commit_add(anchor, common, loop, branch, paths, data, new)
     return {"status": "ADDED", "queue": str(queue), "tasks": identities, "commit": commit}
 
 

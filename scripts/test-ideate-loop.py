@@ -90,6 +90,12 @@ UNOBSERVABLE = ("import runpy, sys\n"
                 "sys.argv = sys.argv[1:]\n"
                 "queue['shared']('platform-support')['configure_utf8']()\n"
                 "sys.exit(queue['main']())\n")
+# Runs the driver as from a terminal, where Ctrl-C raises KeyboardInterrupt: a runner started in the background passes
+# SIGINT on ignored, and Python then installs no handler.
+INTERRUPTIBLE = ("import runpy, signal, sys\n"
+                 "signal.signal(signal.SIGINT, signal.default_int_handler)\n"
+                 "sys.argv = sys.argv[1:]\n"
+                 "runpy.run_path(sys.argv[0], run_name='__main__')\n")
 PRODUCTS = {
     "greeting": {"greeting.py": "def greet(name):\n    return f\"Hello, {name}!\"\n"},
     "bad-greeting": {"greeting.py": "def greet(name):\n    return f\"Hi {name}\"\n"},
@@ -325,6 +331,63 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.g("diff", "--name-only", self.base, "HEAD").splitlines(), package + ["docs/specs/queue.md"])
         self.assertEqual((self.g("diff", "--cached", "--name-only"), self.g("diff", "--name-only")), ("staged.txt", ".gitignore"))
         self.assertEqual(self.added("inv"), {"schema_version": 1, "loop_id": "inv", "branch": "main", "commit": self.g("rev-parse", "HEAD")})
+
+    def hooked_add(self, meta, event, script):
+        """Run add in its own process group with a commit hook whose script signals that group."""
+        hook = self.common / "hooks" / event
+        hook.parent.mkdir(exist_ok=True)
+        hook.write_text("#!/bin/sh\n" + script + "\n", encoding="utf-8")
+        hook.chmod(0o755)
+        try:
+            return subprocess.run([sys.executable, "-c", INTERRUPTIBLE, str(self.queue_py), "add", str(meta)], cwd=self.root, env=self.env,
+                                  capture_output=True, text=True, encoding="utf-8", start_new_session=True)
+        finally:
+            hook.unlink()
+
+    @unittest.skipIf(os.name == "nt", "a commit hook signals the add's process group")
+    def test_add_interrupted_inside_its_commit_restores_the_queue_and_index_entries(self):
+        # Prediction (L1): Ctrl-C reaching add's process group while its pre-commit hook runs leaves HEAD, the queue bytes
+        # and the exact index entries of the package and queue paths, a partly staged package file included, as they were,
+        # with no intent or add record left; a retried add then commits the package. Before: the interrupt skipped the
+        # rollback, so the rows stayed appended and the package staged.
+        meta = self.queue["write_package"](self.anchor, "inv", CHAIN)
+        spec = self.anchor / "docs/specs/inv/t1/spec.md"
+        final = spec.read_bytes()
+        spec.write_bytes(final.replace(b"Fixture.", b"Draft."))
+        self.g("add", "docs/specs/inv/t1/spec.md")
+        spec.write_bytes(final)
+        paths = ["docs/specs/inv", "docs/specs/queue.md"]
+
+        def state():
+            return (self.g("rev-parse", "HEAD"), (self.anchor / "docs/specs/queue.md").read_bytes(), self.g("ls-files", "-s", "--", *paths),
+                    sorted(path.name for path in (self.common / "devlyn-loops").glob("*/*.json")))
+        before = state()
+        interrupted = self.hooked_add(meta, "pre-commit", "kill -INT 0\nexit 1")
+        self.assertIn("KeyboardInterrupt", interrupted.stderr, f"exit {interrupted.returncode}: {interrupted.stdout}")
+        self.assertEqual(state(), before)
+        self.assertIn("Draft.", self.g("show", ":docs/specs/inv/t1/spec.md"))
+        self.cli("add", meta)
+        self.assertEqual((self.g("log", "-1", "--format=%s"), self.g("show", "HEAD:docs/specs/inv/t1/spec.md")),
+                         ("devlyn loop: add inv", final.decode("utf-8").strip()))
+
+    @unittest.skipIf(os.name == "nt", "a commit hook signals the add's process group")
+    def test_add_killed_after_its_commit_is_completed_by_the_next_status(self):
+        # Prediction (L2): add killed after its commit lands, before added.json, leaves its intent record; the next status
+        # records that add commit and removes the intent record, and the drain then runs the loop to acceptance from it.
+        # Before: no intent record existed, so the drain blocked on the missing add record.
+        meta = self.queue["write_package"](self.anchor, "inv", CHAIN)
+        self.behaviors.update({"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}})
+        crashed = self.hooked_add(meta, "post-commit", "kill -KILL 0")
+        self.assertEqual(crashed.returncode, -signal.SIGKILL)
+        commit = self.g("rev-parse", "HEAD")
+        self.assertEqual(self.g("log", "-1", "--format=%s"), "devlyn loop: add inv")
+        records = self.common / "devlyn-loops/inv"
+        self.assertEqual(sorted(path.name for path in records.glob("*.json")), ["adding.json"])
+        self.assertEqual(self.cli("status", "--repo", self.anchor)["next"], "inv.t1")
+        self.assertEqual((self.added("inv")["commit"], (records / "adding.json").exists()), (commit, False))
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"inv.t1": "accepted", "inv.t2": "accepted"})
+        self.assertEqual(self.receipt("inv.t1")["baseline"], commit)
 
     def test_frontier_is_the_latest_accepted_source_and_divergence_is_refused(self):
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1"], "Greeting app", [APP_CHECK]), ("t4", ["t2", "t3"], "Notes again", [NOTES_CHECK])]
