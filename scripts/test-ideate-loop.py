@@ -357,6 +357,49 @@ class LoopFixture(unittest.TestCase):
                          (self.base, self.package("inv", ("t1", "t2"))))
         self.assertEqual(self.g("diff", "--name-only", final["baseline"], final["acceptance"]["inputs_sha"]), "docs/specs/inv/queue.md")
 
+    def test_a_local_loop_starts_from_the_branch_it_was_added_on(self):
+        # Prediction (L): with the checkout switched to another branch, a local loop's first task starts from the HEAD of
+        # the branch it was added on, and the report brings it into that branch; while that HEAD does not descend from the
+        # manifest base_sha, or the checkout's instructions differ from it, the task waits naming the reason and its remedy,
+        # with no executor call, then runs once the branch holds base_sha or the instructions are committed. Before: a
+        # branch moved behind base_sha was not checked at allocation, and the instruction wait named only the remedies of
+        # a fixed start.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        self.g("commit", "-q", "--allow-empty", "-m", "moves main")
+        moved = self.g("rev-parse", "HEAD")
+        self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}}, base=moved)
+        self.g("checkout", "-q", "-b", "side")
+        self.g("commit", "-q", "--allow-empty", "-m", "side work")
+        self.g("branch", "-f", "main", self.base)
+        tasks = self.tasks(self.drain())
+        self.assertEqual((tasks["aa.t1"]["result"], self.receipt("aa.t1")["baseline"], tasks["bb.t1"].get("reason"), self.calls("bb.t1")),
+                         ("accepted", self.base, f"main, the branch bb was added on, is at {self.base}, which does not descend from the manifest "
+                          f"base_sha {moved}; bring that commit into main, or plan the work as a new loop", 0))
+        self.assertIn("- Bring into main: git merge --ff devlyn/aa/t1\n", self.report("aa"))
+        self.g("branch", "-f", "main", moved)
+        self.assertEqual((self.tasks(self.drain())["bb.t1"]["result"], self.receipt("bb.t1")["baseline"]), ("accepted", moved))
+        self.plan("cc", [("t1", [], "Todo", [TODO_CHECK])], {"cc.t1": {"product": "todo"}}, base=moved)
+        (self.anchor / "CLAUDE.md").write_text("# Installed instructions\n", encoding="utf-8")
+        side = self.g("rev-parse", "HEAD")
+        self.assertEqual(self.tasks(self.drain())["cc.t1"].get("reason"), f"the installed instructions (CLAUDE.md) in this checkout differ from "
+                         f"those in its start commit {side}, so it would run without them; commit them on side, or restore them to their bytes at that commit")
+        self.g("add", "CLAUDE.md")
+        self.g("commit", "-qm", "install instructions")
+        self.assertEqual((self.tasks(self.drain())["cc.t1"]["result"], self.methodology("cc.t1")), ("accepted", ["CLAUDE.md"]))
+
+    def test_a_local_loop_keeps_the_start_its_first_allocation_fixed(self):
+        # Prediction (L): once its first allocation fixed a local loop's start, a later independent task starts from that
+        # same commit after the first task failed, though the branch has moved since. Before (95fbccef): it started from
+        # the moved branch HEAD.
+        tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1", "t2"], "Greeting app", [APP_CHECK])]
+        self.plan("cc", tasks, {"cc.t1": {"product": "bad-greeting"}, "cc.t2": {"product": "notes"}, "cc.t3": {"product": "app"}})
+        blocked = self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "no executor"), "{packet}", code=1)
+        self.assertIn("executor could not start", blocked["reason"])
+        self.g("commit", "-q", "--allow-empty", "-m", "moves main")
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"cc.t1": "failed", "cc.t2": "accepted", "cc.t3": "blocked"})
+        self.assertEqual((self.receipt("cc.t1")["baseline"], self.receipt("cc.t2")["baseline"]), (self.base, self.base))
+
     def test_two_local_loops_bring_in_in_either_order(self):
         # Prediction (Q, B): two local loops added before draining keep their rows in their own queue files, so each
         # report's `git merge --ff <frontier branch>` applies after the other in either order without a conflict, every row

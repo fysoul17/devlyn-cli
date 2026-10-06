@@ -698,16 +698,24 @@ def frontier(v, loop):
 
 def local_start(v, loop):
     """The commit a local loop's next task starts from, and why it waits instead (loop.md step 3): its latest accepted
-    source, else the HEAD of the branch it was added on."""
+    source; else the start its first allocation fixed, kept in that receipt; else the HEAD of the branch it was added on,
+    which must descend from the manifest base_sha."""
     tip, added = frontier(v, loop), v["records"].get(loop)
-    if tip is None and added is None:
+    fixed = next((state["receipt"]["baseline"] for identity, state in v["states"].items() if identity.split(".")[0] == loop
+                  and state["receipt"] and not {"remote_url", "allocated_from"} & set(state["receipt"])), None)
+    remedy = "restore them to their bytes at that commit, or plan the remaining work as a new loop"
+    if tip or fixed:
+        start = tip["receipt"]["source_sha"] if tip else fixed
+    elif added is None:
         return None, f"{loop} has no add record in this repository, so no branch to start it from; drain it where it was added"
-    start = tip["receipt"]["source_sha"] if tip else ref_value(v["anchor"], "refs/heads/" + added["branch"])
-    if not start:
-        return None, f"{added['branch']}, the branch {loop} was added on, no longer exists"
+    else:
+        branch, base = added["branch"], manifest_of(v, loop)["base_sha"]
+        start, remedy = ref_value(v["anchor"], "refs/heads/" + branch), f"commit them on {branch}, or restore them to their bytes at that commit"
+        if not start or not ancestor(v["anchor"], base, start):
+            return None, (f"{branch}, the branch {loop} was added on, " + (f"is at {start}, which does not descend from" if start else "no longer exists, so")
+                          + f" the manifest base_sha {base}; bring that commit into {branch}, or plan the work as a new loop")
     if drift := instruction_drift(v["anchor"], start):
-        return start, (f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would "
-                       "run without them; restore them to their bytes at that commit, or plan the remaining work as a new loop")
+        return start, f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run without them; {remedy}"
     return start, None
 
 
@@ -1209,9 +1217,6 @@ def add(args):
                             "only as committed, so plan the revision as a new loop")
         branch = git_run(anchor, "symbolic-ref", "-q", "--short", "HEAD", ok=(0, 1)).stdout.decode("utf-8").strip()
         require(branch, f"add records the branch the loop is added on, but HEAD is detached in {anchor}")
-        if local:
-            base = manifest["base_sha"]
-            require(ancestor(anchor, base, "HEAD"), f"the current branch {branch} does not descend from the manifest base_sha {base}")
         if drift := instruction_drift(anchor, head := git(anchor, "rev-parse", "HEAD")):
             # Tasks start from committed state: a local loop from this branch, auto/pr from the pushed base.
             raise LoopError(f"the installed instructions ({drift}) in this checkout differ from those in HEAD {head}, so the loop's tasks would "
@@ -1486,9 +1491,9 @@ class QueueTests(unittest.TestCase):
 
     def test_add_refuses_without_writing(self):
         """C. Each refusal leaves HEAD, the index, the files, refs and records as they were: a revised package under a used
-        loop id, a detached HEAD, a branch not descending from base_sha, package files committed with other content, a loop
-        id a committed queue file already uses, and package changes in the index, which add asks to unstage rather than
-        losing them (Prediction for the last; before: add committed the index's draft beside the checkout's text)."""
+        loop id, a detached HEAD, package files committed with other content, a loop id a committed queue file already uses,
+        and package changes in the index, which add asks to unstage rather than losing them (Prediction for the last;
+        before: add committed the index's draft beside the checkout's text)."""
         self.cli("add", self.meta)
         common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
 
@@ -1516,20 +1521,15 @@ class QueueTests(unittest.TestCase):
         def state():
             return (git(self.anchor, "rev-parse", "HEAD"), git(self.anchor, "ls-files", "-s"), git(self.anchor, "for-each-ref"),
                     git(self.anchor, "status", "--porcelain", "--untracked-files=all"), sorted(path.name for path in (common / "devlyn-loops").iterdir()))
-        g("checkout", "-q", "-b", "elsewhere")
-        g("commit", "-q", "--allow-empty", "-m", "elsewhere")
-        elsewhere = git(self.anchor, "rev-parse", "HEAD")
-        g("checkout", "-q", "main")
-        for loop, tasks, base, prepare, message in (
-                ("inv", [("t9", [], "Other", self.tasks[0][3])], None, lambda: None, "loop id inv was already added with another package"),
-                ("dt", self.tasks[:1], None, lambda: g("checkout", "-q", "--detach"), "HEAD is detached"),
-                ("far", self.tasks[:1], elsewhere, lambda: None, f"does not descend from the manifest base_sha {elsewhere}"),
-                ("trk", self.tasks[:1], None, edit_committed, "docs/specs/trk is committed with different content (docs/specs/trk/t1/spec.md)"),
-                ("usd", self.tasks[:1], None, commit_queue, "loop id usd is already used by docs/specs/usd/queue.md"),
-                ("stg", self.tasks[:1], None, stage_draft, "the index holds package changes HEAD lacks (docs/specs/stg/t1/spec.md); add leaves "
+        for loop, tasks, prepare, message in (
+                ("inv", [("t9", [], "Other", self.tasks[0][3])], lambda: None, "loop id inv was already added with another package"),
+                ("dt", self.tasks[:1], lambda: g("checkout", "-q", "--detach"), "HEAD is detached"),
+                ("trk", self.tasks[:1], edit_committed, "docs/specs/trk is committed with different content (docs/specs/trk/t1/spec.md)"),
+                ("usd", self.tasks[:1], commit_queue, "loop id usd is already used by docs/specs/usd/queue.md"),
+                ("stg", self.tasks[:1], stage_draft, "the index holds package changes HEAD lacks (docs/specs/stg/t1/spec.md); add leaves "
                  "the index as it is, so unstage them with `git restore --staged -- docs/specs/stg` and add again")):
             with self.subTest(loop=loop):
-                meta = write_package(self.anchor, loop, tasks, base=base)
+                meta = write_package(self.anchor, loop, tasks)
                 prepare()
                 before = state()
                 self.assertIn(message, self.cli("add", meta, code=1)["reason"])
