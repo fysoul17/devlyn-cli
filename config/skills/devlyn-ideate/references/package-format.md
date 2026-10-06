@@ -116,7 +116,7 @@ python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" check '<repo>/docs/specs/<loop-id>/
 python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" add '<repo>/docs/specs/<loop-id>/meta.md' [--materialize <line>]
 ```
 
-`check` validates without writing. Both print one JSON object; exit 1 is `BLOCKED` with a `reason`. `add` holds the queue lock and, in every delivery mode, makes no commit and changes no branch, index entry or tracked file:
+`check` validates without writing. Both print one JSON object; exit 1 is `BLOCKED` with a `reason`. `add` holds the queue lock and, in every delivery mode, makes no commit on the checked-out branch and changes no branch, index entry or tracked file:
 
 1. It resolves an add record for the loop id first, with or without the package files: the same package (every remaining copy equal to the capture, line endings aside, and the same `--materialize` row) reports `ADDED` and changes nothing; another package is refused as identity reuse. A capture ref a crash left without a record is captured again only when the checkout's package equals it; otherwise add reports that state.
 2. It validates the package and refuses a loop id that a committed `docs/specs/<loop-id>/queue.md` already uses, package files committed with different content, a detached HEAD, and a HEAD whose `CLAUDE.md` or `AGENTS.md` differs from this checkout's.
