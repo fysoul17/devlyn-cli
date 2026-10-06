@@ -144,8 +144,8 @@ def source_problems(packet, source):
         edits = [path for path in changed_paths(work, packet["inputs_sha"], source) if path == QUEUE or path.startswith(package)]
         if edits:
             problems.append("candidate edits loop inputs: " + ", ".join(edits))
-    if text(work, "status", "--porcelain", "--untracked-files=all"):
-        problems.append("worktree has uncommitted or untracked changes (undeclared source delta)")
+    if dirty := git(work, "status", "--porcelain", "--untracked-files=all").stdout.decode("utf-8", "replace").splitlines():
+        problems.append("worktree has uncommitted or untracked changes (undeclared source delta): " + ", ".join(line[3:] for line in dirty))
     return problems
 
 
@@ -171,12 +171,13 @@ def evaluate(command, outcome, combined):
 
 def execute(work, command, index, run_dir):
     timeout = shared("expected-contract")["verification_timeout_sec"](command)
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}  # A Python check would leave __pycache__/ in the source it checks.
     try:
         if "argv" in command:
             proc = subprocess.run(shared("platform-support")["native_argv"](command["argv"], cwd=work), cwd=work,
-                                  capture_output=True, timeout=timeout)
+                                  capture_output=True, timeout=timeout, env=env)
         else:
-            proc = subprocess.run(command["cmd"], cwd=work, shell=True, capture_output=True, timeout=timeout)
+            proc = subprocess.run(command["cmd"], cwd=work, shell=True, capture_output=True, timeout=timeout, env=env)
         out, err = proc.stdout, proc.stderr
         outcome = ({"kind": "exit", "exit_code": proc.returncode} if proc.returncode >= 0
                    else {"kind": "signal", "signal": -proc.returncode})
@@ -552,6 +553,22 @@ class AcceptanceTests(unittest.TestCase):
         blocking = self.review(source, "open.json", findings=[{"id": "F2", "binding": True, "disposition": "open", **extra}])
         result = self.submit(source, reviews=[blocking])
         self.assertEqual((result["verdict"], result["reasons"]), ("FAILED", ["failed: unresolved binding review findings F2"]))
+
+    def test_python_checks_leave_no_bytecode_and_a_dirty_worktree_names_its_paths(self):
+        """H7. Prediction: a check that imports a module committed in the task worktree, where nothing ignores
+        __pycache__/, writes no bytecode there, so the runner and acceptance both pass; a file left untracked fails
+        acceptance with its path named. Before: the import wrote __pycache__/ into the worktree, so the correct task failed
+        "source changed during checks: worktree has uncommitted or untracked changes (undeclared source delta)", naming
+        no path."""
+        self.inputs({"verification_commands": [{"argv": [sys.executable, "-c", "import greeting; print(greeting.greet())"],
+                                                "stdout_contains": ["hello"], "contract_refs": ["R1", "R2"]}]})
+        self.write("greeting.py", "def greet():\n    return 'hello'\n")
+        source = self.commit("product")
+        _, checks = run(self.packet_path)
+        result = self.submit(source)
+        self.assertEqual((checks["reasons"], result["verdict"], result["reasons"], (self.work / "__pycache__").exists()), ([], "ACCEPTED", [], False))
+        self.write("notes.txt", "left behind\n")
+        self.assertEqual(self.submit(source)["reasons"], ["failed: worktree has uncommitted or untracked changes (undeclared source delta): notes.txt"])
 
     def test_runner_result_with_a_source_change_is_never_reused(self):
         mutate = [sys.executable, "-c", "import pathlib; p = pathlib.Path('product.txt'); p.write_text(p.read_text() + '!'); print('ok')"]
