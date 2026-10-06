@@ -1,4 +1,4 @@
-# 0232 harness ladder — stage 1 CLOSED (A admitted, I not); resolve being retired; next: register the installed baseline
+# 0232 stage 1 closed; resolve retired (PR #171); ideate loop redesigned and verified by real runs (PR #172); next is the owner's release prep, then the installed-baseline registration
 
 ## The owner's direction (2026-10-05)
 
@@ -24,21 +24,23 @@ Wall, input and output are judged per correctly completed task, failures include
   - Rung 1 stays unmerged on `candidate/0232-rung1` (`5bf3dc74`).
 - **Product:**
   - The ideate loop and the retirement of design-ui and the queue skill are merged (PR #169).
-  - resolve is being retired as a product-scope decision (0232 §8). The owner can veto that by reverting the product PR before release.
+  - resolve is retired as a product-scope decision (0232 §8; PR #171, merge `d2d34e3e`). The owner can veto the retirement before release; root then restores resolve on top of current main.
+  - The ideate redesign is merged (PR #172, merge `52636e19`). add captures the package under `refs/devlyn/captures/<loop-id>`, and each loop keeps its rows in its own `docs/specs/<loop-id>/queue.md`. The drain also fills the executor's `{worktree_git_dir}`, review records may carry keys acceptance does not read, a task waits while its start commit's CLAUDE.md or AGENTS.md differs from the checkout's, and local allocation needs no `--repository`.
+    - Astra ultra reviewed it as SHIP (`e2e-fix-a2-astra.out.md` in the checkout's `.devlyn/bundle/`).
+    - Real Claude-host and Codex-host loops passed first try with the documented commands; the evidence is in `~/.local/share/nx01/e2e-smoke3`.
+  - This final-fixes PR (`candidate/final-fixes`) applies `final-fixes-contract.md` and `final-fixes-part2-contract.md` (`.devlyn/bundle/`).
 
 **Next:**
 
-1. **Finish resolve's retirement** to the plan in `.devlyn/bundle/result-product-a1-astra.out.md` Part B. Get Astra's review and CI including native Windows, then merge.
-2. **Final whole-product check** against the original intent: intake, loop design, autonomous execution, acceptance, truthful reporting, delivery.
-3. **Next registration:** the actual installed baseline, meaning principles plus ideate, with the easy-task panel. After that, I′, licensed by I's lost final reviews and review cost.
-4. **Release preparation** (version, notes, publish) stays with the owner.
+1. **The owner's decisions and release prep:** the version and release notes, a LICENSE file, whether to delete `config/templates`, whether to restore the orphan-cleanup sentence to the installed block, and a publish CI gate.
+2. **The installed-baseline registration:** the principles block plus ideate, with the easy-task panel and 0223's B5 task (0232 §8). After that, I′, licensed by I's lost final reviews and review cost.
+3. **Follow-ups** stay in their lists: `r4-followups.md` and the Deferred sections of `e2e-fix-r3-contract.md` and `final-fixes-contract.md` (all in `.devlyn/bundle/`), and the phase A audit result (`/private/tmp/claude-501/-Users-aipalm-Documents-GitHub-devlyn-cli/1fab229d-cadb-4193-a918-dd653ce2251f/tasks/wrjhsf4os.output`). Not in them: on Pi and Grok, `devlyn-engines clear` exits 1 after deleting the pin, because `role-config.py` resolves the host default after the edit.
 
 ## Open user decisions and carried notes
 
 - **The `_devlynjudge` user record (uid 450) remains.** macOS refuses its deletion without Full Disk Access. Removing it is the user's call.
 - **Raw outputs of the 0228/0229 replays** remain in `/Users/Shared/devlyn-vr-0228-dev` (owner-only) until the user decides.
 - **Orphan cleanup.** Rung 1 keeps the orphan-cleanup obligation. Its isolated effect is unmeasured, and the separate 0223 slim-plus-orphan add-back is unrun and remains an open user decision.
-- **The `/devlyn:queue` branch-reconciliation rule** has not been exercised by a model-driven drain. A null `autoMergeRequest` does not prove the merge queue was removed.
 
 ## Start here (every new session)
 
@@ -49,7 +51,7 @@ Wall, input and output are judged per correctly completed task, failures include
 3. **Allocate a task branch:** `python3 config/skills/_shared/task-complete.py allocate --repo . --task '<id>' --branch 'candidate/<id>' --worktree '<absent path>' --repository fysoul17/devlyn-cli --remote origin --base main`.
 4. **Work and verify.**
    - Root works directly.
-   - Astra reviews read-only and isolated: `CODEX_MONITORED_ISOLATED=1 DEVLYN_CODEX_PROMPT_FILE=<prompt> config/skills/_shared/codex-monitored.sh -C <repo> -s read-only -m gpt-6-astra -c model_reasoning_effort=ultra -`.
+   - Astra reviews read-only with Codex's isolation flags: `DEVLYN_CODEX_PROMPT_FILE=<prompt> config/skills/_shared/codex-monitored.sh --ignore-user-config --ignore-rules --ephemeral --disable codex_hooks --disable hooks -C <repo> -s read-only -m gpt-6-astra -c model_reasoning_effort=ultra -`.
      - Send stdout to a file, never a pipe.
      - Wait on `^\[codex-monitored\] codex exited` in stderr.
      - Continue until SHIP.
