@@ -330,9 +330,9 @@ def check_submission(packet, submission):
             raise AcceptanceError(f"submission {key} must be a list of strings")
     blockers = submission.get("blockers", [])
     if not isinstance(blockers, list) or not all(
-            isinstance(b, dict) and set(b) == {"kind", "detail"} and b["kind"] in BLOCKERS and isinstance(b["detail"], str) and b["detail"].strip()
+            isinstance(b, dict) and {"kind", "detail"} <= set(b) and b["kind"] in BLOCKERS and isinstance(b["detail"], str) and b["detail"].strip()
             for b in blockers):
-        raise AcceptanceError(f"submission blockers must be {{kind, detail}} with kind in {sorted(BLOCKERS)}")
+        raise AcceptanceError(f"submission blockers must include {{kind, detail}} with kind in {sorted(BLOCKERS)}")
 
 
 def result_shell(packet, kind, source):
@@ -554,6 +554,14 @@ class AcceptanceTests(unittest.TestCase):
         result = self.submit(source, reviews=[blocking])
         self.assertEqual((result["verdict"], result["reasons"]), ("FAILED", ["failed: unresolved binding review findings F2"]))
 
+    def test_blockers_ignore_keys_beyond_kind_and_detail(self):
+        """T6. Prediction: a needs-review blocker carrying a key beyond kind and detail records its question as the reason,
+        as one without it does, so the report and queue row keep the question. Before: the extra key failed the submission
+        "submission blockers must be {kind, detail} ...", and the question was lost."""
+        self.inputs()
+        result = self.submit(self.product(), blockers=[{"kind": "needs-review", "detail": "Which store wins?", "requirement": "R1"}])
+        self.assertEqual((result["verdict"], result["reasons"]), ("FAILED", ["needs-review: Which store wins?"]))
+
     def test_python_checks_leave_no_bytecode_and_a_dirty_worktree_names_its_paths(self):
         """H7. Prediction: a check that imports a module committed in the task worktree, where nothing ignores
         __pycache__/, writes no bytecode there, so the runner and acceptance both pass; a file left untracked fails
@@ -599,7 +607,7 @@ class AcceptanceTests(unittest.TestCase):
         self.assertIn("malformed command records", " ".join(result["reasons"]))
         blocked = self.submit(source, blockers=[{"kind": ["failed"], "detail": "unhashable kind"}])
         self.assertEqual(blocked["verdict"], "FAILED")
-        self.assertIn("submission blockers must be", " ".join(blocked["reasons"]))
+        self.assertIn("submission blockers must include", " ".join(blocked["reasons"]))
 
     def test_reuses_intact_runner_results_and_reexecutes_altered_evidence(self):
         counter = [sys.executable, "-c", "import pathlib; p = pathlib.Path('.devlyn/count'); p.parent.mkdir(exist_ok=True); "
