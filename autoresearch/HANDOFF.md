@@ -1,4 +1,4 @@
-# 0232 stage 1 closed; resolve retired (PR #171); ideate loop redesigned and verified by real runs (PR #172); final fixes with in-place direct work (PR #173); the owner's release-prep decisions applied (this PR); next is the version and release notes, then the installed-baseline registration
+# 0232 stage 1 closed; resolve retired (PR #171); ideate loop redesigned and verified by real runs (PR #172); final fixes with in-place direct work (PR #173); the owner's release-prep decisions applied (PR #175); next is the version and release notes, then the installed-baseline registration
 
 ## The owner's direction (2026-10-05)
 
@@ -28,12 +28,12 @@ Wall, input and output are judged per correctly completed task, failures include
   - The ideate redesign is merged (PR #172, merge `52636e19`). add captures the package under `refs/devlyn/captures/<loop-id>`, and each loop keeps its rows in its own `docs/specs/<loop-id>/queue.md`. The drain also fills the executor's `{worktree_git_dir}`, review records may carry keys acceptance does not read, a task waits while its start commit's CLAUDE.md or AGENTS.md differs from the checkout's, and local allocation needs no `--repository`.
     - Astra ultra reviewed it as SHIP (`e2e-fix-a2-astra.out.md` in the checkout's `.devlyn/bundle/`).
     - Real Claude-host and Codex-host loops passed first try with the documented commands; the evidence is in `~/.local/share/nx01/e2e-smoke3`.
-  - The release-prep decisions PR (`candidate/release-prep-decisions`, owner decisions of 2026-10-07; contract `release-prep-contract.md`, Astra design records `rp-d1/d2/d3-*-astra.out.md` in `.devlyn/bundle/`):
+  - The release-prep decisions PR (#175, merge `c8013cf1`; `candidate/release-prep-decisions`, owner decisions of 2026-10-07; contract `release-prep-contract.md`, Astra design records `rp-d1/d2/d3-*-astra.out.md` in `.devlyn/bundle/`):
     - **Delivery default restored:** with no delivery instruction, a completed, verified direct request with changes is delivered by project policy, default PR and merge. Explicit limits win (commit alone stays local, PR stops at the PR, local-only/no-push/just-edit). Edits stay in place; isolation changes location, not scope; the original edits stay until a safe `--ff-only` reconciliation; an implicit delivery without a GitHub origin falls back to a reported local commit.
     - **Cleanup sentence restored** to principle 2 as a contract correction (rp-d2); its isolated effect is still unmeasured.
     - **Ideate:** bounded autonomous defaults, which may be user-visible but must be low-consequence and recorded; the drain report carries the package's decisions; real dependencies are kept, with a check-only integration task when deliverables are independent; a local loop runs one task at a time, and its frontier is the accepted source containing the others.
     - **Release:** an MIT LICENSE; publish runs only after the portability suites pass; the Claude target no longer ships the three spec and prompt templates (earlier copies stay).
-    - The repository has GitHub auto-merge turned off, so `auto` delivery here ends at the PR with `merge_refused` until a person merges it.
+    - PR #175 was delivered by the product itself, `task-complete.py` with the default `auto`. It created the PR, merged it and removed the worktree and both task branches. This was the first real-GitHub run of direct `auto` delivery. GitHub merged at once although repository auto-merge is off, because no check is required.
   - The final-fixes PR (#173, `candidate/final-fixes`) applied `final-fixes-contract.md`, `final-fixes-part2-contract.md` and `final-fixes-part4-contract.md` (`.devlyn/bundle/`).
     - Owner decision (2026-10-07), from the slowness investigation (`slowness-investigation.json`): direct work edits the current checkout. Delivery runs only when the user asks to ship it, and only as far as asked; root mapped a commit request to local-only, a PR request to `--mode pr` and a merge request to `--mode auto`. Every drained task is still delivered.
     - Concurrent writers (owner decision; Astra's synthesis in `direct-work-design-astra.out.md`): with known concurrent writers, isolate before editing; on unexplained changes, pause writes (`task-completion.md` "Concurrent writers"). A patch replaces the stash transfer.
@@ -42,7 +42,7 @@ Wall, input and output are judged per correctly completed task, failures include
 
 **Next:**
 
-1. **Release prep (the owner's):** the version and release notes. The notes should name: the restored delivery default; the cleanup sentence; the bounded autonomous defaults; the check-only integration task; one task at a time in local loops; the removed templates; the LICENSE; and the publish gate. Whether to turn on GitHub auto-merge for this repository so `auto` delivery merges without a person is also the owner's call.
+1. **Release prep (the owner's):** the version and release notes. The notes should name: the restored delivery default; the cleanup sentence; the bounded autonomous defaults; the check-only integration task; one task at a time in local loops; the removed templates; the LICENSE; and the publish gate.
 2. **The installed-baseline registration:** the principles block plus ideate, with the easy-task panel and 0223's B5 task (0232 §8). After that, I′, licensed by I's lost final reviews and review cost.
 3. **Follow-ups:** the Known follow-ups below.
 
@@ -69,7 +69,7 @@ One line per class. Details, each with its reproduction described, are in the ch
 - **package.json guard:** a symlinked root `package.json`, or one npm rejects at the inputs commit, fails `max_deps_added` for every task, the repairing task included; it fails closed (part-4 verification).
 - **`--receipt` alias:** `complete` refuses a receipt path written through a symlink or `..`; agents copy the printed path, so it was left as it predates part 4 (part-4 verification).
 - **Earlier lists:** `r4-followups.md` (round 4) and the Deferred sections of `e2e-fix-r3-contract.md` (round 3) and `final-fixes-contract.md` (phase A).
-- **Real-run evidence:** the real-host loop runs (`~/.local/share/nx01/e2e-smoke3` and `e2e-smoke4`) cover only local-only loops in repositories with no remote; before release, run one auto loop on a throwaway GitHub repository (phase B "Real-host evidence covers only local-only loops").
+- **Real-run evidence:** the real-host loop runs (`~/.local/share/nx01/e2e-smoke3` and `e2e-smoke4`) cover only local-only loops in repositories with no remote, and direct `auto` delivery has one real-GitHub run (PR #175); before release, run one ideate auto loop on a throwaway GitHub repository (phase B "Real-host evidence covers only local-only loops").
 - **Default-delivery cost:** wall time and tokens per delivered request under the restored default are unmeasured (rp-d1); the 13.5–15.6 s smoke covered editing only.
 - **Release fingerprints:** publish regenerates `bin/instruction-templates.json` from first-parent history, so a block installed only from a PR-branch commit (such as `7e2eef0a`) is not recognized after release.
 - **Forked local loops:** a local loop forked by a build before the one-task-at-a-time rule still stops the whole drain, and no test asserts that refusal.
