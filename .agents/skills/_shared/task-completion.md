@@ -70,10 +70,12 @@ delivered result, recheck the copied edits' current ownership and contents,
 then remove them: `git restore --source=HEAD --staged --worktree -- <paths>`
 for tracked paths holding only your edits, and delete copied untracked files.
 Then use `git merge --ff-only <task branch>` for local delivery, or
-`git merge --ff-only <remote>/<base>` on the base branch after remote delivery.
-Do not switch branches, create a reconciliation merge commit or discard WIP
-to force this step. If reconciliation is unsafe, retain and report the edits,
-delivered result and remaining bring-in action.
+`git merge --ff-only <remote>/<base>` on the base branch after remote delivery;
+a drain's `Bring into` command is its own. Once a local delivery is reconciled,
+remove its worktree and task branch (`git worktree remove <worktree>`,
+`git branch -d <task branch>`). Do not switch branches, create a reconciliation
+merge commit or discard WIP to force this step. If reconciliation is unsafe,
+retain and report the edits, delivered result and remaining bring-in action.
 
 Save the returned receipt path under the common Gitdir. `reconciled` reports earlier accepted,
 PR-delivered tasks whose merged resources were cleaned or retained; it is
@@ -85,9 +87,10 @@ Unreceipted tasks remain owner-managed.
 
 Copy attributable task edits into the allocated worktree as a patch, never a
 stash. Establish attribution from the pre-edit contents and starting Git state,
-including staged, unstaged and untracked work. A path-scoped diff against HEAD
-is suitable only when every included change belongs to this task and its
-prerequisites exist in the candidate baseline. Otherwise construct the task-only
+including staged, unstaged and untracked work. A path-scoped
+`git diff --binary HEAD` (after `git add -N` for new files), applied with
+`git -C <worktree> apply --3way`, is suitable only when every included change
+belongs to this task and its prerequisites exist in the candidate baseline. Otherwise construct the task-only
 delta; if attribution or independence from unshipped work is unclear, preserve
 the checkout and report delivery blocked.
 
@@ -149,7 +152,8 @@ After merge, implement follow-ups from the updated base. An additive follow-up
 depending on an open PR waits for that predecessor to merge.
 
 If a correction invalidates an open candidate, run `complete --mode pr` against
-its unchanged receipt to cancel owned auto-merge, then reobserve the PR. If it
+its unchanged receipt, with its task tree clean, to cancel owned auto-merge, then
+reobserve the PR. If it
 remains open, close it as superseded and retain its receipt and custody; do not
 resume its delivery. Allocate a replacement from the current remote base,
 include only the still-needed task changes and correction, and verify and
