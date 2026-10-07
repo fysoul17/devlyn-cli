@@ -1,0 +1,20 @@
+{
+  "required_files": [
+    "bin/devlyn.js"
+  ],
+  "forbidden_files": [
+    "spec.md",
+    "spec.expected.json",
+    "package.json",
+    ".gitignore",
+    "tests/support.js",
+    "tests/acceptance.js"
+  ],
+  "verification_commands": [
+    {
+      "cmd": "node --test tests/acceptance.js",
+      "exit_code": 0,
+      "timeout_sec": 90
+    }
+  ]
+}
