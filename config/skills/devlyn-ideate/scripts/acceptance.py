@@ -279,7 +279,7 @@ def dependency_names(work, commit):
     if not git(work, "ls-tree", commit, "--", "package.json").stdout:
         return set()
     try:
-        data = shared("expected-contract")["loads_strict_json"](git(work, "show", f"{commit}:package.json").stdout.decode("utf-8"))
+        data = shared("expected-contract")["loads_strict_json"](git(work, "show", f"{commit}:package.json").stdout.decode("utf-8-sig"))
         sections = [data.get(key, {}) for key in ("dependencies", "devDependencies")] if isinstance(data, dict) else [None]
         if not all(isinstance(section, dict) for section in sections):
             raise ValueError("it must be an object whose dependencies and devDependencies are objects")
@@ -712,7 +712,8 @@ class AcceptanceTests(unittest.TestCase):
         """P4-3. Prediction: under the default limit 0 with a passing check, one dependency added to a one-line
         package.json (none at the inputs) counts 1 and fails acceptance; two appended to a multi-line one count 2; a name
         moved from dependencies to devDependencies counts 0 and is accepted; an invalid package.json fails the guard,
-        naming it."""
+        naming it. A leading UTF-8 BOM, which npm and Node accept, is ignored: with one at both commits, one added
+        counts 1."""
         passing = {"verification_commands": [{"argv": [sys.executable, "-c", "pass"], "contract_refs": ["R1"]}]}
 
         def guard(inputs, source):
@@ -738,6 +739,10 @@ class AcceptanceTests(unittest.TestCase):
             commit, result, deps = guard({"dependencies": {"a": "1"}}, '{"dependencies": {"a": "1",}}\n')
             self.assertEqual((deps["passed"], result["verdict"]), (False, "FAILED"))
             self.assertIn(f"package.json at {commit} is invalid", deps["subject"])
+        with self.subTest("BOM"):
+            self.write("package.json", "\ufeff" + json.dumps({"dependencies": {"a": "1"}}))
+            _, _, deps = guard(None, "\ufeff" + json.dumps({"dependencies": {"a": "1", "b": "1"}}))
+            self.assertEqual(deps["subject"], "1 added, limit 0")
 
 
 def main():
