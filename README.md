@@ -69,8 +69,9 @@ every drained task, are delivered by project policy from their own linked worktr
 scoped commit → push → PR → merge when the repository allows it (otherwise the PR waits for a person). After the
 PR merges, the worktree and branch its session released are cleaned; anything in use is
 kept. Set `git config --local devlyn.completionMode pr` to stop at the PR; `task-complete.py complete --mode auto|pr`
-overrides one task. Local-only/no-push instructions take precedence: accepted work stays on
-its task branch in its retained worktree, and nothing is pushed or merged. Existing
+overrides one task. Local-only/no-push instructions take precedence: nothing is pushed or merged;
+a direct task's commit is fast-forwarded into your branch when that is safe, and a drained task
+stays on its task branch in its retained worktree. Existing
 branches cannot be adopted. Direct tasks use their actual checks and root
 acceptance. Pending checks or unsupported merge policy retain resources and
 report a receipt-based resume command separately from product verification.
