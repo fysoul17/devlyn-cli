@@ -42,7 +42,7 @@ Wall, input and output are judged per correctly completed task, failures include
 
 **Next:**
 
-1. **Release prep (the owner's):** the version and release notes. The notes should name: the restored delivery default; the cleanup sentence; the bounded autonomous defaults; the check-only integration task; one task at a time in local loops; the removed templates; the LICENSE; and the publish gate.
+1. **Release prep (the owner's):** the version is 4.2.0 (owner, 2026-10-07); the tag, the release notes and the publish remain the owner's. The notes should name: the restored delivery default; the cleanup sentence; the bounded autonomous defaults; the check-only integration task; one task at a time in local loops; the removed templates; the LICENSE; and the publish gate.
 2. **The installed-baseline registration:** the principles block plus ideate, with the easy-task panel and 0223's B5 task (0232 §8). After that, I′, licensed by I's lost final reviews and review cost.
 3. **Follow-ups:** the Known follow-ups below.
 

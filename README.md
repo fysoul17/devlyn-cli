@@ -114,7 +114,7 @@ or delete them; delete `~/.grok/skills`, since Grok now reads `~/.agents/skills`
 `npx devlyn-cli agents` was removed.
 
 <!-- legacy-surface-map:begin — retired command names below are documented as OLD, not current; lint Checks 5e and 10c skip this block -->
-Upgrading past 4.1.0: `/devlyn-resolve` and the pipeline helpers only it used are retired;
+Upgrading to 4.2.0: `/devlyn-resolve` and the pipeline helpers only it used are retired;
 no measured replacement ships in their place. Run the installer again where devlyn is
 installed. It removes the `devlyn-resolve` folders (and pre-4.0.0 `devlyn:resolve` ones)
 where it installs, removes the Stop hook it added to `.claude/settings.json` while keeping
@@ -129,7 +129,8 @@ with the release that produced it: `npm pack devlyn-cli@4.1.0`, extract the tarb
 --acceptance <acceptance>` with your delivery flags. A PR/merge completion there binds the
 acceptance before publishing, and a receipt it binds resumes delivery with the current
 helper; with `--local-only` it ends as LOCAL_ONLY without binding, as 4.1.0 always did. To
-keep using resolve itself, stay on `devlyn-cli@4.1.0`.
+keep using resolve itself, stay on `devlyn-cli@4.1.0`. The Claude target no longer installs
+`.claude/templates`; a copy an earlier release installed stays yours.
 
 Upgrading to 4.0.0: every devlyn skill is renamed to the Agent Skills standard
 (`/devlyn:ideate` → `/devlyn-ideate`; the full list is in the table below). Run the
