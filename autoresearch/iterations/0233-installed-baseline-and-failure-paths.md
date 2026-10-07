@@ -145,3 +145,16 @@ Root's arithmetic corrections, made at the freeze review before any run (no pred
 - Local-origin delivery is not GitHub delivery.
 - The easy panel has one replicate: a tripwire, not an overhead estimate.
 - Results hold for the pinned CLIs, image, routes and tasks.
+
+## Addendum 2026-10-07 — SMOKE passed; measured run started
+
+SMOKE ran on the frozen apparatus `dba55640` (control manifest `ba88ff9b5072c182d64f0293869e0d88357a1cc07e396467de100efaa0c784d`; packages B `6f03f5ac…`, C `2a8fb2de…`). Venue: Claude account fingerprint `9f2f3a391923`/`ea65f3b4f086` (a different account from 0232's two; `claude_max`, `default_claude_max_20x`) and the host Codex login; image, CLIs and models cache as 0232.
+
+- **Identity** MATCH in 6 of 6 cells; **teardown** CLEAN in 6 of 6.
+- **Snapshots**, one per cell: `changed-product` for both A cells and codex B and C; `receipt` for claude B and C, whose `LOCAL_ONLY` delivery bound an accepted commit.
+- **Usage** COMPLETE in 5 cells; `smoke-codex-B` is PARTIAL with one named gap, a Codex inference started without completed usage (0232's known limit).
+- **Reported behavior, not a criterion:** claude B and C read the delivery reference and ran `task-complete.py` (allocate, complete); codex B and C read it and did not deliver. C's guide was not read; SMOKE changes no state, so that is expected.
+- As in 0232, every SMOKE product is PRODUCT_INCOMPLETE, because the assessors cannot confirm the SMOKE task's native-subagent obligation; SMOKE requires neither product success nor compliance.
+- Owner wall, A/B/C: claude 34/103/68 s; codex 50/74/59 s.
+
+The measured drive started at 2026-10-07T11:47Z (first seal of `d01-D3-claude-A-r1`) in the registered order (development, easy, screening, confirmation).
