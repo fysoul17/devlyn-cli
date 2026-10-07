@@ -30,29 +30,35 @@ continue solo.
   Reject one that adds a requirement, quoting the clause; repair an invalid
   check rather than weakening a valid one.
 - Recovery must not hide a failure the request requires reporting.
-- Wait for each turn in the foreground with a 600-second timeout, and check
-  that it ended successfully. Never end your session while a turn runs.
+- Run each turn in the foreground: give it at most 540 seconds (Codex:
+  `CODEX_MONITORED_TIMEOUT_SEC=540`; Claude: `timeout 540` where available),
+  wait up to 600 seconds, and check that it ended successfully. Never end your
+  session while a turn runs.
 - Final evidence comes from the submitted source; an edit after a check makes
   that check stale.
 
-## Commands (from the repository root; the turn text in `turn.md`)
+## Commands
 
-Codex peer, through `codex-monitored.sh` beside this file — first turn, then
-each later turn in the same session:
+Run them from the repository root. Keep each turn's text and the peer's
+answer under `.devlyn/pair/` (ignored), one file per turn: `turn1.md`,
+`turn2.md`, `turn3.md`.
+
+Codex peer, through `codex-monitored.sh` beside this file (`<dir>`) — the first
+turn, then each later turn in the same session:
 
 ```
-DEVLYN_CODEX_PROMPT_FILE=turn.md CODEX_MONITORED_TIMEOUT_SEC=600 bash <dir>/codex-monitored.sh --json -s read-only -C . - > peer.jsonl
-DEVLYN_CODEX_PROMPT_FILE=turn.md CODEX_MONITORED_TIMEOUT_SEC=600 bash <dir>/codex-monitored.sh resume --json <thread_id> - > peer.jsonl
+CODEX_MONITORED_TIMEOUT_SEC=540 bash <dir>/codex-monitored.sh --json -s read-only -C . "$(cat .devlyn/pair/turn1.md)" > .devlyn/pair/peer1.jsonl
+CODEX_MONITORED_TIMEOUT_SEC=540 bash <dir>/codex-monitored.sh resume --json -c sandbox_mode=read-only <thread_id> "$(cat .devlyn/pair/turn2.md)" > .devlyn/pair/peer2.jsonl
 ```
 
-`<thread_id>` is in the first `thread.started` event; the answer is the last
-`agent_message` item of a `turn.completed` run.
+`<thread_id>` is in the first turn's `thread.started` event; each answer is the
+last `agent_message` item of a run that ends in `turn.completed`.
 
 Claude peer — choose a new UUID for the first turn:
 
 ```
-claude -p --session-id <uuid> --tools Read,Grep,Glob --permission-mode dontAsk --output-format json < turn.md > peer.json
-claude -p --resume <uuid> --tools Read,Grep,Glob --permission-mode dontAsk --output-format json < turn.md > peer.json
+claude -p --session-id <uuid> --tools Read,Grep,Glob --permission-mode dontAsk --output-format json < .devlyn/pair/turn1.md > .devlyn/pair/peer1.json
+claude -p --resume <uuid> --tools Read,Grep,Glob --permission-mode dontAsk --output-format json < .devlyn/pair/turn2.md > .devlyn/pair/peer2.json
 ```
 
-The answer is `result` when `is_error` is false.
+Each answer is `result` when `is_error` is false.
