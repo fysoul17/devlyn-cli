@@ -65,8 +65,12 @@ configuration failures are not grounds for this fallback.
 
 After local completion or confirmed PR merge, reconcile the original checkout
 only when its branch and changes remain understood and can be preserved.
-Use `git merge --ff-only <task branch>` for local delivery; after remote delivery,
-fetch and use `git merge --ff-only <remote>/<base>` on the base branch.
+After remote delivery, fetch first. If the branch can fast-forward to the
+delivered result, recheck the copied edits' current ownership and contents,
+then remove them: `git restore --source=HEAD --staged --worktree -- <paths>`
+for tracked paths holding only your edits, and delete copied untracked files.
+Then use `git merge --ff-only <task branch>` for local delivery, or
+`git merge --ff-only <remote>/<base>` on the base branch after remote delivery.
 Do not switch branches, create a reconciliation merge commit or discard WIP
 to force this step. If reconciliation is unsafe, retain and report the edits,
 delivered result and remaining bring-in action.
@@ -92,10 +96,8 @@ check evidence only when the checked source and relevant execution inputs are
 unchanged; changed bases, conflict resolutions or other relevant differences
 require the affected checks again.
 
-Keep the original edits through pending or failed delivery. Remove copied edits
-only as part of safe reconciliation after local completion or confirmed merge,
-after rechecking their current ownership and contents. Preserve all other work
-and report anything left behind.
+Keep the original edits through pending or failed delivery; only reconciliation
+removes them. Preserve all other work and report anything left behind.
 
 Allocation also returns a receipt-owned `scratch` directory. Put disposable
 build intermediates there (for example, set
