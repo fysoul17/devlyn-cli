@@ -7,7 +7,12 @@ on:
   workflow_dispatch:
 
 jobs:
+  # The release publishes only the source that passed the POSIX and native Windows suites.
+  portability:
+    uses: ./.github/workflows/portability.yml
+
   publish-npm:
+    needs: portability
     runs-on: ubuntu-latest
     permissions:
       contents: read
