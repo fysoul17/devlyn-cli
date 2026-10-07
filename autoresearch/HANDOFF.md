@@ -36,7 +36,7 @@ Wall, input and output are judged per correctly completed task, failures include
 
 **Next:**
 
-1. **The owner's decisions and release prep:** the version and release notes, a LICENSE file, whether to delete `config/templates`, whether to restore the orphan-cleanup sentence to the installed block, a publish CI gate, whether to veto resolve's retirement (0232 §8), and two ideate policies from phase B: the `--autonomous` rule on user-visible defaults (restore 4.1.0's parenthetical, or allow recorded literal interpretations; phase B marks it before release) and the integration-task rule that forces false dependencies. Also confirm or change root's delivery extent for direct work (commit → local-only, PR → `--mode pr`, merge → `--mode auto`).
+1. **The owner's decisions and release prep:** the version and release notes, a LICENSE file, whether to delete `config/templates`, whether to restore the orphan-cleanup sentence to the installed block, a publish CI gate (since PR #174 the Windows portability suite runs only on the release tag, beside the publish job, so it gates nothing), whether to veto resolve's retirement (0232 §8), and two ideate policies from phase B: the `--autonomous` rule on user-visible defaults (restore 4.1.0's parenthetical, or allow recorded literal interpretations; phase B marks it before release) and the integration-task rule that forces false dependencies. Also confirm or change root's delivery extent for direct work (commit → local-only, PR → `--mode pr`, merge → `--mode auto`).
 2. **The installed-baseline registration:** the principles block plus ideate, with the easy-task panel and 0223's B5 task (0232 §8). After that, I′, licensed by I's lost final reviews and review cost.
 3. **Follow-ups:** the Known follow-ups below.
 
@@ -89,7 +89,7 @@ One line per class. Details, each with its reproduction described, are in the ch
    - Commit in the task worktree.
    - Write `<worktree>/.devlyn/acceptance.json` (kind `direct`).
    - From a cwd outside the checkout, run `task-complete.py complete --receipt <receipt> --acceptance <file> --mode pr --writers-stopped`.
-   - Root merges research PRs once Astra verification is SHIP and CI is green where it runs, with `--mode auto --writers-stopped`.
+   - Root merges research PRs once Astra verification is SHIP and the POSIX suites pass locally (since PR #174, CI runs only per release), with `--mode auto --writers-stopped`.
 6. **Hand off** in the same PR by updating this file.
 
 ## Standing rules
