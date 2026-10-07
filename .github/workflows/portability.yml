@@ -1,16 +1,15 @@
 name: Windows portability
 
 on:
-  # Validate PR changes once; branch and merge pushes would repeat the same suite.
-  pull_request:
-    paths-ignore:
-      - 'autoresearch/**'
-      - 'docs/**'
-      - 'HANDOFF.md'
+  # Runner minutes are billed, so this runs per release, not per PR (owner,
+  # 2026-10-07). Before merging, run the POSIX half locally:
+  # bash scripts/lint-skills.sh && python3 scripts/test-ideate-loop.py
+  push:
+    tags: ['v*']
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
