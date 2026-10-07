@@ -2,7 +2,7 @@
 
 **The live handoff is [`autoresearch/HANDOFF.md`](autoresearch/HANDOFF.md).**
 Evolution-loop continuation (`@HANDOFF.md continue` and every cold start)
-begins there — follow its mandatory read order.
+begins there — follow its "Start here" steps.
 
 This root file previously carried a 2026-05-29 working document (Thread A:
 Opus 4.8 / α+ follow-ups; Thread B: Lane B instruction-sensitivity benchmark,

@@ -144,8 +144,8 @@ def source_problems(packet, source):
         edits = [path for path in changed_paths(work, packet["inputs_sha"], source) if path == QUEUE or path.startswith(package)]
         if edits:
             problems.append("candidate edits loop inputs: " + ", ".join(edits))
-    if text(work, "status", "--porcelain", "--untracked-files=all"):
-        problems.append("worktree has uncommitted or untracked changes (undeclared source delta)")
+    if dirty := git(work, "status", "--porcelain", "--untracked-files=all").stdout.decode("utf-8", "replace").splitlines():
+        problems.append("worktree has uncommitted or untracked changes (undeclared source delta): " + ", ".join(line[3:] for line in dirty))
     return problems
 
 
@@ -171,12 +171,13 @@ def evaluate(command, outcome, combined):
 
 def execute(work, command, index, run_dir):
     timeout = shared("expected-contract")["verification_timeout_sec"](command)
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}  # A Python check would leave __pycache__/ in the source it checks.
     try:
         if "argv" in command:
             proc = subprocess.run(shared("platform-support")["native_argv"](command["argv"], cwd=work), cwd=work,
-                                  capture_output=True, timeout=timeout)
+                                  capture_output=True, timeout=timeout, env=env)
         else:
-            proc = subprocess.run(command["cmd"], cwd=work, shell=True, capture_output=True, timeout=timeout)
+            proc = subprocess.run(command["cmd"], cwd=work, shell=True, capture_output=True, timeout=timeout, env=env)
         out, err = proc.stdout, proc.stderr
         outcome = ({"kind": "exit", "exit_code": proc.returncode} if proc.returncode >= 0
                    else {"kind": "signal", "signal": -proc.returncode})
@@ -263,10 +264,31 @@ def guard_results(packet, expected, source):
         results.append({"rule": "required_files", "subject": path, "passed": present, "blocking": True})
     for path in expected.get("forbidden_files", []):
         results.append({"rule": "forbidden_files", "subject": path, "passed": path not in changed, "blocking": True})
-    deps = contract["count_deps_in_diff"](git(work, "diff", inputs, source, "--", "package.json").stdout.decode("utf-8", "replace"))
     limit = expected.get("max_deps_added", 0)
-    results.append({"rule": "max_deps_added", "subject": f"{deps} added, limit {limit}", "passed": deps <= limit, "blocking": True})
+    try:
+        added = len(dependency_names(work, source) - dependency_names(work, inputs))
+        subject, passed = f"{added} added, limit {limit}", added <= limit
+    except ValueError as exc:
+        subject, passed = str(exc), False
+    results.append({"rule": "max_deps_added", "subject": subject, "passed": passed, "blocking": True})
     return results
+
+
+def dependency_names(work, commit):
+    """Package names under dependencies and devDependencies of the root package.json at `commit`; a missing file has none."""
+    if not git(work, "ls-tree", commit, "--", "package.json").stdout:
+        return set()
+    try:
+        # Read as npm reads it: a leading BOM is ignored, a duplicate key's last value wins, a null section is empty and
+        # NaN or Infinity is invalid.
+        data = json.loads(git(work, "show", f"{commit}:package.json").stdout.decode("utf-8-sig"),
+                          parse_constant=shared("expected-contract")["reject_json_constant"])
+        sections = [data.get(key) or {} for key in ("dependencies", "devDependencies")] if isinstance(data, dict) else [None]
+        if not all(isinstance(section, dict) for section in sections):
+            raise ValueError("it must be an object whose dependencies and devDependencies are objects")
+    except ValueError as exc:
+        raise ValueError(f"package.json at {commit} is invalid: {exc}") from exc
+    return {name for section in sections for name in section}
 
 
 def review_problem(packet, record, source):
@@ -329,9 +351,9 @@ def check_submission(packet, submission):
             raise AcceptanceError(f"submission {key} must be a list of strings")
     blockers = submission.get("blockers", [])
     if not isinstance(blockers, list) or not all(
-            isinstance(b, dict) and set(b) == {"kind", "detail"} and b["kind"] in BLOCKERS and isinstance(b["detail"], str) and b["detail"].strip()
+            isinstance(b, dict) and {"kind", "detail"} <= set(b) and b["kind"] in BLOCKERS and isinstance(b["detail"], str) and b["detail"].strip()
             for b in blockers):
-        raise AcceptanceError(f"submission blockers must be {{kind, detail}} with kind in {sorted(BLOCKERS)}")
+        raise AcceptanceError(f"submission blockers must include {{kind, detail}} with kind in {sorted(BLOCKERS)}")
 
 
 def result_shell(packet, kind, source):
@@ -553,6 +575,30 @@ class AcceptanceTests(unittest.TestCase):
         result = self.submit(source, reviews=[blocking])
         self.assertEqual((result["verdict"], result["reasons"]), ("FAILED", ["failed: unresolved binding review findings F2"]))
 
+    def test_blockers_ignore_keys_beyond_kind_and_detail(self):
+        """T6. Prediction: a needs-review blocker carrying a key beyond kind and detail records its question as the reason,
+        as one without it does, so the report and queue row keep the question. Before: the extra key failed the submission
+        "submission blockers must be {kind, detail} ...", and the question was lost."""
+        self.inputs()
+        result = self.submit(self.product(), blockers=[{"kind": "needs-review", "detail": "Which store wins?", "requirement": "R1"}])
+        self.assertEqual((result["verdict"], result["reasons"]), ("FAILED", ["needs-review: Which store wins?"]))
+
+    def test_python_checks_leave_no_bytecode_and_a_dirty_worktree_names_its_paths(self):
+        """H7. Prediction: a check that imports a module committed in the task worktree, where nothing ignores
+        __pycache__/, writes no bytecode there, so the runner and acceptance both pass; a file left untracked fails
+        acceptance with its path named. Before: the import wrote __pycache__/ into the worktree, so the correct task failed
+        "source changed during checks: worktree has uncommitted or untracked changes (undeclared source delta)", naming
+        no path."""
+        self.inputs({"verification_commands": [{"argv": [sys.executable, "-c", "import greeting; print(greeting.greet())"],
+                                                "stdout_contains": ["hello"], "contract_refs": ["R1", "R2"]}]})
+        self.write("greeting.py", "def greet():\n    return 'hello'\n")
+        source = self.commit("product")
+        _, checks = run(self.packet_path)
+        result = self.submit(source)
+        self.assertEqual((checks["reasons"], result["verdict"], result["reasons"], (self.work / "__pycache__").exists()), ([], "ACCEPTED", [], False))
+        self.write("notes.txt", "left behind\n")
+        self.assertEqual(self.submit(source)["reasons"], ["failed: worktree has uncommitted or untracked changes (undeclared source delta): notes.txt"])
+
     def test_runner_result_with_a_source_change_is_never_reused(self):
         mutate = [sys.executable, "-c", "import pathlib; p = pathlib.Path('product.txt'); p.write_text(p.read_text() + '!'); print('ok')"]
         self.inputs({"verification_commands": [{"argv": mutate, "stdout_contains": ["ok"], "contract_refs": ["R1", "R2"]}]})
@@ -582,7 +628,7 @@ class AcceptanceTests(unittest.TestCase):
         self.assertIn("malformed command records", " ".join(result["reasons"]))
         blocked = self.submit(source, blockers=[{"kind": ["failed"], "detail": "unhashable kind"}])
         self.assertEqual(blocked["verdict"], "FAILED")
-        self.assertIn("submission blockers must be", " ".join(blocked["reasons"]))
+        self.assertIn("submission blockers must include", " ".join(blocked["reasons"]))
 
     def test_reuses_intact_runner_results_and_reexecutes_altered_evidence(self):
         counter = [sys.executable, "-c", "import pathlib; p = pathlib.Path('.devlyn/count'); p.parent.mkdir(exist_ok=True); "
@@ -664,6 +710,51 @@ class AcceptanceTests(unittest.TestCase):
         self.assertNotIn("warn only", " ".join(result["reasons"]))
         blocked = self.submit(source, blockers=[{"kind": "needs-review", "detail": "Which store wins?"}])
         self.assertEqual((blocked["verdict"], blocked["reasons"], blocked["commands"]), ("FAILED", ["needs-review: Which store wins?"], []))
+
+    def test_max_deps_added_counts_the_names_the_root_package_json_gains(self):
+        """P4-3. Prediction: under the default limit 0 with a passing check, one dependency added to a one-line
+        package.json (none at the inputs) counts 1 and fails acceptance; two appended to a multi-line one count 2; a name
+        moved from dependencies to devDependencies counts 0 and is accepted; an invalid package.json fails the guard,
+        naming it. A leading UTF-8 BOM, which npm and Node accept, is ignored: with one at both commits, one added
+        counts 1. A duplicate key (its last value wins) and a null dependencies section, which npm also reads, count 0
+        and are accepted; NaN, which npm rejects, fails the guard."""
+        passing = {"verification_commands": [{"argv": [sys.executable, "-c", "pass"], "contract_refs": ["R1"]}]}
+
+        def guard(inputs, source):
+            if inputs is not None:
+                self.write("package.json", json.dumps(inputs, indent=2))
+            self.inputs(passing)
+            self.write("package.json", source)
+            commit = self.commit("product")
+            result = self.submit(commit)
+            return commit, result, next(g for g in result["guards"] if g["rule"] == "max_deps_added")
+
+        with self.subTest("one-line add"):
+            _, result, deps = guard(None, json.dumps({"name": "app", "dependencies": {"left-pad": "1.0.0"}}))
+            self.assertEqual((deps["subject"], result["reasons"]), ("1 added, limit 0", ["failed: guard max_deps_added 1 added, limit 0"]))
+        with self.subTest("multi-line add of 2"):
+            _, _, deps = guard({"dependencies": {"a": "1"}}, json.dumps({"dependencies": {"a": "1", "b": "1", "c": "1"}}, indent=2))
+            self.assertEqual((deps["subject"], deps["passed"]), ("2 added, limit 0", False))
+        with self.subTest("move"):
+            _, result, deps = guard({"dependencies": {"a": "1", "b": "1"}, "devDependencies": {"c": "1"}},
+                                    json.dumps({"dependencies": {"b": "1"}, "devDependencies": {"a": "1", "c": "1"}}, indent=2))
+            self.assertEqual((deps["subject"], result["verdict"]), ("0 added, limit 0", "ACCEPTED"))
+        with self.subTest("invalid"):
+            commit, result, deps = guard({"dependencies": {"a": "1"}}, '{"dependencies": {"a": "1",}}\n')
+            self.assertEqual((deps["passed"], result["verdict"]), (False, "FAILED"))
+            self.assertIn(f"package.json at {commit} is invalid", deps["subject"])
+        with self.subTest("BOM"):
+            self.write("package.json", "\ufeff" + json.dumps({"dependencies": {"a": "1"}}))
+            _, _, deps = guard(None, "\ufeff" + json.dumps({"dependencies": {"a": "1", "b": "1"}}))
+            self.assertEqual(deps["subject"], "1 added, limit 0")
+        with self.subTest("duplicate key and null"):
+            self.write("package.json", '{"dependencies": null, "scripts": {"a": "1"}, "scripts": {"b": "2"}}')
+            _, result, deps = guard(None, '{"dependencies": {"a": "1"}, "dependencies": null}')
+            self.assertEqual((deps["subject"], result["verdict"]), ("0 added, limit 0", "ACCEPTED"))
+        with self.subTest("NaN"):
+            commit, result, deps = guard({"dependencies": {"a": "1"}}, '{"config": {"threshold": NaN}}')
+            self.assertEqual((deps["passed"], result["verdict"]), (False, "FAILED"))
+            self.assertIn(f"package.json at {commit} is invalid", deps["subject"])
 
 
 def main():

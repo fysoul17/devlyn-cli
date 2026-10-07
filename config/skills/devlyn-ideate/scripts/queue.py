@@ -60,6 +60,10 @@ class LoopError(Exception):
     pass
 
 
+class Waiting(LoopError):
+    """The task cannot proceed now: it waits with this reason while independent work continues."""
+
+
 def require(condition, message):
     if not condition:
         raise LoopError(message)
@@ -552,7 +556,11 @@ def derive_state(anchor, common, row, claims, rev):
     path, receipt = claims[0]
     require(receipt.get("branch") == branch_of(identity) and path == receipt_path(common, identity),
             f"receipt {path} claims {identity} from branch {receipt.get('branch')!r}; conflicting ownership, inspect it")
-    require(receipt.get("allocation") == "owned", f"{identity}: allocation was interrupted ({path}); uncertain ownership blocks adoption, inspect it")
+    if receipt.get("allocation") != "owned":
+        # Never adopted, and no executor ran: the task waits until the user removes what the allocation left.
+        state["invalid"] = (f"allocation did not finish ({path}); remove its worktree {receipt.get('worktree')} and branch "
+                            f"{receipt['branch']} if present, delete {path.parent}, then drain again")
+        return state
     result = None if not receipt.get("acceptance") else "failed" if receipt.get("product") == "FAILED" else "accepted"
     require(row["mark"] == " " or result == state["kind"],
             f"conflicting terminal state for {identity}: queue row [{row['mark']}] but receipt {path} is {result or 'unbound'}")
@@ -828,8 +836,9 @@ def evidence_ignored(anchor, common, start):
 
 
 def allocate(v, row, opts):
-    """Allocate the task's owned worktree, or return why it waits: its refreshed remote base holds another version of the
-    loop's package or lacks the checkout's instructions (waiting() checks a local start before selection)."""
+    """Allocate the task's owned worktree, or return why it waits: origin names no GitHub repository, or its refreshed
+    remote base holds another version of the loop's package or lacks the checkout's instructions (waiting() checks a local
+    start before selection)."""
     identity, loop, task = row["identity"], row["loop"], row["task"]
     package = v["packages"][loop]
     manifest = package["manifest"]
@@ -846,10 +855,12 @@ def allocate(v, row, opts):
         values["from_receipt" if tip else "local_base"] = str(tip["path"]) if tip else start
     else:
         helper = shared("task-complete")
+        origin = git_run(anchor, "config", "--get", "remote.origin.url", ok=(0, 1)).stdout.decode("utf-8").strip()
         try:
-            values["repository"] = helper["repository_from_url"](git(anchor, "config", "--get", "remote.origin.url"))
-        except (LoopError, helper["CompletionError"]) as exc:
-            raise LoopError(f"{identity}: {manifest['delivery']} delivery needs an origin remote naming one GitHub repository: {exc}") from exc
+            values["repository"] = helper["repository_from_url"](origin)
+        except helper["CompletionError"]:
+            return (f"{manifest['delivery']} delivery needs an origin remote of the form https://github.com/<owner>/<repo>, "
+                    "git@github.com:<owner>/<repo> or ssh://git@github.com/<owner>/<repo>; set one, or drain with --local-only")
         try:
             start = helper["remote_base"]({"common_gitdir": str(common), "remote": "origin", "base": manifest["base_ref"]})
         except helper["CompletionError"] as exc:
@@ -924,7 +935,9 @@ def record(log, event):
 
 
 def ensure_submission(identity, packet_path, packet, executor):
-    """Run the executor once unless its submission exists; returns a drain-recorded failure reason, else None.
+    """Run the executor once unless its submission exists; returns a drain-recorded failure reason, else None. An
+    executor that exits without writing its submission raises Waiting: the task stays active and the next drain runs it
+    again.
 
     An attempt's start is recorded before the spawn and its exit after the wait, so a start without an exit may have
     left a live executor: drain waits until no process uses the worktree, then adopts its submission or runs the
@@ -968,11 +981,9 @@ def ensure_submission(identity, packet_path, packet, executor):
         raise LoopError(f"executor could not start: {exc}") from exc
     progress(identity, f"executing; output in {output}")
     code = child.wait()
-    if not submission.exists():
-        write_json(submission, {"schema_version": 1, "task": identity, "source_sha": packet["inputs_sha"],
-                                "summary": "recorded by the drain, not the executor",
-                                "blockers": [{"kind": "blocked-infrastructure", "detail": f"executor exited {code} without a submission"}]})
     record(log, f"exit {code} (pid {child.pid})")
+    if not submission.exists():
+        raise Waiting(f"executor exited {code} without a submission (see {output / 'executor.stderr'}); the next drain runs it again")
     return None
 
 
@@ -1028,7 +1039,10 @@ def advance(v, row, opts):
         if not failure and not receipt.get("local_only"):
             require_merged(v, row, receipt["baseline"])
         packet_path, packet = ensure_packet(v, row, path, receipt)
-        failure = failure or ensure_submission(identity, packet_path, packet, opts.executor)
+        try:
+            failure = failure or ensure_submission(identity, packet_path, packet, opts.executor)
+        except Waiting as exc:
+            return str(exc)
         try:
             result = acceptance()["accept"](packet_path, packet["submission"], failure)
         except acceptance()["AcceptanceError"] as exc:
@@ -1041,8 +1055,12 @@ def advance(v, row, opts):
     receipt = read_json(path)
     if receipt.get("delivery") not in SETTLED:
         packet = read_json(path.parent / "packet.json")
-        result = task_complete("complete", receipt=str(path), acceptance=None, mode=None if local else packet["delivery"],
-                               local_only=local, writers_stopped=True)
+        try:
+            # The plan's mode seeds the first delivery call; a later per-task --mode persists in the receipt.
+            result = task_complete("complete", receipt=str(path), acceptance=None,
+                                   mode=None if local or receipt.get("mode_override") else packet["delivery"], local_only=local, writers_stopped=True)
+        except LoopError as exc:
+            return f"delivery blocked: {exc}"
         progress(identity, f"delivery {result['status']}")
     return None
 
@@ -1642,7 +1660,9 @@ class QueueTests(unittest.TestCase):
     def test_a_crash_on_either_side_of_the_spawn_never_starts_a_second_executor(self):
         """The attempt's start is durable before the spawn, so a resumed drain observes writers first: it waits while
         an executor lives and adopts its submission, runs the executor once when none did, and fails the task where
-        writers cannot be observed."""
+        writers cannot be observed. Prediction (H2): that one run exits 0 without writing a submission, so the task waits,
+        naming the exit code and executor.stderr, and no submission exists. Before: the drain wrote a stand-in submission
+        with a blocked-infrastructure blocker, which made the task [F]."""
         from unittest import mock
         helper = shared("task-complete")
         work, records = self.root / "work", self.root / "records"
@@ -1678,7 +1698,10 @@ class QueueTests(unittest.TestCase):
                 observe(len(checks))
             with mock.patch.dict(helper, {"stopped_writers": stopped_writers}), mock.patch("subprocess.Popen", popen), \
                     mock.patch("time.sleep"):
-                return ensure_submission("l.t", records / "packet.json", packet, ["executor", "{packet}"])
+                try:
+                    return ensure_submission("l.t", records / "packet.json", packet, ["executor", "{packet}"])
+                except Waiting as exc:
+                    return str(exc)
 
         def survivor(count):
             if count < 3:
@@ -1688,7 +1711,10 @@ class QueueTests(unittest.TestCase):
         def unobservable(count):
             raise helper["WritersUnobservable"]("writer observation unsupported on this platform; retain workspace")
 
-        for crash, observe, outcome in ((crash_after_spawn, survivor, (1, 3, None)), (crash_before_spawn, lambda count: None, (1, 1, None)),
+        stderr = Path(packet["evidence_dir"]) / "executor.stderr"
+        for crash, observe, outcome in ((crash_after_spawn, survivor, (1, 3, None)),
+                                        (crash_before_spawn, lambda count: None,
+                                         (1, 1, f"executor exited 0 without a submission (see {stderr}); the next drain runs it again")),
                                         (crash_before_spawn, unobservable, (0, 1, "interrupted-unobservable"))):
             with self.subTest(crash=crash.__name__, observe=getattr(observe, "__name__", "nothing")):
                 spawns.clear()
@@ -1698,7 +1724,8 @@ class QueueTests(unittest.TestCase):
                 with self.assertRaises(Crash):
                     drain(crash)
                 failure = drain(spawn, observe)
-                self.assertEqual((len(spawns), len(checks), failure and failure.split(":")[0]), outcome)
+                self.assertEqual((len(spawns), len(checks), failure and failure.partition(": ")[0]), outcome)
+                self.assertEqual(Path(packet["submission"]).exists(), crash is crash_after_spawn)
                 if crash is crash_after_spawn:
                     self.assertEqual(read_json(Path(packet["submission"])), {"by": "executor"})
 

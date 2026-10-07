@@ -86,7 +86,7 @@ A removed flag stops with its instruction and selects no other behavior.
 ## plan
 
 1. Inspect, then elicit, per [elicitation.md](references/elicitation.md). A document argument is the input contract: carry each substantive requirement into a task without weakening it, cite the document in `## Intent`, and never modify it.
-2. Write `docs/specs/<loop-id>/meta.md` and each task's `spec.md` and `spec.expected.json` per [package-format.md](references/package-format.md). In the manifest, `base_ref` is the delivery branch and `base_sha` the exact commit the loop builds on; `delivery` is `local-only` when the user restricted delivery, else the project's `git config --local devlyn.completionMode` (absent means `auto`). `## Execution policy` quotes the autonomous policy, which binds every task's executor.
+2. Write `docs/specs/<loop-id>/meta.md` and each task's `spec.md` and `spec.expected.json` per [package-format.md](references/package-format.md). In the manifest, `base_ref` is the delivery branch and `base_sha` the exact commit the loop builds on; `delivery` is `local-only` when the user restricted delivery or, recorded as an assumption, when `origin` does not name one GitHub repository; else the project's `git config --local devlyn.completionMode` (absent means `auto`). `## Execution policy` quotes the autonomous policy, which binds every task's executor.
 3. Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" check '<absolute meta.md>'` and repair the package until it reports `VALID`.
 4. Report the package path, the tasks with their dependencies, and every recorded assumption.
 
@@ -105,7 +105,7 @@ Follow [loop.md](references/loop.md). The executor is the configured route, the 
 | Executor | argv |
 |---|---|
 | Claude | `claude -p "<prompt>" --dangerously-skip-permissions --add-dir "<git dir>"` |
-| Codex | `bash "<DEVLYN_SHARED_DIR>/codex-monitored.sh" --skip-git-repo-check -s workspace-write -c 'sandbox_workspace_write.writable_roots=["<git dir>","{worktree_git_dir}"]' "<prompt>"` |
+| Codex | `bash "<DEVLYN_SHARED_DIR>/codex-monitored.sh" --skip-git-repo-check -s workspace-write -c 'sandbox_workspace_write.writable_roots=["<git dir>","{worktree_git_dir}"]' -c 'sandbox_workspace_write.network_access=true' "<prompt>"` |
 
 Another engine needs an argv that starts one fresh non-interactive session able, without prompts, to edit, run commands and commit in its task worktree and to write the packet's submission file. `<prompt>` carries the absolute binding values, while `{packet}` stays literal for the drain to fill:
 
@@ -121,6 +121,6 @@ A drain can run for hours. Do not end the turn until it exits: run it in the for
 
 - `WAITING` on legacy rows: plan and materialize each under the autonomous policy, then drain again; a row whose planning stops on material ambiguity stays pending and its question is reported.
 - `WAITING` on anything else, or `BLOCKED`: report the reason and resume commands; never edit receipts, refs or queue rows to get past them.
-- An interrupted drain is resumed by running `drain` again; accepted work is never replayed.
+- An interrupted drain is resumed by running `drain` again; accepted work is never replayed, and a failed task is never rerun: plan its work again as a new loop.
 
-Report each task's product result, delivery status, PR URL, resume command, assumptions and unresolved questions, plus the drain report paths and its exact `Bring into` command: a local loop's `git merge --ff <final task branch>` on the branch the loop was added on; for `auto`/`pr`, once delivered, `git merge --ff origin/<base>` on `<base>`. Report any `cleanup` entry too: a package copy left in the checkout stops that command until it is removed.
+Report each task's product result, delivery status, PR URL, resume command, assumptions and unresolved questions, plus whole-loop acceptance, the package's `## Decisions and assumptions`, the drain report paths and its exact `Bring into` command; leave running it to the user. Report any `cleanup` entry too: a package copy left in the checkout stops that command until it is removed.

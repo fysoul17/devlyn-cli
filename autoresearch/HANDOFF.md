@@ -1,4 +1,4 @@
-# 0232 harness ladder — stage 1 CLOSED (A admitted, I not); resolve being retired; next: register the installed baseline
+# 0232 stage 1 closed; resolve retired (PR #171); ideate loop redesigned and verified by real runs (PR #172); final fixes with in-place direct work (PR #173); next is the owner's release prep, then the installed-baseline registration
 
 ## The owner's direction (2026-10-05)
 
@@ -9,7 +9,7 @@ Follow the product direction in NORTH-STAR and O1–O4 in 0232:
 - `ideate` as the loop designer;
 - `design-ui` retired.
 
-Wall, input and output are judged per correctly completed task, failures included. Incumbent replacement targets at least 30% less wall per success than F, with quality preserved and no input or output increase; §6 defines zero-success comparisons. Core routes come first. Run the registered 0232 cells when ready; no further run approval is required.
+Wall, input and output are judged per correctly completed task, failures included. Incumbent replacement targets at least 30% less wall per success than F, with quality preserved and no input or output increase; §6 defines zero-success comparisons. Core routes come first.
 
 ## State
 
@@ -24,21 +24,52 @@ Wall, input and output are judged per correctly completed task, failures include
   - Rung 1 stays unmerged on `candidate/0232-rung1` (`5bf3dc74`).
 - **Product:**
   - The ideate loop and the retirement of design-ui and the queue skill are merged (PR #169).
-  - resolve is being retired as a product-scope decision (0232 §8). The owner can veto that by reverting the product PR before release.
+  - resolve is retired as a product-scope decision (0232 §8; PR #171, merge `d2d34e3e`). The owner can veto the retirement before release; root then restores resolve on top of current main.
+  - The ideate redesign is merged (PR #172, merge `52636e19`). add captures the package under `refs/devlyn/captures/<loop-id>`, and each loop keeps its rows in its own `docs/specs/<loop-id>/queue.md`. The drain also fills the executor's `{worktree_git_dir}`, review records may carry keys acceptance does not read, a task waits while its start commit's CLAUDE.md or AGENTS.md differs from the checkout's, and local allocation needs no `--repository`.
+    - Astra ultra reviewed it as SHIP (`e2e-fix-a2-astra.out.md` in the checkout's `.devlyn/bundle/`).
+    - Real Claude-host and Codex-host loops passed first try with the documented commands; the evidence is in `~/.local/share/nx01/e2e-smoke3`.
+  - This final-fixes PR (#173, `candidate/final-fixes`) applies `final-fixes-contract.md`, `final-fixes-part2-contract.md` and `final-fixes-part4-contract.md` (`.devlyn/bundle/`).
+    - Owner decision (2026-10-07), from the slowness investigation (`slowness-investigation.json`): direct work edits the current checkout. Delivery runs only when the user asks to ship it, and only as far as asked; root mapped a commit request to local-only, a PR request to `--mode pr` and a merge request to `--mode auto`. Every drained task is still delivered.
+    - Concurrent writers (owner decision; Astra's synthesis in `direct-work-design-astra.out.md`): with known concurrent writers, isolate before editing; on unexplained changes, pause writes (`task-completion.md` "Concurrent writers"). A patch replaces the stash transfer.
+    - Astra ultra reviewed the fix round after its final-audit REVISE as SHIP (`final-fixes-round2-astra.out.md`); both of its follow-ups are fixed.
+    - A direct-task smoke on the final block (`final-fixes-direct-smoke.md`) edited in place with no worktree or commit on both hosts. Claude took 13.5–15.6 s and 5–7 turns in 3 runs, against 63.8 s and 14 turns with the old delivery pointer; Codex took 44 s and ran its tests.
 
 **Next:**
 
-1. **Finish resolve's retirement** to the plan in `.devlyn/bundle/result-product-a1-astra.out.md` Part B. Get Astra's review and CI including native Windows, then merge.
-2. **Final whole-product check** against the original intent: intake, loop design, autonomous execution, acceptance, truthful reporting, delivery.
-3. **Next registration:** the actual installed baseline, meaning principles plus ideate, with the easy-task panel. After that, I′, licensed by I's lost final reviews and review cost.
-4. **Release preparation** (version, notes, publish) stays with the owner.
+1. **The owner's decisions and release prep:** the version and release notes, a LICENSE file, whether to delete `config/templates`, whether to restore the orphan-cleanup sentence to the installed block, a publish CI gate (since PR #174 the Windows portability suite runs only on the release tag, beside the publish job, so it gates nothing), whether to veto resolve's retirement (0232 §8), and two ideate policies from phase B: the `--autonomous` rule on user-visible defaults (restore 4.1.0's parenthetical, or allow recorded literal interpretations; phase B marks it before release) and the integration-task rule that forces false dependencies. Also confirm or change root's delivery extent for direct work (commit → local-only, PR → `--mode pr`, merge → `--mode auto`).
+2. **The installed-baseline registration:** the principles block plus ideate, with the easy-task panel and 0223's B5 task (0232 §8). After that, I′, licensed by I's lost final reviews and review cost.
+3. **Follow-ups:** the Known follow-ups below.
+
+## Known follow-ups
+
+One line per class. Details, each with its reproduction described, are in the checkout's `.devlyn/bundle/`: `final-audit-phase-b.json` (phase B, findings quoted by title) and `final-audit-phase-a.json` (phase A); the scratch scripts they name were temporary.
+
+- **merge_refused:** an auto loop in a squash-only repository reports `Delivery: PR` without the refusal reason (phase B "The drain drops merge_refused").
+- **Custody binding:** a drain interrupted while binding custody never resumes a task whose checks failed or were rerun (phase B "A drain interrupted while binding custody").
+- **Retained scratch:** the drain report shows `Scratch cleanup: RETAINED` without its reason or resume command (phase B "Retained scratch is reported without its reason").
+- **Deleted branch:** the drain report prints `Branch:` for a task branch delivery already deleted (phase B "The report prints 'Branch:'").
+- **Unread submission fields:** the submission asks for `findings`, `cleanup`, `handoff` and `summary`, which nothing reads (phase B "The submission shape asks for four fields").
+- **Queued loops:** the planner reads them through status and the captures, but a later local loop starts from its add branch, never an earlier loop's unlanded frontier (an owner decision), and a queued loop cannot be withdrawn (phase B "The planner cannot see queued, unlanded loops"; "A queued loop cannot be withdrawn").
+- **Codex host permissions:** status, add and drain write the Git directory, so a Codex host in its default sandbox needs escalation, and no doc says so (phase B "A Codex host in its default workspace-write sandbox").
+- **Global install:** `--global` installs ideate without the principles block and says nothing (phase B "A global install gives ideate without the principles block").
+- **Non-default `base_ref`:** an auto/pr loop whose `base_ref` is not the default branch runs its executor, then waits on a delivery task-complete refuses; check it before allocation (phase B "One task's delivery refusal", its base_ref part).
+- **`attach --file`:** `task-complete.py attach` still defaults `--file` to the legacy `docs/specs/queue.md` (phase B "task-complete.py attach still defaults --file").
+- **loop.md and task-completion.md:** loop.md sends drain hosts to the direct-work completion contract, which points back with a duplicate summary (phase B "loop.md sends drain hosts to the 152-line direct-work completion contract").
+- **Repetition:** the block and SKILL.md repeat text other surfaces carry (phase B "The always-loaded block and SKILL.md repeat text").
+- **Research staleness:** `benchmark/ceiling/README.md` lists the tranche and the no-degradation cell as live, though both stage the retired resolve skill, and NORTH-STAR's pair-mode commitments and policy still describe resolve's VERIFY pair as shipped.
+- **`devlyn-engines clear` on Pi and Grok:** exits 1 after deleting the pin, because `role-config.py` resolves the host default after the edit.
+- **Drain-wide stops:** a failed base refresh, an executor that cannot start, a missing prerequisite merge, an unignored `.devlyn/` and a receipt directory without `receipt.json` still stop the whole drain, short of the shared rule in `final-fixes-part2-contract.md` that only an unreadable queue does.
+- **Installer layouts:** a CLAUDE.md that imports AGENTS.md other than by an exact `@AGENTS.md` line (inline, or `@./AGENTS.md`) still gets a copy of the block beside the imported one, and a CLAUDE.md linked to AGENTS.md is still refused (phase B "A CLAUDE.md that imports AGENTS.md gets the block loaded twice").
+- **package.json guard:** a symlinked root `package.json`, or one npm rejects at the inputs commit, fails `max_deps_added` for every task, the repairing task included; it fails closed (part-4 verification).
+- **`--receipt` alias:** `complete` refuses a receipt path written through a symlink or `..`; agents copy the printed path, so it was left as it predates part 4 (part-4 verification).
+- **Earlier lists:** `r4-followups.md` (round 4) and the Deferred sections of `e2e-fix-r3-contract.md` (round 3) and `final-fixes-contract.md` (phase A).
+- **Real-run evidence:** the real-host loop runs (`~/.local/share/nx01/e2e-smoke3` and `e2e-smoke4`) cover only local-only loops in repositories with no remote; before release, run one auto loop on a throwaway GitHub repository (phase B "Real-host evidence covers only local-only loops").
 
 ## Open user decisions and carried notes
 
 - **The `_devlynjudge` user record (uid 450) remains.** macOS refuses its deletion without Full Disk Access. Removing it is the user's call.
-- **Raw outputs of the 0228/0229 replays** remain in `/Users/Shared/devlyn-vr-0228-dev` (owner-only) until the user decides.
+- **Experiment roots in `/Users/Shared`** (the 0225–0229 raw outputs, about 22 GB, including `devlyn-vr-0228-dev` with the 0228/0229 replays) remain until the user decides. About 99,000 of their files belong to `_devlynjudge`, so removal needs admin rights.
 - **Orphan cleanup.** Rung 1 keeps the orphan-cleanup obligation. Its isolated effect is unmeasured, and the separate 0223 slim-plus-orphan add-back is unrun and remains an open user decision.
-- **The `/devlyn:queue` branch-reconciliation rule** has not been exercised by a model-driven drain. A null `autoMergeRequest` does not prove the merge queue was removed.
 
 ## Start here (every new session)
 
@@ -49,7 +80,7 @@ Wall, input and output are judged per correctly completed task, failures include
 3. **Allocate a task branch:** `python3 config/skills/_shared/task-complete.py allocate --repo . --task '<id>' --branch 'candidate/<id>' --worktree '<absent path>' --repository fysoul17/devlyn-cli --remote origin --base main`.
 4. **Work and verify.**
    - Root works directly.
-   - Astra reviews read-only and isolated: `CODEX_MONITORED_ISOLATED=1 DEVLYN_CODEX_PROMPT_FILE=<prompt> config/skills/_shared/codex-monitored.sh -C <repo> -s read-only -m gpt-6-astra -c model_reasoning_effort=ultra -`.
+   - Astra reviews read-only with Codex's isolation flags: `DEVLYN_CODEX_PROMPT_FILE=<prompt> config/skills/_shared/codex-monitored.sh --ignore-user-config --ignore-rules --ephemeral --disable codex_hooks --disable hooks -C <repo> -s read-only -m gpt-6-astra -c model_reasoning_effort=ultra -`.
      - Send stdout to a file, never a pipe.
      - Wait on `^\[codex-monitored\] codex exited` in stderr.
      - Continue until SHIP.
@@ -58,7 +89,7 @@ Wall, input and output are judged per correctly completed task, failures include
    - Commit in the task worktree.
    - Write `<worktree>/.devlyn/acceptance.json` (kind `direct`).
    - From a cwd outside the checkout, run `task-complete.py complete --receipt <receipt> --acceptance <file> --mode pr --writers-stopped`.
-   - Root merges research PRs once Astra verification is SHIP and CI is green where it runs, with `--mode auto --writers-stopped`.
+   - Root merges research PRs once Astra verification is SHIP and the POSIX suites pass locally (since PR #174, CI runs only per release), with `--mode auto --writers-stopped`.
 6. **Hand off** in the same PR by updating this file.
 
 ## Standing rules

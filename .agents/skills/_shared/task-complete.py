@@ -188,7 +188,8 @@ def allocate(args):
     common = Path(git(work, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()
     require(args.task.strip(), "task identity is required")
     git(work, "check-ref-format", "refs/heads/" + args.branch)
-    git(work, "check-ref-format", "refs/heads/" + args.base)
+    if args.base is not None:
+        git(work, "check-ref-format", "refs/heads/" + args.base)
     require(args.branch != args.base and args.branch not in {"main", "master"}, "cannot own a base/default branch")
     require(re.fullmatch(r"[A-Za-z0-9_.-]+", args.remote), "unsafe remote name")
     receipt = {"task": args.task, "repository": args.repository, "remote": args.remote,
@@ -199,13 +200,12 @@ def allocate(args):
     if local:
         receipt["local_only"] = True  # Local work needs no remote: nothing is fetched or pushed.
     else:
-        require(args.repository, "a remote allocation needs --repository <owner/repo>; allocate local work with --local-base or --from-receipt")
+        require(args.repository and args.base, "a remote allocation needs --repository <owner/repo> and --base <branch>; allocate local work with --local-base or --from-receipt")
         policy(receipt, None)
         receipt["remote_url"] = remote_url(receipt)
         require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
     receipt["baseline"] = local or exact_commit(receipt, args.start, "--start") or remote_base(receipt)
-    target = Path(args.worktree).absolute()
-    require(target == target.resolve(), "worktree path must not traverse symlinks")
+    target = Path(args.worktree).resolve()  # A relative, `..` or symlinked (macOS /tmp) path names its real location.
     require(not target.exists() and all(not target.is_relative_to(p) and not p.is_relative_to(target) for p in map(Path, registrations(receipt))), "linked worktree must be an absent path disjoint from every registered worktree")
     receipt["worktree"] = str(target)
     key = hashlib.sha256(args.branch.encode()).hexdigest()[:24]
@@ -279,7 +279,8 @@ def bind_acceptance(receipt, path, supplied):
         verify_files(path.parent / "custody", receipt["files"])
         return
     require(supplied, "first completion requires explicit root acceptance")
-    acceptance_path = Path(supplied).absolute()
+    named = Path(supplied).absolute()
+    acceptance_path = named.parent.resolve() / named.name  # Its directory's real path, as allocate names the worktree.
     require(acceptance_path.is_relative_to(work), "acceptance must be a regular file in its task checkout")
     safe_path(work, str(acceptance_path.relative_to(work)))
     acceptance = read_json(acceptance_path)
@@ -762,7 +763,7 @@ def complete(args):
         atomic_json(path, receipt)
         try:
             cleanup(receipt, path, pr)
-        except WritersUnobservable as error:
+        except (WritersUnobservable, WriterActive) as error:
             # Conservative retention: the merge settles delivery; workspace, task refs and custody stay, reported.
             receipt["workspace_cleanup"] = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
                 sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)])}
@@ -776,8 +777,9 @@ def main():
     actions = parser.add_subparsers(dest="action")
     allocation = actions.add_parser("allocate")
     allocation.add_argument("--repo", default=".")
-    for name in ("task", "branch", "base"):
+    for name in ("task", "branch"):
         allocation.add_argument("--"+name, required=True)
+    allocation.add_argument("--base")
     allocation.add_argument("--repository")
     allocation.add_argument("--remote", default="origin")
     allocation.add_argument("--worktree", required=True)
@@ -1807,13 +1809,16 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("merges",0), 0)
 
     def test_actual_foreign_writer_and_registration(self):
+        # H4. Prediction: a process still using the merged task's tree settles the delivery COMPLETE with the workspace
+        # retained (CLEANUP_PENDING) and the process named, as unobservable writers do. Before: complete ended BLOCKED
+        # "active process <pid> uses task files", so the merged delivery never settled and a drain stopped there.
         self.allocate(); self.accept()
         child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], cwd=self.task)
         try:
-            _, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
-            self.assertNotEqual(r.returncode, 0)
+            result, _ = self.complete("--writers-stopped", "--mode", "auto")
+            self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+            self.assertIn("active process", result["workspace_cleanup"]["reason"])
             self.assertTrue(self.task.exists())
-            self.assertIn("active process", json.loads(r.stdout)["reason"])
         finally:
             child.terminate(); child.wait(timeout=5)
         # A foreign branch in the same registered tree never inherits ownership.
@@ -2026,6 +2031,47 @@ class CompletionTests(unittest.TestCase):
         self.accept()
         self.assertEqual(self.complete("--local-only")[0]["status"], "LOCAL_ONLY")
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs", 0), 0)
+
+    def test_local_allocation_needs_no_base(self):
+        """P4-2. Prediction: a local allocation with --local-base and no --base, the form agents wrote in 3 of 3 timed
+        runs, is ALLOCATED and completes LOCAL_ONLY, while a remote allocation without --base is refused naming it, with
+        nothing created."""
+        args = ["allocate", "--repo", self.work, "--task", "fixture", "--branch", "task/fixture", "--worktree", self.root / "linked"]
+        refused, _ = self.cli(*args, "--repository", "test/project", success=False)
+        self.assertIn("--base", refused["reason"])
+        self.assertEqual((self.g("branch", "--list", "task/fixture"), (self.root / "linked").exists()), ("", False))
+        result, _ = self.cli(*args, "--local-base", self.g("rev-parse", "HEAD"))
+        self.assertEqual(result["status"], "ALLOCATED")
+        self.receipt, self.task = Path(result["receipt"]), Path(result["worktree"])
+        self.accept()
+        self.assertEqual(self.complete("--local-only")[0]["status"], "LOCAL_ONLY")
+
+    def test_allocation_canonicalizes_symlinked_and_dotted_worktree_paths(self):
+        """P4-2. Prediction: an absent worktree path reached through a symlinked directory (macOS /tmp) or written with
+        `..` (`../work-x`, `$(pwd -P)/../work-x`) is ALLOCATED at its canonical path, and that path, now present, is
+        refused through the link as not absent."""
+        alias = self.root / "alias"
+        alias.symlink_to(self.root, target_is_directory=True)
+        args = ["allocate", "--repo", self.work, "--base", "main", "--local-base", self.g("rev-parse", "HEAD")]
+        for name, given in (("linked", alias / "linked"), ("dotted", Path("..") / "dotted")):
+            result, _ = self.cli(*args, "--task", name, "--branch", "task/" + name, "--worktree", given, cwd=self.work)
+            self.assertEqual((result["status"], result["worktree"]), ("ALLOCATED", str(self.root / name)))
+            self.assertEqual(self.g("rev-parse", "--show-toplevel", work=self.root / name), str(self.root / name))
+        refused, _ = self.cli(*args, "--task", "again", "--branch", "task/again", "--worktree", alias / "dotted", success=False)
+        self.assertIn("linked worktree must be an absent path", refused["reason"])
+
+    def test_completion_accepts_the_path_form_the_worktree_was_allocated_with(self):
+        """Prediction: an acceptance named through the symlinked or `..` form the worktree was allocated with completes
+        LOCAL_ONLY; before, allocate canonicalized the worktree but complete refused that form as outside it."""
+        alias = self.root / "alias"
+        alias.symlink_to(self.root, target_is_directory=True)
+        for name, given in (("linked", alias / "linked"), ("dotted", Path("..") / "dotted")):
+            result, _ = self.cli("allocate", "--repo", self.work, "--task", "fixture", "--branch", "task/" + name,
+                                 "--worktree", given, "--local-base", self.g("rev-parse", "HEAD"), cwd=self.work)
+            self.receipt, self.task = Path(result["receipt"]), Path(result["worktree"])
+            self.accept()
+            self.acceptance = given / ".devlyn" / "acceptance.json"
+            self.assertEqual(self.complete("--local-only", cwd=self.work)[0]["status"], "LOCAL_ONLY")
 
     def test_remote_allocation_starts_from_an_exact_commit(self):
         # An ideate auto/pr task starts from the exact refreshed remote base the drain checked, never a second fetch.

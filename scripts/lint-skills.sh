@@ -420,16 +420,18 @@ fi
 
 section "Check 6g: ideate gives the exact drain executor argv"
 # A Codex executor denied its commit in the linked worktree (e2e smoke, then again with the common Git directory
-# writable): workspace-write keeps .git read-only, and the worktree's own Git directory unless listed exactly.
+# writable): workspace-write keeps .git read-only, and the worktree's own Git directory unless listed exactly. It
+# also denies network, so a Codex executor could not install a new dependency (phase B audit H9).
 claude_argv='claude -p "<prompt>" --dangerously-skip-permissions --add-dir "<git dir>"'
 codex_roots="-c 'sandbox_workspace_write.writable_roots=[\"<git dir>\",\"{worktree_git_dir}\"]'"
 adapter_roots="-c 'sandbox_workspace_write.writable_roots=[\"<git dir>\",\"<worktree git dir>\"]'"
+codex_network="-c 'sandbox_workspace_write.network_access=true'"
 if ! grep -Fq -- "$claude_argv" config/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq -- "--skip-git-repo-check -s workspace-write $codex_roots \"<prompt>\"" config/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq -- "$adapter_roots" config/skills/_shared/adapters/codex.md; then
-  bad "ideate SKILL.md must give the exact Claude and Codex executor argv, and the Codex adapter the common and worktree Git directories as writable roots"
+  || ! grep -Fq -- "--skip-git-repo-check -s workspace-write $codex_roots $codex_network \"<prompt>\"" config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq -- "$adapter_roots $codex_network" config/skills/_shared/adapters/codex.md; then
+  bad "ideate SKILL.md must give the exact Claude and Codex executor argv, and the Codex adapter the common and worktree Git directories as writable roots and network access"
 else
-  ok "ideate gives the exact Claude and Codex executor argv; the Codex adapter makes the common and worktree Git directories writable"
+  ok "ideate gives the exact Claude and Codex executor argv; the Codex adapter makes the common and worktree Git directories writable and allows network"
 fi
 
 section "Check 6h: No undocumented spec.expected.json.browser_flows field"

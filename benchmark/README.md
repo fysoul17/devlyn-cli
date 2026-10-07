@@ -1,12 +1,12 @@
-# devlyn-cli benchmarks — two lanes
+# devlyn-cli benchmarks — three lanes
 
-This repo runs **four independent measurement lanes**. Pick the one that matches the kind of change you made.
+This repo runs **three independent measurement lanes** (B, C and D); Lane A is retired. Pick the one that matches the kind of change you made.
 
 | Lane | Purpose | Source of truth |
 |---|---|---|
-| **A · auto-resolve** | Pair-mode / risk-probe / headroom gates. Measures whether pair-VERIFY catches issues solo missed and whether risk probes lift `bare < solo < pair`. | [`auto-resolve/README.md`](auto-resolve/README.md) |
+| **A · auto-resolve** (retired) | Gated the retired resolve pipeline's pair-mode / risk-probe / headroom behavior; kept as research history. | [`auto-resolve/README.md`](auto-resolve/README.md) |
 | **B · instruction-sensitivity** | Instruction-text effect. Measures whether CLAUDE.md / AGENTS.md / runtime-principles changes shift LLM behavior (clarification, scope discipline, pushback, anti-overengineering). | [`instruction-sensitivity/README.md`](instruction-sensitivity/README.md) |
-| **C · ceiling** | 세계최고 axis (ops #17): 3-arm A/B/C moat runs, seat-fitness matrix, and the **no-degradation control cell** (`scripts/run-nodeg-cell.sh` — objective/quality/wall bars vs frozen best_B). | [`ceiling/README.md`](ceiling/README.md) |
+| **C · ceiling** | 세계최고 axis (ops #17): 3-arm A/B/C moat runs, seat-fitness matrix, and the **no-degradation control cell** (`scripts/run-nodeg-cell.sh` — objective/quality/wall bars vs frozen best_B). The moat runs and the no-degradation cell stage the retired resolve skill as arm A, so they run only from a checkout before the retirement. | [`ceiling/README.md`](ceiling/README.md) |
 | **D · noncoding** | Non-coding value axes (intent-grasp, packet quality) with hidden-oracle scoring and T0/T1 seat calibration. | [`noncoding/README.md`](noncoding/README.md) |
 
 ## Which lane do I need? — decision rule
@@ -14,16 +14,14 @@ This repo runs **four independent measurement lanes**. Pick the one that matches
 | Change touches | Run | Reason |
 |---|---|---|
 | Skill prompts / CLAUDE.md / AGENTS.md / runtime-principles | **Lane B** | Prompt wording always alters behavior — including "minor wording fixes" |
-| pair-mode policy / VERIFY trigger / risk-probe gate / benchmark runner | **Lane A** | These directly change pair / headroom semantics |
-| Both | **Lane B → Lane A** | Catch instruction regression before harness regression |
 | Docs / comments only | Neither — lint + sanity is enough | Change-neutral |
 | Lint / contract parity / installer mechanics (no behavior change) | Neither — `bash scripts/lint-skills.sh` covers it | Change-neutral |
 
 **The trap**: "I only reworded one sentence in CLAUDE.md" → **Lane B**. Wording is behavior. The whole point of Lane B is detecting effects you can't predict by reading the diff.
 
-## Lane A · auto-resolve (existing)
+## Lane A · auto-resolve (retired)
 
-Lane A is the production pair / risk-probe / headroom evaluation harness. Entry points are the scripts in `benchmark/auto-resolve/scripts/`, run from a devlyn-cli git checkout. SWE-bench rows are run via their own direct scripts.
+Lane A was the resolve pipeline's pair / risk-probe / headroom evaluation harness; it left the product with resolve and gates nothing. Its entry points, the scripts in `benchmark/auto-resolve/scripts/`, run only from a checkout before the retirement (see its README). SWE-bench rows are run via their own direct scripts.
 
 **Three common one-liners**:
 
@@ -49,9 +47,9 @@ python3 benchmark/auto-resolve/scripts/frozen-verify-gate.py \
   --out-md benchmark/auto-resolve/results/swebench-lite-proof-gate-n11-rerun.md
 ```
 
-**Output location**: `benchmark/auto-resolve/results/<run-id>/`. **Pass criteria**: `verdict == PASS` in the gate JSON + non-zero exit code blocks merge.
+**Output location**: `benchmark/auto-resolve/results/<run-id>/`.
 
-Full runner list and fixture catalog: see [`auto-resolve/README.md`](auto-resolve/README.md). Current operational status (which fixtures are pair-discriminating proof, which are recall-only, which are no-lift): [`../autoresearch/HANDOFF.md`](../autoresearch/HANDOFF.md).
+Full runner list and fixture catalog: see [`auto-resolve/README.md`](auto-resolve/README.md).
 
 ## Lane B · instruction-sensitivity (new)
 
@@ -87,9 +85,9 @@ python3 benchmark/instruction-sensitivity/scripts/score-behavior.py \
 
 **Output**: 7-axis behavior score, NOT a single PASS/FAIL. `summary_verdict ∈ {IMPROVED, MIXED, REGRESSED}`. Detail: [`instruction-sensitivity/README.md`](instruction-sensitivity/README.md) + [`instruction-sensitivity/RUBRIC.md`](instruction-sensitivity/RUBRIC.md).
 
-## Hard rules (both lanes)
+## Hard rules (every lane)
 
 1. **Commit-pinned only.** Working-tree benchmarks are log noise, not evidence. Pin baseline and candidate to specific SHAs.
-2. **No silent fallbacks on engine unavailability.** Lane A pair routes already emit `BLOCKED:<engine>-unavailable`. Lane B inherits the same contract.
-3. **Don't mix lanes.** Lane A fixtures are designed for pair-effect measurement; running them in Lane B mode contaminates both signals.
+2. **No silent fallbacks on engine unavailability.** Stop and report when an engine is unavailable; never substitute another.
+3. **Don't mix lanes.** Each lane's fixtures answer its own question; running them in another lane's mode contaminates both signals.
 4. **Results are evidence, not opinions.** Cite the run-id, the gate JSON path, and the exact verdict — never a paraphrase.

@@ -66,10 +66,10 @@ These metrics define "did this hypothesis work?". Stable across iterations.
 ## Current work
 
 Read [`HANDOFF.md`](HANDOFF.md), then
-[0221's registered plan](iterations/0221-subtraction-direction.md).
-It owns the current candidate, session order, evaluation and adoption/rejection decision.
+[0232](iterations/0232-harness-ladder.md).
+It owns the ladder rule, the stage-1 result, the resolve retirement (§8) and the next registration.
 The earlier metrics and anti-overfitting discussion in this README describe the
-historical nine-fixture loop; they do not override 0221's confirmation rules
+historical nine-fixture loop; they do not override 0232's ladder rule
 or NORTH-STAR's current quality/time/cost priority. Do not recreate a second queue here.
 
 ---

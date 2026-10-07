@@ -10,7 +10,7 @@ const { execSync } = require('child_process');
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
-const { updateInstructions, InstructionError, holdsDevlynDefaults } = require('./instructions');
+const { updateInstructions, InstructionError, holdsDevlynDefaults, importsAgentsMd } = require('./instructions');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
@@ -104,21 +104,21 @@ function skillRoots(target, global) {
 
 // A devlyn Claude install in this scope. Globally only the marker a `--global --claude` run
 // writes counts; in a project also a devlyn skill (0.6.0 and later), command (0.2-0.5) or
-// CLAUDE.md with devlyn defaults, which a team may commit while ignoring .claude/. An optional
-// devlyn skill is not one: 4.0.1 put those into .claude/skills without the Claude target. A
-// CLAUDE.md link (often to AGENTS.md) is not the Claude target's file: updateInstructions
-// refuses links.
+// CLAUDE.md with devlyn defaults, held or imported from AGENTS.md, which a team may commit
+// while ignoring .claude/. An optional devlyn skill is not one: 4.0.1 put those into
+// .claude/skills without the Claude target. A CLAUDE.md link (often to AGENTS.md) is not the
+// Claude target's file: updateInstructions refuses links.
 function hasDevlynClaude(global) {
   const claudeDir = path.dirname(skillRoots('claude', global)[0]);
   if (global) return fs.existsSync(path.join(claudeDir, 'skills', DEVLYN_INSTALL_MARKER));
   const names = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir) : []);
   const optional = new Set(OPTIONAL_ADDONS.map((addon) => addon.name));
   const instructions = path.join(path.dirname(claudeDir), 'CLAUDE.md');
+  const claude = fs.lstatSync(instructions, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(instructions, 'utf8') : '';
   return names(path.join(claudeDir, 'skills')).some((name) => name === DEVLYN_INSTALL_MARKER
       || (name.startsWith('devlyn') && !optional.has(name.replace(/[:\uF03A]/g, '-'))))
     || names(path.join(claudeDir, 'commands')).some((name) => name.startsWith('devlyn.'))
-    || (fs.lstatSync(instructions, { throwIfNoEntry: false })?.isFile() === true
-      && holdsDevlynDefaults('CLAUDE.md', fs.readFileSync(instructions, 'utf8')));
+    || holdsDevlynDefaults('CLAUDE.md', claude) || importsAgentsDefaults(claude);
 }
 
 // Commands removed in previous versions; the project Claude install deletes them from .claude/.
@@ -734,11 +734,56 @@ function installAgentsProject(withClaude) {
   ignoreInGit(['.devlyn/', '.agents/skills/.devlyn-install.json']);
 }
 
+// Whether Claude Code reads the devlyn defaults of AGENTS.md through an `@AGENTS.md` import in this CLAUDE.md text.
+// An AGENTS.md that is CLAUDE.md under another name holds CLAUDE.md's own defaults.
+function importsAgentsDefaults(claude) {
+  const agents = path.join(projectDir(), 'AGENTS.md');
+  return importsAgentsMd(claude) && !agentsMdIsClaudeMd() && fs.statSync(agents, { throwIfNoEntry: false })?.isFile() === true
+    && holdsDevlynDefaults('AGENTS.md', fs.readFileSync(agents, 'utf8'));
+}
+
+// Claude Code reads AGENTS.md only where no CLAUDE.md exists, or through a CLAUDE.md that imports it. So a new
+// CLAUDE.md imports an existing AGENTS.md, and a CLAUDE.md importing an AGENTS.md that holds devlyn defaults holds no
+// copy of its own, not even one it got while AGENTS.md lacked the block. Only the AGENTS.md target updates those defaults,
+// together with .agents/skills, so the Claude target stops while they need an update.
+function installClaudeInstructions() {
+  const file = path.join(projectDir(), 'CLAUDE.md');
+  const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+  const initial = !stat && fs.statSync(path.join(projectDir(), 'AGENTS.md'), { throwIfNoEntry: false })?.isFile() ? '@AGENTS.md\n' : '';
+  const imported = importsAgentsDefaults(stat?.isFile() ? fs.readFileSync(file, 'utf8') : initial);
+  if (imported && updateInstructions('AGENTS.md', '', true, false)) {
+    throw new InstructionError('Claude Code reads AGENTS.md here, and its devlyn defaults need an update. Codex, omp, Pi and Grok '
+      + 'read them too, with .agents/skills, so choose AGENTS.md as well (npx devlyn-cli -y --claude) to update both together.');
+  }
+  updateInstructions('CLAUDE.md', initial, !imported);
+  if (imported) log('  → CLAUDE.md imports AGENTS.md, which holds the devlyn block', 'dim');
+}
+
 // Project CLAUDE.md and .claude/: skills, templates and settings.
 function installClaudeCore() {
-  updateInstructions('CLAUDE.md');
   const skillsDir = skillRoots('claude', false)[0];
   const targetDir = path.dirname(skillsDir);
+  // Read before any write, so settings this install cannot merge leave the Claude target as it was.
+  const settingsPath = path.join(targetDir, 'settings.json');
+  const unmergeable = (reason) => new InstructionError(`Cannot merge .claude/settings.json: ${reason}. `
+    + 'CLAUDE.md and .claude/ are unchanged; fix the file and rerun the same install command.');
+  let settings = {};
+  if (fs.existsSync(settingsPath)) {
+    try {
+      // Claude Code accepts a leading byte order mark.
+      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, ''));
+    } catch (error) {
+      throw unmergeable(error.message);
+    }
+  }
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+    throw unmergeable('root must be a JSON object');
+  }
+  if (Object.prototype.hasOwnProperty.call(settings, 'env')
+      && (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env))) {
+    throw unmergeable('env must be a JSON object');
+  }
+  installClaudeInstructions();
   for (const entry of fs.readdirSync(CONFIG_SOURCE)) {
     if (entry !== 'skills') copyRecursive(path.join(CONFIG_SOURCE, entry), path.join(targetDir, entry), targetDir);
   }
@@ -753,25 +798,10 @@ function installClaudeCore() {
   ignoreInGit(['.devlyn/', '.claude/skills/.devlyn-install.json']);
 
   // One-hour foreground Bash calls and one-hour prompt caching serve a drain host that waits in the foreground.
-  const settingsPath = path.join(targetDir, 'settings.json');
-  let settings = {};
-  if (fs.existsSync(settingsPath)) {
-    try {
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    } catch (error) {
-      throw new Error(`Cannot merge .claude/settings.json: ${error.message}`);
-    }
-  }
-  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
-    throw new Error('Cannot merge .claude/settings.json: root must be a JSON object');
-  }
   let settingsChanged = false;
   if (!Object.prototype.hasOwnProperty.call(settings, 'env')) {
     settings.env = {};
     settingsChanged = true;
-  }
-  if (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env)) {
-    throw new Error('Cannot merge .claude/settings.json: env must be a JSON object');
   }
   if (!settings.env.ENABLE_PROMPT_CACHING_1H) {
     settings.env.ENABLE_PROMPT_CACHING_1H = 'true';
@@ -795,7 +825,7 @@ function installClaudeCore() {
   }
   if (settingsChanged) {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-    log('  → settings.json (one-hour Bash max + 1h prompt caching)', 'dim');
+    log('  → settings.json', 'dim');
   }
   // Their ownership cannot be established, so the other retired settings stay; name the ones present.
   const retired = [
@@ -819,7 +849,8 @@ function install(targets, global) {
       + 'would apply to every project. Run from a project folder, or use --global for skills only.');
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
-  for (const target of targets) {
+  // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
+  for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
     if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));
     else if (target === 'agents') installAgentsProject(targets.includes('claude'));
     else installClaudeCore();

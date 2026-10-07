@@ -4,7 +4,7 @@ How `plan` applies the question and autonomous policies in SKILL.md; [package-fo
 
 ## Inspect first
 
-Read what the project already answers before asking: the code paths, tests and conventions the intent touches, the installed instructions and completion mode, `docs/specs/queue.md` and earlier loop packages, and any document the user supplied. Infer `kind` from the framing (investigate or explore → `spike`, a rough version → `prototype`, otherwise `feature`) instead of asking.
+Read what the project already answers before asking: the code paths, tests and conventions the intent touches, the installed instructions and completion mode, the queue through `queue.py status` and each added loop's capture (`git for-each-ref refs/devlyn/captures`, then `git show <ref>:docs/specs/<loop-id>/meta.md`) rather than package files in the checkout, and any document the user supplied. Infer `kind` from the framing (investigate or explore → `spike`, a rough version → `prototype`, otherwise `feature`) instead of asking.
 
 ## What to ask
 
@@ -20,7 +20,7 @@ Lead with the recommendation and its consequence, for example: "Should `--lang f
 
 ## Autonomous planning
 
-With `--autonomous`, or when a drain plans a legacy row, take only the defaults the autonomous policy allows and record each once under `## Decisions and assumptions`. Material ambiguity that affects the whole intent stops planning with its concrete question. Ambiguity confined to separable work leaves that work out of the package, named with its question under `## Constraints and exclusions`, while the independent authorized work is planned.
+With `--autonomous`, or when a drain plans a legacy row, take only the defaults the autonomous policy allows and record each once under `## Decisions and assumptions`. Material ambiguity stops planning with its concrete question.
 
 ## Tasks and checks
 

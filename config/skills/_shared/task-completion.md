@@ -1,9 +1,26 @@
 # Outer-owner task completion
 
 Completion belongs to the outer task owner after source acceptance. It does not
-change product verdicts or worker isolation. Explicit local-only/no-push
-instructions win. Otherwise delivery is authorized by the task scope; no
-additional approval ceremony is required.
+change product verdicts or worker isolation. Direct work edits the current
+checkout and is delivered only when the user asks to ship it, as far as asked: a
+commit request completes `--local-only`, a PR request `--mode pr`, a merge
+request `--mode auto`, and any other ship request the project mode below. An
+ideate drain delivers every task. Explicit local-only/no-push instructions win.
+
+## Concurrent writers
+
+When other sessions or agents are known to write this checkout (the user says
+so, or you see them), allocate a worktree below before editing. Changes present
+at the start are the user's work in progress: preserve them, and continue unless
+their ownership or the task's dependence on them is unclear. Re-read a file
+before overwriting it, and check `git status` and the diff at verification and
+commit points. On changes you cannot explain, stop writing to the shared
+checkout and ask whether to continue there or isolate. With no one to ask, move
+only your own edits, and only when the task's context can be rebuilt in the
+worktree; otherwise leave the checkout as it is and report the task blocked.
+Isolation authorizes no delivery: an isolation worktree is a local allocation
+(`--local-base`), and a later PR or merge request allocates for publication and
+accepts that candidate.
 
 ## Allocate before work
 
@@ -13,8 +30,8 @@ directory, resolving directory symlinks first. Missing source identity is
 BLOCKED:skill-source-unresolved; a missing task-complete.py is
 BLOCKED:shared-dir-unresolved. Never select another installation.
 
-Run the bound task-complete.py before committing owner inputs or
-starting direct work:
+Run the bound task-complete.py before committing owner inputs, editing a
+change the user asked to ship, or isolating:
 
 ```sh
 python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \
@@ -24,17 +41,30 @@ python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \
 
 Every task owns a linked worktree; `--worktree` is required. Its baseline is the
 exact fetched remote base, independent of the anchor's branch or dirty state;
-allocation leaves the anchor's HEAD, index and files untouched. For local-only
-work, or an origin that is not one GitHub repository, allocate with
-`--local-base "$(git rev-parse HEAD)"` and no `--repository`/`--remote`, then
-complete with `--local-only`: that commit is the baseline, and nothing is
-fetched or pushed. Save the returned
+allocation leaves the anchor's HEAD, index and files untouched. For a commit
+request, other local-only work, or an origin that is not one GitHub repository,
+allocate with `--local-base "$(git rev-parse HEAD)"` and no
+`--repository`/`--remote`, then complete with `--local-only`: that commit is the
+baseline, nothing is fetched or pushed, and `git merge --ff <task branch>`
+brings the change into the user's branch. After an `auto` delivery merges, or a
+`pr` delivery once its PR merges, fetch and run `git merge --ff <remote>/<base>`
+on the base branch to bring it back. Save the returned
 receipt path under the common Gitdir. `reconciled` reports earlier accepted,
 PR-delivered tasks whose merged resources were cleaned or retained; it is
 informational, so never resume or release a receipt you do not own. Existing
-branches/trees cannot be adopted, even when their names look generated. An
-interrupted allocation stays blocked for inspection; do not delete its receipt
-and enroll the resulting branch. Unreceipted tasks remain owner-managed.
+branches/trees cannot be adopted, even when their names look generated. Nor
+can a receipt that never reached `allocation: owned`: remove its worktree and
+branch if present, delete its receipt directory, then allocate again.
+Unreceipted tasks remain owner-managed.
+
+Move a change already in the checkout as a patch, never a stash, which another
+session can push or pop: `git add -N <its new files>`, then
+`git diff --binary HEAD -- <its paths> > <patch>` and
+`git -C <worktree> apply --3way <patch>`. Check that the worktree diff is
+exactly the change and rerun its checks there. Only then, and only when every
+edit in those paths is yours, drop them from the checkout with
+`git restore --source=HEAD --staged --worktree -- <its paths>`; report any you
+leave.
 
 Allocation also returns a receipt-owned `scratch` directory. Put disposable
 build intermediates there (for example, set
@@ -78,13 +108,6 @@ The owner accepts these checks; the helper preserves evidence bytes and does not
 claim to have independently proved the assertions. Acceptance binds exact bytes
 and source before push; changed acceptance/evidence or subsequent product
 commits require a new accepted task, never implicit descendant approval.
-
-`pipeline` acceptance of an archived resolve run was retired after devlyn-cli
-4.1.0. The helper refuses it before changing anything and prints the 4.1.0
-command that finishes the run in the requested delivery mode: a PR/merge
-completion there binds the acceptance before publishing, and a local-only one
-ends as LOCAL_ONLY without binding, as 4.1.0 always did. A receipt bound earlier
-resumes delivery here.
 
 Queue drains follow ideate's loop protocol
 (`../devlyn-ideate/references/loop.md`): its evidence-derived `loop` result is

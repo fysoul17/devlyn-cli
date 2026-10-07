@@ -214,6 +214,39 @@ init({options});
                 self.assertEqual(dest.read_bytes(), first)
         self.assertFalse((self.home / '.claude').exists())
 
+    def test_claude_settings_are_read_before_any_claude_write(self):
+        # Settings the install cannot merge leave the Claude target as it was, with a clear message;
+        # a leading BOM, which Claude Code accepts, merges.
+        claude = self.project / '.claude'
+        hook = claude / 'skills/_shared/resolve-stop-hook.py'
+        hook.parent.mkdir(parents=True); hook.write_bytes(b'retired helper\n')
+        (self.project / 'CLAUDE.md').write_bytes(b'# Team rules\n\nUse pnpm.\n')
+        settings = claude / 'settings.json'
+        retired = {'type': 'command', 'command': 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'}
+        def tree():
+            return {p: p.read_bytes() if p.is_file() else None for p in [self.project / 'CLAUDE.md', *claude.rglob('*')]}
+        for invalid in (b'{"hooks": {"Stop": []},}\n', b'\xef\xbb\xbf[]', b'{"env": "x"}'):
+            with self.subTest(invalid=invalid):
+                settings.write_bytes(invalid)
+                before = tree()
+                result = self.cli('-y', '--claude', code=1)
+                self.assertIn(b'Cannot merge .claude/settings.json', result.stderr)
+                self.assertNotIn(b'    at ', result.stderr)
+                self.assertEqual(tree(), before)
+        settings.write_bytes(b'\xef\xbb\xbf' + json.dumps({'custom': 1, 'hooks': {'Stop': [{'hooks': [retired]}]}}).encode())
+        self.cli('-y', '--claude')
+        self.assertEqual(json.loads(settings.read_bytes()), {'custom': 1, 'hooks': {'Stop': []},
+                         'env': {'ENABLE_PROMPT_CACHING_1H': 'true', 'BASH_MAX_TIMEOUT_MS': '3600000'}})
+        self.assertFalse(hook.exists())
+
+    def test_instruction_file_creation_says_created(self):
+        created = self.invoke("updateInstructions('AGENTS.md');").stdout
+        self.assertIn(b'Created AGENTS.md', created)
+        self.assertNotIn(b'Updated', created)
+        (self.project / 'AGENTS.md').write_bytes(b'# Team rules\n\nUse pnpm.\n')
+        updated = self.invoke("updateInstructions('AGENTS.md');").stdout
+        self.assertIn(b'Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved', updated)
+
     def test_claude_install_ships_no_unreferenced_commit_conventions(self):
         # The managed block no longer points to commit conventions, so a new install adds none;
         # a copy an earlier release installed is the user's now and stays as it is.
@@ -296,6 +329,20 @@ init({options});
                     self.assertEqual(marker['version'], version)
                     self.assertTrue((self.project / '.claude/skills/devlyn-ideate/SKILL.md').is_file())
                     self.assertFalse((self.project / '.claude/skills/devlyn-resolve').exists())
+        # Beside an AGENTS.md, the CLAUDE.md the Claude target writes only imports it. Prediction: in a clone of such a
+        # project, with .claude/ ignored, -y installs the Claude target and the menu preselects it, leaving both files as
+        # committed. Before (da682f47): neither saw a Claude install, so .claude/skills stayed absent.
+        for case, update in (('import-clone', lambda: self.cli('-y')), ('import-clone-menu', lambda: self.interact([['\r'], ['\r'], ['\r']]))):
+            with self.subTest(case=case):
+                self.project = self.case / case; self.project.mkdir()
+                self.cli('-y', '--claude')
+                shutil.rmtree(self.project / '.claude')
+                committed = {name: (self.project / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
+                self.assertEqual(committed['CLAUDE.md'], b'@AGENTS.md\n')
+                update()
+                self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
+                self.assertTrue((self.project / '.claude/skills/devlyn-ideate/SKILL.md').is_file())
+                self.assertEqual({name: (self.project / name).read_bytes() for name in committed}, committed)
         if os.name != 'nt':
             # A CLAUDE.md linked to AGENTS.md is AGENTS.md's; the Claude target refuses links.
             self.project = self.case / 'linked'; self.project.mkdir()
@@ -333,6 +380,142 @@ init({options});
         self.assertIn(CURRENT_DEFAULTS, (self.project / 'CLAUDE.md').read_bytes())
         self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
         self.assertEqual(self.markers(self.home), set())
+
+    def test_claude_target_keeps_an_agents_md_in_force(self):
+        # Claude Code reads AGENTS.md only where no CLAUDE.md exists, or through a CLAUDE.md that imports it.
+        # Prediction (phase B audit H10): in an AGENTS.md-only repo, -y --claude creates CLAUDE.md as the one
+        # line `@AGENTS.md`, and AGENTS.md keeps its rules and holds the one block; a CLAUDE.md that already
+        # imports AGENTS.md is left as it is; the Claude target alone gives a new importing CLAUDE.md the block
+        # while AGENTS.md lacks it; an import inside a code fence is not one; every reinstall changes nothing.
+        # Before: CLAUDE.md held only the block, so Claude Code no longer read the team rules.
+        rules = b'# Team rules\n\nAlways use pnpm, never npm.\n'
+        def files():
+            return {name: (self.project / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
+        def blocks():
+            return sum(data.count(b'devlyn:instructions:begin') for data in files().values())
+        (self.project / 'AGENTS.md').write_bytes(rules)
+        result = self.cli('-y', '--claude')
+        installed = files()
+        self.assertEqual(installed['CLAUDE.md'], b'@AGENTS.md\n')
+        self.assertIn(b'Created CLAUDE.md\n', result.stdout)
+        self.assertIn(b'CLAUDE.md imports AGENTS.md, which holds the devlyn block', result.stdout)
+        self.assertTrue(installed['AGENTS.md'].startswith(rules))
+        self.assertIn(CURRENT_DEFAULTS, installed['AGENTS.md'])
+        self.assertEqual(blocks(), 1)
+        for args in (['-y'], ['-y', '--claude']):
+            self.cli(*args)
+            self.assertEqual(files(), installed)
+        self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
+        claude = b'@AGENTS.md\n\n# Claude only\n\nPrefer the Read tool.\n'
+        fenced = b'# Notes\n\n```md\n@AGENTS.md\n```\n'
+        for case, before, install in (('imports', claude, lambda: self.cli('-y', '--claude')),
+                                      ('claude-alone', None, lambda: self.invoke('installClaudeCore();')),
+                                      ('fenced', fenced, lambda: self.cli('-y', '--claude'))):
+            with self.subTest(case=case):
+                self.project = self.case / case; self.project.mkdir()
+                (self.project / 'AGENTS.md').write_bytes(rules)
+                if before is not None:
+                    (self.project / 'CLAUDE.md').write_bytes(before)
+                install()
+                installed = files()
+                install()
+                self.assertEqual(files(), installed)
+                if case == 'imports':
+                    self.assertEqual(installed['CLAUDE.md'], claude)
+                    self.assertEqual(blocks(), 1)
+                elif case == 'claude-alone':
+                    self.assertTrue(installed['CLAUDE.md'].startswith(b'@AGENTS.md\n'))
+                    self.assertIn(CURRENT_DEFAULTS, installed['CLAUDE.md'])
+                    self.assertEqual((installed['AGENTS.md'], blocks()), (rules, 1))
+                else:
+                    self.assertTrue(installed['CLAUDE.md'].startswith(fenced))
+                    self.assertIn(CURRENT_DEFAULTS, installed['CLAUDE.md'])
+        # The AGENTS.md target installs first even when the menu selected it last (toggled off and on again).
+        self.project = self.case / 'toggled'; (self.project / '.claude/skills').mkdir(parents=True)
+        (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+        (self.project / 'AGENTS.md').write_bytes(rules)
+        self.interact([[' ', ' ', '\r'], ['\r'], ['\r']])
+        self.assertEqual((files()['CLAUDE.md'], blocks()), (b'@AGENTS.md\n', 1))
+
+    def test_claude_target_holds_no_copy_beside_the_block_it_imports(self):
+        # Prediction: installed alone in an AGENTS.md-only repo, the Claude target gives CLAUDE.md the block beside its
+        # `@AGENTS.md` import, since AGENTS.md lacks it; the update the installer suggests (-y, or the menu's defaults,
+        # which now select both targets) puts the block in AGENTS.md, so the Claude target removes CLAUDE.md's copy and
+        # keeps CLAUDE.md's own lines. A new CLAUDE.md then ends as -y --claude makes it directly, an importing one as it
+        # was, and later updates change nothing. Before (da682f47): CLAUDE.md kept its copy, so Claude Code loaded the block
+        # twice, after that update and every later one.
+        rules = b'# Team rules\n\nAlways use pnpm, never npm.\n'
+        claude = b'@AGENTS.md\n\n# Claude only\n\nPrefer the Read tool.\n'
+        def files():
+            return {name: (self.project / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
+        (self.project / 'AGENTS.md').write_bytes(rules)
+        self.cli('-y', '--claude')
+        direct = files()
+        for case, before, update in (('new', None, lambda: self.cli('-y')),
+                                     ('imports', claude, lambda: self.interact([['\r'], ['\r'], ['\r']]))):
+            with self.subTest(case=case):
+                self.project = self.case / case; self.project.mkdir()
+                (self.project / 'AGENTS.md').write_bytes(rules)
+                if before is not None:
+                    (self.project / 'CLAUDE.md').write_bytes(before)
+                self.invoke('installClaudeCore();')
+                self.assertIn(CURRENT_DEFAULTS, files()['CLAUDE.md'])
+                result = update()
+                expected = {**direct, 'CLAUDE.md': before or direct['CLAUDE.md']}
+                self.assertEqual(files(), expected)
+                self.assertIn(b'Removed Devlyn defaults from CLAUDE.md', result.stdout)
+                for args in (['-y'], ['-y', '--claude']):
+                    self.cli(*args)
+                    self.assertEqual(files(), expected)
+        if os.name != 'nt':
+            # Where AGENTS.md links to CLAUDE.md, an `@AGENTS.md` line imports CLAUDE.md itself, whose block is the only
+            # one: every update keeps it. Without that exception, every second update removed it.
+            self.project = self.case / 'self-import'; self.project.mkdir()
+            (self.project / 'CLAUDE.md').write_bytes(claude); (self.project / 'AGENTS.md').symlink_to('CLAUDE.md')
+            for _ in range(3):
+                self.cli('-y', '--claude')
+                self.assertEqual((self.project / 'CLAUDE.md').read_bytes().count(b'devlyn:instructions:begin'), 1)
+
+    def test_claude_target_alone_leaves_agents_md_to_its_target(self):
+        # Prediction (final audit): beside an AGENTS.md holding the 4.1.0 block next to a 4.1.0 .agents/skills, a template a
+        # release before managed blocks copied in whole, or the 4.1.0 block twice, and no CLAUDE.md, the Claude target alone
+        # (AGENTS.md deselected in the menu) stops before any write and names the AGENTS.md choice. With both targets, AGENTS.md
+        # and .agents/skills come current together, AGENTS.md keeps the project text once and its exact backup, and CLAUDE.md is
+        # exactly `@AGENTS.md`; a Claude-only rerun and -y change nothing. Before (bc43d834): the Claude target alone rewrote
+        # AGENTS.md and left .agents/skills at 4.1.0, so Codex, omp, Pi and Grok loaded a contract their skills could not serve.
+        prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
+        fixtures = Path(__file__).resolve().parent / 'fixtures/instructions'
+        def tree():
+            return {str(p.relative_to(self.project)): p.read_bytes() if p.is_file() else None for p in self.project.rglob('*')}
+        for case, before in (('4.1.0', prefix + (fixtures / 'agents-4.1.0.md').read_bytes() + suffix),
+                             ('legacy-july', prefix + (fixtures / 'legacy-july-agents.md').read_bytes() + suffix),
+                             ('conflict', (fixtures / 'agents-4.1.0.md').read_bytes() * 2)):
+            with self.subTest(case=case):
+                self.project = self.case / case; self.project.mkdir()
+                (self.project / 'AGENTS.md').write_bytes(before)
+                if case == '4.1.0':
+                    skills = self.project / '.agents/skills'; (skills / 'devlyn-resolve').mkdir(parents=True)
+                    (skills / 'devlyn-resolve/SKILL.md').write_bytes(b'4.1.0 resolve\n')
+                planted = tree()
+                result = self.interact([[' ', '\x1b[B', ' ', '\r'], ['\r'], ['\r']], code=None)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(b'choose AGENTS.md as well (npx devlyn-cli -y --claude)', result.stderr)
+                self.assertEqual(tree(), planted)
+                if case == 'conflict':
+                    continue  # Its merge is the AGENTS.md target's.
+                result = self.interact([['\x1b[B', ' ', '\r'], ['\r'], ['\r']])
+                self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
+                self.assertFalse((self.project / '.agents/skills/devlyn-resolve').exists())
+                installed = tree()
+                self.assertEqual(installed['CLAUDE.md'], b'@AGENTS.md\n')
+                # No retired resolve; one current block, and the project text once.
+                self.assertEqual([installed['AGENTS.md'].count(text) for text in (b'devlyn-resolve', b'devlyn:resolve',
+                                  b'devlyn:instructions:begin', CURRENT_DEFAULTS, prefix, suffix)], [0, 0, 1, 1, 1, 1])
+                self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob('AGENTS.md.*.backup')])
+                self.assertIn(b'Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved', result.stdout)
+                for rerun in (lambda: self.interact([[' ', '\r'], ['\r'], ['\r']]), lambda: self.cli('-y')):
+                    rerun()
+                    self.assertEqual(tree(), installed)
 
     def test_interactive_what_and_where(self):
         down, enter, space = '\x1b[B', '\r', ' '
@@ -702,12 +885,13 @@ init({options});
 
     def test_instruction_4_x_blocks_are_replaced_in_place(self):
         # 4.1.0 renamed the AGENTS.md title and intro; design-ui, the queue skill and resolve were
-        # retired after it. A 4.0.1, 4.1.0 or main (9ecbe51c) block is replaced, never stacked, and an
-        # edited one keeps only the edits: its stock paragraphs, the retired ones too, are registered
-        # fingerprints.
+        # retired after it. A 4.0.1, 4.1.0 or main (9ecbe51c, d2d34e3e) block is replaced, never stacked,
+        # and an edited one keeps only the edits: its stock paragraphs, the retired ones too, are
+        # registered fingerprints. Prediction (P4-1): no block keeps the delivery pointer that allocated a
+        # worktree for every direct task; the new block says direct work edits the current checkout.
         prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
-        for name, version in (('AGENTS.md', '4.0.1'), ('AGENTS.md', '4.1.0'), ('AGENTS.md', '9ecbe51c'),
-                              ('CLAUDE.md', '4.1.0'), ('CLAUDE.md', '9ecbe51c')):
+        for name, version in (('AGENTS.md', '4.0.1'), ('AGENTS.md', '4.1.0'), ('AGENTS.md', '9ecbe51c'), ('AGENTS.md', 'd2d34e3e'),
+                              ('CLAUDE.md', '4.1.0'), ('CLAUDE.md', '9ecbe51c'), ('CLAUDE.md', 'd2d34e3e')):
             dest = self.project / name
             block = (Path(__file__).resolve().parent / f'fixtures/instructions/{name[:-3].lower()}-{version}.md').read_bytes()
             for edited in (False, True):
@@ -722,9 +906,10 @@ init({options});
                         self.assertTrue(after.endswith(suffix.replace(b'\n', eol)))
                         self.assertIn(b'# Project Instructions' + eol, managed)
                         self.assertIn(CURRENT_DEFAULTS, managed)
+                        self.assertIn(b'direct work edits the current checkout', managed)
                         for stale in (b'Codex CLI reads this file', b'design-ui', b'devlyn-queue', b'references/task-completion.md',
                                       b'outer-loop.md', b'queue drains retain', b'--quick', b'--from-spec', b'per item: spec it',
-                                      b'devlyn-resolve', b'VERIFY'):
+                                      b'devlyn-resolve', b'VERIFY', b'`/devlyn-', b'allocated before editing'):
                             self.assertNotIn(stale, after)
                         if edited:
                             self.assertTrue(custom.startswith(prefix.replace(b'\n', eol)))
@@ -740,8 +925,9 @@ init({options});
             for managed in (False, True):
                 with self.subTest(name=name, managed=managed):
                     dest = self.project / name
-                    if dest.exists():
-                        dest.unlink()
+                    # A CLAUDE.md created beside an AGENTS.md imports it instead of holding the block.
+                    for stale in (dest, self.project / 'AGENTS.md'):
+                        stale.unlink(missing_ok=True)
                     self.invoke(command)
                     stock = dest.read_bytes() if managed else (self.package / name).read_bytes()
                     edited = '2. **No overengineering** — Team rule: keep our API stable.\n'.encode()

@@ -119,6 +119,18 @@ function instructionParagraphs(text) {
   return paragraphs;
 }
 
+// Claude Code expands an `@AGENTS.md` import line, except inside a fenced code block.
+function importsAgentsMd(text) {
+  let fence = null;
+  for (const line of text.replace(/^\uFEFF/, '').split(/\r?\n/)) {
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    if (marker && !fence) fence = marker;
+    else if (marker && marker[0] === fence[0] && marker.length >= fence.length && /^ {0,3}(?:`+|~+)\s*$/.test(line)) fence = null;
+    else if (!fence && line.trimEnd() === '@AGENTS.md') return true;
+  }
+  return false;
+}
+
 function customInstructions(text, name, template, managed = false) {
   const known = new Set([
     ...legacyTemplates.paragraphs[name],
@@ -168,7 +180,9 @@ function retainFile(file, bytes) {
   }
 }
 
-function updateInstructions(name) {
+// `withBlock` false removes the devlyn defaults the file holds, keeping everything else. `write` false writes nothing
+// and returns whether the file needs an update, a merge included.
+function updateInstructions(name, initial = '', withBlock = true, write = true) {
   const templatePath = path.join(__dirname, '..', name);
   const template = fs.readFileSync(templatePath, 'utf8');
   if (template.includes(BEGIN) || template.includes(END)) {
@@ -187,16 +201,18 @@ function updateInstructions(name) {
     throw new InstructionError(`Instruction file must be a regular file; preserved: ${dest}. Move it aside and rerun, then merge your shared rules outside the managed block.`);
   }
   const before = exists ? fs.readFileSync(dest) : Buffer.alloc(0);
-  let current;
+  let current = initial;
   try {
-    current = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(before);
+    if (exists) current = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(before);
   } catch (cause) {
     throw new InstructionError(`${name} must be UTF-8; original preserved. Convert its encoding and rerun installation.`, { cause });
   }
   const eol = current.match(/\r?\n/)?.[0] || '\n';
   const block = managedBlock(template, eol);
+  const inserted = withBlock ? block : '';
   const recovery = path.join(process.cwd(), '.devlyn', 'instructions');
   const conflict = (reason) => {
+    if (!write) return true;
     const incoming = path.join(recovery, `${name}.${digest(block)}.incoming`);
     const backup = path.join(recovery, `${name}.${digest(before)}.backup`);
     const guide = path.join(recovery, `${name}.${digest(before)}.${digest(block)}.merge.md`);
@@ -231,8 +247,11 @@ function updateInstructions(name) {
     const custom = digest(normalize(previous)) === start[1] ? ''
       : customInstructions(previous, name,
         'Project-specific instructions outside this managed block take precedence over these defaults.\n\n' + template, true);
+    const after = current.slice(end.index + end[0].length);
     content = current.slice(0, start.index + (start[0].startsWith('\uFEFF') ? 1 : 0))
-      + custom + (custom ? eol : '') + block + current.slice(end.index + end[0].length);
+      + custom + (custom ? eol : '') + inserted + after;
+    // A block removed from the end takes along the blank lines that set it apart.
+    if (!inserted && !after) content = content.replace(/(\r?\n)(?:\r?\n)+$/, '$1');
   } else {
     const normalized = normalize(template);
     const bodyStart = normalized.indexOf('## North Star\n');
@@ -246,14 +265,15 @@ function updateInstructions(name) {
     if (ranges.length === 1 && !LEGACY.test(current.slice(0, ranges[0].start)
         + ranges[0].custom + current.slice(ranges[0].end))) {
       const { start, end, custom } = ranges[0];
-      content = current.slice(0, start) + custom + block + current.slice(end);
+      content = current.slice(0, start) + custom + inserted + current.slice(end);
     } else {
       const custom = customInstructions(current, name, template);
-      content = custom + (custom ? eol + eol : '') + block;
+      content = custom + (custom && inserted ? eol + eol : '') + inserted;
     }
   }
   const bytes = Buffer.from(content);
   if (bytes.equals(before)) return false;
+  if (!write) return true;
   if (exists) {
     const backup = path.join(recovery, `${name}.${digest(before)}.backup`);
     retainFile(backup, before);
@@ -270,8 +290,9 @@ function updateInstructions(name) {
   } finally {
     if (fs.existsSync(temp)) fs.unlinkSync(temp);
   }
-  console.log(`  → Updated Devlyn defaults in ${name}; project-specific instructions preserved`);
+  console.log(!exists ? `  → Created ${name}`
+    : `  → ${withBlock ? 'Updated Devlyn defaults in' : 'Removed Devlyn defaults from'} ${name}; project-specific instructions preserved`);
   return true;
 }
 
-module.exports = { updateInstructions, InstructionError, instructionParagraphs, holdsDevlynDefaults };
+module.exports = { updateInstructions, InstructionError, instructionParagraphs, holdsDevlynDefaults, importsAgentsMd };

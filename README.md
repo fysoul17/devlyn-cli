@@ -27,12 +27,13 @@ If devlyn-cli saved you time, [give it a star](https://github.com/fysoul17/devly
 npx devlyn-cli
 ```
 
-That's it. The installer asks two things:
+That's it. The installer asks:
 
 1. **What** — `AGENTS.md — Codex · omp · Pi · Grok` (checked) and `CLAUDE.md — Claude Code` (checked when this project already has a devlyn Claude install). Space toggles, Enter confirms.
 2. **Where** — `This project` (default) or `Global — every project on this machine`.
+3. **Optional skills & packs** — none checked; see [Optional Add-ons](#optional-add-ons) below. MCP servers are offered only with CLAUDE.md.
 
-In a project, AGENTS.md readers load the skills from `.agents/skills/`; Claude Code loads only `.claude/skills/` and reads AGENTS.md when the project has no CLAUDE.md. Global installs skills only: `~/.agents/skills/` (omp, Pi, Grok) and `~/.codex/skills/` (Codex), plus `~/.claude/skills/` for Claude Code. Every target gets the `devlyn-ideate` skill and the `devlyn-engines` utility. In Codex / omp / Pi, invoke them as skills (`$devlyn-ideate`); in Claude Code and Grok they're slash commands (`/devlyn-ideate`). Rerunning refreshes skills and the managed instruction block while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery.
+In a project, AGENTS.md readers load the skills from `.agents/skills/`; Claude Code loads only `.claude/skills/` and reads AGENTS.md when the project has no CLAUDE.md; a CLAUDE.md the installer creates imports an existing AGENTS.md (`@AGENTS.md`). Global installs skills only: `~/.agents/skills/` (omp, Pi, Grok) and `~/.codex/skills/` (Codex), plus `~/.claude/skills/` for Claude Code. Every target gets the `devlyn-ideate` skill and the `devlyn-engines` utility. In Codex / omp / Pi, invoke them as skills (`$devlyn-ideate`); in Claude Code and Grok they're slash commands (`/devlyn-ideate`). Rerunning refreshes skills and the managed instruction block while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery.
 
 Without prompts, `npx devlyn-cli -y` installs AGENTS.md + `.agents/skills/` plus every target this project already has; add `--claude` for Claude Code. With `--global` it installs for every project on this machine, plus `~/.claude/skills/` with `--claude` or when it already has a devlyn install.
 
@@ -46,7 +47,7 @@ The managed `CLAUDE.md` / `AGENTS.md` block carries the North Star, seven princi
 intent  →  direct work under the installed principles, or an ideate loop  →  ship
 ```
 
-Non-Claude agents (Codex / omp / Pi / Grok): the AGENTS.md choice installs the skills for them. In Codex / omp / Pi, use `$devlyn-ideate`; in Grok, use `/devlyn-ideate`, the same slash-command form as Claude Code.
+Non-Claude agents (Codex / omp / Pi / Grok): the AGENTS.md choice installs the skills for them. In Codex / omp / Pi, use `$devlyn-ideate`; in Grok, use `/devlyn-ideate`, the same slash-command form as Claude Code. A drain from Pi or Grok needs [a pinned executor](#executor--devlyn-engines).
 
 ### Plan and drain loops — `/devlyn-ideate`
 
@@ -55,19 +56,21 @@ Give ideate an intent or a document. It writes a loop package — a meta-prompt 
 | Command | What it does |
 |---|---|
 | `/devlyn-ideate plan <intent or document>` | Inspects the project, asks only what it must, and writes a validated package to `docs/specs/<loop-id>/`. Nothing is queued or run. |
-| `/devlyn-ideate add <intent or package>` | Plans when needed, then queues the package's tasks in dependency order. It commits nothing: the package and its rows in `docs/specs/<loop-id>/queue.md` are held at `refs/devlyn/captures/<loop-id>` and your copies are removed. The first task's commit brings them into history, and the drain report's `Bring into` command brings the result into your branch. |
+| `/devlyn-ideate add <intent or package>` | Plans when needed, then queues the package's tasks in dependency order. It makes no commit on your branch: the package and its rows in `docs/specs/<loop-id>/queue.md` are held at `refs/devlyn/captures/<loop-id>` and your copies are removed. The first task's commit brings them into history, and the drain report's `Bring into` command brings the result into your branch. |
 | `/devlyn-ideate status` | Pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
 | `/devlyn-ideate drain` | Runs the queue serially and hands-free. |
 
-A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without them, taking only scope-narrowing, reversible, non-user-visible defaults. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened) under your installed CLAUDE.md/AGENTS.md instructions. Tasks start from committed state, the branch you added the loop on or the remote base for `auto`/`pr`, so commit the installer's changes and whatever a plan depends on before adding a loop, and push them for `auto`/`pr`. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it, never on the executor's say-so; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local.
+A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without them, taking only scope-narrowing, reversible, non-user-visible defaults. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened; Pi and Grok need a pin) under your installed CLAUDE.md/AGENTS.md instructions. Tasks start from committed state, the branch you added the loop on or the remote base for `auto`/`pr`, so commit the installer's changes and whatever a plan depends on before adding a loop, and push them for `auto`/`pr`. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it: the checks run through the drain's runner (a wholly clean run the executor lists for that source is reused; the drain runs any other check itself), and review coverage is attested by records the executor submits; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local: each accepted task stays on its `devlyn/<loop-id>/<task-id>` branch in a retained worktree, nothing is merged or pushed, and the drain report's `Bring into` command is `git merge --ff <latest accepted task branch>`.
 
 ### Delivery
 
-Each task gets its own linked worktree; accepted tasks default to scoped commit → push → PR
-→ merge when the repository allows it (otherwise the PR waits for a person). After the
+Direct work edits your current checkout; run parallel sessions in separate worktrees (for example `claude -w`). When you ask to ship it, and
+for every drained task, the task gets its own linked worktree. A commit request stays local and a PR request stops at the PR; otherwise accepted tasks default to
+scoped commit → push → PR → merge when the repository allows it (otherwise the PR waits for a person). After the
 PR merges, the worktree and branch its session released are cleaned; anything in use is
 kept. Set `git config --local devlyn.completionMode pr` to stop at the PR; `task-complete.py complete --mode auto|pr`
-overrides one task. Local-only/no-push instructions take precedence; existing
+overrides one task. Local-only/no-push instructions take precedence: accepted work stays on
+its task branch in its retained worktree, and nothing is pushed or merged. Existing
 branches cannot be adopted. Direct tasks use their actual checks and root
 acceptance. Pending checks or unsupported merge policy retain resources and
 report a receipt-based resume command separately from product verification.
@@ -76,9 +79,9 @@ for allocation, acceptance, writer cessation and recovery.
 
 ### Executor — `/devlyn-engines`
 
-The orchestrator is the CLI you opened (Claude Code, Codex, or omp); the contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the loop's file artifacts carry over if you switch. The executor does the implementation work, direct or drained: the engine pinned in machine-local `.devlyn/engines.json`, else the CLI you opened.
+The orchestrator is the CLI you opened (Claude Code, Codex, omp, Pi or Grok); the contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the loop's file artifacts carry over if you switch. The executor does the implementation work, direct or drained: the engine pinned in machine-local `.devlyn/engines.json`, else the CLI you opened. Pi and Grok have no executor adapter, so a drain from them needs `devlyn-engines executor <claude|codex|omp>`.
 
-`/devlyn-engines` with no arguments shows the executor and the engines detected on this machine; `executor <name>` pins one and `clear` removes the pin. A pin is a promise: an unavailable pinned engine stops dispatch with `BLOCKED:<engine>-unavailable`, and a name with no executor-eligible `_shared/adapters/<name>.md` stops with `BLOCKED:invalid-engine-config`. New engines plug in by shipping an adapter file.
+`/devlyn-engines` with no arguments shows the executor and the engines detected on this machine; `executor <name>` pins one and `clear` removes the pin. A pin is a promise: an unavailable pinned engine stops dispatch with `BLOCKED:<engine>-unavailable`, and a name with no executor-eligible `_shared/adapters/<name>.md` stops with `BLOCKED:invalid-engine-config`. Adapters ship with devlyn-cli releases; a reinstall replaces `_shared`.
 
 ### Migration from earlier versions
 
@@ -169,6 +172,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 | `generate-skill` | Create Claude Code skills following Anthropic best practices |
 | `prompt-engineering` | Claude prompt optimization |
 | `better-auth-setup` | Better Auth + Hono + Drizzle + PostgreSQL |
+| `polar-billing-setup` | Polar usage-based / metered billing — setup and silent $0-billing diagnosis |
 | `pyx-scan` | Check if an AI agent skill is safe before installing |
 | `dokkit` | Document template filling for DOCX/HWPX |
 | `devlyn-pencil-pull` | Pull Pencil designs into code |
@@ -222,8 +226,7 @@ Windows completion preserves the workspace, owned refs and recovery receipt when
 
 ## Contributing
 
-- **Add a skill** — directory in `config/skills/` with `SKILL.md`
-- **Add optional skill** — add to `optional-skills/` and `OPTIONAL_ADDONS` in [`bin/devlyn.js`](bin/devlyn.js)
+- **Add a skill** — add it to `optional-skills/` and `OPTIONAL_ADDONS` in [`bin/devlyn.js`](bin/devlyn.js); the core skills are fixed by `DEVLYN_CORE_SKILLS` (lint Checks 5a and 6)
 - **Suggest a pack** — PR to the pack list
 
 ## Supercharge it — pair devlyn with persistent agent memory

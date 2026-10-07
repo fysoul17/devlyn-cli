@@ -53,8 +53,8 @@ An initial root audit expected3 failures; the observed2 were preserved and the
 audit expectation corrected. No native draw was retried or externally repaired.
 
 The user subsequently requested a new-session difficulty-boundary study after
-this task. [The prepared plan](../NEXT-SESSION-routing-boundary.md) is NOT RUN;
-it defines task dimensions, a bounded exploratory stage, untouched confirmation,
+this task. The prepared plan, whose screen ran as [0175](0175-routing-boundary.md),
+defines task dimensions, a bounded exploratory stage, untouched confirmation,
 common quality requirements, explicit catalog checks and honest cost coverage.
 `.devlyn/0174-delivery/FINAL.md` records delivery/cleanup and supersedes pending
 handoff language. Do not repeat0173 or describe this application as a new
