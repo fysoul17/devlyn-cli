@@ -703,9 +703,13 @@ def annotate(v, refused):
 
 
 def frontier(v, loop):
+    """The loop's accepted task whose source contains every other accepted source. A local loop builds one history, though
+    not always in row order: a task whose unfinished allocation was removed starts again from a later row's source. Without
+    one, as after a fork by an older build, it is the last accepted row, and allocate's prerequisite check names the fork."""
     accepted = [v["states"][row["identity"]] for row in v["rows"] if row.get("loop") == loop
                 and v["states"][row["identity"]]["kind"] == "accepted" and v["states"][row["identity"]]["receipt"]]
-    return accepted[-1] if accepted else None
+    return next((tip for tip in reversed(accepted) if all(ancestor(v["anchor"], state["receipt"]["source_sha"], tip["receipt"]["source_sha"])
+                                                          for state in accepted)), accepted[-1] if accepted else None)
 
 
 def local_start(v, loop):

@@ -748,6 +748,36 @@ class LoopFixture(unittest.TestCase):
         for line in ("- Whole-loop acceptance: ACCEPTED\n", f"- Bring into main: git merge --ff {t3['branch']}\n"):
             self.assertIn(line, self.report("rt"))
 
+    @unittest.skipIf(os.name == "nt", "the failing allocation uses a POSIX shell hook")
+    def test_the_frontier_is_the_accepted_source_containing_the_others(self):
+        # Prediction (L, B): oo.t1's allocation fails on a post-checkout hook and the independent oo.t2 is accepted; once that
+        # allocation is removed, oo.t1 starts from oo.t2's source, so the loop's one history runs out of row order. The frontier
+        # is then oo.t1, whose source contains oo.t2's: the check-only oo.t3 starts from oo.t1's source, and while it is active
+        # (its first executor exits without a submission) `Bring into` names oo.t1's branch; once oo.t3 is accepted the loop is
+        # ACCEPTED. Before: the frontier was the last accepted row, oo.t2, so the drain after the removal and every later one
+        # ended BLOCKED "oo.t3: prerequisite source ... is not in the accepted frontier ...; plan an integration task", and
+        # `Bring into` named oo.t2's branch, which lacks oo.t1.
+        self.plan_checker("oo", [GREET_CHECK, NOTES_CHECK], {"oo.t1": {"product": "greeting"}, "oo.t2": {"product": "notes"},
+                                                             "oo.t3": {"check_only": True, "exit_now": 1}})
+        hook = self.common / "hooks" / "post-checkout"
+        hook.write_text("#!/bin/sh\necho 'post-checkout: setup failed' >&2\nexit 1\n", encoding="utf-8")
+        hook.chmod(0o755)
+        self.assertIn("post-checkout: setup failed", self.drain(code=1)["reason"])
+        hook.unlink()
+        self.assertEqual(self.tasks(self.drain())["oo.t2"]["result"], "accepted")
+        path, receipt = self.receipt_path("oo.t1"), self.receipt("oo.t1")
+        self.g("worktree", "remove", "--force", receipt["worktree"])
+        self.g("branch", "-D", receipt["branch"])
+        shutil.rmtree(path.parent)
+        tasks = self.tasks(self.drain())
+        self.assertEqual(({identity: task["result"] for identity, task in tasks.items()}, self.receipt("oo.t1")["baseline"]),
+                         ({"oo.t1": "accepted", "oo.t2": "accepted", "oo.t3": "active"}, self.receipt("oo.t2")["source_sha"]))
+        self.assertIn("- Bring into main: git merge --ff devlyn/oo/t1\n", self.report("oo"))
+        self.behaviors["oo.t3"] = {"check_only": True}
+        self.assertEqual((self.tasks(self.drain())["oo.t3"]["result"], self.receipt("oo.t3")["baseline"]),
+                         ("accepted", self.receipt("oo.t1")["source_sha"]))
+        self.assertIn("- Whole-loop acceptance: ACCEPTED\n", self.report("oo"))
+
     def test_interruption_after_acceptance_writes_only_the_missing_transition(self):
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", "hold": True}, "inv.t2": {"product": "app"}})
         driver = self.drain_until("inv.t1: bound")
