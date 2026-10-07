@@ -271,11 +271,41 @@ class PeerDiagnostics(unittest.TestCase):
             'CODEX_MONITORED_TIMEOUT_SEC=540 bash /x/codex-monitored.sh --json -s read-only -C . "$(cat t)" > p'), 'codex')
         self.assertEqual(diagnostics.launch_engine('timeout -k 5s 540s claude -p --session-id $U < t > p.json'), 'claude')
         self.assertEqual(diagnostics.launch_engine('timeout -k 5s 540s /usr/local/bin/claude -p < t > p.json'), 'claude')
+        self.assertEqual(diagnostics.launch_engine("subprocess.run(['timeout', '540', 'claude', '-p', '--resume', s])"), 'claude')
+        self.assertEqual(diagnostics.launch_engine("subprocess.run(['bash', '.agents/skills/_shared/codex-monitored.sh', 'resume'])"), 'codex')
+        self.assertIsNone(diagnostics.launch_engine("print(['claude', 'notes'])"))
 
     def test_heredoc_prose_is_not_a_redirect(self):
         call = {'tool': 'Bash', 'input': {'command': "mkdir -p .devlyn/pair && cat > .devlyn/pair/turn1.md <<'EOF'\n"
                                          "(5, 50, 0) -> 3 and 13.5 -> 14\nEOF\necho done"}, 'output': ''}
         self.assertEqual(diagnostics.paths(call), [])
+
+    def test_codex_launches_match_distinct_traces_one_to_one(self):
+        w = lambda a, b: dict(start=f'2026-10-07T10:00:{a:02d}+00:00', end=f'2026-10-07T10:00:{b:02d}+00:00')
+        t0 = 1791367200000  # 2026-10-07T10:00:00Z
+        wrap = 'bash /x/codex-monitored.sh'
+        trace = lambda sec, rid='T': dict(rollout_id=rid, started=t0 + sec * 1000, status='completed', used=True)
+        one = [dict(tool='Bash', input={'command': f'{wrap} --json -C . "a"'}, **w(0, 10))]
+        self.assertEqual(diagnostics.match_codex_launches(one, [trace(2)])[1], 0)
+        two_in_one = [dict(tool='Bash', input={'command': f'{wrap} --json "a"; {wrap} resume --json T "b"'}, **w(0, 30))]
+        self.assertEqual(diagnostics.match_codex_launches(two_in_one, [trace(2)])[1], 1)
+        separate = one + [dict(tool='Bash', input={'command': f'{wrap} resume --json T "b"'}, **w(40, 50))]
+        self.assertEqual(diagnostics.match_codex_launches(separate, [trace(2)])[1], 1)
+        # a copied trace directory is the same trace, so peer_traces dedupes it before matching
+        self.assertEqual(diagnostics.match_codex_launches(separate, [trace(2), trace(42)])[1], 0)
+
+    def test_codex_turn_failure_is_never_certified(self):
+        trace = dict(rollout_id='T', started=None, status='failed', used=True)
+        peer = dict(engine='codex', successful=None, exit_status=0, background=False, tool_return='x', session=None,
+                    model=None, effort=None, native_status=None)
+        call = dict(tool='Bash', input={'command': 'bash /x/codex-monitored.sh --json "a"'}, start=None, end=None,
+                    returned=True)
+        inv = {'seated': {'T': {'model': 'gpt-6-astra', 'effort': 'high'}}}
+        diagnostics.bind_codex_turns([peer], [call], [trace], inv, {'peer_route': None})
+        self.assertFalse(peer['completed'])
+        errored = dict(peer, successful=False)
+        diagnostics.bind_codex_turns([errored], [call], [dict(trace, status='completed')], inv, {'peer_route': None})
+        self.assertFalse(errored['completed'])
 
     def test_redirect_capture_is_not_an_edit(self):
         rows = [dict(type='item.started', item=dict(id='a', type='command_execution',
@@ -493,6 +523,29 @@ class PeerUsage(unittest.TestCase):
             envelopes, unreadable = evidence.claude_envelopes(out)
             self.assertEqual([Path(e['path']).name for e in envelopes['PEER']], ['answer.jsonl'])
             self.assertEqual(unreadable, [])
+
+    def test_saved_then_printed_snapshots_keep_turn_order(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp); (out / 'run').mkdir()
+            env = lambda n: {'type': 'result', 'session_id': 'PEER', 'is_error': False,
+                             'modelUsage': {'claude-opus-5-5': self.counters(n)}}
+            saved = {'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'id': 'u1', 'name': 'Bash',
+                     'input': {'command': 'claude -p --output-format json < t1 > .devlyn/pair/peer1.json'}}]}}
+            printed = {'type': 'user', 'message': {'content': [{'type': 'tool_result', 'tool_use_id': 'u2',
+                       'content': json.dumps(env(4))}]}}
+            (out / 'run/stdout').write_text(json.dumps(saved) + '\n' + json.dumps(printed) + '\n')
+            path = out / 'cell/work/.devlyn/pair/peer1.json'; path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(env(2)))
+            from importlib import util
+            spec = util.spec_from_file_location('evidence_order_test', HERE / 'evidence.py')
+            evidence = util.module_from_spec(spec); spec.loader.exec_module(evidence)
+            envelopes, _ = evidence.claude_envelopes(out)
+            inputs = [e['usage']['claude-opus-5-5']['inputTokens'] for e in envelopes['PEER']]
+            self.assertEqual(inputs, [2, 4])
+            inv = {'claude_owner': {'session': None, 'usage': None}, 'envelopes': envelopes,
+                   'transcripts': {}, 'unreadable': [], 'attempted': {'judges': {}}}
+            _, gaps = usage.claude(inv, {'engine': 'codex'})
+            self.assertFalse(any('decreasing' in gap for gap in gaps))
 
     def test_codex_each_peer_turn_footer_counted_once_without_trace(self):
         with tempfile.TemporaryDirectory() as temp:

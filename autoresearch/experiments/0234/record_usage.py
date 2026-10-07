@@ -260,15 +260,27 @@ def record(out):
     codex_totals, codex_gaps = codex(out, inv)
     claude_totals, claude_gaps = claude(inv, plan)
     diagnostics = load('diagnostics0234u', HERE / 'diagnostics.py')
+    codex_calls = []
     for call in diagnostics.calls(evidence.lines(out / 'run/stdout'), plan['engine']):
         command = diagnostics.text_of(call)
         engine = diagnostics.launch_engine(command)
         if engine is None:
             continue
         capture = diagnostics.redirected_capture(out, command)
-        if capture is None:
-            (codex_gaps if engine == 'codex' else claude_gaps).append(
-                'owner-launched peer turn has no unambiguous saved capture')
+        if engine == 'codex':
+            # Codex peer usage comes from traced sessions, not captures: each launch (exec or resume) must match its
+            # own distinct trace one-to-one (0234 SMOKE r2 review); an unmatched launch is a gap.
+            codex_calls.append(call)
+        elif capture is None:  # Claude peer without a saved capture
+            printed = diagnostics.output_envelope(call.get('output'))
+            counted = False
+            if printed and (printed.get('modelUsage') or printed.get('usage')):
+                probe = {}
+                evidence.add_envelope(probe, printed, 'printed')
+                want = probe[printed['session_id']][0]['usage']
+                counted = any(entry['usage'] == want for entry in inv['envelopes'].get(printed['session_id'], []))
+            if not counted:
+                claude_gaps.append(f'owner-launched Claude peer turn {call.get("id")} left no counted saved or printed result')
         elif engine == 'claude':
             # Any observed Claude capture, whatever its name, must hold a result envelope with usage that entered the
             # inventory (freeze a2/a3); otherwise its usage is a named gap.
@@ -279,6 +291,11 @@ def record(out):
                 session = json.loads(capture.read_text(errors='replace'))['session_id']
                 if not any(Path(entry['path']).name == capture.name for entry in inv['envelopes'].get(session, [])):
                     claude_gaps.append(f'Claude peer capture {relative} was not counted')
+    if codex_calls:
+        diagnostics.attach_call_times(codex_calls, out, inv, plan)
+        _, unbound = diagnostics.match_codex_launches(codex_calls, diagnostics.peer_traces(out, inv))
+        if unbound:
+            codex_gaps.append(f'{unbound} owner-launched Codex peer launch(es) match no distinct traced session')
     if plan['engine'] == 'codex' and not inv['owner_threads']:
         codex_gaps.append('owner thread missing')
     gaps = codex_gaps + claude_gaps

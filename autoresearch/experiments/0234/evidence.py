@@ -75,20 +75,53 @@ def judge_headers(out):
     return found, conflicts
 
 
+def add_envelope(found, value, where, any_source=False, order=None):
+    """Record one Claude result envelope under its session, once per (usage, error flag, source name); with
+    any_source, once per (usage, error flag) — a printed copy of a saved capture is the same envelope."""
+    model_usage = value.get('modelUsage') or {}
+    if not model_usage and isinstance(value.get('usage'), dict):
+        raw = value['usage']
+        if any(key in raw for key in ('inputTokens', 'input_tokens')):
+            model_usage = {value.get('model') or 'UNKNOWN': raw}
+        else:
+            model_usage = raw
+    entry = dict(models=sorted(model_usage), usage=model_usage, is_error=value.get('is_error'), path=where, order=order)
+    entries = found.setdefault(value['session_id'], [])
+    if not any(previous['usage'] == entry['usage'] and previous['is_error'] == entry['is_error']
+               and (any_source or Path(previous['path']).name == Path(where).name) for previous in entries):
+        entries.append(entry)
+
+
 def claude_envelopes(out):
     """Preserve every turn's result envelope, including peer captures in linked worktrees and tmp."""
     found, unreadable = {}, []
-    commands = []
-    for event in lines(out / 'run/stdout'):
+    commands, outputs, command_order = [], [], []
+    for order, event in enumerate(lines(out / 'run/stdout')):
         message = event.get('message') or {}
-        commands.extend(str((block.get('input') or {}).get('command', '')) for block in message.get('content', ())
-                        if isinstance(block, dict) and block.get('type') == 'tool_use')
+        for block in message.get('content', ()) if isinstance(message.get('content'), list) else ():
+            if not isinstance(block, dict):
+                continue
+            if block.get('type') == 'tool_use':
+                commands.append(str((block.get('input') or {}).get('command', '')))
+                command_order.append(order)
+            elif block.get('type') == 'tool_result':
+                content = block.get('content')
+                text = content if isinstance(content, str) else '\n'.join(
+                    str(part.get('text', '')) for part in content or () if isinstance(part, dict))
+                outputs.append((f'run/stdout#{order:06d}-{block.get("tool_use_id")}', text))
         item = event.get('item') or {}
         if isinstance(item, dict):
             detail = item.get('input') or {}
             commands.append(str(item.get('command') or (detail.get('command', '') if isinstance(detail, dict) else detail)))
-    capture_names = {Path(match.group(1)).name for command in commands if '--output-format json' in command
-                     for match in [re.search(r'>\s*([\w./-]+\.jsonl?)\b', command)] if match}
+            command_order.append(order)
+            if event.get('type') == 'item.completed' and item.get('aggregated_output'):
+                outputs.append((f'run/stdout#{order:06d}-{item.get("id")}', str(item['aggregated_output'])))
+    capture_order = {}  # capture file name -> event order of the last command that wrote it (turn chronology)
+    for command, when in zip(commands, command_order):
+        match = re.search(r'>\s*([\w./-]+\.jsonl?)\b', command) if '--output-format json' in command else None
+        if match:
+            capture_order[Path(match.group(1)).name] = when
+    capture_names = set(capture_order)
     roots = [*devlyn_dirs(out), out / 'tmp', out / 'cell']
     for root in roots:
         for path in sorted(p for p in root.rglob('*.json*') if p.is_file() and p.suffix in ('.json', '.jsonl') and
@@ -105,22 +138,23 @@ def claude_envelopes(out):
                 if path.name.endswith('.output.json') or re.fullmatch(r'peer[\w-]*\.json', path.name):
                     unreadable.append(str(path.relative_to(out)))
                 continue
-            model_usage = value.get('modelUsage') or {}
-            if not model_usage and isinstance(value.get('usage'), dict):
-                raw = value['usage']
-                if any(key in raw for key in ('inputTokens', 'input_tokens')):
-                    model_usage = {value.get('model') or 'UNKNOWN': raw}
-                else:
-                    model_usage = raw
-            entry = dict(models=sorted(model_usage), usage=model_usage,
-                         is_error=value.get('is_error'), path=str(path.relative_to(out)))
-            entries = found.setdefault(value['session_id'], [])
-            if not any(previous['usage'] == entry['usage'] and previous['is_error'] == entry['is_error']
-                       and Path(previous['path']).name == path.name for previous in entries):
-                entries.append(entry)
+            add_envelope(found, value, str(path.relative_to(out)), order=capture_order.get(path.name))
+    # A peer's result envelope printed to the owner's tool output (owners that keep no capture file; 0234 SMOKE r2).
+    for where, text in outputs:
+        for line in text.splitlines():
+            line = line.strip()
+            if not line.startswith('{'):
+                continue
+            try:
+                value = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(value, dict) and value.get('type') == 'result' and value.get('session_id'):
+                add_envelope(found, value, where, any_source=True, order=int(where.split('#')[1].split('-')[0]))
     def turn(entry):
+        # Chronology first (the owner's call order for saved and printed results alike), then the turn number.
         match = re.search(r'(?:peer|turn)[-_]?(\d+)', Path(entry['path']).name)
-        return (int(match.group(1)) if match else -1, entry['path'])
+        return (entry['order'] is None, entry['order'] or 0, int(match.group(1)) if match else -1, entry['path'])
     return {session: sorted(entries, key=turn) for session, entries in found.items()}, unreadable
 
 
