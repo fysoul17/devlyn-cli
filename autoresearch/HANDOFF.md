@@ -1,4 +1,4 @@
-# 0232 stage 1 closed; resolve retired (PR #171); ideate loop redesigned and verified by real runs (PR #172); final fixes with in-place direct work (PR #173); the owner's release-prep decisions applied (PR #175); next is the version and release notes, then the installed-baseline registration
+# 4.2.0 audited against the North Star (2026-10-07): conforms to the approved shape, advantage over bare unmeasured, no pair surface; 0233 registers the installed baseline and the first lazily loaded method (candidate C, failure paths)
 
 ## The owner's direction (2026-10-05)
 
@@ -43,7 +43,7 @@ Wall, input and output are judged per correctly completed task, failures include
 **Next:**
 
 1. **Release prep (the owner's):** the version is 4.2.0 (owner, 2026-10-07); the tag, the release notes and the publish remain the owner's. The notes should name: the restored delivery default; the cleanup sentence; the bounded autonomous defaults; the check-only integration task; one task at a time in local loops; the removed templates; the LICENSE; and the publish gate.
-2. **The installed-baseline registration:** the principles block plus ideate, with the easy-task panel and 0223's B5 task (0232 §8). After that, I′, licensed by I's lost final reviews and review cost.
+2. **0233** ([registration](iterations/0233-installed-baseline-and-failure-paths.md); worktree `~/.local/share/nx01/0233-reg`, branch `candidate/0233-registration`): A native / B 4.2.0 / C = B + `_shared/failure-paths.md` read on demand (`candidate/0233-c-failure-paths` at `639fbac5`, pack-only). Freeze with Astra, then SMOKE → screening → development → easy → confirmation. Later rungs, each licensed by failures that survive C: fresh review on consequential changes (same-model vs other engine, 0184 vs 0229), a completion check, and a cheaper delivery route (the 2026-10-07 preview: 4.2.0 took 2.3× bare's wall and 3.3–4.3× its input on a tiny request, all of it delivery). Ideate's decomposition gets its own registration.
 3. **Follow-ups:** the Known follow-ups below.
 
 ## Known follow-ups
