@@ -279,8 +279,10 @@ def dependency_names(work, commit):
     if not git(work, "ls-tree", commit, "--", "package.json").stdout:
         return set()
     try:
-        # Read as npm reads it: a leading BOM is ignored, a duplicate key's last value wins and a null section is empty.
-        data = json.loads(git(work, "show", f"{commit}:package.json").stdout.decode("utf-8-sig"))
+        # Read as npm reads it: a leading BOM is ignored, a duplicate key's last value wins, a null section is empty and
+        # NaN or Infinity is invalid.
+        data = json.loads(git(work, "show", f"{commit}:package.json").stdout.decode("utf-8-sig"),
+                          parse_constant=shared("expected-contract")["reject_json_constant"])
         sections = [data.get(key) or {} for key in ("dependencies", "devDependencies")] if isinstance(data, dict) else [None]
         if not all(isinstance(section, dict) for section in sections):
             raise ValueError("it must be an object whose dependencies and devDependencies are objects")
@@ -715,7 +717,7 @@ class AcceptanceTests(unittest.TestCase):
         moved from dependencies to devDependencies counts 0 and is accepted; an invalid package.json fails the guard,
         naming it. A leading UTF-8 BOM, which npm and Node accept, is ignored: with one at both commits, one added
         counts 1. A duplicate key (its last value wins) and a null dependencies section, which npm also reads, count 0
-        and are accepted."""
+        and are accepted; NaN, which npm rejects, fails the guard."""
         passing = {"verification_commands": [{"argv": [sys.executable, "-c", "pass"], "contract_refs": ["R1"]}]}
 
         def guard(inputs, source):
@@ -749,6 +751,10 @@ class AcceptanceTests(unittest.TestCase):
             self.write("package.json", '{"dependencies": null, "scripts": {"a": "1"}, "scripts": {"b": "2"}}')
             _, result, deps = guard(None, '{"dependencies": {"a": "1"}, "dependencies": null}')
             self.assertEqual((deps["subject"], result["verdict"]), ("0 added, limit 0", "ACCEPTED"))
+        with self.subTest("NaN"):
+            commit, result, deps = guard({"dependencies": {"a": "1"}}, '{"config": {"threshold": NaN}}')
+            self.assertEqual((deps["passed"], result["verdict"]), (False, "FAILED"))
+            self.assertIn(f"package.json at {commit} is invalid", deps["subject"])
 
 
 def main():
