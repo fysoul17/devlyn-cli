@@ -279,8 +279,9 @@ def dependency_names(work, commit):
     if not git(work, "ls-tree", commit, "--", "package.json").stdout:
         return set()
     try:
-        data = shared("expected-contract")["loads_strict_json"](git(work, "show", f"{commit}:package.json").stdout.decode("utf-8-sig"))
-        sections = [data.get(key, {}) for key in ("dependencies", "devDependencies")] if isinstance(data, dict) else [None]
+        # Read as npm reads it: a leading BOM is ignored, a duplicate key's last value wins and a null section is empty.
+        data = json.loads(git(work, "show", f"{commit}:package.json").stdout.decode("utf-8-sig"))
+        sections = [data.get(key) or {} for key in ("dependencies", "devDependencies")] if isinstance(data, dict) else [None]
         if not all(isinstance(section, dict) for section in sections):
             raise ValueError("it must be an object whose dependencies and devDependencies are objects")
     except ValueError as exc:
@@ -713,7 +714,8 @@ class AcceptanceTests(unittest.TestCase):
         package.json (none at the inputs) counts 1 and fails acceptance; two appended to a multi-line one count 2; a name
         moved from dependencies to devDependencies counts 0 and is accepted; an invalid package.json fails the guard,
         naming it. A leading UTF-8 BOM, which npm and Node accept, is ignored: with one at both commits, one added
-        counts 1."""
+        counts 1. A duplicate key (its last value wins) and a null dependencies section, which npm also reads, count 0
+        and are accepted."""
         passing = {"verification_commands": [{"argv": [sys.executable, "-c", "pass"], "contract_refs": ["R1"]}]}
 
         def guard(inputs, source):
@@ -743,6 +745,10 @@ class AcceptanceTests(unittest.TestCase):
             self.write("package.json", "\ufeff" + json.dumps({"dependencies": {"a": "1"}}))
             _, _, deps = guard(None, "\ufeff" + json.dumps({"dependencies": {"a": "1", "b": "1"}}))
             self.assertEqual(deps["subject"], "1 added, limit 0")
+        with self.subTest("duplicate key and null"):
+            self.write("package.json", '{"dependencies": null, "scripts": {"a": "1"}, "scripts": {"b": "2"}}')
+            _, result, deps = guard(None, '{"dependencies": {"a": "1"}, "dependencies": null}')
+            self.assertEqual((deps["subject"], result["verdict"]), ("0 added, limit 0", "ACCEPTED"))
 
 
 def main():
