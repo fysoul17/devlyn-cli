@@ -314,22 +314,7 @@ function listContents() {
   showLogo();
   log('─'.repeat(44), 'dim');
 
-  const templatesDir = path.join(CONFIG_SOURCE, 'templates');
   const skillsDir = path.join(CONFIG_SOURCE, 'skills');
-
-  // List templates
-  if (fs.existsSync(templatesDir)) {
-    const templates = fs.readdirSync(templatesDir).filter((f) => f.endsWith('.md'));
-    if (templates.length > 0) {
-      log('\n📄 Templates:', 'blue');
-      templates.forEach((file) => {
-        const name = file.replace('.md', '');
-        const desc = getDescription(path.join(templatesDir, file));
-        log(`  ${COLORS.green}${name}${COLORS.reset}`);
-        if (desc) log(`     ${COLORS.dim}${desc}${COLORS.reset}`);
-      });
-    }
-  }
 
   // List skills
   if (fs.existsSync(skillsDir)) {
@@ -759,7 +744,7 @@ function installClaudeInstructions() {
   if (imported) log('  → CLAUDE.md imports AGENTS.md, which holds the devlyn block', 'dim');
 }
 
-// Project CLAUDE.md and .claude/: skills, templates and settings.
+// Project CLAUDE.md and .claude/: skills and settings.
 function installClaudeCore() {
   const skillsDir = skillRoots('claude', false)[0];
   const targetDir = path.dirname(skillsDir);
@@ -784,9 +769,6 @@ function installClaudeCore() {
     throw unmergeable('env must be a JSON object');
   }
   installClaudeInstructions();
-  for (const entry of fs.readdirSync(CONFIG_SOURCE)) {
-    if (entry !== 'skills') copyRecursive(path.join(CONFIG_SOURCE, entry), path.join(targetDir, entry), targetDir);
-  }
   for (const relPath of DEPRECATED_FILES) {
     const fullPath = path.join(targetDir, relPath);
     if (fs.existsSync(fullPath)) {
@@ -906,7 +888,7 @@ async function init({ yes, claude, global }) {
   log('\n🎯 What to install:\n', 'blue');
   const targetOptions = [
     { key: 'agents', name: 'AGENTS.md — Codex · omp · Pi · Grok', desc: 'AGENTS.md + .agents/skills' },
-    { key: 'claude', name: 'CLAUDE.md — Claude Code', desc: 'CLAUDE.md + .claude/ (skills, templates, settings)' },
+    { key: 'claude', name: 'CLAUDE.md — Claude Code', desc: 'CLAUDE.md + .claude/ (skills, settings)' },
   ];
   const preselected = claude || hasDevlynClaude(false) || (global && hasDevlynClaude(true)) ? [0, 1] : [0];
   const targets = (await multiSelect(targetOptions, preselected)).map((option) => option.key);
@@ -948,7 +930,7 @@ function showHelp() {
   log('  npx devlyn-cli -y            Without prompts: AGENTS.md + .agents/skills, plus CLAUDE.md + .claude/ if this project has them');
   log('  npx devlyn-cli -y --claude   Also install CLAUDE.md + .claude/ for Claude Code');
   log('  npx devlyn-cli -y --global   Skills only, for every project on this machine (~/.agents/skills, ~/.codex/skills; ~/.claude/skills with --claude, or when it already has a devlyn install)');
-  log('  npx devlyn-cli list          List available skills & templates');
+  log('  npx devlyn-cli list          List available skills');
   log('  npx devlyn-cli --help        Show this help\n');
   log('Optional skills (select during install):', 'green');
   OPTIONAL_ADDONS.filter((a) => a.type === 'local').forEach((skill) => {

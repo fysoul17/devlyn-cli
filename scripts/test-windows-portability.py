@@ -26,6 +26,13 @@ PACKAGE_ROOT = None
 SHORT_PAYLOAD = '한국어 프롬프트 — “정확 바이트” …\r\n마지막\n\n'.encode('utf-8')
 PAYLOAD = SHORT_PAYLOAD * 1024
 CURRENT_DEFAULTS = b'Without a pin, you are the executor.'
+# The block's delivery default and cleanup rule.
+CURRENT_RULES = (
+    ('- Delivery — direct work edits the current checkout; deliver completed, verified requests with changes by project policy'
+     ' (default PR and merge), following `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`).'
+     ' With known concurrent writers, isolate before editing; on unexplained changes, pause writes until safe or isolated.'
+     ' An ideate drain delivers every task. Explicit limits win; commit alone stays local.').encode(),
+    b'Remove code your change makes unused; only report unrelated pre-existing dead code.')
 
 
 def environment():
@@ -256,6 +263,18 @@ init({options});
         conventions.write_bytes(b'team conventions\n')
         self.invoke('installClaudeCore();')
         self.assertEqual(conventions.read_bytes(), b'team conventions\n')
+
+    def test_claude_install_ships_no_templates(self):
+        # The spec and prompt templates are no longer shipped (owner, 2026-10-07): a new install adds
+        # none and `list` shows none; a copy an earlier release installed is the user's now and stays.
+        self.invoke('installClaudeCore();')
+        self.assertFalse((self.project / '.claude/templates').exists())
+        self.assertNotIn(b'Templates', self.cli('list').stdout)
+        kept = self.project / '.claude/templates/template-feature.spec.md'
+        kept.parent.mkdir(parents=True)
+        kept.write_bytes(b'team template\n')
+        self.invoke('installClaudeCore();')
+        self.assertEqual(kept.read_bytes(), b'team template\n')
 
     def test_agents_command_is_removed_with_replacement(self):
         (self.project / 'keep.txt').write_bytes(b'project user bytes\r\n')
@@ -885,13 +904,15 @@ init({options});
 
     def test_instruction_4_x_blocks_are_replaced_in_place(self):
         # 4.1.0 renamed the AGENTS.md title and intro; design-ui, the queue skill and resolve were
-        # retired after it. A 4.0.1, 4.1.0 or main (9ecbe51c, d2d34e3e) block is replaced, never stacked,
+        # retired after it. A 4.0.1, 4.1.0 or main (9ecbe51c, d2d34e3e, 415e2d14) block is replaced, never stacked,
         # and an edited one keeps only the edits: its stock paragraphs, the retired ones too, are
         # registered fingerprints. Prediction (P4-1): no block keeps the delivery pointer that allocated a
-        # worktree for every direct task; the new block says direct work edits the current checkout.
+        # worktree for every direct task, or 415e2d14's delivery only on a ship request; the new block holds
+        # the default-delivery line and principle 2's cleanup sentence once each.
         prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
         for name, version in (('AGENTS.md', '4.0.1'), ('AGENTS.md', '4.1.0'), ('AGENTS.md', '9ecbe51c'), ('AGENTS.md', 'd2d34e3e'),
-                              ('CLAUDE.md', '4.1.0'), ('CLAUDE.md', '9ecbe51c'), ('CLAUDE.md', 'd2d34e3e')):
+                              ('AGENTS.md', '415e2d14'), ('CLAUDE.md', '4.1.0'), ('CLAUDE.md', '9ecbe51c'), ('CLAUDE.md', 'd2d34e3e'),
+                              ('CLAUDE.md', '415e2d14')):
             dest = self.project / name
             block = (Path(__file__).resolve().parent / f'fixtures/instructions/{name[:-3].lower()}-{version}.md').read_bytes()
             for edited in (False, True):
@@ -906,10 +927,11 @@ init({options});
                         self.assertTrue(after.endswith(suffix.replace(b'\n', eol)))
                         self.assertIn(b'# Project Instructions' + eol, managed)
                         self.assertIn(CURRENT_DEFAULTS, managed)
-                        self.assertIn(b'direct work edits the current checkout', managed)
+                        self.assertEqual([managed.count(rule) for rule in CURRENT_RULES], [1, 1])
+                        self.assertEqual(after.count(b'2. **No overengineering**'), 1)
                         for stale in (b'Codex CLI reads this file', b'design-ui', b'devlyn-queue', b'references/task-completion.md',
                                       b'outer-loop.md', b'queue drains retain', b'--quick', b'--from-spec', b'per item: spec it',
-                                      b'devlyn-resolve', b'VERIFY', b'`/devlyn-', b'allocated before editing'):
+                                      b'devlyn-resolve', b'VERIFY', b'`/devlyn-', b'allocated before editing', b'asks to ship'):
                             self.assertNotIn(stale, after)
                         if edited:
                             self.assertTrue(custom.startswith(prefix.replace(b'\n', eol)))
@@ -1364,7 +1386,8 @@ init({options});
     def test_upgrade_from_4_1_0_and_main_retires_resolve(self):
         # A 4.1.0 or main (9ecbe51c) install: resolve as a core skill, beside leftovers under its 3.x
         # name and npm's U+F03A extraction alias; resolve-only helpers in _shared; the retired Stop
-        # hook among the user's own hooks; and instruction blocks between project rules.
+        # hook among the user's own hooks; and instruction blocks between project rules. Main's
+        # 415e2d14 blocks (delivery only on a ship request, no cleanup sentence) take the same upgrade.
         spellings = ['-', '\uf03a'] if os.name == 'nt' else ['-', ':', '\uf03a']
         helpers = ['resolve-stop-hook.py', 'archive_run.py', 'spec-verify-check.py', 'run-bounded.py', 'codex-config.md']
         managed = {'type': 'command', 'command': 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"', 'timeout': 30}
@@ -1379,7 +1402,7 @@ init({options});
         prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
         fixtures = Path(__file__).resolve().parent / 'fixtures/instructions'
         shipped = {p.name for p in (self.package / 'config/skills/_shared').iterdir() if p.name != '__pycache__'}
-        for version in ('4.1.0', '9ecbe51c'):
+        for version in ('4.1.0', '9ecbe51c', '415e2d14'):
             with self.subTest(version=version):
                 self.project = self.case / f'project-{version}'; self.project.mkdir()
                 self.home = self.case / f'home-{version}'; self.home.mkdir()
@@ -1398,7 +1421,7 @@ init({options});
                 settings.write_text(json.dumps(old_settings), encoding='utf-8')
                 for name in ('AGENTS.md', 'CLAUDE.md'):
                     block = (fixtures / f'{name[:-3].lower()}-{version}.md').read_bytes()
-                    self.assertIn(b'devlyn-resolve', block)
+                    self.assertIn(b'asks to ship' if version == '415e2d14' else b'devlyn-resolve', block)
                     (self.project / name).write_bytes(prefix + block + suffix)
                 result = self.cli('-y')
                 self.cli('-y', '--global', '--claude')
@@ -1420,7 +1443,11 @@ init({options});
                     data = (self.project / name).read_bytes()
                     self.assertTrue(data.startswith(prefix)); self.assertTrue(data.endswith(suffix))
                     self.assertEqual(data.count(b'devlyn:instructions:begin'), 1)
-                    self.assertIn(CURRENT_DEFAULTS, data); self.assertNotIn(b'devlyn-resolve', data)
+                    self.assertIn(CURRENT_DEFAULTS, data)
+                    new_block = data.split(b'<!-- devlyn:instructions:begin')[1]
+                    self.assertEqual([new_block.count(rule) for rule in CURRENT_RULES], [1, 1])
+                    for stale in (b'devlyn-resolve', b'asks to ship', b'allocated before editing'):
+                        self.assertNotIn(stale, data)
                 # Upgrading again changes nothing.
                 tree = {p: p.read_bytes() if p.is_file() else None for base in (self.project, self.home) for p in base.rglob('*')}
                 self.cli('-y'); self.cli('-y', '--global', '--claude')

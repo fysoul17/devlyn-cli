@@ -58,9 +58,10 @@ def commit(files, message):
     git("add", *files)
     git("commit", "-q", "-m", message)
     return git("rev-parse", "HEAD")
-source = commit(config["products"][behavior["product"]], "implement " + packet["task"])
+source = (packet["inputs_sha"] if behavior.get("check_only")
+          else commit(config["products"][behavior["product"]], "implement " + packet["task"]))
 submission = {"schema_version": 1, "task": packet["task"], "source_sha": source, "summary": "done (informational)",
-              "assumptions": ["fixture assumption for " + packet["task"]]}
+              "assumptions": behavior.get("assumptions", ["fixture assumption for " + packet["task"]]), "blockers": behavior.get("blockers", [])}
 if behavior.get("runner", True):
     checked = subprocess.run(packet["runner"], check=True, capture_output=True, text=True, encoding="utf-8")
     submission["runner_results"] = [json.loads(checked.stdout)["result"]]
@@ -360,6 +361,62 @@ class LoopFixture(unittest.TestCase):
                          (self.base, self.package("inv", ("t1", "t2"))))
         self.assertEqual(self.g("diff", "--name-only", final["baseline"], final["acceptance"]["inputs_sha"]), "docs/specs/inv/queue.md")
 
+    def test_the_report_carries_the_captured_package_decisions_once(self):
+        # Prediction (rp-d3 policy 1): the drain report carries the package's decisions once, read from its capture. With the
+        # manifest after the decisions inside `## Decisions and assumptions`, as a real plan wrote it, each decision appears
+        # exactly once and no manifest JSON does, although dc.t1's executor submits no assumptions, and dc.t2's executor
+        # assumption stays in its own section. With the checkout copy of meta.md absent, then differing, the report keeps the
+        # captured decisions and never shows the checkout's. Before: the report carried executor assumptions only.
+        meta = self.queue["write_package"](self.anchor, "dc", CHAIN, base=self.base)
+        text = meta.read_text(encoding="utf-8")
+        manifest = self.queue["JSON_FENCE_RE"].search(text).group(0)
+        decisions = ["- D1: Names print in argument order, as the request lists them.", "- D2: Output is UTF-8, the project convention."]
+        meta.write_text(text.replace(manifest + "\n\n", "").replace("None beyond the task contracts.", "\n".join(decisions) + "\n\n" + manifest),
+                        encoding="utf-8")
+        self.behaviors.update({"dc.t1": {"product": "greeting", "assumptions": []}, "dc.t2": {"product": "app"}})
+        self.cli("add", meta)
+        captured = self.g("show", "refs/devlyn/captures/dc:docs/specs/dc/meta.md")
+        self.assertFalse(meta.exists())
+        for copy in (None, captured.replace(decisions[0], "- D9: A checkout-only decision.")):
+            if copy:
+                meta.parent.mkdir(parents=True)
+                meta.write_text(copy, encoding="utf-8")
+            self.assertEqual({identity: task["result"] for identity, task in self.tasks(self.drain()).items()}, {"dc.t1": "accepted", "dc.t2": "accepted"})
+            report = self.report("dc")
+            self.assertEqual([report.count(part) for part in ("## Package decisions and assumptions\n", *decisions, "D9", '"integration_task_id"',
+                                                              "fixture assumption for dc.t1", "- Assumptions: fixture assumption for dc.t2\n")],
+                             [1, 1, 1, 0, 0, 0, 1])
+        self.assertEqual((self.calls("dc.t1"), self.calls("dc.t2")), (1, 1))
+
+    def test_an_unreadable_package_reports_its_decisions_unavailable(self):
+        # Prediction (rp-d3 policy 1): a loop without an add record, read as in a fresh clone from its tracked queue file,
+        # whose meta.md is gone, still gets its full report: nr.t1 pending with the missing file as its reason, whole-loop
+        # acceptance INCOMPLETE naming the unreadable manifest, and "Unavailable: <reason>" as its package decisions. Before:
+        # the report said nothing about the package decisions.
+        queue = self.anchor / "docs/specs/nr/queue.md"
+        queue.parent.mkdir()
+        queue.write_text(self.queue["row_line"]("nr.t1", "Notes") + "\n", encoding="utf-8")
+        self.g("add", str(queue))
+        self.g("commit", "-qm", "a loop's queue file without its package")
+        missing = f"{queue.with_name('meta.md')}: no such file"
+        self.assertEqual(self.tasks(self.drain())["nr.t1"]["reason"], missing)
+        report = self.report("nr")
+        for part in (f"- Whole-loop acceptance: INCOMPLETE — manifest unreadable: {missing}\n",
+                     f"## Package decisions and assumptions\n\nUnavailable: {missing}\n", f"## nr.t1\n\n- Product: pending\n- Reason: {missing}\n"):
+            self.assertIn(part, report)
+
+    def test_a_package_without_decisions_reports_none_recorded(self):
+        # Prediction (rp-d3 policy 1): when the package's `## Decisions and assumptions` holds only the manifest, the report's
+        # package decisions read "None recorded.". Before: that section of the report was empty.
+        meta = self.queue["write_package"](self.anchor, "nd", [CHAIN[0]], base=self.base)
+        text = meta.read_text(encoding="utf-8")
+        manifest = self.queue["JSON_FENCE_RE"].search(text).group(0)
+        meta.write_text(text.replace(manifest + "\n\n", "").replace("None beyond the task contracts.", manifest), encoding="utf-8")
+        self.behaviors["nd.t1"] = {"product": "greeting"}
+        self.cli("add", meta)
+        self.drain()
+        self.assertIn("## Package decisions and assumptions\n\nNone recorded.\n\n## nd.t1\n", self.report("nd"))
+
     def test_a_local_loop_starts_from_the_branch_it_was_added_on(self):
         # Prediction (L): with the checkout switched to another branch, a local loop's first task starts from the HEAD of
         # the branch it was added on, and the report brings it into that branch; while that HEAD does not descend from the
@@ -610,15 +667,128 @@ class LoopFixture(unittest.TestCase):
 
     def test_frontier_is_the_latest_accepted_source(self):
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1"], "Greeting app", [APP_CHECK]), ("t4", ["t2", "t3"], "Notes again", [NOTES_CHECK])]
-        self.plan("fr", tasks, {"fr.t1": {"product": "greeting"}, "fr.t2": {"product": "notes"}, "fr.t3": {"product": "app"}, "fr.t4": {"product": "notes"}})
-        self.drain()
+        self.plan("fr", tasks, {"fr.t1": {"product": "greeting"}, "fr.t2": {"product": "notes"}, "fr.t3": {"product": "app"}, "fr.t4": {"check_only": True}})
+        result = self.drain()
         t1, t2, t3, t4 = (self.receipt(f"fr.{task}") for task in ("t1", "t2", "t3", "t4"))
         # Each later task starts from the latest accepted source, not the first.
         self.assertEqual((t2["baseline"], t3["baseline"], t4["baseline"]), (t1["source_sha"], t2["source_sha"], t3["source_sha"]))
+        # Prediction (rp-d3 policy 2): the check-only fr.t4 submits its committed inputs unchanged and is accepted, so the loop
+        # is ACCEPTED. Before: its executor committed notes.txt unchanged, which git refused, so fr.t4 never submitted.
+        self.assertEqual(self.tasks(result)["fr.t4"]["result"], "accepted")
+        self.assertEqual(t4["source_sha"], t4["acceptance"]["inputs_sha"])
+        self.assertIn("- Whole-loop acceptance: ACCEPTED\n", self.report("fr"))
         # A receipt whose attached terminal commit lacks its result's mark stops selection.
         receipt = self.receipt_path("fr.t1")
         receipt.write_text(json.dumps(dict(json.loads(receipt.read_text(encoding="utf-8")), product="FAILED")), encoding="utf-8")
         self.assertIn(f"fr.t1: terminal commit {t1['publish_sha']} does not carry its failed mark", self.cli("status", "--repo", self.anchor, code=1)["reason"])
+
+    def plan_checker(self, loop, checks, behaviors, delivery="local-only"):
+        """Add a loop of independent t1 and t2, then t3, a check-only task depending on both whose diff guard refuses any
+        source change (rp-d3 policy 2)."""
+        tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1", "t2"], "Assembled product", checks)]
+        meta = self.queue["write_package"](self.anchor, loop, tasks, delivery=delivery, base=self.base)
+        (meta.parent / "t3/spec.expected.json").write_text(json.dumps({"verification_commands": checks, "forbidden_patterns": [
+            {"pattern": ".", "description": "No source changes", "severity": "disqualifier"}]}), encoding="utf-8")
+        self.behaviors.update(behaviors)
+        self.cli("add", meta)
+
+    def test_a_check_only_task_accepts_its_unchanged_candidate(self):
+        # Prediction (rp-d3 policy 2): with the independent ck.t1 and ck.t2 accepted, the check-only ck.t3, which depends on
+        # both, submits its committed inputs unchanged (source_sha == inputs_sha, no empty commit); both its checks pass, so
+        # they observe both products, its diff guard passes, and it is accepted and delivered LOCAL_ONLY, so the loop is
+        # ACCEPTED. Before: the fixture executor committed a product for every task, so none could submit its inputs.
+        self.plan_checker("ck", [GREET_CHECK, NOTES_CHECK], {"ck.t1": {"product": "greeting"}, "ck.t2": {"product": "notes"}, "ck.t3": {"check_only": True}})
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: (task["result"], task["delivery"]) for identity, task in tasks.items()},
+                         {f"ck.{task}": ("accepted", "LOCAL_ONLY") for task in ("t1", "t2", "t3")})
+        checker = self.receipt("ck.t3")["acceptance"]
+        self.assertEqual((checker["source_sha"], [command["passed"] for command in checker["commands"]],
+                          [guard["passed"] for guard in checker["guards"] if guard["rule"] == "forbidden_patterns/0"]), (checker["inputs_sha"], [True, True], [True]))
+        self.assertIn("- Whole-loop acceptance: ACCEPTED\n", self.report("ck"))
+
+    def test_a_failed_substantive_task_blocks_only_the_check_only_task(self):
+        # Prediction (rp-d3 policy 2): when t1 fails its check (fa) or stops as needs-review (rv), the independent t2 is still
+        # accepted, the check-only t3 becomes blocked-prerequisite without executing, and whole-loop acceptance stays
+        # INCOMPLETE. The runtime is unchanged; this guards the independent progress the policy relies on.
+        question = "Should greet() accept an empty name?"
+        self.plan_checker("fa", [GREET_CHECK, NOTES_CHECK], {"fa.t1": {"product": "bad-greeting"}, "fa.t2": {"product": "notes"}, "fa.t3": {"check_only": True}})
+        self.plan_checker("rv", [GREET_CHECK, NOTES_CHECK], {"rv.t1": {"product": "greeting", "blockers": [{"kind": "needs-review", "detail": question}]},
+                                                             "rv.t2": {"product": "notes"}, "rv.t3": {"check_only": True}})
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, {
+            "fa.t1": ("failed", "failed: command 0 (R1) exit 1, expected 0"), "fa.t2": ("accepted", None), "fa.t3": ("blocked", "blocked-prerequisite:fa.t1"),
+            "rv.t1": ("failed", f"needs-review: {question}"), "rv.t2": ("accepted", None), "rv.t3": ("blocked", "blocked-prerequisite:rv.t1")})
+        self.assertEqual((tasks["rv.t1"]["questions"], self.calls("fa.t3"), self.calls("rv.t3")), ([question], 0, 0))
+        for loop in ("fa", "rv"):
+            self.assertIn(f"- Whole-loop acceptance: INCOMPLETE — {loop}.t1 failed, {loop}.t3 blocked\n", self.report(loop))
+
+    def test_a_check_only_task_fails_on_its_assembled_product_or_a_source_change(self):
+        # Prediction (rp-d3 policy 2): with both substantive tasks accepted, the check-only task fails, and whole-loop
+        # acceptance stays INCOMPLETE, when the assembled product fails its check (ca.t3: no app.py) and when its executor
+        # commits a product edit, which its full-diff guard refuses (ce.t3). The runtime is unchanged; this guards that a
+        # checker neither passes on a broken assembly nor changes product source.
+        self.plan_checker("ca", [APP_CHECK], {"ca.t1": {"product": "greeting"}, "ca.t2": {"product": "notes"}, "ca.t3": {"check_only": True}})
+        self.plan_checker("ce", [GREET_CHECK, NOTES_CHECK], {"ce.t1": {"product": "greeting"}, "ce.t2": {"product": "notes"}, "ce.t3": {"product": "todo"}})
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, {
+            "ca.t1": ("accepted", None), "ca.t2": ("accepted", None), "ca.t3": ("failed", "failed: command 0 (R1) exit 2, expected 0"),
+            "ce.t1": ("accepted", None), "ce.t2": ("accepted", None), "ce.t3": ("failed", "failed: guard forbidden_patterns/0 No source changes")})
+        for loop in ("ca", "ce"):
+            self.assertIn(f"- Whole-loop acceptance: INCOMPLETE — {loop}.t3 failed\n", self.report(loop))
+
+    def test_a_local_loop_runs_one_task_at_a_time(self):
+        # Prediction (rp-d3 policy 2): rt.t1's executor exits without a submission, as on a usage limit, so rt.t1 stays active
+        # and the independent rt.t2 waits for it with no executor call. Once rt.t1 is accepted, rt.t2 starts from its source
+        # and the check-only rt.t3 from rt.t2's, so the loop is ACCEPTED, its `Bring into` names rt.t3's branch, and a loop
+        # added between the drains is accepted too. Before: rt.t2 started from rt.t1's start, their accepted sources diverged,
+        # and every later drain ended BLOCKED "prerequisite source ... is not in the accepted frontier", so nw.t1 never ran.
+        self.plan_checker("rt", [GREET_CHECK, NOTES_CHECK], {"rt.t1": {"product": "greeting", "exit_now": 1}, "rt.t2": {"product": "notes"},
+                                                             "rt.t3": {"check_only": True}})
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items() if identity != "rt.t1"}, {
+            "rt.t2": ("pending", "waiting for rt.t1 (active), since a local loop runs one task at a time"),
+            "rt.t3": ("pending", "waiting for rt.t1 (active)")})
+        self.assertEqual((tasks["rt.t1"]["result"], self.calls("rt.t2")), ("active", 0))
+        self.behaviors["rt.t1"] = {"product": "greeting"}
+        self.plan("nw", [("t1", [], "Todo", [TODO_CHECK])], {"nw.t1": {"product": "todo"}})
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()},
+                         {"rt.t1": "accepted", "rt.t2": "accepted", "rt.t3": "accepted", "nw.t1": "accepted"})
+        t1, t2, t3 = (self.receipt(f"rt.{task}") for task in ("t1", "t2", "t3"))
+        self.assertEqual((t2["baseline"], t3["baseline"], t3["source_sha"]), (t1["source_sha"], t2["source_sha"], t3["acceptance"]["inputs_sha"]))
+        self.assertEqual([self.calls(f"rt.{task}") for task in ("t1", "t2", "t3")], [2, 1, 1])
+        for line in ("- Whole-loop acceptance: ACCEPTED\n", f"- Bring into main: git merge --ff {t3['branch']}\n"):
+            self.assertIn(line, self.report("rt"))
+
+    @unittest.skipIf(os.name == "nt", "the failing allocation uses a POSIX shell hook")
+    def test_the_frontier_is_the_accepted_source_containing_the_others(self):
+        # Prediction (L, B): oo.t1's allocation fails on a post-checkout hook and the independent oo.t2 is accepted; once that
+        # allocation is removed, oo.t1 starts from oo.t2's source, so the loop's one history runs out of row order. The frontier
+        # is then oo.t1, whose source contains oo.t2's: the check-only oo.t3 starts from oo.t1's source, and while it is active
+        # (its first executor exits without a submission) `Bring into` names oo.t1's branch; once oo.t3 is accepted the loop is
+        # ACCEPTED. Before: the frontier was the last accepted row, oo.t2, so the drain after the removal and every later one
+        # ended BLOCKED "oo.t3: prerequisite source ... is not in the accepted frontier ...; plan an integration task", and
+        # `Bring into` named oo.t2's branch, which lacks oo.t1.
+        self.plan_checker("oo", [GREET_CHECK, NOTES_CHECK], {"oo.t1": {"product": "greeting"}, "oo.t2": {"product": "notes"},
+                                                             "oo.t3": {"check_only": True, "exit_now": 1}})
+        hook = self.common / "hooks" / "post-checkout"
+        hook.write_text("#!/bin/sh\necho 'post-checkout: setup failed' >&2\nexit 1\n", encoding="utf-8")
+        hook.chmod(0o755)
+        self.assertIn("post-checkout: setup failed", self.drain(code=1)["reason"])
+        hook.unlink()
+        self.assertEqual(self.tasks(self.drain())["oo.t2"]["result"], "accepted")
+        path, receipt = self.receipt_path("oo.t1"), self.receipt("oo.t1")
+        self.g("worktree", "remove", "--force", receipt["worktree"])
+        self.g("branch", "-D", receipt["branch"])
+        shutil.rmtree(path.parent)
+        tasks = self.tasks(self.drain())
+        self.assertEqual(({identity: task["result"] for identity, task in tasks.items()}, self.receipt("oo.t1")["baseline"]),
+                         ({"oo.t1": "accepted", "oo.t2": "accepted", "oo.t3": "active"}, self.receipt("oo.t2")["source_sha"]))
+        self.assertIn("- Bring into main: git merge --ff devlyn/oo/t1\n", self.report("oo"))
+        self.behaviors["oo.t3"] = {"check_only": True}
+        self.assertEqual((self.tasks(self.drain())["oo.t3"]["result"], self.receipt("oo.t3")["baseline"]),
+                         ("accepted", self.receipt("oo.t1")["source_sha"]))
+        self.assertIn("- Whole-loop acceptance: ACCEPTED\n", self.report("oo"))
 
     def test_interruption_after_acceptance_writes_only_the_missing_transition(self):
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", "hold": True}, "inv.t2": {"product": "app"}})
@@ -962,6 +1132,25 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t2"]["result"], "accepted")
         self.assertIn("- Whole-loop acceptance: ACCEPTED", self.report("inv"))
 
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_settled_loop_keeps_its_decisions_after_its_workspaces_are_cleaned(self):
+        # Prediction (rp-d3 policy 1): once both tasks of an auto loop are delivered, their worktrees are cleaned, and a
+        # further drain, which loads no package for the settled loop, rewrites the report with the captured decision once.
+        # Before: no report carried the package decisions.
+        self.remote(pending=False)
+        meta = self.queue["write_package"](self.anchor, "sd", CHAIN, delivery="auto", base=self.base)
+        decision = "- D1: Greetings stay in English, the project convention."
+        meta.write_text(meta.read_text(encoding="utf-8").replace("None beyond the task contracts.", decision), encoding="utf-8")
+        self.behaviors.update({"sd.t1": {"product": "greeting"}, "sd.t2": {"product": "app"}})
+        self.cli("add", meta)
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"sd.t1": "COMPLETE", "sd.t2": "COMPLETE"})
+        self.assertEqual([Path(self.receipt(identity)["worktree"]).exists() for identity in tasks], [False, False])
+        report = self.common / "devlyn-loops/sd/drain-report.md"
+        report.unlink()
+        self.drain(local=False)
+        self.assertEqual(report.read_text(encoding="utf-8").count(decision), 1)
+
     def remote_rows(self, bare):
         return {identity: row["mark"] for identity, row in self.rows("main", git_dir=bare).items()}
 
@@ -1120,6 +1309,22 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"sq.t1": "x", "sq.t2": "x"})
         report = (self.common / "devlyn-loops/sq/drain-report.md").read_text(encoding="utf-8")
         self.assertIn("- Bring into main: git merge --ff origin/main\n", report)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_check_only_task_delivers_after_its_squash_merged_prerequisites(self):
+        # Prediction (rp-d3 policy 2): in an auto loop whose PRs squash-merge, the check-only sc.t3 starts from a remote base
+        # holding both prerequisites' squash merges, commits nothing (source_sha == inputs_sha == that base), and its row-only
+        # PR merges, so every remote row is [x]. The runtime is unchanged; this guards the remote path of the policy.
+        bare, _ = self.remote(pending=False, squash=True)
+        self.plan_checker("sc", [GREET_CHECK, NOTES_CHECK], {"sc.t1": {"product": "greeting"}, "sc.t2": {"product": "notes"}, "sc.t3": {"check_only": True}},
+                          delivery="auto")
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"sc.t1": "COMPLETE", "sc.t2": "COMPLETE", "sc.t3": "COMPLETE"})
+        checker = self.receipt("sc.t3")
+        self.assertEqual((checker["source_sha"], checker["acceptance"]["inputs_sha"]), (checker["baseline"], checker["baseline"]))
+        for task in ("t1", "t2"):
+            self.g("merge-base", "--is-ancestor", self.receipt(f"sc.{task}")["merge"]["mergeCommit"]["oid"], checker["baseline"])
+        self.assertEqual(self.remote_rows(bare), {"sc.t1": "x", "sc.t2": "x", "sc.t3": "x"})
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_failed_carrier_hands_the_plan_to_the_next_task(self):

@@ -1,11 +1,19 @@
 # Outer-owner task completion
 
-Completion belongs to the outer task owner after source acceptance. It does not
+Completion belongs to the outer task owner after source acceptance; it does not
 change product verdicts or worker isolation. Direct work edits the current
-checkout and is delivered only when the user asks to ship it, as far as asked: a
-commit request completes `--local-only`, a PR request `--mode pr`, a merge
-request `--mode auto`, and any other ship request the project mode below. An
-ideate drain delivers every task. Explicit local-only/no-push instructions win.
+checkout, then delivers each completed, verified request with attributable
+changes. Finish the whole request, including steering received before acceptance;
+internal subtasks, messages and conversation end are not delivery boundaries.
+Honor explicit batching or delivery holds; otherwise deliver completed requests
+without waiting for later requests.
+
+Without a delivery instruction, use project policy below, default `auto`. A bare
+commit request uses `--local-only`, a PR request `--mode pr`, and a merge request
+`--mode auto`. Local-only/no-push restrictions prevent publication; no-commit or
+just-edit instructions skip delivery. Existing session-wide restrictions remain
+in force until changed. Read-only work, unchanged work and incidental generated
+files do not trigger delivery. An ideate drain delivers every task.
 
 ## Concurrent writers
 
@@ -18,11 +26,12 @@ commit points. On changes you cannot explain, stop writing to the shared
 checkout and ask whether to continue there or isolate. With no one to ask, move
 only your own edits, and only when the task's context can be rebuilt in the
 worktree; otherwise leave the checkout as it is and report the task blocked.
-Isolation authorizes no delivery: an isolation worktree is a local allocation
-(`--local-base`), and a later PR or merge request allocates for publication and
-accepts that candidate.
+Isolation changes the work location, not delivery scope. Allocate for the
+resolved delivery policy and reuse that worktree when suitable. Isolation
+without delivery uses `--local-base`. A local receipt remains local; later
+publication requires a fresh publication allocation, candidate and acceptance.
 
-## Allocate before work
+## Allocate for delivery or isolation
 
 Use the caller's DEVLYN_SHARED_DIR. When this reference is opened
 directly, bind it to this reference's reader-supplied containing
@@ -30,8 +39,10 @@ directory, resolving directory symlinks first. Missing source identity is
 BLOCKED:skill-source-unresolved; a missing task-complete.py is
 BLOCKED:shared-dir-unresolved. Never select another installation.
 
-Run the bound task-complete.py before committing owner inputs, editing a
-change the user asked to ship, or isolating:
+For direct delivery, run the bound task-complete.py after completing the request's
+edits and checks, before committing the delivery candidate. Allocate before
+editing when concurrency requires isolation; if isolation is unavailable, do
+not write to the shared checkout. Queue drains retain their allocation order.
 
 ```sh
 python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \
@@ -39,17 +50,34 @@ python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \
   --worktree '<absent path>' --repository '<owner/repo>' --remote origin --base main
 ```
 
-Every task owns a linked worktree; `--worktree` is required. Its baseline is the
-exact fetched remote base, independent of the anchor's branch or dirty state;
-allocation leaves the anchor's HEAD, index and files untouched. For a commit
-request, other local-only work, or an origin that is not one GitHub repository,
-allocate with `--local-base "$(git rev-parse HEAD)"` and no
-`--repository`/`--remote`, then complete with `--local-only`: that commit is the
-baseline, nothing is fetched or pushed, and `git merge --ff <task branch>`
-brings the change into the user's branch. After an `auto` delivery merges, or a
-`pr` delivery once its PR merges, fetch and run `git merge --ff <remote>/<base>`
-on the base branch to bring it back. Save the returned
-receipt path under the common Gitdir. `reconciled` reports earlier accepted,
+Every delivery allocation owns a linked worktree; `--worktree` is required.
+A publication allocation normally starts at the exact fetched remote base,
+independent of the anchor's branch or dirty state, and leaves the anchor's
+HEAD, index and files untouched. For a commit request, local-only work or
+isolation without publication, use `--local-base` with the exact current HEAD
+and omit `--repository`/`--remote`. Nothing is fetched or pushed; complete with
+`--local-only` only when committing is allowed.
+
+When delivery is implicit and no GitHub origin is configured, use the existing
+local-only route and report `LOCAL_ONLY`, the commit and why no PR/merge occurred.
+An explicit PR/merge request remains blocked. Authentication, network and
+configuration failures are not grounds for this fallback.
+
+After local completion or confirmed PR merge, reconcile the original checkout
+only when its branch and changes remain understood and can be preserved.
+After remote delivery, fetch first. If the branch can fast-forward to the
+delivered result, recheck the copied edits' current ownership and contents,
+then remove them: `git restore --source=HEAD --staged --worktree -- <paths>`
+for tracked paths holding only your edits, and delete copied untracked files.
+Then use `git merge --ff-only <task branch>` for local delivery, or
+`git merge --ff-only <remote>/<base>` on the base branch after remote delivery;
+a drain's `Bring into` command is its own. Once a local delivery is reconciled,
+remove its worktree and task branch (`git worktree remove <worktree>`,
+`git branch -d <task branch>`). Do not switch branches, create a reconciliation
+merge commit or discard WIP to force this step. If reconciliation is unsafe,
+retain and report the edits, delivered result and remaining bring-in action.
+
+Save the returned receipt path under the common Gitdir. `reconciled` reports earlier accepted,
 PR-delivered tasks whose merged resources were cleaned or retained; it is
 informational, so never resume or release a receipt you do not own. Existing
 branches/trees cannot be adopted, even when their names look generated. Nor
@@ -57,14 +85,22 @@ can a receipt that never reached `allocation: owned`: remove its worktree and
 branch if present, delete its receipt directory, then allocate again.
 Unreceipted tasks remain owner-managed.
 
-Move a change already in the checkout as a patch, never a stash, which another
-session can push or pop: `git add -N <its new files>`, then
-`git diff --binary HEAD -- <its paths> > <patch>` and
-`git -C <worktree> apply --3way <patch>`. Check that the worktree diff is
-exactly the change and rerun its checks there. Only then, and only when every
-edit in those paths is yours, drop them from the checkout with
-`git restore --source=HEAD --staged --worktree -- <its paths>`; report any you
-leave.
+Copy attributable task edits into the allocated worktree as a patch, never a
+stash. Establish attribution from the pre-edit contents and starting Git state,
+including staged, unstaged and untracked work. A path-scoped
+`git diff --binary HEAD` (after `git add -N` for new files), applied with
+`git -C <worktree> apply --3way`, is suitable only when every included change
+belongs to this task and its prerequisites exist in the candidate baseline. Otherwise construct the task-only
+delta; if attribution or independence from unshipped work is unclear, preserve
+the checkout and report delivery blocked.
+
+Review the resulting candidate diff and verify that candidate. Reuse prior
+check evidence only when the checked source and relevant execution inputs are
+unchanged; changed bases, conflict resolutions or other relevant differences
+require the affected checks again.
+
+Keep the original edits through pending or failed delivery; only reconciliation
+removes them. Preserve all other work and report anything left behind.
 
 Allocation also returns a receipt-owned `scratch` directory. Put disposable
 build intermediates there (for example, set
@@ -96,18 +132,32 @@ inputs when needed; cleanup is not an instruction to restart parked work.
 
 ## Accept a scoped commit
 
-Direct work: finish actual decisive checks and diff review, stage only the
-accepted paths and commit them. The helper never stages product files. Write a
+In the allocated worktree, finish the candidate's decisive checks and diff
+review, then stage and commit only accepted task changes. The helper never
+stages product files. Write a
 root acceptance file in the checkout (usually ignored `.devlyn/acceptance.json`):
 
 ```json
 {"kind":"direct","task":"<task identity>","source_sha":"<full commit>","checks":[{"command":"<actual check>","evidence":".devlyn/checks.log"}]}
 ```
 
-The owner accepts these checks; the helper preserves evidence bytes and does not
-claim to have independently proved the assertions. Acceptance binds exact bytes
-and source before push; changed acceptance/evidence or subsequent product
-commits require a new accepted task, never implicit descendant approval.
+The owner accepts these checks; the helper preserves evidence bytes and does
+not independently prove the assertions. Acceptance binds exact source and
+evidence before publication. Direct `complete` binds acceptance itself; no
+separate `accept` call is needed.
+
+Changed accepted source or evidence requires a new accepted task, never implicit
+descendant approval. Resume an existing receipt only for its unchanged candidate.
+After merge, implement follow-ups from the updated base. An additive follow-up
+depending on an open PR waits for that predecessor to merge.
+
+If a correction invalidates an open candidate, run `complete --mode pr` against
+its unchanged receipt, with its task tree clean, to cancel owned auto-merge, then
+reobserve the PR. If it
+remains open, close it as superseded and retain its receipt and custody; do not
+resume its delivery. Allocate a replacement from the current remote base,
+include only the still-needed task changes and correction, and verify and
+accept it anew. If the predecessor has merged, make a new follow-up instead.
 
 Queue drains follow ideate's loop protocol
 (`../devlyn-ideate/references/loop.md`): its evidence-derived `loop` result is
@@ -143,10 +193,20 @@ commits or refuses the request, delivery reports `PR` with `merge_refused` and
 the PR waits for a person. Command success alone never proves merge.
 
 `PENDING` retains the workspace and reports a receipt-based resume command.
-`BLOCKED` includes the cause and the same retry path; repair the reported condition
-before retrying. Resume reobserves Git/PR state under a per-receipt lock, reuses
-the original acceptance, and performs only missing eligible effects. Delivery results remain separate from the
-immutable product result; do not rewrite an accepted result for a delivery error.
+`BLOCKED` names the cause and retry action; repair that condition before retrying.
+Resume reobserves Git/PR state under a per-receipt lock, reuses the original
+acceptance and performs only missing eligible effects.
+
+Verification and delivery obey the session's actual permissions. When an
+operation needs unavailable approval, finish permitted work, preserve the edits
+and evidence, and report that operation and its retry action. Before allocation,
+identify the original checkout and outstanding operation; after allocation,
+include the receipt-based resume command. Headless execution neither waives
+permissions nor silently changes delivery policy.
+
+Report verification, delivery and checkout reconciliation separately. A delivery
+error does not rewrite an accepted product result; unperformed verification
+must never be reported as accepted.
 
 ## Yield and retain recoverability
 

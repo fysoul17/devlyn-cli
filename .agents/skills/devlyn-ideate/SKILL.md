@@ -81,12 +81,12 @@ A removed flag stops with its instruction and selects no other behavior.
 
 ## Autonomous policy
 
-> Infer only scope-narrowing, reversible, non-user-visible defaults, and record each assumption once. Reversibility alone is insufficient. Material ambiguity stops the affected work as needs-review with a concrete question; independent authorized work may continue. Never weaken acceptance to obtain completion.
+> For ordinary details the intent leaves open within authorized scope, follow established project conventions, otherwise the narrowest literal or conventional reading consistent with the request; these defaults may be user-visible but must be low-consequence and reversible. Record each choice and reason once. Material ambiguity means competing readings with materially different intended outcomes, unresolved persistent data or state semantics, or public surface beyond the request; stop affected work as needs-review with a concrete question. Independent authorized work may continue. Never omit requested work or weaken acceptance to obtain completion.
 
 ## plan
 
 1. Inspect, then elicit, per [elicitation.md](references/elicitation.md). A document argument is the input contract: carry each substantive requirement into a task without weakening it, cite the document in `## Intent`, and never modify it.
-2. Write `docs/specs/<loop-id>/meta.md` and each task's `spec.md` and `spec.expected.json` per [package-format.md](references/package-format.md). In the manifest, `base_ref` is the delivery branch and `base_sha` the exact commit the loop builds on; `delivery` is `local-only` when the user restricted delivery or, recorded as an assumption, when `origin` does not name one GitHub repository; else the project's `git config --local devlyn.completionMode` (absent means `auto`). `## Execution policy` quotes the autonomous policy, which binds every task's executor.
+2. Write `docs/specs/<loop-id>/meta.md` and each task's `spec.md` and `spec.expected.json` per [package-format.md](references/package-format.md). In the manifest, `base_ref` is the delivery branch and `base_sha` the exact commit the loop builds on; `delivery` is `local-only` when the user restricted delivery or, recorded as an assumption, when `origin` does not name one GitHub repository; `pr` when the user asked to stop at the PR; `auto` when the user asked to merge, even under a `pr` project policy; else the project's `git config --local devlyn.completionMode` (absent means `auto`). An explicit PR or merge request whose `origin` does not name one GitHub repository stops planning with that question. `## Execution policy` quotes the autonomous policy, which binds every task's executor.
 3. Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" check '<absolute meta.md>'` and repair the package until it reports `VALID`.
 4. Report the package path, the tasks with their dependencies, and every recorded assumption.
 

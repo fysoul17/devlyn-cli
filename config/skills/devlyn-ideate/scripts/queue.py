@@ -50,7 +50,7 @@ UNSUPPORTED = {"process_evidence": "phase process obligations", "required_risk_p
 SETTLED = {"LOCAL_ONLY", "COMPLETE", "FAILED"}
 OBLIGATIONS = [
     "Work only in this worktree on its owned branch under the installed methodology; never edit the loop package or docs/specs/queue.md.",
-    "Commit the final candidate on the owned branch; leave no uncommitted or untracked source and remove residue the change created.",
+    "Commit any source changes on the owned branch; when none are needed, use inputs_sha without creating an empty commit. Leave no uncommitted or untracked source and remove residue the change created.",
     "Run `runner` on the committed candidate; review records must bind engine, model, that source and both contract digests.",
     "Write `submission` and exit; report a blocker instead of weakening acceptance.",
 ]
@@ -703,15 +703,22 @@ def annotate(v, refused):
 
 
 def frontier(v, loop):
+    """The loop's accepted task whose source contains every other accepted source. A local loop builds one history, though
+    not always in row order: a task whose unfinished allocation was removed starts again from a later row's source. Without
+    one, as after a fork by an older build, it is the last accepted row, and allocate's prerequisite check names the fork."""
     accepted = [v["states"][row["identity"]] for row in v["rows"] if row.get("loop") == loop
                 and v["states"][row["identity"]]["kind"] == "accepted" and v["states"][row["identity"]]["receipt"]]
-    return accepted[-1] if accepted else None
+    return next((tip for tip in reversed(accepted) if all(ancestor(v["anchor"], state["receipt"]["source_sha"], tip["receipt"]["source_sha"])
+                                                          for state in accepted)), accepted[-1] if accepted else None)
 
 
 def local_start(v, loop):
-    """The commit a local loop's next task starts from, and why it waits instead (loop.md step 3): its latest accepted
-    source; else the start its first allocation fixed, kept in that receipt; else the HEAD of the branch it was added on,
-    which must descend from the manifest base_sha."""
+    """The commit a local loop's next task starts from, and why it waits instead (loop.md steps 2-3): none while a task of
+    the loop is active, so no two tasks start from one frontier; else its latest accepted source; else the start its
+    first allocation fixed, kept in that receipt; else the HEAD of the branch it was added on, which must descend from
+    the manifest base_sha."""
+    if active := next((identity for identity, state in v["states"].items() if identity.split(".")[0] == loop and state["kind"] == "active"), None):
+        return None, f"waiting for {active} (active), since a local loop runs one task at a time"
     tip, added = frontier(v, loop), v["records"].get(loop)
     fixed = next((state["receipt"]["baseline"] for identity, state in v["states"].items() if identity.split(".")[0] == loop
                   and state["receipt"] and not {"remote_url", "allocated_from"} & set(state["receipt"])), None)
@@ -1141,6 +1148,15 @@ def write_reports(v, status, reason):
                  f"- Queue: {f'{CAPTURES}{loop}:{loop_queue(loop)}' if loop in v['records'] else v['anchor'] / loop_queue(loop)}",
                  f"- Drain: {status}" + (f" — {reason}" if reason else ""), f"- Whole-loop acceptance: {loop_acceptance(v, loop, items)}",
                  *([f"- Bring into {line}"] if (line := bring_in(v, loop)) else []), ""]
+        try:
+            meta, _ = load_manifest(v["anchor"], loop, capture(v, loop))
+            decisions = sections(
+                JSON_FENCE_RE.sub("", meta),
+                v["anchor"] / f"docs/specs/{loop}/meta.md",
+            )["Decisions and assumptions"] or "None recorded."
+        except (LoopError, OSError) as exc:
+            decisions = f"Unavailable: {exc}"
+        lines += ["## Package decisions and assumptions", "", decisions, ""]
         labels = (("result", "Product"), ("reason", "Reason"), ("receipt", "Receipt"), ("custody", "Evidence custody"),
                   ("recovery_ref", "Recovery ref"), ("allocation_base", "Allocation base"), ("source", "Accepted source"), ("candidate", "Unaccepted source"),
                   ("terminal", "Terminal commit"), ("delivery", "Delivery"), ("pr", "PR"), ("resume", "Resume"),

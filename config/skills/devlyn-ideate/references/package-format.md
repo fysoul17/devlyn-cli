@@ -23,7 +23,7 @@ Required `##` sections, each non-empty:
 | `Tasks` | Ordered task index, dependency graph and decomposition rationale. No prescribed task count; one task is a valid loop. |
 | `Overall acceptance` | Every overall requirement assigned to a task; cross-task requirements assigned to the integration task's assembled-product check. |
 | `Execution policy` | Baseline, installed-methodology rule, autonomous question policy, delivery policy, stop conditions. |
-| `Decisions and assumptions` | Adopted decisions and defaults with reasons. No elicitation transcript. |
+| `Decisions and assumptions` | Adopted decisions and defaults with reasons. No elicitation transcript. Put defaults affecting a task's observable behavior in that task's requirements and acceptance checks. |
 
 Exactly one fenced `json` block, the manifest. It is authoritative for order and dependencies and never carries status:
 
@@ -45,7 +45,7 @@ Exactly one fenced `json` block, the manifest. It is authoritative for order and
 - Keys are exactly these; `loop_id` equals its directory; each `spec` is `<id>/spec.md`.
 - `delivery` is the inherited `auto` or `pr`, or an explicit `local-only` ([loop.md](loop.md) step 3).
 - `depends_on` names earlier tasks; unknown dependencies, cycles and forward references are rejected before execution.
-- `integration_task_id` is the last task and depends, directly or transitively, on every other task; its acceptance is the assembled-product check. Give the integration obligation to the final substantive task; add a separate integration task only for necessary work that cannot belong there.
+- `integration_task_id` is the last task and depends, directly or transitively, on every other task; its acceptance is the assembled-product check. Assign integration to the final substantive task when its substantive deliverable already depends, directly or transitively, on every other task. Otherwise preserve the substantive tasks' dependencies and append a check-only task that depends on all of them and verifies the assembled product without changing product source; it declares the full-diff guard `{"pattern": ".", "description": "No source changes", "severity": "disqualifier"}` in `forbidden_patterns`.
 
 ## Task spec.md
 

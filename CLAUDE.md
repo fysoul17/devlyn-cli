@@ -11,7 +11,7 @@ This contract serves one goal: any capable engine — Claude, GPT/Codex, or a fu
 Seven rules govern every change. Cite them by name when a decision touches one.
 
 1. **No workaround** — fix the root cause, never the symptom. No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded fallback that hides a broken contract. No config bypasses.
-2. **No overengineering** — smallest change that closes the goal. New abstractions require an observed failure mode they prevent. Subtractive-first: ask "what can I delete instead?" before writing anything new.
+2. **No overengineering** — smallest change that closes the goal. New abstractions require an observed failure mode they prevent. Subtractive-first: ask "what can I delete instead?" before writing anything new. Remove code your change makes unused; only report unrelated pre-existing dead code.
 3. **No guesswork** — verify with the actual files, logs, diffs, and run output before forming conclusions. State the falsifiable prediction BEFORE the experiment; record raw results AFTER. Retroactive prediction edits are dishonest.
 4. **Worldclass** — code that survives review at a non-trivial codebase. Zero CRITICAL, zero HIGH security/design findings on the shippable path.
 5. **Best practice** — idiomatic for the language and framework. Use standard primitives; do not hand-roll what the library already provides.
@@ -27,7 +27,7 @@ Three discipline rules govern HOW the principles are applied:
 ## Quick Start
 
 - `devlyn-ideate` — loop designer and intent queue: `plan <intent or document>` writes a validated loop package, `add` queues its tasks, `status` (or no arguments) reports the queue, `drain` executes it serially.
-- Delivery — direct work edits the current checkout. With known concurrent writers, isolate before editing; on unexplained changes, pause writes until continuing is safe or the work is isolated. To isolate, or when the user asks to ship it (commit, PR or merge), follow `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`). An ideate drain delivers every task. Local-only/no-push instructions win.
+- Delivery — direct work edits the current checkout; deliver completed, verified requests with changes by project policy (default PR and merge), following `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`). With known concurrent writers, isolate before editing; on unexplained changes, pause writes until safe or isolated. An ideate drain delivers every task. Explicit limits win; commit alone stays local.
 - Executor — `devlyn-engines` shows it and pins it in `.devlyn/engines.json`. A pinned executor does the implementation work, direct or drained: when it is not you, delegate to it, and when it is unavailable stop with `BLOCKED:<engine>-unavailable`. Without a pin, you are the executor.
 
 Each skill's `SKILL.md` is the source of truth for its flags and workflow.

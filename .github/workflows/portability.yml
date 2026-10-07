@@ -2,10 +2,10 @@ name: Windows portability
 
 on:
   # Runner minutes are billed, so this runs per release, not per PR (owner,
-  # 2026-10-07). Before merging, run the POSIX half locally:
+  # 2026-10-07): publish.yml calls it on the release tag and publishes only
+  # after it passes. Before merging, run the POSIX half locally:
   # bash scripts/lint-skills.sh && python3 scripts/test-ideate-loop.py
-  push:
-    tags: ['v*']
+  workflow_call:
   workflow_dispatch:
 
 concurrency:
