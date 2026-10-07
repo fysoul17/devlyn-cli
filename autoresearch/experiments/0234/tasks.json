@@ -773,7 +773,7 @@
         "tests/server.test.js": "5b832e6f0dcd2581e25438177be05b25263c9f0e9db7a2bed24b5947e9b08492",
         "web/index.html": "e63acc3860e86908d7fd3ac5f53405d19255b29c345e1492bbb0d2739ae5bb6f"
       },
-      "request": "Add `POST /items` to `server/index.js` so users can append a new item with `{ name, qty }`. The full list should be persisted to `data/items.json` so state survives restarts — the existing read endpoints (`GET /items`, `GET /items/:id`) should also use the same persisted file going forward.\n\nEvery saved item must have a unique numeric id. If two or more POSTs arrive close together, the resulting list must contain every successful one with distinct ids — no duplicates, nothing lost.\n\nInvalid body (missing `name`, missing `qty`, `qty` not a positive number) → respond `400` with `{ error: 'invalid_body', field: '<name>' }`, and the persisted store must be unchanged after the 400.\n\nUpdate `tests/server.test.js` so existing tests still pass AND add at least two new tests covering POST behavior. One of them must fire several POSTs close together and verify the final list contains every item with distinct ids.\n\nNo new npm dependencies. Only touch `server/index.js`, `tests/server.test.js`, and `data/items.json` (which is seeded for you).\n",
+      "request": "Add `POST /items` to `server/index.js` so users can append a new item with `{ name, qty }`. The full list should be persisted to `data/items.json` so state survives restarts \u2014 the existing read endpoints (`GET /items`, `GET /items/:id`) should also use the same persisted file going forward.\n\nEvery saved item must have a unique numeric id. If two or more POSTs arrive close together, the resulting list must contain every successful one with distinct ids \u2014 no duplicates, nothing lost.\n\nInvalid body (missing `name`, missing `qty`, `qty` not a positive number) \u2192 respond `400` with `{ error: 'invalid_body', field: '<name>' }`, and the persisted store must be unchanged after the 400.\n\nUpdate `tests/server.test.js` so existing tests still pass AND add at least two new tests covering POST behavior. One of them must fire several POSTs close together and verify the final list contains every item with distinct ids.\n\nNo new npm dependencies. Only touch `server/index.js`, `tests/server.test.js`, and `data/items.json` (which is seeded for you).\n",
       "allowed": [
         "server/index.js",
         "tests/server.test.js",
@@ -1426,7 +1426,7 @@
         "tests/server.test.js": "5b832e6f0dcd2581e25438177be05b25263c9f0e9db7a2bed24b5947e9b08492",
         "web/index.html": "e63acc3860e86908d7fd3ac5f53405d19255b29c345e1492bbb0d2739ae5bb6f"
       },
-      "request": "Add `POST /items/import` to `server/index.js`. The endpoint takes a JSON body `{ items: [...] }` where each item has a `name` (non-empty string after trim) and a `qty` (positive integer).\n\nA batch is accepted as a whole or not at all. If the batch is fully valid, append every item to the list and return 201 with `{ inserted: <count> }`. If any item fails validation, return 400 with `{ error: 'invalid_batch', index, field }` and leave the stored list exactly as it was before the request.\n\nEmpty body, missing `items`, or `items` not an array → 400 with `{ error: 'invalid_body' }`. Again, the existing list must be untouched.\n\nUpdate `tests/server.test.js` so existing tests still pass AND add at least two new tests. One must send a batch with one bad item in the middle and verify the prior list is unchanged after the failed call.\n\nNo new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.\n",
+      "request": "Add `POST /items/import` to `server/index.js`. The endpoint takes a JSON body `{ items: [...] }` where each item has a `name` (non-empty string after trim) and a `qty` (positive integer).\n\nA batch is accepted as a whole or not at all. If the batch is fully valid, append every item to the list and return 201 with `{ inserted: <count> }`. If any item fails validation, return 400 with `{ error: 'invalid_batch', index, field }` and leave the stored list exactly as it was before the request.\n\nEmpty body, missing `items`, or `items` not an array \u2192 400 with `{ error: 'invalid_body' }`. Again, the existing list must be untouched.\n\nUpdate `tests/server.test.js` so existing tests still pass AND add at least two new tests. One must send a batch with one bad item in the middle and verify the prior list is unchanged after the failed call.\n\nNo new npm dependencies. Only touch `server/index.js` and `tests/server.test.js`.\n",
       "allowed": [
         "server/index.js",
         "tests/server.test.js"
@@ -2751,7 +2751,7 @@
       "domain": "quote tax and discount ordering",
       "source_dir": "autoresearch/experiments/0234/sources/F16",
       "source_sha256": {
-        ".gitignore": "f0bbdeb56a9f847887c1cd38689dfaa055238b4d2da124195b40e688e5e935dd",
+        ".gitignore": "8a92cfde791dac0fa96e2d706f9d01447e637a4849a04c27646b645f8d8d6b86",
         "README.md": "6cb783c6f14151821c342255f3f5b3acadcab7f47967ec9887ed6d12364de964",
         "bin/cli.js": "b8f5c3c9015c8c8491430b4be3001c03d123008518cb0c25a4ecdec8fbaa640b",
         "data/pricing.json": "01669946ff83f603ccd04d173905b63cd945fdf2fb4bc0decd72317964e381af",
@@ -3407,7 +3407,7 @@
       "domain": "fulfillment allocation rollback",
       "source_dir": "autoresearch/experiments/0234/sources/F23",
       "source_sha256": {
-        ".gitignore": "f0bbdeb56a9f847887c1cd38689dfaa055238b4d2da124195b40e688e5e935dd",
+        ".gitignore": "8a92cfde791dac0fa96e2d706f9d01447e637a4849a04c27646b645f8d8d6b86",
         "README.md": "6cb783c6f14151821c342255f3f5b3acadcab7f47967ec9887ed6d12364de964",
         "bin/cli.js": "b8f5c3c9015c8c8491430b4be3001c03d123008518cb0c25a4ecdec8fbaa640b",
         "node_modules/.package-lock.json": "011ab73a43147f91c36d530862a325648fa68118bdb5b1190af32ee341455918",
@@ -4059,7 +4059,7 @@
       "domain": "cart promotion ordering",
       "source_dir": "autoresearch/experiments/0234/sources/F25",
       "source_sha256": {
-        ".gitignore": "f0bbdeb56a9f847887c1cd38689dfaa055238b4d2da124195b40e688e5e935dd",
+        ".gitignore": "8a92cfde791dac0fa96e2d706f9d01447e637a4849a04c27646b645f8d8d6b86",
         "README.md": "6cb783c6f14151821c342255f3f5b3acadcab7f47967ec9887ed6d12364de964",
         "bin/cli.js": "b8f5c3c9015c8c8491430b4be3001c03d123008518cb0c25a4ecdec8fbaa640b",
         "data/catalog.json": "202a2800929054fe075ca940c7333c239b2bff550631edc185314b914d588978",
