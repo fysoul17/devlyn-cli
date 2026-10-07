@@ -1153,7 +1153,7 @@ def write_reports(v, status, reason):
             decisions = sections(
                 JSON_FENCE_RE.sub("", meta),
                 v["anchor"] / f"docs/specs/{loop}/meta.md",
-            )["Decisions and assumptions"]
+            )["Decisions and assumptions"] or "None recorded."
         except (LoopError, OSError) as exc:
             decisions = f"Unavailable: {exc}"
         lines += ["## Package decisions and assumptions", "", decisions, ""]

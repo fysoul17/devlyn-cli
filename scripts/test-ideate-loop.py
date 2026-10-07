@@ -405,6 +405,18 @@ class LoopFixture(unittest.TestCase):
                      f"## Package decisions and assumptions\n\nUnavailable: {missing}\n", f"## nr.t1\n\n- Product: pending\n- Reason: {missing}\n"):
             self.assertIn(part, report)
 
+    def test_a_package_without_decisions_reports_none_recorded(self):
+        # Prediction (rp-d3 policy 1): when the package's `## Decisions and assumptions` holds only the manifest, the report's
+        # package decisions read "None recorded.". Before: that section of the report was empty.
+        meta = self.queue["write_package"](self.anchor, "nd", [CHAIN[0]], base=self.base)
+        text = meta.read_text(encoding="utf-8")
+        manifest = self.queue["JSON_FENCE_RE"].search(text).group(0)
+        meta.write_text(text.replace(manifest + "\n\n", "").replace("None beyond the task contracts.", manifest), encoding="utf-8")
+        self.behaviors["nd.t1"] = {"product": "greeting"}
+        self.cli("add", meta)
+        self.drain()
+        self.assertIn("## Package decisions and assumptions\n\nNone recorded.\n\n## nd.t1\n", self.report("nd"))
+
     def test_a_local_loop_starts_from_the_branch_it_was_added_on(self):
         # Prediction (L): with the checkout switched to another branch, a local loop's first task starts from the HEAD of
         # the branch it was added on, and the report brings it into that branch; while that HEAD does not descend from the
