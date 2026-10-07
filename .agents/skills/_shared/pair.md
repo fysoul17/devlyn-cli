@@ -4,8 +4,9 @@ You and one peer session work out the change together in at most three peer
 turns. You alone edit the workspace; the peer reads it and argues with you.
 
 Peer: the other engine (a Claude owner pairs with Codex, a Codex owner with
-Claude), at its CLI's configured default model and effort. If the peer cannot
-start or a turn fails, report that and continue solo.
+Claude), at its CLI's configured default model and effort: a separate CLI
+session started with the commands below, never a subagent of your own session.
+If the peer cannot start or a turn fails, report that and continue solo.
 
 ## Turns
 
@@ -40,8 +41,9 @@ start or a turn fails, report that and continue solo.
 ## Commands
 
 Run them from the repository root. Keep each turn's text and the peer's
-answer under `.devlyn/pair/` (ignored), one file per turn: `turn1.md`,
-`turn2.md`, `turn3.md`.
+answer under `.devlyn/pair/`, one file per turn: `turn1.md`, `turn2.md`,
+`turn3.md`. These scratch files are ignored and never committed; they are not
+part of the change and do not count against limits on which files may change.
 
 Codex peer, through `codex-monitored.sh` beside this file (`<dir>`) — the first
 turn, then each later turn in the same session:
@@ -54,7 +56,8 @@ CODEX_MONITORED_TIMEOUT_SEC=540 bash <dir>/codex-monitored.sh resume --json -c s
 `<thread_id>` is in the first turn's `thread.started` event; each answer is the
 last `agent_message` item of a run that ends in `turn.completed`.
 
-Claude peer — choose a new UUID for the first turn:
+Claude peer — choose a new UUID for the first turn (for example
+`python3 -c 'import uuid; print(uuid.uuid4())'`):
 
 ```
 timeout -k 5s 540s claude -p --session-id <uuid> --tools Read,Grep,Glob --permission-mode dontAsk --output-format json < .devlyn/pair/turn1.md > .devlyn/pair/peer1.json
