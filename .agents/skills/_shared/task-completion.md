@@ -59,7 +59,7 @@ Unreceipted tasks remain owner-managed.
 
 Move a change already in the checkout as a patch, never a stash, which another
 session can push or pop: `git add -N <its new files>`, then
-`git diff --binary -- <its paths> > <patch>` and
+`git diff --binary HEAD -- <its paths> > <patch>` and
 `git -C <worktree> apply --3way <patch>`. Check that the worktree diff is
 exactly the change and rerun its checks there. Only then, and only when every
 edit in those paths is yours, drop them from the checkout with
