@@ -58,9 +58,10 @@ def commit(files, message):
     git("add", *files)
     git("commit", "-q", "-m", message)
     return git("rev-parse", "HEAD")
-source = commit(config["products"][behavior["product"]], "implement " + packet["task"])
+source = (packet["inputs_sha"] if behavior.get("check_only")
+          else commit(config["products"][behavior["product"]], "implement " + packet["task"]))
 submission = {"schema_version": 1, "task": packet["task"], "source_sha": source, "summary": "done (informational)",
-              "assumptions": behavior.get("assumptions", ["fixture assumption for " + packet["task"]])}
+              "assumptions": behavior.get("assumptions", ["fixture assumption for " + packet["task"]]), "blockers": behavior.get("blockers", [])}
 if behavior.get("runner", True):
     checked = subprocess.run(packet["runner"], check=True, capture_output=True, text=True, encoding="utf-8")
     submission["runner_results"] = [json.loads(checked.stdout)["result"]]
@@ -654,15 +655,74 @@ class LoopFixture(unittest.TestCase):
 
     def test_frontier_is_the_latest_accepted_source(self):
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1"], "Greeting app", [APP_CHECK]), ("t4", ["t2", "t3"], "Notes again", [NOTES_CHECK])]
-        self.plan("fr", tasks, {"fr.t1": {"product": "greeting"}, "fr.t2": {"product": "notes"}, "fr.t3": {"product": "app"}, "fr.t4": {"product": "notes"}})
-        self.drain()
+        self.plan("fr", tasks, {"fr.t1": {"product": "greeting"}, "fr.t2": {"product": "notes"}, "fr.t3": {"product": "app"}, "fr.t4": {"check_only": True}})
+        result = self.drain()
         t1, t2, t3, t4 = (self.receipt(f"fr.{task}") for task in ("t1", "t2", "t3", "t4"))
         # Each later task starts from the latest accepted source, not the first.
         self.assertEqual((t2["baseline"], t3["baseline"], t4["baseline"]), (t1["source_sha"], t2["source_sha"], t3["source_sha"]))
+        # Prediction (rp-d3 policy 2): the check-only fr.t4 submits its committed inputs unchanged and is accepted, so the loop
+        # is ACCEPTED. Before: its executor committed notes.txt unchanged, which git refused, so fr.t4 never submitted.
+        self.assertEqual(self.tasks(result)["fr.t4"]["result"], "accepted")
+        self.assertEqual(t4["source_sha"], t4["acceptance"]["inputs_sha"])
+        self.assertIn("- Whole-loop acceptance: ACCEPTED\n", self.report("fr"))
         # A receipt whose attached terminal commit lacks its result's mark stops selection.
         receipt = self.receipt_path("fr.t1")
         receipt.write_text(json.dumps(dict(json.loads(receipt.read_text(encoding="utf-8")), product="FAILED")), encoding="utf-8")
         self.assertIn(f"fr.t1: terminal commit {t1['publish_sha']} does not carry its failed mark", self.cli("status", "--repo", self.anchor, code=1)["reason"])
+
+    def plan_checker(self, loop, checks, behaviors, delivery="local-only"):
+        """Add a loop of independent t1 and t2, then t3, a check-only task depending on both whose diff guard refuses any
+        source change (rp-d3 policy 2)."""
+        tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1", "t2"], "Assembled product", checks)]
+        meta = self.queue["write_package"](self.anchor, loop, tasks, delivery=delivery, base=self.base)
+        (meta.parent / "t3/spec.expected.json").write_text(json.dumps({"verification_commands": checks, "forbidden_patterns": [
+            {"pattern": ".", "description": "No source changes", "severity": "disqualifier"}]}), encoding="utf-8")
+        self.behaviors.update(behaviors)
+        self.cli("add", meta)
+
+    def test_a_check_only_task_accepts_its_unchanged_candidate(self):
+        # Prediction (rp-d3 policy 2): with the independent ck.t1 and ck.t2 accepted, the check-only ck.t3, which depends on
+        # both, submits its committed inputs unchanged (source_sha == inputs_sha, no empty commit); both its checks pass, so
+        # they observe both products, its diff guard passes, and it is accepted and delivered LOCAL_ONLY, so the loop is
+        # ACCEPTED. Before: the fixture executor committed a product for every task, so none could submit its inputs.
+        self.plan_checker("ck", [GREET_CHECK, NOTES_CHECK], {"ck.t1": {"product": "greeting"}, "ck.t2": {"product": "notes"}, "ck.t3": {"check_only": True}})
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: (task["result"], task["delivery"]) for identity, task in tasks.items()},
+                         {f"ck.{task}": ("accepted", "LOCAL_ONLY") for task in ("t1", "t2", "t3")})
+        checker = self.receipt("ck.t3")["acceptance"]
+        self.assertEqual((checker["source_sha"], [command["passed"] for command in checker["commands"]],
+                          [guard["passed"] for guard in checker["guards"] if guard["rule"] == "forbidden_patterns/0"]), (checker["inputs_sha"], [True, True], [True]))
+        self.assertIn("- Whole-loop acceptance: ACCEPTED\n", self.report("ck"))
+
+    def test_a_failed_substantive_task_blocks_only_the_check_only_task(self):
+        # Prediction (rp-d3 policy 2): when t1 fails its check (fa) or stops as needs-review (rv), the independent t2 is still
+        # accepted, the check-only t3 becomes blocked-prerequisite without executing, and whole-loop acceptance stays
+        # INCOMPLETE. The runtime is unchanged; this guards the independent progress the policy relies on.
+        question = "Should greet() accept an empty name?"
+        self.plan_checker("fa", [GREET_CHECK, NOTES_CHECK], {"fa.t1": {"product": "bad-greeting"}, "fa.t2": {"product": "notes"}, "fa.t3": {"check_only": True}})
+        self.plan_checker("rv", [GREET_CHECK, NOTES_CHECK], {"rv.t1": {"product": "greeting", "blockers": [{"kind": "needs-review", "detail": question}]},
+                                                             "rv.t2": {"product": "notes"}, "rv.t3": {"check_only": True}})
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, {
+            "fa.t1": ("failed", "failed: command 0 (R1) exit 1, expected 0"), "fa.t2": ("accepted", None), "fa.t3": ("blocked", "blocked-prerequisite:fa.t1"),
+            "rv.t1": ("failed", f"needs-review: {question}"), "rv.t2": ("accepted", None), "rv.t3": ("blocked", "blocked-prerequisite:rv.t1")})
+        self.assertEqual((tasks["rv.t1"]["questions"], self.calls("fa.t3"), self.calls("rv.t3")), ([question], 0, 0))
+        for loop in ("fa", "rv"):
+            self.assertIn(f"- Whole-loop acceptance: INCOMPLETE — {loop}.t1 failed, {loop}.t3 blocked\n", self.report(loop))
+
+    def test_a_check_only_task_fails_on_its_assembled_product_or_a_source_change(self):
+        # Prediction (rp-d3 policy 2): with both substantive tasks accepted, the check-only task fails, and whole-loop
+        # acceptance stays INCOMPLETE, when the assembled product fails its check (ca.t3: no app.py) and when its executor
+        # commits a product edit, which its full-diff guard refuses (ce.t3). The runtime is unchanged; this guards that a
+        # checker neither passes on a broken assembly nor changes product source.
+        self.plan_checker("ca", [APP_CHECK], {"ca.t1": {"product": "greeting"}, "ca.t2": {"product": "notes"}, "ca.t3": {"check_only": True}})
+        self.plan_checker("ce", [GREET_CHECK, NOTES_CHECK], {"ce.t1": {"product": "greeting"}, "ce.t2": {"product": "notes"}, "ce.t3": {"product": "todo"}})
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, {
+            "ca.t1": ("accepted", None), "ca.t2": ("accepted", None), "ca.t3": ("failed", "failed: command 0 (R1) exit 2, expected 0"),
+            "ce.t1": ("accepted", None), "ce.t2": ("accepted", None), "ce.t3": ("failed", "failed: guard forbidden_patterns/0 No source changes")})
+        for loop in ("ca", "ce"):
+            self.assertIn(f"- Whole-loop acceptance: INCOMPLETE — {loop}.t3 failed\n", self.report(loop))
 
     def test_interruption_after_acceptance_writes_only_the_missing_transition(self):
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", "hold": True}, "inv.t2": {"product": "app"}})
@@ -1183,6 +1243,22 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"sq.t1": "x", "sq.t2": "x"})
         report = (self.common / "devlyn-loops/sq/drain-report.md").read_text(encoding="utf-8")
         self.assertIn("- Bring into main: git merge --ff origin/main\n", report)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_check_only_task_delivers_after_its_squash_merged_prerequisites(self):
+        # Prediction (rp-d3 policy 2): in an auto loop whose PRs squash-merge, the check-only sc.t3 starts from a remote base
+        # holding both prerequisites' squash merges, commits nothing (source_sha == inputs_sha == that base), and its row-only
+        # PR merges, so every remote row is [x]. The runtime is unchanged; this guards the remote path of the policy.
+        bare, _ = self.remote(pending=False, squash=True)
+        self.plan_checker("sc", [GREET_CHECK, NOTES_CHECK], {"sc.t1": {"product": "greeting"}, "sc.t2": {"product": "notes"}, "sc.t3": {"check_only": True}},
+                          delivery="auto")
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"sc.t1": "COMPLETE", "sc.t2": "COMPLETE", "sc.t3": "COMPLETE"})
+        checker = self.receipt("sc.t3")
+        self.assertEqual((checker["source_sha"], checker["acceptance"]["inputs_sha"]), (checker["baseline"], checker["baseline"]))
+        for task in ("t1", "t2"):
+            self.g("merge-base", "--is-ancestor", self.receipt(f"sc.{task}")["merge"]["mergeCommit"]["oid"], checker["baseline"])
+        self.assertEqual(self.remote_rows(bare), {"sc.t1": "x", "sc.t2": "x", "sc.t3": "x"})
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_failed_carrier_hands_the_plan_to_the_next_task(self):

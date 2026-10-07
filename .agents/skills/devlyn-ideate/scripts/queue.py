@@ -50,7 +50,7 @@ UNSUPPORTED = {"process_evidence": "phase process obligations", "required_risk_p
 SETTLED = {"LOCAL_ONLY", "COMPLETE", "FAILED"}
 OBLIGATIONS = [
     "Work only in this worktree on its owned branch under the installed methodology; never edit the loop package or docs/specs/queue.md.",
-    "Commit the final candidate on the owned branch; leave no uncommitted or untracked source and remove residue the change created.",
+    "Commit any source changes on the owned branch; when none are needed, use inputs_sha without creating an empty commit. Leave no uncommitted or untracked source and remove residue the change created.",
     "Run `runner` on the committed candidate; review records must bind engine, model, that source and both contract digests.",
     "Write `submission` and exit; report a blocker instead of weakening acceptance.",
 ]
