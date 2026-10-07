@@ -11,7 +11,7 @@ This contract serves one goal: any capable engine — Claude, GPT/Codex, or a fu
 Seven rules govern every change. Cite them by name when a decision touches one.
 
 1. **No workaround** — fix the root cause, never the symptom. No `any`, no `@ts-ignore`, no silent `catch`, no hardcoded fallback that hides a broken contract. No config bypasses.
-2. **No overengineering** — smallest change that closes the goal. New abstractions require an observed failure mode they prevent. Subtractive-first: ask "what can I delete instead?" before writing anything new.
+2. **No overengineering** — smallest change that closes the goal. New abstractions require an observed failure mode they prevent. Subtractive-first: ask "what can I delete instead?" before writing anything new. Remove code your change makes unused; only report unrelated pre-existing dead code.
 3. **No guesswork** — verify with the actual files, logs, diffs, and run output before forming conclusions. State the falsifiable prediction BEFORE the experiment; record raw results AFTER. Retroactive prediction edits are dishonest.
 4. **Worldclass** — code that survives review at a non-trivial codebase. Zero CRITICAL, zero HIGH security/design findings on the shippable path.
 5. **Best practice** — idiomatic for the language and framework. Use standard primitives; do not hand-roll what the library already provides.
