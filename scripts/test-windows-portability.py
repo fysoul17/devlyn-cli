@@ -257,6 +257,18 @@ init({options});
         self.invoke('installClaudeCore();')
         self.assertEqual(conventions.read_bytes(), b'team conventions\n')
 
+    def test_claude_install_ships_no_templates(self):
+        # The spec and prompt templates are no longer shipped (owner, 2026-10-07): a new install adds
+        # none and `list` shows none; a copy an earlier release installed is the user's now and stays.
+        self.invoke('installClaudeCore();')
+        self.assertFalse((self.project / '.claude/templates').exists())
+        self.assertNotIn(b'Templates', self.cli('list').stdout)
+        kept = self.project / '.claude/templates/template-feature.spec.md'
+        kept.parent.mkdir(parents=True)
+        kept.write_bytes(b'team template\n')
+        self.invoke('installClaudeCore();')
+        self.assertEqual(kept.read_bytes(), b'team template\n')
+
     def test_agents_command_is_removed_with_replacement(self):
         (self.project / 'keep.txt').write_bytes(b'project user bytes\r\n')
         keep = self.home / '.codex/skills/user-skill/keep'
