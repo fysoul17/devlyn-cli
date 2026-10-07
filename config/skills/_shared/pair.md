@@ -31,7 +31,7 @@ start or a turn fails, report that and continue solo.
   check rather than weakening a valid one.
 - Recovery must not hide a failure the request requires reporting.
 - Run each turn in the foreground: give it at most 540 seconds (Codex:
-  `CODEX_MONITORED_TIMEOUT_SEC=540`; Claude: `timeout 540` where available),
+  `CODEX_MONITORED_TIMEOUT_SEC=540`; Claude: `timeout -k 5s 540s` where installed),
   wait up to 600 seconds, and check that it ended successfully. Never end your
   session while a turn runs.
 - Final evidence comes from the submitted source; an edit after a check makes
@@ -57,8 +57,8 @@ last `agent_message` item of a run that ends in `turn.completed`.
 Claude peer — choose a new UUID for the first turn:
 
 ```
-claude -p --session-id <uuid> --tools Read,Grep,Glob --permission-mode dontAsk --output-format json < .devlyn/pair/turn1.md > .devlyn/pair/peer1.json
-claude -p --resume <uuid> --tools Read,Grep,Glob --permission-mode dontAsk --output-format json < .devlyn/pair/turn2.md > .devlyn/pair/peer2.json
+timeout -k 5s 540s claude -p --session-id <uuid> --tools Read,Grep,Glob --permission-mode dontAsk --output-format json < .devlyn/pair/turn1.md > .devlyn/pair/peer1.json
+timeout -k 5s 540s claude -p --resume <uuid> --tools Read,Grep,Glob --permission-mode dontAsk --output-format json < .devlyn/pair/turn2.md > .devlyn/pair/peer2.json
 ```
 
 Each answer is `result` when `is_error` is false.
