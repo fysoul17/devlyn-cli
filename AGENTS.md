@@ -27,6 +27,7 @@ Three discipline rules govern HOW the principles are applied:
 ## Quick Start
 
 - `devlyn-ideate` — loop designer and intent queue: `plan <intent or document>` writes a validated loop package, `add` queues its tasks, `status` (or no arguments) reports the queue, `drain` executes it serially.
+- Failure paths — before changing persistence, filesystem, locking, or process/thread behavior, including in tests, read `_shared/failure-paths.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`).
 - Delivery — direct work edits the current checkout; deliver completed, verified requests with changes by project policy (default PR and merge), following `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`). With known concurrent writers, isolate before editing; on unexplained changes, pause writes until safe or isolated. An ideate drain delivers every task. Explicit limits win; commit alone stays local.
 - Executor — `devlyn-engines` shows it and pins it in `.devlyn/engines.json`. A pinned executor does the implementation work, direct or drained: when it is not you, delegate to it, and when it is unavailable stop with `BLOCKED:<engine>-unavailable`. Without a pin, you are the executor.
 
