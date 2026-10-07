@@ -1,4 +1,4 @@
-# 0232 stage 1 closed; resolve retired (PR #171); ideate loop redesigned and verified by real runs (PR #172); final fixes with in-place direct work (PR #173); next is the owner's release prep, then the installed-baseline registration
+# 0232 stage 1 closed; resolve retired (PR #171); ideate loop redesigned and verified by real runs (PR #172); final fixes with in-place direct work (PR #173); the owner's release-prep decisions applied (this PR); next is the version and release notes, then the installed-baseline registration
 
 ## The owner's direction (2026-10-05)
 
@@ -24,11 +24,17 @@ Wall, input and output are judged per correctly completed task, failures include
   - Rung 1 stays unmerged on `candidate/0232-rung1` (`5bf3dc74`).
 - **Product:**
   - The ideate loop and the retirement of design-ui and the queue skill are merged (PR #169).
-  - resolve is retired as a product-scope decision (0232 §8; PR #171, merge `d2d34e3e`). The owner can veto the retirement before release; root then restores resolve on top of current main.
+  - resolve is retired as a product-scope decision (0232 §8; PR #171, merge `d2d34e3e`). The owner confirmed it on 2026-10-07 (no veto).
   - The ideate redesign is merged (PR #172, merge `52636e19`). add captures the package under `refs/devlyn/captures/<loop-id>`, and each loop keeps its rows in its own `docs/specs/<loop-id>/queue.md`. The drain also fills the executor's `{worktree_git_dir}`, review records may carry keys acceptance does not read, a task waits while its start commit's CLAUDE.md or AGENTS.md differs from the checkout's, and local allocation needs no `--repository`.
     - Astra ultra reviewed it as SHIP (`e2e-fix-a2-astra.out.md` in the checkout's `.devlyn/bundle/`).
     - Real Claude-host and Codex-host loops passed first try with the documented commands; the evidence is in `~/.local/share/nx01/e2e-smoke3`.
-  - This final-fixes PR (#173, `candidate/final-fixes`) applies `final-fixes-contract.md`, `final-fixes-part2-contract.md` and `final-fixes-part4-contract.md` (`.devlyn/bundle/`).
+  - The release-prep decisions PR (`candidate/release-prep-decisions`, owner decisions of 2026-10-07; contract `release-prep-contract.md`, Astra design records `rp-d1/d2/d3-*-astra.out.md` in `.devlyn/bundle/`):
+    - **Delivery default restored:** with no delivery instruction, a completed, verified direct request with changes is delivered by project policy, default PR and merge. Explicit limits win (commit alone stays local, PR stops at the PR, local-only/no-push/just-edit). Edits stay in place; isolation changes location, not scope; the original edits stay until a safe `--ff-only` reconciliation; an implicit delivery without a GitHub origin falls back to a reported local commit.
+    - **Cleanup sentence restored** to principle 2 as a contract correction (rp-d2); its isolated effect is still unmeasured.
+    - **Ideate:** bounded autonomous defaults, which may be user-visible but must be low-consequence and recorded; the drain report carries the package's decisions; real dependencies are kept, with a check-only integration task when deliverables are independent; a local loop runs one task at a time, and its frontier is the accepted source containing the others.
+    - **Release:** an MIT LICENSE; publish runs only after the portability suites pass; the Claude target no longer ships the three spec and prompt templates (earlier copies stay).
+    - The repository has GitHub auto-merge turned off, so `auto` delivery here ends at the PR with `merge_refused` until a person merges it.
+  - The final-fixes PR (#173, `candidate/final-fixes`) applied `final-fixes-contract.md`, `final-fixes-part2-contract.md` and `final-fixes-part4-contract.md` (`.devlyn/bundle/`).
     - Owner decision (2026-10-07), from the slowness investigation (`slowness-investigation.json`): direct work edits the current checkout. Delivery runs only when the user asks to ship it, and only as far as asked; root mapped a commit request to local-only, a PR request to `--mode pr` and a merge request to `--mode auto`. Every drained task is still delivered.
     - Concurrent writers (owner decision; Astra's synthesis in `direct-work-design-astra.out.md`): with known concurrent writers, isolate before editing; on unexplained changes, pause writes (`task-completion.md` "Concurrent writers"). A patch replaces the stash transfer.
     - Astra ultra reviewed the fix round after its final-audit REVISE as SHIP (`final-fixes-round2-astra.out.md`); both of its follow-ups are fixed.
@@ -36,7 +42,7 @@ Wall, input and output are judged per correctly completed task, failures include
 
 **Next:**
 
-1. **The owner's decisions and release prep:** the version and release notes, a LICENSE file, whether to delete `config/templates`, whether to restore the orphan-cleanup sentence to the installed block, a publish CI gate (since PR #174 the Windows portability suite runs only on the release tag, beside the publish job, so it gates nothing), whether to veto resolve's retirement (0232 §8), and two ideate policies from phase B: the `--autonomous` rule on user-visible defaults (restore 4.1.0's parenthetical, or allow recorded literal interpretations; phase B marks it before release) and the integration-task rule that forces false dependencies. Also confirm or change root's delivery extent for direct work (commit → local-only, PR → `--mode pr`, merge → `--mode auto`).
+1. **Release prep (the owner's):** the version and release notes. The notes should name: the restored delivery default; the cleanup sentence; the bounded autonomous defaults; the check-only integration task; one task at a time in local loops; the removed templates; the LICENSE; and the publish gate. Whether to turn on GitHub auto-merge for this repository so `auto` delivery merges without a person is also the owner's call.
 2. **The installed-baseline registration:** the principles block plus ideate, with the easy-task panel and 0223's B5 task (0232 §8). After that, I′, licensed by I's lost final reviews and review cost.
 3. **Follow-ups:** the Known follow-ups below.
 
@@ -64,12 +70,15 @@ One line per class. Details, each with its reproduction described, are in the ch
 - **`--receipt` alias:** `complete` refuses a receipt path written through a symlink or `..`; agents copy the printed path, so it was left as it predates part 4 (part-4 verification).
 - **Earlier lists:** `r4-followups.md` (round 4) and the Deferred sections of `e2e-fix-r3-contract.md` (round 3) and `final-fixes-contract.md` (phase A).
 - **Real-run evidence:** the real-host loop runs (`~/.local/share/nx01/e2e-smoke3` and `e2e-smoke4`) cover only local-only loops in repositories with no remote; before release, run one auto loop on a throwaway GitHub repository (phase B "Real-host evidence covers only local-only loops").
+- **Default-delivery cost:** wall time and tokens per delivered request under the restored default are unmeasured (rp-d1); the 13.5–15.6 s smoke covered editing only.
+- **Release fingerprints:** publish regenerates `bin/instruction-templates.json` from first-parent history, so a block installed only from a PR-branch commit (such as `7e2eef0a`) is not recognized after release.
+- **Forked local loops:** a local loop forked by a build before the one-task-at-a-time rule still stops the whole drain, and no test asserts that refusal.
+- **Bounded defaults across engines:** rp-d3's real-model cross-host planning cases (display defaults proceed and enter task checks; persistent-state ambiguity or an unrequested interface stops) are unrun.
 
 ## Open user decisions and carried notes
 
 - **The `_devlynjudge` user record (uid 450) remains.** macOS refuses its deletion without Full Disk Access. Removing it is the user's call.
-- **Experiment roots in `/Users/Shared`** (the 0225–0229 raw outputs, about 22 GB, including `devlyn-vr-0228-dev` with the 0228/0229 replays) remain until the user decides. About 99,000 of their files belong to `_devlynjudge`, so removal needs admin rights.
-- **Orphan cleanup.** Rung 1 keeps the orphan-cleanup obligation. Its isolated effect is unmeasured, and the separate 0223 slim-plus-orphan add-back is unrun and remains an open user decision.
+- **Orphan cleanup.** The block carries the cleanup sentence again (owner decision 2026-10-07, rp-d2). Its isolated effect is unmeasured; 0223's add-back measurement still belongs to the installed-baseline registration.
 
 ## Start here (every new session)
 
@@ -108,11 +117,11 @@ One line per class. Details, each with its reproduction described, are in the ch
   - Do not rerun D1. 0185 and D1–D4 are not holdout evidence.
 - **Frozen material.**
   - A16, frozen results and the original WIP stay untouched.
-  - 0226's sealed root `/Users/Shared/devlyn-vr` stays byte-identical.
+  - The 0225–0229 raw roots in `/Users/Shared` were deleted on 2026-10-07 with the owner's approval; their results remain under `experiments/`.
   - Past stop verdicts (0211–0219, 0224, 0225) are history, not something to regrade.
   - Do not run a third 0225 replay or its live comparison, and do not publish its held candidate `22616b57`.
 - **Replay apparatus gotchas (0225).**
   - Judge roots go outside `$HOME`: Claude loads every ancestor `.claude/CLAUDE.md`.
   - Codex judges need an isolated HOME (a shim), because `--ignore-user-config` still loads `$CODEX_HOME/AGENTS.md` and `~/.agents/skills`.
-  - nvm Codex auto-updates silently, so pin a private install (0.156.1 at `/Users/Shared/devlyn-0225-codex-0.156.1`).
+  - nvm Codex auto-updates silently, so pin a private install.
 - **User-facing messages** are always in Korean, plain and short: the conclusion first, then what the user must decide, then the recommendation.

@@ -408,7 +408,7 @@ Root made this decision under the owner's direction of 2026-10-05:
 - "resolve가 없어지던지 intent로 재설계되든지 할거 같은데, 그거에 맞게 설계 되어야 하지 않겠어?"
 - "그리고 사실 resolve가 없이도 claude.md나 agents.md 로 그게 가능하면 없어도 되긴 해."
 
-The owner's final instruction asked for a releasable state on main. Astra (`result-product-a1`) recommends the same and frames it as an owner yes/no question. **The owner can veto it before any release; root then restores resolve on top of current main.** Reverting PR #171 (merge `d2d34e3e`) alone no longer applies cleanly, because PR #172 and the final fixes build on it.
+The owner's final instruction asked for a releasable state on main. Astra (`result-product-a1`) recommends the same and frames it as an owner yes/no question. **The owner can veto it before any release; root then restores resolve on top of current main.** The owner confirmed the retirement on 2026-10-07 (no veto). Reverting PR #171 (merge `d2d34e3e`) alone no longer applies cleanly, because PR #172 and the final fixes build on it.
 
 **What it is not.**
 - It is not an admitted replacement. The registered replacement test failed, because I was not admitted.
