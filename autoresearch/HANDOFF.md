@@ -1,4 +1,4 @@
-# 0232 stage 1 closed; resolve retired (PR #171); ideate loop redesigned and verified by real runs (PR #172); next is the owner's release prep, then the installed-baseline registration
+# 0232 stage 1 closed; resolve retired (PR #171); ideate loop redesigned and verified by real runs (PR #172); final fixes with in-place direct work (PR #173); next is the owner's release prep, then the installed-baseline registration
 
 ## The owner's direction (2026-10-05)
 
@@ -28,11 +28,15 @@ Wall, input and output are judged per correctly completed task, failures include
   - The ideate redesign is merged (PR #172, merge `52636e19`). add captures the package under `refs/devlyn/captures/<loop-id>`, and each loop keeps its rows in its own `docs/specs/<loop-id>/queue.md`. The drain also fills the executor's `{worktree_git_dir}`, review records may carry keys acceptance does not read, a task waits while its start commit's CLAUDE.md or AGENTS.md differs from the checkout's, and local allocation needs no `--repository`.
     - Astra ultra reviewed it as SHIP (`e2e-fix-a2-astra.out.md` in the checkout's `.devlyn/bundle/`).
     - Real Claude-host and Codex-host loops passed first try with the documented commands; the evidence is in `~/.local/share/nx01/e2e-smoke3`.
-  - This final-fixes PR (`candidate/final-fixes`) applies `final-fixes-contract.md` and `final-fixes-part2-contract.md` (`.devlyn/bundle/`).
+  - This final-fixes PR (#173, `candidate/final-fixes`) applies `final-fixes-contract.md`, `final-fixes-part2-contract.md` and `final-fixes-part4-contract.md` (`.devlyn/bundle/`).
+    - Owner decision (2026-10-07), from the slowness investigation (`slowness-investigation.json`): direct work edits the current checkout. Delivery runs only when the user asks to ship it, and only as far as asked; root mapped a commit request to local-only, a PR request to `--mode pr` and a merge request to `--mode auto`. Every drained task is still delivered.
+    - Concurrent writers (owner decision; Astra's synthesis in `direct-work-design-astra.out.md`): with known concurrent writers, isolate before editing; on unexplained changes, pause writes (`task-completion.md` "Concurrent writers"). A patch replaces the stash transfer.
+    - Astra ultra reviewed the fix round after its final-audit REVISE as SHIP (`final-fixes-round2-astra.out.md`); both of its follow-ups are fixed.
+    - A direct-task smoke on the final block (`final-fixes-direct-smoke.md`) edited in place with no worktree or commit on both hosts. Claude took 13.5–15.6 s and 5–7 turns in 3 runs, against 63.8 s and 14 turns with the old delivery pointer; Codex took 44 s and ran its tests.
 
 **Next:**
 
-1. **The owner's decisions and release prep:** the version and release notes, a LICENSE file, whether to delete `config/templates`, whether to restore the orphan-cleanup sentence to the installed block, a publish CI gate, whether to veto resolve's retirement (0232 §8), and two ideate policies from phase B: the `--autonomous` rule on user-visible defaults (restore 4.1.0's parenthetical, or allow recorded literal interpretations; phase B marks it before release) and the integration-task rule that forces false dependencies.
+1. **The owner's decisions and release prep:** the version and release notes, a LICENSE file, whether to delete `config/templates`, whether to restore the orphan-cleanup sentence to the installed block, a publish CI gate, whether to veto resolve's retirement (0232 §8), and two ideate policies from phase B: the `--autonomous` rule on user-visible defaults (restore 4.1.0's parenthetical, or allow recorded literal interpretations; phase B marks it before release) and the integration-task rule that forces false dependencies. Also confirm or change root's delivery extent for direct work (commit → local-only, PR → `--mode pr`, merge → `--mode auto`).
 2. **The installed-baseline registration:** the principles block plus ideate, with the easy-task panel and 0223's B5 task (0232 §8). After that, I′, licensed by I's lost final reviews and review cost.
 3. **Follow-ups:** the Known follow-ups below.
 
@@ -56,14 +60,15 @@ One line per class. Details, each with its reproduction described, are in the ch
 - **`devlyn-engines clear` on Pi and Grok:** exits 1 after deleting the pin, because `role-config.py` resolves the host default after the edit.
 - **Drain-wide stops:** a failed base refresh, an executor that cannot start, a missing prerequisite merge, an unignored `.devlyn/` and a receipt directory without `receipt.json` still stop the whole drain, short of the shared rule in `final-fixes-part2-contract.md` that only an unreadable queue does.
 - **Installer layouts:** a CLAUDE.md that imports AGENTS.md other than by an exact `@AGENTS.md` line (inline, or `@./AGENTS.md`) still gets a copy of the block beside the imported one, and a CLAUDE.md linked to AGENTS.md is still refused (phase B "A CLAUDE.md that imports AGENTS.md gets the block loaded twice").
-- **`max_deps_added`:** a one-line `"dependencies"` object in the root `package.json` counts as 0 added (phase B "max_deps_added checks only package.json").
+- **package.json guard:** a symlinked root `package.json`, or one npm rejects at the inputs commit, fails `max_deps_added` for every task, the repairing task included; it fails closed (part-4 verification).
+- **`--receipt` alias:** `complete` refuses a receipt path written through a symlink or `..`; agents copy the printed path, so it was left as it predates part 4 (part-4 verification).
 - **Earlier lists:** `r4-followups.md` (round 4) and the Deferred sections of `e2e-fix-r3-contract.md` (round 3) and `final-fixes-contract.md` (phase A).
-- **Real-run evidence:** the real-host runs (`~/.local/share/nx01/e2e-smoke3`) cover only local-only loops in repositories with no remote and no dependencies; before release, run one auto loop on a throwaway GitHub repository (phase B "Real-host evidence covers only local-only loops").
+- **Real-run evidence:** the real-host loop runs (`~/.local/share/nx01/e2e-smoke3` and `e2e-smoke4`) cover only local-only loops in repositories with no remote; before release, run one auto loop on a throwaway GitHub repository (phase B "Real-host evidence covers only local-only loops").
 
 ## Open user decisions and carried notes
 
 - **The `_devlynjudge` user record (uid 450) remains.** macOS refuses its deletion without Full Disk Access. Removing it is the user's call.
-- **Raw outputs of the 0228/0229 replays** remain in `/Users/Shared/devlyn-vr-0228-dev` (owner-only) until the user decides.
+- **Experiment roots in `/Users/Shared`** (the 0225–0229 raw outputs, about 22 GB, including `devlyn-vr-0228-dev` with the 0228/0229 replays) remain until the user decides. About 99,000 of their files belong to `_devlynjudge`, so removal needs admin rights.
 - **Orphan cleanup.** Rung 1 keeps the orphan-cleanup obligation. Its isolated effect is unmeasured, and the separate 0223 slim-plus-orphan add-back is unrun and remains an open user decision.
 
 ## Start here (every new session)
