@@ -1141,6 +1141,15 @@ def write_reports(v, status, reason):
                  f"- Queue: {f'{CAPTURES}{loop}:{loop_queue(loop)}' if loop in v['records'] else v['anchor'] / loop_queue(loop)}",
                  f"- Drain: {status}" + (f" — {reason}" if reason else ""), f"- Whole-loop acceptance: {loop_acceptance(v, loop, items)}",
                  *([f"- Bring into {line}"] if (line := bring_in(v, loop)) else []), ""]
+        try:
+            meta, _ = load_manifest(v["anchor"], loop, capture(v, loop))
+            decisions = sections(
+                JSON_FENCE_RE.sub("", meta),
+                v["anchor"] / f"docs/specs/{loop}/meta.md",
+            )["Decisions and assumptions"]
+        except (LoopError, OSError) as exc:
+            decisions = f"Unavailable: {exc}"
+        lines += ["## Package decisions and assumptions", "", decisions, ""]
         labels = (("result", "Product"), ("reason", "Reason"), ("receipt", "Receipt"), ("custody", "Evidence custody"),
                   ("recovery_ref", "Recovery ref"), ("allocation_base", "Allocation base"), ("source", "Accepted source"), ("candidate", "Unaccepted source"),
                   ("terminal", "Terminal commit"), ("delivery", "Delivery"), ("pr", "PR"), ("resume", "Resume"),

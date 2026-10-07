@@ -10,7 +10,7 @@ Read what the project already answers before asking: the code paths, tests and c
 
 Only an answer that changes authorized behavior, scope, data semantics, acceptance or delivery:
 
-- **Behavior** — the exact input, output and failure a user observes.
+- **Behavior** — the exact input, output and failure a user observes. An unspecified user-visible detail alone is not material ambiguity; apply the autonomous policy's boundary.
 - **Scope** — what may change and what must not.
 - **Data semantics** — persisted state, ordering, idempotency, migration.
 - **Acceptance** — the smallest decisive check for each requirement.

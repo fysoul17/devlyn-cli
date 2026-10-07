@@ -411,7 +411,7 @@ done
 section "Check 6f: ideate validates loop packages and keeps its normative policies"
 if ! grep -Fq 'scripts/queue.py" check' config/skills/devlyn-ideate/SKILL.md \
   || ! grep -Fq 'Ask only when the unresolved answer changes authorized behavior, scope, data semantics, acceptance or delivery.' config/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq 'Material ambiguity stops the affected work as needs-review with a concrete question' config/skills/devlyn-ideate/SKILL.md \
+  || ! grep -Fq 'Material ambiguity means competing readings with materially different intended outcomes, unresolved persistent data or state semantics, or public surface beyond the request; stop affected work as needs-review with a concrete question' config/skills/devlyn-ideate/SKILL.md \
   || ! grep -Fq 'add one compound check that exercises the interaction end to end' config/skills/devlyn-ideate/references/elicitation.md; then
   bad "ideate must validate packages with queue.py check, keep its question and autonomous policies, and require compound checks for interacting requirements"
 else

@@ -60,7 +60,7 @@ def commit(files, message):
     return git("rev-parse", "HEAD")
 source = commit(config["products"][behavior["product"]], "implement " + packet["task"])
 submission = {"schema_version": 1, "task": packet["task"], "source_sha": source, "summary": "done (informational)",
-              "assumptions": ["fixture assumption for " + packet["task"]]}
+              "assumptions": behavior.get("assumptions", ["fixture assumption for " + packet["task"]])}
 if behavior.get("runner", True):
     checked = subprocess.run(packet["runner"], check=True, capture_output=True, text=True, encoding="utf-8")
     submission["runner_results"] = [json.loads(checked.stdout)["result"]]
@@ -359,6 +359,50 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((first["baseline"], self.g("diff", "--name-only", first["baseline"], first["acceptance"]["inputs_sha"]).splitlines()),
                          (self.base, self.package("inv", ("t1", "t2"))))
         self.assertEqual(self.g("diff", "--name-only", final["baseline"], final["acceptance"]["inputs_sha"]), "docs/specs/inv/queue.md")
+
+    def test_the_report_carries_the_captured_package_decisions_once(self):
+        # Prediction (rp-d3 policy 1): the drain report carries the package's decisions once, read from its capture. With the
+        # manifest after the decisions inside `## Decisions and assumptions`, as a real plan wrote it, each decision appears
+        # exactly once and no manifest JSON does, although dc.t1's executor submits no assumptions, and dc.t2's executor
+        # assumption stays in its own section. With the checkout copy of meta.md absent, then differing, the report keeps the
+        # captured decisions and never shows the checkout's. Before: the report carried executor assumptions only.
+        meta = self.queue["write_package"](self.anchor, "dc", CHAIN, base=self.base)
+        text = meta.read_text(encoding="utf-8")
+        manifest = self.queue["JSON_FENCE_RE"].search(text).group(0)
+        decisions = ["- D1: Names print in argument order, as the request lists them.", "- D2: Output is UTF-8, the project convention."]
+        meta.write_text(text.replace(manifest + "\n\n", "").replace("None beyond the task contracts.", "\n".join(decisions) + "\n\n" + manifest),
+                        encoding="utf-8")
+        self.behaviors.update({"dc.t1": {"product": "greeting", "assumptions": []}, "dc.t2": {"product": "app"}})
+        self.cli("add", meta)
+        captured = self.g("show", "refs/devlyn/captures/dc:docs/specs/dc/meta.md")
+        self.assertFalse(meta.exists())
+        for copy in (None, captured.replace(decisions[0], "- D9: A checkout-only decision.")):
+            if copy:
+                meta.parent.mkdir(parents=True)
+                meta.write_text(copy, encoding="utf-8")
+            self.assertEqual({identity: task["result"] for identity, task in self.tasks(self.drain()).items()}, {"dc.t1": "accepted", "dc.t2": "accepted"})
+            report = self.report("dc")
+            self.assertEqual([report.count(part) for part in ("## Package decisions and assumptions\n", *decisions, "D9", '"integration_task_id"',
+                                                              "fixture assumption for dc.t1", "- Assumptions: fixture assumption for dc.t2\n")],
+                             [1, 1, 1, 0, 0, 0, 1])
+        self.assertEqual((self.calls("dc.t1"), self.calls("dc.t2")), (1, 1))
+
+    def test_an_unreadable_package_reports_its_decisions_unavailable(self):
+        # Prediction (rp-d3 policy 1): a loop without an add record, read as in a fresh clone from its tracked queue file,
+        # whose meta.md is gone, still gets its full report: nr.t1 pending with the missing file as its reason, whole-loop
+        # acceptance INCOMPLETE naming the unreadable manifest, and "Unavailable: <reason>" as its package decisions. Before:
+        # the report said nothing about the package decisions.
+        queue = self.anchor / "docs/specs/nr/queue.md"
+        queue.parent.mkdir()
+        queue.write_text(self.queue["row_line"]("nr.t1", "Notes") + "\n", encoding="utf-8")
+        self.g("add", str(queue))
+        self.g("commit", "-qm", "a loop's queue file without its package")
+        missing = f"{queue.with_name('meta.md')}: no such file"
+        self.assertEqual(self.tasks(self.drain())["nr.t1"]["reason"], missing)
+        report = self.report("nr")
+        for part in (f"- Whole-loop acceptance: INCOMPLETE — manifest unreadable: {missing}\n",
+                     f"## Package decisions and assumptions\n\nUnavailable: {missing}\n", f"## nr.t1\n\n- Product: pending\n- Reason: {missing}\n"):
+            self.assertIn(part, report)
 
     def test_a_local_loop_starts_from_the_branch_it_was_added_on(self):
         # Prediction (L): with the checkout switched to another branch, a local loop's first task starts from the HEAD of
@@ -961,6 +1005,25 @@ class LoopFixture(unittest.TestCase):
         # T2, the integration task, runs once T1 is delivered.
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t2"]["result"], "accepted")
         self.assertIn("- Whole-loop acceptance: ACCEPTED", self.report("inv"))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_settled_loop_keeps_its_decisions_after_its_workspaces_are_cleaned(self):
+        # Prediction (rp-d3 policy 1): once both tasks of an auto loop are delivered, their worktrees are cleaned, and a
+        # further drain, which loads no package for the settled loop, rewrites the report with the captured decision once.
+        # Before: no report carried the package decisions.
+        self.remote(pending=False)
+        meta = self.queue["write_package"](self.anchor, "sd", CHAIN, delivery="auto", base=self.base)
+        decision = "- D1: Greetings stay in English, the project convention."
+        meta.write_text(meta.read_text(encoding="utf-8").replace("None beyond the task contracts.", decision), encoding="utf-8")
+        self.behaviors.update({"sd.t1": {"product": "greeting"}, "sd.t2": {"product": "app"}})
+        self.cli("add", meta)
+        tasks = self.tasks(self.drain(local=False))
+        self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"sd.t1": "COMPLETE", "sd.t2": "COMPLETE"})
+        self.assertEqual([Path(self.receipt(identity)["worktree"]).exists() for identity in tasks], [False, False])
+        report = self.common / "devlyn-loops/sd/drain-report.md"
+        report.unlink()
+        self.drain(local=False)
+        self.assertEqual(report.read_text(encoding="utf-8").count(decision), 1)
 
     def remote_rows(self, bare):
         return {identity: row["mark"] for identity, row in self.rows("main", git_dir=bare).items()}

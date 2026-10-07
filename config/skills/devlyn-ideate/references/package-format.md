@@ -23,7 +23,7 @@ Required `##` sections, each non-empty:
 | `Tasks` | Ordered task index, dependency graph and decomposition rationale. No prescribed task count; one task is a valid loop. |
 | `Overall acceptance` | Every overall requirement assigned to a task; cross-task requirements assigned to the integration task's assembled-product check. |
 | `Execution policy` | Baseline, installed-methodology rule, autonomous question policy, delivery policy, stop conditions. |
-| `Decisions and assumptions` | Adopted decisions and defaults with reasons. No elicitation transcript. |
+| `Decisions and assumptions` | Adopted decisions and defaults with reasons. No elicitation transcript. Put defaults affecting a task's observable behavior in that task's requirements and acceptance checks. |
 
 Exactly one fenced `json` block, the manifest. It is authoritative for order and dependencies and never carries status:
 

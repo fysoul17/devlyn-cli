@@ -81,7 +81,7 @@ A removed flag stops with its instruction and selects no other behavior.
 
 ## Autonomous policy
 
-> Infer only scope-narrowing, reversible, non-user-visible defaults, and record each assumption once. Reversibility alone is insufficient. Material ambiguity stops the affected work as needs-review with a concrete question; independent authorized work may continue. Never weaken acceptance to obtain completion.
+> For ordinary details the intent leaves open within authorized scope, follow established project conventions, otherwise the narrowest literal or conventional reading consistent with the request; these defaults may be user-visible but must be low-consequence and reversible. Record each choice and reason once. Material ambiguity means competing readings with materially different intended outcomes, unresolved persistent data or state semantics, or public surface beyond the request; stop affected work as needs-review with a concrete question. Independent authorized work may continue. Never omit requested work or weaken acceptance to obtain completion.
 
 ## plan
 
