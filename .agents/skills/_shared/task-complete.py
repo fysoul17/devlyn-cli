@@ -279,7 +279,8 @@ def bind_acceptance(receipt, path, supplied):
         verify_files(path.parent / "custody", receipt["files"])
         return
     require(supplied, "first completion requires explicit root acceptance")
-    acceptance_path = Path(supplied).absolute()
+    named = Path(supplied).absolute()
+    acceptance_path = named.parent.resolve() / named.name  # Its directory's real path, as allocate names the worktree.
     require(acceptance_path.is_relative_to(work), "acceptance must be a regular file in its task checkout")
     safe_path(work, str(acceptance_path.relative_to(work)))
     acceptance = read_json(acceptance_path)
@@ -2058,6 +2059,19 @@ class CompletionTests(unittest.TestCase):
             self.assertEqual(self.g("rev-parse", "--show-toplevel", work=self.root / name), str(self.root / name))
         refused, _ = self.cli(*args, "--task", "again", "--branch", "task/again", "--worktree", alias / "dotted", success=False)
         self.assertIn("linked worktree must be an absent path", refused["reason"])
+
+    def test_completion_accepts_the_path_form_the_worktree_was_allocated_with(self):
+        """Prediction: an acceptance named through the symlinked or `..` form the worktree was allocated with completes
+        LOCAL_ONLY; before, allocate canonicalized the worktree but complete refused that form as outside it."""
+        alias = self.root / "alias"
+        alias.symlink_to(self.root, target_is_directory=True)
+        for name, given in (("linked", alias / "linked"), ("dotted", Path("..") / "dotted")):
+            result, _ = self.cli("allocate", "--repo", self.work, "--task", "fixture", "--branch", "task/" + name,
+                                 "--worktree", given, "--local-base", self.g("rev-parse", "HEAD"), cwd=self.work)
+            self.receipt, self.task = Path(result["receipt"]), Path(result["worktree"])
+            self.accept()
+            self.acceptance = given / ".devlyn" / "acceptance.json"
+            self.assertEqual(self.complete("--local-only", cwd=self.work)[0]["status"], "LOCAL_ONLY")
 
     def test_remote_allocation_starts_from_an_exact_commit(self):
         # An ideate auto/pr task starts from the exact refreshed remote base the drain checked, never a second fetch.
