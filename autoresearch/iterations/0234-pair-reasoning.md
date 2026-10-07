@@ -30,8 +30,8 @@ On tasks where the shipped 4.2.0 still fails, does the pair method (P) improve c
 |---|---|---|
 | A | bare: no devlyn | — |
 | B | 4.2.0 | `dd4957775337e597f39838fa73acd5c7ec4a5699` |
-| H | B + pair pointer + `_shared/pair.md`, same-engine peer | `335d27130c270e9c947558eb2f9c28a528776e32` |
-| P | B + pair pointer + `_shared/pair.md`, other-engine peer | `04712dad0e9f2efcc90aa85b7d5add8f76786fa9` |
+| H | B + pair pointer + `_shared/pair.md`, same-engine peer | `dc3c4ee60f4750c2460cb821ebc913ec367e8ac9` |
+| P | B + pair pointer + `_shared/pair.md`, other-engine peer | `276696beee6a5039fbb415c5c7cb3a9a439b722a` |
 
 Pack digests are pinned in `experiments/0234/DESIGN.md`. H and P differ in one sentence (the peer). The pointer:
 
@@ -64,3 +64,20 @@ Frozen before inspecting B's totals: on D3/D4, by configuration, with D = p(B,02
 ## 10. Honest limits
 
 One development replicate makes P−H fragile; H is absent from confirmation, so a diversity advantage cannot be confirmed. Reused I0185 A carries period confounding. One screening replicate misses intermittent failures. Two confirmation tasks give narrow transfer.
+
+### Addendum 2026-10-07 — SMOKE round 1 failed; transport fixes
+
+SMOKE round 1 (4 cells, 15:18–15:41Z) did not meet §5's SMOKE criteria:
+- **claude-H, claude-P:** owners followed pair.md (three awaited turns, same session, counterexamples exchanged); products complete; teardown clean. Two apparatus faults misreported them: `sed -n … codex-monitored.sh` counted as a peer launch (claude-P: four launches, a false usage gap), and a session id held in a shell variable was not bound (claude-H turn 1, continuity false). The image has no `uuidgen`.
+- **codex-P:** the owner paired with Claude for two turns but, reading the request's "only these files" limit as covering `.devlyn/pair/`, printed the peer's answer to stdout and ran turn 2 from a Python subprocess. No continuity, peer usage a transcript lower bound.
+- **codex-H:** the owner used its own native subagent (gpt-6-sol) as the "same-engine peer" and launched no CLI peer.
+
+Treatment fixes (wording only, identical in H and P; the mechanism, trigger and turn structure are unchanged): the `.devlyn/pair/` scratch files are not part of the change and do not count against limits on which files may change; the peer is a separate CLI session started with the given commands, never a subagent of the owner's session; how to make a UUID without `uuidgen`. New commits H `dc3c4ee60f4750c2460cb821ebc913ec367e8ac9`, P `276696beee6a5039fbb415c5c7cb3a9a439b722a`, pack digests in DESIGN.md.
+
+Apparatus fixes: a peer launch is a command that runs the wrapper or `claude -p` (`diagnostics.launch_engine`), not one that names it; a Claude turn binds its session from its own result envelope before the command line. SMOKE round 1's evidence is archived under `0234-live/out/smoke-round1/`; all four SMOKE cells repeat.
+
+### Addendum 2026-10-07 — SMOKE round 2 regraded with accounting fixes; SMOKE passes
+
+SMOKE round 2 (apparatus `ffd7f0ad`, treatment H `dc3c4ee6` / P `276696be`, 17:2x–17:57Z): every owner now launched a separate CLI peer and held three awaited turns in one session; products complete; identity MATCH; teardown CLEAN. The Claude owners saved each turn under `.devlyn/pair/` (usage COMPLETE). The Codex owners passed prompts inline and kept the peer's answer in their tool output instead of a capture file, and one ran its third turn from a Python argument list, so the frozen accounting reported `no unambiguous saved capture` gaps (PARTIAL) and missed turns.
+
+Apparatus fixes (no treatment change; identical for every arm): a Claude result envelope printed in an owner's tool output is inventoried like a saved capture (a printed copy of a saved capture is the same envelope); a Codex peer turn needs no capture because its usage comes from its traced session: each individual launch (exec or resume, several per command counted separately) is matched one-to-one to a distinct trace started inside its call window (a copied trace directory is the same trace), and an unmatched launch is a gap; each Codex turn takes its session and native status from its own matched trace, and a tool error, a non-zero exit or a failed trace is never reported as a successful turn; saved and printed envelopes keep the owner's call order, so a printed later snapshot after a saved earlier one is not a decreasing snapshot; a launch run from an argument list (`subprocess.run(['claude', '-p', …])`) is detected. Astra's review of the first version of these fixes (REVISE: launches counted per tool call against raw rollouts; a neighbour's trace certified a turn) led to this one. Replaying round 2's sealed evidence with the fixed code: all four cells usage COMPLETE with unchanged totals, three continuous successful turns each, route MATCH. Round 2's verdict files stay as sealed; the regrade is recorded in `0234-live/out/smoke-round2-regrade.json`. SMOKE passes; measured cells use the fixed apparatus.

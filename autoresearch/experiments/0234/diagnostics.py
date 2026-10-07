@@ -42,7 +42,44 @@ def redirected_capture(out, command):
     return found[0]
 
 
+# A peer launch runs the wrapper or `claude -p` as a command; naming the wrapper in `cat`/`sed`/`grep` is not a launch
+# (0234 SMOKE: `sed -n 1,40p .../codex-monitored.sh` was counted as a turn).
+CODEX_LAUNCH = re.compile(r'(?:^|[;&|({]\s*|\n\s*|\bbash\s+|\bsh\s+|=\S+\s+)(?:\S*/)?codex-monitored\.sh\b')
+CLAUDE_LAUNCH = re.compile(r'(?:^|[;&|({]\s*|\n\s*|\btimeout\s+(?:-k\s+\S+\s+)?\S+\s+|=\S+\s+)(?:\S*/)?claude\s+-p\b')
+
+
+# A script that runs the CLI as an argument list, e.g. subprocess.run(['claude', '-p', ...]) (0234 SMOKE r2).
+ARGV_LAUNCH = re.compile(r'''[\[(,]\s*['"](?:\S*/)?(claude|codex-monitored\.sh|bash)['"]\s*,\s*['"](-p|[^'"]*codex-monitored\.sh)['"]''')
+
+
+def launch_engine(command):
+    """The peer engine a shell command launches, or None when it only mentions one."""
+    if CODEX_LAUNCH.search(command):
+        return 'codex'
+    if CLAUDE_LAUNCH.search(command):
+        return 'claude'
+    match = ARGV_LAUNCH.search(command)
+    if match:
+        return 'claude' if match.group(1) == 'claude' else 'codex'
+    return None
+
+
 RESUME_VALUE_OPTIONS = {'-c', '--config', '-m', '--model', '--enable', '--disable', '-i', '--image', '-p', '--profile'}
+
+
+def output_envelope(text):
+    """The last Claude result envelope printed in a tool output, or None."""
+    found = None
+    for line in (text or '').splitlines():
+        line = line.strip()
+        if line.startswith('{'):
+            try:
+                value = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(value, dict) and value.get('type') == 'result' and value.get('session_id'):
+                found = value
+    return found
 
 
 def resume_target(command):
@@ -52,7 +89,9 @@ def resume_target(command):
     except ValueError:
         return None
     if 'resume' not in tokens:
-        return None
+        # `/bin/sh -lc "<command>"` keeps the whole command in one token; look inside it.
+        inner = [token for token in tokens if 'resume' in token and token != command]
+        return next((found for found in map(resume_target, inner) if found), None)
     rest = tokens[tokens.index('resume') + 1:]
     index = 0
     while index < len(rest):
@@ -111,6 +150,21 @@ def text_of(call):
     return str(value)
 
 
+def without_heredocs(command):
+    """A shell command without its here-document bodies, whose prose (`-> 13.5`) is not a redirection."""
+    lines, kept, terminator = command.split('\n'), [], None
+    for line in lines:
+        if terminator is not None:
+            if line.strip() == terminator:
+                terminator = None
+            continue
+        kept.append(line)
+        match = re.search(r"<<-?\s*['\"]?(\w+)['\"]?", line)
+        if match:
+            terminator = match.group(1)
+    return '\n'.join(kept)
+
+
 def paths(call):
     content = text_of(call)
     if call['tool'] == 'file_change':  # Codex JSON reports its patch edits as file_change items
@@ -123,7 +177,7 @@ def paths(call):
         value = call['input']
         return [str(value.get('file_path') or value.get('path') or '')] if isinstance(value, dict) else []
     if call['tool'] in ('command_execution', 'exec_command', 'Bash', 'shell_command'):
-        targets = re.findall(r'(?:>>?|\btee\s+(?:-a\s+)?)\s*([\w./-]+)', content)
+        targets = re.findall(r'(?:>>?|\btee\s+(?:-a\s+)?)\s*([\w./-]+)', without_heredocs(content))
         edited = [p for p in targets if p != '/dev/null' and not p.startswith(('.devlyn/', '/tmp/', '/private/tmp/',
                                                                              '$TMPDIR/', 'tmp/')) and '/.devlyn/' not in p]
         if edited:
@@ -172,10 +226,8 @@ def summarize(rows, engine, arm):
                 delivery_read=dict(read=bool(delivery), calls=observation(delivery), task_complete=executions))
 
 
-def peer_turns(ordered, out, plan):
-    """Best-effort pair process observations, joined to native session evidence by explicit ids."""
-    inv = evidence.inventory(out, plan)
-    # Codex JSON items omit timestamps. Bind them to the owner's trace by command preview.
+def attach_call_times(ordered, out, inv, plan):
+    """Codex JSON items omit timestamps: bind them to the owner's trace by command preview (idempotent)."""
     if plan['engine'] == 'codex':
         timed = []
         for folder in (out / 'cell/trace').glob('trace-*'):
@@ -200,6 +252,86 @@ def peer_turns(ordered, out, plan):
                 _, begin, end = match
                 call['start'] = datetime.fromtimestamp(begin / 1000, timezone.utc).isoformat() if begin else None
                 call['end'] = datetime.fromtimestamp(end / 1000, timezone.utc).isoformat() if end else None
+
+
+def peer_traces(out, inv):
+    """Distinct owner-launched Codex traces in start order: a copied trace directory is the same trace."""
+    launched, seen, found = set(inv['owner_launched_codex']), set(), []
+    for rollout in inv['rollouts']:
+        if rollout.get('rollout_id') not in launched:
+            continue
+        try:
+            started = json.loads((out / 'cell/trace' / rollout['trace'] / 'manifest.json').read_text()).get('started_at_unix_ms')
+        except (OSError, ValueError, KeyError):
+            started = None
+        key = (rollout['rollout_id'], started, frozenset(rollout['inferences']))
+        if key in seen:
+            continue
+        seen.add(key)
+        found.append(dict(rollout_id=rollout['rollout_id'], started=started, status=rollout.get('status'),
+                          used=bool(rollout['inferences'])))
+    return sorted(found, key=lambda t: (t['started'] is None, t['started'] or 0))
+
+
+def launch_count(command):
+    """Individual peer launches in one shell command."""
+    return len(CODEX_LAUNCH.findall(command)) + len([m for m in ARGV_LAUNCH.finditer(command) if m.group(1) != 'claude'])
+
+
+def ms(value):
+    try:
+        return datetime.fromisoformat(value.replace('Z', '+00:00')).timestamp() * 1000 if value else None
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+
+def match_codex_launches(calls, traces, slack=5000):
+    """One-to-one: each Codex peer launch takes the earliest unused trace that started inside its call window
+    (or, without a window, the earliest unused trace after the previous match). Returns (bound per call, unbound)."""
+    unused, bound, unbound, floor = list(traces), [], 0, None
+    for call in calls:
+        mine = []
+        begin, end = ms(call.get('start')), ms(call.get('end'))
+        for _ in range(max(launch_count(text_of(call)), 1)):
+            pick = next((t for t in unused if t['started'] is not None and begin is not None and end is not None
+                         and begin - slack <= t['started'] <= end + slack), None)
+            if pick is None and (begin is None or end is None):
+                pick = next((t for t in unused if floor is None or t['started'] is None or t['started'] >= floor), None)
+            if pick is None:
+                unbound += 1
+                continue
+            unused.remove(pick)
+            mine.append(pick)
+            floor = pick['started'] if pick['started'] is not None else floor
+        bound.append(mine)
+    return bound, unbound
+
+
+def bind_codex_turns(peers, calls, traces, inv, plan):
+    """Codex peer turns take their session and native status from their own trace, never a neighbour's."""
+    codex_peers = [p for p in peers if p['engine'] == 'codex']
+    bound, _ = match_codex_launches(calls, traces)
+    route = plan.get('peer_route')
+    for peer, mine, call in zip(codex_peers, bound, calls):
+        trace = mine[0] if mine else None
+        native = (inv['seated'].get(trace['rollout_id']) or {}) if trace else {}
+        status = trace['status'] if trace else None
+        ok = (peer['successful'] is not False and peer['exit_status'] in (None, 0) and not peer['background']
+              and (peer['tool_return'] is not None or call.get('returned')) and status == 'completed' and trace['used'])
+        peer.update(session=trace['rollout_id'] if trace else peer['session'], native_status=status,
+                    model=native.get('model') if trace else peer['model'],
+                    effort=native.get('effort') if trace else peer['effort'],
+                    successful=True if ok else (False if peer['successful'] is False or status not in (None, 'completed')
+                                                else None))
+        peer['completed'] = peer['successful'] is True
+        peer['route_match'] = ((route['engine'] == 'codex' and peer['model'] == route['model']
+                                and peer['effort'] == route['effort']) if route and peer['model'] and peer['effort'] else None)
+
+
+def peer_turns(ordered, out, plan):
+    """Best-effort pair process observations, joined to native session evidence by explicit ids."""
+    inv = evidence.inventory(out, plan)
+    attach_call_times(ordered, out, inv, plan)
     spans = {}
     for folder in (out / 'cell/trace').glob('trace-*'):
         try:
@@ -219,14 +351,23 @@ def peer_turns(ordered, out, plan):
         command = text_of(call)
         if call['tool'] not in ('Bash', 'command_execution', 'exec_command', 'shell_command'):
             continue
-        engine = ('codex' if 'codex-monitored.sh' in command else
-                  'claude' if re.search(r'\bclaude\s+-p\b', command) else None)
+        engine = launch_engine(command)
         if not engine:
             continue
+        call['_peer_engine'] = engine
         session = None
         if engine == 'claude':
-            match = re.search(r'--(?:session-id|resume)\s+([\w-]+)', command)
-            session = match.group(1) if match else None
+            # The turn's own result envelope binds the session first (an id held in a shell variable is not literal).
+            capture = redirected_capture(out, command)
+            try:
+                session = json.loads(capture.read_text(errors='replace')).get('session_id') if capture else None
+            except ValueError:
+                session = None
+            if not session:
+                session = (output_envelope(call['output']) or {}).get('session_id')
+            if not session:
+                match = re.search(r'--(?:session-id|resume)\s+([\w-]+)', command)
+                session = match.group(1) if match else None
         else:
             # The turn's own capture binds the thread first; the command line is only a fallback (freeze a2).
             capture = redirected_capture(out, command)
@@ -255,6 +396,9 @@ def peer_turns(ordered, out, plan):
         elif session in inv['envelopes']:
             capture = redirected_capture(out, command)
             matched = next((e for e in inv['envelopes'][session] if capture and e['path'] == str(capture.relative_to(out))), None)
+            printed = output_envelope(call['output']) if capture is None else None
+            if matched is None and printed is not None:
+                matched = dict(is_error=printed.get('is_error'))
             if matched is None and capture is None and index < len(inv['envelopes'][session]):
                 matched = inv['envelopes'][session][index]
             if matched is not None:
@@ -297,6 +441,7 @@ def peer_turns(ordered, out, plan):
                     if event.get('sessionId') == session and event.get('type') == 'assistant')
             capture += '\n' + transcript_text[session]
         commands.append(capture)
+    bind_codex_turns(peers, [c for c in ordered if c.get('_peer_engine') == 'codex'], peer_traces(out, inv), inv, plan)
     seen = {p['session'] for p in peers if p['session']}
     first_edit = next((i for i, call in enumerate(ordered, 1) if paths(call)), None)
     first_peer = peers[0]['position'] if peers else None

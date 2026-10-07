@@ -9,8 +9,8 @@ The package procedure is 0233's history-aware clone, `scripts/update-instruction
 | Arm | Commit | Packed SHA-256 |
 |---|---|---|
 | B | `dd4957775337e597f39838fa73acd5c7ec4a5699` | `6f03f5ac2895eaccc22ff12d1644a0fc623baca1eec7d00e877ce3254d33352d` |
-| H | `335d27130c270e9c947558eb2f9c28a528776e32` | `f48ee18c5174d4c737489ca1fb14b8c27f9e09af42219a3fac56381ee22bd695` |
-| P | `04712dad0e9f2efcc90aa85b7d5add8f76786fa9` | `54c513afbac15a87fa7bd19028769cb8a1cc43ae9c989fbfb3e6aeb08f8f8591` |
+| H | `dc3c4ee60f4750c2460cb821ebc913ec367e8ac9` | `e2d429df04d44476e758e28c9c038f9d38948b850b1564311a4973c95a5e0395` |
+| P | `276696beee6a5039fbb415c5c7cb3a9a439b722a` | `d297c21f05f6a339688b0d42e316bc4caa463093b23c1328163277a207059200` |
 
 For every arm and configuration, the cell home sets Codex's CLI default to `gpt-6-astra`/high and Claude's CLI default to `claude-opus-5-5`/high. Codex's native child default remains `gpt-6-sol`/high. The owner's route remains Claude Opus/high or Codex Astra/high. H uses the owner engine and exact owner model/effort; P uses the other engine's default. Both CLIs' credentials and executable environment are mounted as in 0232's I arm. Peer route, session model and effort are reported and never turn into a STOP. Native owner and child identity rules retain their STOP behavior. In SMOKE, inspect `diagnostics.peer.turns` for three successful, awaited turns with the same id, registered model/effort, counted usage, and `teardown: CLEAN`.
 
