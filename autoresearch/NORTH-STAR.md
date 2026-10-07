@@ -2,7 +2,7 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current work: [0233](iterations/0233-installed-baseline-and-failure-paths.md) (2026-10-07): the installed 4.2.0 baseline against bare, and the first lazily loaded method, on the [0232 harness ladder](iterations/0232-harness-ladder.md) (2026-10-05, owner direction below).
+Current work: [0233](iterations/0233-installed-baseline-and-failure-paths.md) (2026-10-07): the installed 4.2.0 baseline against bare, and the first lazily loaded method, on the [0232 harness ladder](iterations/0232-harness-ladder.md) (2026-10-05, owner direction below); then [0234](iterations/0234-pair-reasoning.md), pair reasoning against 4.2.0.
 - **Stage 1 closed on 2026-10-06** (§7). Native A stays the admitted rung in both configurations. The instruction rung I is not admitted. Full resolve completes fewer cells than native at far higher cost.
 - **resolve is retired** as a product-scope decision (§8). The installed product becomes the principles plus ideate's loop.
 - **Next:** measure that installed baseline, then add mechanisms one rung at a time, only where they improve the measured outcome.
