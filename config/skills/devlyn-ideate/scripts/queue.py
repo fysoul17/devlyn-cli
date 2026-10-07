@@ -709,9 +709,12 @@ def frontier(v, loop):
 
 
 def local_start(v, loop):
-    """The commit a local loop's next task starts from, and why it waits instead (loop.md step 3): its latest accepted
-    source; else the start its first allocation fixed, kept in that receipt; else the HEAD of the branch it was added on,
-    which must descend from the manifest base_sha."""
+    """The commit a local loop's next task starts from, and why it waits instead (loop.md steps 2-3): none while a task of
+    the loop is active, so no two tasks start from one frontier; else its latest accepted source; else the start its
+    first allocation fixed, kept in that receipt; else the HEAD of the branch it was added on, which must descend from
+    the manifest base_sha."""
+    if active := next((identity for identity, state in v["states"].items() if identity.split(".")[0] == loop and state["kind"] == "active"), None):
+        return None, f"waiting for {active} (active), since a local loop runs one task at a time"
     tip, added = frontier(v, loop), v["records"].get(loop)
     fixed = next((state["receipt"]["baseline"] for identity, state in v["states"].items() if identity.split(".")[0] == loop
                   and state["receipt"] and not {"remote_url", "allocated_from"} & set(state["receipt"])), None)

@@ -724,6 +724,30 @@ class LoopFixture(unittest.TestCase):
         for loop in ("ca", "ce"):
             self.assertIn(f"- Whole-loop acceptance: INCOMPLETE — {loop}.t3 failed\n", self.report(loop))
 
+    def test_a_local_loop_runs_one_task_at_a_time(self):
+        # Prediction (rp-d3 policy 2): rt.t1's executor exits without a submission, as on a usage limit, so rt.t1 stays active
+        # and the independent rt.t2 waits for it with no executor call. Once rt.t1 is accepted, rt.t2 starts from its source
+        # and the check-only rt.t3 from rt.t2's, so the loop is ACCEPTED, its `Bring into` names rt.t3's branch, and a loop
+        # added between the drains is accepted too. Before: rt.t2 started from rt.t1's start, their accepted sources diverged,
+        # and every later drain ended BLOCKED "prerequisite source ... is not in the accepted frontier", so nw.t1 never ran.
+        self.plan_checker("rt", [GREET_CHECK, NOTES_CHECK], {"rt.t1": {"product": "greeting", "exit_now": 1}, "rt.t2": {"product": "notes"},
+                                                             "rt.t3": {"check_only": True}})
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items() if identity != "rt.t1"}, {
+            "rt.t2": ("pending", "waiting for rt.t1 (active), since a local loop runs one task at a time"),
+            "rt.t3": ("pending", "waiting for rt.t1 (active)")})
+        self.assertEqual((tasks["rt.t1"]["result"], self.calls("rt.t2")), ("active", 0))
+        self.behaviors["rt.t1"] = {"product": "greeting"}
+        self.plan("nw", [("t1", [], "Todo", [TODO_CHECK])], {"nw.t1": {"product": "todo"}})
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()},
+                         {"rt.t1": "accepted", "rt.t2": "accepted", "rt.t3": "accepted", "nw.t1": "accepted"})
+        t1, t2, t3 = (self.receipt(f"rt.{task}") for task in ("t1", "t2", "t3"))
+        self.assertEqual((t2["baseline"], t3["baseline"], t3["source_sha"]), (t1["source_sha"], t2["source_sha"], t3["acceptance"]["inputs_sha"]))
+        self.assertEqual([self.calls(f"rt.{task}") for task in ("t1", "t2", "t3")], [2, 1, 1])
+        for line in ("- Whole-loop acceptance: ACCEPTED\n", f"- Bring into main: git merge --ff {t3['branch']}\n"):
+            self.assertIn(line, self.report("rt"))
+
     def test_interruption_after_acceptance_writes_only_the_missing_transition(self):
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", "hold": True}, "inv.t2": {"product": "app"}})
         driver = self.drain_until("inv.t1: bound")
