@@ -2,7 +2,7 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current work: [0232 harness ladder](iterations/0232-harness-ladder.md) (2026-10-05, owner direction below).
+Current work: [0233](iterations/0233-installed-baseline-and-failure-paths.md) (2026-10-07): the installed 4.2.0 baseline against bare, and the first lazily loaded method, on the [0232 harness ladder](iterations/0232-harness-ladder.md) (2026-10-05, owner direction below).
 - **Stage 1 closed on 2026-10-06** (§7). Native A stays the admitted rung in both configurations. The instruction rung I is not admitted. Full resolve completes fewer cells than native at far higher cost.
 - **resolve is retired** as a product-scope decision (§8). The installed product becomes the principles plus ideate's loop.
 - **Next:** measure that installed baseline, then add mechanisms one rung at a time, only where they improve the measured outcome.
@@ -117,12 +117,12 @@ The historical creative-plugin proposal named `/design-system` and `/team-design
 `devlyn-ideate` and `devlyn-engines` are **the surfaces where multi-LLM mixing keeps evolving**. Current routes are defined by `_shared/engine-preflight.md` and each skill, with exact seats re-certified on model/version changes. Longer-term: a **pi-agent** abstraction that lets the skills swap in additional LLMs (Qwen, Gemini, Gemma, future frontier models) wherever empirical evidence shows lift.
 
 **Architectural commitments**:
-- Pair-mode is **measurement-gated by phase; VERIFY/JUDGE is the default-when-available exception**. The Pair-mode policy section below names the candidate phases, the deterministic-vs-judgment distinction, and the gate every shipped pair surface must clear.
+- Pair-mode is **measurement-gated by phase**. Resolve's default-when-available VERIFY/JUDGE pair left the product with resolve ([0232](iterations/0232-harness-ladder.md) §8): no pair surface ships in 4.2.0, and pair returns only as a measured rung ([0233](iterations/0233-installed-baseline-and-failure-paths.md) §2). The Pair-mode policy section below names the candidate phases, the deterministic-vs-judgment distinction, and the gate every shipped pair surface must clear.
 - The schema decoupler (`expected.schema.json`) + per-model adapters (`_shared/adapters/<model>.md`) are the load-bearing invariants that let new LLMs slot in without touching skill bodies.
 - The pi-agent surface is the future hook for swappable LLM backends. NOT designed yet (Mission 2/3 territory). Today's commitment: don't bake assumptions that prevent it.
 
 **No-xxx / worldclass non-negotiable** in every multi-LLM addition:
-- **No overengineering** — pair-mode wires only where measurement shows lift. Default pair stays VERIFY-only; no speculative multi-agent scaffolding.
+- **No overengineering** — pair-mode wires only where measurement shows lift. No pair ships by default; no speculative multi-agent scaffolding.
 - **No guesswork** — every additional LLM/phase combination requires falsifiable acceptance gate before it ships.
 - **No workaround** — silent fallbacks, hardcoded model names, `any`-typed adapter slots, etc. are rejected in coordination layer just as they are in product code. Required unavailable engines fail closed with `BLOCKED:<engine>-unavailable`.
 - **Worldclass production-ready** — zero CRITICAL findings on multi-LLM coordination paths. Pair-mode failures (Codex unavailable, model drift, API rate-limit) must surface user-visible, not silently degrade.
@@ -174,7 +174,7 @@ Two user groups, both first-class:
 |---|---|---|---|
 | **L0 — bare** | Single LLM, no harness, single direct invocation | Baseline | Baseline |
 | **L1 — solo harness** | Single LLM + this harness, no pair patterns active | **Materially better than L0** on the four judge axes (Spec / Constraint / Scope / Quality) | **Verified-resolution wall-time not worse than running L0 enough times to match L1's quality; token cost is the third-priority measure under the 2026-09-07 rule above.** Concretely: L1 must beat `bare-best-of-N` baseline (L0 invoked N times, best/median taken), where N is the wall-time ratio. |
-| **L2 — pair harness** | 2+ LLMs (Claude + Codex today; profile-neutral so future swaps are possible). Pair-mode is default-when-available for `/devlyn:resolve` VERIFY/JUDGE; PLAN/IMPLEMENT/BUILD_GATE/CLEANUP stay solo by default. iter-0020 falsified Codex-BUILD/IMPLEMENT, NOT pair-mode generally. iter-0033d/f/g closed PLAN-pair as research-only. | **Materially better than L1** on quality axes — by lifting fixtures L1 ties or loses on, not by re-confirming fixtures L1 already wins | **Pair budget must out-earn `L1-best-of-M`**, where M is the wall-time ratio of L2 to L1. If pair takes 3× the wall-time, the quality gain must beat the gain from running L1 three times. |
+| **L2 — pair harness** | 2+ LLMs (Claude + Codex today; profile-neutral so future swaps are possible). No pair surface ships since 4.2.0; resolve's default-when-available VERIFY/JUDGE pair is history. iter-0020 falsified Codex-BUILD/IMPLEMENT, NOT pair-mode generally. iter-0033d/f/g closed PLAN-pair as research-only. | **Materially better than L1** on quality axes — by lifting fixtures L1 ties or loses on, not by re-confirming fixtures L1 already wins | **Pair budget must out-earn `L1-best-of-M`**, where M is the wall-time ratio of L2 to L1. If pair takes 3× the wall-time, the quality gain must beat the gain from running L1 three times. |
 
 The efficiency contract applies equally to L1 and L2. **"Slower but more thoughtful" is not free** — at every layer, the alternative "just run the cheaper layer N more times" must be empirically worse.
 
@@ -203,7 +203,7 @@ User insight (verbatim, 2026-04-27): *"속도, 즉 효율도 좋아야해. 너�
 
 Translation: if L1 takes 10× the wall-time of L0, the user could have invoked L0 ten times and selected the best output. That is L1's true competitive baseline, not single-shot L0. Same logic for L2 vs L1.
 
-This does not refute the pair hypothesis. It refutes pair across every phase as a default. Pair has to be gated to the phases where the multi-model decision provably out-earns running the cheaper layer more times. The shipped exception is `/devlyn:resolve` **VERIFY/JUDGE default-when-available pair**.
+This does not refute the pair hypothesis. It refutes pair across every phase as a default. Pair has to be gated to the phases where the multi-model decision provably out-earns running the cheaper layer more times. Resolve's **VERIFY/JUDGE default-when-available pair** was the shipped exception until 4.2.0 retired resolve.
 
 ---
 
@@ -269,6 +269,8 @@ Why this is the Mission 2 gate (not Mission 1): #16 is meaningless if Mission 1 
 
 ## Pair-mode policy (round-3 redesign, 2026-05-03)
 
+**History since 4.2.0:** this policy governed resolve, which is retired (0232 §8). No pair surface ships; a pair rung needs its own measured admission.
+
 Pair-mode is gated by per-phase measurement evidence; VERIFY/JUDGE is the approved default-when-available exception. Pair candidates are LLM-judgment phases where upstream mistakes propagate: ideate spec audit, ideate PROJECT coherence audit, resolve PLAN audit, resolve VERIFY/JUDGE, and CLEANUP residual audit as a VERIFY finding axis. Pure-script phases (`archive_run.py`) and LLM-orchestrated mechanical gates (`BUILD_GATE`, `VERIFY-MECHANICAL`) are deterministic gates: command output is truth, and their findings may trigger adjacent model-judgment audits but are not pair-judgment phases themselves. A phase ships pair-mode only after L1-vs-L2 evidence shows quality lift on pair-eligible cases, no unacceptable wall-time regression, no hard-floor regression, and no phase-contamination leak.
 
 `/devlyn:resolve` remains solo for PLAN / IMPLEMENT / BUILD_GATE / CLEANUP. VERIFY/JUDGE ships as default-when-available pair; former trigger reasons remain telemetry. `frozen-verify-gate.py` PASSes on two gated internal runs (F12 `20260505T173913Z-9986cd3-frozen-verify`, F10 `20260505T230215Z-9986cd3-frozen-verify`) and on an eleven-run SWE-bench Lite fixed-diff pilot with durable gate artifacts at `benchmark/auto-resolve/results/swebench-lite-proof-gate-n11.{json,md}`. The SWE-bench gate accepts either external solo-vs-pair verdict lift or internal pair lift (`pair_judge` stricter than the pair run's primary judge) to avoid stochastic primary-judge confounding, and the n11 artifact enforces `--max-pair-solo-wall-ratio 3` with average pair/solo wall ratio 1.87x. The first25 plus bounded 26-50 partial SWE-bench matrix preserves thirty-seven non-gate rows, including no-lift rows, recall-only/advisory rows, `django__django-11422` as a verdict-lift row excluded by wall ratio, `astropy__astropy-14995` as solo-mechanical-dominated, bounded timeout rows, and rows 41-49 as additional controls. F11 `20260506T000258Z-9986cd3-frozen-verify` is recall-only, not gate evidence: pair fired and found MEDIUM/LOW issues, but `pair_verdict_lift=false`.
@@ -296,7 +298,7 @@ Round-3 is the locked policy.
 Per Codex R2 (2026-04-27): **same vocabulary, different thresholds**.
 
 - **Iteration-loop pair** (R0 reviews, cross-model deliberation on harness changes): human-supervised; pair freely when stakes are above "single-line text edit". Cost amortized over every future run.
-- **Product pair** (L2 surface in `/devlyn:resolve` and `/devlyn:ideate`): VERIFY/JUDGE ships default-when-available; PLAN-pair stays research-only after iter-0033d/f/g. Next measurement candidate: PROJECT-pair (iter-0033e once defect-class oracle is built); PLAN-pair re-enters scope when unblock condition A or B fires.
+- **Product pair** (L2 surface in `/devlyn:resolve` and `/devlyn:ideate`): VERIFY/JUDGE shipped default-when-available in resolve until 4.2.0; PLAN-pair stays research-only after iter-0033d/f/g. Next measurement candidate: PROJECT-pair (iter-0033e once defect-class oracle is built); PLAN-pair re-enters scope when unblock condition A or B fires.
 
 Both reuse `solo` / `pair_critic` / `pair_consensus` as the policy vocabulary.
 
