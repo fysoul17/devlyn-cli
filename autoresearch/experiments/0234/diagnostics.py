@@ -42,6 +42,17 @@ def redirected_capture(out, command):
     return found[0]
 
 
+# A peer launch runs the wrapper or `claude -p` as a command; naming the wrapper in `cat`/`sed`/`grep` is not a launch
+# (0234 SMOKE: `sed -n 1,40p .../codex-monitored.sh` was counted as a turn).
+CODEX_LAUNCH = re.compile(r'(?:^|[;&|({]\s*|\n\s*|\bbash\s+|\bsh\s+|=\S+\s+)(?:\S*/)?codex-monitored\.sh\b')
+CLAUDE_LAUNCH = re.compile(r'(?:^|[;&|({]\s*|\n\s*|\btimeout\s+(?:-k\s+\S+\s+)?\S+\s+|=\S+\s+)(?:\S*/)?claude\s+-p\b')
+
+
+def launch_engine(command):
+    """The peer engine a shell command launches, or None when it only mentions one."""
+    return 'codex' if CODEX_LAUNCH.search(command) else 'claude' if CLAUDE_LAUNCH.search(command) else None
+
+
 RESUME_VALUE_OPTIONS = {'-c', '--config', '-m', '--model', '--enable', '--disable', '-i', '--image', '-p', '--profile'}
 
 
@@ -111,6 +122,21 @@ def text_of(call):
     return str(value)
 
 
+def without_heredocs(command):
+    """A shell command without its here-document bodies, whose prose (`-> 13.5`) is not a redirection."""
+    lines, kept, terminator = command.split('\n'), [], None
+    for line in lines:
+        if terminator is not None:
+            if line.strip() == terminator:
+                terminator = None
+            continue
+        kept.append(line)
+        match = re.search(r"<<-?\s*['\"]?(\w+)['\"]?", line)
+        if match:
+            terminator = match.group(1)
+    return '\n'.join(kept)
+
+
 def paths(call):
     content = text_of(call)
     if call['tool'] == 'file_change':  # Codex JSON reports its patch edits as file_change items
@@ -123,7 +149,7 @@ def paths(call):
         value = call['input']
         return [str(value.get('file_path') or value.get('path') or '')] if isinstance(value, dict) else []
     if call['tool'] in ('command_execution', 'exec_command', 'Bash', 'shell_command'):
-        targets = re.findall(r'(?:>>?|\btee\s+(?:-a\s+)?)\s*([\w./-]+)', content)
+        targets = re.findall(r'(?:>>?|\btee\s+(?:-a\s+)?)\s*([\w./-]+)', without_heredocs(content))
         edited = [p for p in targets if p != '/dev/null' and not p.startswith(('.devlyn/', '/tmp/', '/private/tmp/',
                                                                              '$TMPDIR/', 'tmp/')) and '/.devlyn/' not in p]
         if edited:
@@ -219,14 +245,20 @@ def peer_turns(ordered, out, plan):
         command = text_of(call)
         if call['tool'] not in ('Bash', 'command_execution', 'exec_command', 'shell_command'):
             continue
-        engine = ('codex' if 'codex-monitored.sh' in command else
-                  'claude' if re.search(r'\bclaude\s+-p\b', command) else None)
+        engine = launch_engine(command)
         if not engine:
             continue
         session = None
         if engine == 'claude':
-            match = re.search(r'--(?:session-id|resume)\s+([\w-]+)', command)
-            session = match.group(1) if match else None
+            # The turn's own result envelope binds the session first (an id held in a shell variable is not literal).
+            capture = redirected_capture(out, command)
+            try:
+                session = json.loads(capture.read_text(errors='replace')).get('session_id') if capture else None
+            except ValueError:
+                session = None
+            if not session:
+                match = re.search(r'--(?:session-id|resume)\s+([\w-]+)', command)
+                session = match.group(1) if match else None
         else:
             # The turn's own capture binds the thread first; the command line is only a fallback (freeze a2).
             capture = redirected_capture(out, command)

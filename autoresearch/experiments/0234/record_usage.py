@@ -262,13 +262,14 @@ def record(out):
     diagnostics = load('diagnostics0234u', HERE / 'diagnostics.py')
     for call in diagnostics.calls(evidence.lines(out / 'run/stdout'), plan['engine']):
         command = diagnostics.text_of(call)
-        if 'codex-monitored.sh' not in command and not re.search(r'\bclaude\s+-p\b', command):
+        engine = diagnostics.launch_engine(command)
+        if engine is None:
             continue
         capture = diagnostics.redirected_capture(out, command)
         if capture is None:
-            (codex_gaps if 'codex-monitored.sh' in command else claude_gaps).append(
+            (codex_gaps if engine == 'codex' else claude_gaps).append(
                 'owner-launched peer turn has no unambiguous saved capture')
-        elif 'codex-monitored.sh' not in command:
+        elif engine == 'claude':
             # Any observed Claude capture, whatever its name, must hold a result envelope with usage that entered the
             # inventory (freeze a2/a3); otherwise its usage is a named gap.
             relative = str(capture.relative_to(out))

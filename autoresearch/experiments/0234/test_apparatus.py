@@ -24,10 +24,10 @@ class Registration(unittest.TestCase):
         self.assertEqual(set(control.ARMS), {'B', 'H', 'P'})
         self.assertEqual(set(prepare.ARMS), {'A', 'B', 'H', 'P'})
         self.assertEqual(control.ARMS['B'][1], '6f03f5ac2895eaccc22ff12d1644a0fc623baca1eec7d00e877ce3254d33352d')
-        self.assertEqual(control.ARMS['H'], ('335d27130c270e9c947558eb2f9c28a528776e32',
-                                             'f48ee18c5174d4c737489ca1fb14b8c27f9e09af42219a3fac56381ee22bd695'))
-        self.assertEqual(control.ARMS['P'], ('04712dad0e9f2efcc90aa85b7d5add8f76786fa9',
-                                             '54c513afbac15a87fa7bd19028769cb8a1cc43ae9c989fbfb3e6aeb08f8f8591'))
+        self.assertEqual(control.ARMS['H'], ('dc3c4ee60f4750c2460cb821ebc913ec367e8ac9',
+                                             'e2d429df04d44476e758e28c9c038f9d38948b850b1564311a4973c95a5e0395'))
+        self.assertEqual(control.ARMS['P'], ('276696beee6a5039fbb415c5c7cb3a9a439b722a',
+                                             'd297c21f05f6a339688b0d42e316bc4caa463093b23c1328163277a207059200'))
         for commit, digest in control.ARMS.values():
             self.assertEqual((len(commit), len(digest)), (40, 64))
         with tempfile.TemporaryDirectory() as temp:
@@ -264,6 +264,19 @@ class Decision(unittest.TestCase):
         self.assertIsNone(tripwire['checks']['input'])
 
 class PeerDiagnostics(unittest.TestCase):
+    def test_naming_the_wrapper_is_not_a_launch(self):
+        self.assertIsNone(diagnostics.launch_engine('sed -n 1,40p .claude/skills/_shared/codex-monitored.sh'))
+        self.assertIsNone(diagnostics.launch_engine('grep -n claude -p README.md'))
+        self.assertEqual(diagnostics.launch_engine(
+            'CODEX_MONITORED_TIMEOUT_SEC=540 bash /x/codex-monitored.sh --json -s read-only -C . "$(cat t)" > p'), 'codex')
+        self.assertEqual(diagnostics.launch_engine('timeout -k 5s 540s claude -p --session-id $U < t > p.json'), 'claude')
+        self.assertEqual(diagnostics.launch_engine('timeout -k 5s 540s /usr/local/bin/claude -p < t > p.json'), 'claude')
+
+    def test_heredoc_prose_is_not_a_redirect(self):
+        call = {'tool': 'Bash', 'input': {'command': "mkdir -p .devlyn/pair && cat > .devlyn/pair/turn1.md <<'EOF'\n"
+                                         "(5, 50, 0) -> 3 and 13.5 -> 14\nEOF\necho done"}, 'output': ''}
+        self.assertEqual(diagnostics.paths(call), [])
+
     def test_redirect_capture_is_not_an_edit(self):
         rows = [dict(type='item.started', item=dict(id='a', type='command_execution',
                     command='claude -p --output-format json > .devlyn/pair/peer1.json')),
