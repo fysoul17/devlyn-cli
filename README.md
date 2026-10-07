@@ -64,8 +64,8 @@ A bare intent is planned and, when your request authorizes the work, added and d
 
 ### Delivery
 
-Direct work edits your current checkout. When you ask to ship it (commit, PR or merge), and
-for every drained task, the task gets its own linked worktree; accepted tasks default to
+Direct work edits your current checkout; run parallel sessions in separate worktrees (for example `claude -w`). When you ask to ship it, and
+for every drained task, the task gets its own linked worktree. A commit request stays local and a PR request stops at the PR; otherwise accepted tasks default to
 scoped commit → push → PR → merge when the repository allows it (otherwise the PR waits for a person). After the
 PR merges, the worktree and branch its session released are cleaned; anything in use is
 kept. Set `git config --local devlyn.completionMode pr` to stop at the PR; `task-complete.py complete --mode auto|pr`
