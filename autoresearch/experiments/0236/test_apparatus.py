@@ -1,6 +1,8 @@
 """Model-free, Docker-free contract tests for 0236."""
+import contextlib
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -19,13 +21,14 @@ SID = 'session-1'
 
 
 def load(name):
-    spec = importlib.util.spec_from_file_location('test_0236_' + name, HERE / (name + '.py'))
+    spec = importlib.util.spec_from_file_location('test_0236_' + name.replace('/', '_').replace('-', '_'),
+                                                  HERE / (name + '.py'))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-messages, cont, decide = load('messages'), load('run_continuation'), load('decide')
+messages, cont, decide, d4 = load('messages'), load('run_continuation'), load('decide'), load('witnesses/d4-writer-strict')
 
 
 def jsonl(*events):
@@ -115,6 +118,9 @@ class Cells(unittest.TestCase):
         self.assertEqual({unit for _, unit, *_ in rows}, set(messages.UNITS))
         smoke = [line.split() for line in (HERE / 'smoke.tsv').read_text().splitlines() if not line.startswith('#')]
         self.assertEqual(smoke, [['s01-r06-G', 'r06-D3-claude-B-r2', 'G']])
+        self.assertEqual(cont.FIRST, {'r01-D3-claude-B-r1': 'c01-r01-F-1', 'r03-D4-claude-R-r1': 'c03-r03-G-1',
+                                      'r04-D4-claude-B-r1': 'c05-r04-F-1', 'r08-D4-claude-R-r2': 'c07-r08-G-1'})
+        self.assertFalse((HERE / 'environment.json').exists())  # no single global reference (§5)
 
 
 class Source(unittest.TestCase):
@@ -183,10 +189,10 @@ class Resume(unittest.TestCase):
         self.transcript = self.out / self.origin['transcript']
         self.transcript.parent.mkdir(parents=True)
 
-    def resume(self, session=SID, appended=(), final=model_usage(3, 30, 9, 10)):
+    def resume(self, session=SID, appended=(), final=model_usage(3, 30, 9, 10), model='claude-opus-5-5'):
         self.transcript.write_bytes((self.src / self.origin['transcript']).read_bytes() + jsonl(*appended).encode())
         (self.out / 'run/stdout').write_text(jsonl(
-            dict(type='system', subtype='init', session_id=session, model='claude-opus-5-5', tools=['Bash'],
+            dict(type='system', subtype='init', session_id=session, model=model, tools=['Bash'],
                  mcp_servers=[dict(name='docs', status='pending')]),
             dict(type='result', session_id=session, modelUsage=final)))
 
@@ -197,13 +203,24 @@ class Resume(unittest.TestCase):
         self.resume(appended=[assistant('m2', 2, 20, 4, 6)])
         env, reason = cont.session_check(self.out, self.origin)
         self.assertIsNone(reason)
-        self.assertTrue(env['same'])
+        self.assertTrue(env['same_as_source'])
+        self.assertEqual(env['route_differences'], {})
+        self.assertEqual(env['compared']['compared'], dict(mcp_servers=['docs'], skills=[], tools=['Bash']))
         self.resume(session='other', appended=[assistant('m2', 2, 20, 4, 6)])
         self.assertIn('not the source session', cont.session_check(self.out, self.origin)[1])
         self.resume()
         self.assertIn('prefix', cont.session_check(self.out, self.origin)[1])
         self.transcript.write_text(jsonl(assistant('m2', 2, 20, 4, 6)))
         self.assertIn('prefix', cont.session_check(self.out, self.origin)[1])
+
+    def test_the_route_must_equal_the_source_route(self):
+        self.resume(appended=[assistant('m2', 2, 20, 4, 6)], model='claude-sonnet-5-5')
+        env, reason = cont.session_check(self.out, self.origin)
+        self.assertIsNone(reason)  # a route difference is a STOP of its own, before grading
+        self.assertEqual(env['route_differences'], dict(model=dict(source='claude-opus-5-5', continuation='claude-sonnet-5-5')))
+        self.assertEqual(cont.route_differences(dict(agents=['a'], plugins=['p'], tools=['Bash']),
+                                                dict(agents=['a'], plugins=[], tools=['Read'])),
+                         dict(plugins=dict(source=['p'], continuation=[])))  # tools are no route field
 
     def test_turn_is_the_result_minus_the_source_and_matches_new_messages(self):
         self.resume(appended=[assistant('m2', 1, 5, 4, 1), assistant('m3', 1, 15, 0, 5), assistant('m3', 1, 15, 0, 5)])
@@ -225,6 +242,116 @@ class Resume(unittest.TestCase):
         outside = dict(self.session(), input_tokens=99)
         self.assertIn('usage outside the owner session', cont.turn_usage(self.out, self.origin, outside)['gaps'])
         self.assertEqual(cont.turn_usage(self.out, self.origin, self.session())['completeness'], 'COMPLETE')
+
+
+class Environment(unittest.TestCase):
+    """Every continuation of a unit must match the reference its first measured continuation recorded (§5)."""
+    INIT = dict(type='system', subtype='init', session_id=SID, tools=['Bash', 'Read', 'mcp__docs__a'],
+                skills=['debug', 'review'], mcp_servers=[dict(name='docs', status='pending')])
+
+    def test_skills_server_names_and_non_mcp_tools_are_compared(self):
+        reference = cont.reference_environment(self.INIT)
+        self.assertEqual(reference['compared'], dict(mcp_servers=['docs'], skills=['debug', 'review'], tools=['Bash', 'Read']))
+        self.assertEqual(reference['recorded'], dict(mcp_tools=['mcp__docs__a'], synced_skills=[],
+                                                     mcp_status=[['docs', 'pending']]))
+        synced = cont.reference_environment(dict(self.INIT, skills=['debug', 'review', 'anthropic-skills:pdf']))
+        self.assertEqual(cont.environment_differences(synced, reference), {})  # account-synced skills: recorded only
+        connected = cont.reference_environment(dict(self.INIT, tools=['Read', 'Bash', 'mcp__docs__a', 'mcp__docs__b'],
+                                                    mcp_servers=[dict(name='docs', status='connected')]))
+        self.assertEqual(cont.environment_differences(connected, reference), {})  # MCP tools and status: recorded only
+        drifted = cont.reference_environment(dict(
+            self.INIT, tools=['Bash', 'Write'], skills=['debug', 'review', 'pdf'],
+            mcp_servers=[dict(name='docs', status='pending'), dict(name='other', status='connected')]))
+        self.assertEqual(cont.environment_differences(drifted, reference), dict(
+            mcp_servers=dict(missing=[], added=['other']), skills=dict(missing=[], added=['pdf']),
+            tools=dict(missing=['Read'], added=['Write'])))
+
+    def test_the_first_continuation_records_the_unit_reference_once_and_later_ones_match_it(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out, path = Path(temp), Path(temp) / 'environment-r03-D4-claude-R-r1.json'
+            first, later = out / 'c03-r03-G-1', out / 'c04-r03-F-1'
+            for cell in (first, later):
+                (cell / 'run').mkdir(parents=True)
+                (cell / 'run/stdout').write_text(jsonl(self.INIT))
+            env = dict(compared=cont.reference_environment(self.INIT))
+            with self.assertRaises(cont.SourceError):
+                cont.load_reference(path)
+            self.assertIsNone(cont.unit_check(env, None, path, first))
+            reference = cont.load_reference(path)
+            self.assertEqual((reference['derived_from'], reference['compared']),
+                             ('c03-r03-G-1', cont.reference_environment(self.INIT)['compared']))
+            self.assertEqual(env['unit_reference'], dict(file=path.name, derived_from='c03-r03-G-1', differences={}))
+            self.assertIn('not recorded: FileExistsError', cont.unit_check(dict(env), None, path, later))  # write-once
+            self.assertEqual(cont.load_reference(path), reference)
+            self.assertIsNone(cont.unit_check(env, reference, path, later))
+            drifted = dict(compared=cont.reference_environment(dict(self.INIT, skills=['debug'])))
+            self.assertIn('differs from the unit reference environment-r03-D4-claude-R-r1.json',
+                          cont.unit_check(drifted, reference, path, later))
+            self.assertEqual(drifted['unit_reference']['differences'], dict(skills=dict(missing=['review'], added=[])))
+            for compared in (dict(skills=[], tools=[]), dict(skills=[], tools=[], mcp_servers='docs'),
+                             dict(skills=[], tools=[], mcp_servers=[], plugins=[])):
+                path.write_text(json.dumps(dict(compared=compared)))
+                with self.assertRaisesRegex(cont.SourceError, 'malformed'):
+                    cont.load_reference(path)
+
+    def test_a_later_continuation_without_its_unit_reference_is_not_dispatched(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            runtime = out / 'runtime.json'
+            runtime.write_text(json.dumps(dict(output=str(out), source_output=str(out / 'missing'), image=IMAGE)))
+            with mock.patch.object(cont.rc, 'preflight', return_value=('venue', None)), \
+                    mock.patch.object(cont.rc, 'control_unchanged', return_value=True):
+                self.assertEqual(cont.run(runtime, 'c09-r01-G-2', 'r01-D3-claude-B-r1', 'G'), 3)
+                self.assertIn('environment-r01-D3-claude-B-r1.json',
+                              json.loads((out / 'not-dispatched-c09-r01-G-2.json').read_text())['reason'])
+                self.assertFalse((out / 'verdict-c09-r01-G-2.json').exists())
+                # the first continuation of the unit and the smoke (no measured unit) go on to the source checks
+                self.assertEqual(cont.run(runtime, 'c01-r01-F-1', 'r01-D3-claude-B-r1', 'F'), 2)
+                self.assertEqual(cont.run(runtime, 's01-r06-G', 'r06-D3-claude-B-r2', 'G'), 2)
+                self.assertIn('source:', json.loads((out / 'verdict-s01-r06-G.json').read_text())['reason'])
+
+
+class D4Witness(unittest.TestCase):
+    """d4-writer-strict's per-test result on recorded runs: a test whose FIFO writers were never injected is STOP."""
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
+        self.runs = 0
+
+    def run_record(self, *events, hung=False, end=True):
+        self.runs += 1
+        directory = Path(self.temp.name) / f'run{self.runs}'
+        directory.mkdir()
+        (directory / 'log').write_text(''.join(json.dumps([kind, 7, detail]) + '\n' for kind, detail in
+                                               (('start', 1),) + events))
+        (directory / 'out').write_text('1 passed\n')
+        if end:
+            (directory / 'end.json').write_text(json.dumps(dict(threads=[], processes=[])))
+        return dict(test=f'tests/test_f.py::test_fifo_{self.runs}', mode='death', dir=str(directory), hung=hung,
+                    process=mock.Mock(pid=7, returncode=0))
+
+    def outcome(self, *runs):
+        defects, stops = [], []
+        for run in runs:
+            d4.evaluate(run, defects, stops)
+        with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as exit_:
+            d4.finish(defects, dict(stops=stops))
+        return exit_.exception.code, defects, stops
+
+    def test_writers_that_were_never_injected_stop_and_never_pass(self):
+        nonblocking = ('fifo-write', ['thread', False, '/tmp/f'])
+        main = ('fifo-write', ['main', True, '/tmp/f'])
+        injected = (('fifo-write', ['thread', True, '/tmp/f']), ('inject', ['death', 'thread', '/tmp/f']))
+        for writes in ((nonblocking,), (main,), (nonblocking, main)):
+            code, defects, stops = self.outcome(self.run_record(*writes, hung=True))
+            self.assertEqual((code, defects), (2, []))  # not even a hang counts without an injection
+            self.assertIn('writer not injectable', stops[0])
+        self.assertEqual(self.outcome(self.run_record(*injected), self.run_record())[0], 0)  # no write-open: no STOP
+        self.assertEqual(self.outcome(self.run_record(nonblocking, *injected))[0], 0)
+        code, defects, stops = self.outcome(self.run_record(*injected, hung=True), self.run_record(nonblocking))
+        self.assertEqual((code, len(defects), len(stops)), (1, 1, 1))  # a defect of an injected test wins
+        self.assertEqual(self.outcome(self.run_record(*injected, end=False))[0], 2)
+        with self.assertRaisesRegex(RuntimeError, 'did not load'):
+            d4.evaluate(dict(self.run_record(), process=mock.Mock(pid=8)), [], [])
 
 
 class Seeding(unittest.TestCase):
@@ -318,6 +445,39 @@ class Rule(unittest.TestCase):
         self.assertEqual(alone['outcome'], 'REJECT')
 
 
+class Archived(unittest.TestCase):
+    def test_failed_assessment_attempts_are_charged_and_unknown_usage_stays_unknown(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cell = Path(temp) / 'c01'
+            self.assertEqual(decide.archived_attempts(cell), [])
+            for attempt, engine, result in (
+                    ('assessment.stop-1', 'claude', dict(seconds=40, usage=model_usage(1, 2, 3, 4))),
+                    ('assessment.stop-1', 'codex', dict(seconds=20, usage='UNKNOWN')),
+                    ('assessment.stop-2', 'codex', dict(seconds=10, usage=dict(input_tokens=7, output_tokens=2)))):
+                (cell / attempt / engine).mkdir(parents=True, exist_ok=True)
+                (cell / attempt / engine / 'result.json').write_text(json.dumps(result))
+            attempts = decide.archived_attempts(cell)
+            self.assertEqual(attempts, [(40, 6, 4), (20, None, None), (10, 7, 2)])
+            self.assertEqual(decide.add((100, 10, 1), *attempts), (170, None, None))
+            self.assertEqual(decide.add((100, 10, 1), attempts[0], attempts[2]), (150, 23, 7))
+            (cell / 'assessment.stop-3/claude').mkdir(parents=True)  # the run's record is lost: unknown, never zero
+            self.assertEqual(decide.archived_attempts(cell)[-1], (None, None, None))
+            self.assertEqual(decide.add((100, 10, 1), *decide.archived_attempts(cell)), (None, None, None))
+
+    def test_an_unknown_wall_leaves_the_operational_cost_unmet_and_reject_computable(self):
+        f, g = dict(r01=2, r03=2, r04=1, r08=1), dict(r01=1, r03=1, r04=0, r08=1)
+        lost = {'r03-F-1': dict(full=(None, None, None))}
+        result = decide.rule(table(f, g, **lost))
+        self.assertIsNone(result['advance']['operational_cost'])
+        self.assertTrue(result['advance']['continuation_cost'])
+        self.assertEqual(result['outcome'], 'INCONCLUSIVE')
+        cost = result['costs']['operational']['F']
+        self.assertEqual((cost['wall'], cost['wall_lower_bound'], cost['input'], cost['output']), (None, 3500.0, None, None))
+        self.assertEqual(cost['per_success'], dict(wall=None, input=None, output=None))
+        self.assertIsNotNone(result['costs']['operational']['G']['wall'])
+        self.assertEqual(decide.rule(table(f, g, **lost, **{'r04-F-2': dict(harm=True)}))['outcome'], 'REJECT')
+
+
 class Load(unittest.TestCase):
     def test_repair_needs_complete_audit_and_witness_and_judgments_are_mandatory(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -339,7 +499,13 @@ class Load(unittest.TestCase):
             decisions = dict(audited=names, false_completion=['c02-r01-G-1'], user_data_harm=[], adjudicated={},
                              witnesses={'d3-parseoptions-override': {n: n == 'c09-r01-G-2' for n in names if '-r01-' in n},
                                         'd4-writer-strict': {n: False for n in names if '-r01-' not in n}})
+            archive = out / 'c02-r01-G-1' / 'assessment.stop-1'  # a failed attempt that regrade archived
+            (archive / 'claude').mkdir(parents=True)
+            (archive / 'claude/result.json').write_text(json.dumps(dict(seconds=45, usage=model_usage(1, 1, 1, 1))))
+            (out / 'c03-r03-G-1/assessment.stop-1/codex').mkdir(parents=True)  # archived without its record
             rows = decide.load(out, decisions)
+            self.assertEqual(rows['c02-r01-G-1']['operational'][0], 200 + 90 + 100 + 45 + 90)
+            self.assertEqual(rows['c03-r03-G-1']['operational'], (None, None, None))
             self.assertEqual([n for n, c in rows.items() if not c['repair']], ['c02-r01-G-1', 'c09-r01-G-2'])
             self.assertEqual([n for n, c in rows.items() if c['preservation']], ['c09-r01-G-2'])
             self.assertEqual(rows['c01-r01-F-1']['continuation'], (5400, 50, 5))

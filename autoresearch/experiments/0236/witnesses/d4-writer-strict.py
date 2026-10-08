@@ -4,32 +4,43 @@ d4-writer-death. A tree must positively show the bound for every FIFO test, unde
 Obligation (D4 task, 6th): "Timeout/error probes terminate owned writer/readers and remove only their fixture paths;
 no sleeps-as-proof race test."
 
-Injection, without editing the tree: a sitecustomize module (on PYTHONPATH for the test process and every child it
-starts) intercepts the test-owned writer's blocking write-open of a FIFO -- builtins/io/_io.open in a write mode, or
-os.open with O_WRONLY/O_RDWR and without O_NONBLOCK -- in a child process or a non-main thread of the test process:
-- death: the writer ends just before opening (a child process exits with status 1, a thread raises EIO);
+Injection, without editing the tree: a sitecustomize module (on PYTHONPATH for the test process and every Python child
+it starts) installs a Python audit hook. On the 'open' audit event (builtins.open, io.open, io.FileIO and os.open) for a
+FIFO opened for writing (O_WRONLY or O_RDWR) without O_NONBLOCK, in a child process or a non-main thread of the test
+process, it injects before the open happens:
+- death: the writer ends just before opening (a child process exits with status 1, a thread's open raises EIO);
 - stall: the writer pauses STALL seconds, then performs the real blocking open.
-Nonblocking opens (probes that release a blocked reader) and every other operation are untouched.
+Every such write-open is injected. Nonblocking write-opens (probes that release a blocked reader) are legitimate and
+never injected. A blocking write-open on the test process's main thread is recorded, never injected (the test's own
+reader could not proceed); it is not by itself a defect. Every FIFO write-open is recorded, injected or not.
 
 Each FIFO test of the tree (collected ids containing "fifo", from test files that call mkfifo) runs in its own pytest
-process under each injection, all concurrently. The defect reproduces (exit 1) when any of these holds:
+process under each injection, all concurrently. A test reproduces only on a demonstrated defect:
+- it is still running at DEADLINE seconds (it is killed; pytest's faulthandler dumps its stacks at 140 s);
+- at the end of its pytest session a non-main thread or a descendant process is still alive.
+For the tree, it also reproduces when:
+- a FIFO or symlink that did not exist before the runs remains outside the runs' pytest base temp directories;
 - no test file creates a FIFO, collection fails, or it collects no FIFO test;
-- under an injection, the injection fires in no test;
-- a test started a writer that did not get the injection: the main thread of the test process opens a FIFO for
-  writing through open(); data is written through a FIFO descriptor os.open returned without the injection (or that
-  descriptor is wrapped in a writable file object); or the test starts a child process that cannot be injected
-  because it did not load the instrumentation (not Python, a shell from os.system, or started without the
-  environment);
-- a test is still running at DEADLINE seconds (it is killed; pytest's faulthandler dumps its stacks at 140 s);
-- at the end of its pytest session a non-main thread or a descendant process is still alive, or the session never
-  reaches its end;
-- a FIFO or symlink that did not exist before the runs remains outside the runs' pytest base temp directories.
-Not seen: writer opens through io.FileIO, ctypes or another C extension.
+- under an injection, no test starts a FIFO writer at all.
+A test's result under an injection is STOP, never a reproduction and never a pass, when:
+- it starts a child the injection cannot reach (a non-Python program, a shell from os.system, or Python without the
+  witness environment or with -I, -E or -S): unsupported instrumentation;
+- writer not injectable: it made a nonblocking FIFO write-open in a child or a blocking one on the main thread, or it
+  made FIFO write-opens other than main-thread nonblocking probes and the injection fired zero times in it.
+  Main-thread nonblocking write-opens are reader-release probes: never injected, never a STOP;
+- its pytest session ended without recording its survivors.
+Only a test that is not STOP can show a demonstrated defect.
+Not seen: os.open with dir_fd, ctypes or another C extension, and a nonblocking writer thread next to an injected decoy
+writer in the same test.
 
-Run from the tree root (/work). Exit 1 = reproduces, 0 = none of the above, 2 = witness error (the instrumentation did
-not load in a test process, or the witness itself failed).
+Known limit: the stall is per write-open. Sequential injected blocking write-opens in one test stall STALL seconds
+each, so a test with several of them can still be running at DEADLINE, and reproduces, even when each open is bounded;
+four or more always do (4 x 40 s > 150 s).
+
+Run from the tree root (/work). Exit 1 = reproduces: a test that is not STOP or the tree shows a demonstrated defect;
+else 2 = STOP: some test is STOP, or a witness error (the instrumentation did not load in a test process, or the witness
+itself failed); else 0.
 """
-import collections
 import json
 import os
 import signal
@@ -45,135 +56,134 @@ STALL = 40
 MODES = ('death', 'stall')
 
 SITE = r'''
-import _io, builtins, errno, io, json, os, stat, subprocess, threading, time
+import errno, json, os, re, shutil, stat, sys, threading, time
 _mode, _log_path, _stall = os.environ['WITNESS_MODE'], os.environ['WITNESS_LOG'], int(os.environ['WITNESS_STALL'])
-_owner = int(os.environ.setdefault('WITNESS_OWNER_PID', str(os.getpid())))
-_real_open, _real_os_open, _real_write, _real_writev = builtins.open, os.open, os.write, os.writev
-_real_close, _real_fdopen, _real_system = os.close, os.fdopen, os.system
-_real_execv, _real_execve, _real_spawn, _real_spawnp = os.execv, os.execve, os.posix_spawn, os.posix_spawnp
-_real_execute = subprocess.Popen._execute_child
-_free = set()  # FIFO descriptors opened for writing without the injection
+_site = os.path.dirname(os.path.abspath(__file__))
+if 'WITNESS_OWNER_PID' not in os.environ and os.getppid() == int(os.environ['WITNESS_PARENT']):
+    os.environ['WITNESS_OWNER_PID'] = str(os.getpid())  # the pytest process the witness started
+_owner = int(os.environ.get('WITNESS_OWNER_PID', '0'))
+_ENV = ('WITNESS_MODE', 'WITNESS_LOG', 'WITNESS_STALL', 'WITNESS_PARENT', 'WITNESS_OWNER_PID')
+_real_open, _real_write, _real_close, _exit = os.open, os.write, os.close, os._exit
+_local = threading.local()
 
 
 def _log(kind, detail=None):
-    fd = _real_os_open(_log_path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+    fd = _real_open(_log_path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
     try:
         _real_write(fd, (json.dumps([kind, os.getpid(), detail], default=repr) + '\n').encode())
     finally:
         _real_close(fd)
 
 
-def _fifo(path, dir_fd=None):
+def _fifo(path):
     try:
-        return isinstance(path, (str, bytes, os.PathLike)) and stat.S_ISFIFO(os.stat(path, dir_fd=dir_fd).st_mode)
-    except (OSError, ValueError):
+        return stat.S_ISFIFO(os.stat(path).st_mode)
+    except (OSError, TypeError, ValueError):
         return False
 
 
-def _writer():
-    """'child' or 'thread' when the caller is a writer the injection reaches, None on the test's main thread."""
+
+def _calls(count):
+    # (id, code, instruction) of the innermost Python frames below this hook (_calls, _on_open, _hook): the frame that
+    # is calling open, or the opener= function and its caller. A frame suspended in one call keeps its instruction.
+    try:
+        frame = sys._getframe(3)
+    except ValueError:
+        return []
+    found = []
+    while frame is not None and len(found) < count:
+        found.append((id(frame), frame.f_code, frame.f_lasti))
+        frame = frame.f_back
+    return found
+
+
+def _context():
     if os.getpid() != _owner:
         return 'child'
-    return 'thread' if threading.current_thread() is not threading.main_thread() else None
+    return 'thread' if threading.current_thread() is not threading.main_thread() else 'main'
 
 
-def _inject(path, kind):
-    _log('inject', [_mode, kind, os.fsdecode(path)])
+def _on_open(path, mode, flags):
+    # One audit event per open: builtins.open, io.open and io.FileIO report their mode string, os.open reports None.
+    # An opener= call reports both; its os.open inside a stalled FileIO open of the same FIFO is not stalled again. The
+    # pending record is bound to the stalled call (frame and instruction) and is consumed by the next open event, so
+    # it never matches an os.open made after that call returned or raised.
+    pending, _local.pending = getattr(_local, 'pending', None), None
+    if (isinstance(path, int) or not isinstance(flags, int)
+            or flags & os.O_ACCMODE not in (os.O_WRONLY, os.O_RDWR) or not _fifo(path)):
+        return
+    name, context, blocking = os.fsdecode(path), _context(), not flags & os.O_NONBLOCK
+    if mode is None and pending and pending[0] == name and pending[1] in _calls(2):
+        return
+    _log('fifo-write', [context, blocking, name])
+    if not blocking or context == 'main':
+        return
+    _log('inject', [_mode, context, name])
     if _mode == 'death':
-        if kind == 'child':
-            os._exit(1)
+        if context == 'child':
+            _exit(1)
         raise OSError(errno.EIO, 'injected writer failure before opening the FIFO', path)
     time.sleep(_stall)
+    calls = _calls(1)
+    if mode is not None and calls:
+        _local.pending = (name, calls[0])
 
 
-def _write_mode(mode):
-    return isinstance(mode, str) and any(c in mode for c in 'wax+')
+def _uninstrumented(event, executable, argv, env):
+    # Why a child this spawn starts cannot carry the instrumentation, or None (Python with the witness environment and
+    # no option that drops it, or a program that does not exist, so nothing runs).
+    env = os.environ if env is None else {os.fsdecode(k): os.fsdecode(v) for k, v in env.items()}
+    argv = [argv] if isinstance(argv, (str, bytes, os.PathLike)) else list(argv or ())
+    argv = [os.fsdecode(a) for a in argv]
+    program = os.fsdecode(executable) if executable is not None else argv[0] if argv else ''
+    found = program if os.sep in program else shutil.which(program, path=env.get('PATH', os.defpath))
+    if not found or not os.access(found, os.X_OK):
+        return None
+    if not re.fullmatch(r'python[0-9.]*', os.path.basename(os.path.realpath(found))):
+        return '%s started %s, which is not Python' % (event, found)
+    missing = [k for k in _ENV if env.get(k) != os.environ.get(k)]
+    if _site not in env.get('PYTHONPATH', '').split(os.pathsep):
+        missing.append('PYTHONPATH')
+    if missing:
+        return '%s started Python without the witness environment (%s)' % (event, ', '.join(missing))
+    options = iter(argv[1:])
+    for token in options:
+        if token[:1] != '-' or token == '-' or token.startswith('--'):
+            break
+        letters = token[1:]
+        cut = next((i for i, c in enumerate(letters) if c in 'cmWX'), len(letters))
+        dropped = sorted(set(letters[:cut]) & set('IES'))
+        if dropped:
+            return '%s started Python with -%s, which skips the instrumentation' % (event, dropped[0])
+        if cut < len(letters):
+            if letters[cut] in 'cm':
+                break
+            if cut == len(letters) - 1:
+                next(options, None)  # the argument of -W or -X
+    return None
 
 
-def _open(file, mode='r', *args, **kwargs):
-    if not isinstance(file, int) and _write_mode(mode) and _fifo(file):
-        kind = _writer()
-        if kind:
-            _inject(file, kind)
-        else:
-            _log('escape', 'the main thread of the test process opened a FIFO for writing with open()')
-    return _real_open(file, mode, *args, **kwargs)
+def _on_spawn(event, executable, argv, env):
+    try:
+        reason = _uninstrumented(event, executable, argv, env)
+    except Exception as exc:  # a spawn the witness cannot classify cannot be shown to carry the instrumentation
+        reason = '%s could not be classified: %r' % (event, exc)
+    _log('unsupported' if reason else 'spawn', reason or [event, executable])
 
 
-def _os_open(path, flags, mode=0o777, *, dir_fd=None):
-    if flags & (os.O_WRONLY | os.O_RDWR) and _fifo(path, dir_fd):
-        kind = _writer()
-        if kind and not flags & os.O_NONBLOCK:
-            _inject(path, kind)
-        else:
-            fd = _real_os_open(path, flags, mode, dir_fd=dir_fd)
-            _free.add(fd)
-            return fd
-    return _real_os_open(path, flags, mode, dir_fd=dir_fd)
+def _hook(event, args):
+    if event == 'open':
+        _on_open(*args)
+    elif event == 'subprocess.Popen':
+        _on_spawn(event, args[0], args[1], args[3])
+    elif event in ('os.posix_spawn', 'os.exec'):
+        _on_spawn(event, *args)
+    elif event == 'os.system':
+        _log('unsupported', 'os.system started a shell')
 
 
-def _wrote(fd, size, how):
-    if size and fd in _free:
-        _log('escape', 'data written by %s through a FIFO descriptor opened without the injection' % how)
-
-
-def _write(fd, data):
-    _wrote(fd, len(data), 'os.write')
-    return _real_write(fd, data)
-
-
-def _writev(fd, buffers):
-    buffers = list(buffers)
-    _wrote(fd, sum(len(b) for b in buffers), 'os.writev')
-    return _real_writev(fd, buffers)
-
-
-def _fdopen(fd, mode='r', *args, **kwargs):
-    if fd in _free and _write_mode(mode):
-        _log('escape', 'a FIFO descriptor opened without the injection wrapped in a writable file object')
-    return _real_fdopen(fd, mode, *args, **kwargs)
-
-
-def _close(fd):
-    _free.discard(fd)
-    return _real_close(fd)
-
-
-def _execute_child(self, *args, **kwargs):
-    _real_execute(self, *args, **kwargs)
-    _log('spawn', self.pid)
-
-
-def _spawner(real):
-    def call(*args, **kwargs):
-        pid = real(*args, **kwargs)
-        _log('spawn', pid)
-        return pid
-    return call
-
-
-def _exec(real):
-    def call(*args, **kwargs):
-        _log('exec')
-        try:
-            return real(*args, **kwargs)
-        except BaseException:
-            _log('exec-failed')
-            raise
-    return call
-
-
-def _system(command):
-    _log('escape', 'os.system started a shell, which the injection cannot reach')
-    return _real_system(command)
-
-
-_log('start')
-builtins.open = io.open = _io.open = _open
-os.open, os.write, os.writev, os.fdopen, os.close, os.system = _os_open, _write, _writev, _fdopen, _close, _system
-os.execv, os.execve = _exec(_real_execv), _exec(_real_execve)
-os.posix_spawn, os.posix_spawnp = _spawner(_real_spawn), _spawner(_real_spawnp)
-subprocess.Popen._execute_child = _execute_child
+_log('start', os.getppid())
+sys.addaudithook(_hook)
 '''
 
 PLUGIN = r'''
@@ -236,7 +246,7 @@ def main():
         os.mkdir(run['dir'])
         env = dict(base_env, PYTHONPATH=work + os.pathsep + base_env['PYTHONPATH'], WITNESS_MODE=run['mode'],
                    WITNESS_STALL=str(STALL), WITNESS_LOG=os.path.join(run['dir'], 'log'),
-                   WITNESS_END=os.path.join(run['dir'], 'end.json'))
+                   WITNESS_END=os.path.join(run['dir'], 'end.json'), WITNESS_PARENT=str(os.getpid()))
         env.pop('WITNESS_OWNER_PID', None)
         run['out'] = open(os.path.join(run['dir'], 'out'), 'w')
         run['process'] = subprocess.Popen(
@@ -253,46 +263,48 @@ def main():
             run['process'].wait()
         run['out'].close()
     left = sorted(fifos_and_links(base_temps) - before)
-    reasons = []
-    results = [evaluate(run, reasons) for run in runs]
-    for mode in MODES:
-        if not any(r['injected'] for r in results if r['mode'] == mode):
-            reasons.append(f'{mode}: the injection fired in no test')
+    defects, stops = [], []
+    results = [evaluate(run, defects, stops) for run in runs]
+    for mode in MODES:  # a mode where writers ran or could not be observed has a STOP or injected test already
+        if not any(r['fifo_writes'] or r['unsupported'] for r in results if r['mode'] == mode):
+            defects.append(f'{mode}: no FIFO test starts a FIFO writer')
     if left:
-        reasons.append(f'{len(left)} FIFO or symlink left outside the pytest base temp directories: {left[:5]}')
-    finish(reasons, {'tests': len(ids), 'runs': len(runs), 'results': results})
+        defects.append(f'{len(left)} FIFO or symlink left outside the pytest base temp directories: {left[:5]}')
+    finish(defects, {'tests': len(ids), 'runs': len(runs), 'stops': stops, 'results': results})
 
 
-def evaluate(run, reasons):
-    """One run's record; appends its reproduction reasons. A test process without the instrumentation is an error."""
+def evaluate(run, defects, stops):
+    """One run's record. Appends its demonstrated defects, or, when the test cannot be instrumented, its writers were
+    never injected or its session end was not recorded, a STOP reason instead: such a test never reproduces and never
+    passes. A test process without the instrumentation is a witness error."""
     label = f'{run["test"]} [{run["mode"]}]'
     log = os.path.join(run['dir'], 'log')
     records = [json.loads(line) for line in open(log)] if os.path.exists(log) else []
-    starts = collections.Counter(pid for kind, pid, _ in records if kind == 'start')
-    if not starts[run['process'].pid]:
+    if not any(kind == 'start' and pid == run['process'].pid for kind, pid, _ in records):
         raise RuntimeError(f'{label}: the instrumentation did not load in the test process')
-    escapes = [detail for kind, _, detail in records if kind == 'escape']
-    spawned = {detail for kind, _, detail in records if kind == 'spawn'}
-    execs = (collections.Counter(pid for kind, pid, _ in records if kind == 'exec')
-             - collections.Counter(pid for kind, pid, _ in records if kind == 'exec-failed'))
-    escapes += [f'child process {pid} did not load the instrumentation' for pid in sorted(spawned | set(execs))
-                if starts[pid] < (pid in spawned) + execs[pid]]
+    unsupported = [detail for kind, _, detail in records if kind == 'unsupported']
+    writes = [detail for kind, _, detail in records if kind == 'fifo-write']
     injected = [detail for kind, _, detail in records if kind == 'inject']
     output = open(os.path.join(run['dir'], 'out'), errors='replace').read()
-    survivors = None
-    if escapes:
-        reasons.append(f'{label}: a writer did not get the injection: {escapes[0]}')
-    if run['hung']:
-        reasons.append(f'{label}: still running at {DEADLINE} s')
-    elif not os.path.exists(os.path.join(run['dir'], 'end.json')):
-        reasons.append(f'{label}: the pytest session never reached its end')
-    else:
-        survivors = json.load(open(os.path.join(run['dir'], 'end.json')))
-        if survivors['threads'] or survivors['processes']:
-            reasons.append(f'{label}: alive at session end: {survivors}')
+    end = os.path.join(run['dir'], 'end.json')
+    survivors = json.load(open(end)) if os.path.exists(end) else None
+    if unsupported:
+        stops.append(f'{label}: unsupported instrumentation: {unsupported[0]}')
+    elif uninjectable := [w for w in writes if (w[0] == 'child' and not w[1]) or (w[0] == 'main' and w[1])]:
+        stops.append(f'{label}: writer not injectable: {len(uninjectable)} nonblocking child or blocking main-thread '
+                     f'FIFO write-open(s): {uninjectable[0]}')
+    elif any(not (w[0] == 'main' and not w[1]) for w in writes) and not injected:
+        stops.append(f'{label}: writer not injectable: {len(writes)} FIFO write-open(s), none injected: {writes[0]}')
+    elif run['hung']:
+        defects.append(f'{label}: still running at {DEADLINE} s')
+    elif survivors is None:
+        stops.append(f'{label}: the pytest session ended without recording its survivors')
+    elif survivors['threads'] or survivors['processes']:
+        defects.append(f'{label}: alive at session end: {survivors}')
     return dict(test=run['test'], mode=run['mode'], hung=run['hung'],
-                exit=None if run['hung'] else run['process'].returncode, injected=injected[:3], escapes=escapes[:3],
-                survivors=survivors, stack=stack(output) if run['hung'] else None,
+                exit=None if run['hung'] else run['process'].returncode, injected=injected[:3],
+                fifo_writes=len(writes), main_thread_blocking_writes=sum(w[0] == 'main' and w[1] for w in writes),
+                unsupported=unsupported[:3], survivors=survivors, stack=stack(output) if run['hung'] else None,
                 last=output.strip().splitlines()[-1:])
 
 
@@ -325,10 +337,12 @@ def stack(output):
     return output[-500:]
 
 
-def finish(reasons, detail):
-    print(json.dumps(dict(reproduced=bool(reasons), reasons=reasons, **detail)))
+def finish(defects, detail):
+    """Exit 1 on a demonstrated defect, else 2 when a test is STOP, else 0."""
+    stops = detail.get('stops', [])
+    print(json.dumps(dict(reproduced=bool(defects), reasons=defects, **detail)))
     sys.stdout.flush()
-    sys.exit(1 if reasons else 0)
+    sys.exit(1 if defects else 2 if stops else 0)
 
 
 if __name__ == '__main__':

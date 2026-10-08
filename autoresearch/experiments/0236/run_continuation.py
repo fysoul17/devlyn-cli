@@ -4,9 +4,10 @@ Resumes a sealed 0235 Claude cell's own session for one added user message (regi
 copy of the cell's end state, then runs the unchanged 0235 post-run pipeline. 0235 code is imported, never edited.
 After an assessor fault, `0235/run_cell.py --regrade <runtime.json> <name>` regrades the preserved continuation.
 
-Exit 0 = verdict recorded, 3 = not dispatched (preflight), 2 = STOP: a source cell that fails verification, a frozen
-message that no longer matches its source, a resumed session that is not the source session or does not extend its
-transcript, or any 0235 STOP.
+Exit 0 = verdict recorded, 3 = not dispatched (preflight, or a later continuation of a unit without a valid unit
+reference environment), 2 = STOP: a source cell that fails verification, a frozen message that no longer matches its
+source, a resumed session that is not the source session or does not extend its transcript, an init route that differs
+from the source's, an init environment that differs from the unit reference, or any 0235 STOP.
 """
 import datetime
 import hashlib
@@ -38,6 +39,13 @@ digest = rc.digest
 # 0235's audit refreshed the stat cache of .git/index after sealing (registration 0236 §10); nothing else may differ.
 ALLOWED_DRIFT = {'cell/work/.git/index'}
 EVIDENCE_ROOTS = ('run', 'cell', 'tmp', 'home')
+CELLS = [line.split() for line in (HERE / 'cells.tsv').read_text().splitlines() if line and not line.startswith('#')]
+# Registration 0236 §5: every continuation's init route must equal its source's; the first measured continuation of a
+# unit (cells.tsv order) records the unit's reference environment, which every later continuation of the unit matches.
+FIRST = {unit: name for name, unit, *_ in reversed(CELLS)}  # reversed: the earliest row wins
+ROUTE = ('model', 'claude_code_version', 'permission_mode', 'agents', 'plugins')
+COMPARED = ('mcp_servers', 'skills', 'tools')
+SYNCED = 'anthropic-skills:'  # account-synced skills, loaded from the home cache or synced after init
 # /tmp of the source end state restored into the new cell's /tmp volume: root-owned sticky directory as the image's
 # /tmp, contents owned by the participant (USER 501:501) that wrote them.
 SEED = ('set -o pipefail; tar -C /src -cf - . | tar -C /dst -xpf - && chown -R 501:501 /dst && chown 0:0 /dst '
@@ -68,6 +76,55 @@ def environment(init):
                 skills=sorted(init.get('skills') or []), agents=sorted(init.get('agents') or []),
                 mcp_servers=sorted((s.get('name'), s.get('status')) for s in init.get('mcp_servers') or []),
                 plugins=sorted(p.get('name') for p in init.get('plugins') or []))
+
+
+def reference_environment(init):
+    """The environment of an init as the reference compares it: skills, MCP server names and non-MCP tools. MCP tool
+    names, server status and account-synced skills are recorded, never compared: they depend on when each server
+    connected and when the account sync finished."""
+    tools = init.get('tools') or []
+    servers = init.get('mcp_servers') or []
+    return dict(compared=dict(mcp_servers=sorted(s.get('name') for s in servers),
+                              skills=sorted(k for k in init.get('skills') or [] if not k.startswith(SYNCED)),
+                              tools=sorted(t for t in tools if not t.startswith('mcp__'))),
+                recorded=dict(mcp_tools=sorted(t for t in tools if t.startswith('mcp__')),
+                              synced_skills=sorted(k for k in init.get('skills') or [] if k.startswith(SYNCED)),
+                              mcp_status=sorted([s.get('name'), s.get('status')] for s in servers)))
+
+
+def route_differences(source, continuation):
+    """The route fields of two environment() records that differ: {key: {source, continuation}}; empty when equal."""
+    return {key: dict(source=source.get(key), continuation=continuation.get(key))
+            for key in ROUTE if source.get(key) != continuation.get(key)}
+
+
+def record_reference(path, cell, current):
+    """Write a unit's reference environment from its first measured continuation; never replaces one."""
+    reference = dict(derived_from=cell.name, stdout_sha256=digest(cell / 'run/stdout'), **current)
+    with open(path, 'x') as handle:
+        handle.write(json.dumps(reference, indent=2) + '\n')
+    return reference
+
+
+def load_reference(path):
+    """A unit's recorded reference environment; raises SourceError when it is missing or malformed."""
+    try:
+        reference = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        raise SourceError(f'no unit reference environment {path.name}: {exc}') from exc
+    compared = reference.get('compared') if isinstance(reference, dict) else None
+    if (not isinstance(compared, dict) or tuple(sorted(compared)) != COMPARED
+            or not all(isinstance(v, list) and all(isinstance(x, str) for x in v) for v in compared.values())):
+        raise SourceError(f'{path.name}: malformed reference environment')
+    return reference
+
+
+def environment_differences(current, reference):
+    """The compared sets of a reference_environment() record that differ from the reference: {key: {missing, added}};
+    empty when they match."""
+    current = current['compared']
+    return {key: dict(missing=sorted(set(want) - set(current[key])), added=sorted(set(current[key]) - set(want)))
+            for key, want in sorted(reference['compared'].items()) if set(want) != set(current[key])}
 
 
 def verify_source(src, image):
@@ -189,12 +246,14 @@ def discard(docker, volumes):
 
 
 def session_check(out, origin):
-    """Fail closed unless the continuation resumed the source session and only appended to its transcript."""
+    """Fail closed unless the continuation resumed the source session and only appended to its transcript. The
+    environment record holds the source and continuation init, the route differences and the compared environment."""
     init = init_event(out / 'run/stdout')
     if not init:
         return None, 'continuation emitted no init event'
-    env = dict(source=origin['init'], continuation=environment(init))
-    env['same'] = env['source'] == env['continuation']
+    env = dict(source=origin['init'], continuation=environment(init), compared=reference_environment(init))
+    env['same_as_source'] = env['source'] == env['continuation']
+    env['route_differences'] = route_differences(env['source'], env['continuation'])
     if init.get('session_id') != origin['session']:
         return env, f'resumed session {init.get("session_id")} is not the source session {origin["session"]}'
     if not (out / origin['transcript']).is_file():
@@ -206,6 +265,19 @@ def session_check(out, origin):
     if not after.startswith(before) or len(after) == len(before):
         return env, 'the source transcript is not a strict byte prefix of the continuation transcript'
     return env, None
+
+
+def unit_check(env, reference, path, cell):
+    """The unit environment check: the unit's first measured continuation (reference None) records the unit reference
+    at path, write-once; a later one is compared with it. Adds the comparison to env; returns the STOP reason or None."""
+    if reference is None:
+        try:
+            reference = record_reference(path, cell, env['compared'])
+        except OSError as exc:
+            return f'unit reference environment not recorded: {type(exc).__name__}: {exc}'
+    differences = environment_differences(env['compared'], reference)
+    env['unit_reference'] = dict(file=path.name, derived_from=reference['derived_from'], differences=differences)
+    return f'environment differs from the unit reference {path.name}: {json.dumps(differences)}' if differences else None
 
 
 def appended_messages(out, origin):
@@ -322,6 +394,14 @@ def run(runtime_path, name, unit, arm):
         return 3
     if not rc.control_unchanged(runtime):
         return stop(verdict_path, record, 'control changed')
+    first, reference_path, reference = FIRST.get(unit), output / f'environment-{unit}.json', None
+    if first and (name != first or reference_path.exists()):  # the smoke's unit is not measured: no unit reference
+        try:
+            reference = load_reference(reference_path)
+        except SourceError as exc:  # not a verdict: nothing ran
+            (output / f'not-dispatched-{name}.json').write_text(json.dumps(
+                dict(reason=f'{exc} (recorded by {first})'), indent=2))
+            return 3
     src, out = Path(runtime['source_output']) / unit, output / name
     try:
         origin = verify_source(src, runtime['image'])
@@ -354,6 +434,9 @@ def run(runtime_path, name, unit, arm):
     except (OSError, ValueError, KeyError, TypeError) as exc:  # usage is recorded, never a stop
         session = dict(completeness=f'UNKNOWN ({type(exc).__name__}: {exc})', input_tokens=None, output_tokens=None)
     environment_record, resumed = session_check(out, origin) if owner['teardown'] == 'CLEAN' else (None, None)
+    route = environment_record['route_differences'] if environment_record else None
+    unit_reason = (unit_check(environment_record, reference, reference_path, out)
+                   if environment_record and not resumed and not route and first else None)
     try:
         turn = turn_usage(out, origin, session) if not resumed else dict(completeness='UNKNOWN', gaps=[resumed])
     except (OSError, ValueError, KeyError, TypeError) as exc:
@@ -378,6 +461,8 @@ def run(runtime_path, name, unit, arm):
     baseline = json.loads((out / 'baseline.json').read_text())
     reason = ('teardown failed: ' + str(owner.get('teardown_error')) if owner['teardown'] != 'CLEAN' else
               'session: ' + resumed if resumed else
+              'init route differs from the source: ' + json.dumps(route) if route else
+              unit_reason if unit_reason else
               'harness changed' if not rc.harness_unchanged(out, baseline) else
               'shared account fault during execution: ' + ', '.join(sorted({h['kind'] for h in limits['execution']}))
               if limits['execution'] else
