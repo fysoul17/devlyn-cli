@@ -173,7 +173,7 @@ All 84 measured cells finished (development 2026-10-07 21:51Z; easy, screening a
 | codex | confirmation | 1/4 | 3/4 | 3/4 |
 | both | easy (E1, E2) | 4/4 | 4/4 | 4/4 |
 
-Raw completion counts; decide.py's outcomes also apply adjudications, false completion and witnessed defects. Quality conditions decide every FAIL:
+Raw completion counts; decide.py's outcomes also apply adjudications, false completion and witnessed defects. Quality conditions decide every development and claude confirmation FAIL; codex confirmation C/B fails on wall per success:
 - claude B/A: D3 and D4 completion, D4 safety (false completion d09) and severe, I0185 safety (false completion d36), rows and severe; every per-success resource test fails. Confirmation B/A fails on F10 completion.
 - claude C/B and C/A: I0185 rows (`terminal-alias` C 0/2, B 2/2, A 1/2) and witnessed defects; C/A also D4 completion (C 1/2, A 2/2). C/B passes confirmation; C/A fails it on F10 completion (C 0/2, A 2/2).
 - codex: I0185 witnessed defects decide B/A, C/B and C/A on development; confirmation B/A passes, C/B fails on wall per success, C/A is inconclusive (usage).

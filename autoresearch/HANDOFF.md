@@ -1,4 +1,4 @@
-# 0233 and 0234 measured (2026-10-08): 4.2.0 beats bare on Codex and loses on Claude; neither the failure-paths guide (C) nor pair (H/P) is admitted; next, 0235 tests one reworded definition of done
+# 0233 and 0234 measured (2026-10-08): 4.2.0 completes more tasks than bare on Codex and fewer on Claude; neither the failure-paths guide (C) nor pair (H/P) is admitted; next, 0235 tests one sentence appended to the unchanged definition of done
 
 ## The owner's direction (2026-10-05)
 
@@ -43,8 +43,8 @@ Wall, input and output are judged per correctly completed task, failures include
 **Next:**
 
 1. **Release prep (the owner's):** the version is 4.2.0 (owner, 2026-10-07); the tag, the release notes and the publish remain the owner's. The notes should name: the restored delivery default; the cleanup sentence; the bounded autonomous defaults; the check-only integration task; one task at a time in local loops; the removed templates; the LICENSE; and the publish gate.
-2. **0233 result** ([registration](iterations/0233-installed-baseline-and-failure-paths.md), Result 2026-10-08): no admission. Raw completions claude A 7/12, B 3/12, C 7/12; codex A 6/12, B 9/12, C 9/12; quality conditions (I0185 witnessed defects and rows, D4, F10) decide every FAIL. Claude with 4.2.0 accepts passing checks plus a reported limitation as done when the limitation breaks a stated contract.
-3. **0234 result** ([registration](iterations/0234-pair-reasoning.md), Result 2026-10-08): P admitted nowhere; pair as registered leaves candidacy (no completion gain at 2–3.5× B's input). 4.2.0 vs 4.1.0: codex robustly better and 13–50× cheaper per success; claude not robust.
+2. **0233 result** ([registration](iterations/0233-installed-baseline-and-failure-paths.md), Result 2026-10-08): no admission. Raw completions claude A 7/12, B 3/12, C 7/12; codex A 6/12, B 9/12, C 9/12; quality conditions (I0185 witnessed defects and rows, D4, F10) decide every FAIL except codex confirmation C/B (wall per success). Claude with 4.2.0 accepts passing checks plus a reported limitation as done when the limitation breaks a stated contract.
+3. **0234 result** ([registration](iterations/0234-pair-reasoning.md), Result 2026-10-08): P admitted nowhere; pair as registered leaves candidacy (P: no completion gain at about 2.3–3.5× B's development input; exploratory codex H completed one F23 cell to B's zero, which admits nothing). 4.2.0 vs 4.1.0: codex robustly better, with about 13× less wall and output and at least 36× less input per success; claude not robust.
 4. **Next, 0235 (to register with Astra):** R = B with one sentence appended to the Saint-Exupéry line, the owner's wording kept verbatim (owner, 2026-10-08): "Remove only after the requested behavior, required failure behavior and existing compatibility contracts are verified; removal never takes them away." Same text in CLAUDE.md, AGENTS.md and `_shared/runtime-principles.md` (and its `.agents` mirror). B vs R on claude, D3 and D4 × 2 (8 cells), on the 0233 apparatus. Advance only on a clear contract-completion gain with no row, safety or per-success resource regression; then codex, B5, easy and fresh confirmation before any owner decision. Operator tools: `~/.local/share/nx01/0234-live/judge.py` and `token-keeper.sh` (refreshes the host Claude login between cells).
 5. **Follow-ups:** the Known follow-ups below.
 
