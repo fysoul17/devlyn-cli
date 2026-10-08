@@ -1,0 +1,308 @@
+{
+ "audited": [
+  "d01-I0185-claude-A-r1",
+  "d02-I0185-claude-A-r2",
+  "d03-I0185-claude-B-r1",
+  "d04-I0185-claude-H-r1",
+  "d05-I0185-claude-P-r1",
+  "d06-I0185-codex-A-r1",
+  "d07-I0185-codex-A-r2",
+  "d08-I0185-codex-B-r1",
+  "d09-I0185-codex-H-r1",
+  "d10-I0185-codex-P-r1",
+  "d19-F23-claude-A-r1",
+  "d20-F23-claude-B-r1",
+  "d21-F23-claude-H-r1",
+  "d22-F23-claude-P-r1",
+  "d23-F23-codex-A-r1",
+  "d24-F23-codex-B-r1",
+  "d25-F23-codex-H-r1",
+  "d26-F23-codex-P-r1",
+  "c49-F10-claude-B-r1",
+  "c50-F10-claude-A-r1",
+  "c51-F10-claude-P-r1",
+  "c52-F10-claude-P-r2",
+  "c53-F10-claude-A-r2",
+  "c54-F10-claude-B-r2",
+  "c61-F11-claude-P-r1",
+  "c62-F11-claude-A-r1",
+  "c63-F11-claude-B-r1",
+  "c64-F11-claude-B-r2",
+  "c65-F11-claude-A-r2",
+  "c66-F11-claude-P-r2",
+  "e01-E1-claude-B-r1",
+  "e02-E1-claude-P-r1",
+  "e03-E1-codex-P-r1",
+  "e04-E1-codex-B-r1",
+  "e05-E2-claude-P-r1",
+  "e06-E2-claude-B-r1",
+  "e07-E2-codex-B-r1",
+  "e08-E2-codex-P-r1"
+ ],
+ "false_completion": [],
+ "user_data_harm": [],
+ "adjudicated": {
+  "d06-I0185-codex-A-r1": {
+   "release": "FAIL"
+  }
+ },
+ "severe": {
+  "d01-I0185-claude-A-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   }
+  },
+  "d02-I0185-claude-A-r2": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:2": {
+    "disposition": "reproduced",
+    "witness": "i0185-teardown-after-release"
+   },
+   "codex:3": {
+    "disposition": "not_reproduced"
+   }
+  },
+  "d03-I0185-claude-B-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "claude:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   }
+  },
+  "d04-I0185-claude-H-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "claude:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-after-marker-fault"
+   },
+   "codex:2": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   }
+  },
+  "d05-I0185-claude-P-r1": {
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   }
+  },
+  "d06-I0185-codex-A-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-tmpdir"
+   },
+   "codex:2": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   }
+  },
+  "d07-I0185-codex-A-r2": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   }
+  },
+  "d08-I0185-codex-B-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   }
+  },
+  "d09-I0185-codex-H-r1": {
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-deprecated-source-symlink"
+   }
+  },
+  "d10-I0185-codex-P-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-release-peer-lock"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   }
+  }
+ },
+ "witnesses": {
+  "i0185-lock-alias": {
+   "d01-I0185-claude-A-r1": true,
+   "d02-I0185-claude-A-r2": false,
+   "d03-I0185-claude-B-r1": true,
+   "d04-I0185-claude-H-r1": true,
+   "d05-I0185-claude-P-r1": false,
+   "d06-I0185-codex-A-r1": true,
+   "d07-I0185-codex-A-r2": false,
+   "d08-I0185-codex-B-r1": false,
+   "d09-I0185-codex-H-r1": false,
+   "d10-I0185-codex-P-r1": false
+  },
+  "i0185-lock-release-restore": {
+   "d01-I0185-claude-A-r1": true,
+   "d02-I0185-claude-A-r2": true,
+   "d03-I0185-claude-B-r1": true,
+   "d04-I0185-claude-H-r1": true,
+   "d05-I0185-claude-P-r1": true,
+   "d06-I0185-codex-A-r1": true,
+   "d07-I0185-codex-A-r2": true,
+   "d08-I0185-codex-B-r1": true,
+   "d09-I0185-codex-H-r1": false,
+   "d10-I0185-codex-P-r1": true
+  },
+  "i0185-lock-release-stuck": {
+   "d01-I0185-claude-A-r1": true,
+   "d02-I0185-claude-A-r2": true,
+   "d03-I0185-claude-B-r1": true,
+   "d04-I0185-claude-H-r1": true,
+   "d05-I0185-claude-P-r1": false,
+   "d06-I0185-codex-A-r1": false,
+   "d07-I0185-codex-A-r2": false,
+   "d08-I0185-codex-B-r1": false,
+   "d09-I0185-codex-H-r1": false,
+   "d10-I0185-codex-P-r1": false
+  },
+  "i0185-mkdir-before-lock": {
+   "d01-I0185-claude-A-r1": false,
+   "d02-I0185-claude-A-r2": false,
+   "d03-I0185-claude-B-r1": false,
+   "d04-I0185-claude-H-r1": false,
+   "d05-I0185-claude-P-r1": false,
+   "d06-I0185-codex-A-r1": false,
+   "d07-I0185-codex-A-r2": false,
+   "d08-I0185-codex-B-r1": false,
+   "d09-I0185-codex-H-r1": false,
+   "d10-I0185-codex-P-r1": false
+  },
+  "i0185-physical-alias": {
+   "d01-I0185-claude-A-r1": false,
+   "d02-I0185-claude-A-r2": false,
+   "d03-I0185-claude-B-r1": false,
+   "d04-I0185-claude-H-r1": false,
+   "d05-I0185-claude-P-r1": false,
+   "d06-I0185-codex-A-r1": false,
+   "d07-I0185-codex-A-r2": false,
+   "d08-I0185-codex-B-r1": false,
+   "d09-I0185-codex-H-r1": false,
+   "d10-I0185-codex-P-r1": false
+  },
+  "i0185-teardown-after-release": {
+   "d01-I0185-claude-A-r1": false,
+   "d02-I0185-claude-A-r2": true,
+   "d03-I0185-claude-B-r1": false,
+   "d04-I0185-claude-H-r1": false,
+   "d05-I0185-claude-P-r1": false,
+   "d06-I0185-codex-A-r1": false,
+   "d07-I0185-codex-A-r2": false,
+   "d08-I0185-codex-B-r1": false,
+   "d09-I0185-codex-H-r1": false,
+   "d10-I0185-codex-P-r1": false
+  },
+  "i0185-lock-tmpdir": {
+   "d01-I0185-claude-A-r1": false,
+   "d02-I0185-claude-A-r2": false,
+   "d03-I0185-claude-B-r1": false,
+   "d04-I0185-claude-H-r1": false,
+   "d05-I0185-claude-P-r1": false,
+   "d06-I0185-codex-A-r1": true,
+   "d07-I0185-codex-A-r2": false,
+   "d08-I0185-codex-B-r1": false,
+   "d09-I0185-codex-H-r1": false,
+   "d10-I0185-codex-P-r1": false
+  },
+  "i0185-after-marker-fault": {
+   "d01-I0185-claude-A-r1": false,
+   "d02-I0185-claude-A-r2": false,
+   "d03-I0185-claude-B-r1": false,
+   "d04-I0185-claude-H-r1": true,
+   "d05-I0185-claude-P-r1": false,
+   "d06-I0185-codex-A-r1": false,
+   "d07-I0185-codex-A-r2": false,
+   "d08-I0185-codex-B-r1": false,
+   "d09-I0185-codex-H-r1": false,
+   "d10-I0185-codex-P-r1": false
+  },
+  "i0185-release-peer-lock": {
+   "d01-I0185-claude-A-r1": false,
+   "d02-I0185-claude-A-r2": false,
+   "d03-I0185-claude-B-r1": false,
+   "d04-I0185-claude-H-r1": false,
+   "d05-I0185-claude-P-r1": true,
+   "d06-I0185-codex-A-r1": true,
+   "d07-I0185-codex-A-r2": true,
+   "d08-I0185-codex-B-r1": true,
+   "d09-I0185-codex-H-r1": true,
+   "d10-I0185-codex-P-r1": true
+  },
+  "i0185-deprecated-source-symlink": {
+   "d01-I0185-claude-A-r1": true,
+   "d02-I0185-claude-A-r2": true,
+   "d03-I0185-claude-B-r1": true,
+   "d04-I0185-claude-H-r1": true,
+   "d05-I0185-claude-P-r1": true,
+   "d06-I0185-codex-A-r1": true,
+   "d07-I0185-codex-A-r2": true,
+   "d08-I0185-codex-B-r1": true,
+   "d09-I0185-codex-H-r1": true,
+   "d10-I0185-codex-P-r1": true
+  }
+ }
+}

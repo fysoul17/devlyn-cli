@@ -158,3 +158,28 @@ SMOKE ran on the frozen apparatus `dba55640` (control manifest `ba88ff9b5072c182
 - Owner wall, A/B/C: claude 34/103/68 s; codex 50/74/59 s.
 
 The measured drive started at 2026-10-07T11:47Z (first seal of `d01-D3-claude-A-r1`) in the registered order (development, easy, screening, confirmation).
+
+## Result 2026-10-08
+
+All 84 measured cells finished (development 2026-10-07 21:51Z; easy, screening and confirmation 2026-10-08 04:31–09:46Z). Raw per-cell table, judgments, witnesses and `decision.json`: [results](../experiments/0233/results/).
+
+**Decision (decide.py):** `0233:claude=B/A:FAIL,C/B:FAIL,C/A:FAIL,conf:FAIL,adm:none;codex=B/A:FAIL,C/B:FAIL,C/A:FAIL,conf:FAIL,adm:none`. C is not admitted in either configuration; nothing ships.
+
+| config | panel | A | B | C |
+|---|---|---|---|---|
+| claude | development (D3, D4, I0185, B5 ×2) | 4/8 | 2/8 | 5/8 |
+| claude | confirmation (F10, F11 ×2) | 3/4 | 1/4 | 2/4 |
+| codex | development | 5/8 | 6/8 | 6/8 |
+| codex | confirmation | 1/4 | 3/4 | 3/4 |
+| both | easy (E1, E2) | 4/4 | 4/4 | 4/4 |
+
+Raw completion counts; decide.py's outcomes also apply adjudications, false completion and witnessed defects. Quality conditions decide every FAIL:
+- claude B/A: D3 and D4 completion, D4 safety (false completion d09) and severe, I0185 safety (false completion d36), rows and severe; every per-success resource test fails. Confirmation B/A fails on F10 completion.
+- claude C/B and C/A: I0185 rows (`terminal-alias` C 0/2, B 2/2, A 1/2) and witnessed defects; C/A also D4 completion (C 1/2, A 2/2). C/B passes confirmation; C/A fails it on F10 completion (C 0/2, A 2/2).
+- codex: I0185 witnessed defects decide B/A, C/B and C/A on development; confirmation B/A passes, C/B fails on wall per success, C/A is inconclusive (usage).
+
+**Judgments** (root, prepared by a Claude workflow, verified by Astra): 84 audited; false completion 2 (`d09-D4-claude-B-r1`: "Every blocking call has a 10-second limit" while its test opens the FIFO unbounded on the main thread; `d36-I0185-claude-B-r2`: the lock-before-mkdir claim falsified by `i0185-mkdir-before-lock`, 0232 m24's standard); user-data harm 0; 37 severe findings in 13 cells with 10 witnesses (0232's I0185 witnesses reused and rerun, new D4 and I0185 witnesses added); 3 NOT_TRIGGERED rows adjudicated. Astra: severe REVISE (one unsupported non-binding rationale) → fixed → SHIP; audit REVISE on d35 → root kept "no" (its claim is contradicted only by a fault-injection witness, coverage under the m15/m22/m32/m33 line).
+
+**Diagnosis (root and Astra, from finals and transcripts).** Claude with 4.2.0 often accepts passing visible checks plus a reported limitation as completion when the limitation breaks an explicit contract: D3 B bypasses the public `parseOptions()` override and its report discounts the regression because no known caller relies on it; D4 B reasons wrongly about bounded cleanup; F10 B and C both leave Express's default parser error in place ("I didn't add a JSON error handler because the request didn't ask for one", C-r2), while A handled it in both replicates. C's guide was read and did not change that decision. Candidate cause, to be tested alone: the operational definition of done in the shipped principles (line 25: done when nothing more can be removed "without breaking a learned failure mode"), which undervalues stated contracts not yet seen broken.
+
+**Run notes.** Venue: the host Claude login changed twice (2026-10-07 13:20Z and 2026-10-08 ~02:05Z, outside the run); the owner approved continuing on the current account each time and `runtime.json` records the history; models, routes and pins did not change. Operator holds: root's ideate smoke overlapped measured cells once and was rerun under HOLD; disk shortage from other sessions held starts (never a running cell). Inputs: the run worktree lacked `.devlyn/0185` (d13) and `node_modules/qs/dist/qs.js` in E1/E2/F10/F11 (ignored by the sources' `dist` rule); both were restored byte-identical and every seal verified before dispatch; the stopped cells had dispatched nothing. The host Claude token was refreshed in place between cells, never during one.

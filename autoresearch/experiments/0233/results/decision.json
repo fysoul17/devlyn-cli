@@ -1,0 +1,785 @@
+{
+  "token": "0233:claude=B/A:FAIL,C/B:FAIL,C/A:FAIL,conf:FAIL,adm:none;codex=B/A:FAIL,C/B:FAIL,C/A:FAIL,conf:FAIL,adm:none",
+  "configs": {
+    "claude": {
+      "panels": {
+        "development": {
+          "comparisons": {
+            "B/A": {
+              "candidate": "B",
+              "reference": "A",
+              "quality": {
+                "B5": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "D3": {
+                  "safe": true,
+                  "completion": false,
+                  "rows": true,
+                  "severe": true
+                },
+                "D4": {
+                  "safe": false,
+                  "completion": false,
+                  "rows": true,
+                  "severe": false
+                },
+                "I0185": {
+                  "safe": false,
+                  "completion": true,
+                  "rows": false,
+                  "severe": false
+                }
+              },
+              "tests": {
+                "wall": false,
+                "input": false,
+                "output": false
+              },
+              "strictly_better": false,
+              "outcome": "FAIL"
+            },
+            "C/B": {
+              "candidate": "C",
+              "reference": "B",
+              "quality": {
+                "B5": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "D3": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "D4": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": false,
+                  "severe": false
+                }
+              },
+              "tests": {
+                "wall": true,
+                "input": true,
+                "output": true
+              },
+              "strictly_better": true,
+              "outcome": "FAIL"
+            },
+            "C/A": {
+              "candidate": "C",
+              "reference": "A",
+              "quality": {
+                "B5": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "D3": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "D4": {
+                  "safe": true,
+                  "completion": false,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": false,
+                  "severe": false
+                }
+              },
+              "tests": {
+                "wall": false,
+                "input": false,
+                "output": false
+              },
+              "strictly_better": true,
+              "outcome": "FAIL"
+            }
+          },
+          "sums": {
+            "A": {
+              "S": 4,
+              "wall": 1942.2588347511482,
+              "input": 4329687,
+              "output": 129537,
+              "per_success": {
+                "wall": 485.56470868778706,
+                "input": 1082421.75,
+                "output": 32384.25
+              }
+            },
+            "B": {
+              "S": 2,
+              "wall": 1739.6394077909645,
+              "input": 4994061,
+              "output": 144463,
+              "per_success": {
+                "wall": 869.8197038954822,
+                "input": 2497030.5,
+                "output": 72231.5
+              }
+            },
+            "C": {
+              "S": 5,
+              "wall": 2674.961584415927,
+              "input": 6467565,
+              "output": 171843,
+              "per_success": {
+                "wall": 534.9923168831854,
+                "input": 1293513.0,
+                "output": 34368.6
+              }
+            }
+          }
+        },
+        "easy": {
+          "comparisons": {
+            "B/A": {
+              "candidate": "B",
+              "reference": "A",
+              "quality": {
+                "E1": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "E2": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": false,
+                "input": false,
+                "output": false
+              },
+              "strictly_better": false,
+              "outcome": "FAIL"
+            },
+            "C/B": {
+              "candidate": "C",
+              "reference": "B",
+              "quality": {
+                "E1": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "E2": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": false,
+                "input": true,
+                "output": true
+              },
+              "strictly_better": true,
+              "outcome": "FAIL"
+            },
+            "C/A": {
+              "candidate": "C",
+              "reference": "A",
+              "quality": {
+                "E1": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "E2": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": false,
+                "input": false,
+                "output": false
+              },
+              "strictly_better": false,
+              "outcome": "FAIL"
+            }
+          },
+          "sums": {
+            "A": {
+              "S": 2,
+              "wall": 47.7585581659805,
+              "input": 120273,
+              "output": 3698,
+              "per_success": {
+                "wall": 23.87927908299025,
+                "input": 60136.5,
+                "output": 1849.0
+              }
+            },
+            "B": {
+              "S": 2,
+              "wall": 84.4653074160451,
+              "input": 302555,
+              "output": 6759,
+              "per_success": {
+                "wall": 42.23265370802255,
+                "input": 151277.5,
+                "output": 3379.5
+              }
+            },
+            "C": {
+              "S": 2,
+              "wall": 88.43967504106695,
+              "input": 288013,
+              "output": 6355,
+              "per_success": {
+                "wall": 44.219837520533474,
+                "input": 144006.5,
+                "output": 3177.5
+              }
+            }
+          },
+          "tripwire": "CLEAR"
+        },
+        "confirmation": {
+          "comparisons": {
+            "B/A": {
+              "candidate": "B",
+              "reference": "A",
+              "quality": {
+                "F10": {
+                  "safe": true,
+                  "completion": false,
+                  "rows": true,
+                  "severe": true
+                },
+                "F11": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": false,
+                "input": false,
+                "output": false
+              },
+              "strictly_better": false,
+              "outcome": "FAIL"
+            },
+            "C/B": {
+              "candidate": "C",
+              "reference": "B",
+              "quality": {
+                "F10": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "F11": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": true,
+                "input": true,
+                "output": true
+              },
+              "strictly_better": true,
+              "outcome": "PASS"
+            },
+            "C/A": {
+              "candidate": "C",
+              "reference": "A",
+              "quality": {
+                "F10": {
+                  "safe": true,
+                  "completion": false,
+                  "rows": true,
+                  "severe": true
+                },
+                "F11": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": false,
+                "input": false,
+                "output": false
+              },
+              "strictly_better": false,
+              "outcome": "FAIL"
+            }
+          },
+          "sums": {
+            "A": {
+              "S": 3,
+              "wall": 393.4794823739794,
+              "input": 812268,
+              "output": 26068,
+              "per_success": {
+                "wall": 131.15982745799315,
+                "input": 270756.0,
+                "output": 8689.333333333334
+              }
+            },
+            "B": {
+              "S": 1,
+              "wall": 781.1342353750952,
+              "input": 1499469,
+              "output": 37264,
+              "per_success": {
+                "wall": 781.1342353750952,
+                "input": 1499469.0,
+                "output": 37264.0
+              }
+            },
+            "C": {
+              "S": 2,
+              "wall": 786.7143489989103,
+              "input": 1973305,
+              "output": 45870,
+              "per_success": {
+                "wall": 393.35717449945514,
+                "input": 986652.5,
+                "output": 22935.0
+              }
+            }
+          }
+        }
+      },
+      "confirmation": "FAIL",
+      "admitted": null,
+      "eligibility": {
+        "F10": true,
+        "F11": true
+      }
+    },
+    "codex": {
+      "panels": {
+        "development": {
+          "comparisons": {
+            "B/A": {
+              "candidate": "B",
+              "reference": "A",
+              "quality": {
+                "B5": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "D3": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "D4": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": false,
+                  "severe": false
+                }
+              },
+              "tests": {
+                "wall": true,
+                "input": false,
+                "output": true
+              },
+              "strictly_better": true,
+              "outcome": "FAIL"
+            },
+            "C/B": {
+              "candidate": "C",
+              "reference": "B",
+              "quality": {
+                "B5": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "D3": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "D4": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": false
+                }
+              },
+              "tests": {
+                "wall": true,
+                "input": true,
+                "output": true
+              },
+              "strictly_better": true,
+              "outcome": "FAIL"
+            },
+            "C/A": {
+              "candidate": "C",
+              "reference": "A",
+              "quality": {
+                "B5": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "D3": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "D4": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": false
+                }
+              },
+              "tests": {
+                "wall": true,
+                "input": false,
+                "output": true
+              },
+              "strictly_better": true,
+              "outcome": "FAIL"
+            }
+          },
+          "sums": {
+            "A": {
+              "S": 5,
+              "wall": 1811.8904018339817,
+              "input": 1892294,
+              "output": 42104,
+              "per_success": {
+                "wall": 362.3780803667963,
+                "input": 378458.8,
+                "output": 8420.8
+              }
+            },
+            "B": {
+              "S": 6,
+              "wall": 1742.2856853329577,
+              "input": 2688013,
+              "output": 44244,
+              "per_success": {
+                "wall": 290.3809475554929,
+                "input": 448002.1666666667,
+                "output": 7374.0
+              }
+            },
+            "C": {
+              "S": 6,
+              "wall": 1484.1080689999508,
+              "input": 2490012,
+              "output": 42906,
+              "per_success": {
+                "wall": 247.35134483332513,
+                "input": 415002.0,
+                "output": 7151.0
+              }
+            }
+          }
+        },
+        "easy": {
+          "comparisons": {
+            "B/A": {
+              "candidate": "B",
+              "reference": "A",
+              "quality": {
+                "E1": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "E2": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": false,
+                "input": false,
+                "output": false
+              },
+              "strictly_better": false,
+              "outcome": "FAIL"
+            },
+            "C/B": {
+              "candidate": "C",
+              "reference": "B",
+              "quality": {
+                "E1": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "E2": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": true,
+                "input": false,
+                "output": true
+              },
+              "strictly_better": true,
+              "outcome": "FAIL"
+            },
+            "C/A": {
+              "candidate": "C",
+              "reference": "A",
+              "quality": {
+                "E1": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "E2": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": true,
+                "input": false,
+                "output": false
+              },
+              "strictly_better": true,
+              "outcome": "FAIL"
+            }
+          },
+          "sums": {
+            "A": {
+              "S": 2,
+              "wall": 102.36075662501389,
+              "input": 114967,
+              "output": 2530,
+              "per_success": {
+                "wall": 51.180378312506946,
+                "input": 57483.5,
+                "output": 1265.0
+              }
+            },
+            "B": {
+              "S": 2,
+              "wall": 108.77853079099441,
+              "input": 148593,
+              "output": 2943,
+              "per_success": {
+                "wall": 54.389265395497205,
+                "input": 74296.5,
+                "output": 1471.5
+              }
+            },
+            "C": {
+              "S": 2,
+              "wall": 100.45676654099952,
+              "input": 174456,
+              "output": 2877,
+              "per_success": {
+                "wall": 50.22838327049976,
+                "input": 87228.0,
+                "output": 1438.5
+              }
+            }
+          },
+          "tripwire": "CLEAR"
+        },
+        "confirmation": {
+          "comparisons": {
+            "B/A": {
+              "candidate": "B",
+              "reference": "A",
+              "quality": {
+                "F10": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "F11": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": true,
+                "input": true,
+                "output": true
+              },
+              "strictly_better": true,
+              "outcome": "PASS"
+            },
+            "C/B": {
+              "candidate": "C",
+              "reference": "B",
+              "quality": {
+                "F10": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "F11": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": false,
+                "input": null,
+                "output": null
+              },
+              "strictly_better": null,
+              "outcome": "FAIL"
+            },
+            "C/A": {
+              "candidate": "C",
+              "reference": "A",
+              "quality": {
+                "F10": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "F11": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": true,
+                "input": null,
+                "output": null
+              },
+              "strictly_better": true,
+              "outcome": "INCONCLUSIVE"
+            }
+          },
+          "sums": {
+            "A": {
+              "S": 1,
+              "wall": 438.55131858296227,
+              "input": 301156,
+              "output": 11685,
+              "per_success": {
+                "wall": 438.55131858296227,
+                "input": 301156.0,
+                "output": 11685.0
+              }
+            },
+            "B": {
+              "S": 3,
+              "wall": 586.6662424580427,
+              "input": 517217,
+              "output": 15177,
+              "per_success": {
+                "wall": 195.5554141526809,
+                "input": 172405.66666666666,
+                "output": 5059.0
+              }
+            },
+            "C": {
+              "S": 3,
+              "wall": 719.5003701649839,
+              "input": null,
+              "output": null,
+              "input_lower_bound": 543332,
+              "output_lower_bound": 17511,
+              "per_success": {
+                "wall": 239.8334567216613,
+                "input": null,
+                "output": null
+              }
+            }
+          }
+        }
+      },
+      "confirmation": "FAIL",
+      "admitted": null,
+      "eligibility": {
+        "F10": true,
+        "F11": true
+      }
+    }
+  }
+}

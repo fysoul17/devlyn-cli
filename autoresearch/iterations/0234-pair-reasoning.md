@@ -85,3 +85,26 @@ Apparatus fixes (no treatment change; identical for every arm): a Claude result 
 ### Addendum 2026-10-07 — F16/F23/F25 vendored dependencies committed
 
 Screening stopped before dispatch at `s03-F16-claude-B-r1` (`F16 registered inputs changed`): the three new sources kept the fixture's `.gitignore` line `node_modules`, so their vendored dependency trees were never committed and the run worktree lacked them. Their `.gitignore` now matches F10/F11's (`!node_modules/`), the trees are committed, and the `.gitignore` hash in each `source_sha256` is updated (no other file changed). Every arm sees the same source; no F16/F23/F25 cell had run. The pre-run disk floor also stopped cells for about an hour until old August/September research leftovers were deleted with the owner's approval.
+
+## Result 2026-10-08
+
+Screening (B, one cell per task and configuration) found headroom for claude on I0185, F23, F10, F11 and for codex on I0185, F23 only, so codex has no confirmation panel. All dispatched cells finished 2026-10-08 04:30Z. Raw table, judgments, witnesses and `decision.json`: [results](../experiments/0234/results/).
+
+**Decision (decide.py):** `0234:claude=P/B:FAIL,P/A:FAIL,H/B:FAIL,P/H:FAIL,B/A:NO_CLAIM,conf:FAIL,adm:none;codex=P/B:NO_CLAIM,P/A:NO_CLAIM,H/B:PASS,P/H:FAIL,B/A:NO_CLAIM,conf:NO_HEADROOM,adm:none`. P is admitted nowhere. Pair, as registered, leaves default candidacy.
+
+| config | panel | A | B | H | P |
+|---|---|---|---|---|---|
+| claude | development (I0185, F23) | 0/3 | 0/2 | 0/2 | 0/2 |
+| claude | confirmation (F10, F11 ×2) | 3/4 | 0/4 | – | 0/4 |
+| codex | development (I0185, F23) | 0/3 | 0/2 | 1/2 | 0/2 |
+| both | easy (E1, E2) | – | 4/4 | – | 4/4 |
+
+Mean per development cell, P against B: claude 9.1 vs 6.6 min and 2.13M vs 0.94M input; codex 9.5 vs 4.7 min and 1.11M vs 0.32M. claude's FAILs come from more witnessed I0185 defects in P and H than in B. codex H/B passes only as dominance over a zero-success incumbent (one F23 completion in two cells), which this registration does not treat as a claim. Easy-panel tripwire: claude P's aggregate easy input was 2.10× B's and wall 1.36× although neither easy P cell launched a peer.
+
+Transcripts show the limit of the treatment: in F10 P-r2 the owner probed malformed JSON, held three rounds with the peer, and both still declared the missing handler outside the request. More dialogue reinforced the owner's reading of the contract instead of correcting it.
+
+**4.2.0 vs 4.1.0 (§8, D3/D4 from 0232 F and 0233 B).** codex: B 4/4 vs F 1/4, A drift 0 → robust; per success B/F wall 0.078×, input ≤0.021×, output 0.070×, each interval [R/g, R·g] wholly below 1 (g ≤ 1.10) → directional. claude: B 0/4 vs F 1/4, A drift +0.25 → D = −0.25, interval [−0.5, 0] includes 0 → not robust; B has no success, so no per-success ratio.
+
+**Judgments** (prepared by a Claude workflow, verified by Astra): 38 audited (four reused from 0233 trees), false completion 0, user-data harm 0; 29 severe findings, all I0185, 27 reproduced and 2 not; `d06-I0185-codex-A-r1` `release` adjudicated FAIL. Astra: audit SHIP; severe REVISE (one finding bound to a witness of a different defect, one more) → fixed → SHIP.
+
+**Follow-up if a pair mechanism returns:** the Claude peer runs `--permission-mode dontAsk --tools Read,Grep,Glob`, which likely denies pyx-memory MCP calls; allow it and verify with a probe.

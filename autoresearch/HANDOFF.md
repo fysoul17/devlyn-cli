@@ -1,4 +1,4 @@
-# 4.2.0 audited against the North Star (2026-10-07): conforms to the approved shape, advantage over bare unmeasured, no pair surface; 0233 registers the installed baseline and the first lazily loaded method (candidate C, failure paths)
+# 0233 and 0234 measured (2026-10-08): 4.2.0 beats bare on Codex and loses on Claude; neither the failure-paths guide (C) nor pair (H/P) is admitted; next, 0235 tests one reworded definition of done
 
 ## The owner's direction (2026-10-05)
 
@@ -43,9 +43,10 @@ Wall, input and output are judged per correctly completed task, failures include
 **Next:**
 
 1. **Release prep (the owner's):** the version is 4.2.0 (owner, 2026-10-07); the tag, the release notes and the publish remain the owner's. The notes should name: the restored delivery default; the cleanup sentence; the bounded autonomous defaults; the check-only integration task; one task at a time in local loops; the removed templates; the LICENSE; and the publish gate.
-2. **0233** ([registration](iterations/0233-installed-baseline-and-failure-paths.md); worktree `~/.local/share/nx01/0233-reg`, branch `candidate/0233-registration`): A native / B 4.2.0 / C = B + `_shared/failure-paths.md` read on demand (`candidate/0233-c-failure-paths` at `639fbac5`, pack-only). Freeze with Astra, then SMOKE → screening → development → easy → confirmation. Later rungs, each licensed by failures that survive C: fresh review on consequential changes (same-model vs other engine, 0184 vs 0229), a completion check, and a cheaper delivery route (the 2026-10-07 preview: 4.2.0 took 2.3× bare's wall and 3.3–4.3× its input on a tiny request, all of it delivery). Ideate's decomposition gets its own registration.
-3. **0234** ([registration](iterations/0234-pair-reasoning.md), frozen): pair reasoning, P (other-engine peer) vs B, H (same-engine peer) and A. Run worktree `~/.local/share/nx01/0234-apparatus` at `ce02ed64`; runtime `~/.local/share/nx01/0234-live` (`chain.sh` runs 0233 development → 0234 after root writes `SMOKE_OK` → 0233's remaining panels). Release gate: the real-GitHub ideate auto loop passed 2026-10-07 (3/3 PR-merged).
-3. **Follow-ups:** the Known follow-ups below.
+2. **0233 result** ([registration](iterations/0233-installed-baseline-and-failure-paths.md), Result 2026-10-08): no admission. Raw completions claude A 7/12, B 3/12, C 7/12; codex A 6/12, B 9/12, C 9/12; quality conditions (I0185 witnessed defects and rows, D4, F10) decide every FAIL. Claude with 4.2.0 accepts passing checks plus a reported limitation as done when the limitation breaks a stated contract.
+3. **0234 result** ([registration](iterations/0234-pair-reasoning.md), Result 2026-10-08): P admitted nowhere; pair as registered leaves candidacy (no completion gain at 2–3.5× B's input). 4.2.0 vs 4.1.0: codex robustly better and 13–50× cheaper per success; claude not robust.
+4. **Next, 0235 (to register with Astra):** R = B with one sentence appended to the Saint-Exupéry line, the owner's wording kept verbatim (owner, 2026-10-08): "Remove only after the requested behavior, required failure behavior and existing compatibility contracts are verified; removal never takes them away." Same text in CLAUDE.md, AGENTS.md and `_shared/runtime-principles.md` (and its `.agents` mirror). B vs R on claude, D3 and D4 × 2 (8 cells), on the 0233 apparatus. Advance only on a clear contract-completion gain with no row, safety or per-success resource regression; then codex, B5, easy and fresh confirmation before any owner decision. Operator tools: `~/.local/share/nx01/0234-live/judge.py` and `token-keeper.sh` (refreshes the host Claude login between cells).
+5. **Follow-ups:** the Known follow-ups below.
 
 ## Known follow-ups
 

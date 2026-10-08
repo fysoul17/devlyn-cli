@@ -1,0 +1,640 @@
+{
+  "token": "0234:claude=P/B:FAIL,P/A:FAIL,H/B:FAIL,P/H:FAIL,B/A:NO_CLAIM,conf:FAIL,adm:none;codex=P/B:NO_CLAIM,P/A:NO_CLAIM,H/B:PASS,P/H:FAIL,B/A:NO_CLAIM,conf:NO_HEADROOM,adm:none",
+  "configs": {
+    "claude": {
+      "panels": {
+        "development": {
+          "comparisons": {
+            "P/B": {
+              "candidate": "P",
+              "reference": "B",
+              "quality": {
+                "F23": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": false
+                }
+              },
+              "outcome": "FAIL"
+            },
+            "P/A": {
+              "candidate": "P",
+              "reference": "A",
+              "quality": {
+                "F23": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": false
+                }
+              },
+              "outcome": "FAIL"
+            },
+            "H/B": {
+              "candidate": "H",
+              "reference": "B",
+              "quality": {
+                "F23": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": false
+                }
+              },
+              "outcome": "FAIL"
+            },
+            "P/H": {
+              "candidate": "P",
+              "reference": "H",
+              "quality": {
+                "F23": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": false
+                }
+              },
+              "outcome": "FAIL"
+            },
+            "B/A": {
+              "candidate": "B",
+              "reference": "A",
+              "quality": {
+                "F23": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "outcome": "NO_CLAIM"
+            }
+          },
+          "sums": {
+            "A": {
+              "S": 0,
+              "wall": 403.0633894590428,
+              "input": 1117876,
+              "output": 43152,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            },
+            "B": {
+              "S": 0,
+              "wall": 795.4154540830059,
+              "input": 1880800,
+              "output": 61958,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            },
+            "H": {
+              "S": 0,
+              "wall": 1007.7383519170107,
+              "input": 4321063,
+              "output": 103070,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            },
+            "P": {
+              "S": 0,
+              "wall": 1095.4176549999975,
+              "input": 4254411,
+              "output": 96180,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            }
+          },
+          "descriptive_a_replicate_2": [
+            {
+              "cell": "d02-I0185-claude-A-r2",
+              "report": {
+                "S": 0,
+                "wall": 289.39932245900854,
+                "input": 722093,
+                "output": 30433,
+                "per_success": {
+                  "wall": null,
+                  "input": null,
+                  "output": null
+                }
+              }
+            }
+          ],
+          "reused": [
+            {
+              "cell": "d01-I0185-claude-A-r1",
+              "from_0233": "d14-I0185-claude-A-r1",
+              "period": "2026-10-07T18:25:37.929935+00:00"
+            },
+            {
+              "cell": "d02-I0185-claude-A-r2",
+              "from_0233": "d35-I0185-claude-A-r2",
+              "period": "2026-10-07T20:15:44.878682+00:00"
+            }
+          ]
+        },
+        "confirmation": {
+          "comparisons": {
+            "P/B": {
+              "candidate": "P",
+              "reference": "B",
+              "quality": {
+                "F10": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "F11": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "outcome": "NO_CLAIM"
+            },
+            "P/A": {
+              "candidate": "P",
+              "reference": "A",
+              "quality": {
+                "F10": {
+                  "safe": true,
+                  "completion": false,
+                  "rows": true,
+                  "severe": true
+                },
+                "F11": {
+                  "safe": true,
+                  "completion": false,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "outcome": "FAIL"
+            }
+          },
+          "sums": {
+            "A": {
+              "S": 3,
+              "wall": 250.87460024899337,
+              "input": 586559,
+              "output": 23269,
+              "per_success": {
+                "wall": 83.62486674966446,
+                "input": 195519.66666666666,
+                "output": 7756.333333333333
+              }
+            },
+            "B": {
+              "S": 0,
+              "wall": 882.7665620409534,
+              "input": 1618731,
+              "output": 35345,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            },
+            "P": {
+              "S": 0,
+              "wall": 1184.5073951670201,
+              "input": 3636981,
+              "output": 69811,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            }
+          },
+          "descriptive_a_replicate_2": [],
+          "reused": []
+        },
+        "easy": {
+          "comparisons": {
+            "P/B": {
+              "candidate": "P",
+              "reference": "B",
+              "quality": {
+                "E1": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "E2": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": false,
+                "input": false,
+                "output": false
+              },
+              "strictly_better": false,
+              "outcome": "FAIL"
+            }
+          },
+          "sums": {
+            "B": {
+              "S": 2,
+              "wall": 77.26841058401624,
+              "input": 292123,
+              "output": 6782,
+              "per_success": {
+                "wall": 38.63420529200812,
+                "input": 146061.5,
+                "output": 3391.0
+              }
+            },
+            "P": {
+              "S": 2,
+              "wall": 105.2123885420151,
+              "input": 614904,
+              "output": 9632,
+              "per_success": {
+                "wall": 52.60619427100755,
+                "input": 307452.0,
+                "output": 4816.0
+              }
+            }
+          },
+          "descriptive_a_replicate_2": [],
+          "reused": [],
+          "tripwire": {
+            "status": "TRIGGERED",
+            "checks": {
+              "completion": false,
+              "wall": true,
+              "input": true,
+              "output": true
+            }
+          }
+        }
+      },
+      "confirmation": "FAIL",
+      "admitted": null,
+      "eligibility": {
+        "I0185": true,
+        "F16": false,
+        "F23": true,
+        "F25": false,
+        "F10": true,
+        "F11": true
+      }
+    },
+    "codex": {
+      "panels": {
+        "development": {
+          "comparisons": {
+            "P/B": {
+              "candidate": "P",
+              "reference": "B",
+              "quality": {
+                "F23": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "outcome": "NO_CLAIM"
+            },
+            "P/A": {
+              "candidate": "P",
+              "reference": "A",
+              "quality": {
+                "F23": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "outcome": "NO_CLAIM"
+            },
+            "H/B": {
+              "candidate": "H",
+              "reference": "B",
+              "quality": {
+                "F23": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "reason": "dominance over a zero-success incumbent",
+              "tests": {
+                "wall": true,
+                "input": true,
+                "output": true
+              },
+              "strictly_better": true,
+              "outcome": "PASS"
+            },
+            "P/H": {
+              "candidate": "P",
+              "reference": "H",
+              "quality": {
+                "F23": {
+                  "safe": true,
+                  "completion": false,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": false,
+                  "severe": false
+                }
+              },
+              "outcome": "FAIL"
+            },
+            "B/A": {
+              "candidate": "B",
+              "reference": "A",
+              "quality": {
+                "F23": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "I0185": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "outcome": "NO_CLAIM"
+            }
+          },
+          "sums": {
+            "A": {
+              "S": 0,
+              "wall": 382.20550670893863,
+              "input": 309339,
+              "output": 14825,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            },
+            "B": {
+              "S": 0,
+              "wall": 568.1576890420401,
+              "input": 641960,
+              "output": 18114,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            },
+            "H": {
+              "S": 1,
+              "wall": 819.5885431669885,
+              "input": 2081275,
+              "output": 34027,
+              "per_success": {
+                "wall": 819.5885431669885,
+                "input": 2081275.0,
+                "output": 34027.0
+              }
+            },
+            "P": {
+              "S": 0,
+              "wall": 1140.330508874962,
+              "input": 2225950,
+              "output": 80577,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            }
+          },
+          "descriptive_a_replicate_2": [
+            {
+              "cell": "d07-I0185-codex-A-r2",
+              "report": {
+                "S": 0,
+                "wall": 617.517573249992,
+                "input": 287617,
+                "output": 11522,
+                "per_success": {
+                  "wall": null,
+                  "input": null,
+                  "output": null
+                }
+              }
+            }
+          ],
+          "reused": [
+            {
+              "cell": "d06-I0185-codex-A-r1",
+              "from_0233": "d17-I0185-codex-A-r1",
+              "period": "2026-10-07T18:55:35.724425+00:00"
+            },
+            {
+              "cell": "d07-I0185-codex-A-r2",
+              "from_0233": "d32-I0185-codex-A-r2",
+              "period": "2026-10-07T19:40:32.132499+00:00"
+            }
+          ]
+        },
+        "confirmation": {
+          "status": "NO_HEADROOM",
+          "comparisons": {
+            "P/B": {
+              "outcome": "NO_HEADROOM"
+            },
+            "P/A": {
+              "outcome": "NO_HEADROOM"
+            }
+          },
+          "sums": {
+            "A": {
+              "S": 0,
+              "wall": 0.0,
+              "input": 0,
+              "output": 0,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            },
+            "B": {
+              "S": 0,
+              "wall": 0.0,
+              "input": 0,
+              "output": 0,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            },
+            "P": {
+              "S": 0,
+              "wall": 0.0,
+              "input": 0,
+              "output": 0,
+              "per_success": {
+                "wall": null,
+                "input": null,
+                "output": null
+              }
+            }
+          },
+          "reused": []
+        },
+        "easy": {
+          "comparisons": {
+            "P/B": {
+              "candidate": "P",
+              "reference": "B",
+              "quality": {
+                "E1": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                },
+                "E2": {
+                  "safe": true,
+                  "completion": true,
+                  "rows": true,
+                  "severe": true
+                }
+              },
+              "tests": {
+                "wall": true,
+                "input": true,
+                "output": true
+              },
+              "strictly_better": true,
+              "outcome": "PASS"
+            }
+          },
+          "sums": {
+            "B": {
+              "S": 2,
+              "wall": 108.88762620900525,
+              "input": 208744,
+              "output": 3458,
+              "per_success": {
+                "wall": 54.443813104502624,
+                "input": 104372.0,
+                "output": 1729.0
+              }
+            },
+            "P": {
+              "S": 2,
+              "wall": 85.13914370798739,
+              "input": 174589,
+              "output": 2601,
+              "per_success": {
+                "wall": 42.56957185399369,
+                "input": 87294.5,
+                "output": 1300.5
+              }
+            }
+          },
+          "descriptive_a_replicate_2": [],
+          "reused": [],
+          "tripwire": {
+            "status": "CLEAR",
+            "checks": {
+              "completion": false,
+              "wall": false,
+              "input": false,
+              "output": false
+            }
+          }
+        }
+      },
+      "confirmation": "NO_HEADROOM",
+      "admitted": null,
+      "eligibility": {
+        "I0185": true,
+        "F16": false,
+        "F23": true,
+        "F25": false,
+        "F10": false,
+        "F11": false
+      }
+    }
+  }
+}
