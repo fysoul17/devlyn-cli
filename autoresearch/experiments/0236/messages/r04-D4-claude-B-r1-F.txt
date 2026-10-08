@@ -1,0 +1,53 @@
+At least one independent reviewer judged this work incomplete. Re-verify every requirement, required failure behavior and compatibility contract in the original request against the code and tests; fix what is real, verify it, and report.
+
+The reviewers' findings:
+
+Reviewer 1:
+[
+    {
+      "severity": "low",
+      "file": "tests/test_types/test_File.py",
+      "line": "test_lazy_fifo_delayed_read (start_writer fixture, ~lines 87-121, 131-160)",
+      "violated_requirement": "A synchronized real single writer survives delayed first read",
+      "witness": "start_writer only waits on `started.set()`, which runs before the writer calls `open(fifo, 'wb')`. `lf.read()` follows immediately. Nothing establishes that the writer is already pending on the FIFO before the first read, and there is no delay between the writer connecting and the read. The test passes whether the reader or the writer reaches open() first. It also never covers the issue's literal order (writer such as `echo hi > foo` waiting before the reader). Example: an implementation that did a non-blocking O_RDONLY open/close during convert would pass every test, since the writer is only started after convert and assert_no_reader runs after the close. The test discriminates against the original eager blocking open, but it does not prove survival of a delayed read with a connected writer."
+    },
+    {
+      "severity": "low",
+      "file": "src/click/utils.py",
+      "line": "_LazyFile.__init__, `if \"r\" in mode and not stat.S_ISFIFO(os.stat(filename).st_mode)`",
+      "violated_requirement": "Preserve early errors (behavior change scoped to FIFOs; not documented)",
+      "witness": "For a FIFO without read permission (e.g. mode 0o200), convert now returns without error. The EACCES only appears at first IO, as a FileError from _LazyFile.open, not as a BadParameter at conversion. The CHANGES and docstring text says only that the FIFO 'is not opened early'. They do not say that permission errors for FIFOs are deferred. Ordinary files keep their early errors, so this is a narrow, likely acceptable trade-off. Something like os.access(R_OK) would keep the early error without connecting."
+    },
+    {
+      "severity": "info",
+      "file": "src/click/utils.py",
+      "line": "_LazyFile.__init__ stat-then-open",
+      "violated_requirement": "No connection consumed during construction (edge case)",
+      "witness": "There is a stat/open TOCTOU window. If a regular file is replaced by a FIFO between os.stat and open(filename, mode), the eager open blocks and later closes. This is an adversarial edge case only; normal direct and symlink FIFO classification is correct because os.stat follows symlinks."
+    },
+    {
+      "severity": "info",
+      "file": "tests/test_types/test_File.py",
+      "line": "deadline() (~lines 44-58)",
+      "violated_requirement": "Timeout probes terminate owned writer/readers",
+      "witness": "deadline relies on SIGALRM/setitimer in the main thread. Under a runner that executes tests off the main thread, signal.signal raises ValueError. If the alarm fires while read() is blocked, the reader is interrupted, and start_writer teardown releases a pending writer via a non-blocking O_RDONLY open and joins it. Fixture paths live under pytest's tmp_path, so only fixture paths are touched. No sleeps are used as proof."
+    }
+  ]
+
+Reviewer 2:
+[
+    {
+      "severity": "medium",
+      "file": "tests/test_types/test_File.py",
+      "line": 98,
+      "violated_requirement": "A synchronized single writer must survive a delayed first read in binary and text modes.",
+      "concrete_witness": "The writer sets started before attempting open(fifo), and the reader calls lf.read() immediately after observing that event. A valid schedule pauses the writer after started.set(), allowing the reader to open first. Both modes can therefore pass without exercising a writer waiting through a controlled delay before the first read. This is a regression-test gap, not an identified production failure."
+    },
+    {
+      "severity": "medium",
+      "file": "tests/test_types/test_File.py",
+      "line": 114,
+      "violated_requirement": "Timeout/error probes must terminate their owned writers and readers.",
+      "concrete_witness": "Teardown opens a temporary reader, joins the daemon writer for five seconds, closes the reader, then merely asserts that the writer stopped. If the writer remains paused before its blocking open throughout that window, teardown fails and closes the temporary reader; the writer can subsequently block in open(fifo, 'wb') indefinitely. There is no cancellation or termination mechanism, and an assertion does not stop the owned thread."
+    }
+  ]

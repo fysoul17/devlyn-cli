@@ -1,0 +1,47 @@
+At least one independent reviewer judged this work incomplete. Re-verify every requirement, required failure behavior and compatibility contract in the original request against the code and tests; fix what is real, verify it, and report.
+
+The reviewers' findings:
+
+Reviewer 1:
+[
+    {
+      "severity": "low",
+      "file": "src/click/utils.py",
+      "line": 143,
+      "violated_requirement": "Robust FIFO classification and no blocking during construction (no connection consumed during construction)",
+      "witness": "`if \"r\" in mode and not stat.S_ISFIFO(os.stat(filename).st_mode): open(filename, mode).close()` checks the path and then opens it by name. If the path is replaced by a FIFO between `os.stat` and `open`, construction blocks in `open()` until a writer connects, and the following `.close()` drops that writer. Opening with `O_RDONLY|O_NONBLOCK` and then calling `fstat` would remove the race. This needs a concurrent path swap, so it does not affect the requested scenarios."
+    },
+    {
+      "severity": "low",
+      "file": "src/click/utils.py",
+      "line": 143,
+      "violated_requirement": "Preserve early errors (informational; the requirement only names ordinary files)",
+      "witness": "For a FIFO with mode 000, `os.stat` succeeds and the eager open is skipped. Conversion now returns a `_LazyFile`, and `EACCES` only appears at first IO as `FileError`, not as `BadParameter` during conversion. A cheap `os.access(filename, os.R_OK)` check could keep this error early without connecting. No test covers it."
+    },
+    {
+      "severity": "low",
+      "file": "src/click/types.py",
+      "line": null,
+      "violated_requirement": "Documentation consistency (not a hard requirement)",
+      "witness": "The `File` class docstring still says: \"When opening a file lazily for reading, it is still opened temporarily for validation, but will not be held open until first IO.\" The diff updated `open_file`'s docstring and `CHANGES.md` to mention the named-pipe exception, but not this public `File` docstring."
+    },
+    {
+      "severity": "low",
+      "file": "tests/test_types/test_File.py",
+      "line": null,
+      "violated_requirement": "A synchronized real single writer survives delayed first read",
+      "witness": "`_WRITER_SCRIPT` prints `ready` before it calls `open(sys.argv[2], \"wb\")`, and `test_lazy_fifo_delayed_read` calls `lf.read` as soon as `ready` arrives. Nothing establishes that the writer is already blocked in `open()` (connected-and-waiting) before the first read starts. The reader may open first and the writer second, so the delayed-read ordering is not actually synchronized. The fixed implementation is correct in both orders, so this is a test-strength gap rather than a product defect. The regression (eager open during construction) is still caught: the old code hangs in `convert` and hits the harness timeout. `test_lazy_fifo_convert_does_not_connect` also catches it."
+    }
+  ]
+
+Reviewer 2:
+[
+    {
+      "severity": "high",
+      "file": "tests/test_types/test_File.py",
+      "line": 185,
+      "violated_requirement": "Timeout/error probes must terminate owned writers and readers.",
+      "concrete_witness": "In fifo_harness.call(lf.read), Python evaluates lf.read before entering call(). _LazyFile.__getattr__ calls self.open(), so the blocking FIFO open occurs on the test's main thread, outside the timeout. If the writer exits after printing 'ready' but before opening the FIFO, the test hangs indefinitely and fixture cleanup is never reached.",
+      "related_location": "src/click/utils.py:148-149"
+    }
+  ]

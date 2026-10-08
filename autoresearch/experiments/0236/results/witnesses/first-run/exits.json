@@ -1,0 +1,21 @@
+{
+ "note": "First D4/D3 pass, run concurrently with the audit containers; stdout truncated to 1500 chars by the runner, so not the record. c16 was SIGKILLed (137) with no output. Exit codes only.",
+ "exits": {
+  "c01-r01-F-1": 0,
+  "c02-r01-G-1": 0,
+  "c03-r03-G-1": 0,
+  "c04-r03-F-1": 0,
+  "c05-r04-F-1": 2,
+  "c06-r04-G-1": 0,
+  "c07-r08-G-1": 0,
+  "c08-r08-F-1": 0,
+  "c09-r01-G-2": 0,
+  "c10-r01-F-2": 0,
+  "c11-r03-F-2": 0,
+  "c12-r03-G-2": 1,
+  "c13-r04-G-2": 0,
+  "c14-r04-F-2": 0,
+  "c15-r08-F-2": 0,
+  "c16-r08-G-2": 137
+ }
+}

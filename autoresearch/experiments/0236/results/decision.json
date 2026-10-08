@@ -1,0 +1,959 @@
+{
+ "note": "decide.py refuses the frozen decisions.json because the c05 witness is STOP (not a boolean). The rule is computed with c05 resolved both ways; both give the same outcome.",
+ "c05_not_reproduced": {
+  "token": "0236:claude=F/G:REJECT",
+  "outcome": "REJECT",
+  "advance": {
+   "margin": false,
+   "every_unit": false,
+   "d3_and_d4": false,
+   "f_safe": true,
+   "continuation_cost": false,
+   "operational_cost": false
+  },
+  "reject": {
+   "f_at_most_g": true,
+   "f_harm_or_scope": false,
+   "f_false_completion_where_g_none": false
+  },
+  "repairs": {
+   "F": 2,
+   "G": 4
+  },
+  "by_unit": {
+   "F": {
+    "r01-D3-claude-B-r1": 1,
+    "r03-D4-claude-R-r1": 0,
+    "r04-D4-claude-B-r1": 1,
+    "r08-D4-claude-R-r2": 0
+   },
+   "G": {
+    "r01-D3-claude-B-r1": 1,
+    "r03-D4-claude-R-r1": 0,
+    "r04-D4-claude-B-r1": 2,
+    "r08-D4-claude-R-r2": 1
+   }
+  },
+  "by_task": {
+   "F": {
+    "D3": 1,
+    "D4": 1
+   },
+   "G": {
+    "D3": 1,
+    "D4": 3
+   }
+  },
+  "preservations": {
+   "F": 0,
+   "G": 0
+  },
+  "costs": {
+   "continuation": {
+    "F": {
+     "S": 2,
+     "wall": 2548.2522283338476,
+     "input": 5641594,
+     "output": 124887,
+     "per_success": {
+      "wall": 1274.1261141669238,
+      "input": 2820797.0,
+      "output": 62443.5
+     }
+    },
+    "G": {
+     "S": 4,
+     "wall": 4884.179677791952,
+     "input": 5889390,
+     "output": 112640,
+     "per_success": {
+      "wall": 1221.044919447988,
+      "input": 1472347.5,
+      "output": 28160.0
+     }
+    }
+   },
+   "operational": {
+    "F": {
+     "S": 2,
+     "wall": 7180.75777362386,
+     "input": 13246627,
+     "output": 401317,
+     "per_success": {
+      "wall": 3590.37888681193,
+      "input": 6623313.5,
+      "output": 200658.5
+     }
+    },
+    "G": {
+     "S": 4,
+     "wall": 9521.295377330913,
+     "input": 13493532,
+     "output": 384338,
+     "per_success": {
+      "wall": 2380.323844332728,
+      "input": 3373383.0,
+      "output": 96084.5
+     }
+    }
+   }
+  },
+  "cells": {
+   "c01-r01-F-1": {
+    "unit": "r01-D3-claude-B-r1",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "lib/command.js",
+     "tests/args.literal.test.js",
+     "tests/fixtures/delimiter-positional.js"
+    ],
+    "cache": {
+     "uncached": 14,
+     "read": 442899,
+     "write": 65527
+    }
+   },
+   "c02-r01-G-1": {
+    "unit": "r01-D3-claude-B-r1",
+    "arm": "G",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": true,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "lib/command.js",
+     "tests/args.literal.test.js",
+     "tests/fixtures/delimiter-positional.js"
+    ],
+    "cache": {
+     "uncached": 24,
+     "read": 885798,
+     "write": 79293
+    }
+   },
+   "c03-r03-G-1": {
+    "unit": "r03-D4-claude-R-r1",
+    "arm": "G",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 32,
+     "read": 1130221,
+     "write": 75727
+    }
+   },
+   "c04-r03-F-1": {
+    "unit": "r03-D4-claude-R-r1",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "CHANGES.md",
+     "src/click/types.py",
+     "src/click/utils.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 24,
+     "read": 818581,
+     "write": 71552
+    }
+   },
+   "c05-r04-F-1": {
+    "unit": "r04-D4-claude-B-r1",
+    "arm": "F",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": true,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "CHANGES.md",
+     "src/click/types.py",
+     "src/click/utils.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 20,
+     "read": 664833,
+     "write": 71129
+    }
+   },
+   "c06-r04-G-1": {
+    "unit": "r04-D4-claude-B-r1",
+    "arm": "G",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": true,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 14,
+     "read": 406027,
+     "write": 61171
+    }
+   },
+   "c07-r08-G-1": {
+    "unit": "r08-D4-claude-R-r2",
+    "arm": "G",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": true,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "src/click/types.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 16,
+     "read": 469614,
+     "write": 59050
+    }
+   },
+   "c08-r08-F-1": {
+    "unit": "r08-D4-claude-R-r2",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "src/click/types.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 26,
+     "read": 796079,
+     "write": 60598
+    }
+   },
+   "c09-r01-G-2": {
+    "unit": "r01-D3-claude-B-r1",
+    "arm": "G",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "lib/command.js",
+     "tests/args.literal.test.js",
+     "tests/fixtures/delimiter-positional.js"
+    ],
+    "cache": {
+     "uncached": 18,
+     "read": 583004,
+     "write": 67249
+    }
+   },
+   "c10-r01-F-2": {
+    "unit": "r01-D3-claude-B-r1",
+    "arm": "F",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": true,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "lib/command.js",
+     "tests/args.literal.test.js",
+     "tests/fixtures/delimiter-positional.js"
+    ],
+    "cache": {
+     "uncached": 20,
+     "read": 685475,
+     "write": 69671
+    }
+   },
+   "c11-r03-F-2": {
+    "unit": "r03-D4-claude-R-r1",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "CHANGES.md",
+     "src/click/types.py",
+     "src/click/utils.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 20,
+     "read": 713626,
+     "write": 26967
+    }
+   },
+   "c12-r03-G-2": {
+    "unit": "r03-D4-claude-R-r1",
+    "arm": "G",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": false,
+    "witness_clean": false,
+    "repair": false,
+    "preservation": false,
+    "false_completion": true,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 16,
+     "read": 497716,
+     "write": 64108
+    }
+   },
+   "c13-r04-G-2": {
+    "unit": "r04-D4-claude-B-r1",
+    "arm": "G",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": true,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "src/click/utils.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 28,
+     "read": 929398,
+     "write": 22379
+    }
+   },
+   "c14-r04-F-2": {
+    "unit": "r04-D4-claude-B-r1",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "CHANGES.md",
+     "src/click/types.py",
+     "src/click/utils.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 16,
+     "read": 516244,
+     "write": 70561
+    }
+   },
+   "c15-r08-F-2": {
+    "unit": "r08-D4-claude-R-r2",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "src/click/types.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 18,
+     "read": 555550,
+     "write": 12144
+    }
+   },
+   "c16-r08-G-2": {
+    "unit": "r08-D4-claude-R-r2",
+    "arm": "G",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": false,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "src/click/types.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 18,
+     "read": 501922,
+     "write": 56547
+    }
+   }
+  }
+ },
+ "c05_reproduced": {
+  "token": "0236:claude=F/G:REJECT",
+  "outcome": "REJECT",
+  "advance": {
+   "margin": false,
+   "every_unit": false,
+   "d3_and_d4": false,
+   "f_safe": true,
+   "continuation_cost": false,
+   "operational_cost": false
+  },
+  "reject": {
+   "f_at_most_g": true,
+   "f_harm_or_scope": false,
+   "f_false_completion_where_g_none": false
+  },
+  "repairs": {
+   "F": 1,
+   "G": 4
+  },
+  "by_unit": {
+   "F": {
+    "r01-D3-claude-B-r1": 1,
+    "r03-D4-claude-R-r1": 0,
+    "r04-D4-claude-B-r1": 0,
+    "r08-D4-claude-R-r2": 0
+   },
+   "G": {
+    "r01-D3-claude-B-r1": 1,
+    "r03-D4-claude-R-r1": 0,
+    "r04-D4-claude-B-r1": 2,
+    "r08-D4-claude-R-r2": 1
+   }
+  },
+  "by_task": {
+   "F": {
+    "D3": 1,
+    "D4": 0
+   },
+   "G": {
+    "D3": 1,
+    "D4": 3
+   }
+  },
+  "preservations": {
+   "F": 1,
+   "G": 0
+  },
+  "costs": {
+   "continuation": {
+    "F": {
+     "S": 1,
+     "wall": 2548.2522283338476,
+     "input": 5641594,
+     "output": 124887,
+     "per_success": {
+      "wall": 2548.2522283338476,
+      "input": 5641594.0,
+      "output": 124887.0
+     }
+    },
+    "G": {
+     "S": 4,
+     "wall": 4884.179677791952,
+     "input": 5889390,
+     "output": 112640,
+     "per_success": {
+      "wall": 1221.044919447988,
+      "input": 1472347.5,
+      "output": 28160.0
+     }
+    }
+   },
+   "operational": {
+    "F": {
+     "S": 1,
+     "wall": 7180.75777362386,
+     "input": 13246627,
+     "output": 401317,
+     "per_success": {
+      "wall": 7180.75777362386,
+      "input": 13246627.0,
+      "output": 401317.0
+     }
+    },
+    "G": {
+     "S": 4,
+     "wall": 9521.295377330913,
+     "input": 13493532,
+     "output": 384338,
+     "per_success": {
+      "wall": 2380.323844332728,
+      "input": 3373383.0,
+      "output": 96084.5
+     }
+    }
+   }
+  },
+  "cells": {
+   "c01-r01-F-1": {
+    "unit": "r01-D3-claude-B-r1",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "lib/command.js",
+     "tests/args.literal.test.js",
+     "tests/fixtures/delimiter-positional.js"
+    ],
+    "cache": {
+     "uncached": 14,
+     "read": 442899,
+     "write": 65527
+    }
+   },
+   "c02-r01-G-1": {
+    "unit": "r01-D3-claude-B-r1",
+    "arm": "G",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": true,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "lib/command.js",
+     "tests/args.literal.test.js",
+     "tests/fixtures/delimiter-positional.js"
+    ],
+    "cache": {
+     "uncached": 24,
+     "read": 885798,
+     "write": 79293
+    }
+   },
+   "c03-r03-G-1": {
+    "unit": "r03-D4-claude-R-r1",
+    "arm": "G",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 32,
+     "read": 1130221,
+     "write": 75727
+    }
+   },
+   "c04-r03-F-1": {
+    "unit": "r03-D4-claude-R-r1",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "CHANGES.md",
+     "src/click/types.py",
+     "src/click/utils.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 24,
+     "read": 818581,
+     "write": 71552
+    }
+   },
+   "c05-r04-F-1": {
+    "unit": "r04-D4-claude-B-r1",
+    "arm": "F",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": false,
+    "repair": false,
+    "preservation": true,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "CHANGES.md",
+     "src/click/types.py",
+     "src/click/utils.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 20,
+     "read": 664833,
+     "write": 71129
+    }
+   },
+   "c06-r04-G-1": {
+    "unit": "r04-D4-claude-B-r1",
+    "arm": "G",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": true,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 14,
+     "read": 406027,
+     "write": 61171
+    }
+   },
+   "c07-r08-G-1": {
+    "unit": "r08-D4-claude-R-r2",
+    "arm": "G",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": true,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "src/click/types.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 16,
+     "read": 469614,
+     "write": 59050
+    }
+   },
+   "c08-r08-F-1": {
+    "unit": "r08-D4-claude-R-r2",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "src/click/types.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 26,
+     "read": 796079,
+     "write": 60598
+    }
+   },
+   "c09-r01-G-2": {
+    "unit": "r01-D3-claude-B-r1",
+    "arm": "G",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "lib/command.js",
+     "tests/args.literal.test.js",
+     "tests/fixtures/delimiter-positional.js"
+    ],
+    "cache": {
+     "uncached": 18,
+     "read": 583004,
+     "write": 67249
+    }
+   },
+   "c10-r01-F-2": {
+    "unit": "r01-D3-claude-B-r1",
+    "arm": "F",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": true,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "lib/command.js",
+     "tests/args.literal.test.js",
+     "tests/fixtures/delimiter-positional.js"
+    ],
+    "cache": {
+     "uncached": 20,
+     "read": 685475,
+     "write": 69671
+    }
+   },
+   "c11-r03-F-2": {
+    "unit": "r03-D4-claude-R-r1",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "CHANGES.md",
+     "src/click/types.py",
+     "src/click/utils.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 20,
+     "read": 713626,
+     "write": 26967
+    }
+   },
+   "c12-r03-G-2": {
+    "unit": "r03-D4-claude-R-r1",
+    "arm": "G",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": false,
+    "witness_clean": false,
+    "repair": false,
+    "preservation": false,
+    "false_completion": true,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 16,
+     "read": 497716,
+     "write": 64108
+    }
+   },
+   "c13-r04-G-2": {
+    "unit": "r04-D4-claude-B-r1",
+    "arm": "G",
+    "status": "COMPLETE",
+    "complete": true,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": true,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "src/click/utils.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 28,
+     "read": 929398,
+     "write": 22379
+    }
+   },
+   "c14-r04-F-2": {
+    "unit": "r04-D4-claude-B-r1",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "CHANGES.md",
+     "src/click/types.py",
+     "src/click/utils.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 16,
+     "read": 516244,
+     "write": 70561
+    }
+   },
+   "c15-r08-F-2": {
+    "unit": "r08-D4-claude-R-r2",
+    "arm": "F",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": true,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "src/click/types.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 18,
+     "read": 555550,
+     "write": 12144
+    }
+   },
+   "c16-r08-G-2": {
+    "unit": "r08-D4-claude-R-r2",
+    "arm": "G",
+    "status": "PRODUCT_INCOMPLETE",
+    "complete": false,
+    "audit_clean": true,
+    "witness_clean": false,
+    "repair": false,
+    "preservation": false,
+    "false_completion": false,
+    "harm": false,
+    "scope": false,
+    "tree_unchanged": false,
+    "files_changed": [
+     "src/click/types.py",
+     "tests/test_types/test_File.py"
+    ],
+    "cache": {
+     "uncached": 18,
+     "read": 501922,
+     "write": 56547
+    }
+   }
+  }
+ }
+}
