@@ -148,14 +148,12 @@ m._compile(source + '\\n' + process.argv[3], filename);
                    cwd=self.project, env=self.env, code=code)
 
     def interact(self, prompts, options='{}', code=0):
-        # A terminal that types one list of keys into each prompt as it opens.
+        # A terminal that types one list of keys into each menu as it opens (raw mode on).
         return self.invoke(f"""
-const stdin = Object.assign(new (require('events'))(), {{ isTTY: true, setRawMode() {{}}, resume() {{}}, pause() {{}}, setEncoding() {{}} }});
-Object.defineProperty(process, 'stdin', {{ value: stdin }});
 const prompts = {json.dumps(prompts)};
-stdin.on('newListener', (event) => {{
-  if (event === 'data') setImmediate(() => prompts.shift().forEach((key) => stdin.emit('data', key)));
-}});
+const stdin = Object.assign(new (require('events'))(), {{ isTTY: true, resume() {{}}, pause() {{}}, setEncoding() {{}},
+  setRawMode(on) {{ if (on) setImmediate(() => prompts.shift().forEach((key) => stdin.emit('data', key))); }} }});
+Object.defineProperty(process, 'stdin', {{ value: stdin }});
 init({options});
 """, code=code)
 
@@ -537,17 +535,18 @@ init({options});
                     self.assertEqual(tree(), installed)
 
     def test_interactive_what_and_where(self):
-        down, enter, space = '\x1b[B', '\r', ' '
+        up, down, enter, space = '\x1b[A', '\x1b[B', '\r', ' '
         mcp = b'Playwright MCP for browser testing'
         # Defaults on an empty project: AGENTS.md only, this project; MCP servers are Claude's.
-        result = self.interact([[enter], [enter], [enter]])
+        # Up wraps to the last addon, which shows its description.
+        result = self.interact([[enter], [enter], [up, enter]])
         self.assertNotIn(mcp, result.stdout)
         self.assertEqual({p.name for p in self.project.iterdir()}, {'AGENTS.md', '.agents', '.gitignore'})
         self.assertEqual(self.markers(self.project), {'.agents'})
         # A project with devlyn Claude skills preselects CLAUDE.md; an optional skill goes to both roots.
         (self.project / '.claude/skills').mkdir(parents=True)
         (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
-        result = self.interact([[enter], [enter], [space, enter]])
+        result = self.interact([[enter], [enter], [up, down, space, enter]])
         self.assertIn(mcp, result.stdout)
         self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
         self.assertTrue((self.project / 'CLAUDE.md').is_file())

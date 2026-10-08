@@ -217,7 +217,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 ## Requirements
 
-- **Node.js 18+** and npm
+- **Node.js 20 (20.17+), 22 (22.13+) or 23.5+** and npm
 - **Python 3.11+** available as `python3`, and Git for the harness
 - **An agent CLI** installed and configured: Codex, omp, Pi or Grok (AGENTS.md), or [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLAUDE.md)
 - **For `auto`/`pr` delivery**, an `origin` remote naming one GitHub repository and an authenticated [`gh`](https://cli.github.com/)

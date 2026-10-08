@@ -4,7 +4,6 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const readline = require('readline');
 const { execSync } = require('child_process');
 
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
@@ -449,131 +448,51 @@ function writeInstallMarker(skillsDir) {
   }
 }
 
-function multiSelect(items, preselectedIndices = []) {
-  return new Promise((resolve) => {
-    const selected = new Set(preselectedIndices.filter((i) => i >= 0 && i < items.length));
-    let cursor = 0;
-    let firstRender = true;
+// One Inquirer menu, imported only when shown (Inquirer is ESM). The page gets the terminal
+// rows left after everything else the menu draws, so a redraw never scrolls it into
+// duplicates. Ctrl+C cancels the install.
+async function ask(module, help, config) {
+  const { default: prompt } = await import(module);
+  const { stdin: input, stdout: output } = process;
+  const columns = output.columns || 80;
+  // Most rows a text wraps to: an ASCII character takes one cell, any other at most two.
+  const rows = (text = '') => Math.ceil([...text].reduce((cells, c) => cells + (c.codePointAt(0) < 0x80 ? 1 : 2), 0) / columns);
+  // Message, blank line, the active choice's description, key help, and the line Inquirer
+  // adds when the help exactly fills the width.
+  const reserved = rows(`? ${config.message}`) + 1 + Math.max(...config.choices.map((choice) => rows(choice.description))) + rows(help) + 1;
+  try {
+    return await prompt({
+      ...config,
+      pageSize: Math.max(1, (output.rows || 24) - reserved),
+      theme: { keybindings: ['vim'], style: { keysHelpTip: () => help } },
+    }, { input, output });
+  } catch (error) {
+    if (error.name !== 'ExitPromptError') throw error;
+    console.log('Installation cancelled.');
+    process.exit(0);
+  }
+}
 
-    const render = () => {
-      // Move cursor up to redraw (skip on first render)
-      const totalLines = items.length * 2 + 2; // 2 lines per item + header + blank
-      if (!firstRender) {
-        process.stdout.write(`\x1b[${totalLines}A\x1b[0J`); // Move up and clear to end of screen
-      }
-      firstRender = false;
-
-      console.log(`${COLORS.dim}(↑↓ navigate, space select, enter confirm)${COLORS.reset}\n`);
-
-      items.forEach((item, i) => {
-        const checkbox = selected.has(i) ? `${COLORS.green}◉${COLORS.reset}` : `${COLORS.dim}○${COLORS.reset}`;
-        const pointer = i === cursor ? `${COLORS.cyan}❯${COLORS.reset}` : ' ';
-        const name = i === cursor ? `${COLORS.cyan}${item.name}${COLORS.reset}` : item.name;
-        const tagLabel = item.type === 'mcp' ? 'mcp' : item.type === 'local' ? 'skill' : 'pack';
-        const tagColor = item.type === 'mcp' ? COLORS.green : item.type === 'local' ? COLORS.magenta : COLORS.cyan;
-        const tag = `${tagColor}${tagLabel}${COLORS.reset}`;
-        console.log(`${pointer} ${checkbox} ${name}${item.type ? ` ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}` : ''}`);
-        console.log(`    ${COLORS.dim}${item.desc}${COLORS.reset}`);
-      });
-    };
-
-    render();
-
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.setEncoding('utf8');
-
-    const onKeypress = (key) => {
-      // Ctrl+C
-      if (key === '\u0003') {
-        process.stdin.setRawMode(false);
-        process.stdin.removeListener('data', onKeypress);
-        process.exit();
-      }
-
-      // Enter
-      if (key === '\r' || key === '\n') {
-        process.stdin.setRawMode(false);
-        process.stdin.removeListener('data', onKeypress);
-        process.stdin.pause();
-        console.log('');
-        resolve([...selected].map((i) => items[i]));
-        return;
-      }
-
-      // Space - toggle selection
-      if (key === ' ') {
-        if (selected.has(cursor)) {
-          selected.delete(cursor);
-        } else {
-          selected.add(cursor);
-        }
-        render();
-        return;
-      }
-
-      // Arrow up or k
-      if (key === '\x1b[A' || key === 'k') {
-        cursor = cursor > 0 ? cursor - 1 : items.length - 1;
-        render();
-        return;
-      }
-
-      // Arrow down or j
-      if (key === '\x1b[B' || key === 'j') {
-        cursor = cursor < items.length - 1 ? cursor + 1 : 0;
-        render();
-        return;
-      }
-
-      // 'a' - select all
-      if (key === 'a') {
-        if (selected.size === items.length) {
-          selected.clear();
-        } else {
-          items.forEach((_, i) => selected.add(i));
-        }
-        render();
-        return;
-      }
-    };
-
-    process.stdin.on('data', onKeypress);
+// Checkbox menu (space toggles, a toggles all); resolves to the chosen items.
+function multiSelect(message, items, preselectedIndices = []) {
+  return ask('@inquirer/checkbox', '↑↓ navigate · space select · a all · enter confirm', {
+    message,
+    choices: items.map((item, index) => ({
+      name: item.type ? `${item.name} [${item.type === 'mcp' ? 'mcp' : item.type === 'local' ? 'skill' : 'pack'}]` : item.name,
+      short: item.name,
+      description: item.desc,
+      value: item,
+      checked: preselectedIndices.includes(index),
+    })),
   });
 }
 
-// One of `items` (↑↓ move, Enter confirms); resolves to the chosen index.
-function singleSelect(items, initial) {
-  return new Promise((resolve) => {
-    let cursor = initial;
-    let drawn = false;
-    const render = () => {
-      if (drawn) process.stdout.write(`\x1b[${items.length + 2}A\x1b[0J`);
-      drawn = true;
-      console.log(`${COLORS.dim}(↑↓ navigate, enter confirm)${COLORS.reset}\n`);
-      items.forEach((item, i) => console.log(i === cursor ? `${COLORS.cyan}❯ ${item}${COLORS.reset}` : `  ${item}`));
-    };
-    render();
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.setEncoding('utf8');
-    const onKeypress = (key) => {
-      if (key === '\u0003') {
-        process.stdin.setRawMode(false);
-        process.exit();
-      }
-      if (key === '\r' || key === '\n') {
-        process.stdin.setRawMode(false);
-        process.stdin.removeListener('data', onKeypress);
-        process.stdin.pause();
-        console.log('');
-        resolve(cursor);
-      } else if (['\x1b[A', 'k', '\x1b[B', 'j'].includes(key)) {
-        cursor = (cursor + (key === '\x1b[A' || key === 'k' ? items.length - 1 : 1)) % items.length;
-        render();
-      }
-    };
-    process.stdin.on('data', onKeypress);
+// One of `items`; resolves to the chosen index.
+function singleSelect(message, items, initial) {
+  return ask('@inquirer/select', '↑↓ navigate · enter confirm', {
+    message,
+    choices: items.map((name, index) => ({ name, value: index })),
+    default: initial,
   });
 }
 
@@ -885,13 +804,12 @@ async function init({ yes, claude, global }) {
     return;
   }
 
-  log('\n🎯 What to install:\n', 'blue');
   const targetOptions = [
     { key: 'agents', name: 'AGENTS.md — Codex · omp · Pi · Grok', desc: 'AGENTS.md + .agents/skills' },
     { key: 'claude', name: 'CLAUDE.md — Claude Code', desc: 'CLAUDE.md + .claude/ (skills, settings)' },
   ];
   const preselected = claude || hasDevlynClaude(false) || (global && hasDevlynClaude(true)) ? [0, 1] : [0];
-  const targets = (await multiSelect(targetOptions, preselected)).map((option) => option.key);
+  const targets = (await multiSelect('What to install', targetOptions, preselected)).map((option) => option.key);
 
   if (targets.length === 0) {
     log('\n💡 Nothing selected — nothing installed.', 'yellow');
@@ -899,14 +817,11 @@ async function init({ yes, claude, global }) {
     return;
   }
 
-  log('📍 Where:\n', 'blue');
-  const scope = await singleSelect(['This project', 'Global — every project on this machine'], global ? 1 : 0);
+  const scope = await singleSelect('Where', ['This project', 'Global — every project on this machine'], global ? 1 : 0);
   const roots = install(targets, scope === 1);
 
   // Ask about optional addons (local skills + external packs; MCP servers belong to Claude Code)
-  log('\n📚 Optional skills & packs:\n', 'blue');
-
-  const selectedAddons = await multiSelect(OPTIONAL_ADDONS.filter((addon) => addon.type !== 'mcp' || targets.includes('claude')));
+  const selectedAddons = await multiSelect('Optional skills & packs', OPTIONAL_ADDONS.filter((addon) => addon.type !== 'mcp' || targets.includes('claude')));
 
   if (selectedAddons.length > 0) {
     for (const addon of selectedAddons) {

@@ -33,6 +33,10 @@ jobs:
       - name: Refresh instruction migration history
         run: node scripts/update-instruction-templates.js
 
+      # The tarball bundles the installer's menu dependencies from node_modules.
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       - name: Dry-run pack
         run: npm pack --dry-run
 
