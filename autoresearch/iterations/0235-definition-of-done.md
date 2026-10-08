@@ -74,3 +74,24 @@ Astra (round 1, REVISE) found one HIGH: `decide.py` checked only R's usage compl
 ## Addendum 2026-10-08 — image rebuilt before any dispatch
 
 The `devlyn-0231` image (`sha256:1a1c6889…`) was removed from Docker outside the run before any 0235 cell dispatched (the SMOKE preflight could not start its Codex limit probe). It was rebuilt with `experiments/0231/build.sh` from the same pinned, checksum-verified inputs (Node 22.23.2, codex-cli 0.156.1, Claude Code 2.1.281, the same Python, pytest, mypy, pyright, TypeScript and ESLint versions) as `sha256:1ffe879f3f623671e752bdc20b2b9a963714d45da67db6e912dd3f1c7a244fdf`. Both arms run on the rebuilt image, so the B/R comparison is unaffected; comparisons with 0233's cells carry the venue difference. A saved copy guards against another removal.
+
+## Result 2026-10-08
+
+All 8 measured cells ran 2026-10-08 12:15–13:13Z with exit 0 and complete usage; the E1 smoke completed with R's sentence present in the owner session. Raw table, judgments, the witness and `decision.json`: [results](../experiments/0235/results/).
+
+**Decision (decide.py):** `0235:claude=R/B:REJECT`. Two REJECT conditions hold independently: R's completions (2) are at most B's (2), and R has two false completions. The sentence is not admitted; this line ("edit the definition of done") stops here.
+
+| arm | D3 | D4 | total |
+|---|---|---|---|
+| B (4.2.0) | 1/2 | 1/2 | 2/4 |
+| R (+ sentence) | 2/2 | 0/2 | 2/4 |
+
+Per success, R against B: wall 549 vs 495 s (1.11×), input 1.21M vs 1.36M (0.89×), output 35.9k vs 33.9k (1.06×). Oracle rows pass in every cell; no scope violation, no user-data harm.
+
+**What happened.** On D3 the prediction held: both R cells kept the public `parseOptions` override working (both disclose that an override which never calls `super` keeps the old behavior), while B-r1 bypassed it and reported the bypass as a limitation. On D4 it did not: both R cells wrote FIFO tests whose reports say the test "fails instead of hanging" and that "teardown kills the writer and unblocks any stuck reader", but `f.read`/`lf.read` is evaluated on the main thread before the bounded helper starts, so a writer that prints "ready" and exits without opening the FIFO hangs the test with no teardown. That is the 0233 d09 pattern (judged an ordinary trigger), so both are false completions. Both B D4 cells bounded the main thread with `SIGALRM` (5 s and 10 s) and the same trigger fails them cleanly. With two replicates neither the D3 gain nor the D4 loss is evidence of an effect of the sentence; B itself had the d09 defect once in 0233.
+
+**Judgments** (audit prepared by a Claude workflow, one auditor per cell plus a cross-arm installer check; verified by Astra, SHIP): 8 audited; false completion 2 (r03, r08, both R on D4); user-data harm 0; one severe finding (r08 codex:0), reproduced by the unchanged 0233 witness `d4-writer-death` (r03 true, r04 false, r07 false, r08 true); no adjudications. Installer output is identical within each arm, and B and R differ only by the sentence. Audit incident: one auditor ran `git status` in `out/r08…/cell/work`, which refreshed the stat cache in its `.git/index` (no tracked content changed; the manifest hash of that one file no longer matches).
+
+**§7 diagnostics.** Every report lists its contract checks as verified. A stated limitation breaks a stated contract in one cell, B-r1 on D3 (the override bypass against "do not change public APIs"). The two R D4 reports state no limitation on boundedness; their failure is an unexercised guarantee, not a disclosed break.
+
+**Predictions vs result.** B did not reproduce 0233 on D3 (1/2, not 0/2) and matched on D4 (1/2). R matched on D3 (2/2) and missed on D4 (0/2, not 1/2). The outcome was REJECT, which root rated 0.25.
