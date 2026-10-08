@@ -345,10 +345,19 @@ class GradePreserved(unittest.TestCase):
                                     (dict(base, reason='environment differs from the unit reference x', status='COMPLETE'),
                                      'only a unit-environment STOP'),
                                     (dict(base, reason='environment differs from the unit reference x',
-                                          continuation_of='r08-D4-claude-R-r2'), 'origin')):
+                                          continuation_of='r08-D4-claude-R-r2'), 'seal.json')):
                 verdict.write_text(json.dumps(record))
                 with self.assertRaisesRegex((SystemExit, OSError), message):
                     cont.grade_preserved(out / 'runtime.json', 'c08-r08-F-1')
+            inputs = ('plan.json', 'prompt.txt', 'baseline.json', 'continuation.txt', 'origin.json')
+            for n in inputs:
+                (cell / n).write_text(n)
+            (cell / 'seal.json').write_text(json.dumps(dict(cell={n: cont.digest(cell / n) for n in inputs})))
+            verdict.write_text(json.dumps(dict(base, reason='environment differs from the unit reference x',
+                                               origin_sha256=cont.digest(cell / 'origin.json'))))
+            (cell / 'baseline.json').write_text('changed')
+            with self.assertRaisesRegex(SystemExit, 'sealed inputs'):
+                cont.grade_preserved(out / 'runtime.json', 'c08-r08-F-1')
             (cell / 'run/stdout').write_text('changed')
             with self.assertRaisesRegex(SystemExit, 'sealed evidence'):
                 cont.grade_preserved(out / 'runtime.json', 'c08-r08-F-1')

@@ -501,7 +501,8 @@ def finish(out, src, runtime, verdict_path, record, identity, limits, reason):
 def grade_preserved(runtime_path, name):
     """Amendment 1: grade a continuation that stopped only on the unit environment check, from its sealed evidence and
     without running it again. Every check after execution is made again (session, route, the amended unit environment,
-    harness, account faults, model identity), then the unchanged pipeline grades it. The STOP verdict is kept as
+    harness, account faults, model identity), then the unchanged pipeline grades it. Its sealed evidence and sealed
+    inputs (plan, prompt, baseline, message, origin) must be unchanged. The STOP verdict is kept as
     .stop-N; nothing under the cell's evidence is rewritten."""
     runtime = json.loads(Path(runtime_path).read_text())
     output = Path(runtime['output'])
@@ -516,9 +517,12 @@ def grade_preserved(runtime_path, name):
     if (digest(out / 'evidence.manifest.json') != record.get('evidence_manifest_sha256') or manifest.get('failures')
             or files(out, EVIDENCE_ROOTS) != manifest['files']):
         raise SystemExit(f'{name}: sealed evidence does not match its manifest')
+    sealed_inputs = json.loads((out / 'seal.json').read_text()).get('cell') or {}
+    if (set(sealed_inputs) != {'plan.json', 'prompt.txt', 'baseline.json', 'continuation.txt', 'origin.json'}
+            or any(digest(out / n) != h for n, h in sealed_inputs.items())
+            or sealed_inputs['origin.json'] != record.get('origin_sha256')):
+        raise SystemExit(f'{name}: sealed inputs changed')
     origin = json.loads((out / 'origin.json').read_text())
-    if digest(out / 'origin.json') != record.get('origin_sha256'):
-        raise SystemExit(f'{name}: origin record changed')
     venue, blocked = rc.preflight(runtime)  # fresh credentials and limits for the assessors
     if blocked:
         print(f'{name}: not graded: {blocked}', file=sys.stderr)
@@ -532,16 +536,19 @@ def grade_preserved(runtime_path, name):
     unit_reason = (unit_check(environment_record, reference, reference_path, out)
                    if environment_record and not resumed and not route else None)
     limits = quota.classify(out)
+    try:
+        identity = cell_run.identity(out, json.loads((out / 'plan.json').read_text()))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        identity = dict(status='UNVERIFIED', violations=[f'identity check failed: {exc}'])
     stop_n = next(n for n in range(1, 100) if not (output / f'verdict-{name}.stop-{n}.json').exists())
     verdict_path.rename(output / f'verdict-{name}.stop-{stop_n}.json')
     record = {k: v for k, v in record.items() if k not in ('status', 'reason')} | dict(
-        environment=environment_record, quota=limits, graded_preserved=dict(
+        environment=environment_record, quota=limits, identity=identity, graded_preserved=dict(
             amendment=1, after=f'stop-{stop_n}', venue=venue, apparatus=apparatus_hashes(),
             at=datetime.datetime.now(datetime.timezone.utc).isoformat()))
     reason = ('session: ' + resumed if resumed else
               'init route differs from the source: ' + json.dumps(route) if route else unit_reason)
-    return finish(out, Path(runtime['source_output']) / unit, runtime, verdict_path, record, record['identity'],
-                  limits, reason)
+    return finish(out, Path(runtime['source_output']) / unit, runtime, verdict_path, record, identity, limits, reason)
 
 
 if __name__ == '__main__':
