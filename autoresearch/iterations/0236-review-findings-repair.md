@@ -181,15 +181,15 @@ The +2 margin is an engineering screening threshold, not statistical confirmatio
 
 ## Result (2026-10-09)
 
-**`0236:claude=F/G:REJECT`.** Feeding the assessors' findings back did not repair more than the generic re-verify turn: F repaired 2 of 8 continuations and G 4 of 8. The finding-feedback mechanism is not advanced; no panel follows from it. Under Amendment 1 this is an amended feasibility screen on exposed 0235 artifacts, not a clean causal isolation.
+**`0236:claude=F/G:REJECT`.** Feeding the assessors' findings back did not repair more than the generic re-verify turn: F confirmed 1 repair of 8, with c05 unresolved (at most 2), against G's 4 of 8. The finding-feedback mechanism is not advanced; no panel follows from it. Under Amendment 1 this is an amended feasibility screen on exposed 0235 artifacts, not a clean causal isolation.
 
 | unit | F repairs | G repairs |
 |---|---|---|
 | r01 (D3) | 1/2 (c10) | 1/2 (c02) |
 | r03 (D4) | 0/2 | 0/2 |
-| r04 (D4) | 1/2 (c05 unresolved, below) | 2/2 (c06, c13) |
+| r04 (D4) | 0/2 confirmed, c05 unresolved (below) | 2/2 (c06, c13) |
 | r08 (D4) | 0/2 | 1/2 (c07) |
-| **total** | **2/8 at most** | **4/8** |
+| **total** | **1/8 confirmed, 2/8 at most** | **4/8** |
 
 - **Rule.** REJECT because F repairs ≤ G repairs. Neither safety condition fires: F had no false completion, harm or scope violation. Every ADVANCE condition except F-safety fails.
 - **c05 is unresolved.** c05-r04-F-1 is assessor-COMPLETE and audit-clean, but its D4 witness is STOP. The turn rewrote the delayed-read writer as a thread that retries a nonblocking write-open; the witness cannot inject a writer of that kind (the residual limit in §9). §4 never counts a STOP as a repair, and `decide.py` refuses a non-boolean witness. The rule was therefore computed with c05 resolved both ways (`results/decision.json`): F 2 vs G 4 if it were clean, F 1 vs G 4 if it reproduced. Both give REJECT.
@@ -198,7 +198,15 @@ The +2 margin is an engineering screening threshold, not statistical confirmatio
 - **Witnesses** (`results/witnesses/`). D3 override witness: clean on all four r01 continuations, F and G alike, so the override bypass was fixed every time. D4 strict witness, run sequentially on a quiet host with full output: clean on 9 trees; reproduces on c12-r03-G-2 (4 conversion tests still running at 150 s under writer death) and c16-r08-G-2 (2 delayed-read tests still running at 150 s); STOP on c05. A first pass ran concurrently with the audit containers, truncated its output, and lost c16 to a SIGKILL. It is not the record; its exit codes are kept in `results/witnesses/first-run/` and agree with the quiet run on every tree it finished.
 - **Audit** (`results/audit.md`). 16 of 16 audited, and every judgment was re-derived by an adversarial verifier and upheld. 1 false completion: c12-r03-G-2 (G) claims every blocking step has a time limit, and its own test contradicts that. 0 user-data harm.
 - **Preservations** (complete and clean but the witness reproduces): F 0, G 0.
-- **Cost per repair** (`results/decision.json`, c05 not counted). For the continuation turn, F used 1274 s, 2.82M input and 62.4k output; G used 1221 s, 1.47M input and 28.2k output. For the full operation, F used 3590 s, 6.62M input and 200.7k output; G used 2380 s, 3.37M input and 96.1k output. F cost about twice G's tokens per repair.
+- **Cost per repair** (`results/decision.json`). G's continuation turn used 1221 s, 1.47M input and 28.2k output per repair, and 2380 s, 3.37M input and 96.1k output for the full operation. F's figures depend on c05:
+
+  | F | continuation turn | full operation |
+  |---|---|---|
+  | c05 not counted (1 repair) | 2548 s, 5.64M input, 124.9k output | 7181 s, 13.25M input, 401.3k output |
+  | c05 counted (2 repairs) | 1274 s, 2.82M input, 62.4k output | 3590 s, 6.62M input, 200.7k output |
+
+  Per repair, F used about 4× G's tokens without c05 and about 2× with it.
 - **Predictions** (§8): F 6/8, G 2/8, P(REJECT) ≈ 0.2. Observed F ≤ 2/8, G 4/8. The prediction was wrong in direction. On these units, the verdict alone led to more repairs than the verdict plus the reviewers' findings. Fresh assessors judged six F turns still incomplete: c01, c04, c08, c11, c14 and c15. Why the findings did not help was not measured.
 - **Environment** (Amendment 1). The claude.ai connector was present in the init of c01, c02, c08, c09, c10, c15 and c16 and absent in the rest (`results/cells.md`). It was never called.
-- **What this does and does not show.** On these exposed artifacts, a generic "judged incomplete, re-verify" turn after a failing assessor gate repaired 4 of 8 previously incomplete or false-complete Claude runs. That observation comes from a matched control and is not an admitted mechanism. Any use of it needs its own registration on unexposed tasks, against B, with the gate's cost charged.
+- **Direction (Astra, 2026-10-09).** The gate-plus-retry candidate stops here, and the instruction-only baseline stays. A descriptive replay of the B-origin units grants unchanged gate-pass successes and charges both assessors and the retry. Completion rises from 4/8 to 7/8, but per success it costs 615 s vs 495 s, 1.438M vs 1.357M input and 42.2k vs 33.9k output, which breaks the harness ladder rule that tokens per success never increase. The replay reuses snapshots, so it is a cost diagnostic, not admission evidence. Falsifiable prediction: on fresh tasks, this unchanged policy raises Claude's completion but increases at least one token-per-success metric against B. Codex's complementary catches support keeping independent evaluation; they do not establish an affordable production loop.
+- **What this does and does not show.** On these exposed artifacts, a generic "judged incomplete, re-verify" turn after a failing assessor gate repaired 4 of 8 previously incomplete or false-complete Claude runs. That observation comes from a matched control and is not an admitted mechanism. The cost replay above already puts it outside the token rule, so no registration follows.
