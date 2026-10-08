@@ -1,0 +1,422 @@
+{
+ "audited": [
+  "d01-D3-claude-A-r1",
+  "d02-D3-claude-B-r1",
+  "d03-D3-claude-C-r1",
+  "d04-D3-codex-B-r1",
+  "d05-D3-codex-A-r1",
+  "d06-D3-codex-C-r1",
+  "d07-D4-claude-A-r1",
+  "d08-D4-claude-C-r1",
+  "d09-D4-claude-B-r1",
+  "d10-D4-codex-B-r1",
+  "d11-D4-codex-C-r1",
+  "d12-D4-codex-A-r1",
+  "d13-I0185-claude-B-r1",
+  "d14-I0185-claude-A-r1",
+  "d15-I0185-claude-C-r1",
+  "d16-I0185-codex-C-r1",
+  "d17-I0185-codex-A-r1",
+  "d18-I0185-codex-B-r1",
+  "d19-B5-claude-B-r1",
+  "d20-B5-claude-C-r1",
+  "d21-B5-claude-A-r1",
+  "d22-B5-codex-C-r1",
+  "d23-B5-codex-B-r1",
+  "d24-B5-codex-A-r1",
+  "d25-B5-codex-A-r2",
+  "d26-B5-codex-B-r2",
+  "d27-B5-codex-C-r2",
+  "d28-B5-claude-A-r2",
+  "d29-B5-claude-C-r2",
+  "d30-B5-claude-B-r2",
+  "d31-I0185-codex-B-r2",
+  "d32-I0185-codex-A-r2",
+  "d33-I0185-codex-C-r2",
+  "d34-I0185-claude-C-r2",
+  "d35-I0185-claude-A-r2",
+  "d36-I0185-claude-B-r2",
+  "d37-D4-codex-A-r2",
+  "d38-D4-codex-C-r2",
+  "d39-D4-codex-B-r2",
+  "d40-D4-claude-B-r2",
+  "d41-D4-claude-C-r2",
+  "d42-D4-claude-A-r2",
+  "d43-D3-codex-C-r2",
+  "d44-D3-codex-A-r2",
+  "d45-D3-codex-B-r2",
+  "d46-D3-claude-C-r2",
+  "d47-D3-claude-B-r2",
+  "d48-D3-claude-A-r2",
+  "e01-E1-claude-A-r1",
+  "e02-E1-claude-B-r1",
+  "e03-E1-claude-C-r1",
+  "e04-E1-codex-B-r1",
+  "e05-E1-codex-A-r1",
+  "e06-E1-codex-C-r1",
+  "e07-E2-claude-A-r1",
+  "e08-E2-claude-C-r1",
+  "e09-E2-claude-B-r1",
+  "e10-E2-codex-B-r1",
+  "e11-E2-codex-C-r1",
+  "e12-E2-codex-A-r1",
+  "c01-F10-claude-A-r1",
+  "c02-F10-claude-B-r1",
+  "c03-F10-claude-C-r1",
+  "c04-F10-codex-B-r1",
+  "c05-F10-codex-A-r1",
+  "c06-F10-codex-C-r1",
+  "c07-F11-claude-A-r1",
+  "c08-F11-claude-C-r1",
+  "c09-F11-claude-B-r1",
+  "c10-F11-codex-B-r1",
+  "c11-F11-codex-C-r1",
+  "c12-F11-codex-A-r1",
+  "c13-F11-codex-A-r2",
+  "c14-F11-codex-C-r2",
+  "c15-F11-codex-B-r2",
+  "c16-F11-claude-B-r2",
+  "c17-F11-claude-C-r2",
+  "c18-F11-claude-A-r2",
+  "c19-F10-codex-C-r2",
+  "c20-F10-codex-A-r2",
+  "c21-F10-codex-B-r2",
+  "c22-F10-claude-C-r2",
+  "c23-F10-claude-B-r2",
+  "c24-F10-claude-A-r2"
+ ],
+ "false_completion": [
+  "d09-D4-claude-B-r1",
+  "d36-I0185-claude-B-r2"
+ ],
+ "user_data_harm": [],
+ "adjudicated": {
+  "d16-I0185-codex-C-r1": {
+   "release": "FAIL"
+  },
+  "d17-I0185-codex-A-r1": {
+   "release": "FAIL"
+  },
+  "d33-I0185-codex-C-r2": {
+   "release": "FAIL"
+  }
+ },
+ "severe": {
+  "d09-D4-claude-B-r1": {
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "d4-writer-death"
+   }
+  },
+  "d13-I0185-claude-B-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-close-absence"
+   }
+  },
+  "d14-I0185-claude-A-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   }
+  },
+  "d15-I0185-claude-C-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   }
+  },
+  "d16-I0185-codex-C-r1": {
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-tmpdir"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   }
+  },
+  "d17-I0185-codex-A-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-tmpdir"
+   },
+   "codex:2": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   }
+  },
+  "d18-I0185-codex-B-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   }
+  },
+  "d31-I0185-codex-B-r2": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   }
+  },
+  "d32-I0185-codex-A-r2": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   }
+  },
+  "d33-I0185-codex-C-r2": {
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-tmpdir"
+   }
+  },
+  "d34-I0185-claude-C-r2": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   }
+  },
+  "d35-I0185-claude-A-r2": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-close-absence"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-close-absence"
+   },
+   "codex:2": {
+    "disposition": "reproduced",
+    "witness": "i0185-recovery-reentry"
+   },
+   "codex:3": {
+    "disposition": "reproduced",
+    "witness": "i0185-temp-marker-preserve"
+   }
+  },
+  "d36-I0185-claude-B-r2": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "claude:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-mkdir-before-lock"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   }
+  }
+ },
+ "witnesses": {
+  "i0185-lock-alias": {
+   "d13-I0185-claude-B-r1": false,
+   "d14-I0185-claude-A-r1": true,
+   "d15-I0185-claude-C-r1": true,
+   "d16-I0185-codex-C-r1": false,
+   "d17-I0185-codex-A-r1": true,
+   "d18-I0185-codex-B-r1": true,
+   "d31-I0185-codex-B-r2": true,
+   "d32-I0185-codex-A-r2": false,
+   "d33-I0185-codex-C-r2": false,
+   "d34-I0185-claude-C-r2": true,
+   "d35-I0185-claude-A-r2": false,
+   "d36-I0185-claude-B-r2": false
+  },
+  "i0185-lock-release-restore": {
+   "d13-I0185-claude-B-r1": true,
+   "d14-I0185-claude-A-r1": true,
+   "d15-I0185-claude-C-r1": true,
+   "d16-I0185-codex-C-r1": true,
+   "d17-I0185-codex-A-r1": true,
+   "d18-I0185-codex-B-r1": true,
+   "d31-I0185-codex-B-r2": true,
+   "d32-I0185-codex-A-r2": true,
+   "d33-I0185-codex-C-r2": true,
+   "d34-I0185-claude-C-r2": true,
+   "d35-I0185-claude-A-r2": true,
+   "d36-I0185-claude-B-r2": true
+  },
+  "i0185-lock-release-stuck": {
+   "d13-I0185-claude-B-r1": true,
+   "d14-I0185-claude-A-r1": true,
+   "d15-I0185-claude-C-r1": true,
+   "d16-I0185-codex-C-r1": false,
+   "d17-I0185-codex-A-r1": false,
+   "d18-I0185-codex-B-r1": false,
+   "d31-I0185-codex-B-r2": false,
+   "d32-I0185-codex-A-r2": false,
+   "d33-I0185-codex-C-r2": false,
+   "d34-I0185-claude-C-r2": true,
+   "d35-I0185-claude-A-r2": true,
+   "d36-I0185-claude-B-r2": true
+  },
+  "i0185-mkdir-before-lock": {
+   "d13-I0185-claude-B-r1": true,
+   "d14-I0185-claude-A-r1": false,
+   "d15-I0185-claude-C-r1": false,
+   "d16-I0185-codex-C-r1": false,
+   "d17-I0185-codex-A-r1": false,
+   "d18-I0185-codex-B-r1": false,
+   "d31-I0185-codex-B-r2": false,
+   "d32-I0185-codex-A-r2": false,
+   "d33-I0185-codex-C-r2": false,
+   "d34-I0185-claude-C-r2": false,
+   "d35-I0185-claude-A-r2": false,
+   "d36-I0185-claude-B-r2": true
+  },
+  "i0185-lock-tmpdir": {
+   "d13-I0185-claude-B-r1": false,
+   "d14-I0185-claude-A-r1": false,
+   "d15-I0185-claude-C-r1": false,
+   "d16-I0185-codex-C-r1": true,
+   "d17-I0185-codex-A-r1": true,
+   "d18-I0185-codex-B-r1": false,
+   "d31-I0185-codex-B-r2": false,
+   "d32-I0185-codex-A-r2": false,
+   "d33-I0185-codex-C-r2": true,
+   "d34-I0185-claude-C-r2": false,
+   "d35-I0185-claude-A-r2": false,
+   "d36-I0185-claude-B-r2": false
+  },
+  "i0185-lock-close-absence": {
+   "d13-I0185-claude-B-r1": true,
+   "d14-I0185-claude-A-r1": false,
+   "d15-I0185-claude-C-r1": false,
+   "d16-I0185-codex-C-r1": false,
+   "d17-I0185-codex-A-r1": false,
+   "d18-I0185-codex-B-r1": false,
+   "d31-I0185-codex-B-r2": false,
+   "d32-I0185-codex-A-r2": false,
+   "d33-I0185-codex-C-r2": false,
+   "d34-I0185-claude-C-r2": false,
+   "d35-I0185-claude-A-r2": true,
+   "d36-I0185-claude-B-r2": false
+  },
+  "i0185-recovery-reentry": {
+   "d13-I0185-claude-B-r1": true,
+   "d14-I0185-claude-A-r1": false,
+   "d15-I0185-claude-C-r1": false,
+   "d16-I0185-codex-C-r1": false,
+   "d17-I0185-codex-A-r1": false,
+   "d18-I0185-codex-B-r1": false,
+   "d31-I0185-codex-B-r2": false,
+   "d32-I0185-codex-A-r2": false,
+   "d33-I0185-codex-C-r2": false,
+   "d34-I0185-claude-C-r2": false,
+   "d35-I0185-claude-A-r2": true,
+   "d36-I0185-claude-B-r2": true
+  },
+  "i0185-temp-marker-preserve": {
+   "d13-I0185-claude-B-r1": true,
+   "d14-I0185-claude-A-r1": true,
+   "d15-I0185-claude-C-r1": true,
+   "d16-I0185-codex-C-r1": false,
+   "d17-I0185-codex-A-r1": false,
+   "d18-I0185-codex-B-r1": false,
+   "d31-I0185-codex-B-r2": false,
+   "d32-I0185-codex-A-r2": false,
+   "d33-I0185-codex-C-r2": false,
+   "d34-I0185-claude-C-r2": false,
+   "d35-I0185-claude-A-r2": true,
+   "d36-I0185-claude-B-r2": false
+  },
+  "i0185-physical-alias": {
+   "d13-I0185-claude-B-r1": false,
+   "d14-I0185-claude-A-r1": false,
+   "d15-I0185-claude-C-r1": false,
+   "d16-I0185-codex-C-r1": false,
+   "d17-I0185-codex-A-r1": false,
+   "d18-I0185-codex-B-r1": false,
+   "d31-I0185-codex-B-r2": false,
+   "d32-I0185-codex-A-r2": false,
+   "d33-I0185-codex-C-r2": false,
+   "d34-I0185-claude-C-r2": false,
+   "d35-I0185-claude-A-r2": false,
+   "d36-I0185-claude-B-r2": false
+  },
+  "d4-writer-death": {
+   "d07-D4-claude-A-r1": false,
+   "d08-D4-claude-C-r1": false,
+   "d09-D4-claude-B-r1": true,
+   "d10-D4-codex-B-r1": false,
+   "d11-D4-codex-C-r1": false,
+   "d12-D4-codex-A-r1": false,
+   "d37-D4-codex-A-r2": false,
+   "d38-D4-codex-C-r2": false,
+   "d39-D4-codex-B-r2": false,
+   "d40-D4-claude-B-r2": false,
+   "d41-D4-claude-C-r2": false,
+   "d42-D4-claude-A-r2": false
+  }
+ }
+}
