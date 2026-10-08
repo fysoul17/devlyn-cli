@@ -70,3 +70,7 @@ For each measured cell, root records from the final report: whether it lists the
 ## Freeze review response
 
 Astra (round 1, REVISE) found one HIGH: `decide.py` checked only R's usage completeness, so a B token sum missing a cell's usage still let condition 6 pass, contradicting §5 ("Unknown usage leaves condition 6 unmet"). Accepted and fixed before any dispatch: one cost function now returns unknown when either arm's usage is incomplete, and two regression tests cover partial B usage (per-success and zero-success). The rule text is unchanged. No other HIGH or MEDIUM finding; the SMOKE cell stays required before measurement.
+
+## Addendum 2026-10-08 — image rebuilt before any dispatch
+
+The `devlyn-0231` image (`sha256:1a1c6889…`) was removed from Docker outside the run before any 0235 cell dispatched (the SMOKE preflight could not start its Codex limit probe). It was rebuilt with `experiments/0231/build.sh` from the same pinned, checksum-verified inputs (Node 22.23.2, codex-cli 0.156.1, Claude Code 2.1.281, the same Python, pytest, mypy, pyright, TypeScript and ESLint versions) as `sha256:1ffe879f3f623671e752bdc20b2b9a963714d45da67db6e912dd3f1c7a244fdf`. Both arms run on the rebuilt image, so the B/R comparison is unaffected; comparisons with 0233's cells carry the venue difference. A saved copy guards against another removal.
