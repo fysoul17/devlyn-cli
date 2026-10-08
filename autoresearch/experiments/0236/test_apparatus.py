@@ -253,7 +253,11 @@ class Environment(unittest.TestCase):
         reference = cont.reference_environment(self.INIT)
         self.assertEqual(reference['compared'], dict(mcp_servers=['docs'], skills=['debug', 'review'], tools=['Bash', 'Read']))
         self.assertEqual(reference['recorded'], dict(mcp_tools=['mcp__docs__a'], synced_skills=[],
-                                                     mcp_status=[['docs', 'pending']]))
+                                                     mcp_status=[['docs', 'pending']], account_servers=[]))
+        account = cont.reference_environment(dict(self.INIT, mcp_servers=[
+            dict(name='docs', status='pending'), dict(name='claude.ai Docs', status='connected', source='claudeai')]))
+        self.assertEqual(cont.environment_differences(account, reference), {})  # Amendment 1: account connectors
+        self.assertEqual(account['recorded']['account_servers'], ['claude.ai Docs'])
         synced = cont.reference_environment(dict(self.INIT, skills=['debug', 'review', 'anthropic-skills:pdf']))
         self.assertEqual(cont.environment_differences(synced, reference), {})  # account-synced skills: recorded only
         connected = cont.reference_environment(dict(self.INIT, tools=['Read', 'Bash', 'mcp__docs__a', 'mcp__docs__b'],
@@ -284,6 +288,18 @@ class Environment(unittest.TestCase):
             self.assertIn('not recorded: FileExistsError', cont.unit_check(dict(env), None, path, later))  # write-once
             self.assertEqual(cont.load_reference(path), reference)
             self.assertIsNone(cont.unit_check(env, reference, path, later))
+            with_account = dict(self.INIT, mcp_servers=self.INIT['mcp_servers'] + [
+                dict(name='claude.ai Docs', status='connected', source='claudeai')])
+            written = json.loads(path.read_text())  # a reference written before Amendment 1 compared every server name
+            (first / 'run/stdout').write_text(jsonl(with_account))
+            path.write_text(json.dumps(dict(written, compared=dict(written['compared'], mcp_servers=[
+                'claude.ai Docs', 'docs']), stdout_sha256=cont.digest(first / 'run/stdout'))))
+            self.assertEqual(cont.load_reference(path)['compared'], reference['compared'])  # derived again from init
+            self.assertIsNone(cont.unit_check(env, cont.load_reference(path), path, later))
+            (first / 'run/stdout').write_text(jsonl(self.INIT))
+            with self.assertRaisesRegex(cont.SourceError, 'no longer matches'):
+                cont.load_reference(path)
+            path.write_text(json.dumps(written))
             drifted = dict(compared=cont.reference_environment(dict(self.INIT, skills=['debug'])))
             self.assertIn('differs from the unit reference environment-r03-D4-claude-R-r1.json',
                           cont.unit_check(drifted, reference, path, later))
@@ -309,6 +325,34 @@ class Environment(unittest.TestCase):
                 self.assertEqual(cont.run(runtime, 'c01-r01-F-1', 'r01-D3-claude-B-r1', 'F'), 2)
                 self.assertEqual(cont.run(runtime, 's01-r06-G', 'r06-D3-claude-B-r2', 'G'), 2)
                 self.assertIn('source:', json.loads((out / 'verdict-s01-r06-G.json').read_text())['reason'])
+
+
+class GradePreserved(unittest.TestCase):
+    """Amendment 1: only a unit-environment STOP with intact sealed evidence is graded again, before any assessor."""
+
+    def test_other_stops_and_changed_evidence_are_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            (out / 'runtime.json').write_text(json.dumps(dict(output=str(out))))
+            cell = out / 'c08-r08-F-1'
+            (cell / 'run').mkdir(parents=True)
+            (cell / 'run/stdout').write_text('x')
+            (cell / 'evidence.manifest.json').write_text(json.dumps(dict(files={'run/stdout': cont.digest(cell / 'run/stdout')}, failures=[])))
+            base = dict(continuation_of='r08-D4-claude-R-r2', status='STOP',
+                        evidence_manifest_sha256=cont.digest(cell / 'evidence.manifest.json'))
+            verdict = out / 'verdict-c08-r08-F-1.json'
+            for record, message in ((dict(base, reason='assessment failed'), 'only a unit-environment STOP'),
+                                    (dict(base, reason='environment differs from the unit reference x', status='COMPLETE'),
+                                     'only a unit-environment STOP'),
+                                    (dict(base, reason='environment differs from the unit reference x',
+                                          continuation_of='r08-D4-claude-R-r2'), 'origin')):
+                verdict.write_text(json.dumps(record))
+                with self.assertRaisesRegex((SystemExit, OSError), message):
+                    cont.grade_preserved(out / 'runtime.json', 'c08-r08-F-1')
+            (cell / 'run/stdout').write_text('changed')
+            with self.assertRaisesRegex(SystemExit, 'sealed evidence'):
+                cont.grade_preserved(out / 'runtime.json', 'c08-r08-F-1')
+            self.assertTrue(verdict.exists())
 
 
 class D4Witness(unittest.TestCase):

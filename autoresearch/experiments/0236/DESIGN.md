@@ -56,6 +56,8 @@ After teardown:
 - **Recorded, not gating.** MCP tool names, MCP server status and account-synced skills, beside the source's.
 - **0235 post-run pipeline, unchanged.** Seal, session usage, quota, diagnostics, stop gates, locate, check and grade.
   Regrade with `0235/run_cell.py --regrade <runtime> <name>`.
+  A unit-environment STOP is graded from sealed evidence with `run_continuation.py --grade-preserved <runtime> <name>`
+  (Amendment 1; claude.ai account connectors are recorded, not compared).
 
 **Turn usage.** The turn is the final result `modelUsage` minus the source transcript's last `cost-state`, for each
 model and counter. It is COMPLETE only when all of the following hold:

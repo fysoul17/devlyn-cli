@@ -3,6 +3,7 @@
 Resumes a sealed 0235 Claude cell's own session for one added user message (registration 0236 §3) on an immutable
 copy of the cell's end state, then runs the unchanged 0235 post-run pipeline. 0235 code is imported, never edited.
 After an assessor fault, `0235/run_cell.py --regrade <runtime.json> <name>` regrades the preserved continuation.
+After a unit-environment STOP, `run_continuation.py --grade-preserved <runtime.json> <name>` grades it (Amendment 1).
 
 Exit 0 = verdict recorded, 3 = not dispatched (preflight, or a later continuation of a unit without a valid unit
 reference environment), 2 = STOP: a source cell that fails verification, a frozen message that no longer matches its
@@ -46,6 +47,7 @@ FIRST = {unit: name for name, unit, *_ in reversed(CELLS)}  # reversed: the earl
 ROUTE = ('model', 'claude_code_version', 'permission_mode', 'agents', 'plugins')
 COMPARED = ('mcp_servers', 'skills', 'tools')
 SYNCED = 'anthropic-skills:'  # account-synced skills, loaded from the home cache or synced after init
+ACCOUNT = 'claudeai'  # Amendment 1: init source of claude.ai account connectors, listed only when the account fetch lands
 # /tmp of the source end state restored into the new cell's /tmp volume: root-owned sticky directory as the image's
 # /tmp, contents owned by the participant (USER 501:501) that wrote them.
 SEED = ('set -o pipefail; tar -C /src -cf - . | tar -C /dst -xpf - && chown -R 501:501 /dst && chown 0:0 /dst '
@@ -80,16 +82,17 @@ def environment(init):
 
 def reference_environment(init):
     """The environment of an init as the reference compares it: skills, MCP server names and non-MCP tools. MCP tool
-    names, server status and account-synced skills are recorded, never compared: they depend on when each server
-    connected and when the account sync finished."""
+    names, server status, account-synced skills and (Amendment 1) claude.ai account connectors are recorded, never
+    compared: they depend on when each server connected and when the account sync or fetch finished."""
     tools = init.get('tools') or []
     servers = init.get('mcp_servers') or []
-    return dict(compared=dict(mcp_servers=sorted(s.get('name') for s in servers),
+    return dict(compared=dict(mcp_servers=sorted(s.get('name') for s in servers if s.get('source') != ACCOUNT),
                               skills=sorted(k for k in init.get('skills') or [] if not k.startswith(SYNCED)),
                               tools=sorted(t for t in tools if not t.startswith('mcp__'))),
                 recorded=dict(mcp_tools=sorted(t for t in tools if t.startswith('mcp__')),
                               synced_skills=sorted(k for k in init.get('skills') or [] if k.startswith(SYNCED)),
-                              mcp_status=sorted([s.get('name'), s.get('status')] for s in servers)))
+                              mcp_status=sorted([s.get('name'), s.get('status')] for s in servers),
+                              account_servers=sorted(s.get('name') for s in servers if s.get('source') == ACCOUNT)))
 
 
 def route_differences(source, continuation):
@@ -107,7 +110,9 @@ def record_reference(path, cell, current):
 
 
 def load_reference(path):
-    """A unit's recorded reference environment; raises SourceError when it is missing or malformed."""
+    """A unit's recorded reference environment; raises SourceError when it is missing or malformed. The file stays as
+    written; its compared sets are derived again from the init of the continuation that recorded it (Amendment 1),
+    whose stdout must still match the recorded digest."""
     try:
         reference = json.loads(path.read_text())
     except (OSError, ValueError) as exc:
@@ -116,7 +121,10 @@ def load_reference(path):
     if (not isinstance(compared, dict) or tuple(sorted(compared)) != COMPARED
             or not all(isinstance(v, list) and all(isinstance(x, str) for x in v) for v in compared.values())):
         raise SourceError(f'{path.name}: malformed reference environment')
-    return reference
+    stdout = path.parent / str(reference.get('derived_from')) / 'run/stdout'
+    if not stdout.is_file() or digest(stdout) != reference.get('stdout_sha256') or not init_event(stdout):
+        raise SourceError(f'{path.name}: the init of {reference.get("derived_from")} no longer matches the reference')
+    return dict(reference, compared=reference_environment(init_event(stdout))['compared'])
 
 
 def environment_differences(current, reference):
@@ -458,16 +466,22 @@ def run(runtime_path, name, unit, arm):
         record['diagnostics'] = diagnostics.record(out)
     except (OSError, ValueError, TypeError, KeyError) as exc:
         record['diagnostics'] = dict(status='UNKNOWN', error=f'{type(exc).__name__}: {exc}')
-    baseline = json.loads((out / 'baseline.json').read_text())
     reason = ('teardown failed: ' + str(owner.get('teardown_error')) if owner['teardown'] != 'CLEAN' else
               'session: ' + resumed if resumed else
-              'init route differs from the source: ' + json.dumps(route) if route else
-              unit_reason if unit_reason else
+              'init route differs from the source: ' + json.dumps(route) if route else unit_reason)
+    return finish(out, src, runtime, verdict_path, record, owner['identity'], limits, reason)
+
+
+def finish(out, src, runtime, verdict_path, record, identity, limits, reason):
+    """The rest of the post-run pipeline after the session and environment checks: the harness, account-fault and
+    model-identity checks, then the unchanged 0235 locate, check and grade."""
+    baseline = json.loads((out / 'baseline.json').read_text())
+    reason = (reason if reason else
               'harness changed' if not rc.harness_unchanged(out, baseline) else
               'shared account fault during execution: ' + ', '.join(sorted({h['kind'] for h in limits['execution']}))
               if limits['execution'] else
-              'model identity ' + owner['identity']['status'].lower()
-              if owner['identity']['status'] in ('MISMATCH', 'UNVERIFIED', 'UNKNOWN') else None)
+              'model identity ' + identity['status'].lower()
+              if identity['status'] in ('MISMATCH', 'UNVERIFIED', 'UNKNOWN') else None)
     if not reason:
         try:
             record['snapshot'] = locate.locate(out)
@@ -484,7 +498,55 @@ def run(runtime_path, name, unit, arm):
     return rc.write_verdict(verdict_path, rc.grade(out, runtime, record, checks))
 
 
+def grade_preserved(runtime_path, name):
+    """Amendment 1: grade a continuation that stopped only on the unit environment check, from its sealed evidence and
+    without running it again. Every check after execution is made again (session, route, the amended unit environment,
+    harness, account faults, model identity), then the unchanged pipeline grades it. The STOP verdict is kept as
+    .stop-N; nothing under the cell's evidence is rewritten."""
+    runtime = json.loads(Path(runtime_path).read_text())
+    output = Path(runtime['output'])
+    out, verdict_path = output / name, output / f'verdict-{name}.json'
+    record = json.loads(verdict_path.read_text())
+    unit = record.get('continuation_of')
+    if record.get('status') != 'STOP' or not str(record.get('reason')).startswith('environment differs from the unit'):
+        raise SystemExit(f'{name}: only a unit-environment STOP is graded from preserved evidence')
+    if FIRST.get(unit) in (None, name):
+        raise SystemExit(f'{name}: not a later measured continuation of its unit')
+    manifest = json.loads((out / 'evidence.manifest.json').read_text())
+    if (digest(out / 'evidence.manifest.json') != record.get('evidence_manifest_sha256') or manifest.get('failures')
+            or files(out, EVIDENCE_ROOTS) != manifest['files']):
+        raise SystemExit(f'{name}: sealed evidence does not match its manifest')
+    origin = json.loads((out / 'origin.json').read_text())
+    if digest(out / 'origin.json') != record.get('origin_sha256'):
+        raise SystemExit(f'{name}: origin record changed')
+    venue, blocked = rc.preflight(runtime)  # fresh credentials and limits for the assessors
+    if blocked:
+        print(f'{name}: not graded: {blocked}', file=sys.stderr)
+        return 3
+    if not rc.control_unchanged(runtime):
+        raise SystemExit(f'{name}: control changed')
+    reference_path = output / f'environment-{unit}.json'
+    reference = load_reference(reference_path)
+    environment_record, resumed = session_check(out, origin)
+    route = environment_record['route_differences'] if environment_record else None
+    unit_reason = (unit_check(environment_record, reference, reference_path, out)
+                   if environment_record and not resumed and not route else None)
+    limits = quota.classify(out)
+    stop_n = next(n for n in range(1, 100) if not (output / f'verdict-{name}.stop-{n}.json').exists())
+    verdict_path.rename(output / f'verdict-{name}.stop-{stop_n}.json')
+    record = {k: v for k, v in record.items() if k not in ('status', 'reason')} | dict(
+        environment=environment_record, quota=limits, graded_preserved=dict(
+            amendment=1, after=f'stop-{stop_n}', venue=venue, apparatus=apparatus_hashes(),
+            at=datetime.datetime.now(datetime.timezone.utc).isoformat()))
+    reason = ('session: ' + resumed if resumed else
+              'init route differs from the source: ' + json.dumps(route) if route else unit_reason)
+    return finish(out, Path(runtime['source_output']) / unit, runtime, verdict_path, record, record['identity'],
+                  limits, reason)
+
+
 if __name__ == '__main__':
+    if len(sys.argv) == 4 and sys.argv[1] == '--grade-preserved':
+        sys.exit(grade_preserved(*sys.argv[2:4]))
     if len(sys.argv) != 5 or sys.argv[4] not in ('F', 'G'):
         raise SystemExit(__doc__)
     sys.exit(run(*sys.argv[1:5]))
