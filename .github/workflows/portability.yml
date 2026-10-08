@@ -72,8 +72,10 @@ jobs:
           shutil.copyfile('scripts/test-windows-portability.py', test)
           shutil.copyfile('scripts/test-ideate-loop.py', driver / 'test-ideate-loop.py')
           shutil.copytree('scripts/fixtures/instructions', driver / 'fixtures/instructions')
+          shutil.copyfile('scripts/fixtures/installer-4.1.0.tar.gz', driver / 'fixtures/installer-4.1.0.tar.gz')
           check_source()
-          driver_files = [test, driver / 'test-ideate-loop.py', *sorted((driver / 'fixtures/instructions').glob('*.md'))]
+          driver_files = [test, driver / 'test-ideate-loop.py', driver / 'fixtures/installer-4.1.0.tar.gz',
+                          *sorted((driver / 'fixtures/instructions').glob('*.md'))]
           for copied in driver_files:
               source = 'scripts/' + copied.relative_to(driver).as_posix()
               assert copied.read_bytes() == subprocess.check_output([

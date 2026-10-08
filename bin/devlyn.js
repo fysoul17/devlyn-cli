@@ -10,6 +10,8 @@ const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
 const { updateInstructions, InstructionError, holdsDevlynDefaults, importsAgentsMd } = require('./instructions');
+const { fingerprint, trackedPaths } = require('./skill-ownership');
+const SKILL_HISTORY = require('./skill-history.json');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
@@ -81,13 +83,13 @@ const RETIRED_SKILL_MD_SHA256 = {
   ]),
 };
 
-// Whether `dir` is a real folder whose only file (dotfiles such as .DS_Store aside) is a SKILL.md
+// Whether `dir` is a real folder whose only file is a SKILL.md
 // with an LF-normalized SHA-256 in `hashes`: an unedited copy devlyn-cli shipped, not something
 // the user added to or wrote.
 function isShippedCopy(dir, hashes) {
   const skill = path.join(dir, 'SKILL.md');
   return fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory() === true
-    && fs.readdirSync(dir).filter((name) => !name.startsWith('.')).length === 1
+    && fs.readdirSync(dir).length === 1
     && fs.lstatSync(skill, { throwIfNoEntry: false })?.isFile() === true
     && hashes.has(crypto.createHash('sha256')
       .update(fs.readFileSync(skill, 'utf8').replace(/\r\n/g, '\n')).digest('hex'));
@@ -145,7 +147,7 @@ const DEPRECATED_FILES = [
 // Skill directories renamed from devlyn-* to devlyn:* in v0.7.x, plus
 // iter-0034 Phase 4 cutover (2026-05-03): 15 user skills deleted and 3 moved
 // to optional-skills/. Listed here so post-cutover `npx devlyn-cli` upgrades
-// force-remove stale legacy skill dirs from downstream `~/.claude/skills/`
+// remove verified, unchanged legacy skill dirs from downstream `~/.claude/skills/`
 // even though the source dirs no longer exist (the installer replaces only
 // the skills it ships — without this list, deleted-from-source skills persist
 // in user installs forever).
@@ -373,15 +375,22 @@ function cleanupDeprecated(skillsDir) {
 // copy is refreshed in place. Any other folder under a 4.0 name is the user's own; `-y` leaves it.
 function retireRenamedSkills(skillsDir) {
   const optional = new Set(OPTIONAL_ADDONS.filter((addon) => addon.type === 'local').map((addon) => addon.name));
+  const refreshed = [];
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
-    if (found.length > 0 && optional.has(newName)) installOptionalSkillInto(skillsDir, newName);
-    else if (isShippedCopy(path.join(skillsDir, newName), PRE_STANDARD_SKILL_MD_SHA256)) refreshPreStandardCopy(skillsDir, newName);
+    if (found.length > 0 && optional.has(newName)) {
+      installOptionalSkillInto(skillsDir, newName);
+      refreshed.push(newName);
+    } else if (isShippedCopy(path.join(skillsDir, newName), PRE_STANDARD_SKILL_MD_SHA256)) {
+      refreshPreStandardCopy(skillsDir, newName);
+      refreshed.push(newName);
+    }
     for (const fullPath of found) {
       fs.rmSync(fullPath, { recursive: true, force: true });
       log(`  ✕ ${path.basename(fullPath)}/ (renamed to ${newName})`, 'dim');
     }
   }
+  return refreshed;
 }
 
 function copyRecursive(src, dest, baseDir) {
@@ -409,6 +418,79 @@ function clearInstallMarker(skillsDir) {
   fs.rmSync(path.join(skillsDir, DEVLYN_INSTALL_MARKER), { force: true });
 }
 
+function readInstallManifest(root) {
+  const markerPath = path.join(root, DEVLYN_INSTALL_MARKER);
+  const stat = fs.lstatSync(markerPath, { throwIfNoEntry: false });
+  if (!stat) return {};
+  if (!stat.isFile()) throw new Error(`not a regular install marker: ${markerPath}`);
+  const marker = JSON.parse(fs.readFileSync(markerPath, 'utf8'));
+  return marker?.package === PKG.name && marker.schemaVersion === 1 ? marker.skills || {} : {};
+}
+
+// Enumerate every directory this install may replace, migrate or remove, before
+// touching any target. Optional addons must be selected before this preflight too.
+function plannedSkills(root, optionalNames = []) {
+  const names = new Set([...DEVLYN_CORE_SKILLS, ...optionalNames]);
+  for (const relative of DEPRECATED_DIRS) {
+    for (const full of legacySkillPaths(root, path.basename(relative))) names.add(path.basename(full));
+  }
+  for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
+    const oldPaths = legacySkillPaths(root, oldName);
+    oldPaths.forEach((full) => names.add(path.basename(full)));
+    if (oldPaths.some((full) => fs.lstatSync(full, { throwIfNoEntry: false }))
+        || isShippedCopy(path.join(root, newName), PRE_STANDARD_SKILL_MD_SHA256)) names.add(newName);
+  }
+  for (const [name, hashes] of Object.entries(RETIRED_SKILL_MD_SHA256)) {
+    if (isShippedCopy(path.join(root, name), hashes)) names.add(name);
+  }
+  return names;
+}
+
+function preflightSkills(roots, optionalNames = []) {
+  const conflicts = [];
+  for (const root of roots) {
+    try {
+      // Do not follow an agent-directory or skill-root link into another installation.
+      for (const dir of [path.dirname(root), root]) {
+        const stat = fs.lstatSync(dir, { throwIfNoEntry: false });
+        if (stat && !stat.isDirectory()) throw new Error(`not a real directory: ${dir}`);
+      }
+      const tracked = trackedPaths(root);
+      const manifest = readInstallManifest(root);
+      for (const name of plannedSkills(root, optionalNames)) {
+        const dest = path.join(root, name);
+        try {
+          if (tracked.some((file) => file.toLowerCase() === dest.toLowerCase() || file.toLowerCase().startsWith(dest.toLowerCase() + path.sep))) {
+            throw new Error('git-tracked (even clean copies must be migrated manually)');
+          }
+          if (!fs.lstatSync(dest, { throwIfNoEntry: false })) continue;
+          const actual = fingerprint(dest);
+          const logicalName = name.replace(/[:\uF03A]/g, '-');
+          const source = path.join(DEVLYN_CORE_SKILLS.includes(logicalName)
+            ? path.join(CONFIG_SOURCE, 'skills') : OPTIONAL_SKILLS_SOURCE, logicalName);
+          const current = fs.existsSync(source) && fingerprint(source) === actual;
+          const historical = SKILL_HISTORY.skills[logicalName]?.includes(actual);
+          const singleFile = isShippedCopy(dest, RETIRED_SKILL_MD_SHA256[name] || PRE_STANDARD_SKILL_MD_SHA256);
+          if (!current && !historical && !singleFile && manifest[name] !== actual) {
+            throw new Error('modified contents, added files, or unknown installer ownership');
+          }
+        } catch (error) {
+          conflicts.push(`${dest}: ${error.message}`);
+        }
+      }
+    } catch (error) {
+      conflicts.push(`${root}: ${error.message}`);
+    }
+  }
+  if (conflicts.length) {
+    throw new InstructionError('Installation refused; nothing was changed:\n'
+      + conflicts.map((conflict) => `  - ${conflict}`).join('\n')
+      + '\nPreserve your work by committing it or moving these folders to a backup, then migrate manually.'
+      + '\nTracked folders remain protected after a commit: move them out of the install path before rerunning.'
+      + '\nRerun the same command after resolving every conflict; -y does not bypass this check.');
+  }
+}
+
 function assertCompleteSkillInstall(sourceSkillsDir, skillsDir, skillNames) {
   function complete(src, dest) {
     if (!fs.existsSync(src) || !fs.existsSync(dest)) return false;
@@ -428,13 +510,14 @@ function assertCompleteSkillInstall(sourceSkillsDir, skillsDir, skillNames) {
   }
 }
 
-function writeInstallMarker(skillsDir) {
+function writeInstallMarker(skillsDir, names, previous) {
   const markerPath = path.join(skillsDir, DEVLYN_INSTALL_MARKER);
   const tempPath = `${markerPath}.${process.pid}.tmp`;
   const marker = {
     schemaVersion: 1,
     package: PKG.name,
     version: PKG.version,
+    skills: { ...previous, ...Object.fromEntries(names.map((name) => [name, fingerprint(path.join(skillsDir, name))])) },
   };
   try {
     fs.writeFileSync(tempPath, JSON.stringify(marker, null, 2) + '\n', {
@@ -501,8 +584,12 @@ function installLocalSkill(skillName, roots) {
     log(`   ⚠️  Skill "${skillName}" not found`, 'yellow');
     return false;
   }
+  preflightSkills(roots, [skillName]);
   log(`\n🛠️  Installing ${skillName}...`, 'cyan');
-  for (const root of roots) installOptionalSkillInto(root, skillName);
+  for (const root of roots) {
+    installOptionalSkillInto(root, skillName);
+    writeInstallMarker(root, [skillName], readInstallManifest(root));
+  }
   return true;
 }
 
@@ -572,6 +659,7 @@ function installCoreSkills(skillsDir) {
   const sourceSkillsDir = path.join(CONFIG_SOURCE, 'skills');
   log(`\n📁 Installing devlyn skills to ${skillsDir.replace(os.homedir(), '~')}`, 'green');
   fs.mkdirSync(skillsDir, { recursive: true });
+  const previous = readInstallManifest(skillsDir);
   clearInstallMarker(skillsDir);
   const removed = cleanupDeprecated(skillsDir);
   if (removed > 0) {
@@ -586,8 +674,8 @@ function installCoreSkills(skillsDir) {
     copyRecursive(src, dest, skillsDir);
   }
   assertCompleteSkillInstall(sourceSkillsDir, skillsDir, DEVLYN_CORE_SKILLS);
-  retireRenamedSkills(skillsDir);
-  writeInstallMarker(skillsDir);
+  const refreshed = retireRenamedSkills(skillsDir);
+  writeInstallMarker(skillsDir, [...DEVLYN_CORE_SKILLS, ...refreshed], previous);
 }
 
 // Keep installer-managed pipeline state and install metadata out of git.
@@ -739,7 +827,7 @@ function installClaudeCore() {
 }
 
 // Installs the targets in one scope; returns the skill roots written.
-function install(targets, global) {
+function install(targets, global, optionalNames = []) {
   // In the home folder CLAUDE.md, AGENTS.md (agents read a parent folder's too) and
   // .claude/settings.json would apply to every project. Same folder by identity, so a link or
   // another spelling of the path is caught too.
@@ -750,6 +838,7 @@ function install(targets, global) {
       + 'would apply to every project. Run from a project folder, or use --global for skills only.');
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
+  preflightSkills(roots, optionalNames);
   // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
   for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
     if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));
@@ -818,10 +907,9 @@ async function init({ yes, claude, global }) {
   }
 
   const scope = await singleSelect('Where', ['This project', 'Global — every project on this machine'], global ? 1 : 0);
-  const roots = install(targets, scope === 1);
-
   // Ask about optional addons (local skills + external packs; MCP servers belong to Claude Code)
   const selectedAddons = await multiSelect('Optional skills & packs', OPTIONAL_ADDONS.filter((addon) => addon.type !== 'mcp' || targets.includes('claude')));
+  const roots = install(targets, scope === 1, selectedAddons.filter((addon) => addon.type === 'local').map((addon) => addon.name));
 
   if (selectedAddons.length > 0) {
     for (const addon of selectedAddons) {

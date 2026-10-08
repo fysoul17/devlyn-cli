@@ -1,0 +1,68 @@
+{
+  "source": "devlyn-cli@4.1.0 (npm tarball sha1 398ff07d3d689b56cc22e18ac50260bc6e4e9e85); whole-tree fingerprints from bin/skill-ownership.js",
+  "skills": {
+    "_shared": [
+      "eb3327d5e6940bd5e0459fa28c9ab323d9c58ccfdeb9426c19cd027cc4e5c4ed"
+    ],
+    "devlyn-design-ui": [
+      "91080266232fb62b6f1d45932184f065589e12eb66f02fb6442527c6dfcd81b6"
+    ],
+    "devlyn-engines": [
+      "3451d37f47e6e707cff92baa12d04b43aee94301456b8e280c09332e598a1c2c"
+    ],
+    "devlyn-ideate": [
+      "8ff5148cc65b4608c35b29afd6fef20d42d8da93a094144d98cfc63e74089b6e"
+    ],
+    "devlyn-queue": [
+      "4c7d988dcd154c7bf658d2d24cd7868955df9d854ed87eb784742d6d4bb229e0"
+    ],
+    "devlyn-resolve": [
+      "2abd303851f085da07f6b55ee1724842ef7f8e8ad6b68c6339df5f1eaa8c69de"
+    ],
+    "asset-creator": [
+      "e295f57eca534cbd4e27e236999f4f5412ebdc6944ac864761e922dea213f904"
+    ],
+    "better-auth-setup": [
+      "e97c39c5d669ffc1f49d57fd3a016e852727e57c3abe2f9be1ebffab9fcb19ec"
+    ],
+    "cloudflare-nextjs-setup": [
+      "f147a28b9f6f62feb21df89bdf08869820f4871ede7a8ba4a242246509ee6e35"
+    ],
+    "code-health-standards": [
+      "2056617b324bb7e1e3b85a6536bfe33151e31ef421656cade74258fb4e922c1b"
+    ],
+    "code-review-standards": [
+      "3fe0742825aff05fa6fda49d3e3e0fbf5457307af944eb90f2771cbf611edd69"
+    ],
+    "devlyn-pencil-pull": [
+      "65af00f88b0837ffd377ebf363da73c766ae0ae8e20716fe18f80edfa91bd6da"
+    ],
+    "devlyn-pencil-push": [
+      "76955458ced72f4b0bdaf71482be6097c4c86876934b6e6a2ac7d19f850662ad"
+    ],
+    "devlyn-reap": [
+      "77e029ab06c37fb7135a9bd4395ff84b84ab2e44cf79c5827798777e39472351"
+    ],
+    "dokkit": [
+      "42045db4e2f70f68d0ed90a9c7c5c2660a6d5183ea641dfa9f2f1f0d0938e3fb"
+    ],
+    "generate-skill": [
+      "16a78b867539c0bc11a44f3ecfa1762ba7fcba8841fca8558abe818fc961ff68"
+    ],
+    "polar-billing-setup": [
+      "8b6dc842903e7343ac7b1e3a1c55911a9987552196ffb27a11a86093537fe976"
+    ],
+    "prompt-engineering": [
+      "d7a0718ab0fd7e0a3c0d8ef8bc4e0349edfc843648343f08f9776e1ea047573c"
+    ],
+    "pyx-scan": [
+      "60f02fa049616e94fff4318c96dc9f417b3def7ec75a3bd0846f2bcbd99b0b69"
+    ],
+    "root-cause-analysis": [
+      "eeb20fe09edd37b07360c3440b68bdb488abee4917d4e808e64e3889c6addf5a"
+    ],
+    "ui-implementation-standards": [
+      "0fbaad2b7d77462916d9364b97b921354ffbf945a68e9e0d422b3a88d36d2569"
+    ]
+  }
+}

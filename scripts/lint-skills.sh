@@ -298,6 +298,7 @@ if make_temp_dir tmp_install_marker /tmp/devlyn-install-marker.XXXXXX; then
 import json
 import pathlib
 import stat
+import subprocess
 import sys
 
 installer = pathlib.Path(sys.argv[1])
@@ -307,6 +308,11 @@ timeout_low = pathlib.Path(sys.argv[4])
 timeout_high = pathlib.Path(sys.argv[5])
 package = json.loads((installer.parent.parent / "package.json").read_text())
 expected = {"schemaVersion": 1, "package": package["name"], "version": package["version"]}
+expected["skills"] = json.loads(subprocess.check_output([
+    "node", "-e", "const path = require('path'); const { fingerprint } = require(process.argv[1]); "
+    "console.log(JSON.stringify(Object.fromEntries(['_shared', 'devlyn-ideate', 'devlyn-engines']"
+    ".map(name => [name, fingerprint(path.join(process.argv[2], name))]))));",
+    str(installer.parent / 'skill-ownership.js'), str(installer.parent.parent / 'config/skills')]))
 roots = [
     project / ".agents" / "skills",
     project / ".claude" / "skills",

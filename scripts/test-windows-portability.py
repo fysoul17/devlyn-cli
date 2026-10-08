@@ -16,6 +16,7 @@ import runpy
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import unittest
@@ -224,7 +225,7 @@ init({options});
         # a leading BOM, which Claude Code accepts, merges.
         claude = self.project / '.claude'
         hook = claude / 'skills/_shared/resolve-stop-hook.py'
-        hook.parent.mkdir(parents=True); hook.write_bytes(b'retired helper\n')
+        self.seed_4_1(claude / 'skills')
         (self.project / 'CLAUDE.md').write_bytes(b'# Team rules\n\nUse pnpm.\n')
         settings = claude / 'settings.json'
         retired = {'type': 'command', 'command': 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'}
@@ -331,8 +332,9 @@ init({options});
                 self.project = self.case / f'project-{case}'
                 for path, data in planted.items():
                     (self.project / path).parent.mkdir(parents=True, exist_ok=True); (self.project / path).write_bytes(data)
-                if case == '4.x':
-                    (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+                if case in ('4.x', '3.x'):
+                    self.assert_install_refused('-y', paths=[self.project / '.claude/skills'])
+                    continue  # Detection selects Claude, but unknown contents must survive.
                 self.cli('-y')
                 claude = case not in ('none', 'addons')
                 self.assertEqual(self.markers(self.project), {'.agents', '.claude'} if claude else {'.agents'})
@@ -511,8 +513,7 @@ init({options});
                 self.project = self.case / case; self.project.mkdir()
                 (self.project / 'AGENTS.md').write_bytes(before)
                 if case == '4.1.0':
-                    skills = self.project / '.agents/skills'; (skills / 'devlyn-resolve').mkdir(parents=True)
-                    (skills / 'devlyn-resolve/SKILL.md').write_bytes(b'4.1.0 resolve\n')
+                    self.seed_4_1(self.project / '.agents/skills')
                 planted = tree()
                 result = self.interact([[' ', '\x1b[B', ' ', '\r'], ['\r'], ['\r']], code=None)
                 self.assertNotEqual(result.returncode, 0)
@@ -632,28 +633,165 @@ init({options});
         for root in self.roots():
             self.assertEqual({p.name for p in root.iterdir()},
                              {'devlyn-ideate', 'devlyn-engines', '_shared', optional, '.devlyn-install.json'}, root)
-        # Everything the resolve retirement removed from the package: a copy it still shipped would return on reinstall.
-        retired = ['devlyn-resolve', *(f'_shared/{name}' for name in (
-            'archive_run.py', 'codex-config.md', 'collect-codex-findings.py', 'finish-gate.py', 'grok-anchor-guard.py',
-            'judge-output-parser.py', 'judge-role-evidence.py', 'phase-prompt-render.py', 'process-evidence.py',
-            'resolve-bootstrap.py', 'resolve-stop-hook.py', 'run-bounded.py', 'spec-verify-check.py', 'state-phase-write.py',
-            'terminal-claim-check.py', 'verify-merge-findings.py', 'adapters/grok.md', 'adapters/README.md'))]
-        for root in self.roots():
-            for relative in retired:
-                (root / relative).parent.mkdir(exist_ok=True); (root / relative).write_bytes(b'from an older release')
-            (root / name / 'stale').write_bytes(b'old')
-            (root / optional / 'stale').write_bytes(b'old')
-            (root / 'user-skill').mkdir(); (root / 'user-skill/keep').write_bytes(b'user')
-            old = 'devlyn\uf03aauto-resolve' if os.name == 'nt' else 'devlyn:auto-resolve'
-            (root / old).mkdir()
+        before = self.snapshot()
         self.invoke(install)
-        assert_package_bytes()
+        self.assertEqual(self.snapshot(), before)
+
+    def snapshot(self):
+        return {str(p.relative_to(self.case)): ('link', os.readlink(p)) if p.is_symlink()
+                else ('file', p.read_bytes()) if p.is_file() else ('directory',)
+                for p in self.case.rglob('*')}
+
+    def seed_4_1(self, root):
+        # Exact files from published devlyn-cli@4.1.0, not fabricated old skill names.
+        # Original npm tarball sha1: 398ff07d3d689b56cc22e18ac50260bc6e4e9e85.
+        root.mkdir(parents=True, exist_ok=True)
+        fixture = Path(__file__).parent / 'fixtures/installer-4.1.0.tar.gz'
+        with tarfile.open(fixture) as archive:
+            archive.extractall(root, filter='data')
+        (root / '.devlyn-install.json').write_text(
+            json.dumps({'schemaVersion': 1, 'package': 'devlyn-cli', 'version': '4.1.0'}), encoding='utf-8')
+
+    def assert_install_refused(self, *flags, paths=(), reason=None):
+        before = self.snapshot()
+        result = self.cli(*flags, code=1)
+        error = result.stderr.decode('utf-8')
+        self.assertIn('Installation refused; nothing was changed', error)
+        self.assertIn('migrate manually', error)
+        for path in paths:
+            self.assertIn(str(path), error)
+        if reason:
+            self.assertIn(reason, error)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_tracked_retired_skill_refuses_even_when_clean(self):
+        root = self.project / '.claude/skills'
+        self.seed_4_1(root)
+        run(['git', 'init', '-q', self.project])
+        run(['git', '-C', self.project, 'add', '.claude/skills/devlyn-resolve'])
+        run(['git', '-C', self.project, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+             '-c', 'commit.gpgsign=false', 'commit', '-qm', 'tracked retired skill'])
+        self.assert_install_refused('-y', '--claude', paths=[root / 'devlyn-resolve'], reason='git-tracked')
+        # A tracked file deleted locally is still protected by the index.
+        (root / 'devlyn-resolve/SKILL.md').unlink()
+        self.assert_install_refused('-y', '--claude', paths=[root / 'devlyn-resolve'], reason='git-tracked')
+
+    def test_tracked_skill_and_root_casing_cannot_bypass_preflight(self):
+        self.cli('-y')
+        run(['git', 'init', '-q', self.project])
+        original = self.project / '.agents/skills/devlyn-ideate'
+        renamed = original.with_name('Devlyn-Ideate')
+        original.rename(original.with_name('case-stage'))
+        original.with_name('case-stage').rename(renamed)
+        run(['git', '-C', self.project, 'add', '.agents/skills/Devlyn-Ideate'])
+        self.assert_install_refused('-y', paths=[original], reason='git-tracked')
+        (self.project / '.agents').rename(self.project / 'root-stage')
+        (self.project / 'root-stage').rename(self.project / '.AGENTS')
+        run(['git', '-C', self.project, 'add', '-A'])
+        self.assert_install_refused('-y', paths=[original], reason='git-tracked')
+
+    def test_git_environment_cannot_hide_tracked_skills(self):
+        self.cli('-y')
+        run(['git', 'init', '-q', self.project])
+        run(['git', '-C', self.project, 'add', '.agents/skills/devlyn-ideate'])
+        for setting in ('GIT_LITERAL_PATHSPECS', 'GIT_GLOB_PATHSPECS', 'GIT_NOGLOB_PATHSPECS', 'GIT_ICASE_PATHSPECS'):
+            with self.subTest(setting=setting):
+                self.env[setting] = '1'
+                self.assert_install_refused('-y', paths=[self.project / '.agents/skills/devlyn-ideate'], reason='git-tracked')
+                del self.env[setting]
+
+    def test_noninteractive_install_never_loads_inquirer(self):
+        loader = self.case / 'deny-inquirer.mjs'
+        loader.write_text("export function resolve(name, context, next) { "
+                          "if (name.startsWith('@inquirer/')) throw new Error('unexpected menu import'); "
+                          "return next(name, context); }\n", encoding='utf-8')
+        for flags in (['--help'], ['-y', '--claude']):
+            run(['node', '--loader', loader, '--require', self.preload,
+                 self.package / 'bin/devlyn.js', *flags], cwd=self.project, env=self.env)
+
+    def test_modified_core_and_unknown_retired_skills_refuse(self):
+        self.cli('-y', '--claude')
+        root = self.project / '.claude/skills'
+        edited = root / 'devlyn-ideate/SKILL.md'
+        edited.write_bytes(edited.read_bytes() + b'\nMy local change\n')
+        old = root / ('devlyn\uf03aresolve' if os.name == 'nt' else 'devlyn:resolve')
+        old.mkdir(); (old / 'SKILL.md').write_bytes(b'unknown provenance')
+        self.assert_install_refused('-y', '--claude', paths=[edited.parent, old], reason='modified contents')
+
+    def test_extra_ignored_and_hidden_shared_files_refuse(self):
+        self.cli('-y', '--claude')
+        run(['git', 'init', '-q', self.project])
+        (self.project / '.gitignore').write_text('.claude/\n', encoding='utf-8')
+        root = self.project / '.claude/skills/_shared'
+        (root / '.private-notes').write_bytes(b'keep this too')
+        (root / 'extra.py').write_bytes(b'print("user code")')
+        self.assert_install_refused('-y', '--claude', paths=[root])
+
+    def test_second_target_conflict_preserves_every_target_before_upgrade(self):
+        for root in (self.project / '.agents/skills', self.project / '.claude/skills'):
+            self.seed_4_1(root)
+        bad = self.project / '.claude/skills/devlyn-ideate'
+        (bad / 'SKILL.md').write_bytes(b'locally edited old core')
+        (self.project / 'AGENTS.md').write_bytes(b'# My instructions\n')
+        (self.project / '.claude/settings.json').write_bytes(b'{"env": {}}\n')
+        self.assert_install_refused('-y', '--claude', paths=[bad])
+
+    def test_global_second_target_and_tracked_dotfiles_refuse(self):
+        for root in (self.home / '.agents/skills', self.home / '.codex/skills', self.home / '.claude/skills'):
+            self.seed_4_1(root)
+        bad = self.home / '.codex/skills/_shared'
+        (bad / 'my-notes').write_bytes(b'my data')
+        self.assert_install_refused('-y', '--global', '--claude', paths=[bad])
+        run(['git', 'init', '-q', self.home])
+        run(['git', '-C', self.home, 'add', '.claude/skills/devlyn-resolve'])
+        self.assert_install_refused('-y', '--global', '--claude',
+                                    paths=[bad, self.home / '.claude/skills/devlyn-resolve'], reason='git-tracked')
+
+    def test_pristine_4_1_upgrade_and_manifest_based_reinstall(self):
         for root in self.roots():
-            self.assertFalse((root / name / 'stale').exists())
-            self.assertFalse(any((root / relative).exists() for relative in retired), root)
-            self.assertFalse((root / optional / 'stale').exists())
-            self.assertEqual((root / 'user-skill/keep').read_bytes(), b'user')
-            self.assertFalse((root / old).exists())
+            self.seed_4_1(root)
+        self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
+        for root in self.roots():
+            self.assertFalse(any((root / name).exists() for name in ('devlyn-resolve', 'devlyn-queue', 'devlyn-design-ui')))
+            marker = json.loads((root / '.devlyn-install.json').read_bytes())
+            self.assertEqual(set(marker['skills']), {'_shared', 'devlyn-ideate', 'devlyn-engines'})
+        before = self.snapshot()
+        self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
+        self.assertEqual(self.snapshot(), before)
+        # Simulate a later package changing its core: the prior install manifest remains evidence.
+        copy = self.case / 'next-package'; shutil.copytree(self.package, copy)
+        source = copy / 'config/skills/devlyn-ideate/SKILL.md'
+        source.write_bytes(source.read_bytes() + b'\nNew package defaults\n')
+        self.invoke("install(['agents', 'claude'], false);", package=copy)
+        self.assertEqual((self.project / '.agents/skills/devlyn-ideate/SKILL.md').read_bytes(), source.read_bytes())
+
+    def test_missing_manifest_current_copy_passes_but_old_modified_copy_refuses(self):
+        self.cli('-y')
+        root = self.project / '.agents/skills'
+        (root / '.devlyn-install.json').unlink()
+        self.cli('-y')
+        (root / '.devlyn-install.json').unlink()
+        (root / 'devlyn-engines/SKILL.md').write_bytes(b'unknown old install')
+        self.assert_install_refused('-y', paths=[root / 'devlyn-engines'])
+
+    @unittest.skipIf(os.name == 'nt', 'creating a symlink needs a privilege on native Windows')
+    def test_symlink_and_nested_added_file_preserved(self):
+        self.cli('-y')
+        root = self.project / '.agents/skills'
+        outside = self.case / 'outside'; outside.mkdir(); (outside / 'mine').write_bytes(b'keep')
+        (root / '_shared/user-link').symlink_to(outside, target_is_directory=True)
+        self.assert_install_refused('-y', paths=[root / '_shared'], reason='link or special file')
+
+    def test_optional_conflict_refuses_before_core_or_instructions_change(self):
+        root = self.project / '.agents/skills'
+        self.seed_4_1(root)
+        optional = root / 'devlyn-reap'; optional.mkdir(); (optional / 'SKILL.md').write_bytes(b'my optional edits')
+        before = self.snapshot()
+        # First local addon is asset-creator; ten moves reaches devlyn-reap.
+        result = self.interact([['\r'], ['\r'], [*(['j'] * 10), ' ', '\r']], code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(str(optional).encode(), result.stderr)
+        self.assertEqual(self.snapshot(), before)
 
     def test_instruction_custom_rules_survive_all_targets_and_reinstall(self):
         custom = b'\xef\xbb\xbf# Team rules\r\nKeep our Korean labels and formatting.\r\n'
@@ -1095,9 +1233,13 @@ init({options});
         mine.mkdir(parents=True); (mine / 'SKILL.md').write_text('---\nname: workflow-routing\n---\nmine\n', encoding='utf-8')
         self.invoke("installClaudeCore();")
         self.assertEqual((mine / 'SKILL.md').read_text(encoding='utf-8'), '---\nname: workflow-routing\n---\nmine\n')
-        # A shipped copy (here: the hash of this text, CRLF on disk, beside a .DS_Store) goes.
+        # A shipped copy with an extra dotfile stays; only the exact single-file copy goes.
         shipped = b'---\nname: workflow-routing\n---\nshipped\n'
         (mine / 'SKILL.md').write_bytes(shipped.replace(b'\n', b'\r\n')); (mine / '.DS_Store').write_bytes(b'x')
+        self.invoke("RETIRED_SKILL_MD_SHA256['workflow-routing'] = new Set(["
+                    f"'{hashlib.sha256(shipped).hexdigest()}']); installClaudeCore();")
+        self.assertTrue(mine.exists())
+        (mine / '.DS_Store').unlink()
         self.invoke("RETIRED_SKILL_MD_SHA256['workflow-routing'] = new Set(["
                     f"'{hashlib.sha256(shipped).hexdigest()}']); installClaudeCore();")
         self.assertFalse(mine.exists())
@@ -1125,43 +1267,16 @@ init({options});
         self.assertIn(b'Incomplete devlyn skill install', result.stderr)
         self.assertEqual(self.markers(self.home), set())
 
-    def test_upgrade_retires_pre_4_names_only_where_it_installs(self):
-        # Before 4.0.0 each skill was `devlyn:<name>`; npm extracts ':' as U+F03A on Windows.
+    def test_unknown_pre_4_names_refuse_in_every_selected_root(self):
         spellings = ['\uf03a'] if os.name == 'nt' else [':', '\uf03a']
-        core = ['ideate', 'engines']
-        claude = self.project / '.claude/skills'
-        agents, codex, grok = (self.home / name / 'skills' for name in ('.agents', '.codex', '.grok'))
-        planted = {claude: core + ['resolve', 'pencil-pull', 'pencil-push', 'reap'], codex: core + ['resolve', 'pencil-pull'],
-                   agents: core + ['resolve'], grok: ['resolve', 'reap']}
-        for root, names in planted.items():
-            (root / 'my-skill').mkdir(parents=True); (root / 'my-skill/keep').write_bytes(b'mine')
-            for name in names:
+        for root in self.roots():
+            for name in ('resolve', 'ideate', 'engines', 'pencil-pull', 'reap'):
                 for colon in spellings:
-                    old = root / f'devlyn{colon}{name}'; old.mkdir()
+                    old = root / f'devlyn{colon}{name}'; old.mkdir(parents=True)
                     (old / 'SKILL.md').write_text(f'---\nname: devlyn:{name}\n---\n', encoding='utf-8')
-        # 0.6.x installed the pencil skills under today's names, as today's SKILL.md minus its
-        # 5-line frontmatter; an edited or newer copy under a 4.0 name is the user's own.
-        legacy = (self.package / 'optional-skills/devlyn-pencil-push/SKILL.md').read_bytes().split(b'\n', 5)[5]
-        (agents / 'devlyn-pencil-push').mkdir(); (agents / 'devlyn-pencil-push/SKILL.md').write_bytes(legacy)
-        (codex / 'devlyn-pencil-push').mkdir(); (codex / 'devlyn-pencil-push/SKILL.md').write_bytes(b'mine\n')
-        self.invoke("installClaudeCore(); install(['agents'], true);")
-        for root, optional in ((claude, {'pencil-pull', 'pencil-push', 'reap'}), (codex, {'pencil-pull'}), (agents, {'pencil-push'})):
-            entries = {p.name for p in root.iterdir()}
-            self.assertEqual({n for n in entries if n.startswith(('devlyn:', 'devlyn\uf03a'))}, set(), root)
-            mine = {'devlyn-pencil-push'} if root == codex else set()
-            self.assertEqual({n for n in entries if n.startswith('devlyn-')}, {f'devlyn-{n}' for n in core} | {f'devlyn-{n}' for n in optional} | mine, root)
-            for name in core + sorted(optional):
-                self.assertIn(f'name: devlyn-{name}\n', (root / f'devlyn-{name}/SKILL.md').read_text(encoding='utf-8'))
-            self.assertEqual((root / 'my-skill/keep').read_bytes(), b'mine')
-            self.assertTrue((root / '.devlyn-install.json').is_file())
-        self.assertEqual((codex / 'devlyn-pencil-push/SKILL.md').read_bytes(), b'mine\n')
-        # A root this run does not install into keeps its old skills untouched.
-        self.assertEqual({p.name for p in grok.iterdir()}, {'my-skill'} | {f'devlyn{c}{n}' for c in spellings for n in ('resolve', 'reap')})
-        # A 4.x reinstall leaves an opted-in optional skill as the user has it, as 3.x did.
-        edited = claude / 'devlyn-pencil-pull/SKILL.md'
-        edited.write_text(edited.read_text(encoding='utf-8') + 'my rule\n', encoding='utf-8')
-        self.invoke("installClaudeCore();")
-        self.assertTrue(edited.read_text(encoding='utf-8').endswith('my rule\n'))
+        self.assert_install_refused('-y', '--claude', paths=[self.project / '.agents/skills', self.project / '.claude/skills'])
+        self.assert_install_refused('-y', '--global', '--claude',
+                                    paths=[self.home / f'{agent}/skills' for agent in ('.agents', '.codex', '.claude')])
 
     def test_upgrade_removes_retired_resolve_design_ui_and_queue(self):
         # Core skills through 4.1.0, `devlyn:<name>` before 4.0.0 (npm extracts ':' as U+F03A on
@@ -1170,10 +1285,11 @@ init({options});
         other = self.home / '.grok/skills'
         for root in [*self.roots(), other]:
             (root / 'my-skill').mkdir(parents=True); (root / 'my-skill/keep').write_bytes(b'mine')
-            for name in (f'devlyn{c}{skill}' for c in spellings for skill in ('resolve', 'design-ui', 'queue')):
-                (root / name / 'scripts').mkdir(parents=True)
-                (root / name / 'SKILL.md').write_text(f'---\nname: {name}\n---\n', encoding='utf-8')
-                (root / name / 'scripts/append.py').write_bytes(b'print(1)\n')
+            self.seed_4_1(root)
+            for skill in ('resolve', 'design-ui', 'queue'):
+                for c in spellings:
+                    if c != '-':
+                        shutil.copytree(root / f'devlyn-{skill}', root / f'devlyn{c}{skill}')
         snapshot = lambda base: {p: p.read_bytes() if p.is_file() else None for p in base.rglob('*')}
         kept = snapshot(other)
         install = lambda: (self.cli('-y', '--claude'), self.cli('-y', '--global', '--claude'))
@@ -1388,7 +1504,6 @@ init({options});
         # hook among the user's own hooks; and instruction blocks between project rules. Main's
         # 415e2d14 blocks (delivery only on a ship request, no cleanup sentence) take the same upgrade.
         spellings = ['-', '\uf03a'] if os.name == 'nt' else ['-', ':', '\uf03a']
-        helpers = ['resolve-stop-hook.py', 'archive_run.py', 'spec-verify-check.py', 'run-bounded.py', 'codex-config.md']
         managed = {'type': 'command', 'command': 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"', 'timeout': 30}
         mine = {'type': 'command', 'command': 'echo keep'}
         allow = ['Write(.devlyn/**)', 'Edit(.devlyn/**)', 'Bash(git add *)', 'Bash(git commit *)',
@@ -1409,13 +1524,10 @@ init({options});
                 other = self.home / '.grok/skills'
                 for root in [*self.roots(), other]:
                     (root / 'my-skill').mkdir(parents=True); (root / 'my-skill/keep').write_bytes(b'mine')
+                    self.seed_4_1(root)
                     for c in spellings:
-                        (root / f'devlyn{c}resolve/references').mkdir(parents=True)
-                        (root / f'devlyn{c}resolve/SKILL.md').write_bytes(b'---\nname: devlyn-resolve\n---\n')
-                    (root / '_shared').mkdir()
-                    for helper in helpers:
-                        (root / '_shared' / helper).write_bytes(version.encode())
-                    (root / '.devlyn-install.json').write_text(json.dumps({'version': version}), encoding='utf-8')
+                        if c != '-':
+                            shutil.copytree(root / 'devlyn-resolve', root / f'devlyn{c}resolve')
                 settings = self.project / '.claude/settings.json'
                 settings.write_text(json.dumps(old_settings), encoding='utf-8')
                 for name in ('AGENTS.md', 'CLAUDE.md'):
@@ -1429,7 +1541,8 @@ init({options});
                     self.assertEqual({p.name for p in (root / '_shared').iterdir()}, shipped, root)
                     self.assertEqual((root / 'my-skill/keep').read_bytes(), b'mine')
                 self.assertEqual({p.name for p in other.iterdir()},
-                                 {'my-skill', '_shared', '.devlyn-install.json', *(f'devlyn{c}resolve' for c in spellings)})
+                                 {'my-skill', '_shared', '.devlyn-install.json', 'devlyn-ideate', 'devlyn-engines', 'devlyn-design-ui',
+                                  'devlyn-queue', *(f'devlyn{c}resolve' for c in spellings)})
                 upgraded = json.loads(settings.read_bytes())
                 self.assertEqual((upgraded['env'], upgraded['permissions']), (old_settings['env'], old_settings['permissions']))
                 self.assertEqual(upgraded['hooks'], {'Stop': [{'hooks': [mine]}, {'matcher': '*', 'hooks': []}],
