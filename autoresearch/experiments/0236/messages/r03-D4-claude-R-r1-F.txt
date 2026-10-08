@@ -1,0 +1,48 @@
+At least one independent reviewer judged this work incomplete. Re-verify every requirement, required failure behavior and compatibility contract in the original request against the code and tests; fix what is real, verify it, and report.
+
+The reviewers' findings:
+
+Reviewer 1:
+[
+    {
+      "severity": "low",
+      "file": "src/click/utils.py",
+      "line": "open_file docstring, ':param lazy:' (line number not derivable from the diff)",
+      "violated_requirement": "Documentation should stay consistent with behavior. This is not a functional requirement.",
+      "witness": "`open_file(..., lazy=True)` builds a `_LazyFile`, so it now skips the eager open/close for FIFOs. Its docstring still says: \"For read mode, the file is temporarily opened to raise access errors early, then closed until it is read again.\" The `File` class docstring was updated (types.py ~L931), but this one was not."
+    },
+    {
+      "severity": "low",
+      "file": "src/click/utils.py",
+      "line": "~L150 (`if \"r\" in mode and not _is_fifo(self.name):`)",
+      "violated_requirement": "None strictly. The early-error preservation requirement covers only ordinary read files. This is an undocumented and untested behavior change for FIFOs.",
+      "witness": "A FIFO the user cannot read (for example mode 0o200) used to fail at conversion with `BadParameter` from `open()`. It now passes conversion and fails only at first IO, as a `FileError` raised from `_LazyFile.open()`. A non-opening check such as `os.access(path, os.R_OK)` could keep that error early without consuming a connection. Neither the code nor CHANGES.md mentions this, and no test covers it."
+    },
+    {
+      "severity": "low",
+      "file": "tests/test_types/test_File.py",
+      "line": "test_lazy_fifo_reads_writer_after_conversion / _start_writer",
+      "violated_requirement": "Single writer survives a delayed first read (coverage completeness)",
+      "witness": "The `WRITER` script prints \"ready\" before calling `open()`. So `f.read` can begin before the writer is blocked in `open(O_WRONLY)`. Nothing deterministically forces the issue's ordering, where the writer is already pending on the FIFO and the first read comes later. The test also never starts a writer before conversion, which is the exact reproducer in the issue. The pre-fix code is still caught, because conversion blocks with no writer and the timeout path fails the test. The asserted property is the requirement as worded: conversion returns before any writer starts, the full payload arrives, and the writer exits 0."
+    },
+    {
+      "severity": "low",
+      "file": "tests/test_types/test_File.py",
+      "line": "test_lazy_fifo_argument",
+      "violated_requirement": "Timeout/error probes terminate owned writers and readers (robustness of the failure path)",
+      "witness": "The outer `_call_reading(fifo_path, lambda: runner.invoke(...))` uses the same 30 s `TIMEOUT` as the nested `_call_reading(..., file.read, writer)`, and that is followed by `writer.wait(TIMEOUT)`. If the outer timeout fires first, it passes `writer=None` and cannot kill the inner writer. It then spins `_hang_up_reader` every 0.1 s until the inner probes time out, roughly 60 s or more in the worst case. Cleanup does finish: `_start_writer`'s `finally` kills and reaps the writer. However, the reported failure message (\"blocked for 30 seconds\") points at the outer probe rather than the real cause. This only affects runs that are already failing."
+    }
+  ]
+
+Reviewer 2:
+[
+    {
+      "severity": "medium",
+      "file": "tests/test_types/test_File.py",
+      "line": 158,
+      "related_lines": [94, 101, 119, 121, 174],
+      "violated_requirement": "Timeout/error probes must terminate owned writers and readers and permit fixture cleanup.",
+      "witness": "Evaluating `_call_reading(fifo_path, f.read, writer)` resolves `f.read` before entering `_call_reading`. `_LazyFile.__getattr__` calls `self.open()`, so the blocking FIFO open runs outside the timeout worker. If the writer exits after announcing readiness but before opening the FIFO, the binary/text test blocks indefinitely at this argument evaluation; writer cleanup and fixture unlinking are never reached. Writer startup also performs unbounded stdin writes and stdout reads. Even inside `_call_reading`, the recovery loop has no deadline and the executor waits for its reader thread to finish.",
+      "basis": "Static control-flow analysis; the supplied passing runs do not exercise these failure paths."
+    }
+  ]

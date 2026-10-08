@@ -1,0 +1,52 @@
+At least one independent reviewer judged this work incomplete. Re-verify every requirement, required failure behavior and compatibility contract in the original request against the code and tests; fix what is real, verify it, and report.
+
+The reviewers' findings:
+
+Reviewer 1:
+[
+    {
+      "severity": "medium",
+      "file": "lib/command.js",
+      "line": 1573,
+      "violated_requirement": "Do not change public APIs; keep existing behavior compatible",
+      "witness": "`_parseCommand` used to call `this.parseOptions(unknown)` and now calls the new private `this._parseOptions(unknown)`. The public `parseOptions` (lib/command.js:1780) is now only a wrapper that nothing in the parse pipeline calls. The signature and return shape are unchanged, but a subclass that overrides `parseOptions` now silently loses its effect during `.parse()`/`.parseAsync()`. Example: `class C extends Command { parseOptions(a) { return super.parseOptions(a.map(x => x === '-x' ? '--extra' : x)); } }`. Before the change the override ran for every command in the dispatch chain; after it, the override never runs. The delimiter position could have been carried without removing `parseOptions` from the call path, for example by returning an extra property from `parseOptions` itself. No test covers subclass overrides, so the passing suite does not rule this out."
+    },
+    {
+      "severity": "low",
+      "file": "tests/fixtures/pmlink",
+      "line": 1,
+      "violated_requirement": "Minimal, request-focused change (allowed scope is tests/fixtures/**, so this is not a scope violation)",
+      "witness": "The diff changes the symlink target from `./pm` to `pm` (mode 120000). Both resolve to the same file, so behavior should be unchanged, but the change has nothing to do with the delimiter fix. The deterministic check's `changed` list omits this file, so it may be a checkout artifact. If it is intentional, it is unexplained churn."
+    },
+    {
+      "severity": "low",
+      "file": "tests/args.literal.test.js",
+      "line": 61,
+      "violated_requirement": "Actual checks should exercise the real spawned child reliably",
+      "witness": "`execFileAsync('node', [delimiter, ...args])` resolves `node` from PATH instead of `process.execPath`. If PATH has a different Node version, or none, the new real-child tests run against a different runtime than the test runner or fail to spawn. The executable code path itself uses `process.argv[0]` / `process.execPath`."
+    },
+    {
+      "severity": "low",
+      "file": "tests/args.literal.test.js",
+      "line": 39,
+      "violated_requirement": "Help, enablePositionalOptions/passThroughOptions and in-process behavior retain current behavior (verification coverage)",
+      "witness": "The new tests cover in-process behavior only for a nested action command. Nothing tests `--` together with `enablePositionalOptions()`/`passThroughOptions()` routing to an executable, or `help <executable>` / `child --help` versus `child -- --help`. From reading the code, these paths look unchanged: the positional and pass-through branches push `--` literally into unknown/operands without setting `delimiterIndex`, and `_dispatchHelpCommand` passes no index. Their compatibility rests on the existing suite (1383 pass, 1 skipped), not on new targeted assertions."
+    }
+  ]
+
+Reviewer 2:
+[
+    {
+      "severity": "medium",
+      "file": "lib/command.js",
+      "line": 1573,
+      "violated_requirement": "Preserve public APIs and existing in-process parsing behavior.",
+      "finding": "_parseCommand now calls _parseOptions directly, bypassing existing overrides of the public parseOptions method. This changes both parse() and parseAsync() behavior even without a delimiter.",
+      "witness": {
+        "code": "class CustomCommand extends Command { parseOptions(args) { return super.parseOptions(args.map(a => a === '--custom' ? '--flag' : a)); } }\nnew CustomCommand().exitOverride().option('--flag').parse(['--custom'], { from: 'user' });",
+        "previous_behavior": "The override translates --custom into --flag; parsing succeeds with opts().flag === true.",
+        "current_behavior": "The override is never called; parsing throws commander.unknownOption for --custom.",
+        "basis": "Static trace of the supplied source and diff; not executed."
+      }
+    }
+  ]
