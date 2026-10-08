@@ -66,3 +66,7 @@ For each measured cell, root records from the final report: whether it lists the
 ## 8. Honest limits
 
 8 cells, one configuration, two tasks: a small n detects only a large effect. Both tasks are exposed development tasks. Local-origin delivery is not GitHub delivery. Results hold for the pinned CLIs, image, route and tasks.
+
+## Freeze review response
+
+Astra (round 1, REVISE) found one HIGH: `decide.py` checked only R's usage completeness, so a B token sum missing a cell's usage still let condition 6 pass, contradicting §5 ("Unknown usage leaves condition 6 unmet"). Accepted and fixed before any dispatch: one cost function now returns unknown when either arm's usage is incomplete, and two regression tests cover partial B usage (per-success and zero-success). The rule text is unchanged. No other HIGH or MEDIUM finding; the SMOKE cell stays required before measurement.

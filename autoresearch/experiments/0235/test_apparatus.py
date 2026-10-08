@@ -336,6 +336,9 @@ class Rule(unittest.TestCase):
         changed = self.table()
         changed['r02-D3-claude-R-r1']['usage'] = False
         self.assertIsNone(self.outcome(changed, 'INCONCLUSIVE')['advance']['cost'])
+        changed = self.table()
+        changed['r04-D4-claude-B-r1']['usage'] = False
+        self.assertIsNone(self.outcome(changed, 'INCONCLUSIVE')['advance']['cost'])
 
     def test_completion_and_witness_thresholds(self):
         names = {arm: [n for n, t, a, _, _ in decide.CELLS if a == arm] for arm in ('B', 'R')}
@@ -361,6 +364,9 @@ class Rule(unittest.TestCase):
             self.outcome(table, expected)
         table = self.table(b_success=())
         table['r02-D3-claude-R-r1']['usage'] = False
+        self.assertIsNone(self.outcome(table, 'INCONCLUSIVE')['advance']['cost'])
+        table = self.table(b_success=())
+        table['r04-D4-claude-B-r1']['usage'] = False
         self.assertIsNone(self.outcome(table, 'INCONCLUSIVE')['advance']['cost'])
 
     def test_safety_rejects_even_four_completions(self):

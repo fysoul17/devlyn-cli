@@ -53,17 +53,15 @@ def sums(cells):
     return group
 
 
-def at_most(mine, theirs, key, factor=1, strict=False):
-    """Whether the candidate's per-success cost is at most (strict: below) factor x the reference's: True, False, or
-    None when missing usage leaves it open. Wall is always known. The candidate has S > 0."""
-    if theirs['S'] == 0:
-        return True
-    if not mine.get(key + '_complete', True):
+def cost_at_most(mine, theirs, key):
+    """Registration §5: unknown usage on either arm leaves condition 6 unmet."""
+    if theirs['S'] > 0 and mine['S'] == 0:
+        return False
+    if not mine.get(key + '_complete', True) or not theirs.get(key + '_complete', True):
         return None
-    own, bound = Fraction(mine[key]) / mine['S'], factor * Fraction(theirs[key]) / theirs['S']
-    if own < bound or (own == bound and not strict):
-        return True
-    return False if theirs.get(key + '_complete', True) else None
+    if theirs['S'] == 0:
+        return Fraction(mine[key]) <= Fraction(5, 4) * Fraction(theirs[key])
+    return Fraction(mine[key]) / mine['S'] <= Fraction(theirs[key]) / theirs['S']
 
 
 def every(values):
@@ -120,20 +118,13 @@ def load(out, decisions):
     return table
 
 
-def raw_cost(mine, theirs, key):
-    if not mine.get(key + '_complete', True) or not theirs.get(key + '_complete', True):
-        return None
-    return Fraction(mine[key]) <= Fraction(5, 4) * Fraction(theirs[key])
-
-
 def rule(table, decisions):
     cells = list(table.values())
     r_cells = [c for c in cells if c['arm'] == 'R']
     b_cells = [c for c in cells if c['arm'] == 'B']
     q = quality(cells, 'R', 'B')
     r, b = sums(r_cells), sums(b_cells)
-    cost = every((at_most(r, b, key) if r['S'] > 0 else False) if b['S'] > 0 else raw_cost(r, b, key)
-                 for key in ('wall', 'input', 'output'))
+    cost = every(cost_at_most(r, b, key) for key in ('wall', 'input', 'output'))
     # Scope is a registered REJECT veto; include it in the safety gate so ADVANCE and REJECT stay exclusive.
     advance = dict(
         r_completes_all=len(r_cells) == 4 and r['S'] == 4,
