@@ -1,6 +1,6 @@
 # 0236 — review findings fed back for one repair turn
 
-**Status:** DRAFT 2026-10-08 (root, with Astra design r1). The decision rule and predictions below are frozen before any measured continuation is dispatched; any later change is a dated addendum.
+**Status:** REGISTERED 2026-10-09 (root, with Astra design r1–r2 and freeze r1–r2; owner-approved direction 2026-10-08). The decision rule and predictions below are frozen before any measured continuation is dispatched; any later change is a dated addendum.
 
 **Background.** [0235](0235-definition-of-done.md), Result 2026-10-08: an appended done-sentence was rejected, and editing the definition of done stops. In 0235 the completion assessors already pointed at the defects that mattered. Codex returned `complete:false` on r01 (the D3 `parseOptions` override bypass), on r03 and r08 (the D4 FIFO test bound defeated on the main thread, which the audit judged false completions) and on r04 (D4 test-robustness gaps). Severity alone does not separate them: r03's finding was `medium` and r08's `high` for the same defect. r01 disclosed its break as a limitation; r03 and r08 claimed a guarantee they did not have; r04 left a required probe property unverified. Astra direction r1: before another instruction panel, screen whether the review's findings, fed back for one repair turn, make Claude finish work it reported as done. Compare against a matched turn that carries the same negative verdict without the findings.
 
@@ -67,7 +67,7 @@ A continuation **repairs** its unit iff all hold:
      - At session end, a non-main thread or a descendant process is still alive.
      - A FIFO or symlink the tests created remains outside pytest's base temp directory.
 
-     A watchdog kill counts as reproduction. A test's result under an injection is **STOP**, never a reproduction and never a pass, in three cases:
+     A watchdog kill counts as reproduction, except a stall-mode hang after three or more injected stalls, which is STOP. A test's result under an injection is **STOP**, never a reproduction and never a pass, in three cases:
      - it starts a child the injection cannot reach: a non-Python program, a shell, or Python without the witness environment or with an option that skips it;
      - its writer is not injectable: it made a nonblocking FIFO write-open in a child or a blocking one on the main thread, or it made FIFO write-opens other than main-thread nonblocking probes and the injection fired zero times in it. Main-thread nonblocking write-opens are reader-release probes; they are never injected and never cause STOP;
      - its session ends without recording its survivors.
@@ -150,9 +150,19 @@ The +2 margin is an engineering screening threshold, not statistical confirmatio
 - The findings come from the same assessors that re-grade the repair. The audit and the task witnesses are the independent checks.
 - The prompt cache is cold on resume in both arms.
 - The environment drifted from the original run. Account-synced state was already present in some sources' end-state homes: it synced during the original runs. The smoke's `init` shows 8 more MCP tools (`mcp__claude_ai_Claude_Docs__*`) and 14 more skills (`anthropic-skills:*`) than its source's, and the MCP server connected where the source's was pending. The homes of r01, r06 and r08 carry account-synced skills (`home/.claude/skills`); those of r03 and r04 do not. Environments therefore differ between units, but they are held identical within a unit, F and G alike (§5); account-synced skills are recorded, not compared, because whether they load before `init` depends on sync timing. Each continuation's `init` is recorded beside its source's.
-- The D4 stall is per write-open. Sequential injected blocking write-opens in one test stall 40 s each, so a test with several of them can still be running at 150 s, and is reported as reproducing, even when each open is bounded; four or more always are. Every test of the original unit trees and of the gate-pass r07 makes at most one injected write-open per run.
+- The D4 stall is per write-open, so sequential injected stalls add up. A stall-mode hang after three or more injected 40 s stalls is scored STOP, not a defect. Every test of the original unit trees and of the gate-pass r07 makes at most one injected write-open per run.
 
 ## 10. 0235 correction (2026-10-08)
 
 0235's Result says that one auditor refreshed the `.git/index` stat cache of r08 only. The refresh actually touched 7 of the 8 cells: every cell except r02. The files changed at 13:15Z (r08) and at 13:22–13:23Z (the others), during the audit workflow, which ran `git status` and `git diff` without `--no-optional-locks`. In every cell the index entries still equal HEAD, and no tracked content, snapshot or verdict changed. Later operator steps must use `--no-optional-locks` or work on copies.
 - The D4 witness does not see every possible writer: a real writer that is a nonblocking thread, next to an injected decoy writer in the same test, escapes it. The assessors and the audit remain the independent checks.
+
+## Freeze review response
+
+- Astra design r2 (REVISE, 2 HIGH): finding dispositions and preservation frozen (§4); the D4 witness gained the stall injection, survivor and leftover checks.
+- Astra freeze r1 (REVISE, 3 HIGH, 1 MEDIUM): the environment rule became route-equal-to-source plus a per-unit reference (§5); the D4 witness was rebuilt on a Python audit hook with STOP for anything it cannot instrument or inject; archived assessment attempts are charged.
+- A Claude verify pass then found two more gaps, both fixed: the r03/r04 homes lack the synced-skill cache, and a decoy injection could hide an uninjectable writer. The synthetic cases synA, synB and synC now STOP.
+- Astra freeze r2: no HIGH; 2 MEDIUM fixed without a third round (risk-scaled review): a stall-mode hang after three or more injected stalls is STOP, and DESIGN.md matches the witness.
+- Validation on copies: r03, r04, r08 → 1; r07 → 0; synA/B/C → 2; D3 witness r01 → 1, r02/r05/r06 and the original source → 0.
+- Frozen witness sha256 prefixes: `d4-writer-strict.py` 835cf947166ac7ed, `d3-parseoptions-override.js` b74bd83c07d3802f.
+- The smoke ran on the pre-fix code: resume, byte prefix, route and turn-usage reconciliation held; the environment rule it lacked is per-unit and starts with the first measured continuation.

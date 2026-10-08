@@ -33,9 +33,8 @@ Only a test that is not STOP can show a demonstrated defect.
 Not seen: os.open with dir_fd, ctypes or another C extension, and a nonblocking writer thread next to an injected decoy
 writer in the same test.
 
-Known limit: the stall is per write-open. Sequential injected blocking write-opens in one test stall STALL seconds
-each, so a test with several of them can still be running at DEADLINE, and reproduces, even when each open is bounded;
-four or more always do (4 x 40 s > 150 s).
+The stall is per write-open, so sequential injected stalls add up: a stall-mode hang whose stalls leave less than
+STALL_MARGIN seconds to DEADLINE (three or more 40 s stalls) is STOP, not a defect; with fewer it is a defect.
 
 Run from the tree root (/work). Exit 1 = reproduces: a test that is not STOP or the tree shows a demonstrated defect;
 else 2 = STOP: some test is STOP, or a witness error (the instrumentation did not load in a test process, or the witness
@@ -53,6 +52,7 @@ import traceback
 
 DEADLINE = 150
 STALL = 40
+STALL_MARGIN = 30  # a stall-mode hang is attributed to the injection when its stalls leave less than this to DEADLINE
 MODES = ('death', 'stall')
 
 SITE = r'''
@@ -295,6 +295,8 @@ def evaluate(run, defects, stops):
                      f'FIFO write-open(s): {uninjectable[0]}')
     elif any(not (w[0] == 'main' and not w[1]) for w in writes) and not injected:
         stops.append(f'{label}: writer not injectable: {len(writes)} FIFO write-open(s), none injected: {writes[0]}')
+    elif run['hung'] and run['mode'] == 'stall' and len(injected) * STALL + STALL_MARGIN >= DEADLINE:
+        stops.append(f'{label}: still running at {DEADLINE} s after {len(injected)} injected {STALL} s stalls')
     elif run['hung']:
         defects.append(f'{label}: still running at {DEADLINE} s')
     elif survivors is None:

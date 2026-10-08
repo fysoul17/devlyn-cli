@@ -353,6 +353,17 @@ class D4Witness(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'did not load'):
             d4.evaluate(dict(self.run_record(), process=mock.Mock(pid=8)), [], [])
 
+    def test_a_stall_mode_hang_after_three_injected_stalls_is_stop_not_a_defect(self):
+        def stalled(count):
+            events = []
+            for _ in range(count):
+                events += [('fifo-write', ['child', True, '/tmp/f']), ('inject', ['stall', 'child', '/tmp/f'])]
+            return dict(self.run_record(*events, hung=True), mode='stall')
+        code, defects, stops = self.outcome(stalled(3))
+        self.assertEqual((code, defects), (2, []))
+        self.assertIn('injected 40 s stalls', stops[0])
+        self.assertEqual(self.outcome(stalled(2))[0], 1)  # two stalls leave room to finish: the hang is a defect
+
 
 class Seeding(unittest.TestCase):
     def test_tmp_is_restored_right_after_the_volume_is_created(self):

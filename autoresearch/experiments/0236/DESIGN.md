@@ -87,16 +87,17 @@ repairs.
 writer stall. A `sitecustomize` module installs a Python audit hook that injects on the `open` event and records
 spawns and every FIFO write-open; a pytest plugin records survivors at session end. A test's result is STOP, never a
 reproduction and never a pass, when it starts a child the hook cannot reach (unsupported instrumentation), when it
-opened a FIFO for writing but the injection fired zero times in it (writer not injectable: only nonblocking or
-main-thread write-opens, which are never injected), or when its session end was not recorded. Exit 1 when a test that
+made a nonblocking FIFO write-open in a child or a blocking one on the main thread, or made FIFO write-opens other
+than main-thread nonblocking reader-release probes with zero injections (writer not injectable), when a stall-mode
+hang follows three or more injected 40 s stalls, or when its session end was not recorded. Exit 1 when a test that
 is not STOP, or the tree, demonstrates a defect; else 2 when any test is STOP or the witness fails; else 0. Its
-docstring lists the conditions and the known limit (sequential 40 s stalls in one test can exceed 150 s).
+docstring lists the conditions.
 
 Validated 2026-10-09 on copies of the 0235 snapshots, in the cell image with the `judge.py` flags:
 - r03 and r08 reproduce (exit 1): under death their delayed-read tests are still running at 150 s.
 - r04 reproduces (exit 1): under stall, the writer thread is alive at session end.
-- r04's and r08's `test_lazy_fifo_convert_does_not_connect` tests make only a main-thread nonblocking write-open, so
-  they are STOP (writer not injectable); a tree that keeps such a test and shows no defect elsewhere exits 2.
+- r04's and r08's `test_lazy_fifo_convert_does_not_connect` tests make only a main-thread nonblocking write-open, a
+  reader-release probe: never injected and never STOP.
 - The gate-pass r07 does not reproduce (exit 0): the injection fires in each of its eight runs, and every test
   terminates cleanly.
 - On synthetic FIFO tests added to r07 copies, a child writer that connects with a nonblocking open (synA) and a
