@@ -10,7 +10,7 @@ const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
 const { updateInstructions, InstructionError, holdsDevlynDefaults, importsAgentsMd } = require('./instructions');
-const { fingerprint, trackedPaths } = require('./skill-ownership');
+const { OS_METADATA, fingerprint, trackedPaths } = require('./skill-ownership');
 const SKILL_HISTORY = require('./skill-history.json');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
@@ -83,13 +83,13 @@ const RETIRED_SKILL_MD_SHA256 = {
   ]),
 };
 
-// Whether `dir` is a real folder whose only file is a SKILL.md
+// Whether `dir` is a real folder whose only file, besides OS_METADATA, is a SKILL.md
 // with an LF-normalized SHA-256 in `hashes`: an unedited copy devlyn-cli shipped, not something
 // the user added to or wrote.
 function isShippedCopy(dir, hashes) {
   const skill = path.join(dir, 'SKILL.md');
   return fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory() === true
-    && fs.readdirSync(dir).length === 1
+    && fs.readdirSync(dir).filter((name) => !OS_METADATA.has(name)).length === 1
     && fs.lstatSync(skill, { throwIfNoEntry: false })?.isFile() === true
     && hashes.has(crypto.createHash('sha256')
       .update(fs.readFileSync(skill, 'utf8').replace(/\r\n/g, '\n')).digest('hex'));

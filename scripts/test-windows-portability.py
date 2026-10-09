@@ -705,6 +705,25 @@ init({options});
         shutil.rmtree(skill.parent)
         self.assert_install_refused('-y', '--claude', paths=[skill.parent], reason='git-tracked; missing contents')
 
+    def test_crlf_checkout_and_os_metadata_still_match_shipped_copies(self):
+        # Git for Windows checks text out with CRLF; Finder and Explorer drop metadata files.
+        root = self.project / '.claude/skills'
+        self.seed_4_1(root)
+        for file in root.rglob('*'):
+            if file.is_file() and file.name != '.devlyn-install.json':
+                file.write_bytes(file.read_bytes().replace(b'\n', b'\r\n'))
+        for skill in ('devlyn-resolve', 'devlyn-ideate', '_shared'):
+            (root / skill / '.DS_Store').write_bytes(b'\0\0\0\1Bud1')
+        (root / 'devlyn-ideate/Thumbs.db').write_bytes(b'\xd0\xcf\x11\xe0')
+        self.cli('-y', '--claude')
+        self.assertFalse((root / 'devlyn-resolve').exists())
+        source = (self.package / 'config/skills/devlyn-ideate/SKILL.md').read_bytes()
+        self.assertEqual((root / 'devlyn-ideate/SKILL.md').read_bytes(), source)
+        # Line endings never hide an edit.
+        skill = root / 'devlyn-ideate/SKILL.md'
+        skill.write_bytes(source.replace(b'\n', b'\r\n') + b'User change\r\n')
+        self.assert_install_refused('-y', '--claude', paths=[skill.parent], reason='modified contents')
+
     def test_install_without_git_still_checks_fingerprints(self):
         bins = self.case / 'no-git'; bins.mkdir()
         self.env['PATH'] = str(bins)

@@ -3,19 +3,24 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-// Hash every entry, including empty directories and dotfiles. Links and special files
-// are never installer-owned. File bytes are not normalized, even on Windows.
+// Folder metadata the OS writes on its own (Finder, Explorer); never user content.
+const OS_METADATA = new Set(['.DS_Store', 'Thumbs.db']);
+
+// Hash every entry, including empty directories and dotfiles, except OS_METADATA. Links and
+// special files are never installer-owned. CRLF counts as LF: Git for Windows checks text
+// out with CRLF by default, and an unedited clone must still match its shipped copy.
 function fingerprint(dir) {
   const entries = [];
   function visit(full, relative) {
     const stat = fs.lstatSync(full);
     if (stat.isDirectory()) {
       entries.push([relative, 'directory']);
-      for (const name of fs.readdirSync(full).sort()) {
+      for (const name of fs.readdirSync(full).filter((name) => !OS_METADATA.has(name)).sort()) {
         visit(path.join(full, name), relative ? `${relative}/${name}` : name);
       }
     } else if (stat.isFile()) {
-      entries.push([relative, 'file', crypto.createHash('sha256').update(fs.readFileSync(full)).digest('hex')]);
+      const bytes = fs.readFileSync(full).toString('latin1').replace(/\r\n/g, '\n');
+      entries.push([relative, 'file', crypto.createHash('sha256').update(bytes, 'latin1').digest('hex')]);
     } else {
       throw new Error(`link or special file: ${full}`);
     }
@@ -49,4 +54,4 @@ function trackedPaths(root) {
   return files.stdout.split('\0').filter(Boolean).map((file) => path.resolve(repo.stdout.trim(), file));
 }
 
-module.exports = { fingerprint, trackedPaths };
+module.exports = { OS_METADATA, fingerprint, trackedPaths };
