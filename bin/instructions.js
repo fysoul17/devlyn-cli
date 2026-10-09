@@ -183,6 +183,12 @@ function retainFile(file, bytes) {
 // `withBlock` false removes the devlyn defaults the file holds, keeping everything else. `write` false writes nothing
 // and returns whether the file needs an update, a merge included.
 function updateInstructions(name, initial = '', withBlock = true, write = true) {
+  const projectPackage = path.join(process.cwd(), 'package.json');
+  if (fs.existsSync(path.join(process.cwd(), 'bin', 'devlyn.js')) && fs.existsSync(projectPackage)
+      && JSON.parse(fs.readFileSync(projectPackage, 'utf8'))?.name === 'devlyn-cli') {
+    console.log(`  → Skipping ${name}; shipped instruction template in devlyn-cli source checkout`);
+    return false;
+  }
   const templatePath = path.join(__dirname, '..', name);
   const template = fs.readFileSync(templatePath, 'utf8');
   if (template.includes(BEGIN) || template.includes(END)) {

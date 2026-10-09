@@ -1143,6 +1143,46 @@ writeInstallMarker(process.cwd(), [], {});
         self.assertEqual(dest.read_bytes(), before)
         self.assertEqual(backup.read_bytes(), b'different recovery data')
 
+    def test_instruction_source_checkout_templates_are_not_wrapped(self):
+        originals = {name: (self.package / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
+        for package_name, has_bin in [('devlyn-cli', True), ('my-app', True), ('devlyn-cli', False)]:
+            for args in (['-y', '--claude'], ['-y']):
+                with self.subTest(package_name=package_name, has_bin=has_bin, args=args):
+                    self.project = Path(tempfile.mkdtemp(dir=self.case))
+                    (self.project / 'package.json').write_text(json.dumps({'name': package_name}), encoding='utf-8')
+                    if has_bin:
+                        (self.project / 'bin').mkdir()
+                        (self.project / 'bin/devlyn.js').write_bytes(b'// source entrypoint\n')
+                    for name, data in originals.items():
+                        (self.project / name).write_bytes(data)
+                    result = self.cli(*args)
+                    source_checkout = package_name == 'devlyn-cli' and has_bin
+                    for name, data in originals.items():
+                        if source_checkout:
+                            self.assertEqual((self.project / name).read_bytes(), data)
+                            self.assertIn(f'\x1b[2m  → Skipping {name}; shipped instruction template in devlyn-cli source checkout\x1b[0m'.encode(),
+                                          result.stdout)
+                        else:
+                            body = (b'Project-specific instructions outside this managed block take precedence over these defaults.\n\n'
+                                    + data.replace(b'\r\n', b'\n').rstrip(b'\n') + b'\n')
+                            block = (f'<!-- devlyn:instructions:begin sha256={hashlib.sha256(body).hexdigest()} -->\n'.encode()
+                                     + body + b'<!-- devlyn:instructions:end -->\n')
+                            eol = b'\r\n' if b'\r\n' in data else b'\n'
+                            self.assertEqual((self.project / name).read_bytes(), block.replace(b'\n', eol))
+                    if not source_checkout:
+                        self.assertNotIn(b'shipped instruction template in devlyn-cli source checkout', result.stdout)
+                    self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
+                    for target in ('.agents', '.claude'):
+                        for skill in ('devlyn-ideate', 'devlyn-engines'):
+                            self.assertEqual((self.project / target / 'skills' / skill / 'SKILL.md').read_bytes(),
+                                             (self.package / 'config/skills' / skill / 'SKILL.md').read_bytes())
+                    settings = json.loads((self.project / '.claude/settings.json').read_bytes())
+                    self.assertEqual(settings['env']['ENABLE_PROMPT_CACHING_1H'], 'true')
+                    self.assertEqual(settings['env']['BASH_MAX_TIMEOUT_MS'], '3600000')
+                    self.assertEqual((self.project / '.gitignore').read_text(encoding='utf-8').splitlines(),
+                                     ['# devlyn-cli pipeline state', '.devlyn/', '.agents/skills/.devlyn-install.json',
+                                      '.claude/skills/.devlyn-install.json'])
+
     def test_instruction_source_templates_are_not_wrapped(self):
         copy = self.case / 'source-package'; shutil.copytree(self.package, copy)
         originals = {name: (copy / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
