@@ -46,3 +46,7 @@ __pycache__/
 *.pyc
 benchmark/probes/judge-quality/results/
 benchmark/probes/judge-quality/results-*/
+
+# devlyn-cli pipeline state
+.agents/skills/.devlyn-install.json
+.claude/skills/.devlyn-install.json
