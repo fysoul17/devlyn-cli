@@ -816,7 +816,8 @@ init({options});
                           "if (name.startsWith('@inquirer/')) throw new Error('unexpected menu import'); "
                           "return next(name, context); }\n", encoding='utf-8')
         for flags in (['--help'], ['-y', '--claude']):
-            run(['node', '--loader', loader, '--require', self.preload,
+            # A file URL: Node reads a bare Windows path (C:\...) as a "c:" URL scheme.
+            run(['node', '--loader', loader.as_uri(), '--require', self.preload,
                  self.package / 'bin/devlyn.js', *flags], cwd=self.project, env=self.env)
 
     def test_modified_core_and_unknown_retired_skills_refuse(self):
