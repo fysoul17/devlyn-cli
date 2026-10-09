@@ -451,6 +451,9 @@ function plannedSkills(root, optionalNames = []) {
 function preflightSkills(roots, optionalNames = [], commandDir = null) {
   const conflicts = [];
   try {
+    // Do not follow a commands link into another installation either.
+    const commands = commandDir && fs.lstatSync(path.join(commandDir, 'commands'), { throwIfNoEntry: false });
+    if (commands && !commands.isDirectory()) throw new Error('not a real directory');
     const tracked = commandDir ? trackedPaths(path.join(commandDir, 'commands')) : [];
     for (const relPath of commandDir ? DEPRECATED_FILES : []) {
       const fullPath = path.join(commandDir, relPath);

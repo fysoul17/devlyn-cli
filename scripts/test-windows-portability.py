@@ -716,6 +716,13 @@ init({options});
         mine.unlink(); mine.mkdir()
         self.assert_install_refused('-y', '--claude', paths=[mine], reason='link or special file')
         mine.rmdir()
+        # A linked commands folder is another installation's, shipped bytes or not.
+        elsewhere = self.case / 'global-commands'; elsewhere.mkdir()
+        commands.rename(self.case / 'project-commands')
+        run(['node', '-e', "require('fs').symlinkSync(process.argv[1], process.argv[2], 'junction')", elsewhere, commands])
+        self.assert_install_refused('-y', '--claude', paths=[commands], reason='not a real directory')
+        commands.rmdir() if os.name == 'nt' else commands.unlink()  # a junction is removed as a directory
+        (self.case / 'project-commands').rename(commands)
         # Shipped bytes go, CRLF checkout or not; the user's other commands stay.
         shipped = b'# shipped resolve\n'
         mine.write_bytes(shipped.replace(b'\n', b'\r\n'))
