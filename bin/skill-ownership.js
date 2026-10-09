@@ -10,9 +10,15 @@ function isOsMetadata(full) {
     && fs.lstatSync(full, { throwIfNoEntry: false })?.isFile() === true;
 }
 
+// SHA-256 of a file with CRLF read as LF: Git for Windows checks text out with CRLF by
+// default, and an unedited clone must still match its shipped copy.
+function contentHash(file) {
+  const bytes = fs.readFileSync(file).toString('latin1').replace(/\r\n/g, '\n');
+  return crypto.createHash('sha256').update(bytes, 'latin1').digest('hex');
+}
+
 // Hash every entry, including empty directories and dotfiles, except OS metadata. Links and
-// special files are never installer-owned. CRLF counts as LF: Git for Windows checks text
-// out with CRLF by default, and an unedited clone must still match its shipped copy.
+// special files are never installer-owned.
 function fingerprint(dir) {
   const entries = [];
   function visit(full, relative) {
@@ -24,8 +30,7 @@ function fingerprint(dir) {
         visit(path.join(full, name), relative ? `${relative}/${name}` : name);
       }
     } else if (stat.isFile()) {
-      const bytes = fs.readFileSync(full).toString('latin1').replace(/\r\n/g, '\n');
-      entries.push([relative, 'file', crypto.createHash('sha256').update(bytes, 'latin1').digest('hex')]);
+      entries.push([relative, 'file', contentHash(full)]);
     } else {
       throw new Error(`link or special file: ${full}`);
     }
@@ -59,4 +64,4 @@ function trackedPaths(root) {
   return files.stdout.split('\0').filter(Boolean).map((file) => path.resolve(repo.stdout.trim(), file));
 }
 
-module.exports = { fingerprint, isOsMetadata, trackedPaths };
+module.exports = { contentHash, fingerprint, isOsMetadata, trackedPaths };

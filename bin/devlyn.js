@@ -10,7 +10,7 @@ const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
 const { updateInstructions, InstructionError, holdsDevlynDefaults, importsAgentsMd } = require('./instructions');
-const { fingerprint, isOsMetadata, trackedPaths } = require('./skill-ownership');
+const { contentHash, fingerprint, isOsMetadata, trackedPaths } = require('./skill-ownership');
 const SKILL_HISTORY = require('./skill-history.json');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
@@ -122,7 +122,8 @@ function hasDevlynClaude(global) {
     || holdsDevlynDefaults('CLAUDE.md', claude) || importsAgentsDefaults(claude);
 }
 
-// Commands removed in previous versions; the project Claude install deletes them from .claude/.
+// Commands removed in previous versions; the project Claude install deletes them from .claude/
+// when they hold the bytes a version shipped (SKILL_HISTORY.commands).
 const DEPRECATED_FILES = [
   'commands/devlyn.handoff.md', // removed in v0.2.0
   'commands/devlyn.clean.md', // migrated to skills in v0.6.0
@@ -446,8 +447,22 @@ function plannedSkills(root, optionalNames = []) {
   return names;
 }
 
-function preflightSkills(roots, optionalNames = []) {
+// `commandDir`: the project .claude/ whose DEPRECATED_FILES this install deletes, or null.
+function preflightSkills(roots, optionalNames = [], commandDir = null) {
   const conflicts = [];
+  try {
+    const tracked = commandDir ? trackedPaths(path.join(commandDir, 'commands')) : [];
+    for (const relPath of commandDir ? DEPRECATED_FILES : []) {
+      const fullPath = path.join(commandDir, relPath);
+      const stat = fs.lstatSync(fullPath, { throwIfNoEntry: false });
+      if (!stat || (stat.isFile() && SKILL_HISTORY.commands[relPath].includes(contentHash(fullPath)))) continue;
+      const isTracked = tracked.some((file) => file.toLowerCase() === fullPath.toLowerCase());
+      conflicts.push(`${fullPath}: ${isTracked ? 'git-tracked; ' : ''}`
+        + (stat.isFile() ? 'fingerprint mismatch with known shipped copies' : 'link or special file'));
+    }
+  } catch (error) {
+    conflicts.push(`${path.join(commandDir, 'commands')}: ${error.message}`);
+  }
   for (const root of roots) {
     try {
       // Do not follow an agent-directory or skill-root link into another installation.
@@ -490,8 +505,8 @@ function preflightSkills(roots, optionalNames = []) {
   if (conflicts.length) {
     throw new InstructionError('Installation refused; nothing was changed:\n'
       + conflicts.map((conflict) => `  - ${conflict}`).join('\n')
-      + '\nMove these folders out of the install path, or back them up and remove them, then rerun.'
-      + '\nFor tracked folders, also remove their old paths from the Git index.'
+      + '\nMove these out of the install path, or back them up and remove them, then rerun.'
+      + '\nFor tracked paths, also remove them from the Git index.'
       + '\nRerun the same command after resolving every conflict; -y does not bypass this check.');
   }
 }
@@ -843,7 +858,8 @@ function install(targets, global, optionalNames = []) {
       + 'would apply to every project. Run from a project folder, or use --global for skills only.');
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
-  preflightSkills(roots, optionalNames);
+  preflightSkills(roots, optionalNames,
+    !global && targets.includes('claude') ? path.dirname(skillRoots('claude', false)[0]) : null);
   // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
   for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
     if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));

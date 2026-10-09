@@ -332,8 +332,8 @@ init({options});
                 self.project = self.case / f'project-{case}'
                 for path, data in planted.items():
                     (self.project / path).parent.mkdir(parents=True, exist_ok=True); (self.project / path).write_bytes(data)
-                if case in ('4.x', '3.x'):
-                    self.assert_install_refused('-y', paths=[self.project / '.claude/skills'])
+                if case in ('4.x', '3.x', '0.x'):
+                    self.assert_install_refused('-y', paths=[self.project / ('.claude/commands' if case == '0.x' else '.claude/skills')])
                     continue  # Detection selects Claude, but unknown contents must survive.
                 self.cli('-y')
                 claude = case not in ('none', 'addons')
@@ -657,7 +657,7 @@ init({options});
         result = self.cli(*flags, code=1)
         error = result.stderr.decode('utf-8')
         self.assertIn('Installation refused; nothing was changed', error)
-        self.assertIn('Move these folders out of the install path', error)
+        self.assertIn('Move these out of the install path', error)
         self.assertNotIn('committing', error)
         for path in paths:
             self.assertIn(str(path), error)
@@ -703,6 +703,27 @@ init({options});
                     " installLocalSkill('devlyn-reap', roots);")
         self.assertFalse((root / 'devlyn-resolve').exists())
         self.assertTrue((root / 'devlyn-reap/SKILL.md').is_file())
+
+    def test_retired_command_is_removed_only_as_shipped(self):
+        # 0.0.1-0.5.8 shipped .claude/commands/devlyn.*.md; an edited one is the user's.
+        commands = self.project / '.claude/commands'; commands.mkdir(parents=True)
+        mine = commands / 'devlyn.resolve.md'
+        mine.write_bytes(b'# my resolve\n')
+        run(['git', 'init', '-q', self.project])
+        run(['git', '-C', self.project, 'add', '.claude/commands'])
+        self.assert_install_refused('-y', '--claude', paths=[mine], reason='git-tracked; fingerprint mismatch')
+        # A folder under a retired command's name is never installer-owned either.
+        mine.unlink(); mine.mkdir()
+        self.assert_install_refused('-y', '--claude', paths=[mine], reason='link or special file')
+        mine.rmdir()
+        # Shipped bytes go, CRLF checkout or not; the user's other commands stay.
+        shipped = b'# shipped resolve\n'
+        mine.write_bytes(shipped.replace(b'\n', b'\r\n'))
+        (commands / 'mine.md').write_bytes(b'kept')
+        self.invoke("SKILL_HISTORY.commands['commands/devlyn.resolve.md'] = "
+                    f"['{hashlib.sha256(shipped).hexdigest()}']; install(['claude'], false);")
+        self.assertFalse(mine.exists())
+        self.assertEqual((commands / 'mine.md').read_bytes(), b'kept')
 
     def test_tracked_modified_or_missing_skill_refuses(self):
         root = self.project / '.claude/skills'
