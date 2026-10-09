@@ -358,8 +358,8 @@ PY
   mkdir -p "$incomplete/package" "$incomplete/home/.agents/skills" "$incomplete/project/.agents/skills"
   cp -R bin config package.json AGENTS.md CLAUDE.md "$incomplete/package/"
   rm -rf "$incomplete/package/config/skills/devlyn-engines"
-  printf '{"version":"stale"}\n' > "$incomplete/home/.agents/skills/.devlyn-install.json"
-  printf '{"version":"stale"}\n' > "$incomplete/project/.agents/skills/.devlyn-install.json"
+  printf '{"schemaVersion":1,"package":"devlyn-cli","version":"stale"}\n' > "$incomplete/home/.agents/skills/.devlyn-install.json"
+  printf '{"schemaVersion":1,"package":"devlyn-cli","version":"stale"}\n' > "$incomplete/project/.agents/skills/.devlyn-install.json"
   if ! (cd "$incomplete/project" \
       && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y >"$incomplete/project.log" 2>&1) \
       && ! (cd "$incomplete/project" \

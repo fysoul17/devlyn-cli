@@ -425,7 +425,10 @@ function readInstallManifest(root) {
   if (!stat) return {};
   if (!stat.isFile()) throw new Error(`not a regular install marker: ${markerPath}`);
   const marker = JSON.parse(fs.readFileSync(markerPath, 'utf8'));
-  return marker?.package === PKG.name && marker.schemaVersion === 1 ? marker.skills || {} : {};
+  if (marker?.package !== PKG.name || marker.schemaVersion !== 1) {
+    throw new Error('not a devlyn-cli install marker');
+  }
+  return marker.skills || {};
 }
 
 // Enumerate every directory this install may replace, migrate or remove, before
@@ -474,7 +477,13 @@ function preflightSkills(roots, optionalNames = [], commandDir = null) {
         if (stat && !stat.isDirectory()) throw new Error(`not a real directory: ${dir}`);
       }
       const tracked = trackedPaths(root);
-      const manifest = readInstallManifest(root);
+      let manifest;
+      try {
+        manifest = readInstallManifest(root);
+      } catch (error) {
+        conflicts.push(`${path.join(root, DEVLYN_INSTALL_MARKER)}: ${error.message}`);
+        continue;
+      }
       for (const name of plannedSkills(root, optionalNames)) {
         const dest = path.join(root, name);
         const isTracked = tracked.some((file) => file.toLowerCase() === dest.toLowerCase()
@@ -542,12 +551,13 @@ function writeInstallMarker(skillsDir, names, previous) {
     version: PKG.version,
     skills: { ...previous, ...Object.fromEntries(names.map((name) => [name, fingerprint(path.join(skillsDir, name))])) },
   };
+  const fd = fs.openSync(tempPath, 'wx', 0o600);
   try {
-    fs.writeFileSync(tempPath, JSON.stringify(marker, null, 2) + '\n', {
-      encoding: 'utf8',
-      flag: 'wx',
-      mode: 0o600,
-    });
+    try {
+      fs.writeFileSync(fd, JSON.stringify(marker, null, 2) + '\n', 'utf8');
+    } finally {
+      fs.closeSync(fd);
+    }
     fs.renameSync(tempPath, markerPath);
   } finally {
     fs.rmSync(tempPath, { force: true });

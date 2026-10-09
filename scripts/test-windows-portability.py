@@ -371,7 +371,8 @@ init({options});
             self.assertTrue((self.project / 'CLAUDE.md').is_symlink())
             # An AGENTS.md linked to CLAUDE.md gets its block there when the Claude target runs too.
             self.project = self.case / 'agents-linked'; (self.project / '.claude/skills').mkdir(parents=True)
-            (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+            (self.project / '.claude/skills/.devlyn-install.json').write_text(
+                '{"schemaVersion": 1, "package": "devlyn-cli", "version": "4.0.1"}', encoding='utf-8')
             (self.project / 'CLAUDE.md').write_bytes(block); (self.project / 'AGENTS.md').symlink_to('CLAUDE.md')
             self.cli('-y')
             self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
@@ -392,7 +393,8 @@ init({options});
                 self.assertEqual(shared.read_bytes(), before)
         # Git for Windows without symlinks checks the link out as a file holding its target.
         self.project = self.case / 'agents-placeholder'; (self.project / '.claude/skills').mkdir(parents=True)
-        (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+        (self.project / '.claude/skills/.devlyn-install.json').write_text(
+            '{"schemaVersion": 1, "package": "devlyn-cli", "version": "4.0.1"}', encoding='utf-8')
         (self.project / 'CLAUDE.md').write_bytes(block); (self.project / 'AGENTS.md').write_bytes(b'CLAUDE.md')
         self.cli('-y')
         self.assertEqual((self.project / 'AGENTS.md').read_bytes(), b'CLAUDE.md')
@@ -451,7 +453,8 @@ init({options});
                     self.assertIn(CURRENT_DEFAULTS, installed['CLAUDE.md'])
         # The AGENTS.md target installs first even when the menu selected it last (toggled off and on again).
         self.project = self.case / 'toggled'; (self.project / '.claude/skills').mkdir(parents=True)
-        (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+        (self.project / '.claude/skills/.devlyn-install.json').write_text(
+            '{"schemaVersion": 1, "package": "devlyn-cli", "version": "4.0.1"}', encoding='utf-8')
         (self.project / 'AGENTS.md').write_bytes(rules)
         self.interact([[' ', ' ', '\r'], ['\r'], ['\r']])
         self.assertEqual((files()['CLAUDE.md'], blocks()), (b'@AGENTS.md\n', 1))
@@ -546,7 +549,8 @@ init({options});
         self.assertEqual(self.markers(self.project), {'.agents'})
         # A project with devlyn Claude skills preselects CLAUDE.md; an optional skill goes to both roots.
         (self.project / '.claude/skills').mkdir(parents=True)
-        (self.project / '.claude/skills/.devlyn-install.json').write_text('{"version": "4.0.1"}', encoding='utf-8')
+        (self.project / '.claude/skills/.devlyn-install.json').write_text(
+            '{"schemaVersion": 1, "package": "devlyn-cli", "version": "4.0.1"}', encoding='utf-8')
         result = self.interact([[enter], [enter], [up, down, space, enter]])
         self.assertIn(mcp, result.stdout)
         self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
@@ -572,7 +576,7 @@ init({options});
         self.assertEqual(self.markers(self.home), {'.agents', '.codex', '.claude'})
         # --global alone preselects CLAUDE.md where ~/.claude/skills has devlyn, as -y --global does.
         marker = self.home / '.claude/skills/.devlyn-install.json'
-        marker.write_text('{"version": "4.0.1"}', encoding='utf-8')
+        marker.write_text('{"schemaVersion": 1, "package": "devlyn-cli", "version": "4.0.1"}', encoding='utf-8')
         self.interact([[enter], [enter], [enter]], '{ global: true }')
         self.assertEqual(list(self.project.iterdir()), [])
         self.assertEqual(json.loads(marker.read_bytes())['version'], json.loads((self.package / 'package.json').read_bytes())['version'])
@@ -582,7 +586,8 @@ init({options});
         for root, version in roots.items():
             (self.home / root / 'skills/user-skill').mkdir(parents=True)
             (self.home / root / 'skills/user-skill/keep').write_bytes(b'mine')
-            (self.home / root / 'skills/.devlyn-install.json').write_text(json.dumps({'version': version}), encoding='utf-8')
+            (self.home / root / 'skills/.devlyn-install.json').write_text(
+                json.dumps({'schemaVersion': 1, 'package': 'devlyn-cli', 'version': version}), encoding='utf-8')
         before = {p: p.read_bytes() if p.is_file() else None for p in self.home.rglob('*')}
 
         def notices(result):
@@ -837,6 +842,30 @@ init({options});
         (root / '.private-notes').write_bytes(b'keep this too')
         (root / 'extra.py').write_bytes(b'print("user code")')
         self.assert_install_refused('-y', '--claude', paths=[root])
+
+    def test_foreign_install_marker_refuses_without_changes(self):
+        marker = self.project / '.claude/skills/.devlyn-install.json'
+        marker.parent.mkdir(parents=True)
+        for value in ({'package': 'someone-else', 'schemaVersion': 1},
+                      {'package': 'devlyn-cli', 'schemaVersion': 2},
+                      None, [], 'foreign', 1, True):
+            with self.subTest(marker=value):
+                marker.write_text(json.dumps(value), encoding='utf-8')
+                self.assert_install_refused('-y', '--claude', paths=[marker],
+                                            reason=f'{marker}: not a devlyn-cli install marker')
+
+    def test_stale_install_marker_temp_is_preserved(self):
+        result = self.invoke("""
+const markerPath = path.join(process.cwd(), DEVLYN_INSTALL_MARKER);
+const tempPath = `${markerPath}.${process.pid}.tmp`;
+fs.writeFileSync(tempPath, 'keep stale temp bytes');
+console.log(tempPath);
+writeInstallMarker(process.cwd(), [], {});
+""", code=1)
+        self.assertIn(b'EEXIST', result.stderr)
+        temp = Path(result.stdout.decode('utf-8').strip())
+        self.assertTrue(temp.is_file())
+        self.assertEqual(temp.read_bytes(), b'keep stale temp bytes')
 
     def test_second_target_conflict_preserves_every_target_before_upgrade(self):
         for root in (self.project / '.agents/skills', self.project / '.claude/skills'):
@@ -1410,7 +1439,8 @@ init({options});
         copy = self.case / 'broken'; shutil.copytree(self.package, copy)
         (copy / 'config/skills/devlyn-ideate/SKILL.md').unlink()
         stale = self.home / '.agents/skills/.devlyn-install.json'
-        stale.parent.mkdir(parents=True); stale.write_text('{"version": "stale"}', encoding='utf-8')
+        stale.parent.mkdir(parents=True)
+        stale.write_text('{"schemaVersion": 1, "package": "devlyn-cli", "version": "stale"}', encoding='utf-8')
         result = self.invoke("install(['agents'], true);", package=copy, code=None)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'Incomplete devlyn skill install', result.stderr)
