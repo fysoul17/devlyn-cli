@@ -459,11 +459,13 @@ function preflightSkills(roots, optionalNames = []) {
       const manifest = readInstallManifest(root);
       for (const name of plannedSkills(root, optionalNames)) {
         const dest = path.join(root, name);
+        const isTracked = tracked.some((file) => file.toLowerCase() === dest.toLowerCase()
+          || file.toLowerCase().startsWith(dest.toLowerCase() + path.sep));
         try {
-          if (tracked.some((file) => file.toLowerCase() === dest.toLowerCase() || file.toLowerCase().startsWith(dest.toLowerCase() + path.sep))) {
-            throw new Error('git-tracked (even clean copies must be migrated manually)');
+          if (!fs.lstatSync(dest, { throwIfNoEntry: false })) {
+            if (isTracked) throw new Error('missing contents; cannot verify installer ownership');
+            continue;
           }
-          if (!fs.lstatSync(dest, { throwIfNoEntry: false })) continue;
           const actual = fingerprint(dest);
           const logicalName = name.replace(/[:\uF03A]/g, '-');
           const source = path.join(DEVLYN_CORE_SKILLS.includes(logicalName)
@@ -472,10 +474,13 @@ function preflightSkills(roots, optionalNames = []) {
           const historical = SKILL_HISTORY.skills[logicalName]?.includes(actual);
           const singleFile = isShippedCopy(dest, RETIRED_SKILL_MD_SHA256[name] || PRE_STANDARD_SKILL_MD_SHA256);
           if (!current && !historical && !singleFile && manifest[name] !== actual) {
-            throw new Error('modified contents, added files, or unknown installer ownership');
+            throw new Error(manifest[name] ? 'modified contents (install manifest fingerprint mismatch)'
+              : fs.existsSync(source) || SKILL_HISTORY.skills[logicalName]?.length
+                ? 'fingerprint mismatch with known shipped copies'
+                : 'unknown installer ownership (no fingerprint history for this copy)');
           }
         } catch (error) {
-          conflicts.push(`${dest}: ${error.message}`);
+          conflicts.push(`${dest}: ${isTracked ? 'git-tracked; ' : ''}${error.message}`);
         }
       }
     } catch (error) {
@@ -485,8 +490,8 @@ function preflightSkills(roots, optionalNames = []) {
   if (conflicts.length) {
     throw new InstructionError('Installation refused; nothing was changed:\n'
       + conflicts.map((conflict) => `  - ${conflict}`).join('\n')
-      + '\nPreserve your work by committing it or moving these folders to a backup, then migrate manually.'
-      + '\nTracked folders remain protected after a commit: move them out of the install path before rerunning.'
+      + '\nMove these folders out of the install path, or back them up and remove them, then rerun.'
+      + '\nFor tracked folders, also remove their old paths from the Git index.'
       + '\nRerun the same command after resolving every conflict; -y does not bypass this check.');
   }
 }

@@ -25,8 +25,8 @@ function fingerprint(dir) {
   return crypto.createHash('sha256').update(JSON.stringify(entries)).digest('hex');
 }
 
-// Use the index, not status: a clean tracked file, or one deleted locally, is still
-// user work. Inspect the repository containing this root, including global dotfiles repos.
+// Use the index, not status: even files deleted locally need ownership checks.
+// Inspect the repository containing this root, including global dotfiles repos.
 function trackedPaths(root) {
   let cwd = root;
   while (!fs.existsSync(cwd)) cwd = path.dirname(cwd);
@@ -36,6 +36,7 @@ function trackedPaths(root) {
     'GIT_CEILING_DIRECTORIES', 'GIT_DISCOVERY_ACROSS_FILESYSTEM']) delete env[key];
   const git = (args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8', env });
   const repo = git(['rev-parse', '--show-toplevel']);
+  if (repo.error?.code === 'ENOENT') return [];
   if (repo.error) throw repo.error;
   if (repo.status !== 0) {
     if (repo.status === 128 && repo.stderr.includes('not a git repository')) return [];

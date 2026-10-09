@@ -657,29 +657,74 @@ init({options});
         result = self.cli(*flags, code=1)
         error = result.stderr.decode('utf-8')
         self.assertIn('Installation refused; nothing was changed', error)
-        self.assertIn('migrate manually', error)
+        self.assertIn('Move these folders out of the install path', error)
+        self.assertNotIn('committing', error)
         for path in paths:
             self.assertIn(str(path), error)
         if reason:
             self.assertIn(reason, error)
         self.assertEqual(self.snapshot(), before)
 
-    def test_tracked_retired_skill_refuses_even_when_clean(self):
+    def test_tracked_pristine_retired_skill_is_removed(self):
         root = self.project / '.claude/skills'
         self.seed_4_1(root)
         run(['git', 'init', '-q', self.project])
         run(['git', '-C', self.project, 'add', '.claude/skills/devlyn-resolve'])
         run(['git', '-C', self.project, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
              '-c', 'commit.gpgsign=false', 'commit', '-qm', 'tracked retired skill'])
-        self.assert_install_refused('-y', '--claude', paths=[root / 'devlyn-resolve'], reason='git-tracked')
-        # A tracked file deleted locally is still protected by the index.
-        (root / 'devlyn-resolve/SKILL.md').unlink()
-        self.assert_install_refused('-y', '--claude', paths=[root / 'devlyn-resolve'], reason='git-tracked')
+        self.cli('-y', '--claude')
+        self.assertFalse((root / 'devlyn-resolve').exists())
+        # Git still holds the retired copy.
+        self.assertTrue(run(['git', '-C', self.project, 'show', 'HEAD:.claude/skills/devlyn-resolve/SKILL.md']).stdout)
+
+    def test_tracked_current_copy_reinstalls_and_adds_optional_skill(self):
+        self.cli('-y', '--claude')
+        run(['git', 'init', '-q', self.project])
+        run(['git', '-C', self.project, 'add', '.agents/skills', '.claude/skills'])
+        run(['git', '-C', self.project, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+             '-c', 'commit.gpgsign=false', 'commit', '-qm', 'installed skills'])
+        before = self.snapshot()
+        self.cli('-y', '--claude')
+        self.assertEqual(self.snapshot(), before)
+        self.invoke("const roots = install(['agents', 'claude'], false, ['devlyn-reap']);"
+                    " installLocalSkill('devlyn-reap', roots);")
+        for target in ('.agents', '.claude'):
+            self.assertTrue((self.project / target / 'skills/devlyn-reap/SKILL.md').is_file())
+
+    def test_tracked_modified_or_missing_skill_refuses(self):
+        root = self.project / '.claude/skills'
+        self.seed_4_1(root)
+        run(['git', 'init', '-q', self.project])
+        run(['git', '-C', self.project, 'add', '.claude/skills/devlyn-resolve'])
+        skill = root / 'devlyn-resolve/SKILL.md'
+        skill.write_bytes(skill.read_bytes() + b'\nUser change\n')
+        self.assert_install_refused('-y', '--claude', paths=[skill.parent], reason='git-tracked; fingerprint mismatch')
+        # Deleted tracked files and entire folders still cannot be verified.
+        skill.unlink()
+        self.assert_install_refused('-y', '--claude', paths=[skill.parent], reason='git-tracked')
+        shutil.rmtree(skill.parent)
+        self.assert_install_refused('-y', '--claude', paths=[skill.parent], reason='git-tracked; missing contents')
+
+    def test_install_without_git_still_checks_fingerprints(self):
+        bins = self.case / 'no-git'; bins.mkdir()
+        self.env['PATH'] = str(bins)
+        node = shutil.which('node')
+        command = [node, '--require', self.preload, self.package / 'bin/devlyn.js', '-y', '--claude']
+        self.assertIsNone(shutil.which('git', path=self.env['PATH']))
+        run(command, cwd=self.project, env=self.env)
+        skill = self.project / '.claude/skills/devlyn-ideate/SKILL.md'
+        self.assertTrue(skill.is_file())
+        skill.write_bytes(skill.read_bytes() + b'\nUser change\n')
+        before = self.snapshot()
+        result = run(command, cwd=self.project, env=self.env, code=1)
+        self.assertIn(b'modified contents (install manifest fingerprint mismatch)', result.stderr)
+        self.assertEqual(self.snapshot(), before)
 
     def test_tracked_skill_and_root_casing_cannot_bypass_preflight(self):
         self.cli('-y')
         run(['git', 'init', '-q', self.project])
         original = self.project / '.agents/skills/devlyn-ideate'
+        (original / 'SKILL.md').write_bytes(b'User change')
         renamed = original.with_name('Devlyn-Ideate')
         original.rename(original.with_name('case-stage'))
         original.with_name('case-stage').rename(renamed)
@@ -694,6 +739,7 @@ init({options});
         self.cli('-y')
         run(['git', 'init', '-q', self.project])
         run(['git', '-C', self.project, 'add', '.agents/skills/devlyn-ideate'])
+        (self.project / '.agents/skills/devlyn-ideate/SKILL.md').write_bytes(b'User change')
         for setting in ('GIT_LITERAL_PATHSPECS', 'GIT_GLOB_PATHSPECS', 'GIT_NOGLOB_PATHSPECS', 'GIT_ICASE_PATHSPECS'):
             with self.subTest(setting=setting):
                 self.env[setting] = '1'
@@ -744,6 +790,7 @@ init({options});
         self.assert_install_refused('-y', '--global', '--claude', paths=[bad])
         run(['git', 'init', '-q', self.home])
         run(['git', '-C', self.home, 'add', '.claude/skills/devlyn-resolve'])
+        (self.home / '.claude/skills/devlyn-resolve/SKILL.md').write_bytes(b'User change')
         self.assert_install_refused('-y', '--global', '--claude',
                                     paths=[bad, self.home / '.claude/skills/devlyn-resolve'], reason='git-tracked')
 
@@ -759,11 +806,42 @@ init({options});
         self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
         self.assertEqual(self.snapshot(), before)
         # Simulate a later package changing its core: the prior install manifest remains evidence.
+        run(['git', 'init', '-q', self.project])
+        run(['git', '-C', self.project, 'add', '.agents/skills', '.claude/skills'])
         copy = self.case / 'next-package'; shutil.copytree(self.package, copy)
+        history = copy / 'bin/skill-history.json'
+        history.write_text('{"skills": {}}', encoding='utf-8')
         source = copy / 'config/skills/devlyn-ideate/SKILL.md'
         source.write_bytes(source.read_bytes() + b'\nNew package defaults\n')
         self.invoke("install(['agents', 'claude'], false);", package=copy)
         self.assertEqual((self.project / '.agents/skills/devlyn-ideate/SKILL.md').read_bytes(), source.read_bytes())
+
+    def test_history_allows_manifestless_upgrade_after_package_changes(self):
+        self.cli('-y', '--claude')
+        for target in ('.agents', '.claude'):
+            (self.project / target / 'skills/.devlyn-install.json').unlink()
+        run(['git', 'init', '-q', self.project])
+        run(['git', '-C', self.project, 'add', '.agents/skills', '.claude/skills'])
+        copy = self.case / 'next-package'; shutil.copytree(self.package, copy)
+        for name in ('_shared', 'devlyn-ideate', 'devlyn-engines'):
+            (copy / 'config/skills' / name / 'new-default').write_bytes(b'New package default')
+        self.invoke("install(['agents', 'claude'], false);", package=copy)
+        for target in ('.agents', '.claude'):
+            for name in ('_shared', 'devlyn-ideate', 'devlyn-engines'):
+                self.assertEqual((self.project / target / 'skills' / name / 'new-default').read_bytes(),
+                                 b'New package default')
+
+    def test_unknown_provenance_refusal_names_missing_history(self):
+        root = self.project / '.agents/skills/devlyn-design-ui'
+        root.mkdir(parents=True)
+        (root / 'SKILL.md').write_bytes(b'Unknown copy')
+        copy = self.case / 'no-history-package'; shutil.copytree(self.package, copy)
+        (copy / 'bin/skill-history.json').write_text('{"skills": {}}', encoding='utf-8')
+        before = self.snapshot()
+        result = self.invoke("install(['agents'], false);", package=copy, code=1)
+        self.assertIn(b'unknown installer ownership (no fingerprint history for this copy)', result.stderr)
+        self.assertNotIn(b'modified contents', result.stderr)
+        self.assertEqual(self.snapshot(), before)
 
     def test_missing_manifest_current_copy_passes_but_old_modified_copy_refuses(self):
         self.cli('-y')

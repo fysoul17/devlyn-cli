@@ -1,17 +1,20 @@
 {
-  "source": "devlyn-cli@4.1.0 (npm tarball sha1 398ff07d3d689b56cc22e18ac50260bc6e4e9e85); whole-tree fingerprints from bin/skill-ownership.js",
+  "source": "devlyn-cli@4.1.0 (npm tarball sha1 398ff07d3d689b56cc22e18ac50260bc6e4e9e85); devlyn-cli@4.2.0 (npm tarball sha1 c93c2fb1cf5630b18d2eba0085182c14fddbe2d5); whole-tree fingerprints from bin/skill-ownership.js",
   "skills": {
     "_shared": [
-      "eb3327d5e6940bd5e0459fa28c9ab323d9c58ccfdeb9426c19cd027cc4e5c4ed"
+      "eb3327d5e6940bd5e0459fa28c9ab323d9c58ccfdeb9426c19cd027cc4e5c4ed",
+      "8c80926ab03b2477e52264495b35c2116f65fc51b02e8c56e441b5705872392a"
     ],
     "devlyn-design-ui": [
       "91080266232fb62b6f1d45932184f065589e12eb66f02fb6442527c6dfcd81b6"
     ],
     "devlyn-engines": [
-      "3451d37f47e6e707cff92baa12d04b43aee94301456b8e280c09332e598a1c2c"
+      "3451d37f47e6e707cff92baa12d04b43aee94301456b8e280c09332e598a1c2c",
+      "89f0efaa2efdfddc887b494138247980d97856f6cabe6a8dcc585b3a28e5fa88"
     ],
     "devlyn-ideate": [
-      "8ff5148cc65b4608c35b29afd6fef20d42d8da93a094144d98cfc63e74089b6e"
+      "8ff5148cc65b4608c35b29afd6fef20d42d8da93a094144d98cfc63e74089b6e",
+      "5824f07e455fe1c3942bf595a12e935258d4c0a851ca1bf741db915603d1c4e0"
     ],
     "devlyn-queue": [
       "4c7d988dcd154c7bf658d2d24cd7868955df9d854ed87eb784742d6d4bb229e0"
