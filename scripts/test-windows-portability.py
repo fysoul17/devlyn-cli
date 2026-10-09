@@ -1160,7 +1160,7 @@ writeInstallMarker(process.cwd(), [], {});
                     for name, data in originals.items():
                         if source_checkout:
                             self.assertEqual((self.project / name).read_bytes(), data)
-                            self.assertIn(f'\x1b[2m  → Skipping {name}; shipped instruction template in devlyn-cli source checkout\x1b[0m'.encode(),
+                            self.assertIn(f'  → Skipping {name}; shipped instruction template in devlyn-cli source checkout'.encode(),
                                           result.stdout)
                         else:
                             body = (b'Project-specific instructions outside this managed block take precedence over these defaults.\n\n'
