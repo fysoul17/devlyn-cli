@@ -3,8 +3,9 @@ name: Windows portability
 on:
   # Runner minutes are billed, so this runs per release, not per PR (owner,
   # 2026-10-07): publish.yml calls it on the release tag and publishes only
-  # after it passes. Before merging, run the POSIX half locally:
-  # bash scripts/lint-skills.sh && python3 scripts/test-ideate-loop.py
+  # after it passes. Before merging, run the POSIX half locally: npm ci &&
+  # node --test scripts/test-installer-menu.cjs && bash scripts/lint-skills.sh &&
+  # python3 scripts/test-ideate-loop.py
   workflow_call:
   workflow_dispatch:
 
@@ -34,6 +35,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      # The tarball bundles the installer's menu dependencies from node_modules.
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Validate POSIX source
         shell: bash
         run: |
@@ -41,6 +45,7 @@ jobs:
           echo "POSIX source SHA: $GITHUB_SHA"
           mkdir -p "$RUNNER_TEMP/portability/logs"
           checks_failed=0
+          node --test scripts/test-installer-menu.cjs 2>&1 | tee "$RUNNER_TEMP/portability/logs/installer-menu.log" || checks_failed=1
           bash scripts/lint-skills.sh 2>&1 | tee "$RUNNER_TEMP/portability/logs/lint.log" || checks_failed=1
           python3 scripts/test-ideate-loop.py 2>&1 | tee "$RUNNER_TEMP/portability/logs/ideate-loop.log" || checks_failed=1
           git diff --check 2>&1 | tee "$RUNNER_TEMP/portability/logs/diff.log" || checks_failed=1
@@ -67,8 +72,10 @@ jobs:
           shutil.copyfile('scripts/test-windows-portability.py', test)
           shutil.copyfile('scripts/test-ideate-loop.py', driver / 'test-ideate-loop.py')
           shutil.copytree('scripts/fixtures/instructions', driver / 'fixtures/instructions')
+          shutil.copyfile('scripts/fixtures/installer-4.1.0.tar.gz', driver / 'fixtures/installer-4.1.0.tar.gz')
           check_source()
-          driver_files = [test, driver / 'test-ideate-loop.py', *sorted((driver / 'fixtures/instructions').glob('*.md'))]
+          driver_files = [test, driver / 'test-ideate-loop.py', driver / 'fixtures/installer-4.1.0.tar.gz',
+                          *sorted((driver / 'fixtures/instructions').glob('*.md'))]
           for copied in driver_files:
               source = 'scripts/' + copied.relative_to(driver).as_posix()
               assert copied.read_bytes() == subprocess.check_output([

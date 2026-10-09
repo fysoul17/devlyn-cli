@@ -215,10 +215,12 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 ---
 
+Installer updates preserve user work: before writing any selected target, devlyn refuses to replace or remove git-tracked skills, edited skills, or directories with extra files (including hidden files). `-y` does not bypass this check. Commit your work or move conflicting folders to a backup and migrate them manually; tracked folders must be moved out of the install path before rerunning. Unchanged installer copies and pristine untracked 4.1.0 installs upgrade automatically. Older copies without verifiable content history require manual migration.
+
 ## Requirements
 
-- **Node.js 18+** and npm
-- **Python 3.11+** available as `python3`, and Git for the harness
+- **Node.js 20 (20.17+), 22 (22.13+) or 23.5+** and npm
+- **Python 3.11+** available as `python3` for the harness, and **Git** for safe installation and the harness
 - **An agent CLI** installed and configured: Codex, omp, Pi or Grok (AGENTS.md), or [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLAUDE.md)
 - **For `auto`/`pr` delivery**, an `origin` remote naming one GitHub repository and an authenticated [`gh`](https://cli.github.com/)
 

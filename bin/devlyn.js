@@ -4,13 +4,14 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const readline = require('readline');
 const { execSync } = require('child_process');
 
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
 const { updateInstructions, InstructionError, holdsDevlynDefaults, importsAgentsMd } = require('./instructions');
+const { contentHash, fingerprint, isOsMetadata, trackedPaths } = require('./skill-ownership');
+const SKILL_HISTORY = require('./skill-history.json');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
@@ -82,13 +83,13 @@ const RETIRED_SKILL_MD_SHA256 = {
   ]),
 };
 
-// Whether `dir` is a real folder whose only file (dotfiles such as .DS_Store aside) is a SKILL.md
+// Whether `dir` is a real folder whose only file, besides OS metadata, is a SKILL.md
 // with an LF-normalized SHA-256 in `hashes`: an unedited copy devlyn-cli shipped, not something
 // the user added to or wrote.
 function isShippedCopy(dir, hashes) {
   const skill = path.join(dir, 'SKILL.md');
   return fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory() === true
-    && fs.readdirSync(dir).filter((name) => !name.startsWith('.')).length === 1
+    && fs.readdirSync(dir).filter((name) => !isOsMetadata(path.join(dir, name))).length === 1
     && fs.lstatSync(skill, { throwIfNoEntry: false })?.isFile() === true
     && hashes.has(crypto.createHash('sha256')
       .update(fs.readFileSync(skill, 'utf8').replace(/\r\n/g, '\n')).digest('hex'));
@@ -121,7 +122,8 @@ function hasDevlynClaude(global) {
     || holdsDevlynDefaults('CLAUDE.md', claude) || importsAgentsDefaults(claude);
 }
 
-// Commands removed in previous versions; the project Claude install deletes them from .claude/.
+// Commands removed in previous versions; the project Claude install deletes them from .claude/
+// when they hold the bytes a version shipped (SKILL_HISTORY.commands).
 const DEPRECATED_FILES = [
   'commands/devlyn.handoff.md', // removed in v0.2.0
   'commands/devlyn.clean.md', // migrated to skills in v0.6.0
@@ -146,7 +148,7 @@ const DEPRECATED_FILES = [
 // Skill directories renamed from devlyn-* to devlyn:* in v0.7.x, plus
 // iter-0034 Phase 4 cutover (2026-05-03): 15 user skills deleted and 3 moved
 // to optional-skills/. Listed here so post-cutover `npx devlyn-cli` upgrades
-// force-remove stale legacy skill dirs from downstream `~/.claude/skills/`
+// remove verified, unchanged legacy skill dirs from downstream `~/.claude/skills/`
 // even though the source dirs no longer exist (the installer replaces only
 // the skills it ships — without this list, deleted-from-source skills persist
 // in user installs forever).
@@ -374,15 +376,22 @@ function cleanupDeprecated(skillsDir) {
 // copy is refreshed in place. Any other folder under a 4.0 name is the user's own; `-y` leaves it.
 function retireRenamedSkills(skillsDir) {
   const optional = new Set(OPTIONAL_ADDONS.filter((addon) => addon.type === 'local').map((addon) => addon.name));
+  const refreshed = [];
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
-    if (found.length > 0 && optional.has(newName)) installOptionalSkillInto(skillsDir, newName);
-    else if (isShippedCopy(path.join(skillsDir, newName), PRE_STANDARD_SKILL_MD_SHA256)) refreshPreStandardCopy(skillsDir, newName);
+    if (found.length > 0 && optional.has(newName)) {
+      installOptionalSkillInto(skillsDir, newName);
+      refreshed.push(newName);
+    } else if (isShippedCopy(path.join(skillsDir, newName), PRE_STANDARD_SKILL_MD_SHA256)) {
+      refreshPreStandardCopy(skillsDir, newName);
+      refreshed.push(newName);
+    }
     for (const fullPath of found) {
       fs.rmSync(fullPath, { recursive: true, force: true });
       log(`  ✕ ${path.basename(fullPath)}/ (renamed to ${newName})`, 'dim');
     }
   }
+  return refreshed;
 }
 
 function copyRecursive(src, dest, baseDir) {
@@ -410,6 +419,101 @@ function clearInstallMarker(skillsDir) {
   fs.rmSync(path.join(skillsDir, DEVLYN_INSTALL_MARKER), { force: true });
 }
 
+function readInstallManifest(root) {
+  const markerPath = path.join(root, DEVLYN_INSTALL_MARKER);
+  const stat = fs.lstatSync(markerPath, { throwIfNoEntry: false });
+  if (!stat) return {};
+  if (!stat.isFile()) throw new Error(`not a regular install marker: ${markerPath}`);
+  const marker = JSON.parse(fs.readFileSync(markerPath, 'utf8'));
+  return marker?.package === PKG.name && marker.schemaVersion === 1 ? marker.skills || {} : {};
+}
+
+// Enumerate every directory this install may replace, migrate or remove, before
+// touching any target. Optional addons must be selected before this preflight too.
+function plannedSkills(root, optionalNames = []) {
+  const names = new Set([...DEVLYN_CORE_SKILLS, ...optionalNames]);
+  for (const relative of DEPRECATED_DIRS) {
+    for (const full of legacySkillPaths(root, path.basename(relative))) names.add(path.basename(full));
+  }
+  for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
+    const oldPaths = legacySkillPaths(root, oldName);
+    oldPaths.forEach((full) => names.add(path.basename(full)));
+    if (oldPaths.some((full) => fs.lstatSync(full, { throwIfNoEntry: false }))
+        || isShippedCopy(path.join(root, newName), PRE_STANDARD_SKILL_MD_SHA256)) names.add(newName);
+  }
+  for (const [name, hashes] of Object.entries(RETIRED_SKILL_MD_SHA256)) {
+    if (isShippedCopy(path.join(root, name), hashes)) names.add(name);
+  }
+  return names;
+}
+
+// `commandDir`: the project .claude/ whose DEPRECATED_FILES this install deletes, or null.
+function preflightSkills(roots, optionalNames = [], commandDir = null) {
+  const conflicts = [];
+  try {
+    // Do not follow a commands link into another installation either.
+    const commands = commandDir && fs.lstatSync(path.join(commandDir, 'commands'), { throwIfNoEntry: false });
+    if (commands && !commands.isDirectory()) throw new Error('not a real directory');
+    const tracked = commandDir ? trackedPaths(path.join(commandDir, 'commands')) : [];
+    for (const relPath of commandDir ? DEPRECATED_FILES : []) {
+      const fullPath = path.join(commandDir, relPath);
+      const stat = fs.lstatSync(fullPath, { throwIfNoEntry: false });
+      if (!stat || (stat.isFile() && SKILL_HISTORY.commands[relPath].includes(contentHash(fullPath)))) continue;
+      const isTracked = tracked.some((file) => file.toLowerCase() === fullPath.toLowerCase());
+      conflicts.push(`${fullPath}: ${isTracked ? 'git-tracked; ' : ''}`
+        + (stat.isFile() ? 'fingerprint mismatch with known shipped copies' : 'link or special file'));
+    }
+  } catch (error) {
+    conflicts.push(`${path.join(commandDir, 'commands')}: ${error.message}`);
+  }
+  for (const root of roots) {
+    try {
+      // Do not follow an agent-directory or skill-root link into another installation.
+      for (const dir of [path.dirname(root), root]) {
+        const stat = fs.lstatSync(dir, { throwIfNoEntry: false });
+        if (stat && !stat.isDirectory()) throw new Error(`not a real directory: ${dir}`);
+      }
+      const tracked = trackedPaths(root);
+      const manifest = readInstallManifest(root);
+      for (const name of plannedSkills(root, optionalNames)) {
+        const dest = path.join(root, name);
+        const isTracked = tracked.some((file) => file.toLowerCase() === dest.toLowerCase()
+          || file.toLowerCase().startsWith(dest.toLowerCase() + path.sep));
+        try {
+          if (!fs.lstatSync(dest, { throwIfNoEntry: false })) {
+            if (isTracked) throw new Error('missing contents; cannot verify installer ownership');
+            continue;
+          }
+          const actual = fingerprint(dest);
+          const logicalName = name.replace(/[:\uF03A]/g, '-');
+          const source = path.join(DEVLYN_CORE_SKILLS.includes(logicalName)
+            ? path.join(CONFIG_SOURCE, 'skills') : OPTIONAL_SKILLS_SOURCE, logicalName);
+          const current = fs.existsSync(source) && fingerprint(source) === actual;
+          const historical = SKILL_HISTORY.skills[logicalName]?.includes(actual);
+          const singleFile = isShippedCopy(dest, RETIRED_SKILL_MD_SHA256[name] || PRE_STANDARD_SKILL_MD_SHA256);
+          if (!current && !historical && !singleFile && manifest[name] !== actual) {
+            throw new Error(manifest[name] ? 'modified contents (install manifest fingerprint mismatch)'
+              : fs.existsSync(source) || SKILL_HISTORY.skills[logicalName]?.length
+                ? 'fingerprint mismatch with known shipped copies'
+                : 'unknown installer ownership (no fingerprint history for this copy)');
+          }
+        } catch (error) {
+          conflicts.push(`${dest}: ${isTracked ? 'git-tracked; ' : ''}${error.message}`);
+        }
+      }
+    } catch (error) {
+      conflicts.push(`${root}: ${error.message}`);
+    }
+  }
+  if (conflicts.length) {
+    throw new InstructionError('Installation refused; nothing was changed:\n'
+      + conflicts.map((conflict) => `  - ${conflict}`).join('\n')
+      + '\nMove these out of the install path, or back them up and remove them, then rerun.'
+      + '\nFor tracked paths, also remove them from the Git index.'
+      + '\nRerun the same command after resolving every conflict; -y does not bypass this check.');
+  }
+}
+
 function assertCompleteSkillInstall(sourceSkillsDir, skillsDir, skillNames) {
   function complete(src, dest) {
     if (!fs.existsSync(src) || !fs.existsSync(dest)) return false;
@@ -429,13 +533,14 @@ function assertCompleteSkillInstall(sourceSkillsDir, skillsDir, skillNames) {
   }
 }
 
-function writeInstallMarker(skillsDir) {
+function writeInstallMarker(skillsDir, names, previous) {
   const markerPath = path.join(skillsDir, DEVLYN_INSTALL_MARKER);
   const tempPath = `${markerPath}.${process.pid}.tmp`;
   const marker = {
     schemaVersion: 1,
     package: PKG.name,
     version: PKG.version,
+    skills: { ...previous, ...Object.fromEntries(names.map((name) => [name, fingerprint(path.join(skillsDir, name))])) },
   };
   try {
     fs.writeFileSync(tempPath, JSON.stringify(marker, null, 2) + '\n', {
@@ -449,141 +554,65 @@ function writeInstallMarker(skillsDir) {
   }
 }
 
-function multiSelect(items, preselectedIndices = []) {
-  return new Promise((resolve) => {
-    const selected = new Set(preselectedIndices.filter((i) => i >= 0 && i < items.length));
-    let cursor = 0;
-    let firstRender = true;
+// One Inquirer menu, imported only when shown (Inquirer is ESM). The page gets the terminal
+// rows left after everything else the menu draws, so a redraw never scrolls it into
+// duplicates. Ctrl+C cancels the install.
+async function ask(module, help, config) {
+  const { default: prompt } = await import(module);
+  const { stdin: input, stdout: output } = process;
+  const columns = output.columns || 80;
+  // Most rows a text wraps to: an ASCII character takes one cell, any other at most two.
+  const rows = (text = '') => Math.ceil([...text].reduce((cells, c) => cells + (c.codePointAt(0) < 0x80 ? 1 : 2), 0) / columns);
+  // Message, blank line, the active choice's description, key help, and the line Inquirer
+  // adds when the help exactly fills the width.
+  const reserved = rows(`? ${config.message}`) + 1 + Math.max(...config.choices.map((choice) => rows(choice.description))) + rows(help) + 1;
+  try {
+    return await prompt({
+      ...config,
+      pageSize: Math.max(1, (output.rows || 24) - reserved),
+      theme: { keybindings: ['vim'], style: { keysHelpTip: () => help } },
+    }, { input, output });
+  } catch (error) {
+    if (error.name !== 'ExitPromptError') throw error;
+    console.log('Installation cancelled.');
+    process.exit(0);
+  }
+}
 
-    const render = () => {
-      // Move cursor up to redraw (skip on first render)
-      const totalLines = items.length * 2 + 2; // 2 lines per item + header + blank
-      if (!firstRender) {
-        process.stdout.write(`\x1b[${totalLines}A\x1b[0J`); // Move up and clear to end of screen
-      }
-      firstRender = false;
-
-      console.log(`${COLORS.dim}(↑↓ navigate, space select, enter confirm)${COLORS.reset}\n`);
-
-      items.forEach((item, i) => {
-        const checkbox = selected.has(i) ? `${COLORS.green}◉${COLORS.reset}` : `${COLORS.dim}○${COLORS.reset}`;
-        const pointer = i === cursor ? `${COLORS.cyan}❯${COLORS.reset}` : ' ';
-        const name = i === cursor ? `${COLORS.cyan}${item.name}${COLORS.reset}` : item.name;
-        const tagLabel = item.type === 'mcp' ? 'mcp' : item.type === 'local' ? 'skill' : 'pack';
-        const tagColor = item.type === 'mcp' ? COLORS.green : item.type === 'local' ? COLORS.magenta : COLORS.cyan;
-        const tag = `${tagColor}${tagLabel}${COLORS.reset}`;
-        console.log(`${pointer} ${checkbox} ${name}${item.type ? ` ${COLORS.dim}[${tag}${COLORS.dim}]${COLORS.reset}` : ''}`);
-        console.log(`    ${COLORS.dim}${item.desc}${COLORS.reset}`);
-      });
-    };
-
-    render();
-
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.setEncoding('utf8');
-
-    const onKeypress = (key) => {
-      // Ctrl+C
-      if (key === '\u0003') {
-        process.stdin.setRawMode(false);
-        process.stdin.removeListener('data', onKeypress);
-        process.exit();
-      }
-
-      // Enter
-      if (key === '\r' || key === '\n') {
-        process.stdin.setRawMode(false);
-        process.stdin.removeListener('data', onKeypress);
-        process.stdin.pause();
-        console.log('');
-        resolve([...selected].map((i) => items[i]));
-        return;
-      }
-
-      // Space - toggle selection
-      if (key === ' ') {
-        if (selected.has(cursor)) {
-          selected.delete(cursor);
-        } else {
-          selected.add(cursor);
-        }
-        render();
-        return;
-      }
-
-      // Arrow up or k
-      if (key === '\x1b[A' || key === 'k') {
-        cursor = cursor > 0 ? cursor - 1 : items.length - 1;
-        render();
-        return;
-      }
-
-      // Arrow down or j
-      if (key === '\x1b[B' || key === 'j') {
-        cursor = cursor < items.length - 1 ? cursor + 1 : 0;
-        render();
-        return;
-      }
-
-      // 'a' - select all
-      if (key === 'a') {
-        if (selected.size === items.length) {
-          selected.clear();
-        } else {
-          items.forEach((_, i) => selected.add(i));
-        }
-        render();
-        return;
-      }
-    };
-
-    process.stdin.on('data', onKeypress);
+// Checkbox menu (space toggles, a toggles all); resolves to the chosen items.
+function multiSelect(message, items, preselectedIndices = []) {
+  return ask('@inquirer/checkbox', '↑↓ navigate · space select · a all · enter confirm', {
+    message,
+    choices: items.map((item, index) => ({
+      name: item.type ? `${item.name} [${item.type === 'mcp' ? 'mcp' : item.type === 'local' ? 'skill' : 'pack'}]` : item.name,
+      short: item.name,
+      description: item.desc,
+      value: item,
+      checked: preselectedIndices.includes(index),
+    })),
   });
 }
 
-// One of `items` (↑↓ move, Enter confirms); resolves to the chosen index.
-function singleSelect(items, initial) {
-  return new Promise((resolve) => {
-    let cursor = initial;
-    let drawn = false;
-    const render = () => {
-      if (drawn) process.stdout.write(`\x1b[${items.length + 2}A\x1b[0J`);
-      drawn = true;
-      console.log(`${COLORS.dim}(↑↓ navigate, enter confirm)${COLORS.reset}\n`);
-      items.forEach((item, i) => console.log(i === cursor ? `${COLORS.cyan}❯ ${item}${COLORS.reset}` : `  ${item}`));
-    };
-    render();
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.setEncoding('utf8');
-    const onKeypress = (key) => {
-      if (key === '\u0003') {
-        process.stdin.setRawMode(false);
-        process.exit();
-      }
-      if (key === '\r' || key === '\n') {
-        process.stdin.setRawMode(false);
-        process.stdin.removeListener('data', onKeypress);
-        process.stdin.pause();
-        console.log('');
-        resolve(cursor);
-      } else if (['\x1b[A', 'k', '\x1b[B', 'j'].includes(key)) {
-        cursor = (cursor + (key === '\x1b[A' || key === 'k' ? items.length - 1 : 1)) % items.length;
-        render();
-      }
-    };
-    process.stdin.on('data', onKeypress);
+// One of `items`; resolves to the chosen index.
+function singleSelect(message, items, initial) {
+  return ask('@inquirer/select', '↑↓ navigate · enter confirm', {
+    message,
+    choices: items.map((name, index) => ({ name, value: index })),
+    default: initial,
   });
 }
 
+// After install(), whose preflight already cleared every selected addon before any change.
 function installLocalSkill(skillName, roots) {
   if (!fs.existsSync(path.join(OPTIONAL_SKILLS_SOURCE, skillName))) {
     log(`   ⚠️  Skill "${skillName}" not found`, 'yellow');
     return false;
   }
   log(`\n🛠️  Installing ${skillName}...`, 'cyan');
-  for (const root of roots) installOptionalSkillInto(root, skillName);
+  for (const root of roots) {
+    installOptionalSkillInto(root, skillName);
+    writeInstallMarker(root, [skillName], readInstallManifest(root));
+  }
   return true;
 }
 
@@ -653,6 +682,7 @@ function installCoreSkills(skillsDir) {
   const sourceSkillsDir = path.join(CONFIG_SOURCE, 'skills');
   log(`\n📁 Installing devlyn skills to ${skillsDir.replace(os.homedir(), '~')}`, 'green');
   fs.mkdirSync(skillsDir, { recursive: true });
+  const previous = readInstallManifest(skillsDir);
   clearInstallMarker(skillsDir);
   const removed = cleanupDeprecated(skillsDir);
   if (removed > 0) {
@@ -667,8 +697,8 @@ function installCoreSkills(skillsDir) {
     copyRecursive(src, dest, skillsDir);
   }
   assertCompleteSkillInstall(sourceSkillsDir, skillsDir, DEVLYN_CORE_SKILLS);
-  retireRenamedSkills(skillsDir);
-  writeInstallMarker(skillsDir);
+  const refreshed = retireRenamedSkills(skillsDir);
+  writeInstallMarker(skillsDir, [...DEVLYN_CORE_SKILLS, ...refreshed], previous);
 }
 
 // Keep installer-managed pipeline state and install metadata out of git.
@@ -820,7 +850,7 @@ function installClaudeCore() {
 }
 
 // Installs the targets in one scope; returns the skill roots written.
-function install(targets, global) {
+function install(targets, global, optionalNames = []) {
   // In the home folder CLAUDE.md, AGENTS.md (agents read a parent folder's too) and
   // .claude/settings.json would apply to every project. Same folder by identity, so a link or
   // another spelling of the path is caught too.
@@ -831,6 +861,8 @@ function install(targets, global) {
       + 'would apply to every project. Run from a project folder, or use --global for skills only.');
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
+  preflightSkills(roots, optionalNames,
+    !global && targets.includes('claude') ? path.dirname(skillRoots('claude', false)[0]) : null);
   // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
   for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
     if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));
@@ -885,13 +917,12 @@ async function init({ yes, claude, global }) {
     return;
   }
 
-  log('\n🎯 What to install:\n', 'blue');
   const targetOptions = [
     { key: 'agents', name: 'AGENTS.md — Codex · omp · Pi · Grok', desc: 'AGENTS.md + .agents/skills' },
     { key: 'claude', name: 'CLAUDE.md — Claude Code', desc: 'CLAUDE.md + .claude/ (skills, settings)' },
   ];
   const preselected = claude || hasDevlynClaude(false) || (global && hasDevlynClaude(true)) ? [0, 1] : [0];
-  const targets = (await multiSelect(targetOptions, preselected)).map((option) => option.key);
+  const targets = (await multiSelect('What to install', targetOptions, preselected)).map((option) => option.key);
 
   if (targets.length === 0) {
     log('\n💡 Nothing selected — nothing installed.', 'yellow');
@@ -899,14 +930,10 @@ async function init({ yes, claude, global }) {
     return;
   }
 
-  log('📍 Where:\n', 'blue');
-  const scope = await singleSelect(['This project', 'Global — every project on this machine'], global ? 1 : 0);
-  const roots = install(targets, scope === 1);
-
+  const scope = await singleSelect('Where', ['This project', 'Global — every project on this machine'], global ? 1 : 0);
   // Ask about optional addons (local skills + external packs; MCP servers belong to Claude Code)
-  log('\n📚 Optional skills & packs:\n', 'blue');
-
-  const selectedAddons = await multiSelect(OPTIONAL_ADDONS.filter((addon) => addon.type !== 'mcp' || targets.includes('claude')));
+  const selectedAddons = await multiSelect('Optional skills & packs', OPTIONAL_ADDONS.filter((addon) => addon.type !== 'mcp' || targets.includes('claude')));
+  const roots = install(targets, scope === 1, selectedAddons.filter((addon) => addon.type === 'local').map((addon) => addon.name));
 
   if (selectedAddons.length > 0) {
     for (const addon of selectedAddons) {

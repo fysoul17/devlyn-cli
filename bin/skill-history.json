@@ -1,0 +1,140 @@
+{
+  "source": "devlyn-cli@4.1.0 (npm tarball sha1 398ff07d3d689b56cc22e18ac50260bc6e4e9e85); devlyn-cli@4.2.0 (npm tarball sha1 c93c2fb1cf5630b18d2eba0085182c14fddbe2d5); whole-tree fingerprints from bin/skill-ownership.js; deprecated commands: commands/ and optional-commands/*/ files of devlyn-cli 0.0.1-0.5.8 (every published version that shipped them), LF-normalized SHA-256",
+  "skills": {
+    "_shared": [
+      "eb3327d5e6940bd5e0459fa28c9ab323d9c58ccfdeb9426c19cd027cc4e5c4ed",
+      "8c80926ab03b2477e52264495b35c2116f65fc51b02e8c56e441b5705872392a"
+    ],
+    "devlyn-design-ui": [
+      "91080266232fb62b6f1d45932184f065589e12eb66f02fb6442527c6dfcd81b6"
+    ],
+    "devlyn-engines": [
+      "3451d37f47e6e707cff92baa12d04b43aee94301456b8e280c09332e598a1c2c",
+      "89f0efaa2efdfddc887b494138247980d97856f6cabe6a8dcc585b3a28e5fa88"
+    ],
+    "devlyn-ideate": [
+      "8ff5148cc65b4608c35b29afd6fef20d42d8da93a094144d98cfc63e74089b6e",
+      "5824f07e455fe1c3942bf595a12e935258d4c0a851ca1bf741db915603d1c4e0"
+    ],
+    "devlyn-queue": [
+      "4c7d988dcd154c7bf658d2d24cd7868955df9d854ed87eb784742d6d4bb229e0"
+    ],
+    "devlyn-resolve": [
+      "2abd303851f085da07f6b55ee1724842ef7f8e8ad6b68c6339df5f1eaa8c69de"
+    ],
+    "asset-creator": [
+      "e295f57eca534cbd4e27e236999f4f5412ebdc6944ac864761e922dea213f904"
+    ],
+    "better-auth-setup": [
+      "e97c39c5d669ffc1f49d57fd3a016e852727e57c3abe2f9be1ebffab9fcb19ec"
+    ],
+    "cloudflare-nextjs-setup": [
+      "f147a28b9f6f62feb21df89bdf08869820f4871ede7a8ba4a242246509ee6e35"
+    ],
+    "code-health-standards": [
+      "2056617b324bb7e1e3b85a6536bfe33151e31ef421656cade74258fb4e922c1b"
+    ],
+    "code-review-standards": [
+      "3fe0742825aff05fa6fda49d3e3e0fbf5457307af944eb90f2771cbf611edd69"
+    ],
+    "devlyn-pencil-pull": [
+      "65af00f88b0837ffd377ebf363da73c766ae0ae8e20716fe18f80edfa91bd6da"
+    ],
+    "devlyn-pencil-push": [
+      "76955458ced72f4b0bdaf71482be6097c4c86876934b6e6a2ac7d19f850662ad"
+    ],
+    "devlyn-reap": [
+      "77e029ab06c37fb7135a9bd4395ff84b84ab2e44cf79c5827798777e39472351"
+    ],
+    "dokkit": [
+      "42045db4e2f70f68d0ed90a9c7c5c2660a6d5183ea641dfa9f2f1f0d0938e3fb"
+    ],
+    "generate-skill": [
+      "16a78b867539c0bc11a44f3ecfa1762ba7fcba8841fca8558abe818fc961ff68"
+    ],
+    "polar-billing-setup": [
+      "8b6dc842903e7343ac7b1e3a1c55911a9987552196ffb27a11a86093537fe976"
+    ],
+    "prompt-engineering": [
+      "d7a0718ab0fd7e0a3c0d8ef8bc4e0349edfc843648343f08f9776e1ea047573c"
+    ],
+    "pyx-scan": [
+      "60f02fa049616e94fff4318c96dc9f417b3def7ec75a3bd0846f2bcbd99b0b69"
+    ],
+    "root-cause-analysis": [
+      "eeb20fe09edd37b07360c3440b68bdb488abee4917d4e808e64e3889c6addf5a"
+    ],
+    "ui-implementation-standards": [
+      "0fbaad2b7d77462916d9364b97b921354ffbf945a68e9e0d422b3a88d36d2569"
+    ]
+  },
+  "commands": {
+    "commands/devlyn.handoff.md": [
+      "91d143c6305e95e4af6992eda0d127e94a394c2e91a2d409b4d41ca03c23f470"
+    ],
+    "commands/devlyn.clean.md": [
+      "918c6ae867c57a4d9748237adae0df8c78a1447c7c028a0af988b59a5fbb0d9a"
+    ],
+    "commands/devlyn.design-system.md": [
+      "f81166b5ba08d9ee1f5cff33c911ea387e5cb50141a9712a96fc4434c60a673f"
+    ],
+    "commands/devlyn.design-ui.md": [
+      "0496a6b2dd8c6bb0474b71ef9a319a6b95bb76972d0f07a01c33f8860fe83dfb",
+      "4e2aafcc0de6ce7f3022a353aaa9fb4330e76a50a91ab970b9b9a0f192f9f1f2"
+    ],
+    "commands/devlyn.discover-product.md": [
+      "a609401d29cd2bdad7a48c7c8f096b442fe03a17c6b2c3151936c47b4a16e6c6",
+      "1e66aa35bf300ec6167e1b888f43a92ebd9e60d501397ff0334c9a7809d433f5"
+    ],
+    "commands/devlyn.evaluate.md": [
+      "8f17ccc639d54adab24c49dcf471376bab97511675d00554056a4c1f67a14115"
+    ],
+    "commands/devlyn.feature-spec.md": [
+      "d442ed7ae8d14a255c37f1b120b758f69794be88e2970a8a0c0e51519344b6c7"
+    ],
+    "commands/devlyn.implement-ui.md": [
+      "a8d0813781b2f7a3df5a4751c92755bf7c84c53428cf63cea34c965939b8c478"
+    ],
+    "commands/devlyn.product-spec.md": [
+      "7a92d2df2586b44e2c4d9182eeb3d61f7adc2a13bed4d2cd26abcfe086585895"
+    ],
+    "commands/devlyn.recommend-features.md": [
+      "2b92523017e1da10c299dafb19d84736de5084b5b46693de7fd2d6df51dc56b4"
+    ],
+    "commands/devlyn.resolve.md": [
+      "48c0c3ee553f87f1f0733190effc7220c01c82837a5300ef68c9ffdf30c5d3a1",
+      "24595766e1a81a1fcacb78261b03c3665bc686bcac8b1805d1c4db379584879f",
+      "eaad5354cfc20ed378ffd2a2e1ca6bade1310bd2a47ab93e5942e9599c3ba9a8"
+    ],
+    "commands/devlyn.review.md": [
+      "55888e08bf31ead1d359f218277cfa7efc3c6cb0f96fadc665d5a2406ff115d3",
+      "22f532f587f6d2fbf2662e38d5073b85a030141573f86d92ad40b9d292836fb7",
+      "7f9ce1db4ffd3cdaf9fd949e4b07de04e0931c91cd846d4ab220ff6114a45b17",
+      "3a511fc678e599ff4b4c37fd9191399a599e1ba9ea9c40fc4afcbe29cb188d2b"
+    ],
+    "commands/devlyn.team-design-ui.md": [
+      "02485911588e9f52afb5a5082fd7804ee7a41bad44323960a2afe1a16a49d628"
+    ],
+    "commands/devlyn.team-resolve.md": [
+      "8f11fa0c3203c0dd5bf09b5243dcff5968a36275682c54b3a012262fc545859a",
+      "09fc163d34dfe8906dd8d22501a028bfbbad639499acab01e5e60f06fc520382",
+      "ccfc5083813ee50d407109616ccbc2509aa7526316cebbf7a271537abdfff3b7",
+      "72f66be3c4c27a46e76d56d13a0d381880c054a03243188f98da2faf6dc77295",
+      "54c52c3f27998998ed55cc648d071bbb10444761b819c59ed118b795596a4aee"
+    ],
+    "commands/devlyn.team-review.md": [
+      "58b36cfe2749968d697d486a104a1b139e4312730b0ac2933550634f6ece48db",
+      "7e5c2d93a23d51af7939dae29c70095dbd8a4a681cc06d4d578f2de29df346a3",
+      "c8e145955a303141af4082dae174e3b3f1681e4c9698e25ae337eadd31fb883b"
+    ],
+    "commands/devlyn.update-docs.md": [
+      "86945afccf24762a88d26eef3703fbf6c5a90a3343fd3de72a9cb26b6f62d3b5"
+    ],
+    "commands/devlyn.pencil-pull.md": [
+      "dfdd3d19ca676558bfa2bb3ce398181b0a081ab88d1feaf69c54c706a9671631"
+    ],
+    "commands/devlyn.pencil-push.md": [
+      "5f2e8b29609cbb2af72941579823bec598265ebf29cd3a375d6aa47d95b74354"
+    ]
+  }
+}
