@@ -3,10 +3,14 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-// Folder metadata the OS writes on its own (Finder, Explorer); never user content.
-const OS_METADATA = new Set(['.DS_Store', 'Thumbs.db']);
+// A folder-metadata file the OS writes on its own (Finder, Explorer); never user content.
+// Only a regular file: a folder or link under that name is still the user's.
+function isOsMetadata(full) {
+  return ['.DS_Store', 'Thumbs.db'].includes(path.basename(full))
+    && fs.lstatSync(full, { throwIfNoEntry: false })?.isFile() === true;
+}
 
-// Hash every entry, including empty directories and dotfiles, except OS_METADATA. Links and
+// Hash every entry, including empty directories and dotfiles, except OS metadata. Links and
 // special files are never installer-owned. CRLF counts as LF: Git for Windows checks text
 // out with CRLF by default, and an unedited clone must still match its shipped copy.
 function fingerprint(dir) {
@@ -15,7 +19,8 @@ function fingerprint(dir) {
     const stat = fs.lstatSync(full);
     if (stat.isDirectory()) {
       entries.push([relative, 'directory']);
-      for (const name of fs.readdirSync(full).filter((name) => !OS_METADATA.has(name)).sort()) {
+      for (const name of fs.readdirSync(full).sort()) {
+        if (isOsMetadata(path.join(full, name))) continue;
         visit(path.join(full, name), relative ? `${relative}/${name}` : name);
       }
     } else if (stat.isFile()) {
@@ -54,4 +59,4 @@ function trackedPaths(root) {
   return files.stdout.split('\0').filter(Boolean).map((file) => path.resolve(repo.stdout.trim(), file));
 }
 
-module.exports = { OS_METADATA, fingerprint, trackedPaths };
+module.exports = { fingerprint, isOsMetadata, trackedPaths };

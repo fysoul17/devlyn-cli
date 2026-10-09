@@ -691,6 +691,19 @@ init({options});
         for target in ('.agents', '.claude'):
             self.assertTrue((self.project / target / 'skills/devlyn-reap/SKILL.md').is_file())
 
+    def test_tracked_pristine_upgrade_with_optional_addon(self):
+        # Cleanup deletes tracked retired copies; the addon must not be re-checked against them.
+        root = self.project / '.claude/skills'
+        self.seed_4_1(root)
+        run(['git', 'init', '-q', self.project])
+        run(['git', '-C', self.project, 'add', '.claude/skills'])
+        run(['git', '-C', self.project, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+             '-c', 'commit.gpgsign=false', 'commit', '-qm', 'tracked 4.1.0 install'])
+        self.invoke("const roots = install(['claude'], false, ['devlyn-reap']);"
+                    " installLocalSkill('devlyn-reap', roots);")
+        self.assertFalse((root / 'devlyn-resolve').exists())
+        self.assertTrue((root / 'devlyn-reap/SKILL.md').is_file())
+
     def test_tracked_modified_or_missing_skill_refuses(self):
         root = self.project / '.claude/skills'
         self.seed_4_1(root)
@@ -719,7 +732,11 @@ init({options});
         self.assertFalse((root / 'devlyn-resolve').exists())
         source = (self.package / 'config/skills/devlyn-ideate/SKILL.md').read_bytes()
         self.assertEqual((root / 'devlyn-ideate/SKILL.md').read_bytes(), source)
-        # Line endings never hide an edit.
+        # Line endings never hide an edit, nor does a folder named like OS metadata.
+        hidden = root / 'devlyn-ideate/.DS_Store/private-notes.txt'
+        hidden.parent.mkdir(); hidden.write_bytes(b'mine')
+        self.assert_install_refused('-y', '--claude', paths=[hidden.parent.parent], reason='modified contents')
+        shutil.rmtree(hidden.parent)
         skill = root / 'devlyn-ideate/SKILL.md'
         skill.write_bytes(source.replace(b'\n', b'\r\n') + b'User change\r\n')
         self.assert_install_refused('-y', '--claude', paths=[skill.parent], reason='modified contents')
@@ -1330,13 +1347,19 @@ init({options});
         mine.mkdir(parents=True); (mine / 'SKILL.md').write_text('---\nname: workflow-routing\n---\nmine\n', encoding='utf-8')
         self.invoke("installClaudeCore();")
         self.assertEqual((mine / 'SKILL.md').read_text(encoding='utf-8'), '---\nname: workflow-routing\n---\nmine\n')
-        # A shipped copy with an extra dotfile stays; only the exact single-file copy goes.
+        # A shipped copy with an extra dotfile or a folder named like OS metadata stays; only
+        # the exact single-file copy goes, beside at most a Finder or Explorer metadata file.
         shipped = b'---\nname: workflow-routing\n---\nshipped\n'
-        (mine / 'SKILL.md').write_bytes(shipped.replace(b'\n', b'\r\n')); (mine / '.DS_Store').write_bytes(b'x')
-        self.invoke("RETIRED_SKILL_MD_SHA256['workflow-routing'] = new Set(["
-                    f"'{hashlib.sha256(shipped).hexdigest()}']); installClaudeCore();")
-        self.assertTrue(mine.exists())
-        (mine / '.DS_Store').unlink()
+        (mine / 'SKILL.md').write_bytes(shipped.replace(b'\n', b'\r\n'))
+        for extra in ('.notes', '.DS_Store/notes'):
+            (mine / extra).parent.mkdir(exist_ok=True); (mine / extra).write_bytes(b'x')
+            self.invoke("RETIRED_SKILL_MD_SHA256['workflow-routing'] = new Set(["
+                        f"'{hashlib.sha256(shipped).hexdigest()}']); installClaudeCore();")
+            self.assertTrue((mine / extra).exists())
+            (mine / extra).unlink()
+            if (mine / '.DS_Store').is_dir():
+                (mine / '.DS_Store').rmdir()
+        (mine / '.DS_Store').write_bytes(b'x')
         self.invoke("RETIRED_SKILL_MD_SHA256['workflow-routing'] = new Set(["
                     f"'{hashlib.sha256(shipped).hexdigest()}']); installClaudeCore();")
         self.assertFalse(mine.exists())
