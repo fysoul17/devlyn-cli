@@ -298,6 +298,8 @@ init({options});
                 self.home = self.case / f'home-{index}'; self.home.mkdir()
                 self.env['DEVLYN_TEST_HOME'] = str(self.home)
                 result = self.cli(*args)
+                notice = b'The principles block installs per project: run npx devlyn-cli in the project without --global.'
+                self.assertEqual(result.stdout.count(notice), int('--global' in args))
                 if '--claude' not in args:
                     where = '~/.claude/skills' if '--global' in args else 'CLAUDE.md + .claude/'
                     self.assertIn(f'{where} for Claude Code: add --claude'.encode(), result.stdout)
@@ -1716,6 +1718,27 @@ writeInstallMarker(process.cwd(), [], {});
         engines.write_bytes(b'{"executor":"codex"}')
         role('--clear')
         self.assertFalse(engines.exists())
+
+    def test_executor_clear_reports_the_host_default_on_every_host(self):
+        script = self.package / 'config/skills/_shared/role-config.py'
+        engines = self.project / '.devlyn/engines.json'; engines.parent.mkdir()
+        for host in ('pi', 'grok', 'claude', 'codex', 'omp'):
+            for keep in ({}, {'custom': 7}):
+                with self.subTest(host=host, keep=keep):
+                    engines.write_text(json.dumps({'executor': 'codex', 'roles': {}, 'pair_judge_priority': [], **keep}), encoding='utf-8')
+                    argv = [sys.executable, script, '--workdir', self.project, '--default-engine', host]
+                    env = dict(self.env, PATH=str(self.case / 'no-binaries'))
+                    cleared = run([*argv, '--clear'], env=env, code=None)
+                    self.assertEqual(json.loads(engines.read_bytes()) if engines.exists() else {}, keep)
+                    self.assertEqual(engines.exists(), bool(keep))
+                    self.assertEqual(cleared.returncode, 0, cleared.stderr.decode('utf-8'))
+                    status = json.loads(cleared.stdout)
+                    self.assertEqual(status['executor'], {'engine': host, 'source': 'default', 'availability': 'CLI-unavailable'})
+                    self.assertEqual(status['inactive'], [])
+                    self.assertEqual(json.loads(run(argv, env=env).stdout), status)
+                    if host in ('pi', 'grok'):
+                        blocked = run([*argv, '--select'], env=env, code=1)
+                        self.assertIn(f'no adapter for {host}'.encode(), blocked.stderr)
 
     def test_upgrade_from_4_1_0_and_main_retires_resolve(self):
         # A 4.1.0 or main (9ecbe51c) install: resolve as a core skill, beside leftovers under its 3.x

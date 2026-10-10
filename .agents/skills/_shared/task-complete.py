@@ -375,9 +375,14 @@ def gh(receipt, *args):
     return command(["gh", *args, "--repo", "github.com/"+receipt["repository"]])
 
 
+def repository_info(repository):
+    info = json.loads(command(["gh", "repo", "view", "github.com/"+repository, "--json", "nameWithOwner,url,defaultBranchRef,mergeCommitAllowed"]))
+    require(info["nameWithOwner"].lower() == repository.lower() and info["url"].lower() == "https://github.com/"+repository.lower(), "GitHub repository identity changed")
+    return info
+
+
 def repo_policy(receipt):
-    info = json.loads(command(["gh", "repo", "view", "github.com/"+receipt["repository"], "--json", "nameWithOwner,url,defaultBranchRef,mergeCommitAllowed"]))
-    require(info["nameWithOwner"].lower() == receipt["repository"].lower() and info["url"].lower() == "https://github.com/"+receipt["repository"].lower(), "GitHub repository identity changed")
+    info = repository_info(receipt["repository"])
     require(info["defaultBranchRef"]["name"] == receipt["base"] and receipt["branch"] != info["defaultBranchRef"]["name"], "base/default branch changed; retain resources")
     return info
 
@@ -799,7 +804,7 @@ def main():
     attachment = actions.add_parser("attach")
     attachment.add_argument("--receipt", required=True)
     attachment.add_argument("--commit", required=True)
-    attachment.add_argument("--file", default="docs/specs/queue.md")
+    attachment.add_argument("--file", required=True)
     completion = actions.add_parser("complete")
     completion.add_argument("--receipt", required=True)
     completion.add_argument("--acceptance")
@@ -2140,6 +2145,12 @@ class CompletionTests(unittest.TestCase):
                                                   "verdict": verdict, "evidence": [".devlyn/loop/out.txt"]}), encoding="utf-8")
                 result, _ = self.cli("accept", "--receipt", self.receipt, "--acceptance", acceptance, success=False)
                 self.assertEqual(result["status"], "FAILED" if verdict == "FAILED" else "BLOCKED", result)
+
+    def test_attach_requires_an_explicit_queue_file(self):
+        result = self.run_cmd([sys.executable, str(Path(__file__).resolve()), 'attach',
+                               '--receipt', str(self.root / 'absent.json'), '--commit', 'HEAD'], success=False)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn('the following arguments are required: --file', result.stderr)
 
     def test_attach_requires_the_terminal_checkout_only_for_a_publishable_result(self):
         for verdict in ("ACCEPTED", "FAILED"):

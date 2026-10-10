@@ -1695,12 +1695,7 @@ class LoopFixture(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_refused_delivery_waits_while_independent_loops_run(self):
-        # Prediction (H1): a delivery task-complete refuses leaves its task waiting with the refusal and its resume command,
-        # and the drain goes on: dv.t1, whose base_ref is not the repository's default branch, is accepted, then waits "base/
-        # default branch changed" while the local loop lo is accepted, and the drain ends WAITING; once a person closes
-        # pm.t1's PR, the next drain leaves pm.t1 waiting "PR is closed without merge" and accepts the local loop lp; no task
-        # runs twice. Before: each refusal ended the whole drain BLOCKED, and since unsettled receipts resume first, every
-        # later drain stopped at the same receipt before any independent loop ran.
+        # A non-default base waits before allocation; independent loops and later closed-PR refusals still proceed.
         bare, data = self.remote(pending=True)
         self.run_ok(["git", "-C", str(self.anchor), "push", "-q", str(bare), "main:develop"])
         self.plan("pm", [CHAIN[0]], {"pm.t1": {"product": "greeting"}}, delivery="pr")
@@ -1710,12 +1705,14 @@ class LoopFixture(unittest.TestCase):
         self.cli("add", meta)
         self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
         refused = "delivery blocked: task-complete complete: "
+        base_reason = "auto delivery base develop is not the repository's default branch main; plan the loop on main, or drain with --local-only"
         result = self.drain(local=False)
         tasks = self.tasks(result)
+        self.assertEqual(self.calls("dv.t1"), 0)
+        self.assertFalse(self.receipt_path("dv.t1").exists())
         self.assertEqual((result["status"], {identity: (task["result"], task.get("delivery"), task.get("reason")) for identity, task in tasks.items()}),
                          ("WAITING", {"pm.t1": ("accepted", "PR", None), "lo.t1": ("accepted", "LOCAL_ONLY", None),
-                                      "dv.t1": ("accepted", None, refused + "base/default branch changed; retain resources")}))
-        self.assertIn("task-complete.py complete --receipt", tasks["dv.t1"]["resume"])
+                                      "dv.t1": ("pending", None, base_reason)}))
         server = json.loads(data.read_text(encoding="utf-8"))
         server["prs"][0]["state"] = "CLOSED"
         data.write_text(json.dumps(server), encoding="utf-8")
@@ -1723,8 +1720,81 @@ class LoopFixture(unittest.TestCase):
         tasks = self.tasks(self.drain(local=False))
         self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, {
             "pm.t1": ("accepted", refused + "PR is closed without merge; retain task"), "lo.t1": ("accepted", None),
-            "dv.t1": ("accepted", refused + "base/default branch changed; retain resources"), "lp.t1": ("accepted", None)})
-        self.assertEqual([self.calls(identity) for identity in ("pm.t1", "dv.t1", "lo.t1", "lp.t1")], [1, 1, 1, 1])
+            "dv.t1": ("pending", base_reason), "lp.t1": ("accepted", None)})
+        self.assertEqual([self.calls(identity) for identity in ("pm.t1", "dv.t1", "lo.t1", "lp.t1")], [1, 0, 1, 1])
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_repository_lookup_failure_waits_while_local_loops_run(self):
+        self.remote()
+        (self.root / "bin/gh").write_text("#!/bin/sh\necho 'repo lookup unavailable' >&2\nexit 1\n", encoding="utf-8")
+        self.plan("au", [CHAIN[0]], {"au.t1": {"product": "greeting"}}, delivery="auto")
+        self.plan("lo", [CHAIN[0]], {"lo.t1": {"product": "greeting"}})
+        result = self.drain(local=False)
+        tasks = self.tasks(result)
+        self.assertEqual(result["status"], "WAITING")
+        self.assertEqual((tasks["au.t1"]["result"], self.calls("au.t1")), ("pending", 0))
+        self.assertIn("cannot check delivery repository", tasks["au.t1"]["reason"])
+        self.assertIn("repo lookup unavailable", tasks["au.t1"]["reason"])
+        self.assertFalse(self.receipt_path("au.t1").exists())
+        self.assertEqual((tasks["lo.t1"]["delivery"], self.calls("lo.t1")), ("LOCAL_ONLY", 1))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_repository_lookup_errors_wait_while_local_loops_run(self):
+        self.remote()
+        self.plan("au", [CHAIN[0]], {"au.t1": {"product": "greeting"}}, delivery="auto")
+        # Inject only gh's spawn/output failures; Git, allocation and the local executor remain real.
+        wrapper = (
+            "import runpy, subprocess, sys\n"
+            "failure = sys.argv.pop(1)\n"
+            "real = subprocess.run\n"
+            "def run(argv, **kwargs):\n"
+            "    if argv[0] == 'gh':\n"
+            "        if failure == 'missing':\n"
+            "            raise FileNotFoundError('gh unavailable')\n"
+            "        return subprocess.CompletedProcess(argv, 0, stdout=failure, stderr='')\n"
+            "    return real(argv, **kwargs)\n"
+            "subprocess.run = run\n"
+            "sys.argv = sys.argv[1:]\n"
+            "runpy.run_path(sys.argv[0], run_name='__main__')\n")
+        for index, failure in enumerate(("missing", "invalid JSON", "{}", "null")):
+            with self.subTest(failure=failure):
+                loop = f"lo{index}"
+                self.plan(loop, [CHAIN[0]], {f"{loop}.t1": {"product": "greeting"}})
+                result = json.loads(self.run_ok([sys.executable, "-c", wrapper, failure, *self.drain_argv(local=False)[1:]]))
+                tasks = self.tasks(result)
+                self.assertEqual(result["status"], "WAITING")
+                self.assertEqual((tasks["au.t1"]["result"], self.calls("au.t1")), ("pending", 0))
+                self.assertIn("cannot check delivery repository", tasks["au.t1"]["reason"])
+                self.assertFalse(self.receipt_path("au.t1").exists())
+                self.assertEqual((tasks[f"{loop}.t1"]["delivery"], self.calls(f"{loop}.t1")), ("LOCAL_ONLY", 1))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_nondefault_bases_wait_before_allocation_but_local_delivery_runs(self):
+        # GitHub's default is release even though the fixture's Git HEAD is main.
+        bare, _ = self.remote(default_branch="release", pending=True)
+        self.run_ok(["git", "-C", str(self.anchor), "push", "-q", str(bare), "main:release"])
+        for loop, delivery, base in (("au", "auto", "main"), ("pr", "pr", "main"),
+                                     ("ok", "pr", "release"), ("lo", "local-only", "main")):
+            meta = self.queue["write_package"](self.anchor, loop, [CHAIN[0]], delivery=delivery, base=self.base)
+            meta.write_text(meta.read_text(encoding="utf-8").replace('"base_ref": "main"', f'"base_ref": "{base}"'), encoding="utf-8")
+            self.behaviors[f"{loop}.t1"] = {"product": "greeting"}
+            self.cli("add", meta)
+        result = self.drain(local=False)
+        tasks = self.tasks(result)
+        for loop, mode in (("au", "auto"), ("pr", "pr")):
+            with self.subTest(delivery=mode):
+                identity = f"{loop}.t1"
+                self.assertEqual(self.calls(identity), 0)
+                self.assertFalse(self.receipt_path(identity).exists())
+                self.assertFalse((self.anchor.parent / f"{self.anchor.name}.devlyn" / loop / "t1").exists())
+                self.assertEqual(tasks[identity]["result"], "pending")
+                self.assertEqual(tasks[identity]["reason"], f"{mode} delivery base main is not the repository's default branch release; "
+                                 "plan the loop on release, or drain with --local-only")
+        self.assertEqual(result["status"], "WAITING")
+        self.assertEqual((tasks["ok.t1"]["delivery"], tasks["lo.t1"]["delivery"]), ("PR", "LOCAL_ONLY"))
+        tasks = self.tasks(self.drain())
+        for loop in ("au", "pr"):
+            self.assertEqual((tasks[f"{loop}.t1"]["delivery"], self.calls(f"{loop}.t1")), ("LOCAL_ONLY", 1))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_per_task_mode_survives_later_drains(self):
