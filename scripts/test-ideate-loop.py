@@ -111,6 +111,22 @@ CRASH = ("import os, pathlib, runpy, sys\n"
          "if step == 'replace':\n    os.replace = crashing(os.replace)\n"
          "else:\n    pathlib.Path.unlink = crashing(pathlib.Path.unlink)\n"
          "runpy.run_path(sys.argv[0], run_name='__main__')\n")
+# Leave acceptance copied and the next custody file truncated, without running cleanup handlers.
+CRASH_CUSTODY = ("import os, pathlib, runpy, shutil, sys\n"
+                 "real_copy, copied = shutil.copyfileobj, 0\n"
+                 "def copy(source, target, *args, **kwargs):\n"
+                 "    global copied\n"
+                 "    if any(p == 'custody' or p.startswith('.custody-') for p in pathlib.Path(target.name).parts):\n"
+                 "        copied += 1\n"
+                 "        if copied == 2:\n"
+                 "            target.write(source.read(1))\n"
+                 "            target.flush()\n"
+                 "            os.fsync(target.fileno())\n"
+                 "            os._exit(9)\n"
+                 "    return real_copy(source, target, *args, **kwargs)\n"
+                 "shutil.copyfileobj = copy\n"
+                 "sys.argv = sys.argv[1:]\n"
+                 "runpy.run_path(sys.argv[0], run_name='__main__')\n")
 # Two common formatter hooks over a queue on stdin: pre-commit's end-of-file-fixer and a no-double-blank-line check.
 NEWLINE_HOOKS = ("import sys\n"
                  "data = sys.stdin.buffer.read()\n"
@@ -789,6 +805,97 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((self.tasks(self.drain())["oo.t3"]["result"], self.receipt("oo.t3")["baseline"]),
                          ("accepted", self.receipt("oo.t1")["source_sha"]))
         self.assertIn("- Whole-loop acceptance: ACCEPTED\n", self.report("oo"))
+
+    def assert_interrupted_custody_resumes(self, product, runner, verdict, published=False):
+        # A partially copied result must not bind custody or obstruct the next acceptance run.
+        self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": product, "runner": runner}})
+        argv = self.drain_argv()
+        crash = [CRASH, "replace", "manifest.json"] if published else [CRASH_CUSTODY]
+        crashed = subprocess.run([sys.executable, "-c", *crash, *argv[1:]], cwd=self.root,
+                                 env=self.env, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(crashed.returncode, 9, crashed.stdout + crashed.stderr)
+        path = self.receipt_path("inv.t1")
+        receipt = self.receipt("inv.t1")
+        self.assertNotIn("acceptance", receipt)
+        acceptance_file = Path(receipt["worktree"]) / ".devlyn/loop/acceptance.json"
+        previous = acceptance_file.read_bytes()
+        result = self.drain()
+        self.assertEqual(self.tasks(result)["inv.t1"]["result"], verdict)
+        self.assertNotEqual(acceptance_file.read_bytes(), previous)  # The checks really ran again.
+        bound = self.receipt("inv.t1")
+        helper = self.queue["shared"]("task-complete")
+        helper["verify_files"](path.parent / "custody", bound["files"])
+        self.assertEqual(json.loads(path.with_name("manifest.json").read_text(encoding="utf-8")), bound["files"])
+        self.assertEqual(self.g("rev-parse", bound["recovery_ref"]), bound["publish_sha"])
+        self.assertEqual(bound["delivery"], "FAILED" if verdict == "failed" else "LOCAL_ONLY")
+        # A hard crash leaves its private staging directory behind; later runs never consume it.
+        retained = list(path.parent.glob(".custody-*"))
+        self.assertEqual(len(retained), 1)
+        self.assertEqual((retained[0] / ".devlyn/loop/acceptance.json").read_bytes(), previous)
+        self.assertEqual(self.tasks(self.drain())["inv.t1"]["result"], verdict)
+        self.assertEqual(self.calls("inv.t1"), 1)
+
+    def test_interrupted_custody_resumes_failed_checks(self):
+        self.assert_interrupted_custody_resumes("bad-greeting", True, "failed")
+
+    def test_interrupted_custody_resumes_rerun_checks(self):
+        self.assert_interrupted_custody_resumes("greeting", False, "accepted")
+
+    def test_published_custody_resumes_failed_checks(self):
+        self.assert_interrupted_custody_resumes("bad-greeting", True, "failed", published=True)
+
+    def test_published_custody_resumes_rerun_checks(self):
+        self.assert_interrupted_custody_resumes("greeting", False, "accepted", published=True)
+
+    def test_published_unbound_custody_cannot_override_changed_inputs(self):
+        # A legacy tracked package has no immutable capture: its anchor inputs must still be reconciled.
+        self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting"}})
+        argv = self.drain_argv()
+        crashed = subprocess.run([sys.executable, "-c", CRASH, "replace", "manifest.json", *argv[1:]],
+                                 cwd=self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(crashed.returncode, 9, crashed.stdout + crashed.stderr)
+        path = self.receipt_path("inv.t1")
+        self.assertNotIn("acceptance", self.receipt("inv.t1"))
+        previous = (path.parent / "custody/.devlyn/loop/acceptance.json").read_bytes()
+        self.assertEqual(json.loads(previous)["verdict"], "ACCEPTED")
+        self.g("checkout", "refs/devlyn/captures/inv", "--", "docs/specs/inv")
+        self.g("commit", "-qm", "tracked loop package")
+        (self.common / "devlyn-loops/inv/added.json").unlink()
+        contract = self.anchor / "docs/specs/inv/t1/spec.md"
+        contract.write_text(contract.read_text(encoding="utf-8") + "\nChanged requirement.\n", encoding="utf-8")
+        task = self.tasks(self.drain())["inv.t1"]
+        self.assertEqual((task["result"], task["delivery"]), ("failed", "FAILED"))
+        self.assertIn("inputs-changed:", task["reason"])
+        bound = self.receipt("inv.t1")
+        self.assertEqual(bound["acceptance"]["verdict"], "FAILED")
+        self.assertEqual(self.rows(bound["publish_sha"])["inv.t1"]["mark"], "F")
+        self.assertNotIn("pushed", bound)
+        retained = list(path.parent.glob(".custody-*"))
+        self.assertEqual(len(retained), 1)
+        self.assertEqual((retained[0] / ".devlyn/loop/acceptance.json").read_bytes(), previous)
+        self.assertEqual(self.calls("inv.t1"), 1)
+
+    def test_legacy_partial_unbound_custody_resumes(self):
+        self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting", "runner": False}})
+        argv = self.drain_argv()
+        crashed = subprocess.run([sys.executable, "-c", CRASH_CUSTODY, *argv[1:]], cwd=self.root,
+                                 env=self.env, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(crashed.returncode, 9, crashed.stdout + crashed.stderr)
+        path = self.receipt_path("inv.t1")
+        self.assertNotIn("acceptance", self.receipt("inv.t1"))
+        # 4.2.3 copied directly into custody, including a truncated second file.
+        staging, = path.parent.glob(".custody-*")
+        staging.rename(path.parent / "custody")
+        (path.parent / "custody/.devlyn/loop/acceptance.json").write_bytes(b"{")
+        helper = self.queue["shared"]("task-complete")
+        partial = helper["snapshot_files"](path.parent / "custody", [".devlyn"])
+        task = self.tasks(self.drain())["inv.t1"]
+        self.assertEqual((task["result"], task["delivery"]), ("accepted", "LOCAL_ONLY"))
+        retained, = path.parent.glob(".custody-*")
+        helper["verify_files"](retained, partial)
+        helper["verify_files"](path.parent / "custody", self.receipt("inv.t1")["files"])
+        self.assertEqual(self.tasks(self.drain())["inv.t1"]["result"], "accepted")
+        self.assertEqual(self.calls("inv.t1"), 1)
 
     def test_interruption_after_acceptance_writes_only_the_missing_transition(self):
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", "hold": True}, "inv.t2": {"product": "app"}})
@@ -1498,6 +1605,46 @@ class LoopFixture(unittest.TestCase):
         linked = self.root / "linked"
         self.g("worktree", "add", "-q", "-b", "side", str(linked))
         self.assertEqual((self.tasks(self.drain(local=False, repo=linked))["au.t1"]["delivery"], self.calls("au.t1")), ("COMPLETE", 1))
+
+    def test_retained_scratch_reports_its_reason_and_resume(self):
+        self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting"}})
+        result = self.drain(unobservable=True)
+        scratch = self.receipt("inv.t1")["scratch_cleanup"]
+        self.assertEqual(scratch["status"], "RETAINED")
+        expected = f"RETAINED — {scratch['reason']}; resume: {scratch['resume']}"
+        self.assertEqual(self.tasks(result)["inv.t1"]["scratch"], expected)
+        self.assertIn(f"- Scratch cleanup: {expected}\n", self.report("inv"))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_merge_refused_reports_why_a_person_must_merge(self):
+        self.remote(merge_allowed=False)
+        self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting"}}, delivery="auto")
+        for _ in range(2):
+            result = self.drain(local=False)
+            task = self.tasks(result)["inv.t1"]
+            self.assertEqual((result["status"], task["result"], task["delivery"]), ("WAITING", "accepted", "PR"))
+            reason = "merge refused: repository disallows merge commits; a person merges the PR"
+            self.assertEqual(task.get("reason"), reason)
+            self.assertIn(f"- Reason: {reason}\n", self.report("inv"))
+            self.assertIn(f"- PR: {task['pr']}\n", self.report("inv"))
+        self.assertEqual(self.calls("inv.t1"), 1)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_report_omits_the_branch_only_after_cleanup_deletes_it(self):
+        _, data = self.remote(pending=True)
+        self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting"}}, delivery="auto")
+        task = self.tasks(self.drain(local=False))["inv.t1"]
+        branch = self.receipt("inv.t1")["branch"]
+        self.assertEqual(task["branch"], branch)
+        self.assertIn(f"- Branch: {branch}\n", self.report("inv"))
+        self.g("show-ref", "--verify", "refs/heads/" + branch)
+        self.assertEqual(self.merge_pr(data, 1).returncode, 0)
+        task = self.tasks(self.drain(local=False))["inv.t1"]
+        self.assertEqual(task["delivery"], "COMPLETE")
+        self.assertEqual(self.g("branch", "--list", branch), "")
+        self.assertFalse(Path(self.receipt("inv.t1")["worktree"]).exists())
+        self.assertIsNone(task.get("branch"))
+        self.assertNotIn("- Branch:", self.report("inv"))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_delivery_pending_keeps_acceptance_resources_and_resume(self):

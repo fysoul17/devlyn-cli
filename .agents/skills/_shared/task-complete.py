@@ -22,6 +22,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import uuid
 
 
 class CompletionError(Exception):
@@ -122,21 +123,22 @@ def verify_files(root, files):
 
 
 def custody(work, destination, files):
-    destination.mkdir(exist_ok=True)
-    for relative, expected in files.items():
-        source = safe_path(work, relative)
-        target = safe_path(destination, relative)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if not target.exists():
-            # Interrupted partial copies are diagnosed, never silently overwritten.
+    # Publish only a complete copy. A hard crash's private staging directory is never reused.
+    with tempfile.TemporaryDirectory(prefix=".custody-", dir=destination.parent) as temporary:
+        root = Path(temporary)
+        for relative, expected in files.items():
+            source = safe_path(work, relative)
+            target = safe_path(root, relative)
+            target.parent.mkdir(parents=True, exist_ok=True)
             with source.open("rb") as incoming, target.open("xb") as outgoing:
                 shutil.copyfileobj(incoming, outgoing)
                 outgoing.flush()
                 os.fsync(outgoing.fileno())
             target.chmod(expected["mode"])
-        require(file_record(target) == expected, f"custody copy mismatch; retain original: {relative}")
-    verify_files(work, files)
-    verify_files(destination, files)
+            require(file_record(target) == expected, f"custody copy mismatch; retain original: {relative}")
+        verify_files(work, files)
+        verify_files(root, files)
+        root.rename(destination)
     atomic_json(destination.parent / "manifest.json", files)
 
 
@@ -309,7 +311,12 @@ def bind_acceptance(receipt, path, supplied):
     else:
         raise CompletionError("acceptance kind must be direct|loop")
     files = snapshot_files(work, paths)
-    custody(work, path.parent / "custody", files)
+    destination = safe_path(path.parent, "custody")
+    if destination.exists():
+        # An unbound copy is never authoritative; retain it like an orphan staging directory.
+        require(destination.is_dir(), "custody is not a directory; retain and inspect")
+        destination.rename(path.parent / (".custody-" + uuid.uuid4().hex))
+    custody(work, destination, files)
     recovery = ref_sha(receipt, receipt["recovery_ref"])
     require(recovery in {None, sha}, "recovery ref changed")
     if recovery is None:
@@ -1793,20 +1800,36 @@ class CompletionTests(unittest.TestCase):
 
     def test_custody_failure_and_evidence_tamper(self):
         self.allocate(); self.accept()
+        self.cli("accept", "--receipt", self.receipt, "--acceptance", self.acceptance)
         bad = self.receipt.parent / "custody/.devlyn/checks.txt"
-        bad.parent.mkdir(parents=True)
-        bad.write_text("partial interrupted copy", encoding="utf-8")
+        bad.write_text("corrupted bound copy", encoding="utf-8")
         _, r = self.complete("--writers-stopped", success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertTrue(self.task.exists())
         self.assertEqual((self.task / ".devlyn/checks.txt").read_text(encoding="utf-8"), "actual fixture check: accepted bytes\n")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
-        bad.unlink()  # Owner repairs only the identified corrupt fixture copy.
+        shutil.copy2(self.task / ".devlyn/checks.txt", bad)  # Repair only the identified corrupt fixture copy.
         self.complete("--mode", "pr")
         (self.task / ".devlyn/checks.txt").write_text("altered after acceptance", encoding="utf-8")
         _, r = self.complete("--mode", "auto", success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("merges",0), 0)
+
+    def test_unbound_partial_custody_is_retained_through_cleanup(self):
+        self.allocate(); self.accept()
+        partial = self.receipt.parent / "custody/.devlyn/checks.txt"
+        partial.parent.mkdir(parents=True)
+        partial.write_text("partial interrupted copy", encoding="utf-8")
+        original = file_record(partial)
+        result, _ = self.complete("--writers-stopped", "--mode", "auto")
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertEqual(result["scratch_cleanup"]["status"], "CLEAN")
+        self.assertFalse(self.task.exists())
+        retained = list(self.receipt.parent.glob(".custody-*"))
+        self.assertEqual(len(retained), 1)
+        self.assertEqual(file_record(retained[0] / ".devlyn/checks.txt"), original)
+        self.assertEqual(self.complete(acceptance=False)[0]["status"], "COMPLETE")
+        self.assertEqual(file_record(retained[0] / ".devlyn/checks.txt"), original)
 
     def test_actual_foreign_writer_and_registration(self):
         # H4. Prediction: a process still using the merged task's tree settles the delivery COMPLETE with the workspace

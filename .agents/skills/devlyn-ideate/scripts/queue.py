@@ -1069,6 +1069,8 @@ def advance(v, row, opts):
         except LoopError as exc:
             return f"delivery blocked: {exc}"
         progress(identity, f"delivery {result['status']}")
+        if result.get("merge_refused"):
+            return f"merge refused: {result['merge_refused']}; a person merges the PR"
     return None
 
 
@@ -1093,9 +1095,11 @@ def summary(v, row):
                     questions=[r.removeprefix("needs-review: ") for r in acceptance_record.get("reasons", []) if r.startswith("needs-review: ")],
                     worktree=receipt["worktree"] if receipt.get("worktree") and Path(receipt["worktree"]).exists() else None,
                     cleanup=f"{c['status']} — {c['reason']}; resume: {c['resume']}" if (c := receipt.get("workspace_cleanup")) else None,
-                    branch=receipt.get("branch"), recovery_ref=receipt.get("recovery_ref"),
+                    branch=receipt.get("branch") if receipt.get("branch") and ref_value(v["anchor"], "refs/heads/" + receipt["branch"]) else None,
+                    recovery_ref=receipt.get("recovery_ref"),
                     custody=str(Path(state["path"]).parent / "custody") if receipt.get("files") else None,
-                    scratch=(receipt.get("scratch_cleanup") or {}).get("status", "NOT_CLEANED"))
+                    scratch=(f"{c['status']} — {c['reason']}; resume: {c['resume']}" if (c := receipt.get("scratch_cleanup") or {}).get("reason")
+                             else c.get("status", "NOT_CLEANED")))
     return item
 
 
