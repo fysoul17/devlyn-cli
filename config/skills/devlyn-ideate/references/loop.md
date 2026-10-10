@@ -41,6 +41,7 @@ The host supplies the executor and maps its configured engine to the argv; the l
     | Inputs commit | A branch head equal to the expected inputs tree is adopted; anything else blocks. |
     | During execution | Each attempt's start is recorded before its spawn and its exit after it. A start without an exit waits until task-complete observes no process using the worktree, then adopts the submission that executor wrote or runs the executor again; where writers cannot be observed (native Windows) the task becomes `[F] interrupted-unobservable` with its workspace retained, its dependents become prerequisite-blocked and independent work continues. Exactly-once execution is not promised. |
     | During checks | Acceptance reruns; incomplete evidence stays unreferenced. |
+    | During custody binding | Acceptance reruns while the receipt is unbound. Any unbound custody copy, complete or partial, is set aside in a unique hidden sibling before fresh custody is published; it and orphan staging copies stay retained and unreferenced. A bound receipt resumes its original result with strict evidence validation. |
     | Accepted, before terminal commit | Only the missing transition is created. |
     | Terminal committed, before attachment | The commit is validated and attached, also when attachment already moved the recovery ref; nothing reruns. |
     | Terminal committed, before delivery | Only the missing delivery effects run. |
