@@ -880,6 +880,7 @@ function install(targets, global, optionalNames = []) {
     else installClaudeCore();
   }
   log(`\n✅ devlyn ${PKG.version} installed`, 'green');
+  if (global) log('The principles block installs per project: run npx devlyn-cli in the project without --global.');
   noticeGlobalDrift(roots);
   return roots;
 }

@@ -843,9 +843,9 @@ def evidence_ignored(anchor, common, start):
 
 
 def allocate(v, row, opts):
-    """Allocate the task's owned worktree, or return why it waits: origin names no GitHub repository, or its refreshed
-    remote base holds another version of the loop's package or lacks the checkout's instructions (waiting() checks a local
-    start before selection)."""
+    """Allocate the task's owned worktree, or return why it waits: origin names no GitHub repository, its base is not the
+    default, or its refreshed remote base holds another version of the loop's package or lacks the checkout's instructions
+    (waiting() checks a local start before selection)."""
     identity, loop, task = row["identity"], row["loop"], row["task"]
     package = v["packages"][loop]
     manifest = package["manifest"]
@@ -868,6 +868,13 @@ def allocate(v, row, opts):
         except helper["CompletionError"]:
             return (f"{manifest['delivery']} delivery needs an origin remote of the form https://github.com/<owner>/<repo>, "
                     "git@github.com:<owner>/<repo> or ssh://git@github.com/<owner>/<repo>; set one, or drain with --local-only")
+        try:
+            default = helper["repository_info"](values["repository"])["defaultBranchRef"]["name"]
+        except (helper["CompletionError"], OSError, KeyError, TypeError, ValueError) as exc:
+            return f"cannot check delivery repository: {exc}"
+        if manifest["base_ref"] != default:
+            return (f"{manifest['delivery']} delivery base {manifest['base_ref']} is not the repository's default branch {default}; "
+                    f"plan the loop on {default}, or drain with --local-only")
         try:
             start = helper["remote_base"]({"common_gitdir": str(common), "remote": "origin", "base": manifest["base_ref"]})
         except helper["CompletionError"] as exc:

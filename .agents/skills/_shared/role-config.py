@@ -102,7 +102,8 @@ def resolve(work, default_engine, *, available=None, shared=SHARED):
     """The project's executor pin, else the invoking CLI; status only, never a dispatch decision."""
     config, source = read_config(Path(work) / ".devlyn/engines.json", optional=True, shared=shared)
     engine = config.get("executor", default_engine)
-    adapter(engine, shared=shared)
+    # read_config validates pins; the invoking host needs no adapter to report its own default.
+    name(engine, "engine")
     available = available or (lambda candidate: shutil.which(candidate) is not None)
     return {"executor": {"engine": engine, "source": "engines.json" if "executor" in config else "default",
                          "availability": "CLI-present/auth-unchecked" if available(engine) else "CLI-unavailable"},
@@ -113,6 +114,7 @@ def select(work, default_engine, *, available=None, shared=SHARED):
     """The executor for dispatch. A pin is a promise: an unavailable pinned engine is never substituted."""
     result = resolve(work, default_engine, available=available, shared=shared)
     executor = result["executor"]
+    adapter(executor["engine"], shared=shared)
     if executor["source"] == "engines.json" and executor["availability"] == "CLI-unavailable":
         fail(f"pinned executor {executor['engine']} is unavailable; install and authenticate its CLI, "
              f"verify `{executor['engine']} --version`, and retry, or pin an available engine with `devlyn-engines executor <name>`",
