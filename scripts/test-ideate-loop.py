@@ -287,7 +287,9 @@ class LoopFixture(unittest.TestCase):
                    "q = runpy.run_path(sys.argv[1])\n"
                    "g = q['drain'].__globals__\n"
                    "h = q['shared']('task-complete')\n" + injection +
-                   "\nsys.argv = sys.argv[1:]\nsys.exit(q['main']())\n")
+                   "\nsys.argv = sys.argv[1:]\n"
+                   "q['shared']('platform-support')['configure_utf8']()\n"
+                   "sys.exit(q['main']())\n")
         result = subprocess.run([sys.executable, "-c", wrapper, *argv[1:]], cwd=self.root, env=self.env,
                                 capture_output=True, text=True, encoding="utf-8", timeout=120)
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
@@ -570,7 +572,7 @@ class LoopFixture(unittest.TestCase):
                 task = self.tasks(result)["aa.t1"]
                 self.assertIn("executor blocked: executor could not start", task["reason"])
                 self.assertIsNone(task["terminal"])
-                log = self.receipt_path("aa.t1").with_name("executions.log").read_text()
+                log = self.receipt_path("aa.t1").with_name("executions.log").read_text(encoding="utf-8")
                 self.assertTrue(log.splitlines()[-2].endswith(" start"))
                 self.assertIn("not started:", log.splitlines()[-1])
                 self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (0, 0))
@@ -584,7 +586,7 @@ class LoopFixture(unittest.TestCase):
         directory = self.receipt_path("aa.t1").parent
         (directory / "scratch").mkdir(parents=True)
         sentinel = directory / "sentinel"
-        sentinel.write_text("keep")
+        sentinel.write_text("keep", encoding="utf-8")
         for _ in range(2):
             result = self.drain()
             self.assert_independent(result)
@@ -592,7 +594,7 @@ class LoopFixture(unittest.TestCase):
             self.assertIn("receipt missing at", reason)
             self.assertIn("remove only confirmed interrupted-allocation artifacts", reason)
             self.assertIn(reason, " ".join(self.cli("status", "--repo", self.anchor)["blockers"]))
-            self.assertEqual((sentinel.read_text(), self.calls("aa.t1"), self.calls("aa.t2")), ("keep", 0, 0))
+            self.assertEqual((sentinel.read_text(encoding="utf-8"), self.calls("aa.t1"), self.calls("aa.t2")), ("keep", 0, 0))
         shutil.rmtree(directory)  # Explicit verified fixture recovery, never driver recovery.
         self.assertEqual(self.tasks(self.drain())["aa.t2"]["result"], "accepted")
         self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (1, 1))
@@ -630,9 +632,9 @@ class LoopFixture(unittest.TestCase):
         self.assertTrue(parent.is_dir())
         self.assertFalse((parent / "t1").exists())
         sentinel = parent / "keep"
-        sentinel.write_text("keep")
+        sentinel.write_text("keep", encoding="utf-8")
         self.fault_drain("", local=False, root=root)
-        self.assertEqual(sentinel.read_text(), "keep")
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "keep")
         sentinel.unlink()
         # Another registered sibling worktree holds its parent even if the task's own workspace is gone.
         self.g("worktree", "add", "-q", "-b", "sibling", str(parent / "sibling"))
@@ -668,12 +670,12 @@ class LoopFixture(unittest.TestCase):
         original = packet.read_bytes()
         for index, malformed in enumerate(("null", "{}", '{"contract":{"path":"outside"},"worktree":"/other"}')):
             with self.subTest(packet=malformed):
-                packet.write_text(malformed)
+                packet.write_text(malformed, encoding="utf-8")
                 self.independent(f"bb{index}")
                 result = self.drain()
                 self.assert_independent(result, f"bb{index}")
                 self.assertIn("recovery conflict:", self.tasks(result)["aa.t1"]["reason"])
-                self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), packet.read_text()), (1, 0, malformed))
+                self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), packet.read_text(encoding="utf-8")), (1, 0, malformed))
         packet.write_bytes(original)
         self.behaviors["aa.t1"] = {"product": "greeting"}
         self.drain()
@@ -689,7 +691,7 @@ class LoopFixture(unittest.TestCase):
     def test_robust_09_missing_prerequisite(self):
         # Prediction: a missing authoritative prerequisite row invalidates the dependent, leaving an unrelated loop runnable.
         meta = self.queue["write_package"](self.anchor, "aa", CHAIN, base=self.base)
-        (meta.parent / "queue.md").write_text(self.queue["row_line"]("aa.t2", CHAIN[1][2]) + "\n")
+        (meta.parent / "queue.md").write_text(self.queue["row_line"]("aa.t2", CHAIN[1][2]) + "\n", encoding="utf-8")
         self.g("add", "docs/specs/aa")
         self.g("commit", "-qm", "legacy queue missing prerequisite")
         self.independent()
@@ -713,11 +715,11 @@ class LoopFixture(unittest.TestCase):
                                  "    return real(v, row, *args)\ng['ensure_packet'] = call\n")
                 elif target == "acceptance":
                     injection = ("a = q['acceptance']()\nreal = a['accept']\ndef call(packet, *args):\n"
-                                 f"    if json.loads(packet.read_text())['task'] == '{loop}.t1':\n        raise a['AcceptanceError']('checks unavailable')\n"
+                                 f"    if json.loads(packet.read_text(encoding='utf-8'))['task'] == '{loop}.t1':\n        raise a['AcceptanceError']('checks unavailable')\n"
                                  "    return real(packet, *args)\na['accept'] = call\n")
                 else:
                     injection = ("real = g['task_complete']\ndef call(action, **kw):\n"
-                                 f"    if action == '{target}' and json.loads(pathlib.Path(kw['receipt']).read_text())['task'] == '{loop}.t1':\n"
+                                 f"    if action == '{target}' and json.loads(pathlib.Path(kw['receipt']).read_text(encoding='utf-8'))['task'] == '{loop}.t1':\n"
                                  "        raise g['LoopError']('injected durable step failure')\n"
                                  "    return real(action, **kw)\ng['task_complete'] = call\n")
                 result = self.fault_drain(injection)
@@ -735,7 +737,7 @@ class LoopFixture(unittest.TestCase):
         self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting", "exit_now": 1}, "aa.t2": {"product": "app"}})
         self.drain()
         log = self.receipt_path("aa.t1").with_name("executions.log")
-        log.write_text("interrupted start\n")
+        log.write_text("interrupted start\n", encoding="utf-8")
         self.independent()
         result = self.fault_drain(
             "checks = 0\ndef observe(work):\n    global checks\n    checks += 1\n"
@@ -743,18 +745,18 @@ class LoopFixture(unittest.TestCase):
             "    raise h['WriterActive']('writer 4242 active')\nh['stopped_writers'] = observe\n")
         self.assert_independent(result)
         self.assertIn("interrupted execution still active", self.tasks(result)["aa.t1"]["reason"])
-        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), log.read_text()), (1, 0, "interrupted start\n"))
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), log.read_text(encoding="utf-8")), (1, 0, "interrupted start\n"))
 
     def test_robust_12_ancillary_failures(self):
         # Prediction: inaccessible package origins and report-write errors stay visible; accepted products are never replayed.
         self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
         record = self.common / "devlyn-loops/aa/added.json"
-        value = json.loads(record.read_text())
+        value = json.loads(record.read_text(encoding="utf-8"))
         former = self.root / "former"
         (former / "docs/specs/aa").mkdir(parents=True)
-        (former / "docs/specs/aa/sentinel").write_text("keep")
+        (former / "docs/specs/aa/sentinel").write_text("keep", encoding="utf-8")
         value["origin"] = str(former)  # Intact authoritative capture; former checkout is no longer a repository.
-        record.write_text(json.dumps(value))
+        record.write_text(json.dumps(value), encoding="utf-8")
         self.independent()
         result = self.fault_drain(
             "a = q['acceptance']()\nreal = a['atomic_write']\ndef write(path, data):\n"
@@ -779,7 +781,7 @@ class LoopFixture(unittest.TestCase):
                     injection = "(pathlib.Path(sys.argv[sys.argv.index('--repo') + 1]) / 'docs/specs/queue.md').write_bytes(b'\\xff')\n"
                 elif fault == "record":
                     injection = ("real = g['records']\ndef records(common):\n"
-                                 "    (common / 'devlyn-loops/aa/added.json').write_text('{}')\n"
+                                 "    (common / 'devlyn-loops/aa/added.json').write_text('{}', encoding='utf-8')\n"
                                  "    return real(common)\ng['records'] = records\n")
                 else:
                     data = {"duplicate": "(q['row_line']('aa.t1', 'One') + '\\n') .encode() * 2",
@@ -823,7 +825,7 @@ class LoopFixture(unittest.TestCase):
         original = path.read_bytes()
         receipt = json.loads(original)
         del receipt["allocation"]
-        path.write_text(json.dumps(receipt))
+        path.write_text(json.dumps(receipt), encoding="utf-8")
         self.independent()
         result = self.drain()
         self.assert_independent(result)
@@ -831,9 +833,9 @@ class LoopFixture(unittest.TestCase):
         self.assertIn("recovery conflict:", self.tasks(result)["aa.t1"]["reason"])
         path.write_bytes(original)
         packet_path = path.with_name("packet.json")
-        packet = json.loads(packet_path.read_text())
+        packet = json.loads(packet_path.read_text(encoding="utf-8"))
         packet["submission"] = []
-        packet_path.write_text(json.dumps(packet))
+        packet_path.write_text(json.dumps(packet), encoding="utf-8")
         self.independent("cc")
         result = self.drain()
         self.assert_independent(result, "cc")
@@ -866,11 +868,11 @@ class LoopFixture(unittest.TestCase):
         path = self.common / "devlyn-completion/foreign/receipt.json"
         path.parent.mkdir(parents=True)
         original = json.dumps({"task": "aa.t1", "branch": None, "allocation": "owned", "worktree": "/unknown"})
-        path.write_text(original)
+        path.write_text(original, encoding="utf-8")
         result = self.drain()
         self.assert_independent(result)
         self.assertIn("recovery conflict:", self.tasks(result)["aa.t1"]["reason"])
-        self.assertEqual((self.calls("aa.t1"), path.read_text()), (0, original))
+        self.assertEqual((self.calls("aa.t1"), path.read_text(encoding="utf-8")), (0, original))
 
     def test_robust_07_existing_allocations_are_never_adopted(self):
         # Prediction: existing branches or workspaces refuse only their allocation, preserve their bytes and let bb run.
@@ -884,12 +886,12 @@ class LoopFixture(unittest.TestCase):
         self.g("branch", "-D", "devlyn/aa/t1")  # Explicit fixture recovery.
         work = self.root / "repo.devlyn/aa/t1"
         work.mkdir(parents=True)
-        (work / "sentinel").write_text("keep")
+        (work / "sentinel").write_text("keep", encoding="utf-8")
         self.independent("cc")
         result = self.drain()
         self.assert_independent(result, "cc")
         self.assertIn("linked worktree must be an absent path", self.tasks(result)["aa.t1"]["reason"])
-        self.assertEqual((self.calls("aa.t1"), (work / "sentinel").read_text()), (0, "keep"))
+        self.assertEqual((self.calls("aa.t1"), (work / "sentinel").read_text(encoding="utf-8")), (0, "keep"))
         self.assertFalse(self.receipt_path("aa.t1").exists())
 
     def test_robust_09_legacy_fork_refuses_integration(self):
@@ -924,16 +926,16 @@ class LoopFixture(unittest.TestCase):
         receipt_bytes = receipt_path.read_bytes()
         receipt = json.loads(receipt_bytes)
         packet = receipt_path.with_name("packet.json")
-        damaged = json.loads(packet.read_text())
+        damaged = json.loads(packet.read_text(encoding="utf-8"))
         damaged["submission"] = []
-        packet.write_text(json.dumps(damaged))
+        packet.write_text(json.dumps(damaged), encoding="utf-8")
         self.assertEqual(self.merge_pr(data, 1).returncode, 0)
         self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}}, delivery="auto")
         result = self.drain(local=False)
         self.assert_independent(result)
         self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (1, 0))
         self.assertEqual(receipt_path.read_bytes(), receipt_bytes)
-        self.assertEqual(json.loads(packet.read_text()), damaged)
+        self.assertEqual(json.loads(packet.read_text(encoding="utf-8")), damaged)
         self.assertTrue(Path(receipt["worktree"]).is_dir())
         self.assertEqual(self.g("rev-parse", receipt["branch"]), receipt["publish_sha"])
 
