@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-11T06:56:43.128199+00:00",
+  "exit_code": 1,
+  "source_sha256": {
+    "autoresearch/experiments/0254/audit.py": "5bc5d6124cbed94b3c59019edd2783185fe57b4c0d743873457ad23459be130f",
+    "autoresearch/experiments/0254/test_audit.py": "a2fdfa1c3b7d6dd0c41915479beb209e98b73cedb8888c72f0289d8eb4e6fef0"
+  },
+  "native_calls": 0
+}

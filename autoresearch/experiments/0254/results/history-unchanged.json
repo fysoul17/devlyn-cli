@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-11T07:06:58.606391+00:00",
+  "status": "PASS",
+  "baseline": "186bbd84e004dd1ff458fb714b2872d9c7ef47bc",
+  "allowed_paths": [
+    "autoresearch/experiments/0254/",
+    "autoresearch/HANDOFF.md",
+    "autoresearch/NORTH-STAR.md"
+  ],
+  "prior_experiments_product_packages_unchanged": true,
+  "changed_paths": [
+    "autoresearch/HANDOFF.md",
+    "autoresearch/NORTH-STAR.md",
+    "autoresearch/experiments/0254/README.md",
+    "autoresearch/experiments/0254/audit.py",
+    "autoresearch/experiments/0254/results/code-review-v1-prediction.json",
+    "autoresearch/experiments/0254/results/code-review-v1-probes.json",
+    "autoresearch/experiments/0254/results/code-review-v1.md",
+    "autoresearch/experiments/0254/results/code-review-v2.json",
+    "autoresearch/experiments/0254/results/code-review-v2.md",
+    "autoresearch/experiments/0254/results/compatibility-v1-prediction.json",
+    "autoresearch/experiments/0254/results/compatibility-v1-result.json",
+    "autoresearch/experiments/0254/results/compatibility-v2-prediction.json",
+    "autoresearch/experiments/0254/results/compatibility-v2-report.json",
+    "autoresearch/experiments/0254/results/compatibility-v2-result.json",
+    "autoresearch/experiments/0254/results/design-prediction.json",
+    "autoresearch/experiments/0254/results/design-r0.md",
+    "autoresearch/experiments/0254/results/owner-contract-r0.md",
+    "autoresearch/experiments/0254/results/tests-v1-prediction.json",
+    "autoresearch/experiments/0254/results/tests-v1-result.json",
+    "autoresearch/experiments/0254/results/tests-v2-prediction.json",
+    "autoresearch/experiments/0254/results/tests-v2-result.json",
+    "autoresearch/experiments/0254/test_audit.py"
+  ]
+}

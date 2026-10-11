@@ -1,0 +1,53 @@
+{
+  "schema": "0254-verification-v1",
+  "at": "2026-10-11T07:06:58.674632+00:00",
+  "status": "PASS",
+  "scope": "Standalone read-only prospective native receipt auditor; no runner integration or historical regrade.",
+  "source_sha256": {
+    "autoresearch/experiments/0254/audit.py": "115619928aad24fc37280117863c06cbfd72bc4035e84de694e3bd8140a43fef",
+    "autoresearch/experiments/0254/test_audit.py": "3a449693de6a1c1f053e2215da347cc2d84f5a8d540e46271a78d9d03047f957"
+  },
+  "tests": {
+    "methods": 38,
+    "status": "PASS",
+    "result_sha256": "6489d30af65621ba8d135b5612c1eb8c12cb4aa14fb5f68b55c37d26239f4442",
+    "stderr_sha256": "380123f5f1857266d97c642a20921e12abb0be57a88031ee28a58e117345fedf"
+  },
+  "review": {
+    "verdict": "SHIP",
+    "high_count": 0,
+    "rounds": 2,
+    "report_sha256": "e0bcf13386e2d6466945de3329f9d5f471d2251acbfbd8b6a870f32482460706"
+  },
+  "compatibility": {
+    "status": "PASS",
+    "native_result": "MATCH",
+    "messages": 3,
+    "processed_input_tokens": 49313,
+    "output_tokens": 468,
+    "thinking_tokens_included": 274,
+    "read_sources_unchanged": true,
+    "report_sha256": "2bfbdfa99d0e20da5c2d33482e5e5cc614f4bf68ca734d9d7c1c35a0104058c6",
+    "fresh_native_observation": false
+  },
+  "v1": {
+    "test_methods": 30,
+    "failed_subcases": 12,
+    "review": "REVISE",
+    "high_count": 3,
+    "medium_count": 1,
+    "preserved_in": "Receipt records/.devlyn; selected predictions/review/probes also published.",
+    "test_author_correction": "Unsupported stream_retry/type-api_error replaced by observed system/api_error; interruption shape corrected from string to observed text-block list. Original failures not overwritten."
+  },
+  "native_calls": 0,
+  "product_or_version_changes": false,
+  "old_0252_cost": "UNKNOWN",
+  "history_sha256": "2a08b512ef2c4ba0016dcb0525f5878abcef55c29c98bc9f3a3c52819fbe13a1",
+  "receipt": "c6a53d68776b5c2e52fae216",
+  "limitations": [
+    "Supports observed successful owner and foreground noninteractive first-level child schema with end_turn/tool_use stops.",
+    "UNKNOWN observations are not a whole-cost certificate or lower bound.",
+    "Synthetic rejection tests do not prove real failure-path native capture completeness.",
+    "Independent identity/lifecycle/product gates remain necessary; no provider billing or efficacy claim."
+  ]
+}

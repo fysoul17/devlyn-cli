@@ -1,0 +1,5 @@
+{
+  "at": "2026-10-11T06:56:42.512422+00:00",
+  "prediction": "Read-only audit of unchanged real0253 evidence returns MATCH with 3messages and49313input468output; every native source hash remains unchanged. Compatibility only, not a fresh experiment or regrade.",
+  "source_sha256": "5bc5d6124cbed94b3c59019edd2783185fe57b4c0d743873457ad23459be130f"
+}
