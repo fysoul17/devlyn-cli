@@ -99,14 +99,17 @@ UNOBSERVABLE = ("import runpy, sys\n"
 # Runs the driver until its next matching durable step, then exits at once, as a crash there would: no handler, finally
 # block or later write runs. `replace <name>` stops before the atomic write of a file of that name, `unlink <name>` before
 # the removal of one. The `-after` suffix stops after that operation; `rename-after <name>` matches the source name.
-CRASH = ("import os, pathlib, runpy, sys\n"
+# `attach-after receipt.json` stops once the terminal attachment is saved.
+CRASH = ("import json, os, pathlib, runpy, sys\n"
          "step, name = sys.argv[1:3]\n"
          "after = step.endswith('-after')\n"
          "step = step.removesuffix('-after')\n"
          "sys.argv = sys.argv[3:]\n"
          "def crashing(real):\n"
          "    def call(path, *args, **kwargs):\n"
-         "        matched = pathlib.Path(args[0] if step == 'replace' else path).name == name\n"
+         "        matched = pathlib.Path(args[0] if step in {'replace', 'attach'} else path).name == name\n"
+         "        if matched and step == 'attach':\n"
+         "            matched = 'queue' in json.loads(pathlib.Path(path).read_text(encoding='utf-8'))\n"
          "        if matched and not after:\n"
          "            os._exit(9)\n"
          "        result = real(path, *args, **kwargs)\n"
@@ -114,7 +117,7 @@ CRASH = ("import os, pathlib, runpy, sys\n"
          "            os._exit(9)\n"
          "        return result\n"
          "    return call\n"
-         "if step == 'replace':\n    os.replace = crashing(os.replace)\n"
+         "if step in {'replace', 'attach'}:\n    os.replace = crashing(os.replace)\n"
          "elif step == 'rename':\n    pathlib.Path.rename = crashing(pathlib.Path.rename)\n"
          "else:\n    pathlib.Path.unlink = crashing(pathlib.Path.unlink)\n"
          "runpy.run_path(sys.argv[0], run_name='__main__')\n")
@@ -2596,6 +2599,50 @@ class LoopFixture(unittest.TestCase):
         tasks = self.tasks(self.drain())
         for loop in ("au", "pr"):
             self.assertEqual((tasks[f"{loop}.t1"]["delivery"], self.calls(f"{loop}.t1")), ("LOCAL_ONLY", 1))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_resume_before_first_delivery_preserves_the_plan_mode(self):
+        # Prediction: after terminal attachment but before the first complete call, a pr plan's exact printed resume
+        # leaves an open PR even under auto policy, without releasing writers or rerunning the executor. Before: it merged.
+        _, data = self.remote()
+        self.run_ok(["git", "--git-dir", str(self.common), "config", "--local", "devlyn.completionMode", "auto"])
+        self.plan("pr", [CHAIN[0]], {"pr.t1": {"product": "greeting"}}, delivery="pr")
+        argv = self.drain_argv(local=False)
+        crashed = subprocess.run([sys.executable, "-c", CRASH, "attach-after", "receipt.json", *argv[1:]], cwd=self.root,
+                                 env=self.env, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(crashed.returncode, 9, crashed.stdout + crashed.stderr)
+        receipt = self.receipt("pr.t1")
+        self.assertEqual(receipt["acceptance"]["verdict"], "ACCEPTED")
+        self.assertEqual(receipt["queue"]["commit"], receipt["publish_sha"])
+        for key in ("delivery", "mode_override", "local_only", "writers_released"):
+            self.assertNotIn(key, receipt)
+        pending, = self.cli("status", "--repo", self.anchor)["delivery"]
+        self.assertEqual(pending["identity"], "pr.t1")
+        resume = shlex.split(pending["resume"])
+        self.assertNotIn("--writers-stopped", resume)
+        self.assertEqual(json.loads(data.read_text(encoding="utf-8")).get("prs", []), [])
+        # Prediction: a missing packet leaves status available, with a diagnostic instead of an unsafe resume.
+        with self.subTest("missing packet before mode is recorded"):
+            packet = self.receipt_path("pr.t1").with_name("packet.json")
+            saved = packet.read_bytes()
+            packet.unlink()
+            try:
+                status = self.cli("status", "--repo", self.anchor)
+                self.assertEqual(status["counts"]["accepted"], 1)
+                self.assertEqual(status["delivery"], [])
+                self.assertTrue(any("task summary unavailable: pr.t1" in note and "packet.json" in note for note in status["cleanup"]))
+            finally:
+                packet.write_bytes(saved)
+        resumed = json.loads(self.run_ok(resume, cwd=self.root))
+        self.assertEqual((resumed["status"], resumed["delivery_status"]), ("PR", "PR"))
+        receipt = self.receipt("pr.t1")
+        self.assertEqual(receipt["mode_override"], "pr")
+        self.assertNotIn("writers_released", receipt)
+        server = json.loads(data.read_text(encoding="utf-8"))
+        pr, = server["prs"]
+        self.assertEqual((pr["state"], server.get("merges", 0), self.calls("pr.t1")), ("OPEN", 0, 1))
+        pending, = self.cli("status", "--repo", self.anchor)["delivery"]
+        self.assertNotIn("--mode", shlex.split(pending["resume"]))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_per_task_mode_survives_later_drains(self):

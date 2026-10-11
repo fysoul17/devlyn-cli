@@ -1238,11 +1238,21 @@ def summary(v, row):
         item["reason"] = reason
     if receipt:
         acceptance_record = receipt.get("acceptance") or {}
-        branch, worktree = None, None
+        branch, worktree, resume = None, None, None
         try:
             worktree = receipt["worktree"] if receipt.get("worktree") and Path(receipt["worktree"]).exists() else None
             if receipt.get("branch") and ref_value(v["anchor"], "refs/heads/" + receipt["branch"]):
                 branch = receipt["branch"]
+            if receipt.get("acceptance") and receipt.get("delivery") not in SETTLED:
+                if receipt.get("queue"):
+                    argv = [sys.executable, str(SKILLS / "_shared/task-complete.py"), "complete", "--receipt", str(state["path"])]
+                    if receipt.get("writers_released"):
+                        argv.append("--writers-stopped")
+                    if not receipt.get("local_only") and not receipt.get("mode_override"):
+                        argv += ["--mode", read_json(state["path"].parent / "packet.json")["delivery"]]
+                    resume = shlex.join(argv)
+                else:
+                    resume = "drain again: the terminal commit is not attached yet"
         except (LoopError, OSError) as exc:
             diagnostic = (f"task summary unavailable: {row['identity']} worktree {receipt.get('worktree')}, "
                           f"branch {receipt.get('branch')}: {exc}; repair access and drain again")
@@ -1250,9 +1260,7 @@ def summary(v, row):
                 v["cleanup"].append(diagnostic)
         item.update(allocation_base=receipt.get("baseline"), **{"source" if state["kind"] == "accepted" else "candidate": receipt.get("source_sha")},
                     terminal=(receipt.get("queue") or {}).get("commit"), delivery=receipt.get("delivery"), pr=receipt.get("pr_url"),
-                    resume=None if not receipt.get("acceptance") or receipt.get("delivery") in SETTLED
-                    else shlex.join([sys.executable, str(SKILLS / "_shared/task-complete.py"), "complete", "--receipt", str(state["path"])])
-                    if receipt.get("queue") else "drain again: the terminal commit is not attached yet",
+                    resume=resume,
                     assumptions=acceptance_record.get("assumptions", []),
                     questions=[r.removeprefix("needs-review: ") for r in acceptance_record.get("reasons", []) if r.startswith("needs-review: ")],
                     worktree=worktree,

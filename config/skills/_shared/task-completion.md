@@ -159,12 +159,6 @@ resume its delivery. Allocate a replacement from the current remote base,
 include only the still-needed task changes and correction, and verify and
 accept it anew. If the predecessor has merged, make a new follow-up instead.
 
-Queue drains follow ideate's loop protocol
-(`../devlyn-ideate/references/loop.md`): its evidence-derived `loop` result is
-bound with `accept` before the queue-only terminal commit is attached with
-`attach`, and dependent local tasks allocate from the accepted predecessor's
-source. Failed results keep custody and a recovery ref but are never published.
-
 ## Deliver and resume
 
 Wait for your children, stop your dev servers and task writers, then leave the
