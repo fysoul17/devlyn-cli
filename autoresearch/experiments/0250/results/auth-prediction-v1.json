@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-11T00:31:13.074837+00:00",
+  "prediction": "Current host authentication supports a read-only profile lookup with at least 6300 seconds remaining; bind its actual account/organization before any owner. No login, renewal, credential write or native model call. On failure retain the failure and do not dispatch.",
+  "old_frozen_files_verified": 621,
+  "all_old_inputs_unchanged": true
+}

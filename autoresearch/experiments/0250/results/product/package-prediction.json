@@ -1,0 +1,5 @@
+{
+  "recorded_at": "2026-10-11T00:32:28.081041+00:00",
+  "prediction": "The actual packed distribution contains the fixed detector and pinned Marked dependency; all 72 existing PackageTests pass including new comment regressions. Package metadata remains unchanged.",
+  "reason": "The import detector is shared by fresh install, auto target detection and upgrade ownership; verify these using actual bundled install beyond the three targeted tests."
+}

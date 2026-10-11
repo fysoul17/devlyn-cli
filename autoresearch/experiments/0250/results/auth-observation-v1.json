@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-11T00:31:26.593190+00:00",
+  "mode": "READ_ONLY_PROFILE_NO_LOGIN_REFRESH_OR_NATIVE_MODEL",
+  "status": "PASS",
+  "account": [
+    "cc43a4e02ede",
+    "2905f4abf05b"
+  ],
+  "token_seconds_left": 25326,
+  "scopes": [
+    "user:file_upload",
+    "user:inference",
+    "user:mcp_servers",
+    "user:plugins",
+    "user:profile",
+    "user:sessions:claude_code"
+  ],
+  "host_unchanged_during_probe": true,
+  "runtime_sha256": "d1010d43266b035c6e3bedb31c8b5aaaaba9d785d2423764021ee287a7dc3025"
+}

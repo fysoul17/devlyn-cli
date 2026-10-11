@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-11T00:37:51.080101+00:00",
+  "cell": {
+    "arm": "S",
+    "config": "codex",
+    "name": "d01-or2-codex-s",
+    "repetition": 1,
+    "role": "ADMISSION_COMPARISON",
+    "task": "OR2"
+  },
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/runner.py",
+    "run",
+    "/Users/aipalm/.local/share/nx01/0250-live/runtime.json",
+    "d01-or2-codex-s",
+    "OR2",
+    "S",
+    "codex"
+  ],
+  "prediction": "Registered first Codex S observation; current identity/catalog/accounting and frozen input checks must pass. Correctness and full owner costs are unknown until the unchanged runner finishes. No independent owner/reviewer/heavy test overlaps.",
+  "bound_files_verified_before": 633,
+  "freeze_sha256": "7b62f92c5a96e89927893bdf9491b1b305610b4f2912c81aa178687f57f73468",
+  "audit_sha256": "64bbfcb3433cf7cd41ca2dded33c81c681a33531662e2caa219b7f83ec0c29a4",
+  "finished_at": "2026-10-11T00:48:50.100254+00:00",
+  "exit_code": 0,
+  "launch_wall_seconds": 661.0725519999978,
+  "bound_files_unchanged_after": true
+}

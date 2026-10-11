@@ -121,18 +121,24 @@ function instructionParagraphs(text) {
 }
 
 // Recognize direct adjacent imports in Markdown text, including inline imports.
-// Leaf tokens keep code, escapes and HTML examples from removing our only block.
+// Leaf tokens keep code, escapes and ordinary HTML from removing our only block.
 function importsAgentsMd(text) {
+  // Match the complete native path token before dropping its optional fragment.
+  const matchesImport = (value) => [...value.matchAll(/(?:^|\s)@((?:[^\s\\]|\\ )+)/g)].some((match) => {
+    const file = match[1].split('#', 1)[0];
+    return file === 'AGENTS.md' || file === './AGENTS.md';
+  });
   const containsImport = (tokens) => tokens.some((token) => {
-    if (['code', 'codespan', 'html'].includes(token.type)) return false;
+    if (['code', 'codespan'].includes(token.type)) return false;
+    if (token.type === 'html') {
+      const raw = token.raw || '';
+      // Native Claude scans text left after complete comments in a comment-shaped HTML token.
+      return raw.trimStart().startsWith('<!--') && raw.includes('-->')
+        && matchesImport(raw.replace(/<!--[\s\S]*?-->/g, ''));
+    }
     if (token.tokens) return containsImport(token.tokens);
     if (token.items) return containsImport(token.items);
-    if (token.type !== 'text') return false;
-    // Match the complete native path token before dropping its optional fragment.
-    return [...token.text.matchAll(/(?:^|\s)@((?:[^\s\\]|\\ )+)/g)].some((match) => {
-      const file = match[1].split('#', 1)[0];
-      return file === 'AGENTS.md' || file === './AGENTS.md';
-    });
+    return token.type === 'text' && matchesImport(token.text);
   });
   // Claude strips this bounded frontmatter prefix before expanding imports.
   const body = text.replace(/^\uFEFF/, '').replace(/^---\s*\n([\s\S]*?)---\s*\n?/, '');

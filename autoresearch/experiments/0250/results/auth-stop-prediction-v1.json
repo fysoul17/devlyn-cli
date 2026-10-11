@@ -1,0 +1,4 @@
+{
+  "at": "2026-10-11T00:55:53.105287+00:00",
+  "prediction": "The refused d02 snapshot has a valid profile different from the frozen cc43a4e02ede/2905f4abf05b venue and matches the currently shared Keychain profile. This would identify the mutable per-cell host credential source as the interruption mechanism, without identifying who changed it. A failure or different observation remains explicit. Read-only profile requests only; no login, refresh, credential mutation, model inference or resumed study."
+}

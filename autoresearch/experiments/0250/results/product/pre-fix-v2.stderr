@@ -1,0 +1,95 @@
+test_agents_imports_follow_markdown_text_and_complete_paths (__main__.PackageTests.test_agents_imports_follow_markdown_text_and_complete_paths) ... FAIL
+test_claude_target_keeps_an_agents_md_in_force (__main__.PackageTests.test_claude_target_keeps_an_agents_md_in_force) ... 
+  test_claude_target_keeps_an_agents_md_in_force (__main__.PackageTests.test_claude_target_keeps_an_agents_md_in_force) (case='imports-comment') ... FAIL
+test_claude_target_holds_no_copy_beside_the_block_it_imports (__main__.PackageTests.test_claude_target_holds_no_copy_beside_the_block_it_imports) ... 
+  test_claude_target_holds_no_copy_beside_the_block_it_imports (__main__.PackageTests.test_claude_target_holds_no_copy_beside_the_block_it_imports) (case='comment-relative') ... FAIL
+
+======================================================================
+FAIL: test_agents_imports_follow_markdown_text_and_complete_paths (__main__.PackageTests.test_agents_imports_follow_markdown_text_and_complete_paths)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/aipalm/.local/share/nx01/0250-minimal-solo/scripts/test-windows-portability.py", line 441, in test_agents_imports_follow_markdown_text_and_complete_paths
+    self.assertEqual(json.loads(result.stdout), [True] * len(positive) + [False] * len(negative))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [True[63 chars]rue, False, False, False, False, False, False,[205 chars]alse] != [True[63 chars]rue, True, True, True, True, False, False, Fal[201 chars]alse]
+
+First differing element 12:
+False
+True
+
+  [True,
++  True,
++  True,
++  True,
++  True,
+   True,
+   True,
+   True,
+   True,
+   True,
+   True,
+   True,
+   True,
+   True,
+   True,
+   True,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+   False,
+-  False,
+-  False,
+-  False,
+-  False,
+   False]
+
+======================================================================
+FAIL: test_claude_target_keeps_an_agents_md_in_force (__main__.PackageTests.test_claude_target_keeps_an_agents_md_in_force) (case='imports-comment')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/aipalm/.local/share/nx01/0250-minimal-solo/scripts/test-windows-portability.py", line 490, in test_claude_target_keeps_an_agents_md_in_force
+    self.assertEqual(installed['CLAUDE.md'], before)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'<!-[26 chars].md\n\n\n<!-- devlyn:instructions:begin sha256[4425 chars]->\n' != b'<!-[26 chars].md\n'
+
+======================================================================
+FAIL: test_claude_target_holds_no_copy_beside_the_block_it_imports (__main__.PackageTests.test_claude_target_holds_no_copy_beside_the_block_it_imports) (case='comment-relative')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/aipalm/.local/share/nx01/0250-minimal-solo/scripts/test-windows-portability.py", line 536, in test_claude_target_holds_no_copy_beside_the_block_it_imports
+    self.assertEqual(files(), expected)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+AssertionError: {'AGE[4589 chars].md\n\n\n<!-- devlyn:instructions:begin sha256[4426 chars]>\n'} != {'AGE[4589 chars].md\n'}
+Diff is 12255 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 3 tests in 8.784s
+
+FAILED (failures=3)

@@ -1,0 +1,8 @@
+test_agents_imports_follow_markdown_text_and_complete_paths (__main__.PackageTests.test_agents_imports_follow_markdown_text_and_complete_paths) ... ok
+test_claude_target_keeps_an_agents_md_in_force (__main__.PackageTests.test_claude_target_keeps_an_agents_md_in_force) ... ok
+test_claude_target_holds_no_copy_beside_the_block_it_imports (__main__.PackageTests.test_claude_target_holds_no_copy_beside_the_block_it_imports) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 7.006s
+
+OK

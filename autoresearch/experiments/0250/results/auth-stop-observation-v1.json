@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-11T00:55:53.316160+00:00",
+  "mode": "READ_ONLY_PROFILE_NO_LOGIN_REFRESH_OR_NATIVE_MODEL",
+  "frozen_account": [
+    "cc43a4e02ede",
+    "2905f4abf05b"
+  ],
+  "refused_d02_snapshot": {
+    "blob_sha256": "0259915409377f98000b63315157fc93eaf3ea9ec8516d59441fdb53843c70f1",
+    "token_seconds_left": 23136,
+    "scopes": [
+      "user:file_upload",
+      "user:inference",
+      "user:mcp_servers",
+      "user:plugins",
+      "user:profile",
+      "user:sessions:claude_code"
+    ],
+    "status": "PASS",
+    "account": [
+      "230ea92eea12",
+      "584a8a8f163a"
+    ]
+  },
+  "current_host": {
+    "blob_sha256": "0259915409377f98000b63315157fc93eaf3ea9ec8516d59441fdb53843c70f1",
+    "token_seconds_left": 23135,
+    "scopes": [
+      "user:file_upload",
+      "user:inference",
+      "user:mcp_servers",
+      "user:plugins",
+      "user:profile",
+      "user:sessions:claude_code"
+    ],
+    "status": "PASS",
+    "account": [
+      "230ea92eea12",
+      "584a8a8f163a"
+    ]
+  },
+  "host_unchanged_during_probe": true,
+  "snapshot_matches_host_bytes": true
+}
