@@ -2,13 +2,17 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current work: PR200 delivered the comment-prefixed import correction on4.2.5.
+Current work: PR202 delivered the 0251/0252 research below. Its accepted and
+frozen study source is 4.2.5, including PR200's comment-prefixed import correction.
+Separate PR201 advanced main to 4.2.6; PR202 preserves its changes and performs
+no npm release.
 The [0251 adapter](experiments/0251/README.md) now fixes the observed per-cell
 shared-login selection failure using one sealed snapshot. Claude uses access-only
 auth; Codex retains managed refresh behavior. Stable selection does not require
 a new login or a separately issued grant. Synthetic checks, cross-model review
 and two independently audited operational smokes pass; no always-loaded instruction
-was added. Prior product-test inputs remain byte-identical.
+was added. Reused product checks apply to the byte-identical frozen 4.2.5 inputs,
+not as new verification of current main.
 
 [0252](experiments/0252/results/closure-v1.md) is closed at an accounting STOP.
 The user resumed the verified parked driver without replaying slots. Seven OR2

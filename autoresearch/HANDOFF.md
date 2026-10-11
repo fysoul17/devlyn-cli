@@ -22,28 +22,34 @@ failure with one sealed credential snapshot. Claude uses access-only auth with
 preserved metadata; Codex retains managed, refresh-capable credentials. This
 promises stable selection, not independent grants. Its 22 synthetic checks,
 Astra review and two independently audited operational smokes pass; they supply
-no efficacy observations. The seven reviewed files, all 9,116 prior product-test
-inputs and all 1,092 unique earlier-study bindings remain unchanged. Existing
-checks are reused for those exact bytes, not claimed as newly executed. See
+no efficacy observations. In the accepted 4.2.5 research snapshot, the seven
+reviewed files, all 9,116 prior product-test inputs and all 1,092 unique
+earlier-study bindings remain unchanged. Existing checks are reused for those
+exact bytes, not claimed as new verification of current main. See
 [verification](experiments/0251/results/verification-summary.json) and the
 [continuation check](experiments/0252/results/source-check-reuse-v1.json).
 
 Minimal CLAUDE.md/AGENTS.md first; residual pair only when earned; ideate remains
 deferred. Actual Opus Max/Grok advice remains in [0237/advice](experiments/0237/advice/).
 0248–0250 stay closed and their results are never fresh 0252 draws. Neither a
-global optimum nor bare superiority is established. PR200's comment-import fix
-remains the shipped product change. Root instructions stay 597 words/4,049 bytes;
-package version stays 4.2.5; no npm release. This closed registration authorizes
-no automatic repair campaign or successor comparison.
+global optimum nor bare superiority is established. The frozen 4.2.5 study source
+includes PR200's comment-import fix; separate PR201 advanced main to 4.2.6 while
+0252 ran. PR202 preserves that change and publishes only this research work.
+Root instructions stay 597 words/4,049 bytes; this task performed no npm release.
+This closed registration authorizes no automatic repair campaign or successor
+comparison.
 
-Publication allocation: `~/.local/share/nx01/0251-fixed-auth`, branch
-`candidate/0251-fixed-auth`, task `minimal-solo-fixed-auth-0251`, receipt
-`.git/devlyn-completion/38cf96b8998be240bebad6fd/receipt.json` in the original repo.
-This is the source snapshot before delivery; PR+merge is authorized. The candidate
-is not an execution input and may be removed after delivery. Permanent private
-roots are `0251-live` and `0252-live` under `~/.local/share/nx01`; execution source
-is `0251-live/source`. Keep raw evidence and unknown costs. Cleanup may release
-only receipt-owned disposable resources after all users have stopped.
+[PR202](https://github.com/fysoul17/devlyn-cli/pull/202) merged the accepted research
+commit `d07a5f1f` as `071dc536`; its first-parent diff is byte-identical to the
+accepted candidate, and all PR201 changes are preserved. Original main was
+fast-forwarded. Task `minimal-solo-fixed-auth-0251` is COMPLETE with CLEAN scratch;
+its publication worktree and branch were removed. Acceptance, custody and saved
+`.devlyn` records remain under the original repo's
+`.git/devlyn-completion/38cf96b8998be240bebad6fd/`.
+Permanent private roots are `0251-live` and `0252-live` under
+`~/.local/share/nx01`; execution source is `0251-live/source`. Keep raw evidence
+and unknown costs. Cleanup may release only receipt-owned disposable resources
+after all users have stopped.
 
 Preserve all frozen/private roots, especially `0237-harness`,
 `0249-live/baseline-source-v1` and the locked `0250-minimal-solo` worktree. Its
