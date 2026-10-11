@@ -276,7 +276,7 @@ A change ships only if it can answer all of these with concrete numbers:
 6. **No regression**: L2 must not regress any fixture's margin materially vs L1 (no fixture L1→L2 delta worse than −3 axes).
 7. **Pair lift on high-value fixtures**: L2 must beat L1 by ≥ +5 on **pair-eligible / high-value fixtures** (where L1 was tied or lost vs L0, OR where the spec touches security / scope / spec-compliance regions where pair_critic/consensus would plausibly help). L2 ≈ L1 on easy fixtures is acceptable.
 8. **L2 efficiency**: `L2-vs-L1-best-of-M` is the economic baseline (M = `L2_wall / L1_wall`). Same dominance rule as #2.
-9. **Pair dispatch discipline**: after MECHANICAL passes, VERIFY/JUDGE uses the OTHER engine by default when available; reasons are telemetry, not outcome-dependent escalation. `--no-pair` opts out. Explicit `--engine`, `--risk-probes`, and `--pair-verify` routes fail closed; an unavailable automatic route reports its solo skip (`SKILL.md` § PHASE 5; `_shared/engine-preflight.md`).
+9. **Pair dispatch discipline** (history: resolve's rule until 4.2.0 retired it; no pair ships now): after MECHANICAL passes, VERIFY/JUDGE used the OTHER engine by default when available; reasons were telemetry, not outcome-dependent escalation. `--no-pair` opted out. Explicit `--engine`, `--risk-probes`, and `--pair-verify` routes failed closed; an unavailable automatic route reported its solo skip (resolve `SKILL.md` § PHASE 5).
 
 ### Measurement validity (added 2026-04-30 from iter-0027/0028 lesson)
 
@@ -292,12 +292,12 @@ A change ships only if it can answer all of these with concrete numbers:
 
 ### Honest claim boundary (Codex R3 + R4)
 
-13. Single-LLM users remain first-class. Claude, Codex and omp orchestration routes exist (`AGENTS.md` § Quick Start; resolve `SKILL.md` § Engine routing). Iter-0061 measured Codex phase entry 4/4 on a minimal trivial-add repo with project AGENTS.md. That proves the scoped route, not broad cross-engine quality or ceiling superiority.
+13. Single-LLM users remain first-class. Claude, Codex and omp routes exist (`AGENTS.md` § Quick Start; the `devlyn-engines` executor pin; resolve `SKILL.md` § Engine routing until 4.2.0). Iter-0061 measured Codex phase entry 4/4 on a minimal trivial-add repo with project AGENTS.md. That proves the scoped route, not broad cross-engine quality or ceiling superiority.
 14. **L2-vs-L1 compression risk**. Evidence must be L2 vs L1, not L2 vs L0. If L1 lands at +9 over L0, then L2's effective lift over L1 must be measured *over L1*, not aliased through L0.
 
 ### Real-project trial gate (Codex R2, 2026-04-28)
 
-15. **Final stop condition for Mission 1** — even if all of #1-#14 pass on the 9-fixture suite, the loop does NOT terminate until **one fresh real-project trial passes without manual context engineering**. Definition: a developer who has not tuned the harness picks a real (not fixture) feature/bug from a real (not test) codebase, runs `/devlyn:resolve "<spec or goal>"` end-to-end, and the output ships without human prompt-engineering rescue. Pass = (a) no human edits to skill prompts mid-run, (b) no manual phase re-runs, (c) the produced code passes the project's existing test suite + the developer's spec acceptance check, (d) wall-time within budget for the layer the user paid for.
+15. **Final stop condition for Mission 1** — even if all of #1-#14 pass on the 9-fixture suite, the loop does NOT terminate until **one fresh real-project trial passes without manual context engineering**. Definition: a developer who has not tuned the harness picks a real (not fixture) feature/bug from a real (not test) codebase, runs the installed product end-to-end on it (since 4.2.0 direct work under the installed instructions or a `devlyn-ideate` drain; `/devlyn:resolve "<spec or goal>"` before), and the output ships without human prompt-engineering rescue. Pass = (a) no human edits to skill prompts mid-run, (b) no manual phase re-runs, (c) the produced code passes the project's existing test suite + the developer's spec acceptance check, (d) wall-time within budget for the layer the user paid for.
 
 This gate exists because benchmark fixtures are calibrated targets — passing them confirms the harness behaves *as designed against known cases*, not that it serves the actual user goal. Without #15, the loop can hit perfect 1-14 and ship a benchmark-tuned harness that fails real users on day one.
 
@@ -311,7 +311,7 @@ This gate exists because benchmark fixtures are calibrated targets — passing t
 
 ### Parallel-fleet gate (Mission 2 axis — DEFERRED)
 
-16. **Mission 2 stop condition: parallel-fleet trial.** Pass = the user runs N ≥ 5 simultaneous `/devlyn:resolve` invocations on independent specs, walks away, and on return finds: (a) all N completed without human rescue, (b) per-task quality matches the single-task baseline, (c) aggregate wall-time materially shorter than serialised baseline, (d) zero data crosstalk.
+16. **Mission 2 stop condition: parallel-fleet trial.** Pass = the user runs N ≥ 5 simultaneous tasks on independent specs (`/devlyn:resolve` invocations before 4.2.0), walks away, and on return finds: (a) all N completed without human rescue, (b) per-task quality matches the single-task baseline, (c) aggregate wall-time materially shorter than serialised baseline, (d) zero data crosstalk.
 
 Why this is the Mission 2 gate (not Mission 1): #16 is meaningless if Mission 1 hasn't already delivered overwhelm-level single-task value. **During Mission 1, #16 binds nothing.**
 
@@ -356,9 +356,9 @@ Both reuse `solo` / `pair_critic` / `pair_consensus` as the policy vocabulary.
 
 ## What this North Star displaces / supersedes
 
-- The 16-skill landscape pre-2026-04-30. Replaced by `/devlyn:ideate` + `/devlyn:resolve` + kernel.
+- The 16-skill landscape pre-2026-04-30. Replaced by `/devlyn:ideate` + `/devlyn:resolve` + kernel, in turn replaced in 4.2.0 by the installed instructions plus `devlyn-ideate` and `devlyn-engines`.
 - Per-phase pair-mode tables that included BUILD/EVAL/CRITIC pair as separate decisions: superseded by the round-3 measurement-gated policy above.
-- The "pair-mode confined to VERIFY/JUDGE only as opt-in/frozen-diff-only" policy: superseded by the default-when-available VERIFY/JUDGE policy. PLAN-pair remains research-only after iter-0033d/f/g found no empirical subagent-introspection evidence.
+- The "pair-mode confined to VERIFY/JUDGE only as opt-in/frozen-diff-only" policy: superseded by the default-when-available VERIFY/JUDGE policy, itself retired with resolve in 4.2.0. PLAN-pair remains research-only after iter-0033d/f/g found no empirical subagent-introspection evidence.
 - `autoresearch/PRINCIPLES.md` 5 principles + Layer-cost-justified: **unchanged**. Still per-iteration doctrine.
 - Deferred memos (multi-LLM orchestration modes, benchmark cross-mix arms, model-agnostic): remain deferred, but model-agnostic upgrades to first-class via the new schema + adapter mechanism in the redesign.
 
