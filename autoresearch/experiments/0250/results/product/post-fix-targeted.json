@@ -1,0 +1,13 @@
+{
+  "command": [
+    "python3",
+    "scripts/test-windows-portability.py",
+    "--package-root",
+    "/Users/aipalm/.local/share/nx01/0250-minimal-solo",
+    "PackageTests.test_agents_imports_follow_markdown_text_and_complete_paths",
+    "PackageTests.test_claude_target_keeps_an_agents_md_in_force",
+    "PackageTests.test_claude_target_holds_no_copy_beside_the_block_it_imports"
+  ],
+  "exit_code": 0,
+  "wall_seconds": 7.1248724999895785
+}

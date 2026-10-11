@@ -1,0 +1,22 @@
+{
+  "recorded_at": "2026-10-11T00:30:16.020729+00:00",
+  "scope": "Only bin/instructions.js and installer regressions; no native/model/auth calls",
+  "native_loader": {
+    "path": "/Users/aipalm/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "start_byte": 195893752,
+    "end_byte": 195894524,
+    "excerpt": "native-loader-excerpt.js"
+  },
+  "source_before": {
+    "bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "scripts/test-windows-portability.py": "89c4e9a66914924c7b3cdd0473847108ddbea53da42d7b504a5957a05523f4b5",
+    "package.json": "71fa7e644b9be6c585f6af1b0645edef4323bf37884236e7c9cd7eb539f9c9a0",
+    "package-lock.json": "61bb21fc83191eab9fb5840967aec72338a71747d8a2e12e66ba63e935a3bc60"
+  },
+  "prediction": {
+    "before_fix": "The detector misses a comment-prefixed adjacent import in one native HTML token. Adding targeted parser cases before the fix fails only positive comment-prefixed cases; a packaged combined install retains duplicate defaults for that input.",
+    "after_fix": "Scan only remainder after complete comments for native comment-shaped HTML. Complete/multiple comment prefixes with a true adjacent import deduplicate; comment-only, unclosed comments, fenced/inline code and ordinary HTML retain their prior exclusion. Exact CLAUDE prose, backups and reinstall stability hold; package tests pass.",
+    "limit": "Source-aligned instruction dedup; no runtime expansion observation or model/time/token gain claimed."
+  }
+}

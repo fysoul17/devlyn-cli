@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-11T00:50:12.799885+00:00",
+  "status": "PASS",
+  "verdict_sha256": "57872a8ee2099f57784a4c669eb1a09701898b7751e7bdfc962c45be99dbc296",
+  "usage_complete": true,
+  "identity": "MATCH",
+  "teardown": "CLEAN",
+  "owner_seconds": 655.5753982500173,
+  "input_tokens": 921294,
+  "output_tokens": 24684,
+  "public_pass": true,
+  "oracle_passes": 12,
+  "exact_delivery_pass": true
+}

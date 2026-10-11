@@ -1,0 +1,121 @@
+{
+  "verification_status": "PASS",
+  "completed_at": "2026-10-11T01:12:45.634867+00:00",
+  "platform": "darwin",
+  "versions": {
+    "node": "v20.19.0",
+    "npm": "10.8.2",
+    "python": "Python 3.14.7",
+    "git": "git version 2.52.0",
+    "bash": "GNU bash, version 3.2.57(1)-release (arm64-apple-darwin25)\nCopyright (C) 2007 Free Software Foundation, Inc."
+  },
+  "commands": [
+    {
+      "label": "npm-ci",
+      "command": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--cache",
+        "/Users/aipalm/Documents/GitHub/devlyn-cli/.git/devlyn-completion/3a87f490267ce0c3cf3f1edc/scratch/npm-cache-final-checks-v1"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.9927952919970267
+    },
+    {
+      "label": "installer-menu",
+      "command": [
+        "node",
+        "--test",
+        "scripts/test-installer-menu.cjs"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 6.202852165995864,
+      "pid": 28574,
+      "process_group": 28574
+    },
+    {
+      "label": "lint",
+      "command": [
+        "bash",
+        "scripts/lint-skills.sh"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 341.8851702089887,
+      "pid": 28575,
+      "process_group": 28575
+    },
+    {
+      "label": "ideate-loop",
+      "command": [
+        "python3",
+        "scripts/test-ideate-loop.py"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 867.5298457919853,
+      "pid": 28576,
+      "process_group": 28576
+    }
+  ],
+  "counts": {
+    "installer_menu": 15,
+    "task_complete_helper": {
+      "total": 73,
+      "skips": 2
+    },
+    "ideate_loop": 71
+  },
+  "source": {
+    "head": "ba76e37b19c88e286ae6fc308a482902fcb519d9",
+    "head_unchanged": true,
+    "relevant_input_count": 9116,
+    "changed_inputs": [],
+    "scope_diff_unchanged": true,
+    "before_manifest": "prediction.json",
+    "after_manifest": "summary.json",
+    "product_inputs": {
+      "bin/instructions.js": "217b59bd1152de46ac8c84325edb5217d53604267b80e6215b6b5824ca764c75",
+      "scripts/test-windows-portability.py": "c81d28a17dbf4a59dd4054875e2fe7cfd60cbe494663b330657bc2fa36aeb300",
+      "package.json": "71fa7e644b9be6c585f6af1b0645edef4323bf37884236e7c9cd7eb539f9c9a0",
+      "package-lock.json": "61bb21fc83191eab9fb5840967aec72338a71747d8a2e12e66ba63e935a3bc60"
+    }
+  },
+  "cleanup": {
+    "observed_at": "2026-10-11T01:12:45.598079+00:00",
+    "initial_observation": "All launched command process groups exited, but a periodic PID-set intersection and temp-prefix difference flagged one PID and one fixture path; the accounting wrapper exited1 after all product checks passed.",
+    "initial_summary": "summary.json",
+    "followup_pid_command_exit": 1,
+    "flagged_pid_still_present": false,
+    "flagged_fixture_paths_still_present": {
+      "devlyn loop \u2713 \ud55c\uae00 vqpa5of0": false
+    },
+    "surviving_launched_process_groups": [],
+    "action": "Read-only observations only; no process killed or fixture removed.",
+    "attribution_limit": "The periodic observer stored PIDs without process-start identities. The transient PID and fixture have unproven ownership; their disappearance is observed, not attributed to this task or claimed as cleanup by this agent."
+  },
+  "limitations": [
+    "macOS Node20.19.0/Python3.14.7 local POSIX checks; no Linux container or native Windows run.",
+    "Initial cleanup accounting snapshot is preserved separately; transient observation provenance is unknown.",
+    "Known root-authored autoresearch documentation was outside this execution-input seal."
+  ],
+  "retained_raw_evidence": {
+    "directory": "/Users/aipalm/.local/share/nx01/0250-minimal-solo/.devlyn/final-checks-v1",
+    "summary_sha256": "70c995e57e6e148d28c7a328bc584203f3aabe7f6910e7d63d9314a01ea36b50",
+    "relative_manifest_paths_are_based_in_this_directory": true,
+    "evidence_sha256": {
+      "prediction.json": "6ddb639eb823d71a50fda0a210ceba17fae0cd83676a860d1268018ccc0d9220",
+      "summary.json": "cea121608f521b0031e630116e5942ee1f9eb0ccc7d2357523c9511d8fee82d7",
+      "cleanup-followup.json": "30da6de7f9e9f064a68202cd5280eaa52127406b40dd85cd202195583c0d5a15",
+      "npm-ci.stdout": "15d5035fdd1505833386016dab87c7b4fbe253da893766eb1e015f2cbb3f0e5f",
+      "npm-ci.stderr": "7657976608dd0eaf914c050ec1f2c1779230c59e18d3acf9b2f62e80a03c91c0",
+      "installer-menu.stdout": "ec8db1f43306caf6d3088c4795ae397a0a0bffc9f95e419197c8d31881856a07",
+      "installer-menu.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lint.stdout": "8de510ffbdd327af9e20decfb7a6b784063e1f0f30fb5e30c7e0631ab93793c5",
+      "lint.stderr": "f30c568925c14f92dddabec19eb0c204873f06a561dc0c5160043e73bbb160c0",
+      "ideate-loop.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ideate-loop.stderr": "89acb164fa25d25ecf191978f2621f69f9ce11b3ceb620d51d6831e656aa9f0e"
+    }
+  }
+}

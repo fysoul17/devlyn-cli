@@ -2,20 +2,23 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current work: [0237's final decision](experiments/0237/results/final-product-decision.md)
-accepts observed installer/delivery fixes on4.2.5 and keeps root instruction wording
-unchanged. Product checks/review pass; final PR+merge delivery is pending. Ideate
-remains outside this request.
+Current work: PR199 delivered [0237's accepted fixes](experiments/0237/results/final-product-decision.md)
+on4.2.5. The continuation adds only a reproduced comment-prefixed adjacent import
+correction; root instruction wording remains unchanged. Targeted and packaged
+checks pass, with an independent SHIP review. No npm release is included.
 
-[0248 is closed](experiments/0248/results/screen-conclusion.md). Its Claude S/B
-resource signal is one exposed draw; native A remained cheaper and H/P earned no
-incremental mechanism. [0249 is closed](experiments/0249/results/closure-v1.md)
-after one valid Codex/B result and a pre-inference account/organization mismatch.
-S was not observed there, so no new S/B efficacy conclusion or admission follows.
-The current host login was left untouched. Preserve all old failures, unknown
-costs and version limits. No S instruction or pair surface is added, no schedule
-is resumed, and no global optimum or general bare superiority is established.
-See [HANDOFF](HANDOFF.md) for the publisher and delivery state.
+[0248](experiments/0248/results/screen-conclusion.md),
+[0249](experiments/0249/results/closure-v1.md) and
+[0250](experiments/0250/results/closure-v1.md) are closed. 0250 records one valid
+Codex/S OR2 success with actual counterexample-check activation and repair; its
+next slot was refused before inference when the shared host login differed from
+the frozen account. With no B observation, S/B efficacy is undecided. The observed
+per-cell shared-login dependency needs an independently owned, supported account
+context before any future comparison; another host-account rebind is insufficient.
+Preserve failures, unknown costs and version/exposure limits. No S instruction or
+pair surface is admitted, no closed schedule resumes, and no global optimum or
+bare superiority is established. Ideate remains deferred. See [HANDOFF](HANDOFF.md)
+for current source, evidence, delivery and retained paths.
 
 - **0232 stage 1 closed on 2026-10-06** (§7). Native A stayed the admitted rung in both configurations. The instruction rung I was not admitted. Full resolve completed fewer cells than native at far higher cost.
 - **resolve remains retired** as a product-scope decision (0232 §8). The installed product is the principles plus the ideate/engines skills; pair is not a shipped guarantee.

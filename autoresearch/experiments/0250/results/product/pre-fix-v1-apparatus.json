@@ -1,0 +1,6 @@
+{
+  "recorded_at": "2026-10-11T00:31:20.947910+00:00",
+  "classification": "INVALID_INSTALLER_PROBE",
+  "reason": "Setting TMPDIR under receipt scratch in the common Gitdir makes ancestor Git discovery return not-a-work-tree for fixture projects. The parser assertion failed as predicted but installer failures do not establish the dedup defect.",
+  "correction": "Use existing TemporaryDirectory fixture lifecycle with normal system temp; keep npm cache and distribution artifacts in owned scratch. No product/test semantics change."
+}

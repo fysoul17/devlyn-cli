@@ -1,43 +1,50 @@
-# Minimal solo harness improvements — final delivery pending (2026-10-11 UTC)
+# Minimal solo harness — comment-import correction and 0250 closure (2026-10-11 UTC)
 
-The owner deferred ideate and requested minimal CLAUDE.md/AGENTS.md improvement
-before residual pair work. Actual Opus Max and Grok advice is retained in
-[0237/advice](experiments/0237/advice/). The accepted scope is three observed
-installer/delivery contract fixes, with root instruction wording unchanged:
-actual adjacent AGENTS.md import deduplication, proven Linux zombie cleanup,
-and moving the unchanged local-delivery rule to policy selection. See the
-[final decision](experiments/0237/results/final-product-decision.md).
+The owner's order remains minimal CLAUDE.md/AGENTS.md first, residual pair later;
+ideate is deferred. Actual Opus Max and Grok advice is retained in
+[0237/advice](experiments/0237/advice/). PR199 merged at
+`ba76e37b19c88e286ae6fc308a482902fcb519d9`, delivering the three prior installer/
+delivery fixes. The original main checkout was reconciled cleanly.
 
-[0248 is closed](experiments/0248/results/screen-conclusion.md). Claude S/B had
-one exposed resource signal with equal correctness; native A remained cheaper.
-H/P did not earn incremental cost against S. Codex S stopped with one inference's
-usage missing and remains ungraded. [0249 is closed](experiments/0249/results/closure-v1.md)
-after one valid Codex/B success: the next slot was refused before preparation
-because the current host account and organization differed from the frozen
-venue. No S was observed in0249 and no S/B conclusion follows. All remaining27
-slots are NOT_RUN. The actor that changed the host session is unknown; no manual
-login, account substitution, reroll or automatic successor experiment is requested.
-No extra S instruction or pair surface is admitted, and no global optimum or
-general gain over bare is claimed. Earlier outcomes and unknown costs remain.
+The current correction recognizes a real adjacent `@AGENTS.md` import following
+complete HTML comments, matching the inspected native Claude loader. It prevents
+a duplicated managed principles block while preserving prose, ownership and
+backups. Only `bin/instructions.js` and its portability regressions change.
+Targeted3 and packaged72 pass; Astra review is SHIP with zero HIGH findings.
+[Product evidence](experiments/0250/results/product/verification-summary.json)
+binds the checked bytes. Root instructions stay 597 words/4,049 bytes. No new
+instruction, dependency or claimed model token/time saving is added.
 
-The final publisher is `~/.local/share/nx01/0237-integration-425`, branch
-`candidate/0237-minimal-solo-425`. It now includes upstream documentation-only
-PR198 at `7e1719b5f08128b72c7d94e062f03f9fd6c7ed31`; the latest historical body
-below is preserved. All12 verified product inputs are unchanged from the tested
-4.2.5 integration: review SHIP; package72/menu15/Linuxhelper73/macOShelper71+2skips,
-lint and fullqueue71 pass. No new affected product check is required for that
-HANDOFF-only fast-forward. Default delivery is PR+merge; no npm publication.
-The original-repository receipt is
-`.git/devlyn-completion/99144b306f9a5d78e0622b56/receipt.json`, task
-`minimal-solo-harness-integration-425`. Final acceptance/commit/PR remain pending.
+[0250 is closed](experiments/0250/results/closure-v1.md): one valid Codex/S OR2
+success, followed by a pre-inference identity refusal; all23 remaining slots are
+NOT_RUN. The owner check activated and led to a counterexample repair in that run,
+but no B observation means no comparative conclusion. The independent native
+audit passed. Each preflight reread the mutable shared Keychain login, and d02
+copied a different valid account with ample lifetime. Who changed it is unknown.
+No login or account change was requested/performed by this investigation.
 
-Preserve `~/.local/share/nx01/0237-harness`, old4.2.4 integration
-`~/.local/share/nx01/0237-integration`, every frozen study input and private raw
-record, and `0249-live/baseline-source-v1` immutable copies. The new publisher's
-later cleanup does not remove those selected baseline bytes. All old observations
-remain version-qualified. Preserve unrelated work in the original checkout.
-The [0237 iteration](iterations/0237-minimal-solo-harness.md) and individual
-experiment STATUS/closure files retain the full history; closed schedules stay closed.
+Keep 0248–0250 closed. A future comparison first needs a supported account context
+owned for the whole block; changing the expected account to the latest host login
+does not remove the observed dependency. This prerequisite is not implemented.
+No automatic successor study, regrade, pair escalation or admission follows.
+The solo ceiling and superiority over bare remain unproven; prior failures,
+unknown costs and version/exposure limits remain evidence.
+
+Current delivery candidate: `~/.local/share/nx01/0250-minimal-solo`, branch
+`candidate/0250-minimal-solo`, task `minimal-solo-continuation-0250`, receipt
+`.git/devlyn-completion/3a87f490267ce0c3cf3f1edc/receipt.json` in the original
+repository. Its final acceptance, custody and delivery state live in that receipt;
+this document is the source snapshot before delivery. Policy is PR+merge, no npm
+release. Retain this worktree at its exact path: the study freezes absolute paths
+to its registration artifacts. Disposable receipt scratch remains cleanable.
+
+Preserve `0237-harness`, the old `0237-integration` and all frozen/private research
+roots, including `0249-live/baseline-source-v1` and `0250-live`. PR199's publisher
+`0237-integration-425` also remains retained: delivery COMPLETE, scratch CLEAN,
+workspace cleanup pending because a shared macOS virtualization process held files.
+Do not kill that shared process or force cleanup. The older receipt is
+`.git/devlyn-completion/99144b306f9a5d78e0622b56/receipt.json`. Historical entries
+below retain results, not current execution orders.
 
 ## Historical handoff (superseded work order; retained results)
 

@@ -413,6 +413,10 @@ init({options});
             '`@AGENTS.md`\n\nRead @./AGENTS.md for rules.',
             '---\nnote: "Read @AGENTS.md for rules."\n---\n\nRead @./AGENTS.md for rules.',
             '---\nRead @AGENTS.md for rules.',  # No closing frontmatter delimiter.
+            '<!-- Shared rules --> @AGENTS.md\n',
+            '<!-- Shared rules --> <!-- Team --> Read @./AGENTS.md#rules for rules.\r\n',
+            '<!-- @OTHER.md --> @AGENTS.md <!-- @OTHER.md -->\n',
+            '<!-- Shared rules --> @AGENTS.md <!-- Unclosed note\n',
         ]
         negative = [
             '`@AGENTS.md`', '`` @AGENTS.md ``', '`example\n@AGENTS.md\nexample`',
@@ -420,6 +424,10 @@ init({options});
             '````md\n```\n@AGENTS.md\n```\n````', '    @AGENTS.md',
             '> ```md\n> @AGENTS.md\n> ```', '- Example\n\n  ```md\n  @AGENTS.md\n  ```',
             '- ` @AGENTS.md `', '<!-- @AGENTS.md -->', '<div>\n@AGENTS.md\n</div>',
+            '<!-- @AGENTS.md --> <!-- @./AGENTS.md -->\n', '<!-- Unclosed @AGENTS.md\n',
+            '```md\n<!-- Shared rules --> @AGENTS.md\n```', '`<!-- Shared rules --> @AGENTS.md`',
+            '<div><!-- Shared rules --> @AGENTS.md</div>\n',
+            '<!-- Shared rules --> @AGENTS.md.bak\n', '<!-- Shared rules --> @AGENTS.md,\n',
             '\\@AGENTS.md', 'someone@AGENTS.md', '@"AGENTS.md"', '@@AGENTS.md',
             '@AGENTS.md.bak', '@AGENTS.md,', '@../AGENTS.md', '@sub/AGENTS.md', '@OTHER.md',
             # The upstream whitespace advisory's payload must terminate under the bundled parser.
@@ -464,6 +472,8 @@ init({options});
                                       ('imports-relative', b'@./AGENTS.md\n', lambda: self.cli('-y', '--claude')),
                                       ('imports-inline', b'Read @AGENTS.md for rules.\n', lambda: self.cli('-y', '--claude')),
                                       ('imports-inline-relative', b'Read @./AGENTS.md for rules.\n', lambda: self.cli('-y', '--claude')),
+                                      ('imports-comment', b'<!-- Shared rules --> @AGENTS.md\n', lambda: self.cli('-y', '--claude')),
+                                      ('comment-only', b'<!-- @AGENTS.md --> <!-- @./AGENTS.md -->\n', lambda: self.cli('-y', '--claude')),
                                       ('claude-alone', None, lambda: self.invoke('installClaudeCore();')),
                                       ('frontmatter', frontmatter, lambda: self.cli('-y', '--claude')),
                                       ('fenced', fenced, lambda: self.cli('-y', '--claude'))):
@@ -511,6 +521,7 @@ init({options});
         for case, before, update in (('new', None, lambda: self.cli('-y')),
                                      ('imports', claude, lambda: self.interact([['\r'], ['\r'], ['\r']])),
                                      ('relative', b'@./AGENTS.md\n', lambda: self.cli('-y')),
+                                     ('comment-relative', b'<!-- Shared rules --> <!-- Team --> @./AGENTS.md\n', lambda: self.cli('-y')),
                                      ('inline-relative', b'Read @./AGENTS.md for team rules.\n', lambda: self.cli('-y'))):
             with self.subTest(case=case):
                 self.project = self.case / case; self.project.mkdir()

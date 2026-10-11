@@ -1,0 +1,176 @@
+{
+  "adjudication_needed": false,
+  "arm": "S",
+  "assessment": "NOT_REQUESTED",
+  "boot_catalogs": null,
+  "cell": "d01-or2-codex-s",
+  "changed": [
+    "visible/checks/test_loader.py",
+    "visible/relay/loader.py"
+  ],
+  "claude_accounting": {
+    "api_errors": [],
+    "gaps": [],
+    "schema": "0238-claude-accounting-v1",
+    "scope": "Native emitted accounting, not provider billing. Thinking is already in output; progress estimates are never counted. All reported costs remain in inherited usage.",
+    "sessions": {},
+    "sources": {
+      "run/stdout": "d77a60522e33f4e22cc3d5fdc485871c593f1a5c20fa84c6f72548165b6ca42a"
+    },
+    "status": "MATCH",
+    "stream_retries": [],
+    "terminal_message_count": 0,
+    "unknown_residual": null
+  },
+  "config": "codex",
+  "delivery": {
+    "baseline": "28be9695796cd16f02ac2ddb0889f03210261063",
+    "changed": [
+      "visible/checks/test_loader.py",
+      "visible/relay/loader.py"
+    ],
+    "commit": "50ddfa7ea6f79fdae56400b036492d0be9ffa671",
+    "passed": true,
+    "reason": "local commit matches the assessed task source"
+  },
+  "delivery_pass": true,
+  "deterministic_seconds": 1.230428959010169,
+  "evidence_manifest_sha256": "3a77b48ab27707a9ef242fec82c5451eee4a21cf5a91b69c86b08ce3dadceac9",
+  "identity": {
+    "codex_seats": {
+      "01a12865-0d1a-7ef2-9943-313653f8d026": [
+        "owner",
+        "gpt-6-astra",
+        "max"
+      ]
+    },
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "input_tokens": 921294,
+  "measurement_eligible": true,
+  "oracle": [
+    {
+      "id": "coalescing-and-independent-keys",
+      "status": "PASS"
+    },
+    {
+      "id": "recursive-result-and-backend-isolation",
+      "status": "PASS"
+    },
+    {
+      "id": "one-waiter-cancellation-isolation",
+      "status": "PASS"
+    },
+    {
+      "id": "sole-waiter-cancel-and-rejoin",
+      "status": "PASS"
+    },
+    {
+      "id": "stale-success-keeps-new-flight",
+      "status": "PASS"
+    },
+    {
+      "id": "out-of-order-generations",
+      "status": "PASS"
+    },
+    {
+      "id": "shared-failure-can-retry",
+      "status": "PASS"
+    },
+    {
+      "id": "stale-failure-keeps-new-flight",
+      "status": "PASS"
+    },
+    {
+      "id": "backend-cancellation-can-retry",
+      "status": "PASS"
+    },
+    {
+      "id": "shutdown-owns-retired-operations",
+      "status": "PASS"
+    },
+    {
+      "id": "shutdown-awaits-cleanup",
+      "status": "PASS"
+    },
+    {
+      "id": "consumer-instance-isolation",
+      "status": "PASS"
+    }
+  ],
+  "output_tokens": 24684,
+  "owner_seconds": 655.5753982500173,
+  "owner_status": "EXITED_0",
+  "peer_policy": {
+    "activated": false,
+    "claude_roles": {},
+    "codex_roles": {
+      "01a12865-0d1a-7ef2-9943-313653f8d026": [
+        "owner",
+        "01a12865-0d1a-7ef2-9943-313653f8d026"
+      ]
+    },
+    "failed_attempts": [],
+    "gaps": [],
+    "protocol_violations": [],
+    "recovered": false,
+    "status": "MATCH",
+    "turns": [],
+    "validation_completion": "NOT_ACTIVATED",
+    "violations": []
+  },
+  "phase": "measured",
+  "product_check_pass": true,
+  "public": [
+    {
+      "argv": [
+        "sh",
+        "-c",
+        "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && cd visible && python3 -B checks/run_checks.py"
+      ],
+      "exit_code": 0,
+      "stderr_tail": "Contract.test_cancelling_one_waiter_preserves_shared_fetch) ... ok\ntest_close_awaits_current_retired_and_abandoned_fetch_cleanup (test_loader.LoaderContract.test_close_awaits_current_retired_and_abandoned_fetch_cleanup) ... ok\ntest_close_cancels_fetch_that_has_not_started (test_loader.LoaderContract.test_close_cancels_fetch_that_has_not_started) ... ok\ntest_eager_fetches_cache_success_and_retry_errors_and_cancellation (test_loader.LoaderContract.test_eager_fetches_cache_success_and_retry_errors_and_cancellation) ... ok\ntest_invalidation_during_eager_fetch_retires_the_operation (test_loader.LoaderContract.test_invalidation_during_eager_fetch_retires_the_operation) ... ok\ntest_repeated_invalidations_preserve_other_keys (test_loader.LoaderContract.test_repeated_invalidations_preserve_other_keys) ... ok\ntest_results_snapshots_and_backend_are_recursively_detached (test_loader.LoaderContract.test_results_snapshots_and_backend_are_recursively_detached) ... ok\ntest_retired_failures_cannot_evict_current_fetch_or_cache (test_loader.LoaderContract.test_retired_failures_cannot_evict_current_fetch_or_cache) ... ok\ntest_retired_success_cannot_publish_or_remove_current_fetch (test_loader.LoaderContract.test_retired_success_cannot_publish_or_remove_current_fetch) ... ok\ntest_shared_failure_and_backend_cancellation_allow_retry (test_loader.LoaderContract.test_shared_failure_and_backend_cancellation_allow_retry) ... ok\ntest_shares_only_same_key_and_caches_only_completed_values (test_loader.LoaderContract.test_shares_only_same_key_and_caches_only_completed_values) ... ok\ntest_sole_cancelled_waiter_leaves_fetch_joinable_and_cacheable (test_loader.LoaderContract.test_sole_cancelled_waiter_leaves_fetch_joinable_and_cacheable) ... ok\ntest_cache_and_completed_invalidation (test_smoke.Smoke.test_cache_and_completed_invalidation) ... ok\ntest_other_keys (test_smoke.Smoke.test_other_keys) ... ok\n\n----------------------------------------------------------------------\nRan 15 tests in 0.056s\n\nOK\n",
+      "stdout_tail": "{\"public_passed\": true, \"tests\": 15}\n",
+      "timeout": false
+    }
+  ],
+  "public_pass": true,
+  "quota": {
+    "assessment": [],
+    "execution": []
+  },
+  "run_and_checks_seconds": 658.9426375839976,
+  "scope_violations": [],
+  "snapshot": {
+    "candidates": [
+      {
+        "acceptance": true,
+        "allocation": "owned",
+        "local_only": true,
+        "receipt": "cell/work/.git/devlyn-completion/79f3759714544ae2f18197f9/receipt.json",
+        "worktree": "/cell/relay-keyed-loader-delivery"
+      }
+    ],
+    "kind": "accepted",
+    "receipt": "cell/work/.git/devlyn-completion/79f3759714544ae2f18197f9/receipt.json",
+    "rule": "receipt",
+    "sha": "50ddfa7ea6f79fdae56400b036492d0be9ffa671"
+  },
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "task": "OR2",
+  "teardown": "CLEAN",
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "venue": {
+    "account": [
+      "cc43a4e02ede",
+      "2905f4abf05b"
+    ],
+    "token_seconds_left": 24941
+  }
+}

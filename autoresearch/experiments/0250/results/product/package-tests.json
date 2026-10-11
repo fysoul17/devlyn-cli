@@ -1,0 +1,12 @@
+{
+  "label": "package-tests",
+  "command": [
+    "python3",
+    "scripts/test-windows-portability.py",
+    "--package-root",
+    "/Users/aipalm/Documents/GitHub/devlyn-cli/.git/devlyn-completion/3a87f490267ce0c3cf3f1edc/scratch/distribution-comment-import-v1/installed/node_modules/devlyn-cli",
+    "PackageTests"
+  ],
+  "exit_code": 0,
+  "wall_seconds": 62.24289158300962
+}
