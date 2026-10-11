@@ -5,6 +5,10 @@ Measures the 세계최고/moat axis (NORTH-STAR ops #17) and the no-degradation
 `autoresearch/iterations/0068-discriminating-corpus.md` (isolation v2, gate
 semantics, Amendments A2/A3, closure addenda). This README is the HOW.
 
+**History since 4.2.0:** the tranche and the no-degradation cell stage the
+retired resolve skill (0232 §8), so they are records, not live instruments.
+Measuring the installed product again needs an A arm ported to it first.
+
 ## Instruments
 
 | Instrument | Question | Status (2026-07-13) |
