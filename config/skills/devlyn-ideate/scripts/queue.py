@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import datetime
+import errno
 import functools
 import hashlib
 import json
@@ -23,7 +24,6 @@ import shlex
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 
 SKILLS = Path(__file__).resolve().parents[2]
@@ -437,7 +437,7 @@ def parse_loop(data, loop, label):
     """A loop's queue file: its rows, each a task row of the loop, and the legacy row it replaces as (occurrence, line)."""
     require(data is not None, f"{label}: no such file")
     rows = parse_queue(data, label)
-    require(all(row["identity"] and row["loop"] == loop for row in rows), f"{label}: every row must be a task row of loop {loop}")
+    require(rows and all(row["identity"] and row["loop"] == loop for row in rows), f"{label}: every row must be a task row of loop {loop}")
     targets = [(int(m[1]), m[2]) for line in data.decode("utf-8").split("\n") if (m := REPLACES_RE.fullmatch(line.removesuffix("\r")))]
     require(len(targets) <= 1, f"{label}: replaces more than one legacy row")
     return rows, targets[0] if targets else None
@@ -480,11 +480,25 @@ def queue_view(anchor, recorded):
     raw = [row for row in parse_queue(legacy.read_bytes() if legacy.exists() else b"") if not row["identity"]]
     loops = {loop: parse_loop(show(anchor, added["commit"], loop_queue(loop)), loop, f"{CAPTURES}{loop}:{loop_queue(loop)}")
              for loop, added in recorded.items()}
-    for rel in sorted(filter(None, git(anchor, "ls-files", "-z", "--", ":(glob)docs/specs/*/queue.md").split("\0")), key=lambda rel: rel.split("/")[2]):
+    tracked = set(filter(None, git(anchor, "ls-files", "-z", "--", ":(glob)docs/specs/*/queue.md").split("\0")))
+    head = ref_value(anchor, "HEAD")
+    if head:
+        tracked.update(rel for rel in git(anchor, "ls-tree", "-r", "-z", "--name-only", head, "--", "docs/specs").split("\0")
+                       if re.fullmatch(r"docs/specs/[^/]+/queue\.md", rel))
+    for rel in sorted(tracked, key=lambda rel: rel.split("/")[2]):
         loop, data = rel.split("/")[2], (anchor / rel).read_bytes() if (anchor / rel).is_file() else None
-        # A file holding no task row of its directory's loop is not a loop's queue file.
-        if loop not in recorded and data and any(row.get("loop") == loop for row in parse_queue(data, anchor / rel)):
-            loops[loop] = parse_loop(data, loop, anchor / rel)
+        if loop not in recorded:
+            # A directory name alone proves nothing. A task row in the checkout or HEAD proves this is a loop queue;
+            # HEAD keeps that proof when the checkout loses its rows. Strict decoding/parsing follows only that proof.
+            known = False
+            for candidate in (data, show(anchor, head, rel) if head else None):
+                for line in (candidate or b"").decode("utf-8", errors="replace").splitlines():
+                    match = ROW_RE.fullmatch(line)
+                    item = ITEM_RE.fullmatch(match["text"].rstrip()) if match else None
+                    if item and item["loop"] == loop and bool(item["rest"]) == (match["mark"] == "F"):
+                        known = True
+            if known:
+                loops[loop] = parse_loop(data, loop, anchor / rel)
     claims = {}
     for loop, (_, target) in loops.items():
         if target:
@@ -518,32 +532,47 @@ def clean(common, recorded):
     notes = []
     for origin in dict.fromkeys(added["origin"] for added in recorded.values()):
         root = Path(origin)
-        if not (root / "docs/specs").is_dir():
+        try:
+            if not (root / "docs/specs").is_dir():
+                continue
+            untracked = set(filter(None, git(root, "ls-files", "--others", "-z", "--", "docs/specs").split("\0")))
+        except (LoopError, OSError) as exc:
+            notes.append(f"package cleanup retained: {root}: {exc}")
             continue
-        untracked = set(filter(None, git(root, "ls-files", "--others", "-z", "--", "docs/specs").split("\0")))
         for loop, added in recorded.items():
             package = f"docs/specs/{loop}/"
             if added["origin"] != origin or not any(rel.startswith(package) for rel in untracked):
                 continue
-            for rel, state in package_state(root, added["commit"], loop).items():
+            try:
+                states = package_state(root, added["commit"], loop)
+            except (LoopError, OSError) as exc:
+                notes.append(f"package cleanup retained: {root / package}: {exc}")
+                continue
+            for rel, state in states.items():
                 if rel in untracked and state == "different":
                     notes.append(f"{root / rel}: kept, it differs from the captured package {CAPTURES}{loop}")
                 elif rel in untracked and state == "equal":
                     try:
                         (root / rel).unlink()
                     except OSError as exc:
-                        notes.append(f"{root / rel}: incomplete cleanup: {exc}")
+                        notes.append(f"package cleanup retained: {root / rel}: {exc}")
             for directory, _, _ in os.walk(root / package, topdown=False):
-                with contextlib.suppress(OSError):
+                try:
                     os.rmdir(directory)
+                except OSError as exc:
+                    if exc.errno not in {errno.ENOTEMPTY, errno.EEXIST, errno.ENOENT}:
+                        notes.append(f"package cleanup retained: {directory}: {exc}")
     return notes
 
 
-def task_complete(action, **values):
+def task_complete(action, *, exclude_receipts=(), **values):
     helper = shared("task-complete")
     try:
-        return helper[action](argparse.Namespace(**values))
+        # Preserve the previous-receipt sweep, excluding only queue-invalid owners.
+        options = {"exclude_receipts": exclude_receipts} if action == "allocate" else {}
+        return helper[action](argparse.Namespace(**values), **options)
     except (helper["CompletionError"], OSError, KeyError, TypeError, ValueError) as exc:
+        # Inherited helper containment includes these three programming-error types; the controller boundary is narrower.
         raise LoopError(f"task-complete {action}: {exc}") from exc
 
 
@@ -552,16 +581,60 @@ def derive_state(anchor, common, row, claims, rev):
     state = {"kind": {" ": "pending", "x": "accepted", "F": "failed"}[row["mark"]], "receipt": None, "path": None}
     require(len(claims) <= 1, f"conflicting receipts for {identity}: {', '.join(str(path) for path, _ in claims)}")
     if not claims:
+        path = receipt_path(common, identity)
+        if path.parent.exists() or path.parent.is_symlink():
+            state.update(kind="pending", barrier=True,
+                         invalid=f"receipt missing at {path}; allocation ownership cannot be verified; inspect {path.parent} and any "
+                                 f"{branch_of(identity)} branch/worktree, remove only confirmed interrupted-allocation artifacts, then drain again")
         return state
     path, receipt = claims[0]
-    require(receipt.get("branch") == branch_of(identity) and path == receipt_path(common, identity),
+    require(isinstance(receipt, dict), f"receipt {path} is not an object")
+    require(receipt.get("task") == identity and receipt.get("branch") == branch_of(identity) and path == receipt_path(common, identity)
+            and path == path.resolve(),
             f"receipt {path} claims {identity} from branch {receipt.get('branch')!r}; conflicting ownership, inspect it")
-    if receipt.get("allocation") != "owned":
+    require(receipt.get("allocation") in ("owned", "allocating"),
+            f"receipt {path}: missing or malformed allocation checkpoint")
+    if receipt["allocation"] == "allocating":
         # Never adopted, and no executor ran: the task waits until the user removes what the allocation left.
+        state["kind"] = "pending"
         state["invalid"] = (f"allocation did not finish ({path}); remove its worktree {receipt.get('worktree')} and branch "
                             f"{receipt['branch']} if present, delete {path.parent}, then drain again")
         return state
-    result = None if not receipt.get("acceptance") else "failed" if receipt.get("product") == "FAILED" else "accepted"
+    require(all(isinstance(receipt.get(key), str) and receipt[key] and "\0" not in receipt[key] for key in
+                ("id", "baseline", "worktree", "common_gitdir", "recovery_ref")), f"receipt {path}: malformed allocation fields")
+    require(receipt["common_gitdir"] == str(common) and receipt["id"] == path.parent.name,
+            f"receipt {path}: conflicting common Gitdir/id binding")
+    require(receipt["recovery_ref"] == "refs/devlyn/completed/" + receipt["id"], f"receipt {path}: conflicting recovery ref ownership")
+    for key in ("delivery", "product", "pr_url", "base", "remote"):
+        require(key not in receipt or receipt[key] is None or isinstance(receipt[key], str), f"receipt {path}: malformed {key}")
+    for key in ("acceptance", "queue", "merge", "workspace_cleanup", "scratch_cleanup"):
+        require(key not in receipt or isinstance(receipt[key], dict), f"receipt {path}: malformed {key}")
+    if receipt.get("merge"):
+        merge = receipt["merge"].get("mergeCommit")
+        require(isinstance(merge, dict) and isinstance(merge.get("oid"), str) and SHA_RE.fullmatch(merge["oid"]),
+                f"receipt {path}: malformed merge binding")
+    for key in ("workspace_cleanup", "scratch_cleanup"):
+        if value := receipt.get(key):
+            require(isinstance(value.get("status"), str) and (key != "workspace_cleanup" and not value.get("reason") or
+                    isinstance(value.get("reason"), str) and isinstance(value.get("resume"), str)), f"receipt {path}: malformed {key}")
+    require(not receipt.get("acceptance") or isinstance(receipt["acceptance"], dict)
+            and all(isinstance(receipt.get(key), str) and SHA_RE.fullmatch(receipt[key]) for key in ("source_sha", "publish_sha"))
+            and isinstance(receipt["acceptance"].get("inputs_sha"), str)
+            and isinstance(receipt["acceptance"].get("reasons"), list)
+            and all(isinstance(reason, str) for reason in receipt["acceptance"]["reasons"]), f"receipt {path}: malformed acceptance binding")
+    require(not receipt.get("queue") or isinstance(receipt["queue"], dict)
+            and all(isinstance(receipt["queue"].get(key), str) and "\0" not in receipt["queue"][key] for key in ("file", "commit")),
+            f"receipt {path}: malformed terminal binding")
+    if receipt.get("acceptance"):
+        verdict = receipt["acceptance"].get("verdict")
+        require(verdict in ("ACCEPTED", "FAILED"), f"receipt {path}: malformed acceptance verdict")
+        require(receipt.get("product") is None or receipt["product"] == verdict,
+                f"receipt {path}: inconsistent acceptance verdict/product")
+        require(isinstance(receipt.get("files"), dict) and receipt["files"], f"receipt {path}: malformed bound files")
+        for key in ("assumptions", "reasons"):
+            value = receipt["acceptance"].get(key, [])
+            require(isinstance(value, list) and all(isinstance(item, str) for item in value), f"receipt {path}: malformed acceptance {key}")
+    result = None if not receipt.get("acceptance") else "failed" if receipt["acceptance"]["verdict"] == "FAILED" else "accepted"
     require(row["mark"] == " " or result == state["kind"],
             f"conflicting terminal state for {identity}: queue row [{row['mark']}] but receipt {path} is {result or 'unbound'}")
     if result:
@@ -573,16 +646,34 @@ def derive_state(anchor, common, row, claims, rev):
         if receipt.get("queue"):
             marks = [r["mark"] for r in parse_queue(show(anchor, receipt["publish_sha"], receipt["queue"]["file"]) or b"") if r["identity"] == identity]
             require(marks == ["x" if result == "accepted" else "F"], f"{identity}: terminal commit {receipt['publish_sha']} does not carry its {result} mark")
+        require(result != "failed" or receipt["acceptance"]["reasons"], f"receipt {path}: failed acceptance has no reason")
     packet = path.parent / "packet.json"
-    if not result and packet.exists():
+    if packet.exists():
         bound = read_json(packet)
-        for key in ("contract", "expected"):
-            rel = Path(bound[key]["path"]).relative_to(bound["worktree"]).as_posix()
-            current = package_bytes(anchor, rev, rel)
-            if current is None or hashlib.sha256(current).hexdigest() != bound[key]["sha256"]:
+        require(isinstance(bound, dict) and not acceptance()["PACKET_KEYS"] - bound.keys(), f"{packet}: malformed task packet")
+        require(bound["worktree"] == receipt["worktree"] and bound["task"] == identity and bound["branch"] == receipt["branch"]
+                and bound["allocation_base"] == receipt["baseline"],
+                f"{packet}: conflicting packet ownership")
+        for key, expected in (("receipt", path), ("scratch", path.parent / "scratch"), ("submission", path.parent / "submission.json"),
+                              ("evidence_dir", Path(receipt["worktree"]) / ".devlyn/loop")):
+            require(bound.get(key) == str(expected), f"{packet}: malformed or conflicting {key} path")
+        require(isinstance(bound["inputs_sha"], str) and SHA_RE.fullmatch(bound["inputs_sha"]), f"{packet}: malformed inputs commit")
+        require(bound.get("delivery") in ("local-only", "auto", "pr"), f"{packet}: malformed delivery")
+        for key in ("requirements", "review_requirements"):
+            require(isinstance(bound[key], list) and all(isinstance(item, str) for item in bound[key]), f"{packet}: malformed {key}")
+        for key in ("contract", "expected", "meta"):
+            entry = bound[key]
+            require(isinstance(entry, dict) and isinstance(entry.get("path"), str) and isinstance(entry.get("sha256"), str)
+                    and re.fullmatch(r"[0-9a-f]{64}", entry["sha256"]), f"{packet}: malformed {key} binding")
+            candidate = Path(entry["path"])
+            require("\0" not in entry["path"] and candidate.is_absolute() and candidate.is_relative_to(Path(bound["worktree"]))
+                    and ".." not in candidate.parts,
+                    f"{packet}: {key} path escapes its worktree: {candidate}")
+            rel = candidate.relative_to(bound["worktree"]).as_posix()
+            current = package_bytes(anchor, rev, rel) if not result else None
+            if not result and key != "meta" and (current is None or hashlib.sha256(current).hexdigest() != bound[key]["sha256"]):
                 # Drain fails this task alone; the revision is planned as a new task.
                 state["inputs_changed"] = f"inputs-changed: {rel} changed after its inputs were committed; plan the revision as a new task"
-                break
     state.update(kind=result or "active", path=path, receipt=receipt)
     return state
 
@@ -593,26 +684,45 @@ def view(anchor, common, local_only=False):
         recorded = records(common)
         cleanup = clean(common, recorded)
         rows = queue_view(anchor, recorded)
-    claims, unreadable = {}, []
+    claims, unreadable, damaged = {}, [], {}
+    canonical = {receipt_path(common, row["identity"]): row["identity"] for row in rows if row["identity"]}
+    branches = {branch_of(identity): identity for identity in canonical.values()}
     for path in sorted((common / "devlyn-completion").glob("*/receipt.json")):
         try:
             receipt = read_json(path)
-            claims.setdefault(receipt["task"], []).append((path, receipt))
-        except (LoopError, KeyError, TypeError) as exc:
+            require(isinstance(receipt, dict), f"{path}: malformed receipt identity")
+            task, branch = receipt.get("task"), receipt.get("branch")
+            implicated = {task if isinstance(task, str) else None, canonical.get(path),
+                          branches.get(branch) if isinstance(branch, str) else None} - {None}
+            require(implicated, f"{path}: malformed receipt identity")
+            for identity in implicated:
+                claims.setdefault(identity, []).append((path, receipt))
+        except (LoopError, OSError) as exc:
             unreadable.append(f"{path}: {exc}")
+            if identity := canonical.get(path):
+                damaged[identity] = str(exc)
     v = {"anchor": anchor, "common": common, "rows": rows, "records": recorded, "packages": {}, "manifests": {}, "states": {},
          "unreadable": unreadable, "cleanup": cleanup, "local_only": local_only}
     errors = {}
     for row in v["rows"]:
         if row["identity"]:
-            state = v["states"][row["identity"]] = derive_state(anchor, common, row, claims.get(row["identity"], []), capture(v, row["loop"]))
+            identity = row["identity"]
+            try:
+                require(identity not in damaged, damaged.get(identity))
+                state = derive_state(anchor, common, row, claims.get(identity, []), capture(v, row["loop"]))
+            except (LoopError, OSError) as exc:
+                # No acceptance/frontier may be inferred from conflicting evidence. Its possible writer or carrier
+                # still holds the loop barrier, even when no trustworthy receipt can be retained in the view.
+                state = {"kind": "pending", "receipt": None, "path": None, "barrier": True,
+                         "invalid": f"recovery conflict: {exc}; inspect and restore {identity}'s verified state, then drain again"}
+            v["states"][identity] = state
             # A changed active task needs no current package text; a validation failure stops only its own task.
-            if state["kind"] == "pending" or state["kind"] == "active" and "inputs_changed" not in state:
+            if "invalid" not in state and (state["kind"] == "pending" or state["kind"] == "active" and "inputs_changed" not in state):
                 loop = row["loop"]
                 if loop not in v["packages"] and loop not in errors:
                     try:
                         v["packages"][loop] = load_package(anchor, loop, capture(v, loop))
-                    except LoopError as exc:
+                    except (LoopError, OSError) as exc:
                         errors[loop] = str(exc)
                 package = v["packages"].get(loop)
                 if problem := errors.get(loop) or package["invalid"].get(row["task"]) or (
@@ -622,10 +732,15 @@ def view(anchor, common, local_only=False):
         state = v["states"].get(row["identity"])
         for dep in v["packages"][row["loop"]]["tasks"][row["task"]]["depends_on"] if state and state["kind"] == "pending" and "invalid" not in state else []:
             dep_state = v["states"].get(f"{row['loop']}.{dep}")
-            require(dep_state is not None, f"{row['identity']} depends on {row['loop']}.{dep}, which is not queued")
+            if dep_state is None:
+                state["invalid"] = (f"{row['identity']} depends on {row['loop']}.{dep}, which is not queued; restore the authoritative "
+                                    "queue from verified state or plan the continuation as a new loop, then drain again")
+                break
             if dep_state["kind"] in {"failed", "blocked"}:
                 state.update(kind="blocked", blocker=f"{row['loop']}.{dep}", root=dep_state.get("root") or dep_state)
                 break
+    v["invalid_receipts"] = {path for identity, state in v["states"].items() if "invalid" in state
+                             for path in (receipt_path(common, identity), *(path for path, _ in claims.get(identity, [])))}
     return v
 
 
@@ -662,8 +777,18 @@ def carrier(v, loop):
 
 
 def waiting(v, row):
+    # Eligibility precedes selection, so its task-local reads cannot reach advance's exception boundary.
+    try:
+        return wait_reason(v, row)
+    except (LoopError, OSError) as exc:
+        return f"allocation blocked: {exc}; inspect and repair {row['identity']}'s starting state, then drain again"
+
+
+def wait_reason(v, row):
     if invalid := v["states"][row["identity"]].get("invalid"):
         return invalid
+    if barrier := recovery_barrier(v, row):
+        return barrier
     local = is_local(v, row["loop"])
     if v["local_only"] and not local:
         return published(v, row["loop"])
@@ -683,11 +808,17 @@ def waiting(v, row):
     return None
 
 
+def recovery_barrier(v, row):
+    return next((f"waiting for {identity} (recovery conflict), since its possible writer or package carrier holds this loop"
+                 for identity, state in v["states"].items() if identity != row["identity"]
+                 and identity.split(".")[0] == row["loop"] and state.get("barrier")), None)
+
+
 def next_task(v, attempted):
     """Earliest unsettled receipt first, then the earliest eligible pending row in physical order."""
     for row in v["rows"]:
         state = v["states"].get(row["identity"])
-        if state and state["receipt"] and row["identity"] not in attempted and "invalid" not in state and (
+        if state and state["receipt"] and row["identity"] not in attempted and "invalid" not in state and not recovery_barrier(v, row) and (
                 state["kind"] == "active" or not state["receipt"].get("queue") or state["receipt"].get("delivery") not in SETTLED):
             return row
     return next((row for row in v["rows"] if row["identity"] not in attempted and v["states"].get(row["identity"], {}).get("kind") == "pending"
@@ -698,7 +829,8 @@ def annotate(v, refused):
     """Name each task's wait: a pending task's reason from waiting(), else why this drain did not advance it."""
     for row in v["rows"]:
         state = v["states"].get(row["identity"])
-        if state and (reason := state["kind"] == "pending" and waiting(v, row) or refused.get(row["identity"])):
+        if state and (reason := refused.get(row["identity"]) or state["kind"] == "pending" and waiting(v, row)
+                     or recovery_barrier(v, row)):
             state["waiting"] = reason
 
 
@@ -800,12 +932,16 @@ def input_files(v, row, receipt, local):
     return files
 
 
-def require_merged(v, row, base):
+def require_merged(v, row, base, *, allocated=False):
     """auto/pr: every prerequisite's merge commit must be in the base, before allocation and before every execution."""
     for dep in v["packages"][row["loop"]]["tasks"][row["task"]]["depends_on"]:
         receipt = v["states"][f"{row['loop']}.{dep}"]["receipt"] or {}
         merge = ((receipt.get("merge") or {}).get("mergeCommit") or {}).get("oid")
-        require(merge and ancestor(v["anchor"], merge, base), f"{row['identity']}: base {base} lacks the delivered prerequisite merge {merge}")
+        remedy = ("retain this allocation and plan the continuation as a new loop, or perform verified recovery of a never-executed allocation"
+                  if allocated else f"restore that merge on origin/{manifest_of(v, row['loop'])['base_ref']}, then drain again")
+        require(merge and ancestor(v["anchor"], merge, base),
+                f"{row['identity']}: {'allocated baseline' if allocated else 'base'} {base} lacks prerequisite {row['loop']}.{dep}'s "
+                f"delivered merge {merge}; {remedy}")
 
 
 def package_drift(v, loop, start, where):
@@ -877,19 +1013,21 @@ def allocate(v, row, opts):
                     f"plan the loop on {default}, or drain with --local-only")
         try:
             start = helper["remote_base"]({"common_gitdir": str(common), "remote": "origin", "base": manifest["base_ref"]})
-        except helper["CompletionError"] as exc:
-            raise LoopError(f"{identity}: cannot refresh base {manifest['base_ref']}: {exc}") from exc
+        except (helper["CompletionError"], OSError) as exc:
+            raise LoopError(f"cannot refresh origin/{manifest['base_ref']}: {exc}; restore remote access or the base ref, "
+                            "then drain again; the next drain retries") from exc
         values["start"] = start
         require_merged(v, row, start)
         if drift := package_drift(v, loop, start, f"origin/{manifest['base_ref']}"):
             return drift
     require(evidence_ignored(anchor, common, start),
             f"{identity}: .devlyn/ is not ignored in its start commit {start}, so loop evidence would dirty task source; commit a "
-            f"`.devlyn/` entry to .gitignore in the base the task starts from, or add `.devlyn/` to {common / 'info' / 'exclude'}")
+            f"`.devlyn/` entry to .gitignore in the base the task starts from (push it for remote delivery), or add `.devlyn/` to "
+            f"{common / 'info' / 'exclude'}; then drain again")
     if values["start"] and (drift := instruction_drift(anchor, start)):
         return (f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run "
                 f"without them; commit them and push them to origin/{manifest['base_ref']}")
-    result = task_complete("allocate", **values)
+    result = task_complete("allocate", exclude_receipts=v["invalid_receipts"], **values)
     progress(identity, f"allocated {result['worktree']}")
     return None
 
@@ -954,28 +1092,25 @@ def ensure_submission(identity, packet_path, packet, executor):
     again.
 
     An attempt's start is recorded before the spawn and its exit after the wait, so a start without an exit may have
-    left a live executor: drain waits until no process uses the worktree, then adopts its submission or runs the
-    executor again. Where writers cannot be observed the task fails as interrupted-unobservable."""
+    left a live executor: drain observes once and waits if it is active. Only established cessation permits adoption
+    or another execution. Where writers cannot be observed the task fails as interrupted-unobservable."""
     submission = Path(packet["submission"])
     worktree = Path(packet["worktree"])
     log = submission.with_name("executions.log")
-    events = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+    try:
+        events = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+    except UnicodeDecodeError as exc:
+        raise LoopError(f"{log} is not UTF-8: {exc}; restore the execution history before draining again") from exc
     if events and events[-1].partition(" ")[2] == "start":
         helper = shared("task-complete")
-        reported = False
-        while True:
-            try:
-                helper["stopped_writers"](worktree)
-                break
-            except helper["WritersUnobservable"] as exc:
-                return f"interrupted-unobservable: an interrupted executor may still be writing ({exc})"
-            except helper["WriterActive"] as exc:
-                if not reported:
-                    progress(identity, f"waiting for an interrupted execution to stop ({exc})")
-                reported = True
-                time.sleep(2)
-            except helper["CompletionError"] as exc:
-                raise LoopError(f"{identity}: cannot establish that an interrupted execution stopped ({exc})") from exc
+        try:
+            helper["stopped_writers"](worktree)
+        except helper["WritersUnobservable"] as exc:
+            return f"interrupted-unobservable: an interrupted executor may still be writing ({exc})"
+        except helper["WriterActive"] as exc:
+            raise Waiting(f"interrupted execution still active: {exc}; wait for or stop the named writer, then drain again") from exc
+        except (helper["CompletionError"], OSError) as exc:
+            raise LoopError(f"cannot establish that an interrupted execution stopped: {exc}; repair writer observation, then drain again") from exc
     if submission.exists():
         return None
     argv = [part.replace("{packet}", str(packet_path)) for part in executor]
@@ -992,7 +1127,8 @@ def ensure_submission(identity, packet_path, packet, executor):
                                      stdout=stdout, stderr=stderr)
     except OSError as exc:
         record(log, f"not started: {one_line(str(exc))}")
-        raise LoopError(f"executor could not start: {exc}") from exc
+        raise LoopError(f"executor could not start: {exc}; restore the configured executable, permissions or task workspace; "
+                        "the next drain retries") from exc
     progress(identity, f"executing; output in {output}")
     code = child.wait()
     record(log, f"exit {code} (pid {child.pid})")
@@ -1003,7 +1139,7 @@ def ensure_submission(identity, packet_path, packet, executor):
 
 def terminal_queue(cwd, receipt, identity):
     """The loop queue file of this bound result's only legal terminal transition: its row becomes [x] or [F] — <reason>."""
-    failed = receipt.get("product") == "FAILED"
+    failed = receipt["acceptance"]["verdict"] == "FAILED"
     suffix = f" — {one_line(receipt['acceptance']['reasons'][0])} (receipt {receipt['id']})" if failed else ""
     rel = loop_queue(identity.split(".")[0])
     return transition(show(cwd, receipt["acceptance"]["inputs_sha"], rel) or b"", identity, "F" if failed else "x", suffix)
@@ -1021,7 +1157,7 @@ def settle(v, row, receipt_file):
     identity = row["identity"]
     receipt = read_json(receipt_file)
     worktree, source, branch = Path(receipt["worktree"]), receipt["source_sha"], receipt["branch"]
-    failed = receipt.get("product") == "FAILED"
+    failed = receipt["acceptance"]["verdict"] == "FAILED"
     with lock(v["common"], "queue.lock", blocking=True):
         head = git(worktree, "rev-parse", "refs/heads/" + branch)
         if head == source:
@@ -1041,6 +1177,8 @@ def settle(v, row, receipt_file):
 def advance(v, row, opts):
     """Run or resume one task from its durable state; never replays a bound result. Returns why it waits instead."""
     identity = row["identity"]
+    state = v["states"][identity]
+    state["phase"] = "allocation"
     path = receipt_path(v["common"], identity)
     local = is_local(v, row["loop"])
     if opts.local_only and not local:
@@ -1049,32 +1187,32 @@ def advance(v, row, opts):
         return refused
     receipt = read_json(path)
     if not receipt.get("acceptance"):
+        state["phase"] = "inputs"
         failure = v["states"][identity].get("inputs_changed")
         if not failure and not receipt.get("local_only"):
-            require_merged(v, row, receipt["baseline"])
+            require_merged(v, row, receipt["baseline"], allocated=True)
         packet_path, packet = ensure_packet(v, row, path, receipt)
-        try:
-            failure = failure or ensure_submission(identity, packet_path, packet, opts.executor)
-        except Waiting as exc:
-            return str(exc)
+        state["phase"] = "executor"
+        failure = failure or ensure_submission(identity, packet_path, packet, opts.executor)
+        state["phase"] = "acceptance"
         try:
             result = acceptance()["accept"](packet_path, packet["submission"], failure)
         except acceptance()["AcceptanceError"] as exc:
             raise LoopError(f"{identity}: acceptance could not run: {exc}") from exc
         progress(identity, result["verdict"].lower() + "".join(f"; {reason}" for reason in result["reasons"][:3]))
+        state["phase"] = "custody binding"
         task_complete("accept", receipt=str(path), acceptance=str(Path(packet["worktree"]) / ".devlyn/loop/acceptance.json"))
         progress(identity, "bound")
+    state["phase"] = "terminal transition"
     if not read_json(path).get("queue"):
         settle(v, row, path)
     receipt = read_json(path)
+    state["phase"] = "delivery"
     if receipt.get("delivery") not in SETTLED:
         packet = read_json(path.parent / "packet.json")
-        try:
-            # The plan's mode seeds the first delivery call; a later per-task --mode persists in the receipt.
-            result = task_complete("complete", receipt=str(path), acceptance=None,
-                                   mode=None if local or receipt.get("mode_override") else packet["delivery"], local_only=local, writers_stopped=True)
-        except LoopError as exc:
-            return f"delivery blocked: {exc}"
+        # The plan's mode seeds the first delivery call; a later per-task --mode persists in the receipt.
+        result = task_complete("complete", receipt=str(path), acceptance=None,
+                               mode=None if local or receipt.get("mode_override") else packet["delivery"], local_only=local, writers_stopped=True)
         progress(identity, f"delivery {result['status']}")
         if result.get("merge_refused"):
             return f"merge refused: {result['merge_refused']}; a person merges the PR"
@@ -1093,6 +1231,16 @@ def summary(v, row):
         item["reason"] = reason
     if receipt:
         acceptance_record = receipt.get("acceptance") or {}
+        branch, worktree = None, None
+        try:
+            worktree = receipt["worktree"] if receipt.get("worktree") and Path(receipt["worktree"]).exists() else None
+            if receipt.get("branch") and ref_value(v["anchor"], "refs/heads/" + receipt["branch"]):
+                branch = receipt["branch"]
+        except (LoopError, OSError) as exc:
+            diagnostic = (f"task summary unavailable: {row['identity']} worktree {receipt.get('worktree')}, "
+                          f"branch {receipt.get('branch')}: {exc}; repair access and drain again")
+            if diagnostic not in v["cleanup"]:
+                v["cleanup"].append(diagnostic)
         item.update(allocation_base=receipt.get("baseline"), **{"source" if state["kind"] == "accepted" else "candidate": receipt.get("source_sha")},
                     terminal=(receipt.get("queue") or {}).get("commit"), delivery=receipt.get("delivery"), pr=receipt.get("pr_url"),
                     resume=None if not receipt.get("acceptance") or receipt.get("delivery") in SETTLED
@@ -1100,9 +1248,9 @@ def summary(v, row):
                     if receipt.get("queue") else "drain again: the terminal commit is not attached yet",
                     assumptions=acceptance_record.get("assumptions", []),
                     questions=[r.removeprefix("needs-review: ") for r in acceptance_record.get("reasons", []) if r.startswith("needs-review: ")],
-                    worktree=receipt["worktree"] if receipt.get("worktree") and Path(receipt["worktree"]).exists() else None,
+                    worktree=worktree,
                     cleanup=f"{c['status']} — {c['reason']}; resume: {c['resume']}" if (c := receipt.get("workspace_cleanup")) else None,
-                    branch=receipt.get("branch") if receipt.get("branch") and ref_value(v["anchor"], "refs/heads/" + receipt["branch"]) else None,
+                    branch=branch,
                     recovery_ref=receipt.get("recovery_ref"),
                     custody=str(Path(state["path"]).parent / "custody") if receipt.get("files") else None,
                     scratch=(f"{c['status']} — {c['reason']}; resume: {c['resume']}" if (c := receipt.get("scratch_cleanup") or {}).get("reason")
@@ -1154,34 +1302,37 @@ def bring_in(v, loop):
 def write_reports(v, status, reason):
     paths = []
     for loop in dict.fromkeys(row["loop"] for row in v["rows"] if row["identity"]):
-        items = [summary(v, row) for row in v["rows"] if row.get("loop") == loop]
-        lines = [f"# Drain report — {loop}", "", f"- Generated: {datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}",
-                 f"- Queue: {f'{CAPTURES}{loop}:{loop_queue(loop)}' if loop in v['records'] else v['anchor'] / loop_queue(loop)}",
-                 f"- Drain: {status}" + (f" — {reason}" if reason else ""), f"- Whole-loop acceptance: {loop_acceptance(v, loop, items)}",
-                 *([f"- Bring into {line}"] if (line := bring_in(v, loop)) else []), ""]
-        try:
-            meta, _ = load_manifest(v["anchor"], loop, capture(v, loop))
-            decisions = sections(
-                JSON_FENCE_RE.sub("", meta),
-                v["anchor"] / f"docs/specs/{loop}/meta.md",
-            )["Decisions and assumptions"] or "None recorded."
-        except (LoopError, OSError) as exc:
-            decisions = f"Unavailable: {exc}"
-        lines += ["## Package decisions and assumptions", "", decisions, ""]
-        labels = (("result", "Product"), ("reason", "Reason"), ("receipt", "Receipt"), ("custody", "Evidence custody"),
-                  ("recovery_ref", "Recovery ref"), ("allocation_base", "Allocation base"), ("source", "Accepted source"), ("candidate", "Unaccepted source"),
-                  ("terminal", "Terminal commit"), ("delivery", "Delivery"), ("pr", "PR"), ("resume", "Resume"),
-                  ("assumptions", "Assumptions"), ("questions", "Unresolved questions"), ("worktree", "Retained worktree"),
-                  ("cleanup", "Workspace cleanup"),
-                  ("branch", "Branch"), ("scratch", "Scratch cleanup"))
-        for item in items:
-            lines += [f"## {item['identity']}", ""]
-            lines += [f"- {label}: {'; '.join(value) if isinstance(value, list) else value}"
-                      for key, label in labels if (value := item.get(key)) not in (None, [], "")]
-            lines.append("")
         path = v["common"] / "devlyn-loops" / loop / "drain-report.md"
-        acceptance()["atomic_write"](path, "\n".join(lines).encode("utf-8"))
-        paths.append(str(path))
+        try:
+            items = [summary(v, row) for row in v["rows"] if row.get("loop") == loop]
+            lines = [f"# Drain report — {loop}", "", f"- Generated: {datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}",
+                     f"- Queue: {f'{CAPTURES}{loop}:{loop_queue(loop)}' if loop in v['records'] else v['anchor'] / loop_queue(loop)}",
+                     f"- Drain: {status}" + (f" — {reason}" if reason else ""), f"- Whole-loop acceptance: {loop_acceptance(v, loop, items)}",
+                     *([f"- Bring into {line}"] if (line := bring_in(v, loop)) else []), ""]
+            try:
+                meta, _ = load_manifest(v["anchor"], loop, capture(v, loop))
+                decisions = sections(
+                    JSON_FENCE_RE.sub("", meta),
+                    v["anchor"] / f"docs/specs/{loop}/meta.md",
+                )["Decisions and assumptions"] or "None recorded."
+            except (LoopError, OSError) as exc:
+                decisions = f"Unavailable: {exc}"
+            lines += ["## Package decisions and assumptions", "", decisions, ""]
+            labels = (("result", "Product"), ("reason", "Reason"), ("receipt", "Receipt"), ("custody", "Evidence custody"),
+                      ("recovery_ref", "Recovery ref"), ("allocation_base", "Allocation base"), ("source", "Accepted source"), ("candidate", "Unaccepted source"),
+                      ("terminal", "Terminal commit"), ("delivery", "Delivery"), ("pr", "PR"), ("resume", "Resume"),
+                      ("assumptions", "Assumptions"), ("questions", "Unresolved questions"), ("worktree", "Retained worktree"),
+                      ("cleanup", "Workspace cleanup"),
+                      ("branch", "Branch"), ("scratch", "Scratch cleanup"))
+            for item in items:
+                lines += [f"## {item['identity']}", ""]
+                lines += [f"- {label}: {'; '.join(value) if isinstance(value, list) else value}"
+                          for key, label in labels if (value := item.get(key)) not in (None, [], "")]
+                lines.append("")
+            acceptance()["atomic_write"](path, "\n".join(lines).encode("utf-8"))
+            paths.append(str(path))
+        except (LoopError, OSError) as exc:
+            v["cleanup"].append(f"report unavailable: {path}: {exc}; repair access and drain again")
     return paths
 
 
@@ -1189,6 +1340,40 @@ def counts(v):
     kinds = [state["kind"] for state in v["states"].values()]
     return {kind: kinds.count(kind) for kind in ("pending", "active", "accepted", "failed", "blocked")} | {
         "legacy_pending": sum(1 for row in v["rows"] if not row["identity"] and row["mark"] == " ")}
+
+
+def prune_parents(v, root):
+    """Retry empty-parent cleanup for completed, verified receipts; the drain alone knows this boundary."""
+    for identity, state in v["states"].items():
+        receipt = state["receipt"]
+        if not receipt or receipt.get("delivery") != "COMPLETE" or not receipt.get("linked"):
+            continue
+        work = Path(receipt["worktree"])
+        expected = root.joinpath(*identity.split("."))
+        if work != expected:
+            continue
+        parent = work.parent
+        helper = shared("task-complete")
+        try:
+            if work.exists():
+                continue
+            require(work == work.resolve() and not work.is_symlink() and not parent.is_symlink(),
+                    f"symlink or escape at {work}")
+            registered = helper["registrations"](receipt)
+            while parent != root and parent.is_relative_to(root):
+                require(not any(Path(path).is_relative_to(parent) for path in registered),
+                        f"registered worktree retains parent: {parent}")
+                try:
+                    parent.rmdir()
+                except FileNotFoundError:
+                    pass  # A previous cleanup already removed this parent.
+                except OSError as exc:
+                    if exc.errno in {errno.ENOTEMPTY, errno.EEXIST}:
+                        break
+                    raise
+                parent = parent.parent
+        except (LoopError, OSError, helper["CompletionError"]) as exc:
+            v["cleanup"].append(f"parent cleanup retained: {parent}: {exc}; remove it when empty or drain again")
 
 
 def drain(args):
@@ -1204,7 +1389,16 @@ def drain(args):
                 if row is None:
                     break
                 attempted.add(row["identity"])
-                if wait := advance(last, row, args):
+                try:
+                    wait = advance(last, row, args)
+                except Waiting as exc:
+                    wait = str(exc)
+                except (LoopError, OSError) as exc:
+                    phase = last["states"][row["identity"]].get("phase", "allocation")
+                    wait = f"{phase} blocked: {exc}"
+                    if phase in {"allocation", "inputs", "acceptance", "custody binding", "terminal transition"}:
+                        wait += f"; inspect and repair {row['identity']}'s {phase} state, then drain again"
+                if wait:
                     refused[row["identity"]] = wait
             if any(state["kind"] in {"pending", "active"} for state in last["states"].values()) or counts(last)["legacy_pending"] or refused:
                 status = "WAITING"
@@ -1215,6 +1409,7 @@ def drain(args):
         if last is None:
             return {"status": status, "reason": reason}
         annotate(last, refused)
+        prune_parents(last, args.worktree_root)
         return {"status": status, "reason": reason, "reports": write_reports(last, status, reason), "counts": counts(last),
                 "tasks": [summary(last, row) for row in last["rows"] if row["identity"]], "cleanup": last["cleanup"]}
 
@@ -1615,7 +1810,7 @@ class QueueTests(unittest.TestCase):
         common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
         with mock.patch.object(Path, "unlink", side_effect=PermissionError("unlink denied")):
             notes = clean(common, records(common))
-        self.assertEqual((sorted(notes), all(path.exists() for path in saved)), (sorted(f"{path}: incomplete cleanup: unlink denied" for path in saved), True))
+        self.assertEqual((sorted(notes), all(path.exists() for path in saved)), (sorted(f"package cleanup retained: {path}: unlink denied" for path in saved), True))
         self.assertEqual((clean(common, records(common)), any(path.exists() for path in saved)), ([], False))
 
     def test_a_legacy_row_is_replaced_only_by_its_one_exact_claim(self):
@@ -1723,8 +1918,7 @@ class QueueTests(unittest.TestCase):
             def stopped_writers(path):
                 checks.append(path)
                 observe(len(checks))
-            with mock.patch.dict(helper, {"stopped_writers": stopped_writers}), mock.patch("subprocess.Popen", popen), \
-                    mock.patch("time.sleep"):
+            with mock.patch.dict(helper, {"stopped_writers": stopped_writers}), mock.patch("subprocess.Popen", popen):
                 try:
                     return ensure_submission("l.t", records / "packet.json", packet, ["executor", "{packet}"])
                 except Waiting as exc:
@@ -1751,6 +1945,12 @@ class QueueTests(unittest.TestCase):
                 with self.assertRaises(Crash):
                     drain(crash)
                 failure = drain(spawn, observe)
+                if crash is crash_after_spawn:
+                    # One observation per invocation, without sleep or a second spawn while the writer lives.
+                    self.assertEqual((len(spawns), len(checks)), (1, 1))
+                    self.assertIn("interrupted execution still active", failure)
+                    self.assertIn("interrupted execution still active", drain(spawn, observe))
+                    failure = drain(spawn, observe)
                 self.assertEqual((len(spawns), len(checks), failure and failure.partition(": ")[0]), outcome)
                 self.assertEqual(Path(packet["submission"]).exists(), crash is crash_after_spawn)
                 if crash is crash_after_spawn:

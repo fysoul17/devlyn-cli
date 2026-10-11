@@ -278,6 +278,665 @@ class LoopFixture(unittest.TestCase):
     def tasks(self, result):
         return {task["identity"]: task for task in result["tasks"]}
 
+    def fault_drain(self, injection, *, local=True, code=0, root=None):
+        """Inject an operational fault in the controller; executors and Git still run normally."""
+        argv = self.drain_argv(local)
+        if root is not None:
+            argv[argv.index("--"):argv.index("--")] = ["--worktree-root", str(root)]
+        wrapper = ("import json, os, pathlib, runpy, subprocess, sys\n"
+                   "q = runpy.run_path(sys.argv[1])\n"
+                   "g = q['drain'].__globals__\n"
+                   "h = q['shared']('task-complete')\n" + injection +
+                   "\nsys.argv = sys.argv[1:]\nsys.exit(q['main']())\n")
+        result = subprocess.run([sys.executable, "-c", wrapper, *argv[1:]], cwd=self.root, env=self.env,
+                                capture_output=True, text=True, encoding="utf-8", timeout=120)
+        self.assertEqual(result.returncode, code, result.stdout + result.stderr)
+        return json.loads(result.stdout)
+
+    def independent(self, loop="bb"):
+        self.plan(loop, [("t1", [], "Notes", [NOTES_CHECK])], {f"{loop}.t1": {"product": "notes"}})
+
+    def assert_independent(self, result, loop="bb"):
+        self.assertEqual(result["status"], "WAITING")
+        self.assertEqual((self.tasks(result)[f"{loop}.t1"]["result"], self.calls(f"{loop}.t1")), ("accepted", 1))
+
+    def pause_after_binding(self):
+        """Leave t1 bound while holding every later task until the fixture corrupts the receipt."""
+        return self.fault_drain(
+            "def settle(*args):\n    raise g['Waiting']('fixture pause after binding')\ng['settle'] = settle\n"
+            "real_advance = g['advance']\ndef advance(v, row, opts):\n"
+            "    return real_advance(v, row, opts) if row['task'] == 't1' else 'fixture hold dependent'\n"
+            "g['advance'] = advance\n")
+
+    def test_review_01_failed_verdict_without_product(self):
+        # Prediction: the bound verdict remains failed without the redundant product field, before and after attachment;
+        # no dependent executes and an independent loop completes. Older valid ACCEPTED receipts omit product too.
+        self.plan("aa", CHAIN, {"aa.t1": {"product": "bad-greeting"}, "aa.t2": {"product": "app"}})
+        self.pause_after_binding()
+        path = self.receipt_path("aa.t1")
+        receipt = self.receipt("aa.t1")
+        self.assertEqual((receipt["acceptance"]["verdict"], receipt.pop("product")), ("FAILED", "FAILED"))
+        path.write_text(json.dumps(receipt), encoding="utf-8")
+        self.assertEqual(self.cli("status", "--repo", self.anchor)["counts"]["failed"], 1)
+        self.independent()
+        result = self.drain()
+        self.assert_independent(result)
+        task = self.tasks(result)["aa.t1"]
+        self.assertEqual((task["result"], task["delivery"], self.calls("aa.t2")), ("failed", "FAILED", 0))
+        self.assertEqual(self.rows(self.receipt("aa.t1")["publish_sha"])["aa.t1"]["mark"], "F")
+        self.assertNotIn("product", self.receipt("bb.t1"))
+
+    def test_review_01_inconsistent_verdict_product(self):
+        # Prediction: either contradictory verdict/product pair invalidates only its task and preserves its artifacts.
+        originals = {}
+        for loop, product, contradictory in (("aa", "greeting", "FAILED"), ("cc", "bad-greeting", "ACCEPTED")):
+            self.plan(loop, CHAIN, {f"{loop}.t1": {"product": product}, f"{loop}.t2": {"product": "app"}})
+            self.pause_after_binding()
+            path = self.receipt_path(f"{loop}.t1")
+            receipt = self.receipt(f"{loop}.t1")
+            receipt["product"] = contradictory
+            path.write_text(json.dumps(receipt), encoding="utf-8")
+            originals[path] = path.read_bytes()
+        self.independent()
+        result = self.drain()
+        self.assert_independent(result)
+        for loop in ("aa", "cc"):
+            self.assertIn("verdict/product", self.tasks(result)[f"{loop}.t1"]["reason"])
+            self.assertEqual((self.calls(f"{loop}.t1"), self.calls(f"{loop}.t2")), (1, 0))
+        self.assertEqual({path: path.read_bytes() for path in originals}, originals)
+
+    def test_review_02_unrelated_tracked_queues(self):
+        # Prediction: tracked queues with no row of their directory's loop are ignored by status and drain.
+        for loop, body in (("unrelated", "- [ ] ordinary documentation task\n"), ("empty", "")):
+            path = self.anchor / f"docs/specs/{loop}/queue.md"
+            path.parent.mkdir()
+            path.write_text(body, encoding="utf-8")
+        self.g("add", "docs/specs")
+        self.g("commit", "-qm", "unrelated queues")
+        self.independent()
+        status = self.cli("status", "--repo", self.anchor)
+        self.assertEqual(status["next"], "bb.t1")
+        result = self.drain()
+        self.assert_independent(result)
+        self.assertEqual(set(self.tasks(result)), {"bb.t1"})
+
+    def test_review_02_damaged_proven_queue(self):
+        # Prediction: a tracked loop proven by HEAD remains authoritative even when its checkout queue loses every row.
+        path = self.anchor / "docs/specs/known/queue.md"
+        path.parent.mkdir()
+        path.write_text(self.queue["row_line"]("known.t1", "Known") + "\n", encoding="utf-8")
+        self.g("add", "docs/specs")
+        self.g("commit", "-qm", "known loop")
+        self.independent()
+        for body in (None, "", "- [ ] unrelated replacement\n"):
+            with self.subTest(body=body):
+                if body is None:
+                    path.unlink()
+                else:
+                    path.write_text(body, encoding="utf-8")
+                result = self.drain(code=1)
+                self.assertEqual((result["status"], self.calls("bb.t1")), ("BLOCKED", 0))
+
+    def test_review_02_staged_deletion_of_proven_queue(self):
+        # Prediction: removing a known loop queue from both checkout and index still blocks status and drain;
+        # HEAD remains proof of that loop, so independent execution cannot silently bypass its missing queue.
+        path = self.anchor / "docs/specs/known/queue.md"
+        path.parent.mkdir()
+        path.write_text(self.queue["row_line"]("known.t1", "Known") + "\n", encoding="utf-8")
+        self.g("add", "docs/specs")
+        self.g("commit", "-qm", "known loop")
+        self.g("rm", str(path))
+        self.independent()
+        self.assertEqual(self.cli("status", "--repo", self.anchor, code=1)["status"], "BLOCKED")
+        result = self.drain(code=1)
+        self.assertEqual((result["status"], self.calls("bb.t1")), ("BLOCKED", 0))
+
+    @unittest.skipIf(os.name == "nt", "fake remote uses POSIX wrappers")
+    def test_review_03_drain_allocation_reconciles_direct_receipt(self):
+        # Prediction: a queue allocation still sweeps an older direct PR merged manually; it cleans owned resources.
+        _, data = self.remote(pending=True)
+        work = self.root / "direct"
+        allocated = json.loads(self.run_ok([sys.executable, str(self.helper), "allocate", "--repo", str(self.anchor),
+                                           "--task", "direct", "--branch", "direct-task", "--worktree", str(work),
+                                           "--repository", "test/project", "--remote", "origin", "--base", "main"]))
+        (work / "direct.txt").write_text("direct\n", encoding="utf-8")
+        self.g("add", "direct.txt", work=work)
+        self.g("commit", "-qm", "direct source", work=work)
+        (work / ".devlyn").mkdir()
+        (work / ".devlyn/check.log").write_text("checked\n", encoding="utf-8")
+        acceptance = work / ".devlyn/acceptance.json"
+        acceptance.write_text(json.dumps({"kind": "direct", "task": "direct", "source_sha": self.g("rev-parse", "HEAD", work=work),
+                                          "checks": [{"command": "manual", "evidence": ".devlyn/check.log"}]}), encoding="utf-8")
+        self.run_ok([sys.executable, str(self.helper), "complete", "--receipt", allocated["receipt"], "--acceptance", str(acceptance),
+                     "--mode", "pr", "--writers-stopped"])
+        self.assertEqual(self.merge_pr(data, 1).returncode, 0)
+        self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}}, delivery="auto")
+        result = self.drain(local=False)
+        self.assert_independent(result)
+        receipt = json.loads(Path(allocated["receipt"]).read_text(encoding="utf-8"))
+        self.assertEqual((receipt.get("delivery"), receipt.get("status")), ("COMPLETE", "COMPLETE"))
+        self.assertFalse(work.exists())
+        self.assertEqual(self.g("branch", "--list", "direct-task"), "")
+
+    @unittest.skipIf(os.name == "nt", "fake remote uses POSIX wrappers")
+    def test_review_03_complete_receipt_retries_retained_cleanup(self):
+        # Prediction: a later queue allocation retries retained scratch cleanup on an already COMPLETE receipt.
+        self.remote(pending=False)
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}}, delivery="auto")
+        self.fault_drain("real_clean = h['clean_scratch']\n"
+                         "def clean(receipt, *args):\n    if receipt['task'] == 'aa.t1':\n"
+                         "        raise h['CompletionError']('fixture retained scratch')\n    return real_clean(receipt, *args)\n"
+                         "h['completion_result'].__globals__['clean_scratch'] = clean\n", local=False)
+        self.assertEqual((self.receipt("aa.t1")["status"], self.receipt("aa.t1")["scratch_cleanup"]["status"]), ("COMPLETE", "RETAINED"))
+        self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}}, delivery="auto")
+        result = self.drain(local=False)
+        self.assert_independent(result)
+        self.assertEqual(self.receipt("aa.t1")["scratch_cleanup"]["status"], "CLEAN")
+        self.assertEqual(self.calls("aa.t1"), 1)
+
+    def assert_invalid_bound_field(self, field, value):
+        self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting"}, "aa.t2": {"product": "app"}})
+        self.pause_after_binding()
+        path = self.receipt_path("aa.t1")
+        receipt = self.receipt("aa.t1")
+        receipt[field] = value
+        path.write_text(json.dumps(receipt), encoding="utf-8")
+        original = path.read_bytes()
+        self.independent()
+        result = self.drain()
+        self.assert_independent(result)
+        self.assertIn("recovery conflict:", self.tasks(result)["aa.t1"]["reason"])
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), path.read_bytes()), (1, 0, original))
+
+    def test_review_04_nul_terminal_path(self):
+        # Prediction: a NUL terminal path invalidates only its owner, without rewriting it or running a dependent.
+        self.assert_invalid_bound_field("queue", {"file": "bad\0path", "commit": self.base})
+
+    def test_review_04_list_bound_files(self):
+        # Prediction: list-valued bound files invalidate only their owner, without entering helper custody validation.
+        self.assert_invalid_bound_field("files", [])
+
+    def test_review_04_non_utf8_execution_log(self):
+        # Prediction: undecodable execution history waits at its read, preserves the bytes and prevents a second spawn.
+        self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting", "exit_now": 1}, "aa.t2": {"product": "app"}})
+        self.drain()
+        log = self.receipt_path("aa.t1").with_name("executions.log")
+        log.write_bytes(b"\xff interrupted start\n")
+        self.independent()
+        result = self.drain()
+        self.assert_independent(result)
+        self.assertIn("executions.log is not UTF-8", self.tasks(result)["aa.t1"]["reason"])
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), log.read_bytes()), (1, 0, b"\xff interrupted start\n"))
+
+    def test_review_05_origin_stat_probe(self):
+        # Prediction: an origin is_dir failure is a package-cleanup diagnostic.
+        from unittest import mock
+        with mock.patch.object(Path, "is_dir", side_effect=PermissionError("origin stat denied")):
+            notes = self.queue["clean"](self.common, {"aa": {"origin": str(self.anchor)}})
+        self.assertIn("origin stat denied", " ".join(notes))
+
+    def test_review_05_summary_stat_probe(self):
+        # Prediction: a summary existence failure remains diagnostic and preserves both successful task results.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        self.independent()
+        result = self.fault_drain(
+            "real_summary = g['summary']\nreal_exists = pathlib.Path.exists\ninspecting = False\n"
+            "def exists(path, *args, **kwargs):\n    if inspecting and path.name == 't1':\n"
+            "        raise PermissionError('workspace stat denied')\n    return real_exists(path, *args, **kwargs)\n"
+            "def summary(*args):\n    global inspecting\n    inspecting = True\n"
+            "    try:\n        return real_summary(*args)\n    finally:\n        inspecting = False\n"
+            "pathlib.Path.exists = exists\ng['summary'] = summary\n")
+        self.assert_independent(result)
+        self.assertEqual(self.tasks(result)["aa.t1"]["result"], "accepted")
+        self.assertIn("workspace stat denied", " ".join(result["cleanup"]))
+
+    def test_review_05_prune_stat_probe(self):
+        # Prediction: a pruning existence failure is a cleanup diagnostic instead of escaping the final drain result.
+        from unittest import mock
+        root = self.root / "prune"
+        v = {"states": {"aa.t1": {"receipt": {"delivery": "COMPLETE", "linked": True, "worktree": str(root / "aa/t1")}}},
+             "cleanup": [], "anchor": self.anchor}
+        with mock.patch.object(Path, "exists", side_effect=PermissionError("prune stat denied")):
+            self.queue["prune_parents"](v, root)
+        self.assertIn("prune stat denied", " ".join(v["cleanup"]))
+
+    def test_review_06_canonical_registered_parent(self):
+        # Prediction: pruning uses the helper's canonical registrations even when Git spells the path differently
+        # (Windows C:/ vs C:\\). Missing registered siblings also retain their empty parent, on every test host.
+        from unittest import mock
+        root = self.root / "prune"
+        parent = root / "aa"
+        parent.mkdir(parents=True)
+        work = parent / "t1"
+        receipt = {"delivery": "COMPLETE", "linked": True, "worktree": str(work), "common_gitdir": str(self.common)}
+        helper = self.queue["shared"]("task-complete")
+        for registered in (work, parent / "missing-sibling"):
+            with self.subTest(registered=registered):
+                parent.mkdir(parents=True, exist_ok=True)
+                v = {"states": {"aa.t1": {"receipt": receipt}}, "cleanup": [], "anchor": self.anchor}
+                spelling = str(registered).replace("\\", "/") if os.name == "nt" else str(registered).replace("/", "\\")
+                with mock.patch.dict(helper, registrations=mock.Mock(return_value={str(registered): {"worktree": spelling}})), \
+                        mock.patch.dict(self.queue["prune_parents"].__globals__, git=mock.Mock(return_value="worktree " + spelling + "\0\0")):
+                    self.queue["prune_parents"](v, root)
+                self.assertTrue(parent.is_dir(), "registered worktree's parent was pruned")
+                self.assertIn("registered", " ".join(v["cleanup"]))
+
+    def test_review_07_helper_exception_contract_documented(self):
+        # Prediction: the inherited helper wrapper still contains all three errors; docs describe that exact exception.
+        from unittest import mock
+        helper = self.queue["shared"]("task-complete")
+        for error in (TypeError, KeyError, ValueError):
+            with self.subTest(error=error), mock.patch.dict(helper, allocate=mock.Mock(side_effect=error("helper defect"))):
+                with self.assertRaisesRegex(self.queue["LoopError"], "helper defect"):
+                    self.queue["task_complete"]("allocate")
+        text = (self.skills / "devlyn-ideate/references/loop.md").read_text(encoding="utf-8")
+        self.assertFalse("Programming errors are not converted to waits." in text, "blanket programming-error guarantee remains")
+        for error in ("TypeError", "KeyError", "ValueError"):
+            self.assertIn(error, text)
+
+    @unittest.skipIf(os.name == "nt", "fake remote uses POSIX wrappers")
+    def test_robust_01_base_refresh(self):
+        # Prediction: a failed targeted fetch leaves aa unallocated, its dependent waiting, and bb accepted; repair retries once.
+        self.remote(pending=False)
+        self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting"}, "aa.t2": {"product": "app"}}, delivery="auto")
+        self.independent()
+        for failure in ("fetch exit", "PermissionError"):
+            with self.subTest(failure=failure):
+                injection = ("real = subprocess.run\ndef run(argv, **kw):\n"
+                             "    if argv[0] == 'git' and 'fetch' in argv:\n" +
+                             ("        raise PermissionError('fetch denied')\n" if failure == "PermissionError" else
+                              "        return subprocess.CompletedProcess(argv, 1, stdout='', stderr='fetch denied')\n") +
+                             "    return real(argv, **kw)\nsubprocess.run = run\n")
+                result = self.fault_drain(injection, local=False)
+                self.assert_independent(result)
+                self.assertIn("restore remote access or the base ref", self.tasks(result)["aa.t1"]["reason"])
+                self.assertFalse(self.receipt_path("aa.t1").exists())
+                self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (0, 0))
+        self.assertEqual(self.tasks(self.drain(local=False))["aa.t2"]["result"], "accepted")
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), self.calls("bb.t1")), (1, 1, 1))
+
+    def test_robust_02_executor_start(self):
+        # Prediction: either spawn error preserves start/not-started, permits bb, and retries aa only on a later drain.
+        self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting"}, "aa.t2": {"product": "app"}})
+        self.independent()
+        for failure in ("FileNotFoundError", "PermissionError"):
+            with self.subTest(failure=failure):
+                result = self.fault_drain(
+                    "real = subprocess.Popen\ndef spawn(argv, **kw):\n"
+                    "    if pathlib.Path(kw.get('cwd') or '.').parts[-2:] == ('aa', 't1') and 'executor.py' in str(argv):\n"
+                    f"        raise {failure}('executor unavailable')\n"
+                    "    return real(argv, **kw)\nsubprocess.Popen = spawn\n")
+                self.assert_independent(result)
+                task = self.tasks(result)["aa.t1"]
+                self.assertIn("executor blocked: executor could not start", task["reason"])
+                self.assertIsNone(task["terminal"])
+                log = self.receipt_path("aa.t1").with_name("executions.log").read_text()
+                self.assertTrue(log.splitlines()[-2].endswith(" start"))
+                self.assertIn("not started:", log.splitlines()[-1])
+                self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (0, 0))
+        self.assertEqual(self.tasks(self.drain())["aa.t2"]["result"], "accepted")
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (1, 1))
+
+    def test_robust_05_missing_receipt(self):
+        # Prediction: the occupied receipt directory is invalid on every read; nothing is removed/adopted and bb completes.
+        self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting"}, "aa.t2": {"product": "app"}})
+        self.independent()
+        directory = self.receipt_path("aa.t1").parent
+        (directory / "scratch").mkdir(parents=True)
+        sentinel = directory / "sentinel"
+        sentinel.write_text("keep")
+        for _ in range(2):
+            result = self.drain()
+            self.assert_independent(result)
+            reason = self.tasks(result)["aa.t1"]["reason"]
+            self.assertIn("receipt missing at", reason)
+            self.assertIn("remove only confirmed interrupted-allocation artifacts", reason)
+            self.assertIn(reason, " ".join(self.cli("status", "--repo", self.anchor)["blockers"]))
+            self.assertEqual((sentinel.read_text(), self.calls("aa.t1"), self.calls("aa.t2")), ("keep", 0, 0))
+        shutil.rmtree(directory)  # Explicit verified fixture recovery, never driver recovery.
+        self.assertEqual(self.tasks(self.drain())["aa.t2"]["result"], "accepted")
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (1, 1))
+
+    def test_robust_07_first_receipt_write(self):
+        # Prediction: allocation's first receipt write can fail after mkdir; bb completes now and aa waits invalid next drain.
+        self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting"}, "aa.t2": {"product": "app"}})
+        self.independent()
+        result = self.fault_drain(
+            "hg = h['allocate'].__globals__\nreal = hg['atomic_json']\n"
+            "def write(path, value):\n"
+            "    if value.get('task') == 'aa.t1':\n        raise PermissionError('first receipt denied')\n"
+            "    return real(path, value)\nhg['atomic_json'] = write\n")
+        self.assert_independent(result)
+        self.assertIn("first receipt denied", self.tasks(result)["aa.t1"]["reason"])
+        self.assertFalse(self.receipt_path("aa.t1").exists())
+        self.assertTrue(self.receipt_path("aa.t1").parent.is_dir())
+        self.assertIn("receipt missing", self.tasks(self.drain())["aa.t1"]["reason"])
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (0, 0))
+
+    @unittest.skipIf(os.name == "nt", "fake delivery and symlinks require POSIX")
+    def test_robust_06_parent_cleanup_boundaries(self):
+        # Prediction: parent pruning retries after permission failure; nonempty, registered, symlink and outside-root paths
+        # remain untouched. Custom roots survive, custody stays reachable, and completed tasks never execute twice.
+        self.remote(pending=False)
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}}, delivery="auto")
+        root = self.root / "custom"
+        result = self.fault_drain(
+            "real = pathlib.Path.rmdir\ndef remove(path):\n"
+            "    if path.name == 'aa' and path.parent.name == 'custom':\n        raise PermissionError('parent denied')\n"
+            "    return real(path)\npathlib.Path.rmdir = remove\n", local=False, root=root)
+        self.assertEqual(self.tasks(result)["aa.t1"]["delivery"], "COMPLETE")
+        self.assertIn("parent cleanup retained:", " ".join(result["cleanup"]))
+        parent = root / "aa"
+        self.assertTrue(parent.is_dir())
+        self.assertFalse((parent / "t1").exists())
+        sentinel = parent / "keep"
+        sentinel.write_text("keep")
+        self.fault_drain("", local=False, root=root)
+        self.assertEqual(sentinel.read_text(), "keep")
+        sentinel.unlink()
+        # Another registered sibling worktree holds its parent even if the task's own workspace is gone.
+        self.g("worktree", "add", "-q", "-b", "sibling", str(parent / "sibling"))
+        self.fault_drain("", local=False, root=root)
+        self.assertTrue((parent / "sibling").is_dir())
+        self.g("worktree", "remove", str(parent / "sibling"))
+        # A different drain root cannot prune the original allocation.
+        self.drain(local=False)
+        self.assertTrue(parent.exists())
+        parent.rmdir()
+        outside = self.root / "outside"
+        outside.mkdir()
+        parent.symlink_to(outside, target_is_directory=True)
+        self.fault_drain("", local=False, root=root)
+        self.assertTrue(parent.is_symlink() and outside.is_dir())
+        parent.unlink()
+        parent.mkdir()
+        self.fault_drain("", local=False, root=root)
+        self.assertFalse(parent.exists())
+        self.assertTrue(root.is_dir())
+        receipt = self.receipt("aa.t1")
+        self.assertEqual(self.g("rev-parse", receipt["recovery_ref"]), receipt["publish_sha"])
+        self.assertTrue(self.receipt_path("aa.t1").with_name("custody").is_dir())
+        self.assertEqual(self.calls("aa.t1"), 1)
+
+    def test_robust_08_recovery_conflicts(self):
+        # Prediction: malformed packets, duplicate/foreign claims and damaged recovery refs invalidate only implicated tasks;
+        # aa's sibling remains behind its writer barrier, bb completes, and invalid evidence never supplies a frontier.
+        self.plan_checker("aa", [GREET_CHECK, NOTES_CHECK], {"aa.t1": {"product": "greeting", "exit_now": 1},
+                                                            "aa.t2": {"product": "notes"}, "aa.t3": {"check_only": True}})
+        self.drain()
+        packet = self.receipt_path("aa.t1").with_name("packet.json")
+        original = packet.read_bytes()
+        for index, malformed in enumerate(("null", "{}", '{"contract":{"path":"outside"},"worktree":"/other"}')):
+            with self.subTest(packet=malformed):
+                packet.write_text(malformed)
+                self.independent(f"bb{index}")
+                result = self.drain()
+                self.assert_independent(result, f"bb{index}")
+                self.assertIn("recovery conflict:", self.tasks(result)["aa.t1"]["reason"])
+                self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), packet.read_text()), (1, 0, malformed))
+        packet.write_bytes(original)
+        self.behaviors["aa.t1"] = {"product": "greeting"}
+        self.drain()
+        receipt = self.receipt("aa.t1")
+        self.g("update-ref", "-d", receipt["recovery_ref"])
+        self.independent("cc")
+        result = self.drain()
+        self.assert_independent(result, "cc")
+        self.assertEqual(self.tasks(result)["aa.t1"]["result"], "pending")
+        self.assertIn("recovery conflict:", self.tasks(result)["aa.t1"]["reason"])
+        self.assertNotIn("Whole-loop acceptance: ACCEPTED", self.report("aa"))
+
+    def test_robust_09_missing_prerequisite(self):
+        # Prediction: a missing authoritative prerequisite row invalidates the dependent, leaving an unrelated loop runnable.
+        meta = self.queue["write_package"](self.anchor, "aa", CHAIN, base=self.base)
+        (meta.parent / "queue.md").write_text(self.queue["row_line"]("aa.t2", CHAIN[1][2]) + "\n")
+        self.g("add", "docs/specs/aa")
+        self.g("commit", "-qm", "legacy queue missing prerequisite")
+        self.independent()
+        result = self.drain()
+        self.assert_independent(result)
+        self.assertIn("aa.t1, which is not queued", self.tasks(result)["aa.t2"]["reason"])
+        self.assertIn("new loop", self.tasks(result)["aa.t2"]["reason"])
+        self.assertEqual(self.calls("aa.t2"), 0)
+
+    def test_robust_10_task_phases(self):
+        # Prediction: each operational phase failure lets independent work finish; resumption reuses submission/bound result.
+        for index, (phase, target) in enumerate((("inputs", "inputs"), ("acceptance", "acceptance"),
+                                               ("custody binding", "accept"), ("terminal transition", "attach"))):
+            with self.subTest(phase=phase):
+                loop = f"aa{index}"
+                self.plan(loop, [CHAIN[0]], {f"{loop}.t1": {"product": "greeting"}})
+                self.independent(f"bb{index}")
+                if target == "inputs":
+                    injection = ("real = g['ensure_packet']\ndef call(v, row, *args):\n"
+                                 f"    if row['identity'] == '{loop}.t1':\n        raise g['LoopError']('inputs unavailable; restore package')\n"
+                                 "    return real(v, row, *args)\ng['ensure_packet'] = call\n")
+                elif target == "acceptance":
+                    injection = ("a = q['acceptance']()\nreal = a['accept']\ndef call(packet, *args):\n"
+                                 f"    if json.loads(packet.read_text())['task'] == '{loop}.t1':\n        raise a['AcceptanceError']('checks unavailable')\n"
+                                 "    return real(packet, *args)\na['accept'] = call\n")
+                else:
+                    injection = ("real = g['task_complete']\ndef call(action, **kw):\n"
+                                 f"    if action == '{target}' and json.loads(pathlib.Path(kw['receipt']).read_text())['task'] == '{loop}.t1':\n"
+                                 "        raise g['LoopError']('injected durable step failure')\n"
+                                 "    return real(action, **kw)\ng['task_complete'] = call\n")
+                result = self.fault_drain(injection)
+                self.assert_independent(result, f"bb{index}")
+                self.assertIn(phase + " blocked:", self.tasks(result)[f"{loop}.t1"]["reason"])
+                self.assertEqual(self.calls(f"{loop}.t1"), 0 if target == "inputs" else 1)
+                bound = self.receipt(loop + ".t1")
+                self.assertEqual(self.tasks(self.drain())[f"{loop}.t1"]["result"], "accepted")
+                self.assertEqual(self.calls(f"{loop}.t1"), 1)
+                if target == "attach":
+                    self.assertEqual(self.receipt(loop + ".t1")["source_sha"], bound["source_sha"])
+
+    def test_robust_11_observe_once(self):
+        # Prediction: one live-writer observation returns WAITING, never sleeps/adopts/respawns, and bb finishes.
+        self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting", "exit_now": 1}, "aa.t2": {"product": "app"}})
+        self.drain()
+        log = self.receipt_path("aa.t1").with_name("executions.log")
+        log.write_text("interrupted start\n")
+        self.independent()
+        result = self.fault_drain(
+            "checks = 0\ndef observe(work):\n    global checks\n    checks += 1\n"
+            "    if checks > 1:\n        raise AssertionError('writer observed twice in one drain')\n"
+            "    raise h['WriterActive']('writer 4242 active')\nh['stopped_writers'] = observe\n")
+        self.assert_independent(result)
+        self.assertIn("interrupted execution still active", self.tasks(result)["aa.t1"]["reason"])
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), log.read_text()), (1, 0, "interrupted start\n"))
+
+    def test_robust_12_ancillary_failures(self):
+        # Prediction: inaccessible package origins and report-write errors stay visible; accepted products are never replayed.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        record = self.common / "devlyn-loops/aa/added.json"
+        value = json.loads(record.read_text())
+        former = self.root / "former"
+        (former / "docs/specs/aa").mkdir(parents=True)
+        (former / "docs/specs/aa/sentinel").write_text("keep")
+        value["origin"] = str(former)  # Intact authoritative capture; former checkout is no longer a repository.
+        record.write_text(json.dumps(value))
+        self.independent()
+        result = self.fault_drain(
+            "a = q['acceptance']()\nreal = a['atomic_write']\ndef write(path, data):\n"
+            "    if path.name == 'drain-report.md' and path.parent.name == 'aa':\n"
+            "        raise PermissionError('report denied')\n    return real(path, data)\na['atomic_write'] = write\n")
+        self.assert_independent(result)
+        self.assertEqual(self.tasks(result)["aa.t1"]["result"], "accepted")
+        self.assertIn("package cleanup retained:", " ".join(result["cleanup"]))
+        self.assertIn("report unavailable:", " ".join(result["cleanup"]))
+        self.assertTrue((former / "docs/specs/aa/sentinel").exists())
+        self.drain()
+        self.assertEqual((self.calls("aa.t1"), self.calls("bb.t1")), (1, 1))
+
+    def test_robust_13_authoritative_queue(self):
+        # Prediction: unreadable bytes, duplicate identities, missing/malformed queue files and bad add records remain BLOCKED;
+        # unlike task-local damage, none permits even the independent executor to start.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        self.independent()
+        for fault in ("bytes", "duplicate", "missing", "malformed", "record"):
+            with self.subTest(fault=fault):
+                if fault == "bytes":
+                    injection = "(pathlib.Path(sys.argv[sys.argv.index('--repo') + 1]) / 'docs/specs/queue.md').write_bytes(b'\\xff')\n"
+                elif fault == "record":
+                    injection = ("real = g['records']\ndef records(common):\n"
+                                 "    (common / 'devlyn-loops/aa/added.json').write_text('{}')\n"
+                                 "    return real(common)\ng['records'] = records\n")
+                else:
+                    data = {"duplicate": "(q['row_line']('aa.t1', 'One') + '\\n') .encode() * 2",
+                            "missing": "None", "malformed": "b'- [ ] foreign legacy row\\n'"}[fault]
+                    injection = ("real = g['show']\ndef show(cwd, rev, path):\n"
+                                 f"    if path == 'docs/specs/aa/queue.md':\n        return {data}\n"
+                                 "    return real(cwd, rev, path)\ng['show'] = show\n")
+                path = self.common / "devlyn-loops/aa/added.json"
+                saved = path.read_bytes()
+                result = self.fault_drain(injection, code=1)
+                self.assertEqual(result["status"], "BLOCKED")
+                self.assertEqual((self.calls("aa.t1"), self.calls("bb.t1")), (0, 0))
+                path.write_bytes(saved)
+                (self.anchor / "docs/specs/queue.md").write_bytes(self.base_queue)
+
+    def test_robust_selection_io_and_programming_errors(self):
+        # Prediction: a task-local eligibility read failure waits before selection and cannot abort annotation/reporting;
+        # programming errors in advance remain visible exceptions rather than operational waits.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        self.independent()
+        result = self.fault_drain(
+            "real = g['local_start']\ndef start(v, loop):\n"
+            "    if loop == 'aa':\n        raise OSError('cannot read aa baseline')\n"
+            "    return real(v, loop)\ng['local_start'] = start\n")
+        self.assert_independent(result)
+        self.assertIn("cannot read aa baseline", self.tasks(result)["aa.t1"]["reason"])
+        self.assertEqual(self.calls("aa.t1"), 0)
+        from unittest import mock
+        opts = argparse.Namespace(repo=str(self.anchor), local_only=True, worktree_root=None, executor=["unused", "{packet}"])
+        with mock.patch.dict(self.queue["drain"].__globals__, advance=mock.Mock(side_effect=TypeError("programming defect"))):
+            with self.assertRaisesRegex(TypeError, "programming defect"):
+                self.queue["drain"](opts)
+
+    def test_robust_malformed_allocation_and_packet_paths_hold_barrier(self):
+        # Prediction: a lost allocation checkpoint cannot prove no writer ran; malformed packet paths are invalid data,
+        # not programming exceptions. Both retain aa's sibling barrier while an unrelated loop completes.
+        self.plan_checker("aa", [GREET_CHECK, NOTES_CHECK], {"aa.t1": {"product": "greeting", "exit_now": 1},
+                                                            "aa.t2": {"product": "notes"}, "aa.t3": {"check_only": True}})
+        self.drain()
+        path = self.receipt_path("aa.t1")
+        original = path.read_bytes()
+        receipt = json.loads(original)
+        del receipt["allocation"]
+        path.write_text(json.dumps(receipt))
+        self.independent()
+        result = self.drain()
+        self.assert_independent(result)
+        self.assertEqual(self.calls("aa.t2"), 0)
+        self.assertIn("recovery conflict:", self.tasks(result)["aa.t1"]["reason"])
+        path.write_bytes(original)
+        packet_path = path.with_name("packet.json")
+        packet = json.loads(packet_path.read_text())
+        packet["submission"] = []
+        packet_path.write_text(json.dumps(packet))
+        self.independent("cc")
+        result = self.drain()
+        self.assert_independent(result, "cc")
+        self.assertIn("recovery conflict:", self.tasks(result)["aa.t1"]["reason"])
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (1, 0))
+
+    def test_robust_final_summary_io(self):
+        # Prediction: an ancillary branch-inspection failure after acceptance stays a visible cleanup diagnostic;
+        # the final JSON preserves both accepted products rather than falling back to BLOCKED.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        self.independent()
+        result = self.fault_drain(
+            "real_summary = g['summary']\nreal_ref = g['ref_value']\ninspecting = False\n"
+            "def ref(cwd, name):\n"
+            "    if inspecting and name == 'refs/heads/devlyn/aa/t1':\n        raise PermissionError('aa ref unreadable')\n"
+            "    return real_ref(cwd, name)\n"
+            "def summary(v, row):\n    global inspecting\n    inspecting = True\n"
+            "    try:\n        return real_summary(v, row)\n    finally:\n        inspecting = False\n"
+            "g['ref_value'] = ref\ng['summary'] = summary\n")
+        self.assert_independent(result)
+        self.assertEqual(self.tasks(result)["aa.t1"]["result"], "accepted")
+        self.assertIn("aa ref unreadable", " ".join(result["cleanup"]))
+        self.assertEqual(self.calls("aa.t1"), 1)
+
+    def test_robust_partial_receipt_identity(self):
+        # Prediction: every usable identity implicates its task even when another identity field is malformed;
+        # the suspect artifact is preserved, aa never executes, and bb completes. Astra's original probe ran aa once.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        self.independent()
+        path = self.common / "devlyn-completion/foreign/receipt.json"
+        path.parent.mkdir(parents=True)
+        original = json.dumps({"task": "aa.t1", "branch": None, "allocation": "owned", "worktree": "/unknown"})
+        path.write_text(original)
+        result = self.drain()
+        self.assert_independent(result)
+        self.assertIn("recovery conflict:", self.tasks(result)["aa.t1"]["reason"])
+        self.assertEqual((self.calls("aa.t1"), path.read_text()), (0, original))
+
+    def test_robust_07_existing_allocations_are_never_adopted(self):
+        # Prediction: existing branches or workspaces refuse only their allocation, preserve their bytes and let bb run.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        self.g("branch", "devlyn/aa/t1", self.base)
+        self.independent()
+        result = self.drain()
+        self.assert_independent(result)
+        self.assertIn("existing branch cannot be adopted", self.tasks(result)["aa.t1"]["reason"])
+        self.assertEqual(self.g("rev-parse", "devlyn/aa/t1"), self.base)
+        self.g("branch", "-D", "devlyn/aa/t1")  # Explicit fixture recovery.
+        work = self.root / "repo.devlyn/aa/t1"
+        work.mkdir(parents=True)
+        (work / "sentinel").write_text("keep")
+        self.independent("cc")
+        result = self.drain()
+        self.assert_independent(result, "cc")
+        self.assertIn("linked worktree must be an absent path", self.tasks(result)["aa.t1"]["reason"])
+        self.assertEqual((self.calls("aa.t1"), (work / "sentinel").read_text()), (0, "keep"))
+        self.assertFalse(self.receipt_path("aa.t1").exists())
+
+    def test_robust_09_legacy_fork_refuses_integration(self):
+        # Prediction: a legacy fork cannot supply both prerequisites to an integration task; it waits unchanged while bb runs.
+        self.plan_checker("aa", [GREET_CHECK, NOTES_CHECK], {"aa.t1": {"product": "greeting"},
+                                                            "aa.t2": {"product": "notes"}, "aa.t3": {"check_only": True}})
+        # Reproduce the older driver's fork: the second sibling starts from the first allocation's base,
+        # then holds the integration task until the unmodified driver can inspect the actual divergent receipts.
+        self.fault_drain(
+            "real_frontier = g['frontier']\nreal_allocate = g['allocate']\n"
+            "def frontier(v, loop):\n    return None if loop == 'aa' else real_frontier(v, loop)\n"
+            "def allocate(v, row, opts):\n"
+            "    if row['identity'] == 'aa.t3':\n        return 'legacy fixture pause'\n"
+            "    return real_allocate(v, row, opts)\ng['frontier'] = frontier\ng['allocate'] = allocate\n")
+        self.independent()
+        result = self.drain()
+        self.assert_independent(result)
+        reason = self.tasks(result)["aa.t3"]["reason"]
+        self.assertIn("prerequisite source", reason)
+        self.assertIn("plan an integration task", reason)
+        self.assertEqual([self.calls(f"aa.t{i}") for i in (1, 2, 3)], [1, 1, 0])
+
+    @unittest.skipIf(os.name == "nt", "fake remote uses POSIX wrappers")
+    def test_robust_08_remote_allocation_preserves_conflicted_carrier(self):
+        # Prediction: an independent remote allocation must not invoke the direct helper's repository-wide cleanup
+        # on a queue-invalid carrier, even after its PR merged. Its receipt, packet, branch and workspace stay untouched.
+        _, data = self.remote(pending=True)
+        self.plan_checker("aa", [GREET_CHECK, NOTES_CHECK], {"aa.t1": {"product": "greeting"},
+                                                            "aa.t2": {"product": "notes"}, "aa.t3": {"check_only": True}}, delivery="auto")
+        self.drain(local=False)
+        receipt_path = self.receipt_path("aa.t1")
+        receipt_bytes = receipt_path.read_bytes()
+        receipt = json.loads(receipt_bytes)
+        packet = receipt_path.with_name("packet.json")
+        damaged = json.loads(packet.read_text())
+        damaged["submission"] = []
+        packet.write_text(json.dumps(damaged))
+        self.assertEqual(self.merge_pr(data, 1).returncode, 0)
+        self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}}, delivery="auto")
+        result = self.drain(local=False)
+        self.assert_independent(result)
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (1, 0))
+        self.assertEqual(receipt_path.read_bytes(), receipt_bytes)
+        self.assertEqual(json.loads(packet.read_text()), damaged)
+        self.assertTrue(Path(receipt["worktree"]).is_dir())
+        self.assertEqual(self.g("rev-parse", receipt["branch"]), receipt["publish_sha"])
+
     def test_successful_local_chain_keeps_custody_and_transfers_metadata(self):
         # Both executors refuse a piped stdout, as codex-monitored.sh does, and the driver's stdin; the driver gives them
         # files and the null device.
@@ -316,7 +975,7 @@ class LoopFixture(unittest.TestCase):
         self.assertIn("legacy row 4 needs planning: unrelated legacy intent", status["blockers"])
         self.assertEqual(((self.anchor / "docs/specs/queue.md").read_bytes(), (self.anchor / "docs/specs/inv").exists()), (self.base_queue, False))
 
-        # Conflicting terminal receipts for one identity stop selection with both receipts named.
+        # Conflicting terminal receipts invalidate the implicated task, naming both receipts, while independent work continues.
         foreign = self.root / "foreign"
         allocated = json.loads(self.run_ok([sys.executable, str(self.helper), "allocate", "--repo", str(self.anchor), "--task", "inv.t1",
                                             "--branch", "foreign/t1", "--repository", "test/project", "--base", "main",
@@ -330,12 +989,14 @@ class LoopFixture(unittest.TestCase):
             "kind": "direct", "task": "inv.t1", "source_sha": self.g("rev-parse", "HEAD", work=foreign),
             "checks": [{"command": "manual", "evidence": ".devlyn/check.log"}]}), encoding="utf-8")
         self.run_ok([sys.executable, str(self.helper), "accept", "--receipt", allocated["receipt"], "--acceptance", str(foreign / ".devlyn/acceptance.json")])
-        blocked = self.cli("status", "--repo", self.anchor, code=1)
-        self.assertIn("conflicting receipts for inv.t1", blocked["reason"])
-        self.assertIn(allocated["receipt"], blocked["reason"])
-        result = self.drain(code=1)
-        self.assertEqual(result["status"], "BLOCKED")
-        self.assertIn("conflicting receipts for inv.t1", result["reason"])
+        blocked = " ".join(self.cli("status", "--repo", self.anchor)["blockers"])
+        self.assertIn("conflicting receipts for inv.t1", blocked)
+        self.assertIn(allocated["receipt"], blocked)
+        self.independent()
+        result = self.drain()
+        self.assert_independent(result)
+        self.assertIn("conflicting receipts for inv.t1", self.tasks(result)["inv.t1"]["reason"])
+        self.assertEqual((self.calls("inv.t1"), self.calls("inv.t2")), (1, 1))
 
     def test_the_drain_fills_the_task_worktree_git_dir(self):
         # Prediction (E1): {worktree_git_dir} in the executor argv arrives as the task worktree's
@@ -469,8 +1130,8 @@ class LoopFixture(unittest.TestCase):
         # the moved branch HEAD.
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1", "t2"], "Greeting app", [APP_CHECK])]
         self.plan("cc", tasks, {"cc.t1": {"product": "bad-greeting"}, "cc.t2": {"product": "notes"}, "cc.t3": {"product": "app"}})
-        blocked = self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "no executor"), "{packet}", code=1)
-        self.assertIn("executor could not start", blocked["reason"])
+        blocked = self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "no executor"), "{packet}")
+        self.assertIn("executor could not start", " ".join(task.get("reason", "") for task in blocked["tasks"]))
         self.g("commit", "-q", "--allow-empty", "-m", "moves main")
         tasks = self.tasks(self.drain())
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"cc.t1": "failed", "cc.t2": "accepted", "cc.t3": "blocked"})
@@ -693,10 +1354,13 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.tasks(result)["fr.t4"]["result"], "accepted")
         self.assertEqual(t4["source_sha"], t4["acceptance"]["inputs_sha"])
         self.assertIn("- Whole-loop acceptance: ACCEPTED\n", self.report("fr"))
-        # A receipt whose attached terminal commit lacks its result's mark stops selection.
+        # A consistent failed result whose attached terminal commit still carries [x] stops selection.
         receipt = self.receipt_path("fr.t1")
-        receipt.write_text(json.dumps(dict(json.loads(receipt.read_text(encoding="utf-8")), product="FAILED")), encoding="utf-8")
-        self.assertIn(f"fr.t1: terminal commit {t1['publish_sha']} does not carry its failed mark", self.cli("status", "--repo", self.anchor, code=1)["reason"])
+        value = json.loads(receipt.read_text(encoding="utf-8"))
+        value["product"] = "FAILED"
+        value["acceptance"].update(verdict="FAILED", reasons=["failed: fixture terminal mismatch"])
+        receipt.write_text(json.dumps(value), encoding="utf-8")
+        self.assertIn(f"fr.t1: terminal commit {t1['publish_sha']} does not carry its failed mark", " ".join(self.cli("status", "--repo", self.anchor)["blockers"]))
 
     def plan_checker(self, loop, checks, behaviors, delivery="local-only"):
         """Add a loop of independent t1 and t2, then t3, a check-only task depending on both whose diff guard refuses any
@@ -788,9 +1452,9 @@ class LoopFixture(unittest.TestCase):
         self.plan_checker("oo", [GREET_CHECK, NOTES_CHECK], {"oo.t1": {"product": "greeting"}, "oo.t2": {"product": "notes"},
                                                              "oo.t3": {"check_only": True, "exit_now": 1}})
         hook = self.common / "hooks" / "post-checkout"
-        hook.write_text("#!/bin/sh\necho 'post-checkout: setup failed' >&2\nexit 1\n", encoding="utf-8")
+        hook.write_text("#!/bin/sh\ncase \"$PWD\" in */t1) echo 'post-checkout: setup failed' >&2; exit 1;; esac\n", encoding="utf-8")
         hook.chmod(0o755)
-        self.assertIn("post-checkout: setup failed", self.drain(code=1)["reason"])
+        self.assertIn("post-checkout: setup failed", " ".join(task.get("reason", "") for task in self.drain()["tasks"]))
         hook.unlink()
         self.assertEqual(self.tasks(self.drain())["oo.t2"]["result"], "accepted")
         path, receipt = self.receipt_path("oo.t1"), self.receipt("oo.t1")
@@ -1047,10 +1711,23 @@ class LoopFixture(unittest.TestCase):
             time.sleep(0.05)
         driver.kill()  # The controller dies after the spawn; its executor lives on.
         driver.wait()
-        resumed = next(self.drain_until("a.t1: waiting"))
+        self.independent()
+        resumed = self.drain()
+        self.assert_independent(resumed)
+        self.assertIn("interrupted execution still active", self.tasks(resumed)["a.t1"]["reason"])
+        self.assertEqual(self.calls("a.t1"), 1)
         self.config.with_name("release").write_text("go", encoding="utf-8")
-        out, _ = resumed.communicate(timeout=120)
-        self.assertEqual((self.tasks(json.loads(out))["a.t1"]["result"], self.calls("a.t1")), ("accepted", 1))
+        deadline = time.monotonic() + 60
+        while not self.receipt_path("a.t1").with_name("submission.json").exists():
+            self.assertLess(time.monotonic(), deadline)
+            time.sleep(0.05)
+        # The submission precedes process exit; retry writer observation without ever starting another executor.
+        while True:
+            result = self.drain()
+            if self.tasks(result)["a.t1"]["result"] == "accepted":
+                break
+            self.assertLess(time.monotonic(), deadline)
+        self.assertEqual((self.calls("a.t1"), self.calls("bb.t1")), (1, 1))
 
     def test_captured_contracts_stay_immutable(self):
         # Prediction (C, read captured bytes): with a.t1 left active with committed inputs and a packet, edited copies of the
@@ -1059,8 +1736,8 @@ class LoopFixture(unittest.TestCase):
         # copies as kept. Before: an edited or deleted checkout copy failed the active task as inputs-changed and blocked
         # its dependent.
         self.plan("a", CHAIN, {"a.t1": {"product": "greeting"}, "a.t2": {"product": "app"}})
-        blocked = self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "no executor"), "{packet}", code=1)
-        self.assertIn("executor could not start", blocked["reason"])
+        blocked = self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "no executor"), "{packet}")
+        self.assertIn("executor could not start", " ".join(task.get("reason", "") for task in blocked["tasks"]))
         self.queue["write_package"](self.anchor, "a", [(CHAIN[0][0], [], "Changed title", [NOTES_CHECK]), CHAIN[1]], base=self.base)
         (self.anchor / "docs/specs/a/t2/spec.expected.json").unlink()
         self.assertNotIn("inputs-changed", " ".join(self.cli("status", "--repo", self.anchor)["blockers"]))
@@ -1074,24 +1751,31 @@ class LoopFixture(unittest.TestCase):
         self.assertIn(f"{self.anchor / 'docs/specs/a/t1/spec.md'}: kept, it differs from the captured package refs/devlyn/captures/a", result["cleanup"])
 
     def test_devlyn_ignore_is_checked_before_allocation(self):
+        # Prediction (4): an unignored start waits unallocated while a loop on an ignored base completes; repair runs once.
+        self.g("branch", "ignored-base")
         (self.anchor / ".gitignore").write_text("__pycache__/\n", encoding="utf-8")
         self.g("commit", "-qam", "base without the .devlyn/ rule")
         self.plan("ig", [("t1", [], "Notes", [NOTES_CHECK])], {"ig.t1": {"product": "notes"}}, base=self.g("rev-parse", "HEAD"))
-        blocked = self.drain(code=1)
-        self.assertIn(".devlyn/ is not ignored", blocked["reason"])
-        self.assertIn(".gitignore", blocked["reason"])
-        self.assertIn("info", blocked["reason"])
-        self.assertIn("exclude", blocked["reason"])
+        self.g("checkout", "-q", "ignored-base")
+        self.independent()
+        blocked = self.drain()
+        self.assert_independent(blocked)
+        reason = self.tasks(blocked)["ig.t1"]["reason"]
+        self.assertIn(".devlyn/ is not ignored", reason)
+        self.assertIn(".gitignore", reason)
+        self.assertIn("info", reason)
+        self.assertIn("exclude", reason)
         self.assertFalse(self.receipt_path("ig.t1").exists())
         (self.common / "info").mkdir(exist_ok=True)
         with (self.common / "info" / "exclude").open("a", encoding="utf-8") as exclude:
             exclude.write(".devlyn/\n")
         self.assertEqual(self.tasks(self.drain())["ig.t1"]["result"], "accepted")
+        self.assertEqual((self.calls("ig.t1"), self.calls("bb.t1")), (1, 1))
 
     @unittest.skipIf(os.name == "nt", "the failing allocation uses a POSIX shell hook")
     def test_an_unfinished_allocation_waits_naming_its_recovery(self):
         # Prediction (H3): a post-checkout hook that fails while hk.t1's worktree is added leaves its receipt short of
-        # `allocation: owned`, and that drain ends BLOCKED with the hook's error. Once the hook is gone, the next drain never
+        # `allocation: owned`, and that drain returns WAITING with the hook's error while lo completes. Once the hook is gone, the next drain never
         # adopts hk.t1: it waits, naming the recovery (remove its worktree and branch if present, delete the receipt
         # directory, drain again), status lists that wait without repeating the identity, and the local loop lo is accepted;
         # after that recovery, the next drain accepts hk.t1. Before: every later status and drain ended BLOCKED "allocation
@@ -1099,9 +1783,10 @@ class LoopFixture(unittest.TestCase):
         self.plan("hk", [CHAIN[0]], {"hk.t1": {"product": "greeting"}})
         self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
         hook = self.common / "hooks" / "post-checkout"
-        hook.write_text("#!/bin/sh\necho 'post-checkout: setup failed' >&2\nexit 1\n", encoding="utf-8")
+        hook.write_text("#!/bin/sh\ncase \"$PWD\" in */hk/t1) echo 'post-checkout: setup failed' >&2; exit 1;; esac\n", encoding="utf-8")
         hook.chmod(0o755)
-        self.assertIn("post-checkout: setup failed", self.drain(code=1)["reason"])
+        self.assertIn("post-checkout: setup failed", " ".join(task.get("reason", "") for task in self.drain()["tasks"]))
+        self.assertEqual((self.calls("hk.t1"), self.calls("lo.t1")), (0, 1))
         hook.unlink()
         path, receipt = self.receipt_path("hk.t1"), self.receipt("hk.t1")
         reason = (f"allocation did not finish ({path}); remove its worktree {receipt['worktree']} and branch {receipt['branch']} if present, "
@@ -1170,8 +1855,8 @@ class LoopFixture(unittest.TestCase):
         (self.anchor / "CLAUDE.md").write_bytes(b"# Installed v2\n")
         self.g("commit", "-qam", "install v2")
         # aa.t1 is allocated, then its executor cannot start: the loop's start is now fixed.
-        blocked = self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "no executor"), "{packet}", code=1)
-        self.assertIn("executor could not start", blocked["reason"])
+        blocked = self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "no executor"), "{packet}")
+        self.assertIn("executor could not start", " ".join(task.get("reason", "") for task in blocked["tasks"]))
         (self.anchor / "CLAUDE.md").write_bytes(b"# Installed v3\n")
         self.g("commit", "-qam", "install v3")
         self.plan("bb", [("t1", [], "Greeting", [GREET_CHECK])], {"bb.t1": {"product": "greeting"}})
@@ -1208,6 +1893,7 @@ class LoopFixture(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_prerequisite_merge_is_checked_before_allocation_and_execution(self):
+        # Prediction (3): both merge checks wait while unrelated work completes; an allocated baseline is never replaced.
         bare, data = self.remote(pending=True)
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}}, delivery="auto")
         self.drain(local=False)
@@ -1219,13 +1905,26 @@ class LoopFixture(unittest.TestCase):
         merge = self.receipt("inv.t1")["merge"]["mergeCommit"]["oid"]
         self.run_ok(["git", "--git-dir", str(bare), "update-ref", "refs/heads/main", self.base])  # The base loses that merge.
         held.unlink()
+        self.independent()
         for _ in range(2):
-            self.assertIn(f"lacks the delivered prerequisite merge {merge}", self.drain(local=False, code=1)["reason"])
+            result = self.drain(local=False)
+            self.assert_independent(result)
+            self.assertIn(f"lacks prerequisite inv.t1's delivered merge {merge}", self.tasks(result)["inv.t2"]["reason"])
             self.assertFalse(self.receipt_path("inv.t2").exists())
         # A receipt allocated on that base by another route is checked again before execution.
         self.run_ok([sys.executable, str(self.helper), "allocate", "--repo", str(self.anchor), "--task", "inv.t2", "--branch", "devlyn/inv/t2",
                      "--repository", "test/project", "--base", "main", "--worktree", str(self.root / "repo.devlyn/inv/t2")])
-        self.assertIn(f"lacks the delivered prerequisite merge {merge}", self.drain(local=False, code=1)["reason"])
+        self.independent("cc")
+        allocated = self.receipt_path("inv.t2").read_bytes()
+        result = self.drain(local=False)
+        self.assert_independent(result, "cc")
+        reason = self.tasks(result)["inv.t2"]["reason"]
+        self.assertIn(f"lacks prerequisite inv.t1's delivered merge {merge}", reason)
+        self.assertIn("allocated baseline", reason)
+        self.assertIn("new loop", reason)
+        self.run_ok(["git", "--git-dir", str(bare), "update-ref", "refs/heads/main", merge])
+        self.assertIn("allocated baseline", self.tasks(self.drain(local=False))["inv.t2"]["reason"])
+        self.assertEqual(self.receipt_path("inv.t2").read_bytes(), allocated)
         self.assertEqual(self.calls("inv.t2"), 0)
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
@@ -1241,6 +1940,8 @@ class LoopFixture(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_settled_loop_keeps_its_decisions_after_its_workspaces_are_cleaned(self):
+        # Prediction (6): confirmed removals also prune the empty loop parent, preserving the root and durable receipts;
+        # a later drain finishes interrupted parent pruning without invoking either executor again.
         # Prediction (rp-d3 policy 1): once both tasks of an auto loop are delivered, their worktrees are cleaned, and a
         # further drain, which loads no package for the settled loop, rewrites the report with the captured decision once.
         # Before: no report carried the package decisions.
@@ -1253,9 +1954,15 @@ class LoopFixture(unittest.TestCase):
         tasks = self.tasks(self.drain(local=False))
         self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"sd.t1": "COMPLETE", "sd.t2": "COMPLETE"})
         self.assertEqual([Path(self.receipt(identity)["worktree"]).exists() for identity in tasks], [False, False])
+        parent = self.root / "repo.devlyn/sd"
+        self.assertFalse(parent.exists())
+        self.assertTrue(parent.parent.is_dir())
+        parent.mkdir()  # Model interruption between worktree removal and empty-parent pruning.
         report = self.common / "devlyn-loops/sd/drain-report.md"
         report.unlink()
         self.drain(local=False)
+        self.assertFalse(parent.exists())
+        self.assertEqual((self.calls("sd.t1"), self.calls("sd.t2")), (1, 1))
         self.assertEqual(report.read_text(encoding="utf-8").count(decision), 1)
 
     def remote_rows(self, bare):
@@ -1582,8 +2289,8 @@ class LoopFixture(unittest.TestCase):
         # loop's auto add record as a local one, so every drain ended BLOCKED "malformed add record" without a report.
         self.remote(pending=False)
         self.plan("ri", CHAIN, {"ri.t1": {"product": "greeting"}, "ri.t2": {"product": "app"}}, delivery="auto")
-        stopped = self.cli("drain", "--repo", self.anchor, "--", str(self.root / "no executor"), "{packet}", code=1)
-        self.assertIn("executor could not start", stopped["reason"])
+        stopped = self.cli("drain", "--repo", self.anchor, "--", str(self.root / "no executor"), "{packet}")
+        self.assertIn("executor could not start", " ".join(task.get("reason", "") for task in stopped["tasks"]))
         report = self.common / "devlyn-loops/ri/drain-report.md"
         for _ in range(2):
             report.unlink()
@@ -1600,8 +2307,8 @@ class LoopFixture(unittest.TestCase):
         # rows, so the linked worktree's drain listed none of them.
         self.remote(pending=False)
         self.plan("au", [CHAIN[0]], {"au.t1": {"product": "greeting"}}, delivery="auto")
-        stopped = self.cli("drain", "--repo", self.anchor, "--", str(self.root / "no executor"), "{packet}", code=1)
-        self.assertIn("executor could not start", stopped["reason"])
+        stopped = self.cli("drain", "--repo", self.anchor, "--", str(self.root / "no executor"), "{packet}")
+        self.assertIn("executor could not start", " ".join(task.get("reason", "") for task in stopped["tasks"]))
         linked = self.root / "linked"
         self.g("worktree", "add", "-q", "-b", "side", str(linked))
         self.assertEqual((self.tasks(self.drain(local=False, repo=linked))["au.t1"]["delivery"], self.calls("au.t1")), ("COMPLETE", 1))
