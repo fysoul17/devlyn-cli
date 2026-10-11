@@ -52,15 +52,20 @@ function fingerprint(dir) {
   return crypto.createHash('sha256').update(JSON.stringify(entries)).digest('hex');
 }
 
+function gitEnvironment() {
+  const env = { ...process.env, LC_ALL: 'C' };
+  for (const key of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR',
+    'GIT_LITERAL_PATHSPECS', 'GIT_GLOB_PATHSPECS', 'GIT_NOGLOB_PATHSPECS', 'GIT_ICASE_PATHSPECS',
+    'GIT_CEILING_DIRECTORIES', 'GIT_DISCOVERY_ACROSS_FILESYSTEM']) delete env[key];
+  return env;
+}
+
 // Use the index, not status: even files deleted locally need ownership checks.
 // Inspect the repository containing this root, including global dotfiles repos.
 function trackedPaths(root) {
   let cwd = root;
   while (!fs.existsSync(cwd)) cwd = path.dirname(cwd);
-  const env = { ...process.env, LC_ALL: 'C' };
-  for (const key of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR',
-    'GIT_LITERAL_PATHSPECS', 'GIT_GLOB_PATHSPECS', 'GIT_NOGLOB_PATHSPECS', 'GIT_ICASE_PATHSPECS',
-    'GIT_CEILING_DIRECTORIES', 'GIT_DISCOVERY_ACROSS_FILESYSTEM']) delete env[key];
+  const env = gitEnvironment();
   const git = (args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8', env });
   const repo = git(['rev-parse', '--show-toplevel']);
   if (repo.error?.code === 'ENOENT') return [];
@@ -76,4 +81,4 @@ function trackedPaths(root) {
   return files.stdout.split('\0').filter(Boolean).map((file) => path.resolve(repo.stdout.trim(), file));
 }
 
-module.exports = { contentHash, fingerprint, isIgnoredEntry, trackedPaths };
+module.exports = { contentHash, fingerprint, gitEnvironment, isIgnoredEntry, trackedPaths };
