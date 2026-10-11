@@ -1,0 +1,15 @@
+{
+  "id": "FG-LONG",
+  "parts": [
+    {
+      "part": 1,
+      "wait_seconds": 305,
+      "marker": "fg-long-part-1-terminal"
+    },
+    {
+      "part": 2,
+      "wait_seconds": 305,
+      "marker": "fg-long-part-2-terminal"
+    }
+  ]
+}

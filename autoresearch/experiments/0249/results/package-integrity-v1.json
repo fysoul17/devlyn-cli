@@ -1,0 +1,1199 @@
+{
+  "B_vs_S_exact_differences": [
+    "package/AGENTS.md",
+    "package/CLAUDE.md",
+    "package/bin/instruction-templates.json",
+    "package/config/skills/_shared/pair.md",
+    "package/config/skills/_shared/runtime-principles.md"
+  ],
+  "S_guide_sha256": "34287e59aa0e32ba09dacb92115715466e1408de0f0620f92fb6ff2db1e9acc3",
+  "S_treatment_bytes": "IDENTICAL_TO_0247",
+  "S_trigger": "When a change makes ordering or identity depend on representation, or changes shared-state ownership or recovery, follow `_shared/pair.md` in the skills installation used for delivery before declaring completion.",
+  "S_trigger_sha256": "f59fd333259becb5298bb4a18a7e4db93c0228fdd79a6a1572fde2ccb79abeec",
+  "all_prediction_inputs_unchanged": true,
+  "at": "2026-10-10T23:22:47.782325+00:00",
+  "base": "d1f170ed3bd57441b95ea525156e80644543acb1",
+  "baseline_inputs": {
+    ".agents/skills/_shared/task-complete.py": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59",
+    ".agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "config/skills/_shared/task-complete.py": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59",
+    "config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "package-lock.json": "61bb21fc83191eab9fb5840967aec72338a71747d8a2e12e66ba63e935a3bc60",
+    "package.json": "71fa7e644b9be6c585f6af1b0645edef4323bf37884236e7c9cd7eb539f9c9a0"
+  },
+  "build": {
+    "argv": [
+      "python3",
+      "-B",
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/build_packages.py",
+      "/Users/aipalm/.local/share/nx01/0249-live/selected-packs-v1",
+      "--toolchain",
+      "/Users/aipalm/.nvm/versions/node/v20.19.0/bin",
+      "--source",
+      "/Users/aipalm/.local/share/nx01/0237-integration-425"
+    ],
+    "exit_code": 0,
+    "prediction_sha256": "a93f1128f40458bba71ead6b7033d2c94d09e0a5cc69a93bb158b6973806b366",
+    "seconds": 7.211991874995874,
+    "source_head_after": "d1f170ed3bd57441b95ea525156e80644543acb1",
+    "source_inputs_unchanged": true,
+    "stderr_sha256": "7657976608dd0eaf914c050ec1f2c1779230c59e18d3acf9b2f62e80a03c91c0",
+    "stdout_sha256": "c369c97a1dd21e67fb192b9439e9df969b6bad8e3c34ecbb3cc977f08fc1508a"
+  },
+  "builder_adapter_sha256": "a2b25fe1ac4116ece5480a7efc73a5d31403b6b3a24dc1e4870a7fd2ca9b043e",
+  "builder_sha256": "197d92ae282ba7693d8e6584eba6a3ecd4687b25f5d3d6e36903390db6bb1a51",
+  "completed_at": "2026-10-10T23:22:59.704204+00:00",
+  "fingerprints": "IDENTICAL_TO_0247_PER_ARM",
+  "full_product_suites": "REUSED_425_INTEGRATION_PASS_NOT_RERUN",
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+  "image_inspect": {
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+      "--format",
+      "{{.Id}}"
+    ],
+    "cwd": null,
+    "exit_code": 0,
+    "seconds": 0.029622166010085493,
+    "stderr": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-image-v1.stderr",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-image-v1.stdout",
+    "stdout_sha256": "418849033f5bdb43b2ef1526804134eee81b29987d7e25b12064b871599b49e1"
+  },
+  "inputs_before_and_after": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/build_packages.py": "197d92ae282ba7693d8e6584eba6a3ecd4687b25f5d3d6e36903390db6bb1a51",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/build_packages.py": "8dcfbe5a77aee059477e3e1f5cb1c0ddbb2ade10605f017b7a00541d22fdf022",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/guides/H.md": "18ccf362d107eca2b8549e0dc51b4459751ae7e22e0e7ded200a5257546582b6",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/guides/P.md": "fa782da81c1da4c310d6dd22d2e2c5e560a30e8b50b3642181b85246fa7757a0",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/guides/S.md": "34287e59aa0e32ba09dacb92115715466e1408de0f0620f92fb6ff2db1e9acc3",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/peer.py": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/build_packages.py": "a2b25fe1ac4116ece5480a7efc73a5d31403b6b3a24dc1e4870a7fd2ca9b043e",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/.agents/skills/_shared/task-complete.py": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/.agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/.devlyn/integration-review-v1.md": "277978d3788dc5bf28e8398c240bbccd9f7df87fb6c4c61edfc2de97215ed857",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/.devlyn/integration-verification-v1/summary.json": "b8c47b93ec400be0a40aa6f70bdb65f52c51ae4a4bb2c4a9cfb762aeb03253b5",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/.github/workflows/portability.yml": "4f951740c37faff82e4b3470951c5bd300e36a4816de4c79a100b7aa925b3492",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/AGENTS.md": "4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/CLAUDE.md": "4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/config/skills/_shared/runtime-principles.md": "6c615346159ead0473da08bbc9645f3807b7265d91b3671620c79bff3abaa407",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/config/skills/_shared/task-complete.py": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/package-lock.json": "61bb21fc83191eab9fb5840967aec72338a71747d8a2e12e66ba63e935a3bc60",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/package.json": "71fa7e644b9be6c585f6af1b0645edef4323bf37884236e7c9cd7eb539f9c9a0",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/scripts/lint-skills.sh": "ee64d473c8de16504eb2dbb867b02433c8a15cc5ba9505bc8679a5b14343a892",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/scripts/test-ideate-loop.py": "b872e6bddb5c205394fbd4002ac4da48211c9155d5da6b1f779d22f05d4ba031",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/scripts/test-installer-menu.cjs": "d98b4fc6bbbb36e1a1b6d27d4d75a047c6130fe10b69374a9d9d7678ad5e64ad",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425/scripts/test-windows-portability.py": "89c4e9a66914924c7b3cdd0473847108ddbea53da42d7b504a5957a05523f4b5",
+    "/Users/aipalm/.local/share/nx01/0237-integration/.agents/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    "/Users/aipalm/.local/share/nx01/0237-integration/.agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "/Users/aipalm/.local/share/nx01/0237-integration/.github/workflows/portability.yml": "4f951740c37faff82e4b3470951c5bd300e36a4816de4c79a100b7aa925b3492",
+    "/Users/aipalm/.local/share/nx01/0237-integration/bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "/Users/aipalm/.local/share/nx01/0237-integration/config/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    "/Users/aipalm/.local/share/nx01/0237-integration/config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "/Users/aipalm/.local/share/nx01/0237-integration/package-lock.json": "292798067830b59eba153167a45972cf5ab92c136de4119a14a32eb109e7e4a6",
+    "/Users/aipalm/.local/share/nx01/0237-integration/package.json": "688e807e5fa90ac3677c1e88df3bfaeb9a04a18fae72a6e853122440b7c2cddd",
+    "/Users/aipalm/.local/share/nx01/0237-integration/scripts/lint-skills.sh": "ee64d473c8de16504eb2dbb867b02433c8a15cc5ba9505bc8679a5b14343a892",
+    "/Users/aipalm/.local/share/nx01/0237-integration/scripts/test-ideate-loop.py": "ad353f1780fe616ca32428517c2368f8697fb4d47db98b12a4f1514f2363c08b",
+    "/Users/aipalm/.local/share/nx01/0237-integration/scripts/test-installer-menu.cjs": "d98b4fc6bbbb36e1a1b6d27d4d75a047c6130fe10b69374a9d9d7678ad5e64ad",
+    "/Users/aipalm/.local/share/nx01/0237-integration/scripts/test-windows-portability.py": "425231bc48b31287a2343c5c3986c7a8ced235571730addeb434ed96b1bf11bb",
+    "/Users/aipalm/.local/share/nx01/0247-live/selected-packs-v1/B.tgz": "edca612f3873fe154c1855d54788d7c097a9d88e97912bc9b36ba755b71aed53",
+    "/Users/aipalm/.local/share/nx01/0247-live/selected-packs-v1/H.tgz": "32a8c1cf219565eca41fcb3df9026a3a4d603f1c8143ab4573f84903f9d0cb56",
+    "/Users/aipalm/.local/share/nx01/0247-live/selected-packs-v1/P.tgz": "823b1d0cae53e7134de8308f22026a68ffc530741563a7bfb8977aaace661d35",
+    "/Users/aipalm/.local/share/nx01/0247-live/selected-packs-v1/S.tgz": "e01b32c0b15541fc1d887d13e80e0edd9e83f9b97023948762b13ae5276e2bff",
+    "/Users/aipalm/.local/share/nx01/0247-live/selected-packs-v1/packages.json": "b1856aa5868ebfd9bb02f0fd9b1439706f1588169ac3d5045572a31ae2f9d391"
+  },
+  "install_phase_command": {
+    "argv": [
+      "python3",
+      "-B",
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-verify-v1.py",
+      "installs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.5749865840189159,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_sha256": "e88529d1f4252039993f6b6a04cc08e7d4dbebac6774cfa61ee1d5e7900a31ac"
+  },
+  "installation_count": 4,
+  "installation_fixture_retention": {
+    "removed_after_successful_byte_and_mode_verification": [
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-claude-v1/work",
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-claude-v1/home",
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/work",
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/home",
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-claude-v1/work",
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-claude-v1/home",
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-codex-v1/work",
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-codex-v1/home",
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-payload-v1"
+    ],
+    "retained": "Each exact installed payload inventory, marker/root checks, raw stdout/stderr and command receipts remain. Source tar archives remain in selected-packs-v1. Only auditor-owned temporary installation/extraction trees removed."
+  },
+  "installations": [
+    {
+      "S_guide_and_trigger_unchanged": false,
+      "arm": "B",
+      "engine": "claude",
+      "exact_installed_payloads": {
+        ".agents/skills": {
+          "_shared/.ruff.toml": {
+            "bytes": 82,
+            "mode": 420,
+            "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1"
+          },
+          "_shared/adapters/claude.md": {
+            "bytes": 709,
+            "mode": 420,
+            "sha256": "1e7440575b30019066209e1ea5423a3fd9af86311c73257e9f7dd814354bcdf7"
+          },
+          "_shared/adapters/codex.md": {
+            "bytes": 918,
+            "mode": 420,
+            "sha256": "fe7b13c816f3c67dad1cf87ae816259090e7a3fb44f0274b59b013b2022036c1"
+          },
+          "_shared/adapters/omp.md": {
+            "bytes": 52,
+            "mode": 420,
+            "sha256": "25c2dfad40e3acd3b23f26ec9b5811da2a36b9d803c9795ef36af5ef5c03d33c"
+          },
+          "_shared/codex-monitored.sh": {
+            "bytes": 10038,
+            "mode": 493,
+            "sha256": "3d0658c042684c0323c2c4d691f5ca9cd544df6ffc3cbe54eccd54e8a1654d77"
+          },
+          "_shared/engine-doctor.sh": {
+            "bytes": 2329,
+            "mode": 493,
+            "sha256": "cb9b253f64180334e0b2a2056e3e79d8be43244256c45c1c45dd1a5af099b982"
+          },
+          "_shared/engine-preflight.md": {
+            "bytes": 2022,
+            "mode": 420,
+            "sha256": "ecb552f4dd74e986bde2d7deb51dd719a16691d6c2672d6880e675de1204dca0"
+          },
+          "_shared/expected-contract.py": {
+            "bytes": 10478,
+            "mode": 420,
+            "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0"
+          },
+          "_shared/expected.schema.json": {
+            "bytes": 5332,
+            "mode": 420,
+            "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c"
+          },
+          "_shared/invocation-receipt.py": {
+            "bytes": 20451,
+            "mode": 420,
+            "sha256": "0adde04a9df851062dab94bed1babd0f7e973f893275070312eb85c6c6c0cf3d"
+          },
+          "_shared/platform-support.py": {
+            "bytes": 19061,
+            "mode": 420,
+            "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+          },
+          "_shared/role-config.py": {
+            "bytes": 11194,
+            "mode": 420,
+            "sha256": "d858805d022152a18d01516df02735d47a68225f955454dcfe952f216c9877f3"
+          },
+          "_shared/runtime-principles.md": {
+            "bytes": 3011,
+            "mode": 420,
+            "sha256": "6c615346159ead0473da08bbc9645f3807b7265d91b3671620c79bff3abaa407"
+          },
+          "_shared/task-complete.py": {
+            "bytes": 138449,
+            "mode": 420,
+            "sha256": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59"
+          },
+          "_shared/task-completion.md": {
+            "bytes": 14434,
+            "mode": 420,
+            "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+          },
+          "devlyn-engines/SKILL.md": {
+            "bytes": 3627,
+            "mode": 420,
+            "sha256": "ee82fa921c0fb0e237794a60b400c3e34c16f38091a023d6c1606aa365ddbe48"
+          },
+          "devlyn-ideate/SKILL.md": {
+            "bytes": 11614,
+            "mode": 420,
+            "sha256": "3f8b29c15ef931b8ac2314e2a9a65b5cd55adde8fbd7db13bc31fb40f7a5e866"
+          },
+          "devlyn-ideate/references/elicitation.md": {
+            "bytes": 2410,
+            "mode": 420,
+            "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47"
+          },
+          "devlyn-ideate/references/loop.md": {
+            "bytes": 17919,
+            "mode": 420,
+            "sha256": "a0fa17d174d141950927a0c33e9edc63d4f97b5f98b0dedfd34782dd77612c86"
+          },
+          "devlyn-ideate/references/package-format.md": {
+            "bytes": 10727,
+            "mode": 420,
+            "sha256": "b52cd176ed2a440039d6327d29ac8ac3cc80020b2549f2c9cd8f6e6010b688a5"
+          },
+          "devlyn-ideate/scripts/acceptance.py": {
+            "bytes": 47412,
+            "mode": 420,
+            "sha256": "bf569c1f9f90957d4cad5ef91b8f30957d09a5587686c04512f88eec46a7c6a5"
+          },
+          "devlyn-ideate/scripts/queue.py": {
+            "bytes": 104790,
+            "mode": 420,
+            "sha256": "e8f59a58bc37647d284c09db86f701b2e6ebfaefeffd9de2ca2d9394757664dd"
+          }
+        },
+        ".claude/skills": {
+          "_shared/.ruff.toml": {
+            "bytes": 82,
+            "mode": 420,
+            "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1"
+          },
+          "_shared/adapters/claude.md": {
+            "bytes": 709,
+            "mode": 420,
+            "sha256": "1e7440575b30019066209e1ea5423a3fd9af86311c73257e9f7dd814354bcdf7"
+          },
+          "_shared/adapters/codex.md": {
+            "bytes": 918,
+            "mode": 420,
+            "sha256": "fe7b13c816f3c67dad1cf87ae816259090e7a3fb44f0274b59b013b2022036c1"
+          },
+          "_shared/adapters/omp.md": {
+            "bytes": 52,
+            "mode": 420,
+            "sha256": "25c2dfad40e3acd3b23f26ec9b5811da2a36b9d803c9795ef36af5ef5c03d33c"
+          },
+          "_shared/codex-monitored.sh": {
+            "bytes": 10038,
+            "mode": 493,
+            "sha256": "3d0658c042684c0323c2c4d691f5ca9cd544df6ffc3cbe54eccd54e8a1654d77"
+          },
+          "_shared/engine-doctor.sh": {
+            "bytes": 2329,
+            "mode": 493,
+            "sha256": "cb9b253f64180334e0b2a2056e3e79d8be43244256c45c1c45dd1a5af099b982"
+          },
+          "_shared/engine-preflight.md": {
+            "bytes": 2022,
+            "mode": 420,
+            "sha256": "ecb552f4dd74e986bde2d7deb51dd719a16691d6c2672d6880e675de1204dca0"
+          },
+          "_shared/expected-contract.py": {
+            "bytes": 10478,
+            "mode": 420,
+            "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0"
+          },
+          "_shared/expected.schema.json": {
+            "bytes": 5332,
+            "mode": 420,
+            "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c"
+          },
+          "_shared/invocation-receipt.py": {
+            "bytes": 20451,
+            "mode": 420,
+            "sha256": "0adde04a9df851062dab94bed1babd0f7e973f893275070312eb85c6c6c0cf3d"
+          },
+          "_shared/platform-support.py": {
+            "bytes": 19061,
+            "mode": 420,
+            "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+          },
+          "_shared/role-config.py": {
+            "bytes": 11194,
+            "mode": 420,
+            "sha256": "d858805d022152a18d01516df02735d47a68225f955454dcfe952f216c9877f3"
+          },
+          "_shared/runtime-principles.md": {
+            "bytes": 3011,
+            "mode": 420,
+            "sha256": "6c615346159ead0473da08bbc9645f3807b7265d91b3671620c79bff3abaa407"
+          },
+          "_shared/task-complete.py": {
+            "bytes": 138449,
+            "mode": 420,
+            "sha256": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59"
+          },
+          "_shared/task-completion.md": {
+            "bytes": 14434,
+            "mode": 420,
+            "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+          },
+          "devlyn-engines/SKILL.md": {
+            "bytes": 3627,
+            "mode": 420,
+            "sha256": "ee82fa921c0fb0e237794a60b400c3e34c16f38091a023d6c1606aa365ddbe48"
+          },
+          "devlyn-ideate/SKILL.md": {
+            "bytes": 11614,
+            "mode": 420,
+            "sha256": "3f8b29c15ef931b8ac2314e2a9a65b5cd55adde8fbd7db13bc31fb40f7a5e866"
+          },
+          "devlyn-ideate/references/elicitation.md": {
+            "bytes": 2410,
+            "mode": 420,
+            "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47"
+          },
+          "devlyn-ideate/references/loop.md": {
+            "bytes": 17919,
+            "mode": 420,
+            "sha256": "a0fa17d174d141950927a0c33e9edc63d4f97b5f98b0dedfd34782dd77612c86"
+          },
+          "devlyn-ideate/references/package-format.md": {
+            "bytes": 10727,
+            "mode": 420,
+            "sha256": "b52cd176ed2a440039d6327d29ac8ac3cc80020b2549f2c9cd8f6e6010b688a5"
+          },
+          "devlyn-ideate/scripts/acceptance.py": {
+            "bytes": 47412,
+            "mode": 420,
+            "sha256": "bf569c1f9f90957d4cad5ef91b8f30957d09a5587686c04512f88eec46a7c6a5"
+          },
+          "devlyn-ideate/scripts/queue.py": {
+            "bytes": 104790,
+            "mode": 420,
+            "sha256": "e8f59a58bc37647d284c09db86f701b2e6ebfaefeffd9de2ca2d9394757664dd"
+          }
+        }
+      },
+      "installed_roots": [
+        ".agents/skills",
+        ".claude/skills"
+      ],
+      "installed_skill_files_per_root": 22,
+      "installer": {
+        "argv": [
+          "docker",
+          "run",
+          "--rm",
+          "--init",
+          "--network",
+          "none",
+          "--cap-drop",
+          "ALL",
+          "--security-opt",
+          "no-new-privileges",
+          "--env",
+          "HOME=/home/participant",
+          "-w",
+          "/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-claude-v1/work,dst=/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-claude-v1/home,dst=/home/participant",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-payload-v1/B,dst=/install,readonly",
+          "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+          "node",
+          "/install/package/bin/devlyn.js",
+          "-y",
+          "--claude"
+        ],
+        "cwd": null,
+        "exit_code": 0,
+        "seconds": 0.4108658339828253,
+        "stderr": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-claude-v1/installer.stderr",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-claude-v1/installer.stdout",
+        "stdout_sha256": "46e84e7dfe06873b52a33a106c466e792ee40f8fcc223f31c80a65969f64238d"
+      },
+      "marker_version": "4.2.5",
+      "models_auth_network": "NO_MODELS_NO_AUTH_NETWORK_NONE",
+      "payload_bytes_modes_match": true,
+      "peer_helper_absent": true,
+      "root_instructions_match": true,
+      "root_instructions_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "status": "PASS"
+    },
+    {
+      "S_guide_and_trigger_unchanged": false,
+      "arm": "B",
+      "engine": "codex",
+      "exact_installed_payloads": {
+        ".agents/skills": {
+          "_shared/.ruff.toml": {
+            "bytes": 82,
+            "mode": 420,
+            "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1"
+          },
+          "_shared/adapters/claude.md": {
+            "bytes": 709,
+            "mode": 420,
+            "sha256": "1e7440575b30019066209e1ea5423a3fd9af86311c73257e9f7dd814354bcdf7"
+          },
+          "_shared/adapters/codex.md": {
+            "bytes": 918,
+            "mode": 420,
+            "sha256": "fe7b13c816f3c67dad1cf87ae816259090e7a3fb44f0274b59b013b2022036c1"
+          },
+          "_shared/adapters/omp.md": {
+            "bytes": 52,
+            "mode": 420,
+            "sha256": "25c2dfad40e3acd3b23f26ec9b5811da2a36b9d803c9795ef36af5ef5c03d33c"
+          },
+          "_shared/codex-monitored.sh": {
+            "bytes": 10038,
+            "mode": 493,
+            "sha256": "3d0658c042684c0323c2c4d691f5ca9cd544df6ffc3cbe54eccd54e8a1654d77"
+          },
+          "_shared/engine-doctor.sh": {
+            "bytes": 2329,
+            "mode": 493,
+            "sha256": "cb9b253f64180334e0b2a2056e3e79d8be43244256c45c1c45dd1a5af099b982"
+          },
+          "_shared/engine-preflight.md": {
+            "bytes": 2022,
+            "mode": 420,
+            "sha256": "ecb552f4dd74e986bde2d7deb51dd719a16691d6c2672d6880e675de1204dca0"
+          },
+          "_shared/expected-contract.py": {
+            "bytes": 10478,
+            "mode": 420,
+            "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0"
+          },
+          "_shared/expected.schema.json": {
+            "bytes": 5332,
+            "mode": 420,
+            "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c"
+          },
+          "_shared/invocation-receipt.py": {
+            "bytes": 20451,
+            "mode": 420,
+            "sha256": "0adde04a9df851062dab94bed1babd0f7e973f893275070312eb85c6c6c0cf3d"
+          },
+          "_shared/platform-support.py": {
+            "bytes": 19061,
+            "mode": 420,
+            "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+          },
+          "_shared/role-config.py": {
+            "bytes": 11194,
+            "mode": 420,
+            "sha256": "d858805d022152a18d01516df02735d47a68225f955454dcfe952f216c9877f3"
+          },
+          "_shared/runtime-principles.md": {
+            "bytes": 3011,
+            "mode": 420,
+            "sha256": "6c615346159ead0473da08bbc9645f3807b7265d91b3671620c79bff3abaa407"
+          },
+          "_shared/task-complete.py": {
+            "bytes": 138449,
+            "mode": 420,
+            "sha256": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59"
+          },
+          "_shared/task-completion.md": {
+            "bytes": 14434,
+            "mode": 420,
+            "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+          },
+          "devlyn-engines/SKILL.md": {
+            "bytes": 3627,
+            "mode": 420,
+            "sha256": "ee82fa921c0fb0e237794a60b400c3e34c16f38091a023d6c1606aa365ddbe48"
+          },
+          "devlyn-ideate/SKILL.md": {
+            "bytes": 11614,
+            "mode": 420,
+            "sha256": "3f8b29c15ef931b8ac2314e2a9a65b5cd55adde8fbd7db13bc31fb40f7a5e866"
+          },
+          "devlyn-ideate/references/elicitation.md": {
+            "bytes": 2410,
+            "mode": 420,
+            "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47"
+          },
+          "devlyn-ideate/references/loop.md": {
+            "bytes": 17919,
+            "mode": 420,
+            "sha256": "a0fa17d174d141950927a0c33e9edc63d4f97b5f98b0dedfd34782dd77612c86"
+          },
+          "devlyn-ideate/references/package-format.md": {
+            "bytes": 10727,
+            "mode": 420,
+            "sha256": "b52cd176ed2a440039d6327d29ac8ac3cc80020b2549f2c9cd8f6e6010b688a5"
+          },
+          "devlyn-ideate/scripts/acceptance.py": {
+            "bytes": 47412,
+            "mode": 420,
+            "sha256": "bf569c1f9f90957d4cad5ef91b8f30957d09a5587686c04512f88eec46a7c6a5"
+          },
+          "devlyn-ideate/scripts/queue.py": {
+            "bytes": 104790,
+            "mode": 420,
+            "sha256": "e8f59a58bc37647d284c09db86f701b2e6ebfaefeffd9de2ca2d9394757664dd"
+          }
+        }
+      },
+      "installed_roots": [
+        ".agents/skills"
+      ],
+      "installed_skill_files_per_root": 22,
+      "installer": {
+        "argv": [
+          "docker",
+          "run",
+          "--rm",
+          "--init",
+          "--network",
+          "none",
+          "--cap-drop",
+          "ALL",
+          "--security-opt",
+          "no-new-privileges",
+          "--env",
+          "HOME=/home/participant",
+          "-w",
+          "/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/work,dst=/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/home,dst=/home/participant",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-payload-v1/B,dst=/install,readonly",
+          "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+          "node",
+          "/install/package/bin/devlyn.js",
+          "-y"
+        ],
+        "cwd": null,
+        "exit_code": 0,
+        "seconds": 0.31610712499241345,
+        "stderr": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/installer.stderr",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/installer.stdout",
+        "stdout_sha256": "4b457dae1d2be30cfa9cc09abed36ec777aabed5ebc733711ea1f7f9309f85d3"
+      },
+      "marker_version": "4.2.5",
+      "models_auth_network": "NO_MODELS_NO_AUTH_NETWORK_NONE",
+      "payload_bytes_modes_match": true,
+      "peer_helper_absent": true,
+      "root_instructions_match": true,
+      "root_instructions_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "status": "PASS"
+    },
+    {
+      "S_guide_and_trigger_unchanged": true,
+      "arm": "S",
+      "engine": "claude",
+      "exact_installed_payloads": {
+        ".agents/skills": {
+          "_shared/.ruff.toml": {
+            "bytes": 82,
+            "mode": 420,
+            "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1"
+          },
+          "_shared/adapters/claude.md": {
+            "bytes": 709,
+            "mode": 420,
+            "sha256": "1e7440575b30019066209e1ea5423a3fd9af86311c73257e9f7dd814354bcdf7"
+          },
+          "_shared/adapters/codex.md": {
+            "bytes": 918,
+            "mode": 420,
+            "sha256": "fe7b13c816f3c67dad1cf87ae816259090e7a3fb44f0274b59b013b2022036c1"
+          },
+          "_shared/adapters/omp.md": {
+            "bytes": 52,
+            "mode": 420,
+            "sha256": "25c2dfad40e3acd3b23f26ec9b5811da2a36b9d803c9795ef36af5ef5c03d33c"
+          },
+          "_shared/codex-monitored.sh": {
+            "bytes": 10038,
+            "mode": 493,
+            "sha256": "3d0658c042684c0323c2c4d691f5ca9cd544df6ffc3cbe54eccd54e8a1654d77"
+          },
+          "_shared/engine-doctor.sh": {
+            "bytes": 2329,
+            "mode": 493,
+            "sha256": "cb9b253f64180334e0b2a2056e3e79d8be43244256c45c1c45dd1a5af099b982"
+          },
+          "_shared/engine-preflight.md": {
+            "bytes": 2022,
+            "mode": 420,
+            "sha256": "ecb552f4dd74e986bde2d7deb51dd719a16691d6c2672d6880e675de1204dca0"
+          },
+          "_shared/expected-contract.py": {
+            "bytes": 10478,
+            "mode": 420,
+            "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0"
+          },
+          "_shared/expected.schema.json": {
+            "bytes": 5332,
+            "mode": 420,
+            "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c"
+          },
+          "_shared/invocation-receipt.py": {
+            "bytes": 20451,
+            "mode": 420,
+            "sha256": "0adde04a9df851062dab94bed1babd0f7e973f893275070312eb85c6c6c0cf3d"
+          },
+          "_shared/pair.md": {
+            "bytes": 987,
+            "mode": 420,
+            "sha256": "34287e59aa0e32ba09dacb92115715466e1408de0f0620f92fb6ff2db1e9acc3"
+          },
+          "_shared/platform-support.py": {
+            "bytes": 19061,
+            "mode": 420,
+            "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+          },
+          "_shared/role-config.py": {
+            "bytes": 11194,
+            "mode": 420,
+            "sha256": "d858805d022152a18d01516df02735d47a68225f955454dcfe952f216c9877f3"
+          },
+          "_shared/runtime-principles.md": {
+            "bytes": 3224,
+            "mode": 420,
+            "sha256": "9573704f913a22ce450f9618200e68188d107b6ff7909c6c9f363ea401a8d583"
+          },
+          "_shared/task-complete.py": {
+            "bytes": 138449,
+            "mode": 420,
+            "sha256": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59"
+          },
+          "_shared/task-completion.md": {
+            "bytes": 14434,
+            "mode": 420,
+            "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+          },
+          "devlyn-engines/SKILL.md": {
+            "bytes": 3627,
+            "mode": 420,
+            "sha256": "ee82fa921c0fb0e237794a60b400c3e34c16f38091a023d6c1606aa365ddbe48"
+          },
+          "devlyn-ideate/SKILL.md": {
+            "bytes": 11614,
+            "mode": 420,
+            "sha256": "3f8b29c15ef931b8ac2314e2a9a65b5cd55adde8fbd7db13bc31fb40f7a5e866"
+          },
+          "devlyn-ideate/references/elicitation.md": {
+            "bytes": 2410,
+            "mode": 420,
+            "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47"
+          },
+          "devlyn-ideate/references/loop.md": {
+            "bytes": 17919,
+            "mode": 420,
+            "sha256": "a0fa17d174d141950927a0c33e9edc63d4f97b5f98b0dedfd34782dd77612c86"
+          },
+          "devlyn-ideate/references/package-format.md": {
+            "bytes": 10727,
+            "mode": 420,
+            "sha256": "b52cd176ed2a440039d6327d29ac8ac3cc80020b2549f2c9cd8f6e6010b688a5"
+          },
+          "devlyn-ideate/scripts/acceptance.py": {
+            "bytes": 47412,
+            "mode": 420,
+            "sha256": "bf569c1f9f90957d4cad5ef91b8f30957d09a5587686c04512f88eec46a7c6a5"
+          },
+          "devlyn-ideate/scripts/queue.py": {
+            "bytes": 104790,
+            "mode": 420,
+            "sha256": "e8f59a58bc37647d284c09db86f701b2e6ebfaefeffd9de2ca2d9394757664dd"
+          }
+        },
+        ".claude/skills": {
+          "_shared/.ruff.toml": {
+            "bytes": 82,
+            "mode": 420,
+            "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1"
+          },
+          "_shared/adapters/claude.md": {
+            "bytes": 709,
+            "mode": 420,
+            "sha256": "1e7440575b30019066209e1ea5423a3fd9af86311c73257e9f7dd814354bcdf7"
+          },
+          "_shared/adapters/codex.md": {
+            "bytes": 918,
+            "mode": 420,
+            "sha256": "fe7b13c816f3c67dad1cf87ae816259090e7a3fb44f0274b59b013b2022036c1"
+          },
+          "_shared/adapters/omp.md": {
+            "bytes": 52,
+            "mode": 420,
+            "sha256": "25c2dfad40e3acd3b23f26ec9b5811da2a36b9d803c9795ef36af5ef5c03d33c"
+          },
+          "_shared/codex-monitored.sh": {
+            "bytes": 10038,
+            "mode": 493,
+            "sha256": "3d0658c042684c0323c2c4d691f5ca9cd544df6ffc3cbe54eccd54e8a1654d77"
+          },
+          "_shared/engine-doctor.sh": {
+            "bytes": 2329,
+            "mode": 493,
+            "sha256": "cb9b253f64180334e0b2a2056e3e79d8be43244256c45c1c45dd1a5af099b982"
+          },
+          "_shared/engine-preflight.md": {
+            "bytes": 2022,
+            "mode": 420,
+            "sha256": "ecb552f4dd74e986bde2d7deb51dd719a16691d6c2672d6880e675de1204dca0"
+          },
+          "_shared/expected-contract.py": {
+            "bytes": 10478,
+            "mode": 420,
+            "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0"
+          },
+          "_shared/expected.schema.json": {
+            "bytes": 5332,
+            "mode": 420,
+            "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c"
+          },
+          "_shared/invocation-receipt.py": {
+            "bytes": 20451,
+            "mode": 420,
+            "sha256": "0adde04a9df851062dab94bed1babd0f7e973f893275070312eb85c6c6c0cf3d"
+          },
+          "_shared/pair.md": {
+            "bytes": 987,
+            "mode": 420,
+            "sha256": "34287e59aa0e32ba09dacb92115715466e1408de0f0620f92fb6ff2db1e9acc3"
+          },
+          "_shared/platform-support.py": {
+            "bytes": 19061,
+            "mode": 420,
+            "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+          },
+          "_shared/role-config.py": {
+            "bytes": 11194,
+            "mode": 420,
+            "sha256": "d858805d022152a18d01516df02735d47a68225f955454dcfe952f216c9877f3"
+          },
+          "_shared/runtime-principles.md": {
+            "bytes": 3224,
+            "mode": 420,
+            "sha256": "9573704f913a22ce450f9618200e68188d107b6ff7909c6c9f363ea401a8d583"
+          },
+          "_shared/task-complete.py": {
+            "bytes": 138449,
+            "mode": 420,
+            "sha256": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59"
+          },
+          "_shared/task-completion.md": {
+            "bytes": 14434,
+            "mode": 420,
+            "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+          },
+          "devlyn-engines/SKILL.md": {
+            "bytes": 3627,
+            "mode": 420,
+            "sha256": "ee82fa921c0fb0e237794a60b400c3e34c16f38091a023d6c1606aa365ddbe48"
+          },
+          "devlyn-ideate/SKILL.md": {
+            "bytes": 11614,
+            "mode": 420,
+            "sha256": "3f8b29c15ef931b8ac2314e2a9a65b5cd55adde8fbd7db13bc31fb40f7a5e866"
+          },
+          "devlyn-ideate/references/elicitation.md": {
+            "bytes": 2410,
+            "mode": 420,
+            "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47"
+          },
+          "devlyn-ideate/references/loop.md": {
+            "bytes": 17919,
+            "mode": 420,
+            "sha256": "a0fa17d174d141950927a0c33e9edc63d4f97b5f98b0dedfd34782dd77612c86"
+          },
+          "devlyn-ideate/references/package-format.md": {
+            "bytes": 10727,
+            "mode": 420,
+            "sha256": "b52cd176ed2a440039d6327d29ac8ac3cc80020b2549f2c9cd8f6e6010b688a5"
+          },
+          "devlyn-ideate/scripts/acceptance.py": {
+            "bytes": 47412,
+            "mode": 420,
+            "sha256": "bf569c1f9f90957d4cad5ef91b8f30957d09a5587686c04512f88eec46a7c6a5"
+          },
+          "devlyn-ideate/scripts/queue.py": {
+            "bytes": 104790,
+            "mode": 420,
+            "sha256": "e8f59a58bc37647d284c09db86f701b2e6ebfaefeffd9de2ca2d9394757664dd"
+          }
+        }
+      },
+      "installed_roots": [
+        ".agents/skills",
+        ".claude/skills"
+      ],
+      "installed_skill_files_per_root": 23,
+      "installer": {
+        "argv": [
+          "docker",
+          "run",
+          "--rm",
+          "--init",
+          "--network",
+          "none",
+          "--cap-drop",
+          "ALL",
+          "--security-opt",
+          "no-new-privileges",
+          "--env",
+          "HOME=/home/participant",
+          "-w",
+          "/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-claude-v1/work,dst=/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-claude-v1/home,dst=/home/participant",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-payload-v1/S,dst=/install,readonly",
+          "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+          "node",
+          "/install/package/bin/devlyn.js",
+          "-y",
+          "--claude"
+        ],
+        "cwd": null,
+        "exit_code": 0,
+        "seconds": 0.41337812499841675,
+        "stderr": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-claude-v1/installer.stderr",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-claude-v1/installer.stdout",
+        "stdout_sha256": "08747657dcfe04ed3ab6e19659c801afeb6189a6b740b8a14389dd112e91b200"
+      },
+      "marker_version": "4.2.5",
+      "models_auth_network": "NO_MODELS_NO_AUTH_NETWORK_NONE",
+      "payload_bytes_modes_match": true,
+      "peer_helper_absent": true,
+      "root_instructions_match": true,
+      "root_instructions_sha256": "9284ebf30f06c04a57e3ccf2a4a0da288fb6fe8ab237b0dd70a856b9e5b5602a",
+      "status": "PASS"
+    },
+    {
+      "S_guide_and_trigger_unchanged": true,
+      "arm": "S",
+      "engine": "codex",
+      "exact_installed_payloads": {
+        ".agents/skills": {
+          "_shared/.ruff.toml": {
+            "bytes": 82,
+            "mode": 420,
+            "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1"
+          },
+          "_shared/adapters/claude.md": {
+            "bytes": 709,
+            "mode": 420,
+            "sha256": "1e7440575b30019066209e1ea5423a3fd9af86311c73257e9f7dd814354bcdf7"
+          },
+          "_shared/adapters/codex.md": {
+            "bytes": 918,
+            "mode": 420,
+            "sha256": "fe7b13c816f3c67dad1cf87ae816259090e7a3fb44f0274b59b013b2022036c1"
+          },
+          "_shared/adapters/omp.md": {
+            "bytes": 52,
+            "mode": 420,
+            "sha256": "25c2dfad40e3acd3b23f26ec9b5811da2a36b9d803c9795ef36af5ef5c03d33c"
+          },
+          "_shared/codex-monitored.sh": {
+            "bytes": 10038,
+            "mode": 493,
+            "sha256": "3d0658c042684c0323c2c4d691f5ca9cd544df6ffc3cbe54eccd54e8a1654d77"
+          },
+          "_shared/engine-doctor.sh": {
+            "bytes": 2329,
+            "mode": 493,
+            "sha256": "cb9b253f64180334e0b2a2056e3e79d8be43244256c45c1c45dd1a5af099b982"
+          },
+          "_shared/engine-preflight.md": {
+            "bytes": 2022,
+            "mode": 420,
+            "sha256": "ecb552f4dd74e986bde2d7deb51dd719a16691d6c2672d6880e675de1204dca0"
+          },
+          "_shared/expected-contract.py": {
+            "bytes": 10478,
+            "mode": 420,
+            "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0"
+          },
+          "_shared/expected.schema.json": {
+            "bytes": 5332,
+            "mode": 420,
+            "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c"
+          },
+          "_shared/invocation-receipt.py": {
+            "bytes": 20451,
+            "mode": 420,
+            "sha256": "0adde04a9df851062dab94bed1babd0f7e973f893275070312eb85c6c6c0cf3d"
+          },
+          "_shared/pair.md": {
+            "bytes": 987,
+            "mode": 420,
+            "sha256": "34287e59aa0e32ba09dacb92115715466e1408de0f0620f92fb6ff2db1e9acc3"
+          },
+          "_shared/platform-support.py": {
+            "bytes": 19061,
+            "mode": 420,
+            "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+          },
+          "_shared/role-config.py": {
+            "bytes": 11194,
+            "mode": 420,
+            "sha256": "d858805d022152a18d01516df02735d47a68225f955454dcfe952f216c9877f3"
+          },
+          "_shared/runtime-principles.md": {
+            "bytes": 3224,
+            "mode": 420,
+            "sha256": "9573704f913a22ce450f9618200e68188d107b6ff7909c6c9f363ea401a8d583"
+          },
+          "_shared/task-complete.py": {
+            "bytes": 138449,
+            "mode": 420,
+            "sha256": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59"
+          },
+          "_shared/task-completion.md": {
+            "bytes": 14434,
+            "mode": 420,
+            "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+          },
+          "devlyn-engines/SKILL.md": {
+            "bytes": 3627,
+            "mode": 420,
+            "sha256": "ee82fa921c0fb0e237794a60b400c3e34c16f38091a023d6c1606aa365ddbe48"
+          },
+          "devlyn-ideate/SKILL.md": {
+            "bytes": 11614,
+            "mode": 420,
+            "sha256": "3f8b29c15ef931b8ac2314e2a9a65b5cd55adde8fbd7db13bc31fb40f7a5e866"
+          },
+          "devlyn-ideate/references/elicitation.md": {
+            "bytes": 2410,
+            "mode": 420,
+            "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47"
+          },
+          "devlyn-ideate/references/loop.md": {
+            "bytes": 17919,
+            "mode": 420,
+            "sha256": "a0fa17d174d141950927a0c33e9edc63d4f97b5f98b0dedfd34782dd77612c86"
+          },
+          "devlyn-ideate/references/package-format.md": {
+            "bytes": 10727,
+            "mode": 420,
+            "sha256": "b52cd176ed2a440039d6327d29ac8ac3cc80020b2549f2c9cd8f6e6010b688a5"
+          },
+          "devlyn-ideate/scripts/acceptance.py": {
+            "bytes": 47412,
+            "mode": 420,
+            "sha256": "bf569c1f9f90957d4cad5ef91b8f30957d09a5587686c04512f88eec46a7c6a5"
+          },
+          "devlyn-ideate/scripts/queue.py": {
+            "bytes": 104790,
+            "mode": 420,
+            "sha256": "e8f59a58bc37647d284c09db86f701b2e6ebfaefeffd9de2ca2d9394757664dd"
+          }
+        }
+      },
+      "installed_roots": [
+        ".agents/skills"
+      ],
+      "installed_skill_files_per_root": 23,
+      "installer": {
+        "argv": [
+          "docker",
+          "run",
+          "--rm",
+          "--init",
+          "--network",
+          "none",
+          "--cap-drop",
+          "ALL",
+          "--security-opt",
+          "no-new-privileges",
+          "--env",
+          "HOME=/home/participant",
+          "-w",
+          "/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-codex-v1/work,dst=/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-codex-v1/home,dst=/home/participant",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-payload-v1/S,dst=/install,readonly",
+          "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+          "node",
+          "/install/package/bin/devlyn.js",
+          "-y"
+        ],
+        "cwd": null,
+        "exit_code": 0,
+        "seconds": 0.3495118750142865,
+        "stderr": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-codex-v1/installer.stderr",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-s-codex-v1/installer.stdout",
+        "stdout_sha256": "dda7677b7f273fb4f0745524ab994541764a2253555511c612797b298d888481"
+      },
+      "marker_version": "4.2.5",
+      "models_auth_network": "NO_MODELS_NO_AUTH_NETWORK_NONE",
+      "payload_bytes_modes_match": true,
+      "peer_helper_absent": true,
+      "root_instructions_match": true,
+      "root_instructions_sha256": "9284ebf30f06c04a57e3ccf2a4a0da288fb6fe8ab237b0dd70a856b9e5b5602a",
+      "status": "PASS"
+    }
+  ],
+  "instructions": {
+    "AGENTS.md": {
+      "b_sha256": "4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5",
+      "b_words": 597,
+      "s_sha256": "d602c2ca03f0bc4e2ce328fdf8edf3f06248e2f125daf8721fbe21d12b2cc888",
+      "s_words": 625
+    },
+    "CLAUDE.md": {
+      "b_sha256": "4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5",
+      "b_words": 597,
+      "s_sha256": "d602c2ca03f0bc4e2ce328fdf8edf3f06248e2f125daf8721fbe21d12b2cc888",
+      "s_words": 625
+    },
+    "config/skills/_shared/runtime-principles.md": {
+      "b_sha256": "6c615346159ead0473da08bbc9645f3807b7265d91b3671620c79bff3abaa407",
+      "b_words": 450,
+      "s_sha256": "9573704f913a22ce450f9618200e68188d107b6ff7909c6c9f363ea401a8d583",
+      "s_words": 478
+    }
+  },
+  "inventory_sha256": "8d18344c914ec4d258f8732d5961c087edba1d623a568d4636f7ddf0dbb08ee4",
+  "mode_changes": {
+    "B": [],
+    "H": [],
+    "P": [],
+    "S": []
+  },
+  "native_models_auth": "NOT_ACCESSED",
+  "package_metadata_sha256": "b4295fd1460a3560bbf5860969c8a6bc2a4da7d4d41630f60c664104e9ad621c",
+  "packages": {
+    "B": "7157fefccdad21b466ed4bcef3f499795256309578ee052c04aee45181484c24",
+    "H": "92bace58ffc370040dd897aedf3468892b7f4980c231fda1e66b3961e650de98",
+    "P": "27a2fd5991a988bd4cfd5b4cf99cf03b5804d25aa77a7ec888d48e5fdbae44eb",
+    "S": "a9d56edab1d062c0c61558d9b07e71def8360776b7c2d02fd22de80caa8c3bcb"
+  },
+  "payload_differences_from_0247": {
+    "B": [
+      "package/bin/devlyn.js",
+      "package/bin/skill-history.json",
+      "package/config/skills/_shared/role-config.py",
+      "package/config/skills/_shared/task-complete.py",
+      "package/config/skills/devlyn-ideate/SKILL.md",
+      "package/config/skills/devlyn-ideate/references/loop.md",
+      "package/config/skills/devlyn-ideate/scripts/queue.py",
+      "package/package.json"
+    ],
+    "H": [
+      "package/bin/devlyn.js",
+      "package/bin/skill-history.json",
+      "package/config/skills/_shared/role-config.py",
+      "package/config/skills/_shared/task-complete.py",
+      "package/config/skills/devlyn-ideate/SKILL.md",
+      "package/config/skills/devlyn-ideate/references/loop.md",
+      "package/config/skills/devlyn-ideate/scripts/queue.py",
+      "package/package.json"
+    ],
+    "P": [
+      "package/bin/devlyn.js",
+      "package/bin/skill-history.json",
+      "package/config/skills/_shared/role-config.py",
+      "package/config/skills/_shared/task-complete.py",
+      "package/config/skills/devlyn-ideate/SKILL.md",
+      "package/config/skills/devlyn-ideate/references/loop.md",
+      "package/config/skills/devlyn-ideate/scripts/queue.py",
+      "package/package.json"
+    ],
+    "S": [
+      "package/bin/devlyn.js",
+      "package/bin/skill-history.json",
+      "package/config/skills/_shared/role-config.py",
+      "package/config/skills/_shared/task-complete.py",
+      "package/config/skills/devlyn-ideate/SKILL.md",
+      "package/config/skills/devlyn-ideate/references/loop.md",
+      "package/config/skills/devlyn-ideate/scripts/queue.py",
+      "package/package.json"
+    ]
+  },
+  "prediction_sha256": "a93f1128f40458bba71ead6b7033d2c94d09e0a5cc69a93bb158b6973806b366",
+  "raw_records_sha256": {
+    "build-v1.json": "ccf156f8409f7481551f2bb375b22b0fc1182df1345fd049e08685fe82ee0241",
+    "build-v1.stderr": "7657976608dd0eaf914c050ec1f2c1779230c59e18d3acf9b2f62e80a03c91c0",
+    "build-v1.stdout": "c369c97a1dd21e67fb192b9439e9df969b6bad8e3c34ecbb3cc977f08fc1508a",
+    "package-image-v1.json": "a2ffa440153a4e8a88237f455b1aacd469e134048e23b2a9e817fe39c6945fd2",
+    "package-image-v1.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-image-v1.stdout": "418849033f5bdb43b2ef1526804134eee81b29987d7e25b12064b871599b49e1",
+    "package-install-b-claude-v1/git-baseline.json": "4876751ac29ec3c7c19b1a3ef9bb53e20162b671e59c27af607248ef94357ebd",
+    "package-install-b-claude-v1/git-baseline.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-b-claude-v1/git-baseline.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-b-claude-v1/git-init.json": "9dfe53e6290da46ff93e077558443f0796c35c69459b7dd4f8afe5dbecd4840d",
+    "package-install-b-claude-v1/git-init.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-b-claude-v1/git-init.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-b-claude-v1/installer.json": "9badda84f0a9835645864690bf6a882b46a0c9403dce7e0aab58bb570977e938",
+    "package-install-b-claude-v1/installer.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-b-claude-v1/installer.stdout": "46e84e7dfe06873b52a33a106c466e792ee40f8fcc223f31c80a65969f64238d",
+    "package-install-b-claude-v1/verification.json": "c07d71ba104092b5b590f8029da7f24adc074e9cfd476a7a0c7ff25e7eb512ce",
+    "package-install-b-codex-v1/git-baseline.json": "d81402259170e8c6671976544a5b14c9e8b1dd4fad458284d046f881748de6f0",
+    "package-install-b-codex-v1/git-baseline.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-b-codex-v1/git-baseline.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-b-codex-v1/git-init.json": "5e99eb5f0523e31c4eddd35f60f961f887614aae4d973a84b4243c93cd0c5e6f",
+    "package-install-b-codex-v1/git-init.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-b-codex-v1/git-init.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-b-codex-v1/installer.json": "e84d44254a92e9fb307d0b7675051052050d9af413afcd3dd60b79abcb69fbb1",
+    "package-install-b-codex-v1/installer.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-b-codex-v1/installer.stdout": "4b457dae1d2be30cfa9cc09abed36ec777aabed5ebc733711ea1f7f9309f85d3",
+    "package-install-b-codex-v1/verification.json": "f6874965296542590dce87cd3f880ea0662422060923764bf4f0cb593830c138",
+    "package-install-s-claude-v1/git-baseline.json": "86b1e0b0014a958848884eec48672f7798b9d53e7ec6dec4f444ee16a5c9200f",
+    "package-install-s-claude-v1/git-baseline.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-s-claude-v1/git-baseline.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-s-claude-v1/git-init.json": "bf6662ae0de9ce35b762a5cb9b5dfcc49e1c9cad9933fd6a092ff2ca9ccffbe7",
+    "package-install-s-claude-v1/git-init.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-s-claude-v1/git-init.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-s-claude-v1/installer.json": "334a6bbba57c13e3fbbe51be4ed49abc3e5042c466631ee1d0e6c1d46178281a",
+    "package-install-s-claude-v1/installer.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-s-claude-v1/installer.stdout": "08747657dcfe04ed3ab6e19659c801afeb6189a6b740b8a14389dd112e91b200",
+    "package-install-s-claude-v1/verification.json": "40ebac311486950a92f85c9461141e0ee526e3bf194b40469f0a9203b8d6866a",
+    "package-install-s-codex-v1/git-baseline.json": "e694b15c3f388970a31d92b9192431ffa550ab91762ac2ccb8c9131136f4f929",
+    "package-install-s-codex-v1/git-baseline.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-s-codex-v1/git-baseline.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-s-codex-v1/git-init.json": "1acec6bf6045772ecb0e797a8367209cb9b63b6d7c1d98874ad1dd4e9a238142",
+    "package-install-s-codex-v1/git-init.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-s-codex-v1/git-init.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-s-codex-v1/installer.json": "dd6176d00afa00ad3522a1f656a9e03309a6ce2714f46c5f9978a381998c06fb",
+    "package-install-s-codex-v1/installer.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-install-s-codex-v1/installer.stdout": "dda7677b7f273fb4f0745524ab994541764a2253555511c612797b298d888481",
+    "package-install-s-codex-v1/verification.json": "f776e88cc49f48a8827c8c59511c094f604cd68b22efeddebbd7885cc9ca09fb",
+    "package-installs-run-v1.json": "a86a4d58398e67d7ae66bfef34c246a5069da1b5e3c4637c5ac07da2d6cc782e",
+    "package-installs-run-v1.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package-installs-run-v1.stdout": "e88529d1f4252039993f6b6a04cc08e7d4dbebac6774cfa61ee1d5e7900a31ac",
+    "package-local-verification-v1.json": "e8501fe4a6fa1c2c8d2bf3943a92b51fa518b33a39a5fa641352a647c9a941d3",
+    "package-payload-inventory-v1.json": "8d18344c914ec4d258f8732d5961c087edba1d623a568d4636f7ddf0dbb08ee4",
+    "package-prediction-v1.json": "a93f1128f40458bba71ead6b7033d2c94d09e0a5cc69a93bb158b6973806b366",
+    "package-verify-v1.py": "a3a1ca43a5b981493809dbb6925f9ef21760395f879be6a7e31779b0e22bad85"
+  },
+  "regular_payloads": {
+    "B": 241,
+    "H": 243,
+    "P": 243,
+    "S": 242
+  },
+  "runtime_task_staging": "NOT_PERFORMED",
+  "selected_native_arms": [
+    "A",
+    "B",
+    "S"
+  ],
+  "source_HEAD_after_cleanup": "d1f170ed3bd57441b95ea525156e80644543acb1",
+  "source_HEAD_unchanged": true,
+  "source_mutations": "NONE",
+  "source_twelve_inputs_unchanged": true,
+  "status": "PASS",
+  "unused_archive_arms": [
+    "H",
+    "P"
+  ],
+  "verification_script_sha256": "a3a1ca43a5b981493809dbb6925f9ef21760395f879be6a7e31779b0e22bad85",
+  "version": "4.2.5"
+}

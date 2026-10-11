@@ -1,0 +1,14 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "scripts/test-windows-portability.py",
+    "PackageTests.test_history_allows_manifestless_upgrade_after_package_changes"
+  ],
+  "ended_at": "2026-10-10T12:33:21.027176+00:00",
+  "seconds": 1.2235519170062616,
+  "exit_code": 0,
+  "inputs_unchanged": true,
+  "stdout": "{\"platform\": \"darwin\", \"utf8_mode\": 0, \"locale\": \"UTF-8\", \"package_root\": \"/Users/aipalm/.local/share/nx01/0237-harness\"}\npacked artifact sha256=dee230aca829a0530f5fb9913eb899ddacaf62f14a9baa59b364665dd3bd9ef2\n",
+  "stderr": "test_history_allows_manifestless_upgrade_after_package_changes (__main__.PackageTests.test_history_allows_manifestless_upgrade_after_package_changes) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 1.136s\n\nOK\n"
+}

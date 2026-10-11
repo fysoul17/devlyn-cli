@@ -1,0 +1,5 @@
+{
+  "at": "2026-10-10T15:35:05.339046+00:00",
+  "prediction": "Normalize out at redirected_paths entry so both primary and copy return paths use the same canonical root. The first custody run passed new custody cases but failed the existing direct-helper comparison on macOS /var -> /private/var. All41 should now pass without changing evidence selection semantics.",
+  "prior": "custody-tests-v1.stderr"
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "0237-confirmation-recovery-v1",
+  "created_at": "2026-10-10T04:42:39.538755+00:00",
+  "state": "PREPARED_WAITING_FOR_NORMAL_LOGIN",
+  "replacements": {
+    "f02-CF-CONFIG-claude-C-r1": "f02-CF-CONFIG-claude-C-r1-auth1"
+  },
+  "reason": "Original failed only pre-dispatch authentication lifetime check; no owner/source/cost verdict exists. Retain guard evidence, same runtime/tasks/arm order.",
+  "guard_evidence": "/Users/aipalm/.local/share/nx01/0237-live/out-confirmation/not-dispatched-f02-CF-CONFIG-claude-C-r1.json",
+  "guard_sha256": "e2bab9d967138010caa0e7f4d0879b9cf430e5a842ff88da5273fca9101b7bcc",
+  "resume_schedule": "/Users/aipalm/.local/share/nx01/0237-live/cells-confirmation-cf-config-resume-v1.tsv",
+  "resume_schedule_sha256": "9a5286beb6ad11dc630ee98644bbbea58a84e7d159fe4adebbb5cc2608ebc3cb",
+  "resume_requires": "Successful standard host CLI login and unchanged same-account preflight; no altered expiry or threshold."
+}

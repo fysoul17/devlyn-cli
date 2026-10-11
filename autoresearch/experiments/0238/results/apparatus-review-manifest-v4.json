@@ -1,0 +1,35 @@
+{
+  "created_at": "2026-10-10T10:21:50.519017+00:00",
+  "status": "PROSPECTIVE_REVIEW_FREEZE_NOT_DISPATCH_AUTHORIZATION",
+  "files": {
+    "peer.py": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "policy.py": "d02be3a1700c0a78aab0d141580da7eacc97be97a60ea7cfc27e9bd31b154606",
+    "runner.py": "80f14a65f9f0e5af89eaca78cf8170cb5d93ba8e35cd6228f4cdd6be51bd0d48",
+    "test_peer.py": "c06be9e3fa81275b420f305de76aa686d22bc250d5c165aa0aa959aefff02a27",
+    "test_runner.py": "7e6b8f21666aff9c7f74a6c75f09116ba7b7dcc8e1289b9348a35b06cec07305",
+    "f23_precision.py": "47124cac8635717d90d22cb5719579e611952e3925ec3ef28a2f678312fe9e89",
+    "cell-init-v1.py": "daa0e64da8b745746b1abb4445317b965ce1dca5d385e993379a71e20022266f"
+  },
+  "shared_process_dependency": {
+    "path": "config/skills/_shared/platform-support.py",
+    "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+  },
+  "validation": "14 targeted local/mock tests pass in13.515s after a test-only name-shadowing correction. Retained positive/noop/deleted check packets preserve classification; no new Docker evaluation or model call.",
+  "log": "results/owner-init-v1-tests-2.stderr",
+  "supersedes": "apparatus-review-manifest-v3.json",
+  "previous_source": "results/apparatus-v3/manifest.json",
+  "full_check": "results/full-check-v4/summary.json",
+  "full_check_scope": "Historical unchanged evaluator controls, replayed as classification packets only; not a new run under init.",
+  "missing_interpreter": "results/full-check-v4/missing-interpreter-raw.json",
+  "repro_script_sha256": "b1a8b2890d285f09a547b866094b5a9ed8716b0efd2c2f3cd0cf43fc84f9caa4",
+  "pair_native_dependencies": {
+    "autoresearch/experiments/0234/cell.py": "fabfd55829c2873e06f42abefab598ee8a717e636122a108b03faee0e9e6f0c5",
+    "autoresearch/experiments/0234/evidence.py": "595f9018b489034a38c7be61b15e046ec66a393d5ea0c12d9f7e13c8b80de691",
+    "autoresearch/experiments/0234/record_usage.py": "7692df70d31e2bbef1cec23f081e0040eeb7f58dd7b08bd99df7ff6bdb32f164"
+  },
+  "predictions": [
+    "results/owner-init-v1-prediction.json",
+    "results/owner-init-v1-prediction-2.json"
+  ],
+  "retained_initial_failure": "results/owner-init-v1-tests.stderr"
+}

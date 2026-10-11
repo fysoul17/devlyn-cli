@@ -1,0 +1,17 @@
+test_each_native_dependency_drift_is_rejected_before_destination (__main__.NativeDependencyTests.test_each_native_dependency_drift_is_rejected_before_destination) ... ok
+test_missing_native_dependency_binding_is_rejected (__main__.NativeDependencyTests.test_missing_native_dependency_binding_is_rejected) ... ok
+test_valid_native_dependency_manifest_stages_offline (__main__.NativeDependencyTests.test_valid_native_dependency_manifest_stages_offline) ... FAIL
+
+======================================================================
+FAIL: test_valid_native_dependency_manifest_stages_offline (__main__.NativeDependencyTests.test_valid_native_dependency_manifest_stages_offline)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/results/test_stage_native_dependencies.py", line 76, in test_valid_native_dependency_manifest_stages_offline
+    self.assertEqual(result, self.args.destination / 'runtime-smoke.json')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: PosixPath('/private/var/folders/l8/3dwz4xpx761bj1z0r_[64 chars]son') != PosixPath('/var/folders/l8/3dwz4xpx761bj1z0r_pyhh1000[56 chars]son')
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.028s
+
+FAILED (failures=1)

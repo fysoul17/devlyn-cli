@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/stage.py",
+    "/Users/aipalm/.local/share/nx01/0249-live/staged-v1",
+    "--packs",
+    "/Users/aipalm/.local/share/nx01/0249-live/selected-packs-v1",
+    "--tasks",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/tasks-v1.json",
+    "--template-runtime",
+    "/Users/aipalm/.local/share/nx01/0248-live/runtime-measured.json",
+    "--review-manifest",
+    "/Users/aipalm/.local/share/nx01/0247-live/staged-v1/review-manifest.json"
+  ],
+  "elapsed_seconds": 0.44187258297461085,
+  "exit_code": 0,
+  "stderr": "",
+  "stdout": "/Users/aipalm/.local/share/nx01/0249-live/staged-v1/runtime-smoke.json\n"
+}

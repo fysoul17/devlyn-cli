@@ -15,6 +15,11 @@ just-edit instructions skip delivery. Existing session-wide restrictions remain
 in force until changed. Read-only work, unchanged work and incidental generated
 files do not trigger delivery. An ideate drain delivers every task.
 
+When delivery is implicit and no GitHub origin is configured, use the existing
+local-only route and report `LOCAL_ONLY`, the commit and why no PR/merge occurred.
+An explicit PR/merge request remains blocked. Authentication, network and
+configuration failures are not grounds for this fallback.
+
 ## Concurrent writers
 
 When other sessions or agents are known to write this checkout (the user says
@@ -57,11 +62,6 @@ HEAD, index and files untouched. For a commit request, local-only work or
 isolation without publication, use `--local-base` with the exact current HEAD
 and omit `--repository`/`--remote`. Nothing is fetched or pushed; complete with
 `--local-only` only when committing is allowed.
-
-When delivery is implicit and no GitHub origin is configured, use the existing
-local-only route and report `LOCAL_ONLY`, the commit and why no PR/merge occurred.
-An explicit PR/merge request remains blocked. Authentication, network and
-configuration failures are not grounds for this fallback.
 
 After local completion or confirmed PR merge, reconcile the original checkout
 only when its branch and changes remain understood and can be preserved.

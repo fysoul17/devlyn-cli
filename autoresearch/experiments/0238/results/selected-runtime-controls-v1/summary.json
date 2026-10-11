@@ -1,0 +1,32 @@
+{
+  "auth_read": false,
+  "ended_at": "2026-10-10T12:39:51.563959+00:00",
+  "failure": {
+    "message": "[Errno 2] No such file or directory: '/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-p-codex-v1/cell/work/.claude/skills/_shared/peer.py'",
+    "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 42, in <module>\n  File \"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/runner.py\", line 38, in digest\n    return hashlib.sha256(Path(path).read_bytes()).hexdigest()\n                          ~~~~~~~~~~~~~~~~~~~~~^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py\", line 777, in read_bytes\n    with self.open(mode='rb', buffering=0) as f:\n         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py\", line 771, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-p-codex-v1/cell/work/.claude/skills/_shared/peer.py'\n",
+    "type": "FileNotFoundError"
+  },
+  "models_called": false,
+  "rows": [
+    {
+      "case": "noop",
+      "delivery_pass": false,
+      "product_check_pass": false,
+      "public_pass": true
+    },
+    {
+      "case": "positive",
+      "delivery_pass": true,
+      "product_check_pass": true,
+      "public_pass": true
+    },
+    {
+      "case": "deleted",
+      "delivery_pass": true,
+      "product_check_pass": false,
+      "public_pass": false
+    }
+  ],
+  "runtime": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/runtime-smoke.json",
+  "seconds": 28.26311150001129
+}

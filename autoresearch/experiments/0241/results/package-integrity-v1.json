@@ -1,0 +1,53 @@
+{
+  "at": "2026-10-10T15:29:32.293242+00:00",
+  "checks": [
+    {
+      "arm": "B",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 241
+    },
+    {
+      "arm": "H",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 243
+    },
+    {
+      "arm": "P",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 243
+    },
+    {
+      "arm": "S",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 242
+    }
+  ],
+  "changed_payloads": {
+    "B": [],
+    "H": [
+      "package/config/skills/_shared/peer.py"
+    ],
+    "P": [
+      "package/config/skills/_shared/peer.py"
+    ],
+    "S": []
+  },
+  "root_templates_equal_HEAD": {
+    "AGENTS.md": true,
+    "CLAUDE.md": true,
+    "config/skills/_shared/runtime-principles.md": true,
+    ".agents/skills/_shared/runtime-principles.md": true
+  },
+  "packages_metadata_sha256": "02b14b728b5f022acfc8e0c46e34a3d9842d61df8c6282c71b90d7d8fffcbab3",
+  "archive_sha256": {
+    "B": "050bc8d6f3af071461903f0c7efd77ae445828f232152cd4f52b6e81faa967b3",
+    "H": "35fbd6c48c7d5a65356be9c64abfbdc29400875ea15038795d3b628b6144194b",
+    "P": "a28ab5f6b74c4281fc37bcdaa8bf0c96dc715cd8b952656b326b759a8c463387",
+    "S": "c031f7d5e5ea752bf153092e059684f281cfd55a1241c643f57b525b22d334d5"
+  },
+  "status": "PASS"
+}

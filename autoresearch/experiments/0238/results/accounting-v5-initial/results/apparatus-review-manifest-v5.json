@@ -1,0 +1,42 @@
+{
+  "created_at": "2026-10-10T12:31:11.107173+00:00",
+  "status": "PROSPECTIVE_REVIEW_FREEZE_NOT_DISPATCH_AUTHORIZATION",
+  "files": {
+    "peer.py": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "policy.py": "d02be3a1700c0a78aab0d141580da7eacc97be97a60ea7cfc27e9bd31b154606",
+    "runner.py": "6dc231c42bd99b8f36b4836864020262435886a88e1184590eafbe9a721a0951",
+    "test_peer.py": "c06be9e3fa81275b420f305de76aa686d22bc250d5c165aa0aa959aefff02a27",
+    "test_runner.py": "6db017e16cf5822ed3f240834670f1bd357e84bc62210ac59b49bbb9ff013b48",
+    "f23_precision.py": "47124cac8635717d90d22cb5719579e611952e3925ec3ef28a2f678312fe9e89",
+    "cell-init-v1.py": "daa0e64da8b745746b1abb4445317b965ce1dca5d385e993379a71e20022266f",
+    "claude-accounting-v1.py": "b1f2d0588e4c85a9ca7f22368d3b04db176a1e3d34646eba9d859ce333bd3eab",
+    "test_claude_accounting.py": "0c8359a6d8af9ec563b1a7ac85d481050ff3b0a55c83ca9f016491efa7210b21",
+    "results/stage.py": "9c288dd37a20f114a9ef2d6167da23502748b634b0d6b08870a95c4626d17500",
+    "results/test_stage_native_dependencies.py": "97fe00153f2059a50decfec62a183faae7fd293fb0a2ecd7b8aeec704be6c2e2"
+  },
+  "shared_process_dependency": {
+    "path": "config/skills/_shared/platform-support.py",
+    "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+  },
+  "validation": "9 native-accounting controls and all26 local runner tests pass. Prior0239 short/long reconcile; actual d01 stays fully charged but independently UNKNOWN. No model, Docker, authentication or original-cell writes.",
+  "log": "results/claude-accounting-v1-runner-tests-2.stderr",
+  "supersedes": "apparatus-review-manifest-v4.json",
+  "previous_source": "results/apparatus-v4/manifest.json",
+  "full_check": "results/full-check-v4/summary.json",
+  "full_check_scope": "Historical unchanged evaluator controls replayed as local classifier packets only. No new Docker evaluation or model call under v5.",
+  "missing_interpreter": "results/full-check-v4/missing-interpreter-raw.json",
+  "repro_script_sha256": "b1a8b2890d285f09a547b866094b5a9ed8716b0efd2c2f3cd0cf43fc84f9caa4",
+  "pair_native_dependencies": {
+    "autoresearch/experiments/0234/cell.py": "fabfd55829c2873e06f42abefab598ee8a717e636122a108b03faee0e9e6f0c5",
+    "autoresearch/experiments/0234/evidence.py": "595f9018b489034a38c7be61b15e046ec66a393d5ea0c12d9f7e13c8b80de691",
+    "autoresearch/experiments/0234/record_usage.py": "7692df70d31e2bbef1cec23f081e0040eeb7f58dd7b08bd99df7ff6bdb32f164"
+  },
+  "predictions": [
+    "results/claude-accounting-v1-prediction.json",
+    "results/claude-accounting-v1-prediction-2.json"
+  ],
+  "retained_initial_failure": "results/claude-accounting-v1-runner-tests-1.stderr",
+  "accounting_report": "results/claude-accounting-v1.md",
+  "accounting_replay": "results/claude-accounting-v1-replay.json",
+  "accounting_scope": "Native Claude owner/peer/resume/child terminal reconciliation and unbound interrupted-request UNKNOWN; full reported lower bound retained, existing STOP before product evaluation. Historical recorder unchanged."
+}

@@ -1,0 +1,8 @@
+test_each_native_dependency_drift_is_rejected_before_destination (__main__.NativeDependencyTests.test_each_native_dependency_drift_is_rejected_before_destination) ... ok
+test_missing_native_dependency_binding_is_rejected (__main__.NativeDependencyTests.test_missing_native_dependency_binding_is_rejected) ... ok
+test_valid_native_dependency_manifest_stages_offline (__main__.NativeDependencyTests.test_valid_native_dependency_manifest_stages_offline) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.027s
+
+OK

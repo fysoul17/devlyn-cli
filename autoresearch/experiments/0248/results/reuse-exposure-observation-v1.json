@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-10T20:56:50.312284+00:00",
+  "changed_old_source_line": "rows = [json.loads(line) for line in text.splitlines() if line.strip()]",
+  "decision": "Keep original valid historical negatives and costs once, explicitly0245-helper-version evidence. Do not retake them or claim exact current0247-treatment observations. Preserve exact A/S reuse. Any positive signal still needs fresh current-version repeated harder per-engine confirmation; historical H/P cannot certify current-version quality/resources.",
+  "finding": "Runtime-unused helper was owner-visible: both historical Codex P/H owners read the changed answer delimiter in helper source. No native call does not prove byte-identical owner exposure or no possible model behavior effect.",
+  "invalidated_claim": "registration-v1: its changed delimiter cannot affect their native behavior",
+  "kind": "Reactive provenance observation before any0248 native dispatch; not a retroactive prospective prediction",
+  "new_helper_sha256": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266",
+  "old_helper_sha256": "b51b8c9db0b0d6c1b95e0134e6e3b9f83f27d4b63f6fece79b8e852d3d49d095",
+  "prior_freeze": "results/freeze-measured-v1.json",
+  "prior_freeze_dispatched": false,
+  "records": [
+    {
+      "cell": "d02-f23-codex-p",
+      "changed_source_line_present_in_tool_output": true,
+      "event_sha256": "19d402c1155fef4948e5d592740c75f265385f4e15bd7f0a13fed1d1d657f48b",
+      "installed_helper_sha256": "b51b8c9db0b0d6c1b95e0134e6e3b9f83f27d4b63f6fece79b8e852d3d49d095",
+      "lf_record": 18,
+      "peer_activated": false,
+      "stdout": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d02-f23-codex-p/run/stdout",
+      "stdout_sha256": "9acd89988b47e306c920c19965841177d15627c96ee120cd1866bd0a6f85e744",
+      "tool_command": "/bin/sh -lc \"command -v claude; rg --files tests; cat .gitignore; sed -n '1,200p' .agents/skills/_shared/peer.py; sed -n '1,160p' .agents/skills/_shared/role-config.py\"",
+      "verdict_sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9"
+    },
+    {
+      "cell": "d04-f23-codex-h",
+      "changed_source_line_present_in_tool_output": true,
+      "event_sha256": "6afceda53ef3e3adf2da32a794007c4c7b71f99bba6cc3f40c72251bc009e3bc",
+      "installed_helper_sha256": "b51b8c9db0b0d6c1b95e0134e6e3b9f83f27d4b63f6fece79b8e852d3d49d095",
+      "lf_record": 14,
+      "peer_activated": false,
+      "stdout": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d04-f23-codex-h/run/stdout",
+      "stdout_sha256": "713cef39b5748dae78815eae04c2df594a4153d78640caa675766b20d4ab35ea",
+      "tool_command": "/bin/sh -lc \"sed -n '1,260p' .agents/skills/_shared/role-config.py && sed -n '1,240p' .agents/skills/_shared/peer.py && rg --files -g '\"'!node_modules'\"' -g '\"'!package-lock.json'\"' -g '\"'!.git'\"' -g '\"'!server/**'\"' -g '\"'!public/**'\"' -g '\"'!client/**'\"' -g '\"'!src/**'\"' -g '\"'!docs/**'\"' -g '\"'!README*'\"'\"",
+      "verdict_sha256": "662087c33d44095cd708e7060926ec22420ae92580f477669108de8efe32045a"
+    }
+  ],
+  "source_or_verdict_regrade": "NONE"
+}

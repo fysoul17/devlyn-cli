@@ -1,0 +1,16 @@
+test_caller_temporary_cleanup_leaves_one_complete_canonical_set_per_call (__main__.CustodyTests.test_caller_temporary_cleanup_leaves_one_complete_canonical_set_per_call) ... ok
+test_file_at_parent_or_custody_root_rejects_without_dispatch (__main__.CustodyTests.test_file_at_parent_or_custody_root_rejects_without_dispatch) ... ok
+test_fresh_resume_have_distinct_immutable_records_and_same_native_session (__main__.CustodyTests.test_fresh_resume_have_distinct_immutable_records_and_same_native_session) ... ok
+test_native_nonzero_retains_capture_and_completion_for_both_engines (__main__.CustodyTests.test_native_nonzero_retains_capture_and_completion_for_both_engines) ... ok
+test_nonignored_custody_root_rejects_without_dispatch_or_ignore_edit (__main__.CustodyTests.test_nonignored_custody_root_rejects_without_dispatch_or_ignore_edit) ... ok
+test_removed_out_argument_rejects_before_dispatch_or_directory_creation (__main__.CustodyTests.test_removed_out_argument_rejects_before_dispatch_or_directory_creation) ... ok
+test_repeated_fresh_calls_preserve_prior_records_and_existing_contents (__main__.CustodyTests.test_repeated_fresh_calls_preserve_prior_records_and_existing_contents) ... ok
+test_sigterm_retains_native_streams_and_interrupted_completion_for_both_engines (__main__.CustodyTests.test_sigterm_retains_native_streams_and_interrupted_completion_for_both_engines) ... ok
+test_source_mutation_fails_and_retains_both_source_identities (__main__.CustodyTests.test_source_mutation_fails_and_retains_both_source_identities) ... ok
+test_symlinked_parent_or_custody_root_rejects_inside_and_outside_targets (__main__.CustodyTests.test_symlinked_parent_or_custody_root_rejects_inside_and_outside_targets) ... ok
+test_timeout_retains_native_streams_and_completion_for_both_engines (__main__.CustodyTests.test_timeout_retains_native_streams_and_completion_for_both_engines) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 27.811s
+
+OK

@@ -1,0 +1,187 @@
+{
+  "at": "2026-10-10T18:16:07.883188+00:00",
+  "container_absent": true,
+  "control_manifest_sha256": "809526862212fa68693e11a8b86adaf0a97fa3a8d38937676c976c1103e2d177",
+  "d01_preserved": {
+    "files_before": {
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0243/results/d01-integrity-check.json": "dcecdaefe5d30bae7aae4e216412e4ca0631a450dc72cd3a21e8571eef83bd49",
+      "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d01-f23-claude-s.json": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+    },
+    "integrity_report_status": "PASS",
+    "unchanged_after_audit": true,
+    "usage": "COMPLETE",
+    "verdict_matches_integrity_report": true,
+    "verdict_status": "CHECKS_PASS"
+  },
+  "delivery_pass": null,
+  "delivery_status": "NOT_GRADED_AFTER_STOP",
+  "evidence_manifest_collection_failures": [],
+  "evidence_manifest_matches_verdict": true,
+  "evidence_manifest_sha256": "cc39d330a8078aea680a734a0662e812c18c7bc9ec3acf187bbda8639b60f20a",
+  "freeze_sha256_after": "a86c0b479204bcb54bd7bc53457cd88797a47e18ed1d74cbac231d4789478825",
+  "freeze_sha256_before": "a86c0b479204bcb54bd7bc53457cd88797a47e18ed1d74cbac231d4789478825",
+  "identity_status": "MATCH",
+  "independent_protocol_diagnosis_scope": "Root performs cause diagnosis separately; this audit does not infer missing terminal costs or reconstruct deleted peer receipts.",
+  "input_tokens": null,
+  "integrity": {
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 2353,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 102,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 171,
+      "mismatches": []
+    }
+  },
+  "integrity_status": "PASS",
+  "known_usage_lower_bound": {
+    "input_tokens": 1796844,
+    "output_tokens": 69638
+  },
+  "measurement_eligible_raw_flag": true,
+  "measurement_eligible_raw_flag_scope": "Original raw flag preserved; it does not turn STOP/PARTIAL into a completed valid measurement.",
+  "native_owner_config_identity": {
+    "codex_effort": "max",
+    "codex_model": "gpt-6-astra",
+    "docker_image_inspect_matches": true,
+    "expected_image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "native_identity_status": "MATCH",
+    "owner_config_matches": true,
+    "plan_config": "codex",
+    "plan_effort": "max",
+    "plan_engine": "codex",
+    "plan_model": "gpt-6-astra",
+    "run_and_verdict_identity_equal": true,
+    "run_argv_has_expected_image": true,
+    "runtime_plan_seal_images_match": true,
+    "scope": "Owner image/config and preserved native identity records only; peer binding remains UNVERIFIED.",
+    "started_result_create_argv_equal": true
+  },
+  "output_tokens": null,
+  "owner_seconds": 807.6238686249999,
+  "owner_status": "EXITED_0",
+  "peer_policy_gaps": [
+    "unbound Claude session 905d504d-30ca-4d3f-97f6-ac4f1f6bac6e"
+  ],
+  "peer_policy_status": "UNVERIFIED",
+  "peer_protocol_violations": [],
+  "peer_validation_completion": "NOT_ACTIVATED",
+  "post_stop_check_artifacts_absent": true,
+  "prediction": {
+    "prediction": "All102 execution inputs,171 selected artifacts,5 prepared files and every retained evidence/control entry match their recorded hashes; image/config bindings agree and the exact container/volume are absent. Original d02 STOP/PARTIAL and unknown whole-run costs remain unchanged, with source/public/delivery NOT_GRADED_AFTER_STOP. Earlier d01 PASS verdict and its integrity report remain unchanged. No tests, models, accounting replay or regrade.",
+    "recorded_at": "2026-10-10T18:15:16.599007+00:00"
+  },
+  "public_check_status": "NOT_GRADED_AFTER_STOP",
+  "public_pass": null,
+  "reason": "ValueError: peer model identity/evidence UNVERIFIED",
+  "remaining_cell_observations": {
+    "d03-f23-claude-a": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d04-f23-codex-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d05-f23-claude-p": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d06-f23-codex-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d07-f23-claude-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d08-f23-codex-a": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d09-f23-claude-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d10-f23-codex-s": {
+      "output_absent": true,
+      "verdict_absent": true
+    }
+  },
+  "remaining_eight_cells_unrun": true,
+  "runtime_hash_equal_freeze": true,
+  "scope": "Bounded read-only independent integrity audit; no models, tests, accounting replay, product/source/public/delivery checks, repair or historical regrade.",
+  "seal_inputs_equal_freeze": true,
+  "seal_sha256": "503728a34950fab3e4288a2aed1296f311696cf579f88c6ccf6bbe364607a658",
+  "source_check_pass": null,
+  "source_check_status": "NOT_GRADED_AFTER_STOP",
+  "status": "STOP",
+  "teardown": "CLEAN",
+  "teardown_and_image_observations": [
+    {
+      "command": [
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        "name=devlyn-0231-3f474ddfff6540418a0cf2e626837007",
+        "--format",
+        "{{.Names}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "volume",
+        "ls",
+        "--filter",
+        "name=devlyn-0234-tmp-cfa694eae0bb44afaf2d8bf879c12ef8",
+        "--format",
+        "{{.Name}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+        "--format",
+        "{{.Id}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998\n"
+    }
+  ],
+  "unbound_claude_session": "905d504d-30ca-4d3f-97f6-ac4f1f6bac6e",
+  "usage": "PARTIAL",
+  "usage_gaps": [
+    "Claude session 905d504d-30ca-4d3f-97f6-ac4f1f6bac6e has no result; its transcript usage is a lower bound",
+    "Claude accounting: 905d504d-30ca-4d3f-97f6-ac4f1f6bac6e/claude-opus-5-5: native aggregate does not reconcile with terminal messages",
+    "peer: unbound Claude session 905d504d-30ca-4d3f-97f6-ac4f1f6bac6e"
+  ],
+  "verdict_sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b",
+  "verdict_unchanged_after_audit": true,
+  "volume_absent": true,
+  "whole_run_cost": "UNKNOWN"
+}

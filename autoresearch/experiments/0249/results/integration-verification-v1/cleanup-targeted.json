@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "-c",
+    "import runpy,sys; m=runpy.run_path('config/skills/_shared/task-complete.py'); sys.exit(m['self_test'](['test_linux_writer_scan_accepts_confirmed_single_thread_zombie', 'test_linux_writer_scan_retains_denied_live_or_threaded_process', 'test_linux_writer_scan_retains_unknown_zombie_status', 'test_linux_missing_cwd_checks_threads_and_remaining_fds', 'test_linux_real_zombie_allows_only_attested_scratch_cleanup', 'test_linux_real_zombie_leader_retains_live_sibling_writer']))"
+  ],
+  "elapsed_seconds": 1.7822719160176348,
+  "finished_at": "2026-10-10T23:13:38.683492+00:00",
+  "returncode": 0,
+  "started_at": "2026-10-10T23:13:36.901221+00:00"
+}

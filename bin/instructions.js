@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { Lexer } = require('marked');
 const legacyTemplates = require('./instruction-templates.json');
 
 const BEGIN = '<!-- devlyn:instructions:begin';
@@ -119,16 +120,23 @@ function instructionParagraphs(text) {
   return paragraphs;
 }
 
-// Claude Code expands an `@AGENTS.md` import line, except inside a fenced code block.
+// Recognize direct adjacent imports in Markdown text, including inline imports.
+// Leaf tokens keep code, escapes and HTML examples from removing our only block.
 function importsAgentsMd(text) {
-  let fence = null;
-  for (const line of text.replace(/^\uFEFF/, '').split(/\r?\n/)) {
-    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
-    if (marker && !fence) fence = marker;
-    else if (marker && marker[0] === fence[0] && marker.length >= fence.length && /^ {0,3}(?:`+|~+)\s*$/.test(line)) fence = null;
-    else if (!fence && line.trimEnd() === '@AGENTS.md') return true;
-  }
-  return false;
+  const containsImport = (tokens) => tokens.some((token) => {
+    if (['code', 'codespan', 'html'].includes(token.type)) return false;
+    if (token.tokens) return containsImport(token.tokens);
+    if (token.items) return containsImport(token.items);
+    if (token.type !== 'text') return false;
+    // Match the complete native path token before dropping its optional fragment.
+    return [...token.text.matchAll(/(?:^|\s)@((?:[^\s\\]|\\ )+)/g)].some((match) => {
+      const file = match[1].split('#', 1)[0];
+      return file === 'AGENTS.md' || file === './AGENTS.md';
+    });
+  });
+  // Claude strips this bounded frontmatter prefix before expanding imports.
+  const body = text.replace(/^\uFEFF/, '').replace(/^---\s*\n([\s\S]*?)---\s*\n?/, '');
+  return containsImport(new Lexer({ gfm: false }).lex(body));
 }
 
 function customInstructions(text, name, template, managed = false) {

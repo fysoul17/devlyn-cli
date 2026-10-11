@@ -1,0 +1,340 @@
+{
+  "rows": [
+    {
+      "cell": "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/s01-h-codex",
+      "claude_accounting": {
+        "api_errors": [],
+        "gaps": [],
+        "schema": "0238-claude-accounting-v1",
+        "scope": "Native emitted accounting, not provider billing. Thinking is already in output; progress estimates are never counted. All reported costs remain in inherited usage.",
+        "sessions": {},
+        "sources": {
+          "run/stdout": "02705fa328db198bf6d020f3c227c6bd0c31c34cd905edba3986609e96306d54"
+        },
+        "status": "MATCH",
+        "stream_retries": [],
+        "terminal_message_count": 0,
+        "unknown_residual": null
+      },
+      "claude_gaps": [],
+      "codex_gaps": [],
+      "component_tokens": {
+        "input_tokens": 1175250,
+        "output_tokens": 17382
+      },
+      "new_envelopes": {},
+      "new_unreadable": [],
+      "old_envelopes": {},
+      "old_unreadable": [
+        "cell/work/.devlyn/pair/peer-check.json",
+        "cell/work/.git/devlyn-completion/0bb15e599fb544c2e07a9eee/custody/.devlyn/pair/peer-check.json",
+        "cell/work/.devlyn/pair/peer-check.json",
+        "cell/work/.git/devlyn-completion/0bb15e599fb544c2e07a9eee/custody/.devlyn/pair/peer-check.json"
+      ],
+      "original_usage": {
+        "claude": {},
+        "codex": {
+          "gpt-6-astra": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 1097088,
+            "input_tokens": 1175250,
+            "output_tokens": 17382,
+            "reasoning_output_tokens": 6896
+          }
+        },
+        "completeness": "PARTIAL",
+        "gaps": [
+          "unreadable Claude result cell/work/.devlyn/pair/peer-check.json",
+          "unreadable Claude result cell/work/.git/devlyn-completion/0bb15e599fb544c2e07a9eee/custody/.devlyn/pair/peer-check.json",
+          "unreadable Claude result cell/work/.devlyn/pair/peer-check.json",
+          "unreadable Claude result cell/work/.git/devlyn-completion/0bb15e599fb544c2e07a9eee/custody/.devlyn/pair/peer-check.json",
+          "Claude accounting: unreadable result cell/work/.devlyn/pair/peer-check.json",
+          "Claude accounting: unreadable result cell/work/.git/devlyn-completion/0bb15e599fb544c2e07a9eee/custody/.devlyn/pair/peer-check.json"
+        ],
+        "input_tokens": 1175250,
+        "output_tokens": 17382,
+        "reported_completeness": "PARTIAL",
+        "unknown_residual": {
+          "input_tokens": null,
+          "output_tokens": null,
+          "reasoning_tokens": null
+        }
+      },
+      "protected_sha256": {
+        "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/s01-h-codex/claude-accounting.json": "c22e95558d3b830ed64dac9774d1ee23540ecf9709ccde7c7ff79c9a89957041",
+        "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/s01-h-codex/peer-policy.json": "90cfccf2847119482c31ee7d9c8d2832d8cfa328a76305d8497ef01b6e2902da",
+        "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/s01-h-codex/plan.json": "ecdf1c86ecabb2aeae44658126afa1439c4e8bf372a24167f4c1a4b9ff6852fd",
+        "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/s01-h-codex/run/stderr": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721",
+        "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/s01-h-codex/run/stdout": "02705fa328db198bf6d020f3c227c6bd0c31c34cd905edba3986609e96306d54",
+        "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/s01-h-codex/usage.json": "c542b0de89add7655a0e70bf8873794174aaad63dbe437586ef8d0465e93c002",
+        "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/verdict-s01-h-codex.json": "7202d4e01be2132b21b5175e845c10dfe280cb08b0b1336ba586bab1b25114bc"
+      },
+      "protected_unchanged": true,
+      "receipt_gaps": []
+    },
+    {
+      "cell": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s01-h-claude-v3",
+      "claude_accounting": {
+        "api_errors": [],
+        "gaps": [],
+        "schema": "0238-claude-accounting-v1",
+        "scope": "Native emitted accounting, not provider billing. Thinking is already in output; progress estimates are never counted. All reported costs remain in inherited usage.",
+        "sessions": {
+          "31d09425-93a5-4f1c-9eb2-af9d108484b4": {
+            "claude-opus-5-5": {
+              "matches": true,
+              "reported": {
+                "cache_creation_input_tokens": 195780,
+                "cache_read_input_tokens": 4204325,
+                "input_tokens": 66,
+                "output_tokens": 109526,
+                "thinking_tokens": 93823
+              },
+              "terminal": {
+                "cache_creation_input_tokens": 195780,
+                "cache_read_input_tokens": 4204325,
+                "input_tokens": 66,
+                "output_tokens": 109526,
+                "thinking_tokens": 93823
+              }
+            }
+          },
+          "8c5719a5-0b60-487f-90ec-fa88921b769c": {
+            "claude-opus-5-5": {
+              "matches": true,
+              "reported": {
+                "cache_creation_input_tokens": 34174,
+                "cache_read_input_tokens": 100197,
+                "input_tokens": 12,
+                "output_tokens": 20032,
+                "thinking_tokens": 17594
+              },
+              "terminal": {
+                "cache_creation_input_tokens": 34174,
+                "cache_read_input_tokens": 100197,
+                "input_tokens": 12,
+                "output_tokens": 20032,
+                "thinking_tokens": 17594
+              }
+            }
+          }
+        },
+        "sources": {
+          "cell/work/.devlyn/pair/review1/peer1791642192397146720.json": "10fa8d85e2e7c38e895702aac55ea955f389dbeab09008d693c995e367449004",
+          "cell/work/.devlyn/pair/review2/peer1791642393247037590.json": "93aca4176528c9c13aae1c85c998b8ce5daf280c20eb4c6682bb463a5dee055e",
+          "home/.claude/projects/-cell-work/31d09425-93a5-4f1c-9eb2-af9d108484b4.jsonl": "be1bcf53cf1aad5cd41a234b1f9db00f6ae8d32efea287301e85ac194ccecf38",
+          "home/.claude/projects/-cell-work/8c5719a5-0b60-487f-90ec-fa88921b769c.jsonl": "90a32c794ed7856dd7007a9b696c71c1ad09c75a17f3a7bb706afd38cf260336",
+          "run/stdout": "54e9f8f043b89ce24a2a2f9025ef3f34a949d9a4c06a15d2c44a0c4e1f16703a"
+        },
+        "status": "MATCH",
+        "stream_retries": [],
+        "terminal_message_count": 39,
+        "unknown_residual": null
+      },
+      "claude_gaps": [],
+      "codex_gaps": [],
+      "component_tokens": {
+        "input_tokens": 4534554,
+        "output_tokens": 129558
+      },
+      "new_envelopes": {
+        "8c5719a5-0b60-487f-90ec-fa88921b769c": [
+          {
+            "is_error": false,
+            "models": [
+              "claude-opus-5-5"
+            ],
+            "order": null,
+            "path": "cell/work/.devlyn/pair/review1/peer1791642192397146720.json",
+            "usage": {
+              "claude-opus-5-5": {
+                "cacheCreationInputTokens": 14521,
+                "cacheReadInputTokens": 46005,
+                "canonicalModel": "claude-opus-5-5",
+                "contextWindow": 1000000,
+                "costBasis": "list",
+                "costUSD": 0.5145409999999999,
+                "inputTokens": 8,
+                "maxOutputTokens": 128000,
+                "outputTokens": 19457,
+                "provider": "firstParty",
+                "thinkingTokens": 17415,
+                "webSearchRequests": 0
+              }
+            }
+          },
+          {
+            "is_error": false,
+            "models": [
+              "claude-opus-5-5"
+            ],
+            "order": null,
+            "path": "cell/work/.devlyn/pair/review2/peer1791642393247037590.json",
+            "usage": {
+              "claude-opus-5-5": {
+                "cacheCreationInputTokens": 34174,
+                "cacheReadInputTokens": 100197,
+                "canonicalModel": "claude-opus-5-5",
+                "contextWindow": 1000000,
+                "costBasis": "list",
+                "costUSD": 0.6941193999999999,
+                "inputTokens": 12,
+                "maxOutputTokens": 128000,
+                "outputTokens": 20032,
+                "provider": "firstParty",
+                "thinkingTokens": 17594,
+                "webSearchRequests": 0
+              }
+            }
+          }
+        ]
+      },
+      "new_unreadable": [],
+      "old_envelopes": {
+        "8c5719a5-0b60-487f-90ec-fa88921b769c": [
+          {
+            "is_error": false,
+            "models": [
+              "claude-opus-5-5"
+            ],
+            "order": null,
+            "path": "cell/work/.devlyn/pair/review1/peer1791642192397146720.json",
+            "usage": {
+              "claude-opus-5-5": {
+                "cacheCreationInputTokens": 14521,
+                "cacheReadInputTokens": 46005,
+                "canonicalModel": "claude-opus-5-5",
+                "contextWindow": 1000000,
+                "costBasis": "list",
+                "costUSD": 0.5145409999999999,
+                "inputTokens": 8,
+                "maxOutputTokens": 128000,
+                "outputTokens": 19457,
+                "provider": "firstParty",
+                "thinkingTokens": 17415,
+                "webSearchRequests": 0
+              }
+            }
+          },
+          {
+            "is_error": false,
+            "models": [
+              "claude-opus-5-5"
+            ],
+            "order": null,
+            "path": "cell/work/.devlyn/pair/review2/peer1791642393247037590.json",
+            "usage": {
+              "claude-opus-5-5": {
+                "cacheCreationInputTokens": 34174,
+                "cacheReadInputTokens": 100197,
+                "canonicalModel": "claude-opus-5-5",
+                "contextWindow": 1000000,
+                "costBasis": "list",
+                "costUSD": 0.6941193999999999,
+                "inputTokens": 12,
+                "maxOutputTokens": 128000,
+                "outputTokens": 20032,
+                "provider": "firstParty",
+                "thinkingTokens": 17594,
+                "webSearchRequests": 0
+              }
+            }
+          }
+        ]
+      },
+      "old_unreadable": [],
+      "original_usage": {
+        "claude": {
+          "claude-opus-5-5": {
+            "cache_read": 4304522,
+            "cache_write": 229954,
+            "input": 78,
+            "output": 129558
+          }
+        },
+        "codex": {},
+        "completeness": "COMPLETE",
+        "gaps": [],
+        "input_tokens": 4534554,
+        "output_tokens": 129558
+      },
+      "protected_sha256": {
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s01-h-claude-v3/claude-accounting.json": "aa847f7b4b5c7a8f689d927e1873f76b10fc1d9323be3ee3c858b51e611f5b4d",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s01-h-claude-v3/peer-policy.json": "4d3fe7e6d60d55d010725f94678d641d4d2c4328b7d532749579ae09a5728b03",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s01-h-claude-v3/plan.json": "94fbd5554d36c8a4bd93f750c6c7cccaace2e0d443234607b61ce9aed660a8ad",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s01-h-claude-v3/run/stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s01-h-claude-v3/run/stdout": "54e9f8f043b89ce24a2a2f9025ef3f34a949d9a4c06a15d2c44a0c4e1f16703a",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s01-h-claude-v3/usage.json": "555ae8846cd89d2e209c1dd8cee540abe65f0ed6c55b5d1e51b8588c259616b5",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/verdict-s01-h-claude-v3.json": "664e4c3244b80b8d094993aea26890a6984707aae206009e0b5fd75c15bb74d2"
+      },
+      "protected_unchanged": true,
+      "receipt_gaps": []
+    },
+    {
+      "cell": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s02-h-codex-v2",
+      "claude_accounting": {
+        "api_errors": [],
+        "gaps": [],
+        "schema": "0238-claude-accounting-v1",
+        "scope": "Native emitted accounting, not provider billing. Thinking is already in output; progress estimates are never counted. All reported costs remain in inherited usage.",
+        "sessions": {},
+        "sources": {
+          "run/stdout": "98e131df651eaf23e07580ad34d7ea060eee27499caf66b954c4698f2e7c649c"
+        },
+        "status": "MATCH",
+        "stream_retries": [],
+        "terminal_message_count": 0,
+        "unknown_residual": null
+      },
+      "claude_gaps": [],
+      "codex_gaps": [
+        "trace-25345594-d448-4d6f-87f6-cdf414669e3a-01a1263f-0580-7c32-9d49-11b8792e8494: inference dd112f33-b674-448a-9593-dff63fe76214 started without completed usage"
+      ],
+      "component_tokens": {
+        "input_tokens": 1217463,
+        "output_tokens": 27994
+      },
+      "new_envelopes": {},
+      "new_unreadable": [],
+      "old_envelopes": {},
+      "old_unreadable": [],
+      "original_usage": {
+        "claude": {},
+        "codex": {
+          "gpt-6-astra": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 1075328,
+            "input_tokens": 1168915,
+            "output_tokens": 27643,
+            "reasoning_output_tokens": 13747
+          },
+          "gpt-6-sol": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 31744,
+            "input_tokens": 48548,
+            "output_tokens": 351,
+            "reasoning_output_tokens": 72
+          }
+        },
+        "completeness": "PARTIAL",
+        "gaps": [
+          "trace-25345594-d448-4d6f-87f6-cdf414669e3a-01a1263f-0580-7c32-9d49-11b8792e8494: inference dd112f33-b674-448a-9593-dff63fe76214 started without completed usage"
+        ],
+        "input_tokens": 1217463,
+        "output_tokens": 27994
+      },
+      "protected_sha256": {
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s02-h-codex-v2/claude-accounting.json": "512e60524cf18a11bca44fd5a2bca3860a09908c4e869fb436987b44c41e7ed7",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s02-h-codex-v2/peer-policy.json": "09d2e862a4067cd60749d892e29bf8e0f4cd52af42fc19e716d4be8509508514",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s02-h-codex-v2/plan.json": "694461d7840fe95f57c8a6c06a903e14b211d5b01935b7406c57c3b11f387c0b",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s02-h-codex-v2/run/stderr": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s02-h-codex-v2/run/stdout": "98e131df651eaf23e07580ad34d7ea060eee27499caf66b954c4698f2e7c649c",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s02-h-codex-v2/usage.json": "7ea517e682ae80b6f9730d8ac80d428c87ff9cf5edb266111c3bfce177ad3cf4",
+        "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/verdict-s02-h-codex-v2.json": "9353c70df6e054735df8ee97c621e216ede8603e2a2e4cd7f737257f72e6e248"
+      },
+      "protected_unchanged": true,
+      "receipt_gaps": []
+    }
+  ],
+  "scope": "Component diagnostics only; original verdicts are never regraded."
+}

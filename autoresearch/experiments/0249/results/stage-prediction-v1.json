@@ -1,0 +1,12 @@
+{
+  "schema": "0249-stage-prediction-v1",
+  "recorded_at": "2026-10-10T23:28:48.702032+00:00",
+  "prediction": [
+    "Unchanged 0247 stage verifies the new 4.2.5 packages and creates an isolated absent destination.",
+    "OR1/OR2 tasks retain exact finalized requests, allowed paths, public commands, oracle rows and visible SHA dictionaries. E1/B5 tasks are exact 0237 copies; route and watchdog metadata remains 0247.",
+    "Only the two new hidden oracle files extend the old public/oracle controls; package controls match selected new archives. Original staging journal is preserved, with a separate final extension receipt.",
+    "Measured runtime explicitly retains A/B/S Claude catalogs from 0248, pinned image/routes/resource enforcement; auth/output/scratch are empty private new directories. No credentials or models are accessed."
+  ],
+  "fixture_ready_manifest_sha256": "d398372f7da50144c285281a1572417fc58ca0affd96f8a1d198d74866303c38",
+  "dispatch": "NOT_AUTHORIZED_OR_PERFORMED"
+}

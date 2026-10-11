@@ -1,0 +1,79 @@
+{
+  "at": "2026-10-10T15:06:42.142263+00:00",
+  "rows": [
+    {
+      "name": "default",
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--entrypoint",
+        "codex",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+        "debug",
+        "prompt-input",
+        "-c",
+        "model=\"gpt-6-astra\"",
+        "Offline configuration inspection only."
+      ],
+      "seconds": 5.302519709017361,
+      "exit_code": 0,
+      "capture": "/Users/aipalm/.local/share/nx01/0240-live/config-probe-v1/default.json",
+      "sha256": "d12406149ae4b89bb1a691a110c4782046bb9acb2af4d4111da03953b481db00",
+      "catalogs": []
+    },
+    {
+      "name": "legacy",
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--entrypoint",
+        "codex",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+        "debug",
+        "prompt-input",
+        "-c",
+        "model=\"gpt-6-astra\"",
+        "-c",
+        "features.multi_agent=false",
+        "Offline configuration inspection only."
+      ],
+      "seconds": 5.269423707999522,
+      "exit_code": 0,
+      "capture": "/Users/aipalm/.local/share/nx01/0240-live/config-probe-v1/legacy.json",
+      "sha256": "2d1c6ae84fd64ca9ff41d459dd69d4cca9642d211b0036314c8a17cc961db5ef",
+      "catalogs": []
+    },
+    {
+      "name": "agents",
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--entrypoint",
+        "codex",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+        "debug",
+        "prompt-input",
+        "-c",
+        "model=\"gpt-6-astra\"",
+        "-c",
+        "agents.enabled=false",
+        "Offline configuration inspection only."
+      ],
+      "seconds": 5.2571147909911815,
+      "exit_code": 0,
+      "capture": "/Users/aipalm/.local/share/nx01/0240-live/config-probe-v1/agents.json",
+      "sha256": "f76a6336f275cd7604dade5a3b1e599509982f5eaa40c404c232b094cc0d1e0e",
+      "catalogs": []
+    }
+  ],
+  "scope": "No credentials mounted, network disabled, debug renderer only; no inference."
+}

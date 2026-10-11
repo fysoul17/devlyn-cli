@@ -1,0 +1,10 @@
+{
+  "observed_at": "2026-10-10T10:16:23.481554+00:00",
+  "exec_session_id": 30018,
+  "exec_reported_exit_code": 143,
+  "exec_result_source": "root write_stdin(session_id=30018) result after recorded SIGTERM/SIGCONT",
+  "termination_record": "confirmation-environment-stop.json",
+  "process_query_exit_code": 1,
+  "process_query_output": "",
+  "note": "Observation time is not claimed as precise process exit time. Frozen journal remains unchanged; f05 has its own finalized verdict."
+}

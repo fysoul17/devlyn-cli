@@ -1,0 +1,440 @@
+{
+  "at": "2026-10-10T23:01:55.009038+00:00",
+  "checked_sha256": "a1a916d8f5b24541bc878c6f84b6cdf1ea9f7a59aa202b99ef7f9c5b767da3d1",
+  "checks": {
+    "B_no_peer_helper_activation": true,
+    "CLEAN_teardown_owner_exit0": true,
+    "actual_image_matches": true,
+    "all_gaps_and_violations_empty": true,
+    "all_hashes_match": true,
+    "checks_delivery_snapshot_hashes_bound": true,
+    "container_absent": true,
+    "control_inventory_exact": true,
+    "cost_usage_wall_match": true,
+    "duplicate_result_envelopes_not_double_counted": true,
+    "earlier_current_d05_d08_preserved": true,
+    "effective_v2_freeze_and_seal_inputs_exact": true,
+    "evidence_collection_clean": true,
+    "evidence_inventory_exact": true,
+    "evidence_manifest_matches_verdict": true,
+    "exact_local_commit_diff_and_snapshot_bytes": true,
+    "exact_two_allowed_delivery_files": true,
+    "freeze_inputs_selected_unchanged_after": true,
+    "historical_four_unchanged": true,
+    "identity_policy_accounting_MATCH_and_equal_verdict": true,
+    "image_resources_config_consistent": true,
+    "local_delivery_PASS": true,
+    "local_delivery_receipt_bound": true,
+    "measured_startup_catalog_and_identity_exact": true,
+    "native_Agent_child_accounting_metadata_bound": true,
+    "no_extra_current_cells": true,
+    "old_STOPs_preserved_no_regrade": true,
+    "original_integration_inputs_unchanged": true,
+    "original_valid_positive_preserved": true,
+    "public8_record_preserved": true,
+    "public_and_all_four_oracles_PASS": true,
+    "remaining_d10_unrun": true,
+    "runtime_hash_equal_freeze": true,
+    "v2_old_Codex_H_P_limits_preserved": true,
+    "verdict_unchanged_after": true,
+    "volume_absent": true,
+    "whole_usage_counted_once": true
+  },
+  "claude_accounting_status": "MATCH",
+  "completion": "Bounded integrity audit complete; idle before next owner. No model/native/auth/test/evaluator execution.",
+  "container_absent": true,
+  "control_manifest_sha256": "41b9eca8739f0638567f8bd4e927f782f667aa7fa835951128b0322099ffe457",
+  "credential_evidence_handling": "Opaque SHA256 of listed sealed credentials only. No credential parsing/disclosure/auth operation; Docker inspections request exact ID/name only.",
+  "delivery_changed": [
+    "bin/cli.js",
+    "tests/cli.test.js"
+  ],
+  "delivery_commit": "924942c7dec399d4c38ab48a4549c3e5acb33b81",
+  "delivery_pass": true,
+  "delivery_sha256": "69c593b73267baf421c55547a06c231af4d1ec84fb61a8a809d7004075518d24",
+  "earlier_current": {
+    "d05-f23-claude-p": {
+      "audit_sha256": "70d589094260e949f81c9fa73cf354135d599dcd420e8b02e58c5221d31aaf53",
+      "unchanged": true,
+      "verdict_sha256": "7ebc4cbafd44f16c41027becc3c4b3dcb8cb917ce4ab426fbe290ae150ebd028"
+    },
+    "d06-f23-codex-b": {
+      "audit_sha256": "c2deb94d3a62496e585a8bb184cd5e6c7c579e65d79d5f1aa035f1c6aae4f771",
+      "unchanged": true,
+      "verdict_sha256": "462530dd619068d80153dc553421d33e283e0534f30698c952b93c3faa6fe5af"
+    },
+    "d07-f23-claude-h": {
+      "audit_sha256": "3c8f4962cbf0a0511feef8f677499c9380a2749660695f873ee7616c01623846",
+      "unchanged": true,
+      "verdict_sha256": "7d735bf545596ba71eaead04450db3437fc2265e9e316a087a6e5889c58c035c"
+    },
+    "d08-f23-codex-a": {
+      "audit_sha256": "1af8cbaa017ba69165b8f90350789c31a258676402e87084eebbff00c2245565",
+      "unchanged": true,
+      "verdict_sha256": "ba62d47cffe12936f0689b77b6ae5c7aa5135665baf220a1c7984f71656d66f4"
+    }
+  },
+  "evidence_manifest_collection_failures": [],
+  "evidence_manifest_sha256": "5f228988e82d549ed210b26235b4f3707d1817e989dbdc9b94a1467d47a500b4",
+  "findings": [],
+  "freeze_sha256_after": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3",
+  "freeze_sha256_before": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3",
+  "frozen_integration_inputs": {
+    "count": 12,
+    "publication_checkout_is_frozen_input": false,
+    "sha256s": {
+      "/Users/aipalm/.local/share/nx01/0237-integration/.agents/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+      "/Users/aipalm/.local/share/nx01/0237-integration/.agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "/Users/aipalm/.local/share/nx01/0237-integration/.github/workflows/portability.yml": "4f951740c37faff82e4b3470951c5bd300e36a4816de4c79a100b7aa925b3492",
+      "/Users/aipalm/.local/share/nx01/0237-integration/bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+      "/Users/aipalm/.local/share/nx01/0237-integration/config/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+      "/Users/aipalm/.local/share/nx01/0237-integration/config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "/Users/aipalm/.local/share/nx01/0237-integration/package-lock.json": "292798067830b59eba153167a45972cf5ab92c136de4119a14a32eb109e7e4a6",
+      "/Users/aipalm/.local/share/nx01/0237-integration/package.json": "688e807e5fa90ac3677c1e88df3bfaeb9a04a18fae72a6e853122440b7c2cddd",
+      "/Users/aipalm/.local/share/nx01/0237-integration/scripts/lint-skills.sh": "ee64d473c8de16504eb2dbb867b02433c8a15cc5ba9505bc8679a5b14343a892",
+      "/Users/aipalm/.local/share/nx01/0237-integration/scripts/test-ideate-loop.py": "ad353f1780fe616ca32428517c2368f8697fb4d47db98b12a4f1514f2363c08b",
+      "/Users/aipalm/.local/share/nx01/0237-integration/scripts/test-installer-menu.cjs": "d98b4fc6bbbb36e1a1b6d27d4d75a047c6130fe10b69374a9d9d7678ad5e64ad",
+      "/Users/aipalm/.local/share/nx01/0237-integration/scripts/test-windows-portability.py": "425231bc48b31287a2343c5c3986c7a8ced235571730addeb434ed96b1bf11bb"
+    },
+    "unchanged": true
+  },
+  "historical_four": [
+    {
+      "current_0247_treatment_outcome": null,
+      "experiment": "0243",
+      "name": "d01-f23-claude-s",
+      "reuse_kind": "UNCHANGED_RELEVANT_TREATMENT_HISTORICAL",
+      "unchanged": true,
+      "verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+    },
+    {
+      "current_0247_treatment_outcome": "NOT_OBSERVED",
+      "experiment": "0246",
+      "name": "d02-f23-codex-p",
+      "reuse_kind": "VERSION_QUALIFIED_HISTORICAL_NEGATIVE",
+      "unchanged": true,
+      "verdict_sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9"
+    },
+    {
+      "current_0247_treatment_outcome": null,
+      "experiment": "0246",
+      "name": "d03-f23-claude-a",
+      "reuse_kind": "UNCHANGED_RELEVANT_TREATMENT_HISTORICAL",
+      "unchanged": true,
+      "verdict_sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af"
+    },
+    {
+      "current_0247_treatment_outcome": "NOT_OBSERVED",
+      "experiment": "0246",
+      "name": "d04-f23-codex-h",
+      "reuse_kind": "VERSION_QUALIFIED_HISTORICAL_NEGATIVE",
+      "unchanged": true,
+      "verdict_sha256": "662087c33d44095cd708e7060926ec22420ae92580f477669108de8efe32045a"
+    }
+  ],
+  "identity_status": "MATCH",
+  "inference_limits": "Current Claude/B valid positive preserved. Native Agent review is not pair helper activation. Old Codex H/P remain version-qualified 0245-helper negatives; current H/P NOT_OBSERVED, no imputation or pooled current efficacy. No repair, reroll or regrade.",
+  "input_tokens": 8074123,
+  "integrity": {
+    "checked_snapshot": {
+      "count": 676,
+      "mismatches": []
+    },
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 2051,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 117,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 486,
+      "mismatches": []
+    }
+  },
+  "integrity_status": "PASS",
+  "local_commit_integrity": {
+    "ancestry_exit_code": 0,
+    "blobs": {
+      "bin/cli.js": {
+        "commit_blob_sha256": "820a50be537ccc1c5628a7d03e668a03b1d17125ce90bbc33c32b5cf50c59833",
+        "exit_code": 0,
+        "snapshot_sha256": "820a50be537ccc1c5628a7d03e668a03b1d17125ce90bbc33c32b5cf50c59833"
+      },
+      "tests/cli.test.js": {
+        "commit_blob_sha256": "25b307f957673276455e3c10581d1c79713f9d4edccade1b21422bf9e0795b87",
+        "exit_code": 0,
+        "snapshot_sha256": "25b307f957673276455e3c10581d1c79713f9d4edccade1b21422bf9e0795b87"
+      }
+    },
+    "changed_files": [
+      "bin/cli.js",
+      "tests/cli.test.js"
+    ],
+    "read_only_git_observations": [
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work",
+          "merge-base",
+          "--is-ancestor",
+          "87d89d2ad867b2f39b7df57ae131989c803f0158",
+          "924942c7dec399d4c38ab48a4549c3e5acb33b81"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work",
+          "diff",
+          "--no-ext-diff",
+          "--name-only",
+          "-z",
+          "87d89d2ad867b2f39b7df57ae131989c803f0158",
+          "924942c7dec399d4c38ab48a4549c3e5acb33b81"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "51b497e8a2977ecbb1506a0eea87279608833e3f251e918726daa417caba59ca"
+      },
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work",
+          "cat-file",
+          "blob",
+          "924942c7dec399d4c38ab48a4549c3e5acb33b81:bin/cli.js"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "820a50be537ccc1c5628a7d03e668a03b1d17125ce90bbc33c32b5cf50c59833"
+      },
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work",
+          "cat-file",
+          "blob",
+          "924942c7dec399d4c38ab48a4549c3e5acb33b81:tests/cli.test.js"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "25b307f957673276455e3c10581d1c79713f9d4edccade1b21422bf9e0795b87"
+      }
+    ]
+  },
+  "native_Agent_child_accounting": {
+    "accounting_sources_all_bound": true,
+    "aggregation": "Repeated cumulative modelUsage envelopes counted once; owner and native Agent terminal messages partitioned by unique session/message identities. Thinking already included in output. Native Agent is not pair helper.",
+    "combined_terminal_counters": {
+      "cache_creation_input_tokens": 290303,
+      "cache_read_input_tokens": 7783690,
+      "input_tokens": 130,
+      "output_tokens": 208961,
+      "thinking_tokens": 156236
+    },
+    "groups": {
+      "child": {
+        "path": "home/.claude/projects/-cell-work/a2ab75c1-dc97-47de-b8ef-72457e779b14/subagents/agent-a379a57d34288d96f.jsonl",
+        "sha256": "656c5f74fd84a8a3f4d3fe46a95560d649fae9584830ba75afdf29e5be200da4",
+        "terminal_messages": 16,
+        "totals": {
+          "cache_creation_input_tokens": 83120,
+          "cache_read_input_tokens": 787799,
+          "input_tokens": 32,
+          "output_tokens": 53994,
+          "thinking_tokens": 41239
+        }
+      },
+      "owner": {
+        "path": "home/.claude/projects/-cell-work/a2ab75c1-dc97-47de-b8ef-72457e779b14.jsonl",
+        "sha256": "d3709363319b2936abc0e1f8fe1abcd4c79f5258656b9c2dd9177880fd470b5f",
+        "terminal_messages": 48,
+        "totals": {
+          "cache_creation_input_tokens": 207183,
+          "cache_read_input_tokens": 6995891,
+          "input_tokens": 98,
+          "output_tokens": 154967,
+          "thinking_tokens": 114997
+        }
+      }
+    },
+    "metadata_errors": [],
+    "native_agent_calls": [
+      {
+        "id": "toolu_01BRNFG1AJXfQ9GKg223ZULk",
+        "lf_record": 875,
+        "subagent_type": "general-purpose"
+      }
+    ],
+    "result_envelope_lf_records": [
+      1615,
+      1616
+    ],
+    "terminal_message_count": 64
+  },
+  "native_owner_config_identity": {
+    "cell_mount": true,
+    "codex_config": true,
+    "environment_equal_plan": true,
+    "home_mount": true,
+    "image_runtime_plan_seal": true,
+    "owner_argv_equal_plan": true,
+    "owner_model_effort": true,
+    "owner_watchdog": true,
+    "resource_values": {
+      "--cpus": "2",
+      "--memory": "4g",
+      "--pids-limit": "256"
+    },
+    "resources": true,
+    "source_sha_frozen": true,
+    "started_result_equal": true,
+    "tmp_mount": true
+  },
+  "old_STOPs_preserved": [
+    {
+      "experiment": "0243",
+      "name": "d02-f23-codex-p",
+      "preserved_ungraded": true,
+      "verdict_sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b"
+    },
+    {
+      "experiment": "0246",
+      "name": "d05-f23-claude-p",
+      "preserved_ungraded": true,
+      "verdict_sha256": "d7f1de56e6d2f0d7ead917788099c1586848a6ea80506e75256e4318a5ba1c6e"
+    }
+  ],
+  "oracle": [
+    {
+      "id": "priority-rollback",
+      "status": "PASS"
+    },
+    {
+      "id": "single-warehouse-fefo",
+      "status": "PASS"
+    },
+    {
+      "id": "submillisecond-order",
+      "status": "PASS"
+    },
+    {
+      "id": "offset-equivalence",
+      "status": "PASS"
+    }
+  ],
+  "output_tokens": 208961,
+  "owner_seconds": 1794.5719497080136,
+  "owner_session": "a2ab75c1-dc97-47de-b8ef-72457e779b14",
+  "owner_status": "EXITED_0",
+  "peer_activated": false,
+  "peer_policy_status": "MATCH",
+  "peer_validation_completion": "NOT_ACTIVATED",
+  "prediction": {
+    "prediction": "Original CHECKS_PASS/COMPLETE d09 and complete whole usage remain unchanged. Effective v2 execution inputs117/selected486 including 0237-integration remain byte-identical; all prepared, evidence, control and checked snapshot entries match; exactly two allowed files are locally committed. Native Agent review is distinct from peer helper and its accounting metadata remains bound. Image/resources/config agree; exact container and volume are absent. All prior observations, STOPs and v2 limits remain unchanged; d10 stays unrun.",
+    "recorded_at": "2026-10-10T22:59:30.647071+00:00"
+  },
+  "product_check_pass": true,
+  "public_pass": true,
+  "public_test_count": 8,
+  "remaining_cells": {
+    "d10-f23-codex-s": "NOT_RUN"
+  },
+  "schema": "0248-d09-independent-native-integrity-audit-v1",
+  "scope": "Bounded read-only integrity audit, no models/native/auth operation/tests/evaluator replay/repair/regrade. Sealed credentials hashed opaquely only. New publication checkout not an execution input.",
+  "seal_sha256": "8de8b372c4c9887f3262e511f96e5392febf1d4d25faea94a56bdc4855356968",
+  "snapshot_location": {
+    "candidates": [
+      {
+        "acceptance": true,
+        "allocation": "owned",
+        "local_only": true,
+        "receipt": "cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/receipt.json",
+        "worktree": "/tmp/devlyn-fulfill-wave"
+      }
+    ],
+    "kind": "accepted",
+    "receipt": "cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/receipt.json",
+    "rule": "receipt",
+    "sha": "924942c7dec399d4c38ab48a4549c3e5acb33b81"
+  },
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "teardown": "CLEAN",
+  "teardown_and_image_observations": [
+    {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "devlyn-0231-9f4c05605d4b4ad697e1fbf4ef298684"
+      ],
+      "exit_code": 1,
+      "stderr": "Error response from daemon: No such container: devlyn-0231-9f4c05605d4b4ad697e1fbf4ef298684\n",
+      "stdout": "\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "volume",
+        "inspect",
+        "--format",
+        "{{.Name}}",
+        "devlyn-0234-tmp-32c61ff821244b8db611e7eeed011f85"
+      ],
+      "exit_code": 1,
+      "stderr": "Error response from daemon: get devlyn-0234-tmp-32c61ff821244b8db611e7eeed011f85: no such volume\n",
+      "stdout": "\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "image",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998\n"
+    }
+  ],
+  "usage": "COMPLETE",
+  "usage_arithmetic": {
+    "accounting_replayed": false,
+    "cached_input_not_added_again": true,
+    "input_sum": 8074123,
+    "output_sum": 208961,
+    "thinking_reasoning_not_added_to_output": true
+  },
+  "usage_gaps": [],
+  "verdict_sha256": "f5af705b2ba959728304a304eee0134183ec51b4f1e0fa33f9d8bf285b20065f",
+  "volume_absent": true,
+  "writes": [
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d09-integrity-audit.json"
+  ]
+}

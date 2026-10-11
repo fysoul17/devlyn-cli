@@ -1,0 +1,52 @@
+{
+  "cell": "d06-f23-codex-b",
+  "config": "codex",
+  "arm": "B",
+  "status": "PRODUCT_INCOMPLETE",
+  "usage": "COMPLETE",
+  "input_tokens": 473694,
+  "output_tokens": 18835,
+  "owner_seconds": 343.83193679200485,
+  "source_check_pass": false,
+  "public_pass": true,
+  "product_check_pass": false,
+  "delivery_pass": true,
+  "oracle": [
+    {
+      "id": "priority-rollback",
+      "status": "PASS"
+    },
+    {
+      "id": "single-warehouse-fefo",
+      "status": "PASS"
+    },
+    {
+      "id": "submillisecond-order",
+      "status": "FAIL"
+    },
+    {
+      "id": "offset-equivalence",
+      "status": "FAIL"
+    }
+  ],
+  "identity": {
+    "codex_seats": {
+      "01a127c0-49e3-7610-b4c0-557c7100d9c4": [
+        "owner",
+        "gpt-6-astra",
+        "max"
+      ]
+    },
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "usage_gaps": [],
+  "teardown": "CLEAN",
+  "at": "2026-10-10T21:44:17.383322+00:00",
+  "verdict_sha256": "462530dd619068d80153dc553421d33e283e0534f30698c952b93c3faa6fe5af",
+  "independent_audits": "PENDING",
+  "scope": "Valid measured product failure retained. No reroll/regrade; old-version H/P remain qualified and current-helper H/P unobserved."
+}

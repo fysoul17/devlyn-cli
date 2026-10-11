@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-10T12:27:58.044989+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "scripts/test-windows-portability.py",
+    "PackageTests.test_agents_imports_follow_markdown_text_and_complete_paths",
+    "PackageTests.test_claude_target_keeps_an_agents_md_in_force",
+    "PackageTests.test_claude_target_holds_no_copy_beside_the_block_it_imports",
+    "PackageTests.test_claude_target_alone_leaves_agents_md_to_its_target"
+  ],
+  "prediction": "All four packaged/offline installer tests pass. Adjacent relative and inline imports leave one effective block; 32 Markdown/path controls preserve literals and exact path boundaries. Duplicate migration preserves original bytes in backup and reinstallation is byte-stable; symlink self-import and stale AGENTS prerequisites keep existing behavior. No model efficiency inference.",
+  "inputs": {
+    "bin/instructions.js": "90678570811b3e89dac7ec8c81ec33167ab46891fcfa22861f894930d49abec0",
+    "package.json": "ffaaffe502f9c77faa7c0e3dfa2c261373e15ff907d15acf16e96bc604919c07",
+    "package-lock.json": "673daed9c547a038027950cfd31a1fa2144639982a8299a37184d5f0d2c7ae8d",
+    "scripts/test-windows-portability.py": "262c1a041bfab0ebb87265968df87513c54cd7bc2fca6665b7d926f6f65e6c5e"
+  }
+}

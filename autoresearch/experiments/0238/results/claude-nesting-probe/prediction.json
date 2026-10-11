@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-10T04:02:33.728422+00:00",
+  "prediction": "With pinned Claude 2.1.296, CLAUDECODE=1 noninteractive -p should reach the same no-auth refusal as the unset control, rather than reject nested execution. Neither can dispatch a model: fresh HOME, env -i, no credential mounts, Docker network none. This tests startup guard only, not authenticated nesting or usage.",
+  "primary_doc": "https://code.claude.com/docs/en/env-vars",
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998"
+}

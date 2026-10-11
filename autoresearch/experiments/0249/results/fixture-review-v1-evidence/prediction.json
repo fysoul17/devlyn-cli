@@ -1,0 +1,4 @@
+{
+  "prediction": "OR1 gold FileStore.read accepts a document containing a NaN token instead of raising StorageError; subsequent no-edit commit raises StorageError because its writer uses allow_nan=False. Existing malformed-file oracle covers broken syntax and UTF-8, not this non-standard JSON token.",
+  "check": "Public FileStore and Workspace API only; temporary file with JSON non-finite token; no source edits."
+}

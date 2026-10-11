@@ -1,0 +1,22 @@
+{
+  "recorded_at": "2026-10-10T12:38:13.544378+00:00",
+  "phase": "Before payload comparison/offline install/targeted selected-package test; package metadata and accepted decision already read.",
+  "source": "/Users/aipalm/.local/share/nx01/0237-harness",
+  "selected": "/Users/aipalm/.local/share/nx01/0238-live/selected-packs-v2",
+  "previous": "/Users/aipalm/.local/share/nx01/0238-live/preparation-packs-v1",
+  "toolchain": "/Users/aipalm/.nvm/versions/node/v20.19.0/bin",
+  "predictions": [
+    "All four archive hashes and every payload hash match packages.json; copied seven baseline input hashes match current accepted source and copied build tree.",
+    "B differs from prior preparation B only in bin/instructions.js, package.json and newly bundled node_modules/marked files; generated instruction-history payload remains equal.",
+    "S versus B changes exactly AGENTS.md, CLAUDE.md, bin/instruction-templates.json, config/skills/_shared/runtime-principles.md and adds config/skills/_shared/pair.md; H/P additionally add peer.py. No other payload difference.",
+    "All arms bundle marked15.0.12 with its CommonJS entry and no runtime dependencies; H/P helper and all guide bytes match current selected source.",
+    "Fresh private offline npm installation of selected B succeeds with no network/scripts; existing PackageTests.test_agents_imports_follow_markdown_text_and_complete_paths passes once under Node20.19.0 using --package-root. No package rebuilding, model/auth/Docker or actual runtime staging."
+  ],
+  "frozen_sources": {
+    "autoresearch/experiments/0238/build_packages.py": "197d92ae282ba7693d8e6584eba6a3ecd4687b25f5d3d6e36903390db6bb1a51",
+    "scripts/test-windows-portability.py": "425231bc48b31287a2343c5c3986c7a8ced235571730addeb434ed96b1bf11bb",
+    "bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "package.json": "ffaaffe502f9c77faa7c0e3dfa2c261373e15ff907d15acf16e96bc604919c07",
+    "package-lock.json": "673daed9c547a038027950cfd31a1fa2144639982a8299a37184d5f0d2c7ae8d"
+  }
+}

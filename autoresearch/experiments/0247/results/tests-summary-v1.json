@@ -1,0 +1,74 @@
+{
+  "written_at": "2026-10-10T20:22:45.622324+00:00",
+  "status": "PASS",
+  "candidate_tests": 32,
+  "focused_new_tests": 21,
+  "unchanged_0245_custody_regressions": 11,
+  "seconds": 28.851667541981442,
+  "all_attempts": [
+    {
+      "record": "baseline-regression-v1.json",
+      "status": "EXPECTED_RED",
+      "tests": 3,
+      "failures": 1,
+      "errors": 2,
+      "note": "Decoded command reserialized without payload change; original-byte variant repeated in v2."
+    },
+    {
+      "record": "baseline-regression-v2.json",
+      "status": "EXPECTED_RED",
+      "tests": 3,
+      "failures": 1,
+      "errors": 2,
+      "note": "Exact original LF45 bytes; original unterminated string at column554 reproduced."
+    },
+    {
+      "record": "tests-v1.json",
+      "status": "PASS",
+      "tests": 32,
+      "failures": 0,
+      "errors": 0
+    }
+  ],
+  "coverage": [
+    "LF and CRLF frames with U+2028/U+2029/NEL; byte-exact retained command",
+    "Strict malformed JSON/failed/error/missing or duplicate completed/missing answer rejection",
+    "Actual Runner private shared inventory, cell stream, identity alias, usage reader and inline discovery binding",
+    "101 exact retained rollout dict rows preserved at every actual bound reader; rows72/74 fixtures retained",
+    "Original missing/directory-path reader contracts",
+    "Unicode reroute rejection and rollout-counter preservation",
+    "Inline Claude native envelopes survive Unicode; repeated/stored copies deduplicate; missing/invalid counters remain gaps",
+    "Both original init records1/1172 accepted singly and together; normalization and all-row identity/catalog conflict rejection",
+    "Actual inherited expected-catalog runtime gate rejects drift before grading",
+    "Installed fake helpers for Claude/Codex and unchanged11 custody regressions"
+  ],
+  "all_tracked_sources_and_raw_evidence_unchanged": true,
+  "native_model_auth_network_evaluator_calls": 0,
+  "historical_outcomes": "Unchanged; no historical cell regrade",
+  "candidate_source_hashes": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/runner.py": "9ca3adecdce426f071cec509df068632853161ebc4ca3b5c73006a28960989a1",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/peer.py": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/capture_discovery.py": "e4b858c182955b5bb17b3a2db0897cd65ce04bf8900e3e6da5f55501fa592a54",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/test_machinery.py": "460577cc30e7ec6986b26893c4ab7864f1c1f876f80c45a30a7c7734d728bad5"
+  },
+  "artifacts": {
+    "results/tests-prediction-v1.json": "94f3d7cdd56abb084bb123035f8320b5e6bee60069af68d5f9e068268b1fc288",
+    "results/tests-prediction-v2.json": "db5430f556ac2f29dd30502b252b21971e0bc7f9fd97800801e83fae7699efcc",
+    "results/baseline-regression-v1.json": "e0428db0b5372b7c8b820c732904c3da68223878259d82c762d37c160a8ce963",
+    "results/baseline-regression-v1.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "results/baseline-regression-v1.stderr": "eaee179997faf517322af464445a92b8629d171bc59f65aa4b551ea56d08da5a",
+    "results/baseline-regression-v2.json": "c99f710f3fddd3480e7c3a9b76e8a38e9ebb77d15307b211b797bfd7b0cdf377",
+    "results/baseline-regression-v2.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "results/baseline-regression-v2.stderr": "32679d3e223f71485fd4678fadc1de2c837168dac1d1c4ae8393e1a8d627e63f",
+    "results/tests-v1.json": "17474b5b023e3d053deac7a2fefc2ef132f1928817dbb46a0175bbc1192eb4f3",
+    "results/tests-v1.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "results/tests-v1.stderr": "4e3f7a19a19a68f2d6a716e021a4c38bb2eba346ea81f10ba6d9abfb5419345b",
+    "results/tests-v1-source-test_machinery.py": "460577cc30e7ec6986b26893c4ab7864f1c1f876f80c45a30a7c7734d728bad5"
+  },
+  "fixture_hashes": {
+    "fixtures/d05-init-pair.jsonl": "3f24318e0816d6a376c8a598c09616e28263bb094bfaa419a090b62e7c512b50",
+    "fixtures/provenance.json": "aa4e4a2dbb5c0ad5c6e180f6f14c146831499a9ddcc65c502dbd7890d95d10d2",
+    "fixtures/d05-rollout-unicode-records.jsonl": "7c00c21ff51ff292a5a78357caa20019c025513972ddef73c89c0bf561da6960",
+    "fixtures/d05-unicode-command.jsonl": "7483c22835e047d1e1de5449475d5dcedcc4ebfbdff51479fa848857ca6b13be"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-10T15:56:49.620305+00:00",
+  "prediction": "Operational packs remain on frozen4.2.3+acceptedfixes baseline. B/S byte-identical0241, H/Ponlypeer.py extra v2override. New4.2.4integration testedseparately andmustbe selectedbeforefuture efficacy; nooldinputchange.",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0242/build_packages.py",
+    "/Users/aipalm/.local/share/nx01/0242-live/selected-packs-v1",
+    "--toolchain",
+    "/Users/aipalm/.nvm/versions/node/v20.19.0/bin"
+  ]
+}

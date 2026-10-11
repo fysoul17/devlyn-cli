@@ -1,0 +1,36 @@
+{
+  "F23_row_routes_watchdogs_assessors_unchanged": true,
+  "at": "2026-10-10T18:32:37.435451+00:00",
+  "boot_catalogs_account_image_models_cache_source_root_unchanged": true,
+  "caveat": "Paths relocate selected identical controls and same F23 row; changed task-file bytes affect only schema/S2. Final acceptance still needs0245 native and independent audits, registration review and exact execution-input freeze. Reuse is historical and single-counted, not a fresh replicate.",
+  "identical_B_S_archives": {
+    "B": "edca612f3873fe154c1855d54788d7c097a9d88e97912bc9b36ba755b71aed53",
+    "S": "e01b32c0b15541fc1d887d13e80e0edd9e83f9b97023948762b13ae5276e2bff"
+  },
+  "old_runtime_sha256": "8740c48a66b1971e051d1827f8e6d212ba23dbd0f41bec9c61c72c76e9ddd41f",
+  "prior_d01_verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89",
+  "runtime_differences": {
+    "auth": [
+      "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/auth",
+      "/Users/aipalm/.local/share/nx01/0245-live/staged-v1/auth"
+    ],
+    "control": [
+      "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/control",
+      "/Users/aipalm/.local/share/nx01/0245-live/staged-v1/control"
+    ],
+    "output": [
+      "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured",
+      "/Users/aipalm/.local/share/nx01/0246-live/out-measured"
+    ],
+    "scratch": [
+      "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/scratch",
+      "/Users/aipalm/.local/share/nx01/0245-live/staged-v1/scratch"
+    ],
+    "tasks_file": [
+      "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/tasks.json",
+      "/Users/aipalm/.local/share/nx01/0245-live/staged-v1/tasks.json"
+    ]
+  },
+  "runtime_sha256": "b311aeb3b7c170fd9fda431ddb8cabe9519a0b107cfbe3ef3026cbb22e67e9dc",
+  "status": "PREPARED_NOT_DISPATCH_AUTHORIZATION"
+}

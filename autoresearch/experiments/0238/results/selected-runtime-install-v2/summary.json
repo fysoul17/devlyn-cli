@@ -1,0 +1,20 @@
+{
+  "auth_read": false,
+  "controls_retained": {
+    "deleted-raw.json": "ee09ab53a70739731331dfbbdd049b6ffd991c43ed0ed745b620e25fa201103d",
+    "deleted.json": "5cf4d9f2efc2c5b036ae52d775506f60fa74049dfbb5d198e849a427d7d54491",
+    "failure.json": "5d0040d974fa425ed5d02aa47208d7a61e1c9b25065b57cefb2e2a4c5f5f1193",
+    "missing-interpreter-raw.json": "bd7754bc66018dde10272d90e8e1d6c1ea454c26184dfc967fd9bfa09b177cd2",
+    "noop-raw.json": "1cc090ca5559f4c1d4eaf98be1f4fc25e136f67b85deac171bdbe8109964c8fa",
+    "noop.json": "d92cfdf7de2563c78d1b71c83b2879fd42e767330ad8fa861a65b399589cbb36",
+    "positive-raw.json": "af55f78d626f2d66af2316baaf230de163c9ea5def7af081a828b57a2617a904",
+    "positive.json": "a218775fc5ecd407c75a194edd268db654277892c035083d7db92d4afaf52ffd",
+    "prediction.json": "5e0612b634116773bec1dae12db5ad0d4fe8fbf4f4c3e92534dfcecc91ea4d3e",
+    "summary.json": "a144fd5f28c3f7fdef8b46579d4325f772d2165532391777fe44002934ee5e71"
+  },
+  "ended_at": "2026-10-10T12:41:55.558292+00:00",
+  "helper_bindings": 12,
+  "models_called": false,
+  "runtime_sha256": "65a1679bd588ff0896c54024cd5b070d5c30c7784b3b6533cecc2e5828c46e4e",
+  "status": "PASS"
+}

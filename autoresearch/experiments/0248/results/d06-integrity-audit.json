@@ -1,0 +1,348 @@
+{
+  "at": "2026-10-10T21:45:28.176956+00:00",
+  "checked_sha256": "73ed8d472b3ac252c07be4ddc91f6d1fb530582ede4c0c5bbf5dde8200c61607",
+  "checks": {
+    "B_no_peer_activation_recorded": true,
+    "CLEAN_teardown_and_owner_exit0": true,
+    "Codex_catalog_not_applicable": true,
+    "all_gaps_and_violations_empty": true,
+    "all_hashes_match": true,
+    "checks_delivery_snapshot_hashes_bound": true,
+    "container_absent": true,
+    "control_inventory_exact": true,
+    "cost_matches_usage_and_wall": true,
+    "current_d05_unchanged": true,
+    "effective_v2_freeze_and_seal_inputs_exact": true,
+    "evidence_collection_clean": true,
+    "evidence_inventory_exact": true,
+    "exact_local_commit_diff_and_snapshot_bytes": true,
+    "exact_two_allowed_delivery_files": true,
+    "exact_two_oracle_failures_preserved": true,
+    "freeze_inputs_selected_unchanged_after": true,
+    "historical_four_outcomes_unchanged": true,
+    "identity_policy_accounting_MATCH_and_equal_verdict": true,
+    "image_inspect_exact": true,
+    "image_resources_identity_config_consistent": true,
+    "manifest_hash_matches_verdict": true,
+    "no_extra_current_cells": true,
+    "old_STOPs_preserved_no_regrade": true,
+    "original_negative_preserved": true,
+    "original_verdict_unchanged_after": true,
+    "public53_record_preserved": true,
+    "public_and_delivery_pass_preserved": true,
+    "remaining_four_current_cells_unrun": true,
+    "runtime_hash_equal_freeze": true,
+    "usage_counters_counted_once": true,
+    "v2_H_P_version_limits_preserved": true,
+    "volume_absent": true
+  },
+  "claude_accounting_status": "MATCH",
+  "completion": "Bounded integrity audit complete; idle before next owner. No model/native/auth/test/evaluator call performed.",
+  "container_absent": true,
+  "control_manifest_sha256": "41b9eca8739f0638567f8bd4e927f782f667aa7fa835951128b0322099ffe457",
+  "credential_evidence_handling": "Only opaque SHA256 of sealed credential bytes; no credential parsing/disclosure/auth operation. Docker inspections request exact ID/name, not environment.",
+  "current_d05": {
+    "integrity_report_sha256": "70d589094260e949f81c9fa73cf354135d599dcd420e8b02e58c5221d31aaf53",
+    "manifest_sha256": "07edc1b96385a50d9ec48475c9918d62e8274570d4eeac54a96919eceba1a9a7",
+    "seal_sha256": "0aaaa19a11d8e58dbb84af43a46260247d413a871644605cb8f9b1a7fff896f4",
+    "verdict_sha256": "7ebc4cbafd44f16c41027becc3c4b3dcb8cb917ce4ab426fbe290ae150ebd028"
+  },
+  "delivery_changed": [
+    "bin/cli.js",
+    "tests/cli.test.js"
+  ],
+  "delivery_commit": "37482de3974effd2fdfb086a2f5f91ccc202192c",
+  "delivery_pass": true,
+  "delivery_sha256": "ae3a1fae9c0e91c2ec1fde46cfbc88bcb5cdcf7bddff3fd87e8a911860781fa9",
+  "evidence_manifest_collection_failures": [],
+  "evidence_manifest_sha256": "f8cedfbfb42e5ad574adc7548fb892ae294cbd6bb1efe80134fb9864890fd698",
+  "findings": [],
+  "freeze_sha256_after": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3",
+  "freeze_sha256_before": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3",
+  "historical_four": [
+    {
+      "current_0247_treatment_outcome": null,
+      "experiment": "0243",
+      "name": "d01-f23-claude-s",
+      "reuse_kind": "UNCHANGED_RELEVANT_TREATMENT_HISTORICAL",
+      "unchanged": true,
+      "verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+    },
+    {
+      "current_0247_treatment_outcome": "NOT_OBSERVED",
+      "experiment": "0246",
+      "name": "d02-f23-codex-p",
+      "reuse_kind": "VERSION_QUALIFIED_HISTORICAL_NEGATIVE",
+      "unchanged": true,
+      "verdict_sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9"
+    },
+    {
+      "current_0247_treatment_outcome": null,
+      "experiment": "0246",
+      "name": "d03-f23-claude-a",
+      "reuse_kind": "UNCHANGED_RELEVANT_TREATMENT_HISTORICAL",
+      "unchanged": true,
+      "verdict_sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af"
+    },
+    {
+      "current_0247_treatment_outcome": "NOT_OBSERVED",
+      "experiment": "0246",
+      "name": "d04-f23-codex-h",
+      "reuse_kind": "VERSION_QUALIFIED_HISTORICAL_NEGATIVE",
+      "unchanged": true,
+      "verdict_sha256": "662087c33d44095cd708e7060926ec22420ae92580f477669108de8efe32045a"
+    }
+  ],
+  "identity_status": "MATCH",
+  "inference_limits": "Preserved valid current Codex/B PRODUCT_INCOMPLETE observation. Old Codex H/P remain version-qualified 0245-helper negatives and current H/P NOT_OBSERVED. No outcome imputation, pooled current efficacy, repair or regrade.",
+  "input_tokens": 473694,
+  "integrity": {
+    "checked_snapshot": {
+      "count": 652,
+      "mismatches": []
+    },
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 2207,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 117,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 486,
+      "mismatches": []
+    }
+  },
+  "integrity_status": "PASS",
+  "local_commit_integrity": {
+    "ancestry_exit_code": 0,
+    "blobs": {
+      "bin/cli.js": {
+        "commit_blob_sha256": "928f09a4979825510943427cdcd6d6a1edd69a1dbb309fedae49122748a6adf0",
+        "exit_code": 0,
+        "snapshot_sha256": "928f09a4979825510943427cdcd6d6a1edd69a1dbb309fedae49122748a6adf0"
+      },
+      "tests/cli.test.js": {
+        "commit_blob_sha256": "f1a80edf22edb3cb681429fe3c32381e0fde9933e4988984b6690f1377c9b35f",
+        "exit_code": 0,
+        "snapshot_sha256": "f1a80edf22edb3cb681429fe3c32381e0fde9933e4988984b6690f1377c9b35f"
+      }
+    },
+    "changed_files": [
+      "bin/cli.js",
+      "tests/cli.test.js"
+    ],
+    "read_only_git_observations": [
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d06-f23-codex-b/cell/work",
+          "merge-base",
+          "--is-ancestor",
+          "1b58ba50e737adb5607430e81ce63a562a8507ca",
+          "37482de3974effd2fdfb086a2f5f91ccc202192c"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d06-f23-codex-b/cell/work",
+          "diff",
+          "--no-ext-diff",
+          "--name-only",
+          "-z",
+          "1b58ba50e737adb5607430e81ce63a562a8507ca",
+          "37482de3974effd2fdfb086a2f5f91ccc202192c"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "51b497e8a2977ecbb1506a0eea87279608833e3f251e918726daa417caba59ca"
+      },
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d06-f23-codex-b/cell/work",
+          "cat-file",
+          "blob",
+          "37482de3974effd2fdfb086a2f5f91ccc202192c:bin/cli.js"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "928f09a4979825510943427cdcd6d6a1edd69a1dbb309fedae49122748a6adf0"
+      },
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d06-f23-codex-b/cell/work",
+          "cat-file",
+          "blob",
+          "37482de3974effd2fdfb086a2f5f91ccc202192c:tests/cli.test.js"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "f1a80edf22edb3cb681429fe3c32381e0fde9933e4988984b6690f1377c9b35f"
+      }
+    ]
+  },
+  "native_owner_config_identity": {
+    "cell_mount": true,
+    "claude_settings": true,
+    "environment_equal_plan": true,
+    "home_mount": true,
+    "image_runtime_plan_seal": true,
+    "owner_argv_equal_plan": true,
+    "owner_model_effort": true,
+    "owner_watchdog": true,
+    "resource_values": {
+      "--cpus": "2",
+      "--memory": "4g",
+      "--pids-limit": "256"
+    },
+    "resources": true,
+    "source_sha_frozen": true,
+    "started_result_equal": true,
+    "tmp_volume_mount": true
+  },
+  "old_STOPs_preserved": [
+    {
+      "experiment": "0243",
+      "name": "d02-f23-codex-p",
+      "preserved_ungraded": true,
+      "verdict_sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b"
+    },
+    {
+      "experiment": "0246",
+      "name": "d05-f23-claude-p",
+      "preserved_ungraded": true,
+      "verdict_sha256": "d7f1de56e6d2f0d7ead917788099c1586848a6ea80506e75256e4318a5ba1c6e"
+    }
+  ],
+  "oracle": [
+    {
+      "id": "priority-rollback",
+      "status": "PASS"
+    },
+    {
+      "id": "single-warehouse-fefo",
+      "status": "PASS"
+    },
+    {
+      "id": "submillisecond-order",
+      "status": "FAIL"
+    },
+    {
+      "id": "offset-equivalence",
+      "status": "FAIL"
+    }
+  ],
+  "output_tokens": 18835,
+  "owner_seconds": 343.83193679200485,
+  "owner_session": "01a127c0-49e3-7610-b4c0-557c7100d9c4",
+  "owner_status": "EXITED_0",
+  "peer_activated": false,
+  "peer_policy_status": "MATCH",
+  "peer_validation_completion": "NOT_ACTIVATED",
+  "prediction": {
+    "prediction": "The original PRODUCT_INCOMPLETE/COMPLETE negative is unchanged: public/local delivery pass and two timestamp oracles fail. Effective v2 inputs117/selected486, all prepared/evidence/control/snapshot hashes match, committed delivery is exact, and named container/volume are absent. Earlier current and historical outcomes remain unchanged; four later cells stay unrun.",
+    "recorded_at": "2026-10-10T21:44:21.750858+00:00"
+  },
+  "product_check_pass": false,
+  "public_pass": true,
+  "public_test_count": 53,
+  "remaining_cells": {
+    "d07-f23-claude-h": "NOT_RUN",
+    "d08-f23-codex-a": "NOT_RUN",
+    "d09-f23-claude-b": "NOT_RUN",
+    "d10-f23-codex-s": "NOT_RUN"
+  },
+  "schema": "0248-d06-independent-native-integrity-audit-v1",
+  "scope": "Read-only bounded integrity audit. No models/native/authentication, test/evaluator replay, source repair or regrade. Listed sealed credential evidence is hashed opaquely only.",
+  "seal_sha256": "8f31760e9adfd019142bc65e3ccb5ea753452077651df286c27f860b33b2bdb1",
+  "snapshot_location": {
+    "candidates": [],
+    "changed": [
+      "cell/work"
+    ],
+    "kind": "anchor",
+    "path": "cell/work",
+    "rule": "changed-product"
+  },
+  "source_check_pass": false,
+  "status": "PRODUCT_INCOMPLETE",
+  "teardown": "CLEAN",
+  "teardown_and_image_observations": [
+    {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "devlyn-0231-92ef8b9e50d94e6684090ebb7da36519"
+      ],
+      "exit_code": 1,
+      "stderr": "Error response from daemon: No such container: devlyn-0231-92ef8b9e50d94e6684090ebb7da36519\n",
+      "stdout": "\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "volume",
+        "inspect",
+        "--format",
+        "{{.Name}}",
+        "devlyn-0234-tmp-5ecc694d5b9d496faaab0b93d518ac16"
+      ],
+      "exit_code": 1,
+      "stderr": "Error response from daemon: get devlyn-0234-tmp-5ecc694d5b9d496faaab0b93d518ac16: no such volume\n",
+      "stdout": "\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "image",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998\n"
+    }
+  ],
+  "usage": "COMPLETE",
+  "usage_arithmetic": {
+    "accounting_replayed": false,
+    "cached_input_not_added_again": true,
+    "input_sum": 473694,
+    "output_sum": 18835,
+    "thinking_reasoning_not_added_to_output": true
+  },
+  "usage_gaps": [],
+  "verdict_sha256": "462530dd619068d80153dc553421d33e283e0534f30698c952b93c3faa6fe5af",
+  "volume_absent": true,
+  "writes": [
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d06-integrity-audit.json"
+  ]
+}

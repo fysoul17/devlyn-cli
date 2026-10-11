@@ -1,0 +1,59 @@
+{
+  "created_at": "2026-10-10T20:19:02.446476+00:00",
+  "purpose": "Exact regression witnesses; parse only; no command execution, model dispatch, or historical outcome regrade",
+  "sources": [
+    {
+      "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d05-f23-claude-p/cell/work/.devlyn/pair/peer-tkrzg3nm/peer1791661853733492584.jsonl",
+      "sha256": "f8c6946fff7c62d823fd21ea3aaacdf4c6d0f7b9378169f1fd9b9b51d1472332",
+      "fixture": "d05-unicode-command.jsonl",
+      "fixture_sha256": "7483c22835e047d1e1de5449475d5dcedcc4ebfbdff51479fa848857ca6b13be",
+      "lf_record": 45,
+      "raw_record_sha256": "9b2e07745f682fde40ca03dfe7036ab4a32cd633b91c4cfd59518ffde40883f6",
+      "transformation": "Exact LF record plus its terminating LF"
+    },
+    {
+      "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d05-f23-claude-p/run/stdout",
+      "sha256": "61973d08bf4c4557aa42f59a54be9957e8735b34103b727b73d5e9f17bc22a05",
+      "fixture": "d05-init-pair.jsonl",
+      "fixture_sha256": "3f24318e0816d6a376c8a598c09616e28263bb094bfaa419a090b62e7c512b50",
+      "source_rows": [
+        {
+          "lf_record": 1,
+          "raw_record_sha256": "6a2ef42c12b3ef3a1494a1df2ebefaf24587d45cf388b94dc076c240e94e6dbb"
+        },
+        {
+          "lf_record": 1172,
+          "raw_record_sha256": "70e27e4a306eff71b0a7952d295d009361a1bf036fcf6dc857feefdd14d1b6cc"
+        }
+      ],
+      "selected_fields": [
+        "type",
+        "subtype",
+        "session_id",
+        "model",
+        "skills",
+        "plugins",
+        "mcp_servers"
+      ],
+      "transformation": "Project selected identity/catalog fields from both init rows; omit unrelated payloads"
+    },
+    {
+      "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d05-f23-claude-p/home/.codex/sessions/2026/10/10/rollout-2026-10-10T19-50-54-01a1275e-4c9a-7051-a198-8bdc92dfb9b9.jsonl",
+      "sha256": "f2ab7ecea59fa2fc2639a5492a08578217c8614665a1d7466c09f9ffbbd1686f",
+      "fixture": "d05-rollout-unicode-records.jsonl",
+      "fixture_sha256": "7c00c21ff51ff292a5a78357caa20019c025513972ddef73c89c0bf561da6960",
+      "valid_lf_records": 101,
+      "source_rows": [
+        {
+          "lf_record": 72,
+          "raw_record_sha256": "3fc6d47d2a300554e4cb2ccf0a43c74728943a68cabc1f4a2d43a6d01a315494"
+        },
+        {
+          "lf_record": 74,
+          "raw_record_sha256": "731ba8d721bfba7272353102ca7da7c7398e6e26b4c82912c5c67e973f728114"
+        }
+      ],
+      "transformation": "Exact affected LF records with LF terminators; tests also compare all 101 retained raw rows at each actual reader without inventory or evaluator replay"
+    }
+  ]
+}

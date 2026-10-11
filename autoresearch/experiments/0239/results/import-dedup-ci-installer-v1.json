@@ -1,0 +1,12 @@
+{
+  "command": [
+    "node",
+    "--test",
+    "scripts/test-installer-menu.cjs"
+  ],
+  "ended_at": "2026-10-10T12:28:26.439592+00:00",
+  "seconds": 3.950705791998189,
+  "exit_code": 0,
+  "stdout": "\u2714 checkbox redraw leaves one menu at 100 columns, wide characters included (424.955292ms)\n\u2714 select redraw leaves one menu at 100 columns (155.435583ms)\n\u2714 checkbox redraw leaves one menu at 50 columns, wide characters included (376.78ms)\n\u2714 select redraw leaves one menu at 50 columns (154.047958ms)\n\u2714 checkbox redraw leaves one menu at 30 columns, wide characters included (379.940708ms)\n\u2714 select redraw leaves one menu at 30 columns (154.842041ms)\n\u2714 all 21 addons are reachable on a 10-row terminal at 100 columns (561.38725ms)\n\u2714 all 21 addons are reachable on a 10-row terminal at 50 columns (563.542875ms)\n\u2714 all 21 addons are reachable on a 10-row terminal at 30 columns (554.014416ms)\n\u2714 preselected choices are checked and out-of-range indices ignored (45.067084ms)\n\u2714 select all toggles back to an empty selection (89.14575ms)\n\u2714 select all checks every choice (67.553375ms)\n\u2714 select starts at its initial choice and moves with arrows and vim keys (155.134666ms)\n\u2714 Ctrl+C in multiSelect cancels the install visibly and resolves nothing (45.498292ms)\n\u2714 Ctrl+C in singleSelect cancels the install visibly and resolves nothing (47.802083ms)\n\u2139 tests 15\n\u2139 suites 0\n\u2139 pass 15\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 3869.604417\n",
+  "stderr": ""
+}

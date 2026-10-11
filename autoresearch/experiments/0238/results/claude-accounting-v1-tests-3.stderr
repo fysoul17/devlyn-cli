@@ -1,0 +1,16 @@
+test_clean_and_provisional_snapshot_are_counted_once (__main__.ClosureTests.test_clean_and_provisional_snapshot_are_counted_once) ... ok
+test_explicitly_bound_terminal_request_can_close_retry (__main__.ClosureTests.test_explicitly_bound_terminal_request_can_close_retry) ... ok
+test_missing_terminal_or_entire_carrier_is_unknown (__main__.ClosureTests.test_missing_terminal_or_entire_carrier_is_unknown) ... ok
+test_native_child_same_or_distinct_session_is_in_owner_scope (__main__.ClosureTests.test_native_child_same_or_distinct_session_is_in_owner_scope) ... ok
+test_no_claude_invocation_leaves_codex_accounting_unchanged (__main__.ClosureTests.test_no_claude_invocation_leaves_codex_accounting_unchanged) ... ok
+test_peer_failed_complete_turn_then_resume_preserves_cost (__main__.ClosureTests.test_peer_failed_complete_turn_then_resume_preserves_cost) ... ok
+test_peer_fresh_and_resume_stream_only_retries_stay_unknown (__main__.ClosureTests.test_peer_fresh_and_resume_stream_only_retries_stay_unknown) ... ok
+test_real_retained_short_long_and_d01_are_read_only_controls (__main__.ClosureTests.test_real_retained_short_long_and_d01_are_read_only_controls) ... ok
+test_reasoning_counter_must_reconcile_without_double_counting_output (__main__.ClosureTests.test_reasoning_counter_must_reconcile_without_double_counting_output) ... ok
+test_stream_only_retry_is_not_closed_by_later_success (__main__.ClosureTests.test_stream_only_retry_is_not_closed_by_later_success) ... ok
+test_unbound_retry_is_unknown_even_if_aggregate_matches (__main__.ClosureTests.test_unbound_retry_is_unknown_even_if_aggregate_matches) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.258s
+
+OK

@@ -1,0 +1,165 @@
+{
+  "S_guide_and_trigger_unchanged": false,
+  "arm": "B",
+  "engine": "codex",
+  "exact_installed_payloads": {
+    ".agents/skills": {
+      "_shared/.ruff.toml": {
+        "bytes": 82,
+        "mode": 420,
+        "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1"
+      },
+      "_shared/adapters/claude.md": {
+        "bytes": 709,
+        "mode": 420,
+        "sha256": "1e7440575b30019066209e1ea5423a3fd9af86311c73257e9f7dd814354bcdf7"
+      },
+      "_shared/adapters/codex.md": {
+        "bytes": 918,
+        "mode": 420,
+        "sha256": "fe7b13c816f3c67dad1cf87ae816259090e7a3fb44f0274b59b013b2022036c1"
+      },
+      "_shared/adapters/omp.md": {
+        "bytes": 52,
+        "mode": 420,
+        "sha256": "25c2dfad40e3acd3b23f26ec9b5811da2a36b9d803c9795ef36af5ef5c03d33c"
+      },
+      "_shared/codex-monitored.sh": {
+        "bytes": 10038,
+        "mode": 493,
+        "sha256": "3d0658c042684c0323c2c4d691f5ca9cd544df6ffc3cbe54eccd54e8a1654d77"
+      },
+      "_shared/engine-doctor.sh": {
+        "bytes": 2329,
+        "mode": 493,
+        "sha256": "cb9b253f64180334e0b2a2056e3e79d8be43244256c45c1c45dd1a5af099b982"
+      },
+      "_shared/engine-preflight.md": {
+        "bytes": 2022,
+        "mode": 420,
+        "sha256": "ecb552f4dd74e986bde2d7deb51dd719a16691d6c2672d6880e675de1204dca0"
+      },
+      "_shared/expected-contract.py": {
+        "bytes": 10478,
+        "mode": 420,
+        "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0"
+      },
+      "_shared/expected.schema.json": {
+        "bytes": 5332,
+        "mode": 420,
+        "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c"
+      },
+      "_shared/invocation-receipt.py": {
+        "bytes": 20451,
+        "mode": 420,
+        "sha256": "0adde04a9df851062dab94bed1babd0f7e973f893275070312eb85c6c6c0cf3d"
+      },
+      "_shared/platform-support.py": {
+        "bytes": 19061,
+        "mode": 420,
+        "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+      },
+      "_shared/role-config.py": {
+        "bytes": 11194,
+        "mode": 420,
+        "sha256": "d858805d022152a18d01516df02735d47a68225f955454dcfe952f216c9877f3"
+      },
+      "_shared/runtime-principles.md": {
+        "bytes": 3011,
+        "mode": 420,
+        "sha256": "6c615346159ead0473da08bbc9645f3807b7265d91b3671620c79bff3abaa407"
+      },
+      "_shared/task-complete.py": {
+        "bytes": 138449,
+        "mode": 420,
+        "sha256": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59"
+      },
+      "_shared/task-completion.md": {
+        "bytes": 14434,
+        "mode": 420,
+        "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+      },
+      "devlyn-engines/SKILL.md": {
+        "bytes": 3627,
+        "mode": 420,
+        "sha256": "ee82fa921c0fb0e237794a60b400c3e34c16f38091a023d6c1606aa365ddbe48"
+      },
+      "devlyn-ideate/SKILL.md": {
+        "bytes": 11614,
+        "mode": 420,
+        "sha256": "3f8b29c15ef931b8ac2314e2a9a65b5cd55adde8fbd7db13bc31fb40f7a5e866"
+      },
+      "devlyn-ideate/references/elicitation.md": {
+        "bytes": 2410,
+        "mode": 420,
+        "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47"
+      },
+      "devlyn-ideate/references/loop.md": {
+        "bytes": 17919,
+        "mode": 420,
+        "sha256": "a0fa17d174d141950927a0c33e9edc63d4f97b5f98b0dedfd34782dd77612c86"
+      },
+      "devlyn-ideate/references/package-format.md": {
+        "bytes": 10727,
+        "mode": 420,
+        "sha256": "b52cd176ed2a440039d6327d29ac8ac3cc80020b2549f2c9cd8f6e6010b688a5"
+      },
+      "devlyn-ideate/scripts/acceptance.py": {
+        "bytes": 47412,
+        "mode": 420,
+        "sha256": "bf569c1f9f90957d4cad5ef91b8f30957d09a5587686c04512f88eec46a7c6a5"
+      },
+      "devlyn-ideate/scripts/queue.py": {
+        "bytes": 104790,
+        "mode": 420,
+        "sha256": "e8f59a58bc37647d284c09db86f701b2e6ebfaefeffd9de2ca2d9394757664dd"
+      }
+    }
+  },
+  "installed_roots": [
+    ".agents/skills"
+  ],
+  "installed_skill_files_per_root": 22,
+  "installer": {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "--init",
+      "--network",
+      "none",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
+      "--env",
+      "HOME=/home/participant",
+      "-w",
+      "/work",
+      "--mount",
+      "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/work,dst=/work",
+      "--mount",
+      "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/home,dst=/home/participant",
+      "--mount",
+      "type=bind,src=/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-payload-v1/B,dst=/install,readonly",
+      "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+      "node",
+      "/install/package/bin/devlyn.js",
+      "-y"
+    ],
+    "cwd": null,
+    "exit_code": 0,
+    "seconds": 0.31610712499241345,
+    "stderr": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/installer.stderr",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/installer.stdout",
+    "stdout_sha256": "4b457dae1d2be30cfa9cc09abed36ec777aabed5ebc733711ea1f7f9309f85d3"
+  },
+  "marker_version": "4.2.5",
+  "models_auth_network": "NO_MODELS_NO_AUTH_NETWORK_NONE",
+  "payload_bytes_modes_match": true,
+  "peer_helper_absent": true,
+  "root_instructions_match": true,
+  "root_instructions_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+  "status": "PASS"
+}

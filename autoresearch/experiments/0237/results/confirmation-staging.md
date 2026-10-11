@@ -1,0 +1,18 @@
+# Fixed-baseline confirmation staging
+
+Prepared 2026-10-10 without model or authentication calls. This stages the unchanged caller-discovery clause for the [registered confirmation order and stop rule](../confirmation-registration.md); it does not start a measured owner or admit C.
+
+- [tasks-confirmation-max.json](../tasks-confirmation-max.json), SHA-256 `6587ce7b69fec2e1148aba5fe39ba7fdb1c5e0a9e11661bcb7e6881377f2fed4`, retains the discovery-max engine routes and watchdogs. CF-CONFIG/CF-LEASE use their exact original goal strings, 19/18 manifest-bound visible files, empty added obligations, scope `visible/**`, and public command `cd visible && python3 -B checks/run_checks.py`. The existing `eq3_dir` materializer copies only `visible/`; goal/task metadata, gold, hidden oracles, predictions and manifests are not copied into the owner source tree.
+- Fresh control: `/Users/aipalm/.local/share/nx01/0237-live/confirmation-control-v1`. [Its manifest](/Users/aipalm/.local/share/nx01/0237-live/confirmation-control-v1.manifest.json) hashes to `bb4e5d99c4d0bded88370a7c6165348099f590538c2c22813cd18b163e64c88a`. Public and old oracle trees are copied unchanged; only evaluator-only `oracle/eq3/CF-CONFIG` and `oracle/eq3/CF-LEASE` are added. Their oracle files and contract-binding manifests match the frozen independent fixtures.
+- B package is `8c4dcdfa79ba7fed8541418f09475aa9edd5bbaaa010690b26254ed42e34a6e8`, C is `0d2732c44d9fea9618db74fcba6562dd90e27fa7c6891883a1cc0a9af5ee1593`. Both extracted package inventories match root's [packages.json](/Users/aipalm/.local/share/nx01/0237-live/confirmation-packs-v1/packages.json); root's [integrity record](/Users/aipalm/.local/share/nx01/0237-live/confirmation-packs-v1/integrity.json) identifies only the three instruction files plus generated fingerprints as B/C differences. The accepted helper and delivery-document changes are shared.
+
+Before evaluation, [predictions](confirmation-calibration-prediction.json) pinned the task/control/runtime hashes, image identity and every expected baseline oracle row. The unchanged `0237.Runner.evaluate` then ran disposable copied baseline/gold trees in exact image `sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998`, using its existing network-disabled, read-only evaluator source mounts and writable temporary directory. It did not call prepare, owner, reviewer or authentication preflight.
+
+| Task | Baseline public | Baseline hidden | Gold public | Gold hidden |
+| --- | --- | --- | --- | --- |
+| CF-CONFIG | PASS | 1/12 | PASS | 12/12 |
+| CF-LEASE | PASS | 4/13 | PASS | 13/13 |
+
+Every expected row matched. [Raw results and summary](confirmation-calibration-pinned/summary.json) retain complete public/oracle stdout, stderr, command, exit status and timing in the linked per-control files. The complete original confirmation tree, old discovery control and new control inventories were checked unchanged after evaluation. No historical validation log or fixture manifest was overwritten.
+
+Root owns the measured runtime, serial cell identities/order and dispatcher. Next gates remain the registered prospective Claude boot catalogs and immutable runtime bindings before any owner call. Run the full 12-cell CF-CONFIG block first and apply its per-engine stop rule; CF-LEASE and then E1/B5 are conditional later blocks. The local [calibration runtime](/Users/aipalm/.local/share/nx01/0237-live/confirmation-calibration-v1/runtime.json) is deliberately evaluator-only and is not a measured-owner runtime. [Machine-readable staging provenance](confirmation-staging.json) records all paths and hashes.

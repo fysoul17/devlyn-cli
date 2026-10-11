@@ -1,0 +1,7 @@
+{
+  "ended_at": "2026-10-10T12:28:04.687983+00:00",
+  "seconds": 6.642224583003554,
+  "exit_code": 0,
+  "stdout": "{\"platform\": \"darwin\", \"utf8_mode\": 0, \"locale\": \"UTF-8\", \"package_root\": \"/Users/aipalm/.local/share/nx01/0237-harness\"}\npacked artifact sha256=b782c1f00afb5b056940827aedfac3f844c38e10c60d431e71d410ab531b91dd\n",
+  "stderr": "test_agents_imports_follow_markdown_text_and_complete_paths (__main__.PackageTests.test_agents_imports_follow_markdown_text_and_complete_paths) ... ok\ntest_claude_target_keeps_an_agents_md_in_force (__main__.PackageTests.test_claude_target_keeps_an_agents_md_in_force) ... ok\ntest_claude_target_holds_no_copy_beside_the_block_it_imports (__main__.PackageTests.test_claude_target_holds_no_copy_beside_the_block_it_imports) ... ok\ntest_claude_target_alone_leaves_agents_md_to_its_target (__main__.PackageTests.test_claude_target_alone_leaves_agents_md_to_its_target) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 6.561s\n\nOK\n"
+}

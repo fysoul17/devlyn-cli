@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-10T23:22:16.327779+00:00",
+  "status": "PASS",
+  "precondition_observation": "First local assertion used a mistyped digest from a compacted summary and failed before directory creation or auth access. Compared actual operator byte-for-byte against the frozen reviewed source, verified its exact hash in the review, then invoked unchanged native renewal once.",
+  "operator_sha256": "d8400df438d9ecd5695a8a3d80fc9d92a306d745f40d716b25c4e05a6a0c6c7d",
+  "same_account": true,
+  "same_scopes": true,
+  "seconds_after": 28797,
+  "finished_at": "2026-10-10T23:21:31.830Z",
+  "scope": "No inference or manual login; native persistence only; original supported renewal review applies."
+}

@@ -1,0 +1,220 @@
+{
+  "recorded_at": "2026-10-10T12:36:03.370798+00:00",
+  "scope": "READ_ONLY_DERIVED_GUARD_REPORTS_NOT_REGRADING_OR_NATIVE_RERUN",
+  "guard_sha256": "706d56f9ec46be57abe1528d7b0c5d320bfcc8a036bcd97cf1dbe8a0f8fa2914",
+  "controls": [
+    {
+      "cell": "s01-claude-b-short",
+      "original": "/Users/aipalm/.local/share/nx01/0239-live/staged-v1/out-smoke/s01-claude-b-short",
+      "source_hashes": {
+        "plan.json": "c2b8745a350e342aa4fb7b8159427041516161617b665da21508661d8ebd3052",
+        "run/stdout": "276ed7a87a82683cb7d0dceb677eb6a80f58c8e5a589099e9d1159d1c4ed9dce",
+        "usage.json": "1f6357b4a75aa7a32fdf0e43ff522081de18278a8da82c40eb1106a1e81bb5b2",
+        "home/.claude/projects/-cell-work/d27fa683-a36c-422a-9a7f-b8dd73e6a49c.jsonl": "a2e190771eafa7dc4bac9a7b32a7e8cb69dcd33d544170e0c6e2ccabd8c08829",
+        "home/.claude/projects/-cell-work/d27fa683-a36c-422a-9a7f-b8dd73e6a49c/subagents/agent-a4bbe233a2e072db5.jsonl": "8eff698b568429bcf58b885679aebb7e7fc186d7f7001c7a61150a357b2f93e3"
+      },
+      "guard": {
+        "schema": "0238-claude-accounting-v1",
+        "status": "MATCH",
+        "gaps": [],
+        "sources": {
+          "home/.claude/projects/-cell-work/d27fa683-a36c-422a-9a7f-b8dd73e6a49c/subagents/agent-a4bbe233a2e072db5.jsonl": "8eff698b568429bcf58b885679aebb7e7fc186d7f7001c7a61150a357b2f93e3",
+          "home/.claude/projects/-cell-work/d27fa683-a36c-422a-9a7f-b8dd73e6a49c.jsonl": "a2e190771eafa7dc4bac9a7b32a7e8cb69dcd33d544170e0c6e2ccabd8c08829",
+          "run/stdout": "276ed7a87a82683cb7d0dceb677eb6a80f58c8e5a589099e9d1159d1c4ed9dce"
+        },
+        "sessions": {
+          "d27fa683-a36c-422a-9a7f-b8dd73e6a49c": {
+            "claude-opus-5-5": {
+              "reported": {
+                "input_tokens": 45,
+                "cache_read_input_tokens": 1695089,
+                "cache_creation_input_tokens": 133767,
+                "output_tokens": 48810,
+                "thinking_tokens": 39869
+              },
+              "terminal": {
+                "input_tokens": 45,
+                "cache_read_input_tokens": 1695089,
+                "cache_creation_input_tokens": 133767,
+                "output_tokens": 48810,
+                "thinking_tokens": 39869
+              },
+              "matches": true
+            }
+          }
+        },
+        "api_errors": [],
+        "stream_retries": [],
+        "terminal_message_count": 23,
+        "unknown_residual": null,
+        "scope": "Native emitted accounting, not provider billing. Thinking is already in output; progress estimates are never counted. All reported costs remain in inherited usage."
+      },
+      "retained_usage": {
+        "completeness": "COMPLETE",
+        "input_tokens": 1828901,
+        "output_tokens": 48810,
+        "gaps": [],
+        "codex": {},
+        "claude": {
+          "claude-opus-5-5": {
+            "input": 45,
+            "cache_read": 1695089,
+            "cache_write": 133767,
+            "output": 48810
+          }
+        }
+      },
+      "originals_unchanged": true
+    },
+    {
+      "cell": "s02-claude-b-long",
+      "original": "/Users/aipalm/.local/share/nx01/0239-live/staged-v1/out-smoke/s02-claude-b-long",
+      "source_hashes": {
+        "plan.json": "8c2c31c4c71b976646013541988c86dbcf78c936f878b220092aaef1500bc09f",
+        "run/stdout": "79edb804da851cf9ee97412cdeb00f0ea0c2cd3476fe1a2681bc48f5d520798c",
+        "usage.json": "0da12c56d142bcd184ba51a6060552c6c90122b661a7eab994cf4446141a1ad5",
+        "home/.claude/projects/-cell-work/c22f2237-8960-4818-ba1f-2c80c72e5ee6.jsonl": "bd730802431fb10036bfed7598ec4b95ae7186460e44a8bb5a49d78145c3c776",
+        "home/.claude/projects/-cell-work/c22f2237-8960-4818-ba1f-2c80c72e5ee6/subagents/agent-aba1a5f0399bf5817.jsonl": "425a803d65e5e4b9976583708b98e5f1d06735ec3d0e04a4c4f0e4176ea7b83a"
+      },
+      "guard": {
+        "schema": "0238-claude-accounting-v1",
+        "status": "MATCH",
+        "gaps": [],
+        "sources": {
+          "home/.claude/projects/-cell-work/c22f2237-8960-4818-ba1f-2c80c72e5ee6/subagents/agent-aba1a5f0399bf5817.jsonl": "425a803d65e5e4b9976583708b98e5f1d06735ec3d0e04a4c4f0e4176ea7b83a",
+          "home/.claude/projects/-cell-work/c22f2237-8960-4818-ba1f-2c80c72e5ee6.jsonl": "bd730802431fb10036bfed7598ec4b95ae7186460e44a8bb5a49d78145c3c776",
+          "run/stdout": "79edb804da851cf9ee97412cdeb00f0ea0c2cd3476fe1a2681bc48f5d520798c"
+        },
+        "sessions": {
+          "c22f2237-8960-4818-ba1f-2c80c72e5ee6": {
+            "claude-opus-5-5": {
+              "reported": {
+                "input_tokens": 56,
+                "cache_read_input_tokens": 1686750,
+                "cache_creation_input_tokens": 93150,
+                "output_tokens": 43851,
+                "thinking_tokens": 30481
+              },
+              "terminal": {
+                "input_tokens": 56,
+                "cache_read_input_tokens": 1686750,
+                "cache_creation_input_tokens": 93150,
+                "output_tokens": 43851,
+                "thinking_tokens": 30481
+              },
+              "matches": true
+            }
+          }
+        },
+        "api_errors": [],
+        "stream_retries": [],
+        "terminal_message_count": 28,
+        "unknown_residual": null,
+        "scope": "Native emitted accounting, not provider billing. Thinking is already in output; progress estimates are never counted. All reported costs remain in inherited usage."
+      },
+      "retained_usage": {
+        "completeness": "COMPLETE",
+        "input_tokens": 1779956,
+        "output_tokens": 43851,
+        "gaps": [],
+        "codex": {},
+        "claude": {
+          "claude-opus-5-5": {
+            "input": 56,
+            "cache_read": 1686750,
+            "cache_write": 93150,
+            "output": 43851
+          }
+        }
+      },
+      "originals_unchanged": true
+    },
+    {
+      "cell": "d01-claude-c",
+      "original": "/Users/aipalm/.local/share/nx01/0239-live/staged-v1/out-development/d01-claude-c",
+      "source_hashes": {
+        "plan.json": "5c8d4753afac445361159d56283a2f6aa316ff4c981863395bfa5a7a15ef4e87",
+        "run/stdout": "03595a45cef6fafd3727a5223d42c336fc289834640c8373d955046b50e5b2d7",
+        "usage.json": "2143be2d346a3428a4d52976d54d4282c878770db46b1e4b29677da2d31e95f6",
+        "home/.claude/projects/-cell-work/2b0944a9-5361-4eef-9b3d-aaa21a34ae20.jsonl": "4af720e19d392a7ff8b7a68792176c2082fcef8a96f17c910b05d9a59347495c",
+        "home/.claude/projects/-cell-work/2b0944a9-5361-4eef-9b3d-aaa21a34ae20/subagents/agent-a1abcac1b0c0dcbae.jsonl": "f138e0ace10a9d703a15ca2fe28a99b6dcd1a83507b21907b2d7e933d8721583"
+      },
+      "guard": {
+        "schema": "0238-claude-accounting-v1",
+        "status": "UNKNOWN",
+        "gaps": [
+          "2b0944a9-5361-4eef-9b3d-aaa21a34ae20/claude-opus-5-5: native aggregate does not reconcile with terminal messages",
+          "home/.claude/projects/-cell-work/2b0944a9-5361-4eef-9b3d-aaa21a34ae20.jsonl:72: API error without terminal request usage",
+          "run/stdout:979: stream retry lacks terminal request binding"
+        ],
+        "sources": {
+          "home/.claude/projects/-cell-work/2b0944a9-5361-4eef-9b3d-aaa21a34ae20/subagents/agent-a1abcac1b0c0dcbae.jsonl": "f138e0ace10a9d703a15ca2fe28a99b6dcd1a83507b21907b2d7e933d8721583",
+          "home/.claude/projects/-cell-work/2b0944a9-5361-4eef-9b3d-aaa21a34ae20.jsonl": "4af720e19d392a7ff8b7a68792176c2082fcef8a96f17c910b05d9a59347495c",
+          "run/stdout": "03595a45cef6fafd3727a5223d42c336fc289834640c8373d955046b50e5b2d7"
+        },
+        "sessions": {
+          "2b0944a9-5361-4eef-9b3d-aaa21a34ae20": {
+            "claude-opus-5-5": {
+              "reported": {
+                "input_tokens": 202,
+                "cache_read_input_tokens": 25410377,
+                "cache_creation_input_tokens": 575874,
+                "output_tokens": 411981,
+                "thinking_tokens": 326530
+              },
+              "terminal": {
+                "input_tokens": 200,
+                "cache_read_input_tokens": 25341972,
+                "cache_creation_input_tokens": 503194,
+                "output_tokens": 411976,
+                "thinking_tokens": 326530
+              },
+              "matches": false
+            }
+          }
+        },
+        "api_errors": [
+          {
+            "session": "2b0944a9-5361-4eef-9b3d-aaa21a34ae20",
+            "request_id": null,
+            "path": "home/.claude/projects/-cell-work/2b0944a9-5361-4eef-9b3d-aaa21a34ae20.jsonl",
+            "line": 72,
+            "terminal_request_bound": false
+          }
+        ],
+        "stream_retries": [
+          {
+            "session": "2b0944a9-5361-4eef-9b3d-aaa21a34ae20",
+            "request_id": null,
+            "path": "run/stdout",
+            "line": 979,
+            "terminal_request_bound": false
+          }
+        ],
+        "terminal_message_count": 96,
+        "unknown_residual": {
+          "input_tokens": null,
+          "output_tokens": null,
+          "reasoning_tokens": null
+        },
+        "scope": "Native emitted accounting, not provider billing. Thinking is already in output; progress estimates are never counted. All reported costs remain in inherited usage."
+      },
+      "retained_usage": {
+        "completeness": "COMPLETE",
+        "input_tokens": 25986453,
+        "output_tokens": 411981,
+        "gaps": [],
+        "codex": {},
+        "claude": {
+          "claude-opus-5-5": {
+            "input": 202,
+            "cache_read": 25410377,
+            "cache_write": 575874,
+            "output": 411981
+          }
+        }
+      },
+      "originals_unchanged": true
+    }
+  ]
+}

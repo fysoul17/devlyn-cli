@@ -1,0 +1,165 @@
+{
+  "completed_at": "2026-10-10T23:24:14.553238+00:00",
+  "results": [
+    {
+      "task": "OR1",
+      "variant": "baseline",
+      "check": "public",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "task": "OR1",
+      "variant": "baseline",
+      "check": "oracle",
+      "passed": [
+        "open-transaction-refresh-isolation",
+        "closed-lifecycle-and-durable-store"
+      ],
+      "failed": [
+        "recursive-ownership-boundaries",
+        "optimistic-conflict-preserves-loser",
+        "disjoint-rebase-preserves-deletions",
+        "overlap-rebase-is-atomic",
+        "absent-delete-retains-write-intent",
+        "failed-save-retry",
+        "failed-read-rebase-recovery",
+        "atomic-backend-conflict-boundary"
+      ]
+    },
+    {
+      "task": "OR1",
+      "variant": "gold",
+      "check": "public",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "task": "OR1",
+      "variant": "gold",
+      "check": "oracle",
+      "passed": [
+        "recursive-ownership-boundaries",
+        "open-transaction-refresh-isolation",
+        "optimistic-conflict-preserves-loser",
+        "disjoint-rebase-preserves-deletions",
+        "overlap-rebase-is-atomic",
+        "absent-delete-retains-write-intent",
+        "failed-save-retry",
+        "failed-read-rebase-recovery",
+        "atomic-backend-conflict-boundary",
+        "closed-lifecycle-and-durable-store"
+      ],
+      "failed": []
+    },
+    {
+      "task": "OR1",
+      "variant": "fault",
+      "check": "public",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "task": "OR1",
+      "variant": "fault",
+      "check": "oracle",
+      "passed": [
+        "open-transaction-refresh-isolation",
+        "optimistic-conflict-preserves-loser",
+        "disjoint-rebase-preserves-deletions",
+        "overlap-rebase-is-atomic",
+        "absent-delete-retains-write-intent",
+        "failed-save-retry",
+        "failed-read-rebase-recovery",
+        "atomic-backend-conflict-boundary",
+        "closed-lifecycle-and-durable-store"
+      ],
+      "failed": [
+        "recursive-ownership-boundaries"
+      ]
+    },
+    {
+      "task": "OR2",
+      "variant": "baseline",
+      "check": "public",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "task": "OR2",
+      "variant": "baseline",
+      "check": "oracle",
+      "passed": [
+        "coalescing-and-independent-keys",
+        "stale-failure-keeps-new-flight",
+        "consumer-instance-isolation"
+      ],
+      "failed": [
+        "recursive-result-and-backend-isolation",
+        "one-waiter-cancellation-isolation",
+        "sole-waiter-cancel-and-rejoin",
+        "stale-success-keeps-new-flight",
+        "out-of-order-generations",
+        "shared-failure-can-retry",
+        "backend-cancellation-can-retry",
+        "shutdown-owns-retired-operations",
+        "shutdown-awaits-cleanup"
+      ]
+    },
+    {
+      "task": "OR2",
+      "variant": "gold",
+      "check": "public",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "task": "OR2",
+      "variant": "gold",
+      "check": "oracle",
+      "passed": [
+        "coalescing-and-independent-keys",
+        "recursive-result-and-backend-isolation",
+        "one-waiter-cancellation-isolation",
+        "sole-waiter-cancel-and-rejoin",
+        "stale-success-keeps-new-flight",
+        "out-of-order-generations",
+        "shared-failure-can-retry",
+        "stale-failure-keeps-new-flight",
+        "backend-cancellation-can-retry",
+        "shutdown-owns-retired-operations",
+        "shutdown-awaits-cleanup",
+        "consumer-instance-isolation"
+      ],
+      "failed": []
+    },
+    {
+      "task": "OR2",
+      "variant": "fault",
+      "check": "public",
+      "passed": true,
+      "tests": 2
+    },
+    {
+      "task": "OR2",
+      "variant": "fault",
+      "check": "oracle",
+      "passed": [
+        "coalescing-and-independent-keys",
+        "recursive-result-and-backend-isolation",
+        "one-waiter-cancellation-isolation",
+        "sole-waiter-cancel-and-rejoin",
+        "shared-failure-can-retry",
+        "stale-failure-keeps-new-flight",
+        "backend-cancellation-can-retry",
+        "shutdown-owns-retired-operations",
+        "shutdown-awaits-cleanup",
+        "consumer-instance-isolation"
+      ],
+      "failed": [
+        "stale-success-keeps-new-flight",
+        "out-of-order-generations"
+      ]
+    }
+  ]
+}

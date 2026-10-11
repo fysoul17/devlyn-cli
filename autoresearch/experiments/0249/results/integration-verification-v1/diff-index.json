@@ -1,0 +1,12 @@
+{
+  "command": [
+    "git",
+    "diff",
+    "--cached",
+    "--check"
+  ],
+  "elapsed_seconds": 0.009550541988573968,
+  "finished_at": "2026-10-10T23:20:34.316138+00:00",
+  "returncode": 0,
+  "started_at": "2026-10-10T23:20:34.306612+00:00"
+}

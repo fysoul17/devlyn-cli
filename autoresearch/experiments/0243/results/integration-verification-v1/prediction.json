@@ -1,0 +1,51 @@
+{
+  "created_at": "2026-10-10T15:55:07.270411+00:00",
+  "base": "85004d8b3424488cb65bd593ea2d7354998ddb87",
+  "principles": [
+    "No guesswork",
+    "Optimized",
+    "Production ready"
+  ],
+  "prediction": "Locked npm ci succeeds with Node20.19.0/npm10.8.2 without changing package metadata. Six new cleanup regressions pass except the two real-Linux tests skip on macOS. PackageTests passes using the actual packed install and bundled Marked. Required POSIX lint/menu/ideate-loop pass with upstream atomic-custody/resume/drain semantics intact. Full helper self-test runs inside lint; no separate duplicate full macOS helper run.",
+  "inputs": {
+    ".agents/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    ".agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "config/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    "config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "package-lock.json": "292798067830b59eba153167a45972cf5ab92c136de4119a14a32eb109e7e4a6",
+    "package.json": "688e807e5fa90ac3677c1e88df3bfaeb9a04a18fae72a6e853122440b7c2cddd",
+    "scripts/lint-skills.sh": "ee64d473c8de16504eb2dbb867b02433c8a15cc5ba9505bc8679a5b14343a892",
+    "scripts/test-windows-portability.py": "425231bc48b31287a2343c5c3986c7a8ced235571730addeb434ed96b1bf11bb",
+    "scripts/test-installer-menu.cjs": "d98b4fc6bbbb36e1a1b6d27d4d75a047c6130fe10b69374a9d9d7678ad5e64ad",
+    "scripts/test-ideate-loop.py": "ad353f1780fe616ca32428517c2368f8697fb4d47db98b12a4f1514f2363c08b",
+    ".github/workflows/portability.yml": "4f951740c37faff82e4b3470951c5bd300e36a4816de4c79a100b7aa925b3492"
+  },
+  "commands": [
+    [
+      "npm",
+      "ci",
+      "--ignore-scripts",
+      "--no-audit",
+      "--no-fund"
+    ],
+    [
+      "python3",
+      "scripts/test-windows-portability.py",
+      "PackageTests"
+    ],
+    [
+      "node",
+      "--test",
+      "scripts/test-installer-menu.cjs"
+    ],
+    [
+      "bash",
+      "scripts/lint-skills.sh"
+    ],
+    [
+      "python3",
+      "scripts/test-ideate-loop.py"
+    ]
+  ]
+}

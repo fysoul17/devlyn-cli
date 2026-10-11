@@ -1,0 +1,66 @@
+{
+  "at": "2026-10-10T16:31:09.396155+00:00",
+  "catalog_gate": {
+    "evidence": "autoresearch/experiments/0242/results/s02-native-protocol-audit.md",
+    "scope": "Both actual initial full Codex peer catalogs omit delegation and role/mode blocks. Independent audit also verifies original request,55-file stability, completed answers, owner witness, localdelivery and marker presence-only.",
+    "sha256": "9e8dbfd3e92244b5719d8a2537d3dd108a704f068cf5c0e900b44208ab68948a",
+    "status": "PASS"
+  },
+  "container_absent": true,
+  "delivery_pass": true,
+  "evidence_manifest_sha256": "684f662b73094d099d1031a73aba9a28813e4af4ad9a4ccb6e4ae428229ddfd7",
+  "freeze_sha256": "91233c5a27e1c5c43096a0a8e05b9c712eff30d87ff9d5c2f449b29ccee4b1d4",
+  "identity_status": "MATCH",
+  "input_tokens": 4526918,
+  "integrity": {
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 861,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 100,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 53,
+      "mismatches": []
+    }
+  },
+  "output_tokens": 85892,
+  "owner_seconds": 858.5960301250161,
+  "owner_status": "EXITED_0",
+  "peer_policy_status": "MATCH",
+  "peer_protocol_violations": [],
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "teardown": "CLEAN",
+  "turns": [
+    {
+      "engine": "codex",
+      "exit_code": 0,
+      "mode": "fresh",
+      "seconds": 52.502601024003525,
+      "session": "01a126a2-89ab-7802-a2cf-462f8ba005ad",
+      "source_unchanged": true
+    },
+    {
+      "engine": "codex",
+      "exit_code": 0,
+      "mode": "resume",
+      "seconds": 12.077934130000358,
+      "session": "01a126a2-89ab-7802-a2cf-462f8ba005ad",
+      "source_unchanged": true
+    }
+  ],
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "volume_absent": true
+}

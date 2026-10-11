@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0238/test_runner.py",
+    "-v"
+  ],
+  "started_at": "2026-10-10T12:35:04.345781+00:00",
+  "exit_code": 0,
+  "seconds": 6.838451958989026
+}

@@ -1,0 +1,19 @@
+test_matched_modules_and_registered_routes (__main__.ApparatusTests.test_matched_modules_and_registered_routes) ... ok
+test_init_owner_preserves_exact_0234_lifecycle_and_evidence (__main__.ApparatusTests.test_init_owner_preserves_exact_0234_lifecycle_and_evidence) ... ok
+test_init_owner_keeps_native_owner_effort_check (__main__.ApparatusTests.test_init_owner_keeps_native_owner_effort_check) ... ok
+test_init_owner_records_actual_argv_and_retains_pair_timing (__main__.ApparatusTests.test_init_owner_records_actual_argv_and_retains_pair_timing) ... ok
+test_init_runner_retains_recorded_positive_noop_deleted_classification (__main__.ApparatusTests.test_init_runner_retains_recorded_positive_noop_deleted_classification) ... ok
+test_both_cli_defaults_and_trust_seeded_before_seal (__main__.ApparatusTests.test_both_cli_defaults_and_trust_seeded_before_seal) ... ok
+test_zero_peer_is_valid_not_forced_activation (__main__.ApparatusTests.test_zero_peer_is_valid_not_forced_activation) ... ok
+test_codex_peer_child_and_resumed_turn_full_accounting (__main__.ApparatusTests.test_codex_peer_child_and_resumed_turn_full_accounting) ... ok
+test_wrong_resume_effort_and_missing_effort_are_rejected (__main__.ApparatusTests.test_wrong_resume_effort_and_missing_effort_are_rejected) ... ok
+test_claude_each_resume_requires_own_native_effort_message (__main__.ApparatusTests.test_claude_each_resume_requires_own_native_effort_message) ... ok
+test_failed_peer_then_resumed_recovery_preserves_cost_without_failing_quality (__main__.ApparatusTests.test_failed_peer_then_resumed_recovery_preserves_cost_without_failing_quality) ... ok
+test_deleted_allowed_cli_is_product_failure_through_full_check (__main__.ApparatusTests.test_deleted_allowed_cli_is_product_failure_through_full_check) ... ok
+test_f23_preserves_old_rows_and_requires_supplement_exit_contract (__main__.ApparatusTests.test_f23_preserves_old_rows_and_requires_supplement_exit_contract) ... ok
+test_eq3_evaluator_protocol_is_preserved (__main__.ApparatusTests.test_eq3_evaluator_protocol_is_preserved) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 13.515s
+
+OK

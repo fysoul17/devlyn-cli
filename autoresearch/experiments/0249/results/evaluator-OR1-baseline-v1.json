@@ -1,0 +1,124 @@
+{
+  "elapsed_seconds": 0.4108471249928698,
+  "exception": null,
+  "prediction": {
+    "expected_pass": [
+      "open-transaction-refresh-isolation",
+      "closed-lifecycle-and-durable-store"
+    ],
+    "oracle_exit_expected": 0,
+    "public_expected": "PASS_2_OF_2",
+    "source": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR1/visible",
+    "source_sha256": {
+      "README.md": "62914dbb5b6f52868a163a978d8d85919e2a13770c5fe5f1da12ab5745e488dc",
+      "checks/run_checks.py": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a",
+      "checks/test_smoke.py": "c003d1d5d0b0f747af5601ca5572ad809a4b34a781933827a1729baff2f7c8b1",
+      "docs/contract.md": "34ef6d091ce4a045ef986878fe9b7d12f0de6347c6a1da3c97786dfdef907960",
+      "examples/editor.py": "52cd078bcf31507451ade0de97534604f79ef8ba92ff646ac3b8828d01fbaea8",
+      "folio/__init__.py": "022e71a1d374648796e2e3c7d0257344faf1c96e9f1dce226b66a676d6fb2530",
+      "folio/storage.py": "69f1a876669f78a3f394f028e89de2c3f8f59a1d6aa0bb8dedf8c9c415da9b5d",
+      "folio/workspace.py": "1e0e0c1c379fdaaf00e1e6f97f6586229fd79cc0abb5cfda172afae5be5f73cb"
+    },
+    "task": "OR1",
+    "variant": "baseline"
+  },
+  "public_decoded": {
+    "public_passed": true,
+    "tests": 2
+  },
+  "result": {
+    "public": [
+      {
+        "argv": [
+          "sh",
+          "-c",
+          "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && cd visible && python3 -B checks/run_checks.py"
+        ],
+        "exit_code": 0,
+        "stderr": "test_rollback_closes_and_malformed_is_visible (test_smoke.Smoke.test_rollback_closes_and_malformed_is_visible) ... ok\ntest_save_reopen_and_delete (test_smoke.Smoke.test_save_reopen_and_delete) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.001s\n\nOK\n",
+        "stdout": "{\"public_passed\": true, \"tests\": 2}\n",
+        "timeout": false
+      }
+    ],
+    "raw": [
+      {
+        "argv": [
+          "python3",
+          "-B",
+          "/control/autoresearch/eq3/OR1/oracle.py",
+          "/cell/work/visible"
+        ],
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "{\"manifestations\": [{\"id\": \"recursive-ownership-boundaries\", \"passed\": false, \"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 275, in <module>\\n    function(Path(root) / 'documents.json')\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 67, in ownership\\n    assert workspace.snapshot().documents['a']['parts'][0]['tags'] == ['original']\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"}, {\"id\": \"open-transaction-refresh-isolation\", \"passed\": true}, {\"id\": \"optimistic-conflict-preserves-loser\", \"passed\": false, \"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 275, in <module>\\n    function(Path(root) / 'documents.json')\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 112, in optimistic\\n    assert right.snapshot().revision == 1 and right.snapshot().documents == {'a': {'value': 1}}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"}, {\"id\": \"disjoint-rebase-preserves-deletions\", \"passed\": false, \"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 275, in <module>\\n    function(Path(root) / 'documents.json')\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 137, in disjoint\\n    assert draft.get('keep') == {'value': 4}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"}, {\"id\": \"overlap-rebase-is-atomic\", \"passed\": false, \"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 275, in <module>\\n    function(Path(root) / 'documents.json')\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 156, in overlap\\n    assert local.snapshot().revision == 1\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"}, {\"id\": \"absent-delete-retains-write-intent\", \"passed\": false, \"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 275, in <module>\\n    function(Path(root) / 'documents.json')\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 174, in absent_delete\\n    assert local.snapshot().revision == 0\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"}, {\"id\": \"failed-save-retry\", \"passed\": false, \"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 275, in <module>\\n    function(Path(root) / 'documents.json')\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 190, in failed_save\\n    assert workspace.snapshot().revision == 1 and workspace.snapshot().documents == {'old': {'n': 1}}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"}, {\"id\": \"failed-read-rebase-recovery\", \"passed\": false, \"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 275, in <module>\\n    function(Path(root) / 'documents.json')\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 215, in failed_read\\n    assert draft.commit().documents == {'base': {'n': 3}, 'mine': {'n': 2}}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"}, {\"id\": \"atomic-backend-conflict-boundary\", \"passed\": false, \"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 275, in <module>\\n    function(Path(root) / 'documents.json')\\n  File \\\"/control/autoresearch/eq3/OR1/oracle.py\\\", line 227, in atomic_boundary\\n    assert workspace.snapshot().documents == {} and workspace.snapshot().revision == 0\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"}, {\"id\": \"closed-lifecycle-and-durable-store\", \"passed\": true}]}\n",
+        "timeout": false
+      }
+    ],
+    "rows": [
+      {
+        "id": "recursive-ownership-boundaries",
+        "status": "FAIL"
+      },
+      {
+        "id": "open-transaction-refresh-isolation",
+        "status": "PASS"
+      },
+      {
+        "id": "optimistic-conflict-preserves-loser",
+        "status": "FAIL"
+      },
+      {
+        "id": "disjoint-rebase-preserves-deletions",
+        "status": "FAIL"
+      },
+      {
+        "id": "overlap-rebase-is-atomic",
+        "status": "FAIL"
+      },
+      {
+        "id": "absent-delete-retains-write-intent",
+        "status": "FAIL"
+      },
+      {
+        "id": "failed-save-retry",
+        "status": "FAIL"
+      },
+      {
+        "id": "failed-read-rebase-recovery",
+        "status": "FAIL"
+      },
+      {
+        "id": "atomic-backend-conflict-boundary",
+        "status": "FAIL"
+      },
+      {
+        "id": "closed-lifecycle-and-durable-store",
+        "status": "PASS"
+      }
+    ]
+  },
+  "source_after": {
+    "visible/README.md": "62914dbb5b6f52868a163a978d8d85919e2a13770c5fe5f1da12ab5745e488dc:644",
+    "visible/checks/run_checks.py": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a:644",
+    "visible/checks/test_smoke.py": "c003d1d5d0b0f747af5601ca5572ad809a4b34a781933827a1729baff2f7c8b1:644",
+    "visible/docs/contract.md": "34ef6d091ce4a045ef986878fe9b7d12f0de6347c6a1da3c97786dfdef907960:644",
+    "visible/examples/editor.py": "52cd078bcf31507451ade0de97534604f79ef8ba92ff646ac3b8828d01fbaea8:644",
+    "visible/folio/__init__.py": "022e71a1d374648796e2e3c7d0257344faf1c96e9f1dce226b66a676d6fb2530:644",
+    "visible/folio/storage.py": "69f1a876669f78a3f394f028e89de2c3f8f59a1d6aa0bb8dedf8c9c415da9b5d:644",
+    "visible/folio/workspace.py": "1e0e0c1c379fdaaf00e1e6f97f6586229fd79cc0abb5cfda172afae5be5f73cb:644"
+  },
+  "source_before": {
+    "visible/README.md": "62914dbb5b6f52868a163a978d8d85919e2a13770c5fe5f1da12ab5745e488dc:644",
+    "visible/checks/run_checks.py": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a:644",
+    "visible/checks/test_smoke.py": "c003d1d5d0b0f747af5601ca5572ad809a4b34a781933827a1729baff2f7c8b1:644",
+    "visible/docs/contract.md": "34ef6d091ce4a045ef986878fe9b7d12f0de6347c6a1da3c97786dfdef907960:644",
+    "visible/examples/editor.py": "52cd078bcf31507451ade0de97534604f79ef8ba92ff646ac3b8828d01fbaea8:644",
+    "visible/folio/__init__.py": "022e71a1d374648796e2e3c7d0257344faf1c96e9f1dce226b66a676d6fb2530:644",
+    "visible/folio/storage.py": "69f1a876669f78a3f394f028e89de2c3f8f59a1d6aa0bb8dedf8c9c415da9b5d:644",
+    "visible/folio/workspace.py": "1e0e0c1c379fdaaf00e1e6f97f6586229fd79cc0abb5cfda172afae5be5f73cb:644"
+  },
+  "source_unchanged": true,
+  "status": "PASS",
+  "task": "OR1",
+  "variant": "baseline"
+}

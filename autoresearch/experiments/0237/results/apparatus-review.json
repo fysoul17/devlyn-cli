@@ -1,0 +1,15 @@
+{
+  "status": "SHIP",
+  "open_high": 0,
+  "open_medium": 0,
+  "fixed": "Prospective input seal now includes transitive 0211/packet.py and accounting dependencies. Independent reviewer verified a digest change changes the seal.",
+  "reviewer": "gpt-6-astra",
+  "effort": "ultra",
+  "scope": [
+    "runner.py",
+    "test_runner.py",
+    "tasks.json",
+    "reused 0233/0222 dependencies"
+  ],
+  "model_benchmark_calls": 0
+}

@@ -404,6 +404,34 @@ init({options});
         self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
         self.assertEqual(self.markers(self.home), set())
 
+    def test_agents_imports_follow_markdown_text_and_complete_paths(self):
+        # Native import syntax includes relative/inline paths; literal examples must not remove defaults.
+        positive = [
+            '@AGENTS.md', '@./AGENTS.md', 'Read @AGENTS.md for rules.', 'Read @./AGENTS.md for rules.',
+            '\ufeff@./AGENTS.md\r\n', '@AGENTS.md#rules', '@./AGENTS.md#rules',
+            '# Rules\n\n- Read @./AGENTS.md for rules.', '> Read @AGENTS.md for rules.',
+            '`@AGENTS.md`\n\nRead @./AGENTS.md for rules.',
+            '---\nnote: "Read @AGENTS.md for rules."\n---\n\nRead @./AGENTS.md for rules.',
+            '---\nRead @AGENTS.md for rules.',  # No closing frontmatter delimiter.
+        ]
+        negative = [
+            '`@AGENTS.md`', '`` @AGENTS.md ``', '`example\n@AGENTS.md\nexample`',
+            '```md\n@AGENTS.md\n```', '~~~~md\n@AGENTS.md\n~~~~',
+            '````md\n```\n@AGENTS.md\n```\n````', '    @AGENTS.md',
+            '> ```md\n> @AGENTS.md\n> ```', '- Example\n\n  ```md\n  @AGENTS.md\n  ```',
+            '- ` @AGENTS.md `', '<!-- @AGENTS.md -->', '<div>\n@AGENTS.md\n</div>',
+            '\\@AGENTS.md', 'someone@AGENTS.md', '@"AGENTS.md"', '@@AGENTS.md',
+            '@AGENTS.md.bak', '@AGENTS.md,', '@../AGENTS.md', '@sub/AGENTS.md', '@OTHER.md',
+            # The upstream whitespace advisory's payload must terminate under the bundled parser.
+            '\t\x0b\n',
+            '---\nnote: "Read @AGENTS.md for rules."\n---\n\nUse pnpm.\n',
+            '\ufeff---\r\nnote: "Read @./AGENTS.md for rules."\r\n---\r\nUse pnpm.\r\n',
+            '---\n[ malformed yaml @AGENTS.md\n---\nUse pnpm.\n',
+        ]
+        result = self.invoke('console.log(JSON.stringify(' + json.dumps(positive + negative)
+                             + '.map(importsAgentsMd)));')
+        self.assertEqual(json.loads(result.stdout), [True] * len(positive) + [False] * len(negative))
+
     def test_claude_target_keeps_an_agents_md_in_force(self):
         # Claude Code reads AGENTS.md only where no CLAUDE.md exists, or through a CLAUDE.md that imports it.
         # Prediction (phase B audit H10): in an AGENTS.md-only repo, -y --claude creates CLAUDE.md as the one
@@ -431,8 +459,13 @@ init({options});
         self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
         claude = b'@AGENTS.md\n\n# Claude only\n\nPrefer the Read tool.\n'
         fenced = b'# Notes\n\n```md\n@AGENTS.md\n```\n'
+        frontmatter = b'---\nnote: "Read @AGENTS.md for rules."\n---\n\nUse pnpm.\n'
         for case, before, install in (('imports', claude, lambda: self.cli('-y', '--claude')),
+                                      ('imports-relative', b'@./AGENTS.md\n', lambda: self.cli('-y', '--claude')),
+                                      ('imports-inline', b'Read @AGENTS.md for rules.\n', lambda: self.cli('-y', '--claude')),
+                                      ('imports-inline-relative', b'Read @./AGENTS.md for rules.\n', lambda: self.cli('-y', '--claude')),
                                       ('claude-alone', None, lambda: self.invoke('installClaudeCore();')),
+                                      ('frontmatter', frontmatter, lambda: self.cli('-y', '--claude')),
                                       ('fenced', fenced, lambda: self.cli('-y', '--claude'))):
             with self.subTest(case=case):
                 self.project = self.case / case; self.project.mkdir()
@@ -443,15 +476,15 @@ init({options});
                 installed = files()
                 install()
                 self.assertEqual(files(), installed)
-                if case == 'imports':
-                    self.assertEqual(installed['CLAUDE.md'], claude)
+                if case.startswith('imports'):
+                    self.assertEqual(installed['CLAUDE.md'], before)
                     self.assertEqual(blocks(), 1)
                 elif case == 'claude-alone':
                     self.assertTrue(installed['CLAUDE.md'].startswith(b'@AGENTS.md\n'))
                     self.assertIn(CURRENT_DEFAULTS, installed['CLAUDE.md'])
                     self.assertEqual((installed['AGENTS.md'], blocks()), (rules, 1))
                 else:
-                    self.assertTrue(installed['CLAUDE.md'].startswith(fenced))
+                    self.assertTrue(installed['CLAUDE.md'].startswith(before))
                     self.assertIn(CURRENT_DEFAULTS, installed['CLAUDE.md'])
         # The AGENTS.md target installs first even when the menu selected it last (toggled off and on again).
         self.project = self.case / 'toggled'; (self.project / '.claude/skills').mkdir(parents=True)
@@ -476,29 +509,36 @@ init({options});
         self.cli('-y', '--claude')
         direct = files()
         for case, before, update in (('new', None, lambda: self.cli('-y')),
-                                     ('imports', claude, lambda: self.interact([['\r'], ['\r'], ['\r']]))):
+                                     ('imports', claude, lambda: self.interact([['\r'], ['\r'], ['\r']])),
+                                     ('relative', b'@./AGENTS.md\n', lambda: self.cli('-y')),
+                                     ('inline-relative', b'Read @./AGENTS.md for team rules.\n', lambda: self.cli('-y'))):
             with self.subTest(case=case):
                 self.project = self.case / case; self.project.mkdir()
                 (self.project / 'AGENTS.md').write_bytes(rules)
                 if before is not None:
                     (self.project / 'CLAUDE.md').write_bytes(before)
                 self.invoke('installClaudeCore();')
-                self.assertIn(CURRENT_DEFAULTS, files()['CLAUDE.md'])
+                duplicated = files()['CLAUDE.md']
+                self.assertIn(CURRENT_DEFAULTS, duplicated)
                 result = update()
                 expected = {**direct, 'CLAUDE.md': before or direct['CLAUDE.md']}
                 self.assertEqual(files(), expected)
                 self.assertIn(b'Removed Devlyn defaults from CLAUDE.md', result.stdout)
+                self.assertIn(duplicated, [p.read_bytes() for p in
+                              (self.project / '.devlyn/instructions').glob('CLAUDE.md.*.backup')])
                 for args in (['-y'], ['-y', '--claude']):
                     self.cli(*args)
                     self.assertEqual(files(), expected)
         if os.name != 'nt':
             # Where AGENTS.md links to CLAUDE.md, an `@AGENTS.md` line imports CLAUDE.md itself, whose block is the only
             # one: every update keeps it. Without that exception, every second update removed it.
-            self.project = self.case / 'self-import'; self.project.mkdir()
-            (self.project / 'CLAUDE.md').write_bytes(claude); (self.project / 'AGENTS.md').symlink_to('CLAUDE.md')
-            for _ in range(3):
-                self.cli('-y', '--claude')
-                self.assertEqual((self.project / 'CLAUDE.md').read_bytes().count(b'devlyn:instructions:begin'), 1)
+            for case, before in (('exact', claude), ('relative', b'@./AGENTS.md\n'),
+                                 ('inline', b'Read @AGENTS.md for rules.\n')):
+                self.project = self.case / ('self-import-' + case); self.project.mkdir()
+                (self.project / 'CLAUDE.md').write_bytes(before); (self.project / 'AGENTS.md').symlink_to('CLAUDE.md')
+                for _ in range(3):
+                    self.cli('-y', '--claude')
+                    self.assertEqual((self.project / 'CLAUDE.md').read_bytes().count(b'devlyn:instructions:begin'), 1)
 
     def test_claude_target_alone_leaves_agents_md_to_its_target(self):
         # Prediction (final audit): beside an AGENTS.md holding the 4.1.0 block next to a 4.1.0 .agents/skills, a template a
@@ -913,8 +953,9 @@ writeInstallMarker(process.cwd(), [], {});
         self.assertEqual((self.project / '.agents/skills/devlyn-ideate/SKILL.md').read_bytes(), source.read_bytes())
 
     def test_history_allows_manifestless_upgrade_after_package_changes(self):
-        self.cli('-y', '--claude')
+        # History proves published copies, not the current unreleased tree under test.
         for target in ('.agents', '.claude'):
+            self.seed_4_1(self.project / target / 'skills')
             (self.project / target / 'skills/.devlyn-install.json').unlink()
         run(['git', 'init', '-q', self.project])
         run(['git', '-C', self.project, 'add', '.agents/skills', '.claude/skills'])

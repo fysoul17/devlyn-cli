@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-10T12:29:28.565641+00:00",
+  "prediction": "All packaged installer tests pass including 37 import controls. Native-bounded frontmatter, including malformed YAML, is excluded; a genuine body import is still recognized. Frontmatter-only mention retains the CLAUDE block; no-closing-delimiter uses ordinary Markdown. Exact bytes/backups/idempotence, old migration and self-import behavior remain valid.",
+  "command": [
+    "python3",
+    "-B",
+    "scripts/test-windows-portability.py",
+    "PackageTests"
+  ],
+  "inputs": {
+    "bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "package.json": "ffaaffe502f9c77faa7c0e3dfa2c261373e15ff907d15acf16e96bc604919c07",
+    "package-lock.json": "673daed9c547a038027950cfd31a1fa2144639982a8299a37184d5f0d2c7ae8d",
+    "scripts/test-windows-portability.py": "8497a6a228fd7f1bc1bdd3fc63121b1eb6e902879f3d64ac8c1d7fd367b0b6a7"
+  }
+}

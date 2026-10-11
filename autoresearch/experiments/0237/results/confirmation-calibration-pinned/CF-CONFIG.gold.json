@@ -1,0 +1,92 @@
+{
+  "control": "gold",
+  "control_manifest_sha256": "bb4e5d99c4d0bded88370a7c6165348099f590538c2c22813cd18b163e64c88a",
+  "created_at": "2026-10-10T04:27:45.067473+00:00",
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+  "prediction_sha256": "cdaa5d700a0d2b2374b9ca6ca7cda53e670a62f01695d835ebbc58ff238a08ca",
+  "public_pass": true,
+  "raw": {
+    "public": [
+      {
+        "argv": [
+          "sh",
+          "-c",
+          "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && cd visible && python3 -B checks/run_checks.py"
+        ],
+        "exit_code": 0,
+        "stderr": "test_empty_config (test_format.FormatSmoke.test_empty_config) ... ok\ntest_invalid_document_shapes (test_format.FormatSmoke.test_invalid_document_shapes) ... ok\ntest_flat_include_and_override (test_smoke.Smoke.test_flat_include_and_override) ... ok\ntest_initial_manager (test_smoke.Smoke.test_initial_manager) ... ok\ntest_missing_file (test_smoke.Smoke.test_missing_file) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.002s\n\nOK\n",
+        "stdout": "",
+        "timeout": false
+      }
+    ],
+    "raw": [
+      {
+        "argv": [
+          "python3",
+          "-B",
+          "/control/autoresearch/eq3/CF-CONFIG/oracle.py",
+          "/cell/work/visible"
+        ],
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "{\"manifestations\": [{\"id\": \"recursive-merge-value-kinds\", \"passed\": true}, {\"id\": \"relative-diamond-layer-order\", \"passed\": true}, {\"id\": \"transitive-change-same-size-and-mtime\", \"passed\": true}, {\"id\": \"nested-caller-isolation\", \"passed\": true}, {\"id\": \"semantic-generation-current-dependencies\", \"passed\": true}, {\"id\": \"failed-reload-preserves-and-recovers\", \"passed\": true}, {\"id\": \"failed-first-load-no-cache-poisoning\", \"passed\": true}, {\"id\": \"deleted-dependency-repair\", \"passed\": true}, {\"id\": \"canonical-cycle-after-success\", \"passed\": true}, {\"id\": \"shared-file-once-per-load\", \"passed\": true}, {\"id\": \"independent-root-dependency-accuracy\", \"passed\": true}, {\"id\": \"schema-errors-retain-include-chain\", \"passed\": true}]}\n",
+        "timeout": false
+      }
+    ],
+    "rows": [
+      {
+        "id": "recursive-merge-value-kinds",
+        "status": "PASS"
+      },
+      {
+        "id": "relative-diamond-layer-order",
+        "status": "PASS"
+      },
+      {
+        "id": "transitive-change-same-size-and-mtime",
+        "status": "PASS"
+      },
+      {
+        "id": "nested-caller-isolation",
+        "status": "PASS"
+      },
+      {
+        "id": "semantic-generation-current-dependencies",
+        "status": "PASS"
+      },
+      {
+        "id": "failed-reload-preserves-and-recovers",
+        "status": "PASS"
+      },
+      {
+        "id": "failed-first-load-no-cache-poisoning",
+        "status": "PASS"
+      },
+      {
+        "id": "deleted-dependency-repair",
+        "status": "PASS"
+      },
+      {
+        "id": "canonical-cycle-after-success",
+        "status": "PASS"
+      },
+      {
+        "id": "shared-file-once-per-load",
+        "status": "PASS"
+      },
+      {
+        "id": "independent-root-dependency-accuracy",
+        "status": "PASS"
+      },
+      {
+        "id": "schema-errors-retain-include-chain",
+        "status": "PASS"
+      }
+    ]
+  },
+  "rows_match_prediction": true,
+  "runtime_sha256": "1b78414a98612553f2f8d0289be048a7ca7260b76e14f4d4740e13e9f475e83e",
+  "seconds": 0.5829719589964952,
+  "task": "CF-CONFIG",
+  "tasks_sha256": "6587ce7b69fec2e1148aba5fe39ba7fdb1c5e0a9e11661bcb7e6881377f2fed4"
+}

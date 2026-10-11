@@ -1,0 +1,150 @@
+{
+  "acceptance_repeats_actual_calls": {
+    "3": true,
+    "4": true
+  },
+  "actual_calls_supported_by_events": 2,
+  "created_at": "2026-10-10T15:48:11.262974+00:00",
+  "events": [
+    {
+      "classification": "actual-helper-call",
+      "command_sha256": "3639e8512298b4d884c796f50a70a3f98f557e3398b95133602b7186ac4c793e",
+      "event_type": "item.completed",
+      "exit_code": 0,
+      "item_id": "item_21",
+      "line": 44,
+      "raw_line_sha256": "c0d17bd16205e1f60d73063a28e469dad89d8806cd9320177d5b16f291554a68",
+      "regex_matches": [
+        {
+          "end": 60,
+          "start": 13,
+          "text": "python3 .agents/skills/_shared/peer.py --engine"
+        }
+      ]
+    },
+    {
+      "classification": "actual-helper-call",
+      "command_sha256": "e6dec88580d5df29eb640076592604f6a0a431e0ba655868a5ca33b8160846c6",
+      "event_type": "item.completed",
+      "exit_code": 0,
+      "item_id": "item_27",
+      "line": 53,
+      "raw_line_sha256": "a2df6e9897020c5648be6f840e2d29306849d6784f0accf698f387337d4a7712",
+      "regex_matches": [
+        {
+          "end": 60,
+          "start": 13,
+          "text": "python3 .agents/skills/_shared/peer.py --engine"
+        }
+      ]
+    },
+    {
+      "classification": "Python heredoc writes acceptance command strings and runs task-complete.py",
+      "command_sha256": "7731e529078011e58dd0e6a284fcc4c7d2a11afa57d4ce4ec07a01fdc63ebf53",
+      "event_type": "item.completed",
+      "exit_code": 0,
+      "item_id": "item_36",
+      "line": 70,
+      "raw_line_sha256": "b77bf270da9cf9988234efe262e5547628e3ecf8175d691fcbf9c7819909ad6b",
+      "regex_matches": [
+        {
+          "end": 1033,
+          "start": 986,
+          "text": "python3 .agents/skills/_shared/peer.py --engine"
+        },
+        {
+          "end": 1272,
+          "start": 1225,
+          "text": "python3 .agents/skills/_shared/peer.py --engine"
+        }
+      ]
+    }
+  ],
+  "finding": "Two actual calls have retained typed receipts. The other two matches occur only in acceptance check command-string values inside item_36 Python heredoc; no third/fourth peer launch is evidenced there.",
+  "logical_receipts": [
+    {
+      "capture": "peer1791646805682159883.jsonl",
+      "ended_ns": 1791646842629144261,
+      "exit_code": 0,
+      "path": "cell/work/.devlyn/pair/review1/attempt.json",
+      "resume": null,
+      "session": "01a12678-aede-7d52-bae3-84b3b6e297c6",
+      "source_unchanged": true,
+      "started_ns": 1791646805682159883,
+      "status": "EXITED"
+    },
+    {
+      "capture": "peer1791646878395845889.jsonl",
+      "ended_ns": 1791646889751902421,
+      "exit_code": 0,
+      "path": "cell/work/.devlyn/pair/review2/attempt.json",
+      "resume": "01a12678-aede-7d52-bae3-84b3b6e297c6",
+      "session": "01a12678-aede-7d52-bae3-84b3b6e297c6",
+      "source_unchanged": true,
+      "started_ns": 1791646878395845889,
+      "status": "EXITED"
+    }
+  ],
+  "out": "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex",
+  "physical_receipt_copies": {
+    "cell/work/.devlyn/pair/review1/attempt.json": {
+      "capture": "peer1791646805682159883.jsonl",
+      "sha256": "7b0b5c0eab0bc1baba056a23969b74bcfb7bff2b333e611ee6985daf8f8e74d1",
+      "started_ns": 1791646805682159883
+    },
+    "cell/work/.devlyn/pair/review2/attempt.json": {
+      "capture": "peer1791646878395845889.jsonl",
+      "sha256": "22623e5733a0c28fb00672f2e73a7a881b7a4565568c30a11501d9d7fe5a07b1",
+      "started_ns": 1791646878395845889
+    },
+    "cell/work/.git/devlyn-completion/289e556a13ca9eed326324d6/custody/.devlyn/pair/review1/attempt.json": {
+      "capture": "peer1791646805682159883.jsonl",
+      "sha256": "7b0b5c0eab0bc1baba056a23969b74bcfb7bff2b333e611ee6985daf8f8e74d1",
+      "started_ns": 1791646805682159883
+    },
+    "cell/work/.git/devlyn-completion/289e556a13ca9eed326324d6/custody/.devlyn/pair/review2/attempt.json": {
+      "capture": "peer1791646878395845889.jsonl",
+      "sha256": "22623e5733a0c28fb00672f2e73a7a881b7a4565568c30a11501d9d7fe5a07b1",
+      "started_ns": 1791646878395845889
+    },
+    "cell/work/.git/devlyn-completion/289e556a13ca9eed326324d6/records/.devlyn/pair/review1/attempt.json": {
+      "capture": "peer1791646805682159883.jsonl",
+      "sha256": "7b0b5c0eab0bc1baba056a23969b74bcfb7bff2b333e611ee6985daf8f8e74d1",
+      "started_ns": 1791646805682159883
+    },
+    "cell/work/.git/devlyn-completion/289e556a13ca9eed326324d6/records/.devlyn/pair/review2/attempt.json": {
+      "capture": "peer1791646878395845889.jsonl",
+      "sha256": "22623e5733a0c28fb00672f2e73a7a881b7a4565568c30a11501d9d7fe5a07b1",
+      "started_ns": 1791646878395845889
+    }
+  },
+  "prospective_fixture_prediction": "With two real supported helper calls and their two native-bound receipts, appending this acceptance-writing command must not create more observed launches. A third actual supported helper invocation without a receipt must still produce the gap. Echoed/documented strings must not count; genuine unknown native sessions/usage remain gated.",
+  "raw_status": "STOP",
+  "regex_match_total": 4,
+  "saved_peer_policy": {
+    "gaps": [
+      "observed helper launch has no retained attempt receipt"
+    ],
+    "protocol_violations": [],
+    "status": "UNVERIFIED",
+    "validation_completion": "COMPLETED"
+  },
+  "saved_usage": {
+    "completeness": "PARTIAL",
+    "gaps": [
+      "peer: observed helper launch has no retained attempt receipt"
+    ],
+    "input_tokens": 1040004,
+    "output_tokens": 17807
+  },
+  "scope": "Read-only diagnosis, no tests, model/auth/native execution, regrade, implementation or frozen edits.",
+  "source_sha256": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/policy.py": "d02be3a1700c0a78aab0d141580da7eacc97be97a60ea7cfc27e9bd31b154606",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex/cell/work/.agents/skills/_shared/task-complete.py": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex/cell/work/.devlyn/pair/delivery-acceptance.json": "23cc7f028fa16787d23f7ef051c5957439e6a440ae61e01673578e7148e4a2b0",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex/peer-policy.json": "66bafa0cdb6d61ffe448125ba954c8d1acebd9a9e063f5b71cfb63e476e15f0e",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex/run/stdout": "16543870efa772334e8c3fde66974a3cace7dd009e47d9a1cbcaa1852fb3edcc",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex/usage.json": "1c4d05cabe3775de22bb6d9fd314e0d6b18064a8d799c8e4e7a3cc8d6becf27f",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/verdict-s01-h-codex.json": "86e879e57de68761b8b11393deabe3c6d3f0e46890e3b826d6b328ceea8696e6"
+  }
+}

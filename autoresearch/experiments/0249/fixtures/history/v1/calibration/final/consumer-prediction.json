@@ -1,0 +1,5 @@
+{
+  "recorded_before_execution": true,
+  "OR1": "The documented two-editor gold consumer will commit both independently edited articles and reopen at revision 2.",
+  "OR2": "The documented catalog gold consumer will return independent product cards, cache one fetch across repeated cards, and fetch a second version after product_updated."
+}

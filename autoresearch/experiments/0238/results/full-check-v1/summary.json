@@ -1,0 +1,106 @@
+{
+  "results": [
+    {
+      "assessment_binding": {
+        "original_request_present": true,
+        "selected_source_same": true,
+        "source_names": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "tasks_same": true
+      },
+      "case": "noop",
+      "delivery": {
+        "baseline": "a14a7ba89574b17f0c497d6f9779904b5975cf4b",
+        "commit": "a14a7ba89574b17f0c497d6f9779904b5975cf4b",
+        "passed": false,
+        "reason": "required edits exist only outside a post-baseline commit"
+      },
+      "error": "F23 supplemental oracle returned no unambiguous verdict",
+      "out": "/Users/aipalm/.local/share/nx01/0237-live/0238-full-check-9hhs0glh/out/noop",
+      "selection": {
+        "candidates": [],
+        "changed": [],
+        "kind": "anchor",
+        "path": "cell/work",
+        "rule": "unchanged-anchor"
+      },
+      "traceback": "Traceback (most recent call last):\n  File \"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/results/full_check_probe.py\", line 52, in <module>\n    result['checks']=app.frame.check.check(out,app.runtime)\n                     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0234/check.py\", line 80, in check\n    result = evaluate(snapshot, spec['id'], runtime)\n  File \"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/runner.py\", line 102, in evaluate\n    raise ValueError('F23 supplemental oracle returned no unambiguous verdict')\nValueError: F23 supplemental oracle returned no unambiguous verdict\n"
+    },
+    {
+      "assessment_binding": {
+        "original_request_present": true,
+        "selected_source_same": true,
+        "source_names": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "tasks_same": true
+      },
+      "case": "positive",
+      "checks": {
+        "adjudication_needed": false,
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "oracle": [
+          {
+            "id": "priority-rollback",
+            "status": "FAIL"
+          },
+          {
+            "id": "single-warehouse-fefo",
+            "status": "FAIL"
+          },
+          {
+            "id": "submillisecond-order",
+            "status": "PASS"
+          },
+          {
+            "id": "offset-equivalence",
+            "status": "PASS"
+          }
+        ],
+        "product_check_pass": false,
+        "public": [
+          {
+            "argv": [
+              "sh",
+              "-c",
+              "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && node --test tests/cli.test.js"
+            ],
+            "exit_code": 0,
+            "stderr_tail": "",
+            "stdout_tail": "TAP version 13\n# Subtest: hello default\nok 1 - hello default\n  ---\n  duration_ms: 16.838\n  type: 'test'\n  ...\n# Subtest: hello with --name\nok 2 - hello with --name\n  ---\n  duration_ms: 14.595208\n  type: 'test'\n  ...\n# Subtest: version prints package version\nok 3 - version prints package version\n  ---\n  duration_ms: 14.648751\n  type: 'test'\n  ...\n# Subtest: fulfill-wave success\nok 4 - fulfill-wave success\n  ---\n  duration_ms: 15.7875\n  type: 'test'\n  ...\n# Subtest: fulfill-wave validation or rejection\nok 5 - fulfill-wave validation or rejection\n  ---\n  duration_ms: 15.695334\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 106.941084\n",
+            "timeout": false
+          }
+        ],
+        "public_pass": true,
+        "scope_violations": []
+      },
+      "delivery": {
+        "baseline": "d8c01c22b982bdb7d1f2032043f2796fae15d67d",
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "commit": "5556411129aec4b740b5755ab12d12387ca0838e",
+        "passed": true,
+        "reason": "local commit matches the assessed task source"
+      },
+      "out": "/Users/aipalm/.local/share/nx01/0237-live/0238-full-check-9hhs0glh/out/positive",
+      "selection": {
+        "candidates": [],
+        "changed": [
+          "cell/work"
+        ],
+        "kind": "anchor",
+        "path": "cell/work",
+        "rule": "changed-product"
+      }
+    }
+  ],
+  "retained_root": "/Users/aipalm/.local/share/nx01/0237-live/0238-full-check-9hhs0glh"
+}

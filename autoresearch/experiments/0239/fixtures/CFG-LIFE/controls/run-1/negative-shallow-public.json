@@ -1,0 +1,11 @@
+{
+  "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "checks/run_checks.py"
+  ],
+  "cwd": "/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/cfg-life-control-yvdrodj2/work",
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "test_empty_config (test_format.FormatSmoke.test_empty_config) ... ok\ntest_invalid_document_shapes (test_format.FormatSmoke.test_invalid_document_shapes) ... ok\ntest_flat_include_and_override (test_smoke.Smoke.test_flat_include_and_override) ... ok\ntest_initial_manager (test_smoke.Smoke.test_initial_manager) ... ok\ntest_missing_file (test_smoke.Smoke.test_missing_file) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.003s\n\nOK\n"
+}

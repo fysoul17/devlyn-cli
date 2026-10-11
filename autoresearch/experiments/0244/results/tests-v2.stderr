@@ -1,0 +1,6 @@
+test_nonempty_invalid_native_counter_stays_visible_and_stops (__main__.TerminalCandidateTests.test_nonempty_invalid_native_counter_stays_visible_and_stops) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.049s
+
+OK

@@ -1,0 +1,22 @@
+[
+  {
+    "case": "control",
+    "exit_code": 1,
+    "terminal_reason": "api_error",
+    "is_error": true,
+    "result": "Not logged in \u00b7 Please run /login",
+    "duration_api_ms": 0,
+    "stderr": "",
+    "teardown": "CLEAN"
+  },
+  {
+    "case": "nested",
+    "exit_code": 1,
+    "terminal_reason": "api_error",
+    "is_error": true,
+    "result": "Not logged in \u00b7 Please run /login",
+    "duration_api_ms": 0,
+    "stderr": "",
+    "teardown": "CLEAN"
+  }
+]

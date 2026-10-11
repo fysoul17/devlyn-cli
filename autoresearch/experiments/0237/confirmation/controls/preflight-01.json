@@ -1,0 +1,7 @@
+{
+  "stage": "artifact preflight, before any public or oracle execution",
+  "returncode": 1,
+  "error": "AssertionError: patch/reference mismatch",
+  "root_cause": "Text dedent helper stripped diff context markers from blank context lines.",
+  "repair": "Regenerate gold.patch directly from visible and gold bytes without dedent."
+}

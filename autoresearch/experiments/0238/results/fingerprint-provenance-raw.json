@@ -1,0 +1,211 @@
+{
+  "root": "/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP",
+  "changes": {
+    "AGENTS.md": {
+      "removed": [
+        "e389e1e77cc2da32214e95451b25b45402b1b586b26f5688bb373c492db3fcfb"
+      ],
+      "added": []
+    },
+    "CLAUDE.md": {
+      "removed": [
+        "e389e1e77cc2da32214e95451b25b45402b1b586b26f5688bb373c492db3fcfb"
+      ],
+      "added": []
+    }
+  },
+  "cases": [
+    {
+      "variant": "original",
+      "name": "AGENTS.md",
+      "scenario": "tag-v4.1.0",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous AGENTS.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/original-AGENTS.md-tag-v4.1.0/.devlyn/instructions/AGENTS.md.543955ee4956517aa16fa5ed5ccffbd530597c4e55f4f2c5f12844d28728cf3c.backup\n  → Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "original",
+      "name": "AGENTS.md",
+      "scenario": "tag-v4.2.0",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous AGENTS.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/original-AGENTS.md-tag-v4.2.0/.devlyn/instructions/AGENTS.md.4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5.backup\n  → Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "original",
+      "name": "AGENTS.md",
+      "scenario": "branch-managed-intact",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous AGENTS.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/original-AGENTS.md-branch-managed-intact/.devlyn/instructions/AGENTS.md.22cc9149c795f9e563fce01350513808308ec18d748d153d401b6dc452e2c455.backup\n  → Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "original",
+      "name": "AGENTS.md",
+      "scenario": "branch-managed-edited",
+      "exit": 0,
+      "after_sha256": "15a7fa9d0774397a7988624deb78b756680d7e896a1f3b9f97aa6990353e1cc0",
+      "old_delivery_remains": false,
+      "custom_remains": true,
+      "blocks": 1,
+      "stdout": "  → Saved previous AGENTS.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/original-AGENTS.md-branch-managed-edited/.devlyn/instructions/AGENTS.md.59fdf63a0596f2c3b76aca6ca034e46c518975958d7bf9a78c650ee1fd7a42f0.backup\n  → Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "original",
+      "name": "CLAUDE.md",
+      "scenario": "tag-v4.1.0",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous CLAUDE.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/original-CLAUDE.md-tag-v4.1.0/.devlyn/instructions/CLAUDE.md.ca5a6c858a245c4b2da29678cc342875c457ddc0963de68ff2e2da0ceb9710c3.backup\n  → Updated Devlyn defaults in CLAUDE.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "original",
+      "name": "CLAUDE.md",
+      "scenario": "tag-v4.2.0",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous CLAUDE.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/original-CLAUDE.md-tag-v4.2.0/.devlyn/instructions/CLAUDE.md.4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5.backup\n  → Updated Devlyn defaults in CLAUDE.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "original",
+      "name": "CLAUDE.md",
+      "scenario": "branch-managed-intact",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous CLAUDE.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/original-CLAUDE.md-branch-managed-intact/.devlyn/instructions/CLAUDE.md.22cc9149c795f9e563fce01350513808308ec18d748d153d401b6dc452e2c455.backup\n  → Updated Devlyn defaults in CLAUDE.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "original",
+      "name": "CLAUDE.md",
+      "scenario": "branch-managed-edited",
+      "exit": 0,
+      "after_sha256": "15a7fa9d0774397a7988624deb78b756680d7e896a1f3b9f97aa6990353e1cc0",
+      "old_delivery_remains": false,
+      "custom_remains": true,
+      "blocks": 1,
+      "stdout": "  → Saved previous CLAUDE.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/original-CLAUDE.md-branch-managed-edited/.devlyn/instructions/CLAUDE.md.59fdf63a0596f2c3b76aca6ca034e46c518975958d7bf9a78c650ee1fd7a42f0.backup\n  → Updated Devlyn defaults in CLAUDE.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "regenerated",
+      "name": "AGENTS.md",
+      "scenario": "tag-v4.1.0",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous AGENTS.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/regenerated-AGENTS.md-tag-v4.1.0/.devlyn/instructions/AGENTS.md.543955ee4956517aa16fa5ed5ccffbd530597c4e55f4f2c5f12844d28728cf3c.backup\n  → Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "regenerated",
+      "name": "AGENTS.md",
+      "scenario": "tag-v4.2.0",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous AGENTS.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/regenerated-AGENTS.md-tag-v4.2.0/.devlyn/instructions/AGENTS.md.4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5.backup\n  → Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "regenerated",
+      "name": "AGENTS.md",
+      "scenario": "branch-managed-intact",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous AGENTS.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/regenerated-AGENTS.md-branch-managed-intact/.devlyn/instructions/AGENTS.md.22cc9149c795f9e563fce01350513808308ec18d748d153d401b6dc452e2c455.backup\n  → Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "regenerated",
+      "name": "AGENTS.md",
+      "scenario": "branch-managed-edited",
+      "exit": 0,
+      "after_sha256": "aba6f7081ceeb4f8bca6efd6ca3ad98e8dbdb7d33856d1ec3f69f59f2af47f86",
+      "old_delivery_remains": true,
+      "custom_remains": true,
+      "blocks": 1,
+      "stdout": "  → Saved previous AGENTS.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/regenerated-AGENTS.md-branch-managed-edited/.devlyn/instructions/AGENTS.md.59fdf63a0596f2c3b76aca6ca034e46c518975958d7bf9a78c650ee1fd7a42f0.backup\n  → Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "regenerated",
+      "name": "CLAUDE.md",
+      "scenario": "tag-v4.1.0",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous CLAUDE.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/regenerated-CLAUDE.md-tag-v4.1.0/.devlyn/instructions/CLAUDE.md.ca5a6c858a245c4b2da29678cc342875c457ddc0963de68ff2e2da0ceb9710c3.backup\n  → Updated Devlyn defaults in CLAUDE.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "regenerated",
+      "name": "CLAUDE.md",
+      "scenario": "tag-v4.2.0",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous CLAUDE.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/regenerated-CLAUDE.md-tag-v4.2.0/.devlyn/instructions/CLAUDE.md.4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5.backup\n  → Updated Devlyn defaults in CLAUDE.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "regenerated",
+      "name": "CLAUDE.md",
+      "scenario": "branch-managed-intact",
+      "exit": 0,
+      "after_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "old_delivery_remains": false,
+      "custom_remains": false,
+      "blocks": 1,
+      "stdout": "  → Saved previous CLAUDE.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/regenerated-CLAUDE.md-branch-managed-intact/.devlyn/instructions/CLAUDE.md.22cc9149c795f9e563fce01350513808308ec18d748d153d401b6dc452e2c455.backup\n  → Updated Devlyn defaults in CLAUDE.md; project-specific instructions preserved\n",
+      "stderr": ""
+    },
+    {
+      "variant": "regenerated",
+      "name": "CLAUDE.md",
+      "scenario": "branch-managed-edited",
+      "exit": 0,
+      "after_sha256": "aba6f7081ceeb4f8bca6efd6ca3ad98e8dbdb7d33856d1ec3f69f59f2af47f86",
+      "old_delivery_remains": true,
+      "custom_remains": true,
+      "blocks": 1,
+      "stdout": "  → Saved previous CLAUDE.md: /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-fingerprint-rzR3zP/regenerated-CLAUDE.md-branch-managed-edited/.devlyn/instructions/CLAUDE.md.59fdf63a0596f2c3b76aca6ca034e46c518975958d7bf9a78c650ee1fd7a42f0.backup\n  → Updated Devlyn defaults in CLAUDE.md; project-specific instructions preserved\n",
+      "stderr": ""
+    }
+  ]
+}

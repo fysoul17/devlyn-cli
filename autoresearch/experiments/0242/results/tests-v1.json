@@ -1,0 +1,17 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "autoresearch/experiments/0242",
+    "-p",
+    "test_*.py",
+    "-v"
+  ],
+  "exit_code": 0,
+  "seconds": 6.436449500004528,
+  "completed_at": "2026-10-10T15:53:23.647967+00:00"
+}

@@ -1,0 +1,14 @@
+{
+  "command": [
+    "npm",
+    "ci",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund"
+  ],
+  "ended_at": "2026-10-10T12:28:22.485004+00:00",
+  "seconds": 0.3305438340030378,
+  "exit_code": 0,
+  "stdout": "\nadded 14 packages in 258ms\n",
+  "stderr": ""
+}

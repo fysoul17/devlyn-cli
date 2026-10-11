@@ -1,0 +1,7 @@
+{
+  "recorded_at": "2026-10-10T03:17:03.682117+00:00",
+  "prior_result": "Initial full suite:21 tests reached assertions successfully, remaining50 failed Git fixture setup with cannot fork/create thread Resource temporarily unavailable; container had pids-limit128 and Python PID1. Root-focused3 tests pass.",
+  "diagnosis": "PID-limit exhaustion is consistent with accumulating orphan children across Git fixtures; raw failed container PID inventory is unavailable, so orphan accumulation is inferred.",
+  "next_control": "Same source/image/tests and pids-limit128 with Docker --init to reap orphans. Explicit intentionally unreaped children in regression tests remain owned by those tests and are not reaped by init.",
+  "prediction": "All71 isolated tests pass; otherwise inspect failure before changing source."
+}

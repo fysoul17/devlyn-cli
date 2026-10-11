@@ -1,0 +1,9 @@
+{
+  "time": "2026-10-10T10:14:25.050018+00:00",
+  "dispatcher_pid": 95669,
+  "process_before": "95669 Sat Oct 10 16:11:43 2026     Ts   /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -B -u autoresearch/experiments/0237/dispatch.py /Users/aipalm/.local/share/nx01/0237-live/runtime-confirmation-max.json /Users/aipalm/.local/share/nx01/0237-live/cells-confirmation-cf-config-resume-v1.tsv /Users/aipalm/.local/share/nx01/0237-live/dispatch-confirmation-cf-config-resume-v1.jsonl",
+  "action": "SIGTERM then SIGCONT to terminate stopped dispatcher without starting f06",
+  "last_final_cell": "f05-CF-CONFIG-codex-C-r1",
+  "last_raw_verdict": "/Users/aipalm/.local/share/nx01/0237-live/out-confirmation/verdict-f05-CF-CONFIG-codex-C-r1.json",
+  "reason": "Finalized f04 establishes missing orphan reaper and disputed oracle scope. Frozen block retained, no later owner dispatched. Admission undecided pending independent consultation; no regrading."
+}

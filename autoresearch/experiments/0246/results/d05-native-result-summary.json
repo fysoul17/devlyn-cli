@@ -1,0 +1,37 @@
+{
+  "cell": "d05-f23-claude-p",
+  "config": "claude",
+  "arm": "P",
+  "status": "STOP",
+  "reason": "ValueError: Claude startup catalog missing or ambiguous",
+  "usage": "COMPLETE",
+  "input_tokens": 12316264,
+  "output_tokens": 196529,
+  "owner_seconds": 2138.6585267500195,
+  "source_check_pass": null,
+  "public_pass": null,
+  "product_check_pass": null,
+  "delivery_pass": null,
+  "oracle": null,
+  "usage_gaps": [],
+  "teardown": "CLEAN",
+  "at": "2026-10-10T20:11:38.715637+00:00",
+  "verdict_sha256": "d7f1de56e6d2f0d7ead917788099c1586848a6ea80506e75256e4318a5ba1c6e",
+  "peer_policy": {
+    "status": "MATCH",
+    "activated": true,
+    "validation_completion": "INCOMPLETE",
+    "failed_attempts": [
+      1791661853733492584
+    ],
+    "recovered": false,
+    "gaps": [],
+    "violations": [],
+    "protocol_violations": []
+  },
+  "identity": "MATCH",
+  "claude_accounting": "MATCH",
+  "integrity_audit": "PASS30/30",
+  "protocol_audit": "PENDING",
+  "scope": "Original STOP/COMPLETE is preserved. No source/public/oracle/local-delivery regrade. Native peer parser failure is separate from the actual startup-catalog STOP reason."
+}

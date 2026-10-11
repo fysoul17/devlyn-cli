@@ -1,0 +1,17 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "autoresearch/experiments/0238",
+    "-p",
+    "test_runner.py",
+    "-v"
+  ],
+  "started_at": "2026-10-10T12:29:10.366944+00:00",
+  "seconds": 7.145679166002083,
+  "exit_code": 0
+}

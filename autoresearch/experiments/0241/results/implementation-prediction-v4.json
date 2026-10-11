@@ -1,0 +1,14 @@
+{
+  "changes": "Map supported container mounts and relative paths through pathlib; explicitly gap unsupported/out-of-bound destinations; never read expected capture or unbound candidate symlink outside retained evidence.",
+  "prediction": "All 37 targeted tests pass, including both traversal forms, valid in-tree parent path and declared capture symlink without reading the outside sentinel. Existing usage/identity gates remain unchanged.",
+  "prior_result": "v3: all 36 pass; root separately found the traversal boundary before freeze.",
+  "recorded_at": "2026-10-10T15:22:57.186571+00:00",
+  "root_probes_preserved": [
+    "../../../../outside.json was reinterpreted by initial lstrip('./'), incorrectly losing parent semantics.",
+    "a/../../../../outside.json initially resolved outside the retained out tree. Probe did not read the outside file."
+  ],
+  "source_sha256": {
+    "capture_discovery.py": "f49ea13c95d7f589ab107be245cb05752de58657800abec7650185c29a7ffdd4",
+    "test_runner.py": "3ea2612475804ac1ff3b7e916cf6228464cdb98339f060d9fd7a06b8f0316bb8"
+  }
+}

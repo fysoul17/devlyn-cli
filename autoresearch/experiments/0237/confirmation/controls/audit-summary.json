@@ -1,0 +1,38 @@
+{
+  "outcomes": [
+    {
+      "id": "public-symlink-tmp-visible",
+      "returncode": 0
+    },
+    {
+      "id": "public-symlink-tmp-gold",
+      "returncode": 0
+    },
+    {
+      "id": "read_text",
+      "passed": 12,
+      "total": 12,
+      "failed_manifestations": []
+    },
+    {
+      "id": "read_bytes",
+      "passed": 12,
+      "total": 12,
+      "failed_manifestations": []
+    },
+    {
+      "id": "open",
+      "passed": 12,
+      "total": 12,
+      "failed_manifestations": []
+    },
+    {
+      "id": "repeated-read-negative-control",
+      "passed": 11,
+      "total": 12,
+      "failed_manifestations": [
+        "shared-file-once-per-load"
+      ]
+    }
+  ]
+}

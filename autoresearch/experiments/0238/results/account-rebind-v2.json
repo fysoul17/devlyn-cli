@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-10T12:50:18.849149+00:00",
+  "authorization": "User explicitly switched account and confirmed new login before any0238model call.",
+  "profile_checked": true,
+  "changed_account": true,
+  "previous_account_fingerprints": [
+    "cc43a4e02ede",
+    "2905f4abf05b"
+  ],
+  "current_account_fingerprints": [
+    "230ea92eea12",
+    "584a8a8f163a"
+  ],
+  "token_seconds_left": 21008,
+  "minimum_token_seconds": 6300,
+  "margin_pass": true,
+  "prior_model_calls": 0,
+  "credentials_logged": false
+}

@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-10T23:50:00.686742+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/runner.py",
+    "run",
+    "/Users/aipalm/.local/share/nx01/0249-live/staged-v1/runtime-measured.json",
+    "d01-or1-codex-b",
+    "OR1",
+    "B",
+    "codex"
+  ],
+  "freeze_sha256": "ece0fb16b13e13c7dd3b1e3ce925c8a6acbbcb488cdf8d90933ca47f2058e1ed",
+  "audit_sha256": "9f51d208ba96f0eb16fc42f417dfc3fc27a5f27ab4af558afb511f92ad8a2b4e",
+  "all_621_bindings_match": true,
+  "independent_agents": "ALL_IDLE_VERIFIED",
+  "prediction": "Registered OR1 comparison begins with CodexB; no outcome assumed. Preserve exact native identity/accounting and all source/public/oracle/local-delivery verdicts; machinery or incomplete usage STOP closes block without reroll."
+}

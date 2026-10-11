@@ -1,0 +1,1 @@
+After completing the changes and checks, commit only the attributable task changes locally and report the commit. Do not publish. Git's internal metadata writes required for local commits or worktrees are allowed; do not change Git configuration.

@@ -1,0 +1,10 @@
+{
+  "recorded_at": "2026-10-10T01:25:03.391132+00:00",
+  "prediction": "All four unchanged EQ3 discovery fixtures validate: gold satisfies all five manifestations, noop and symptom-only controls fail their registered manifestations. A failure stops use of that instrument before model dispatch.",
+  "tasks": [
+    "EQ3-UA1",
+    "EQ3-MI1",
+    "EQ3-AF1",
+    "EQ3-BD1"
+  ]
+}

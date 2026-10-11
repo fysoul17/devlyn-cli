@@ -1,0 +1,26 @@
+{
+  "created_at": "2026-10-10T12:35:04.253541+00:00",
+  "prediction": "All 11 accounting controls and 26 runner controls pass. Every Claude peer fresh/resume stdout identified by existing receipts is read even if the capture is incomplete. Anonymous stream retries remain UNKNOWN despite exactly matching totals or earlier request-bound errors; an explicit same-request terminal carrier plus matching totals can close a retry. Short/long retained controls MATCH, d01 UNKNOWN; no Claude invocation leaves Codex accounting unchanged. No historical mutation/model/Docker/auth calls.",
+  "commands": [
+    [
+      "python3",
+      "-B",
+      "autoresearch/experiments/0238/test_claude_accounting.py",
+      "-v"
+    ],
+    [
+      "python3",
+      "-B",
+      "autoresearch/experiments/0238/test_runner.py",
+      "-v"
+    ]
+  ],
+  "source_sha256": {
+    "claude-accounting-v1.py": "706d56f9ec46be57abe1528d7b0c5d320bfcc8a036bcd97cf1dbe8a0f8fa2914",
+    "test_claude_accounting.py": "73aba2dd3c04457b072b65ff761630795227fc85f5dd82f2aa18599277e3f300",
+    "runner.py": "5370feb1a9e46dc5abd67e6954cb2019b1ba246d216da7254270e79b17781997",
+    "test_runner.py": "6db017e16cf5822ed3f240834670f1bd357e84bc62210ac59b49bbb9ff013b48",
+    "policy.py": "d02be3a1700c0a78aab0d141580da7eacc97be97a60ea7cfc27e9bd31b154606"
+  },
+  "prior_draft": "results/accounting-v5-initial/manifest.json"
+}

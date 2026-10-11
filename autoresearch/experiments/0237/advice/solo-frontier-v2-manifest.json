@@ -1,0 +1,106 @@
+{
+  "created_at": "2026-10-10T10:31:30.970363+00:00",
+  "scope": "Independent design consultation, not efficacy measurement; model text is advice, not an admission decision. No measured owners overlapped.",
+  "prompt": "/Users/aipalm/.local/share/nx01/0237-live/solo-frontier-consultation-v2/prompt.md",
+  "prompt_sha256": "1374c6a36ea2a910490e065c817178498deaba00fabc508a2627f702418d1d88",
+  "advisors": {
+    "opus": {
+      "requested_model": "opus",
+      "requested_effort": "max",
+      "actual_models": [
+        "claude-opus-5-5"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 767.0546015830041,
+      "raw": "/Users/aipalm/.local/share/nx01/0237-live/solo-frontier-consultation-v2/opus.raw.json",
+      "raw_sha256": "d42ca022e3cc591b1993853c51b2d5897e2348369709316ab06c7167708547c1",
+      "receipt": "/Users/aipalm/.local/share/nx01/0237-live/solo-frontier-consultation-v2/opus-receipt.json",
+      "receipt_sha256": "ce13e8bd60ab4f0b1069fba03390323c1d42cbb1b5239c5be8b0a7231cd34a2d",
+      "answer": "autoresearch/experiments/0237/advice/solo-frontier-v2-opus.md",
+      "answer_sha256": "afe5d8a2ea72efce4b96917b3dcf23e0edaba55f18e69925065698f914b1e1bf",
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 6453,
+        "cache_read_input_tokens": 535,
+        "output_tokens": 69894,
+        "output_tokens_details": {
+          "thinking_tokens": 66720
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 6453,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 69894,
+            "cache_read_input_tokens": 535,
+            "cache_creation_input_tokens": 6453,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 6453
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "modelUsage": {
+        "claude-opus-5-5": {
+          "inputTokens": 2,
+          "outputTokens": 69894,
+          "cacheReadInputTokens": 535,
+          "cacheCreationInputTokens": 6453,
+          "webSearchRequests": 0,
+          "costUSD": 1.4496190000000002,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 66720,
+          "canonicalModel": "claude-opus-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      }
+    },
+    "grok": {
+      "requested_model": "grok-4.7",
+      "requested_effort": "xhigh",
+      "actual_models": [
+        "grok-4.7-build"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 399.87459974999365,
+      "raw": "/Users/aipalm/.local/share/nx01/0237-live/solo-frontier-consultation-v2/grok.raw.json",
+      "raw_sha256": "1a452946585e075c117fc95ad1bde632c5641499e8de99690568135bd2d730b3",
+      "receipt": "/Users/aipalm/.local/share/nx01/0237-live/solo-frontier-consultation-v2/grok-receipt.json",
+      "receipt_sha256": "b4f20e8d38cf220beff096c56321a5440cb97d15ba3b20a30c2f7cd1f571f16a",
+      "answer": "autoresearch/experiments/0237/advice/solo-frontier-v2-grok.md",
+      "answer_sha256": "a49fe1e883cd7e4ab12f693d64df89b727b4f0aba6bbc5db957649473fe43c49",
+      "usage": {
+        "input_tokens": 22997,
+        "cache_read_input_tokens": 6016,
+        "cache_creation_input_tokens": 0,
+        "output_tokens": 21747,
+        "reasoning_tokens": 19885,
+        "total_tokens": 50760
+      },
+      "modelUsage": {
+        "grok-4.7-build": {
+          "inputTokens": 22997,
+          "outputTokens": 21747,
+          "cacheReadInputTokens": 6016,
+          "cacheCreationInputTokens": 0,
+          "modelCalls": 1,
+          "costUSD": 0.06102456
+        }
+      }
+    }
+  }
+}

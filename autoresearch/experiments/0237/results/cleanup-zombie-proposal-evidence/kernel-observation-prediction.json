@@ -1,0 +1,4 @@
+{
+  "recorded_at": "2026-10-10T03:13:01.965792+00:00",
+  "prediction": "Read-only Docker VM host PID observation will find a kernel process with Threads1, readable empty fd directory, and missing cwd. Such a process has no observed cwd/fd access to task files and a blanket missing-cwd rejection would regress the prior observation contract. No host process will be signalled or modified."
+}

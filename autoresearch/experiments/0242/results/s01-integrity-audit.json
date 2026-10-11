@@ -1,0 +1,66 @@
+{
+  "at": "2026-10-10T16:12:53.454969+00:00",
+  "catalog_gate": {
+    "evidence": "autoresearch/experiments/0242/results/s01-native-protocol-audit.md",
+    "scope": "Actual initial fresh/resume peer catalogs and role/mode blocks absent; owner capabilities retained. Independent report also covers original request, stable source, answers/witness and local delivery.",
+    "sha256": "246a639494f205c8a88f7265ec84321d87fc5a9424e1f49245fbb91a9713c5e6",
+    "status": "PASS"
+  },
+  "container_absent": true,
+  "delivery_pass": true,
+  "evidence_manifest_sha256": "b4f63deafa373994ad5db623ff157bcd407162e0558fc860337e4322c73d615f",
+  "freeze_sha256": "91233c5a27e1c5c43096a0a8e05b9c712eff30d87ff9d5c2f449b29ccee4b1d4",
+  "identity_status": "MATCH",
+  "input_tokens": 828204,
+  "integrity": {
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 1052,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 100,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 53,
+      "mismatches": []
+    }
+  },
+  "output_tokens": 17165,
+  "owner_seconds": 402.3037222090061,
+  "owner_status": "EXITED_0",
+  "peer_policy_status": "MATCH",
+  "peer_protocol_violations": [],
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "teardown": "CLEAN",
+  "turns": [
+    {
+      "engine": "codex",
+      "exit_code": 0,
+      "mode": "fresh",
+      "seconds": 50.75958839699888,
+      "session": "01a12691-12a0-71c0-b19b-8ec9cfafba32",
+      "source_unchanged": true
+    },
+    {
+      "engine": "codex",
+      "exit_code": 0,
+      "mode": "resume",
+      "seconds": 9.475126712997735,
+      "session": "01a12691-12a0-71c0-b19b-8ec9cfafba32",
+      "source_unchanged": true
+    }
+  ],
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "volume_absent": true
+}

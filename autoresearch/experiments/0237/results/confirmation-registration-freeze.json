@@ -1,0 +1,22 @@
+{
+  "time": "2026-10-10T04:28:47.014016+00:00",
+  "prediction": "C confirms the per-engine per-correct resource signal on the common fixed baseline, under the conservative registered block stop. No confirmation model calls yet.",
+  "files": {
+    "/Users/aipalm/.local/share/nx01/0237-live/runtime-confirmation-max.json": "5cfcb267b0cce991ae4a3214908ca68a29f72f9fda0afa4ae300f227592972af",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-confirmation-max.json": "6587ce7b69fec2e1148aba5fe39ba7fdb1c5e0a9e11661bcb7e6881377f2fed4",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/confirmation-registration.md": "d7c41e3c9054e6db1ed811d039a10deec7cd0d45ac9211e656566787b7e0b059",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/cells-confirmation-cf-config.tsv": "fb03936c72f89e3a9f6995d8a4f920fae689bddaf92bdfa03cde94e76baf3392",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/cells-confirmation-cf-lease.tsv": "c11ca953ec004c53679b3db7c523517ff591b913a0e482408d018a61b04c34e8",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/runner.py": "e69f8a0a3f24163b349ba3175464997d651ef7ed9341aad30c62222393328f2d",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/dispatch.py": "9bd37cc34c6ef31a0754a9b56affc58d427294228c991ee30b9a88897e9db8e7",
+    "/Users/aipalm/.local/share/nx01/0237-live/confirmation-control-v1.manifest.json": "bb4e5d99c4d0bded88370a7c6165348099f590538c2c22813cd18b163e64c88a",
+    "/Users/aipalm/.local/share/nx01/0237-live/confirmation-packs-v1/packages.json": "58661b3044fc1b350726ee687399164986109030f9c743adb38a60063ef4ba0a",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/confirmation/confirmation-manifest.json": "6c90c8f8314788e3b78b91431187510e13e759b19741a632fb112cd990e9f2e5",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/results/confirmation-calibration-pinned/summary.json": "e6582741997efe154a3448365d7a7a07115b2faade6657a92854f72e920e3c86"
+  },
+  "first_block": "CF-CONFIG 12 cells",
+  "later_blocks": "conditional as registered",
+  "baseline_package": "8c4dcdfa79ba7fed8541418f09475aa9edd5bbaaa010690b26254ed42e34a6e8",
+  "candidate_package": "0d2732c44d9fea9618db74fcba6562dd90e27fa7c6891883a1cc0a9af5ee1593",
+  "boot_expectation": "Unchanged skill/adapter inventories; same A/B/C catalogs enforced as AF1; helper/docs do not add skills."
+}

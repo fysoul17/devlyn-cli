@@ -1,0 +1,10 @@
+{
+  "prediction": [
+    "0240 s01-h-codex: new discovery removes only filename-derived witness/custody unreadable entries, no Claude envelopes appear, component costs equal retained lower bounds. Old STOP and failed capability acceptance remain unchanged.",
+    "0238 s01-h-claude-v3: genuine fresh/resume Claude envelopes and COMPLETE terminal reconciliation remain present; component tokens unchanged.",
+    "0238 s02-h-codex-v2: genuine Codex inference accounting gaps remain; no UNKNOWN residual is treated as zero.",
+    "Read-only protected retained plan/usage/accounting/policy/raw/verdict bytes remain unchanged. No record(), run(), evaluation or actual CLI is called."
+  ],
+  "recorded_at": "2026-10-10T15:23:41.570704+00:00",
+  "script_sha256": "18979b918a149de1345935249712084a4c56a537150b5aa49ceb0fd309188b8d"
+}

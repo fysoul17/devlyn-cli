@@ -1,0 +1,43 @@
+test_accounted_unresolved_peer_failure_is_separate_from_source_quality (test_runner.ApparatusTests.test_accounted_unresolved_peer_failure_is_separate_from_source_quality) ... ok
+test_both_cli_defaults_and_trust_seeded_before_seal (test_runner.ApparatusTests.test_both_cli_defaults_and_trust_seeded_before_seal) ... ok
+test_claude_each_resume_requires_own_native_effort_message (test_runner.ApparatusTests.test_claude_each_resume_requires_own_native_effort_message) ... ok
+test_codex_peer_child_and_resumed_turn_full_accounting (test_runner.ApparatusTests.test_codex_peer_child_and_resumed_turn_full_accounting) ... ok
+test_deleted_allowed_cli_is_product_failure_through_full_check (test_runner.ApparatusTests.test_deleted_allowed_cli_is_product_failure_through_full_check) ... ok
+test_earlier_wrong_native_config_is_not_hidden_by_later_correct (test_runner.ApparatusTests.test_earlier_wrong_native_config_is_not_hidden_by_later_correct) ... ok
+test_eq3_evaluator_protocol_is_preserved (test_runner.ApparatusTests.test_eq3_evaluator_protocol_is_preserved) ... ok
+test_f23_preserves_old_rows_and_requires_supplement_exit_contract (test_runner.ApparatusTests.test_f23_preserves_old_rows_and_requires_supplement_exit_contract) ... ok
+test_failed_helper_before_native_trace_does_not_become_zero_peer (test_runner.ApparatusTests.test_failed_helper_before_native_trace_does_not_become_zero_peer) ... ok
+test_failed_peer_then_fresh_recovery_retains_both_sessions (test_runner.ApparatusTests.test_failed_peer_then_fresh_recovery_retains_both_sessions) ... ok
+test_failed_peer_then_resumed_recovery_preserves_cost_without_failing_quality (test_runner.ApparatusTests.test_failed_peer_then_resumed_recovery_preserves_cost_without_failing_quality) ... ok
+test_init_owner_keeps_native_owner_effort_check (test_runner.ApparatusTests.test_init_owner_keeps_native_owner_effort_check) ... ok
+test_init_owner_preserves_exact_0234_lifecycle_and_evidence (test_runner.ApparatusTests.test_init_owner_preserves_exact_0234_lifecycle_and_evidence) ... ok
+test_init_owner_records_actual_argv_and_retains_pair_timing (test_runner.ApparatusTests.test_init_owner_records_actual_argv_and_retains_pair_timing) ... ok
+test_init_runner_retains_recorded_positive_noop_deleted_classification (test_runner.ApparatusTests.test_init_runner_retains_recorded_positive_noop_deleted_classification) ... ok
+test_matched_modules_and_registered_routes (test_runner.ApparatusTests.test_matched_modules_and_registered_routes) ... ok
+test_missing_interpreter_or_snapshot_is_apparatus_stop (test_runner.ApparatusTests.test_missing_interpreter_or_snapshot_is_apparatus_stop) ... ok
+test_missing_trace_usage_stays_partial_and_lower_bound (test_runner.ApparatusTests.test_missing_trace_usage_stays_partial_and_lower_bound) ... ok
+test_native_owner_child_is_not_an_independent_peer (test_runner.ApparatusTests.test_native_owner_child_is_not_an_independent_peer) ... FAIL
+test_solo_peer_is_visible_violation (test_runner.ApparatusTests.test_solo_peer_is_visible_violation) ... ok
+test_source_changed_during_peer_is_visible_product_protocol_failure (test_runner.ApparatusTests.test_source_changed_during_peer_is_visible_product_protocol_failure) ... ok
+test_unclosed_claude_stream_stops_without_product_failure_or_cost_loss (test_runner.ApparatusTests.test_unclosed_claude_stream_stops_without_product_failure_or_cost_loss) ... ok
+test_unreceipted_independent_session_is_unknown (test_runner.ApparatusTests.test_unreceipted_independent_session_is_unknown) ... ok
+test_wrong_resume_effort_and_missing_effort_are_rejected (test_runner.ApparatusTests.test_wrong_resume_effort_and_missing_effort_are_rejected) ... ok
+test_wrong_root_model_is_not_hidden_by_allowed_child (test_runner.ApparatusTests.test_wrong_root_model_is_not_hidden_by_allowed_child) ... ok
+test_zero_peer_is_valid_not_forced_activation (test_runner.ApparatusTests.test_zero_peer_is_valid_not_forced_activation) ... ok
+
+======================================================================
+FAIL: test_native_owner_child_is_not_an_independent_peer (test_runner.ApparatusTests.test_native_owner_child_is_not_an_independent_peer)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/test_runner.py", line 397, in test_native_owner_child_is_not_an_independent_peer
+    self.assertEqual(self.check()['status'], 'MATCH')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'UNVERIFIED' != 'MATCH'
+- UNVERIFIED
++ MATCH
+
+
+----------------------------------------------------------------------
+Ran 26 tests in 6.217s
+
+FAILED (failures=1)

@@ -1,0 +1,4 @@
+{
+  "at": "2026-10-10T12:41:53.013545+00:00",
+  "prediction": "Unchanged actual prepare selects --claude for Claude owners and default AGENTS-only for Codex owners (0233/prepare.py INSTALL). Verify both roots for H/P Claude, only .agents for H/P Codex, and absence of unselected .claude roots. The prior control failure was an audit expectation error, not a product or stage failure. Previously completed positive/noop/deleted/missing-interpreter results are retained without rerunning."
+}

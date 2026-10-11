@@ -1,0 +1,122 @@
+{
+  "at": "2026-10-10T16:51:59.564613+00:00",
+  "container_absent": true,
+  "delivery_pass": null,
+  "delivery_status": "NOT_GRADED_AFTER_STOP",
+  "evidence_manifest_collection_failures": [],
+  "evidence_manifest_matches_verdict": true,
+  "evidence_manifest_sha256": "bbc18a768be8ebed5e5c3dab1ba4b3ba6cf2a1648baa20b059c875b66b1450c9",
+  "freeze_sha256": "91233c5a27e1c5c43096a0a8e05b9c712eff30d87ff9d5c2f449b29ccee4b1d4",
+  "identity_status": "MATCH",
+  "independent_observations": [],
+  "input_tokens": null,
+  "integrity": {
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 1048,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 100,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 53,
+      "mismatches": []
+    }
+  },
+  "integrity_status": "PASS",
+  "known_usage_lower_bound": {
+    "input_tokens": 1325063,
+    "output_tokens": 45755
+  },
+  "measurement_eligible": false,
+  "output_tokens": null,
+  "owner_seconds": 644.9293162910035,
+  "owner_status": "EXITED_0",
+  "peer_policy_status": "MATCH",
+  "peer_protocol_violations": [],
+  "prediction": {
+    "prediction": "All 100 execution inputs match the prospective freeze and live bytes; all 53 selected artifacts, 5 prepared files, every retained evidence entry and 1059 control entries match their recorded hashes. The run container and temporary volume are absent. Original STOP/PARTIAL and unknown whole-run cost remain unchanged; source and delivery stay NOT_GRADED_AFTER_STOP.",
+    "recorded_at": "2026-10-10T16:51:21.210861+00:00",
+    "status": "AUDIT_PENDING"
+  },
+  "protocol_report": {
+    "path": "autoresearch/experiments/0242/results/s03-native-protocol-audit.md",
+    "scope": "Protocol observations are separate from the unchanged STOP and from ungraded source/delivery outcomes.",
+    "sha256": "ab99d4a6ae018d9c91d1eec7f1cfaca23f7fd37acd3625716f2293253adaff0e",
+    "status": "REPORT_PRESENT_NOT_REVIEWED_BY_THIS_INTEGRITY_AUDIT"
+  },
+  "reason": "ValueError: whole-run usage PARTIAL",
+  "scope": "Read-only custody/integrity audit; no model calls, product checks, accounting replay or regrade.",
+  "seal_inputs_equal_freeze": true,
+  "seal_sha256": "087d5771a18541c289be14dba6b68e8249572f9055eced9bec480d9c13285bb9",
+  "source_check_pass": null,
+  "source_check_status": "NOT_GRADED_AFTER_STOP",
+  "status": "STOP",
+  "teardown": "CLEAN",
+  "teardown_observations": [
+    {
+      "command": [
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        "name=devlyn-0231-5b9a3dedf196481ea0eb20f54511ddfc",
+        "--format",
+        "{{.Names}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "volume",
+        "ls",
+        "--filter",
+        "name=devlyn-0234-tmp-20d8741dc6054024ba0c3990def7d48a",
+        "--format",
+        "{{.Name}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    }
+  ],
+  "turns": [
+    {
+      "engine": "claude",
+      "exit_code": 0,
+      "mode": "fresh",
+      "seconds": 214.68231922300038,
+      "session": "1007025c-9afd-4539-8461-53b1571e00e9",
+      "source_unchanged": true
+    },
+    {
+      "engine": "claude",
+      "exit_code": 0,
+      "mode": "resume",
+      "seconds": 12.846623465004086,
+      "session": "1007025c-9afd-4539-8461-53b1571e00e9",
+      "source_unchanged": true
+    }
+  ],
+  "usage": "PARTIAL",
+  "usage_gaps": [
+    "Claude result cell/work/.devlyn/pair/fresh-result-metadata.json without usage"
+  ],
+  "verdict_sha256": "2519b8ca17db411ebc46c9a9a12b3b2b636d8be1615944b3cce34c50cdc9355a",
+  "verdict_unchanged_after_audit": true,
+  "volume_absent": true,
+  "whole_run_cost": "UNKNOWN"
+}

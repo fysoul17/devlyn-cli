@@ -1,0 +1,52 @@
+[
+  {
+    "canonical_tmp": false,
+    "phase": "public",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-B",
+      "checks/run_checks.py"
+    ],
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "test_empty_config (test_format.FormatSmoke.test_empty_config) ... ok\ntest_invalid_document_shapes (test_format.FormatSmoke.test_invalid_document_shapes) ... ok\ntest_flat_include_and_override (test_smoke.Smoke.test_flat_include_and_override) ... FAIL\ntest_initial_manager (test_smoke.Smoke.test_initial_manager) ... ok\ntest_missing_file (test_smoke.Smoke.test_missing_file) ... FAIL\n\n======================================================================\nFAIL: test_flat_include_and_override (test_smoke.Smoke.test_flat_include_and_override)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/0237-oracle-audit-wlc_0dtf/source/checks/test_smoke.py\", line 18, in test_flat_include_and_override\n    self.assertEqual(set(resolved.dependencies), {root, self.root / 'base.json'})\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Items in the first set but not the second:\nPosixPath('/private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/tmpkiledr54/app.json')\nPosixPath('/private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/tmpkiledr54/base.json')\nItems in the second set but not the first:\nPosixPath('/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/tmpkiledr54/base.json')\nPosixPath('/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/tmpkiledr54/app.json')\n\n======================================================================\nFAIL: test_missing_file (test_smoke.Smoke.test_missing_file)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/0237-oracle-audit-wlc_0dtf/source/checks/test_smoke.py\", line 31, in test_missing_file\n    self.assertEqual(raised.exception.path, self.root / 'missing.json')\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: PosixPath('/private/var/folders/l8/3dwz4xpx761bj1z0r_[36 chars]son') != PosixPath('/var/folders/l8/3dwz4xpx761bj1z0r_pyhh1000[28 chars]son')\n\n----------------------------------------------------------------------\nRan 5 tests in 0.003s\n\nFAILED (failures=2)\n"
+  },
+  {
+    "canonical_tmp": false,
+    "phase": "hidden",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-B",
+      "/Users/aipalm/.local/share/nx01/0237-live/confirmation-audit/oracle-original.py",
+      "/private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/0237-oracle-audit-wlc_0dtf/source"
+    ],
+    "returncode": 0,
+    "stdout": "{\"manifestations\": [{\"id\": \"recursive-merge-value-kinds\", \"passed\": true}, {\"id\": \"relative-diamond-layer-order\", \"passed\": true}, {\"id\": \"transitive-change-same-size-and-mtime\", \"passed\": true}, {\"id\": \"nested-caller-isolation\", \"passed\": true}, {\"id\": \"semantic-generation-current-dependencies\", \"passed\": true}, {\"id\": \"failed-reload-preserves-and-recovers\", \"passed\": true}, {\"id\": \"failed-first-load-no-cache-poisoning\", \"passed\": true}, {\"id\": \"deleted-dependency-repair\", \"passed\": true}, {\"id\": \"canonical-cycle-after-success\", \"passed\": true}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/Users/aipalm/.local/share/nx01/0237-live/confirmation-audit/oracle-original.py\\\", line 10, in check\\n    fn()\\n    ~~^^\\n  File \\\"/Users/aipalm/.local/share/nx01/0237-live/confirmation-audit/oracle-original.py\\\", line 211, in duplicate_shared_read_once\\n    assert reads == {app: 1, leaf: 1}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"id\": \"shared-file-once-per-load\", \"passed\": false}, {\"id\": \"independent-root-dependency-accuracy\", \"passed\": true}, {\"id\": \"schema-errors-retain-include-chain\", \"passed\": true}]}\n",
+    "stderr": ""
+  },
+  {
+    "canonical_tmp": true,
+    "phase": "public",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-B",
+      "checks/run_checks.py"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "test_empty_config (test_format.FormatSmoke.test_empty_config) ... ok\ntest_invalid_document_shapes (test_format.FormatSmoke.test_invalid_document_shapes) ... ok\ntest_flat_include_and_override (test_smoke.Smoke.test_flat_include_and_override) ... ok\ntest_initial_manager (test_smoke.Smoke.test_initial_manager) ... ok\ntest_missing_file (test_smoke.Smoke.test_missing_file) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.003s\n\nOK\n"
+  },
+  {
+    "canonical_tmp": true,
+    "phase": "hidden",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-B",
+      "/Users/aipalm/.local/share/nx01/0237-live/confirmation-audit/oracle-original.py",
+      "/private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/0237-oracle-audit-ny3hnphx/source"
+    ],
+    "returncode": 0,
+    "stdout": "{\"manifestations\": [{\"id\": \"recursive-merge-value-kinds\", \"passed\": true}, {\"id\": \"relative-diamond-layer-order\", \"passed\": true}, {\"id\": \"transitive-change-same-size-and-mtime\", \"passed\": true}, {\"id\": \"nested-caller-isolation\", \"passed\": true}, {\"id\": \"semantic-generation-current-dependencies\", \"passed\": true}, {\"id\": \"failed-reload-preserves-and-recovers\", \"passed\": true}, {\"id\": \"failed-first-load-no-cache-poisoning\", \"passed\": true}, {\"id\": \"deleted-dependency-repair\", \"passed\": true}, {\"id\": \"canonical-cycle-after-success\", \"passed\": true}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/Users/aipalm/.local/share/nx01/0237-live/confirmation-audit/oracle-original.py\\\", line 10, in check\\n    fn()\\n    ~~^^\\n  File \\\"/Users/aipalm/.local/share/nx01/0237-live/confirmation-audit/oracle-original.py\\\", line 211, in duplicate_shared_read_once\\n    assert reads == {app: 1, leaf: 1}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"id\": \"shared-file-once-per-load\", \"passed\": false}, {\"id\": \"independent-root-dependency-accuracy\", \"passed\": true}, {\"id\": \"schema-errors-retain-include-chain\", \"passed\": true}]}\n",
+    "stderr": ""
+  }
+]

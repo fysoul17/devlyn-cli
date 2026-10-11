@@ -1,0 +1,86 @@
+[
+  {
+    "arm": "H",
+    "config": "claude",
+    "expected": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-h-claude-v1/cell/work/.agents/skills/_shared/peer.py",
+    "sha256": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294"
+  },
+  {
+    "arm": "H",
+    "config": "claude",
+    "expected": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-h-claude-v1/cell/work/.agents/skills/_shared/platform-support.py",
+    "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+  },
+  {
+    "arm": "H",
+    "config": "claude",
+    "expected": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-h-claude-v1/cell/work/.claude/skills/_shared/peer.py",
+    "sha256": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294"
+  },
+  {
+    "arm": "H",
+    "config": "claude",
+    "expected": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-h-claude-v1/cell/work/.claude/skills/_shared/platform-support.py",
+    "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+  },
+  {
+    "arm": "P",
+    "config": "codex",
+    "expected": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-p-codex-v1/cell/work/.agents/skills/_shared/peer.py",
+    "sha256": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294"
+  },
+  {
+    "arm": "P",
+    "config": "codex",
+    "expected": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-p-codex-v1/cell/work/.agents/skills/_shared/platform-support.py",
+    "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+  },
+  {
+    "arm": "H",
+    "config": "codex",
+    "expected": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-h-codex-v1/cell/work/.agents/skills/_shared/peer.py",
+    "sha256": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294"
+  },
+  {
+    "arm": "H",
+    "config": "codex",
+    "expected": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-h-codex-v1/cell/work/.agents/skills/_shared/platform-support.py",
+    "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+  },
+  {
+    "arm": "P",
+    "config": "claude",
+    "expected": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-p-claude-v1/cell/work/.agents/skills/_shared/peer.py",
+    "sha256": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294"
+  },
+  {
+    "arm": "P",
+    "config": "claude",
+    "expected": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-p-claude-v1/cell/work/.agents/skills/_shared/platform-support.py",
+    "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+  },
+  {
+    "arm": "P",
+    "config": "claude",
+    "expected": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-p-claude-v1/cell/work/.claude/skills/_shared/peer.py",
+    "sha256": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294"
+  },
+  {
+    "arm": "P",
+    "config": "claude",
+    "expected": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66",
+    "path": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke/control-install-p-claude-v1/cell/work/.claude/skills/_shared/platform-support.py",
+    "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+  }
+]

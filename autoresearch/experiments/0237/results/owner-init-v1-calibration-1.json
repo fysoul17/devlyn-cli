@@ -1,0 +1,13 @@
+{
+  "started_at": "2026-10-10T10:17:25.020813+00:00",
+  "seconds": 0.9188911249948433,
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/results/owner-init-v1-calibration.py",
+    "/Users/aipalm/.local/share/nx01/0237-live/owner-init-v1-calibration-1"
+  ],
+  "exit_code": 0,
+  "stdout_path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/results/owner-init-v1-calibration-1.stdout",
+  "stderr_path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/results/owner-init-v1-calibration-1.stderr"
+}

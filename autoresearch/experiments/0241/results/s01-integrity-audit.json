@@ -1,0 +1,149 @@
+{
+  "at": "2026-10-10T15:46:46.691477+00:00",
+  "catalog_gate": "FAIL: collaboration tools present in fresh/resume peer actual initial request despite agents.enabled=false",
+  "catalogs": [
+    {
+      "path": "cell/trace/trace-0f390e28-098f-4e39-b88e-b8499104856c-01a12676-3aef-7851-9c9c-d81351b81b33/payloads/4.json",
+      "role": "owner",
+      "session": "01a12676-3aef-7851-9c9c-d81351b81b33",
+      "sha256": "ba0c3ce50e7d74949ebf49eaf4bb4111493e5cce690e02da57ec748792df3c7a",
+      "tools": {
+        "clock": [
+          "sleep"
+        ],
+        "collaboration": [
+          "followup_task",
+          "interrupt_agent",
+          "list_agents",
+          "send_message",
+          "spawn_agent",
+          "wait_agent"
+        ],
+        "functions": [
+          "exec",
+          "wait",
+          "request_user_input",
+          "request_user_input_async"
+        ]
+      }
+    },
+    {
+      "path": "cell/trace/trace-98c940a2-1a92-4c6c-b015-e6c9498b27b0-01a12678-aede-7d52-bae3-84b3b6e297c6/payloads/4.json",
+      "role": "peer",
+      "session": "01a12678-aede-7d52-bae3-84b3b6e297c6",
+      "sha256": "e874ba7d66fe4a919402e408e12891be932f432529c1e36ffd74c8d4146288e4",
+      "tools": {
+        "clock": [
+          "sleep"
+        ],
+        "collaboration": [
+          "followup_task",
+          "interrupt_agent",
+          "list_agents",
+          "send_message",
+          "spawn_agent",
+          "wait_agent"
+        ],
+        "functions": [
+          "exec",
+          "wait",
+          "request_user_input",
+          "request_user_input_async"
+        ]
+      }
+    },
+    {
+      "path": "cell/trace/trace-ced8172e-3322-4da9-b60f-efaab0f96c75-01a12678-aede-7d52-bae3-84b3b6e297c6/payloads/4.json",
+      "role": "peer",
+      "session": "01a12678-aede-7d52-bae3-84b3b6e297c6",
+      "sha256": "1a09dd0eae1b7c6b7a03cee746d212e40e2e075b4e5b754db06df44b4b10b693",
+      "tools": {
+        "clock": [
+          "sleep"
+        ],
+        "collaboration": [
+          "followup_task",
+          "interrupt_agent",
+          "list_agents",
+          "send_message",
+          "spawn_agent",
+          "wait_agent"
+        ],
+        "functions": [
+          "exec",
+          "wait",
+          "request_user_input",
+          "request_user_input_async"
+        ]
+      }
+    }
+  ],
+  "container_absent": true,
+  "evidence_manifest_sha256": "2768926266a537b051f57ec4be724193b14a208ed114a5d404c080ff7e83ec3c",
+  "identity_status": "MATCH",
+  "integrity": {
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 1103,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 92,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 79,
+      "mismatches": []
+    }
+  },
+  "known_usage_lower_bound": {
+    "input_tokens": 1040004,
+    "output_tokens": 17807
+  },
+  "owner_seconds": 428.83751491701696,
+  "owner_status": "EXITED_0",
+  "peer_policy_status": "UNVERIFIED",
+  "peer_protocol_violations": [],
+  "raw_status": "STOP",
+  "reason": "ValueError: peer model identity/evidence UNVERIFIED",
+  "sequence": "STOPPED; do not dispatch s02 or s03. No source evaluation occurred after peer-policy STOP; no old result is regraded.",
+  "teardown": "CLEAN",
+  "turns": [
+    {
+      "agents_disabled": true,
+      "effort": "max",
+      "engine": "codex",
+      "exit_code": 0,
+      "model": "gpt-6-astra",
+      "resume": null,
+      "seconds": 36.94525418400008,
+      "session": "01a12678-aede-7d52-bae3-84b3b6e297c6",
+      "source_unchanged": true,
+      "status": "EXITED"
+    },
+    {
+      "agents_disabled": true,
+      "effort": "max",
+      "engine": "codex",
+      "exit_code": 0,
+      "model": "gpt-6-astra",
+      "resume": "01a12678-aede-7d52-bae3-84b3b6e297c6",
+      "seconds": 11.354144796001492,
+      "session": "01a12678-aede-7d52-bae3-84b3b6e297c6",
+      "source_unchanged": true,
+      "status": "EXITED"
+    }
+  ],
+  "usage": "PARTIAL",
+  "usage_gaps": [
+    "peer: observed helper launch has no retained attempt receipt"
+  ],
+  "volume_absent": true
+}

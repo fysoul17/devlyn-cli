@@ -1,0 +1,13 @@
+{
+  "recorded_at": "2026-10-10T03:06:26.097025+00:00",
+  "before_experiment": true,
+  "source_sha256": "bf4301f4e298305d14ec162a68a36ee6430050e3a2eaf7ab55eb99b5ee49f835",
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+  "predictions": [
+    "An unreaped single-thread child of container PID1 will report State Z, Threads 1; its fd listing may be PermissionError at uid501 and original stopped_writers will then raise WritersUnobservable despite no live writer.",
+    "A main pthread that exits while a worker writes will report State Z with Threads greater than 1. It must never be considered stopped solely from State Z or missing cwd; the original observation may refuse or incorrectly return because these interfaces depend on the leader.",
+    "A normal live process whose cwd is the disposable target must cause WriterActive.",
+    "After all children are terminated and reaped, original stopped_writers will return successfully.",
+    "An opened proc directory stays bound to its original process and reading status relative to it fails after reaping instead of following a reused numeric PID (kernel docs). The probe tests after-reap failure, not actual PID reuse."
+  ]
+}

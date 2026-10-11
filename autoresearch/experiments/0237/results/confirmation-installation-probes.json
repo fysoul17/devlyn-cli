@@ -1,0 +1,22 @@
+{
+  "probes": [
+    {
+      "cell": "prep-confirmation-claude-C",
+      "installed_helpers": {
+        "cell/work/.agents/skills/_shared/task-complete.py": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+        "cell/work/.claude/skills/_shared/task-complete.py": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a"
+      },
+      "legacy_baseline_tasks_sha256": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+      "actual_tasks_sealed": "6587ce7b69fec2e1148aba5fe39ba7fdb1c5e0a9e11661bcb7e6881377f2fed4"
+    },
+    {
+      "cell": "prep-confirmation-codex-B",
+      "installed_helpers": {
+        "cell/work/.agents/skills/_shared/task-complete.py": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a"
+      },
+      "legacy_baseline_tasks_sha256": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+      "actual_tasks_sealed": "6587ce7b69fec2e1148aba5fe39ba7fdb1c5e0a9e11661bcb7e6881377f2fed4"
+    }
+  ],
+  "task_binding": "The unchanged 0237 materializer legacy baseline.tasks_sha256 remains old; the actual new task file is bound by seal.inputs, runtime.tasks_file and registration freeze."
+}

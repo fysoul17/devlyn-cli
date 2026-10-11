@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-10T12:33:19.803381+00:00",
+  "prediction": "Historical manifestless upgrade now validates actual published4.1.0 ownership; complete PackageTests and lint pass with dependencies present in incomplete-source fixture. No unpublished fingerprint is whitelisted and all refusal assertions remain.",
+  "commands": {
+    "history-v3": [
+      "python3",
+      "-B",
+      "scripts/test-windows-portability.py",
+      "PackageTests.test_history_allows_manifestless_upgrade_after_package_changes"
+    ],
+    "package-v3": [
+      "python3",
+      "-B",
+      "scripts/test-windows-portability.py",
+      "PackageTests"
+    ],
+    "lint-v2": [
+      "bash",
+      "scripts/lint-skills.sh"
+    ]
+  },
+  "inputs": {
+    "bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "package.json": "ffaaffe502f9c77faa7c0e3dfa2c261373e15ff907d15acf16e96bc604919c07",
+    "package-lock.json": "673daed9c547a038027950cfd31a1fa2144639982a8299a37184d5f0d2c7ae8d",
+    "scripts/test-windows-portability.py": "425231bc48b31287a2343c5c3986c7a8ced235571730addeb434ed96b1bf11bb",
+    "scripts/lint-skills.sh": "ee64d473c8de16504eb2dbb867b02433c8a15cc5ba9505bc8679a5b14343a892"
+  }
+}

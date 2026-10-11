@@ -1,0 +1,647 @@
+{
+  "oracle_sha256": "86967bc80597beee6ab6e37c272c0c58ef636498b13f5a31512f233c10323d22",
+  "assert_count": 41,
+  "rows": [
+    {
+      "function": "loader_merge_value_kinds",
+      "purpose": "One nested-object/list/null example and all 36 earlier/later JSON value-kind combinations through Loader; no private helper calls or ownership assertion.",
+      "predicates": [
+        {
+          "line": 52,
+          "kind": "public_contract",
+          "source": "assert same_json(Loader().load(app).values, {\n            'service': {'workers': 2, 'limits': {'soft': 5, 'hard': 8}},\n            'tags': ['prod'], 'keep': None})"
+        },
+        {
+          "line": 71,
+          "kind": "public_contract",
+          "source": "assert same_json(actual, {'value': expected}), (left, right, actual)"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            3,
+            4
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "A document is a JSON object with only `include` and `values` keys. Both keys are\noptional. `include` is a list of nonempty path strings and `values` is an object."
+        },
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            10,
+            16
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "Each include is resolved relative to the file that declares it. Canonical\nresolved paths are file identities. Merge includes in list order, then the local\nvalues. When both values at a key are objects, merge recursively; otherwise the\nlater value replaces the earlier one. Lists replace, never concatenate, and\nnull is an ordinary value rather than a deletion marker. Do not mutate either\ninput while merging. Include order and local overrides apply even in diamonds:\na shared base is applied in each branch's position, not skipped globally."
+        },
+        {
+          "file": "visible/beacon/model.py",
+          "lines": [
+            4,
+            7
+          ],
+          "sha256": "2859fff316e4d2d4843f09b24d6fe9df2e9ad0f2c1490b81a617a1f649738e5f",
+          "quote": "@dataclass(frozen=True)\nclass Resolved:\n    values: dict\n    dependencies: tuple[Path, ...]"
+        }
+      ]
+    },
+    {
+      "function": "relative_diamond",
+      "purpose": "Declaring-parent path resolution, ordered diamond reapplication/local overrides and complete sorted canonical dependencies.",
+      "predicates": [
+        {
+          "line": 82,
+          "kind": "public_contract",
+          "source": "assert resolved.values == {'service': {'timeout': 5, 'workers': 4, 'host': 'localhost'}, 'color': 'base'}"
+        },
+        {
+          "line": 83,
+          "kind": "public_contract",
+          "source": "assert resolved.dependencies == tuple(sorted([base, west, service, app], key=str))"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            10,
+            16
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "Each include is resolved relative to the file that declares it. Canonical\nresolved paths are file identities. Merge includes in list order, then the local\nvalues. When both values at a key are objects, merge recursively; otherwise the\nlater value replaces the earlier one. Lists replace, never concatenate, and\nnull is an ordinary value rather than a deletion marker. Do not mutate either\ninput while merging. Include order and local overrides apply even in diamonds:\na shared base is applied in each branch's position, not skipped globally."
+        },
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            18,
+            23
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "A cycle exists only when a canonical file is already on the current include\nstack. The same file included again after its earlier branch completed is legal.\nRead each distinct document no more than once per Loader.load call: shared\nincludes must see the same bytes throughout that load. Dependencies contain\nevery distinct canonical file reached, including the root, sorted by path text.\nSnapshot dependency paths are Path objects, independent of include spelling."
+        },
+        {
+          "file": "visible/beacon/model.py",
+          "lines": [
+            4,
+            7
+          ],
+          "sha256": "2859fff316e4d2d4843f09b24d6fe9df2e9ad0f2c1490b81a617a1f649738e5f",
+          "quote": "@dataclass(frozen=True)\nclass Resolved:\n    values: dict\n    dependencies: tuple[Path, ...]"
+        }
+      ]
+    },
+    {
+      "function": "transitive_same_stat",
+      "purpose": "New contents with same size/mtime, exact generations per semantic change and prior snapshot isolation. Line98 asserts test setup only, not product behavior.",
+      "predicates": [
+        {
+          "line": 98,
+          "kind": "fixture_precondition",
+          "source": "assert leaf.stat().st_size == metadata.st_size"
+        },
+        {
+          "line": 100,
+          "kind": "public_contract",
+          "source": "assert second.values == {'port': 7022} and second.generation == 2"
+        },
+        {
+          "line": 101,
+          "kind": "public_contract",
+          "source": "assert first.values == {'port': 7011} and first.generation == 1"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            3,
+            8
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "Every call to Loader.load observes current dependency contents. Atomic file\nreplacement may preserve size and mtime, so metadata alone is not proof of an\nunchanged dependency. Dependencies may be added, removed, missing, or repaired\nbetween calls. There is no promise of an atomic view across unrelated writers;\neach individual file's first read in a load defines its contents for that load.\nAn invocation must not reuse values resolved from an earlier invocation."
+        },
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            16,
+            24
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "The first successful snapshot has generation 1. Thereafter increment generation\nonly when the effective merged values change. A dependency-only or formatting\nchange still refreshes the dependency list but keeps the generation. Generation\nis used to decide whether to restart application services.\n\nAll returned values are detached: mutating a Loader result, reload result, or\ncurrent Snapshot, including nested dictionaries and lists, cannot affect future\nloads, the manager's stored state, or another caller's snapshot. A frozen\ndataclass alone does not provide this guarantee for its nested JSON values."
+        }
+      ]
+    },
+    {
+      "function": "snapshot_isolation",
+      "purpose": "Nested mutations of reload/current/Loader results cannot affect stored state or later callers; unchanged values retain generation1.",
+      "predicates": [
+        {
+          "line": 111,
+          "kind": "public_contract",
+          "source": "assert manager.current.values == {'service': {'tags': ['one']}}"
+        },
+        {
+          "line": 114,
+          "kind": "public_contract",
+          "source": "assert manager.current.values == {'service': {'tags': ['one']}}"
+        },
+        {
+          "line": 115,
+          "kind": "public_contract",
+          "source": "assert manager.reload().generation == 1"
+        },
+        {
+          "line": 119,
+          "kind": "public_contract",
+          "source": "assert loader.load(app).values == {'service': {'tags': ['one']}}"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            16,
+            24
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "The first successful snapshot has generation 1. Thereafter increment generation\nonly when the effective merged values change. A dependency-only or formatting\nchange still refreshes the dependency list but keeps the generation. Generation\nis used to decide whether to restart application services.\n\nAll returned values are detached: mutating a Loader result, reload result, or\ncurrent Snapshot, including nested dictionaries and lists, cannot affect future\nloads, the manager's stored state, or another caller's snapshot. A frozen\ndataclass alone does not provide this guarantee for its nested JSON values."
+        }
+      ]
+    },
+    {
+      "function": "generation_and_dependencies",
+      "purpose": "First and repeated same-value generations1, dependency-only switch and formatting keep generation, value change advances2; dependencies refresh.",
+      "predicates": [
+        {
+          "line": 129,
+          "kind": "public_contract",
+          "source": "assert manager.reload().generation == 1"
+        },
+        {
+          "line": 130,
+          "kind": "public_contract",
+          "source": "assert manager.reload().generation == 1"
+        },
+        {
+          "line": 133,
+          "kind": "public_contract",
+          "source": "assert switched.generation == 1"
+        },
+        {
+          "line": 134,
+          "kind": "public_contract",
+          "source": "assert switched.dependencies == tuple(sorted([app, b], key=str))"
+        },
+        {
+          "line": 136,
+          "kind": "public_contract",
+          "source": "assert manager.reload().generation == 1"
+        },
+        {
+          "line": 138,
+          "kind": "public_contract",
+          "source": "assert manager.reload().generation == 2"
+        },
+        {
+          "line": 139,
+          "kind": "public_contract",
+          "source": "assert a not in manager.current.dependencies"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            3,
+            8
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "Every call to Loader.load observes current dependency contents. Atomic file\nreplacement may preserve size and mtime, so metadata alone is not proof of an\nunchanged dependency. Dependencies may be added, removed, missing, or repaired\nbetween calls. There is no promise of an atomic view across unrelated writers;\neach individual file's first read in a load defines its contents for that load.\nAn invocation must not reuse values resolved from an earlier invocation."
+        },
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            16,
+            19
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "The first successful snapshot has generation 1. Thereafter increment generation\nonly when the effective merged values change. A dependency-only or formatting\nchange still refreshes the dependency list but keeps the generation. Generation\nis used to decide whether to restart application services."
+        },
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            21,
+            23
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "includes must see the same bytes throughout that load. Dependencies contain\nevery distinct canonical file reached, including the root, sorted by path text.\nSnapshot dependency paths are Path objects, independent of include spelling."
+        }
+      ]
+    },
+    {
+      "function": "failed_reload_recovery",
+      "purpose": "Missing file raises exported ConfigError with canonical failing path/root chain, current unchanged; repaired graph publishes correct values/dependencies/generation.",
+      "predicates": [
+        {
+          "line": 153,
+          "kind": "public_contract",
+          "source": "assert exc.path == root / 'missing.json'"
+        },
+        {
+          "line": 154,
+          "kind": "public_contract",
+          "source": "assert exc.chain == (app, root / 'missing.json')"
+        },
+        {
+          "line": 156,
+          "kind": "public_contract",
+          "source": "raise AssertionError('failed graph published')"
+        },
+        {
+          "line": 157,
+          "kind": "public_contract",
+          "source": "assert manager.current == before"
+        },
+        {
+          "line": 160,
+          "kind": "public_contract",
+          "source": "assert recovered.values == {'mode': 'recovered', 'local': 2}"
+        },
+        {
+          "line": 161,
+          "kind": "public_contract",
+          "source": "assert recovered.generation == 2"
+        },
+        {
+          "line": 162,
+          "kind": "public_contract",
+          "source": "assert recovered.dependencies == tuple(sorted([app, leaf, new], key=str))"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            7,
+            16
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "A ConfigError identifies the failing canonical path and the root-to-failure\ninclude chain; no arbitrary Python error is part of this API.\n\nEach include is resolved relative to the file that declares it. Canonical\nresolved paths are file identities. Merge includes in list order, then the local\nvalues. When both values at a key are objects, merge recursively; otherwise the\nlater value replaces the earlier one. Lists replace, never concatenate, and\nnull is an ordinary value rather than a deletion marker. Do not mutate either\ninput while merging. Include order and local overrides apply even in diamonds:\na shared base is applied in each branch's position, not skipped globally."
+        },
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            21,
+            23
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "includes must see the same bytes throughout that load. Dependencies contain\nevery distinct canonical file reached, including the root, sorted by path text.\nSnapshot dependency paths are Path objects, independent of include spelling."
+        },
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            10,
+            19
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "ConfigManager.reload publishes a new Snapshot only after the entire include\ngraph is valid. A failed reload raises ConfigError and leaves `current` exactly\nas it was. After the bad file is repaired a later reload must succeed; failure\nis not sticky. Failed graphs must never partially alter old settings or the\nlast successful dependency list.\n\nThe first successful snapshot has generation 1. Thereafter increment generation\nonly when the effective merged values change. A dependency-only or formatting\nchange still refreshes the dependency list but keeps the generation. Generation\nis used to decide whether to restart application services."
+        },
+        {
+          "file": "visible/beacon/errors.py",
+          "lines": [
+            1,
+            6
+          ],
+          "sha256": "b0435e3b53ce18ad2e5d30a9a8a95c2cb07c22745c0200fbad9b97ac36682ce4",
+          "quote": "class ConfigError(ValueError):\n    def __init__(self, path, chain, reason):\n        self.path = path\n        self.chain = tuple(chain)\n        self.reason = reason\n        super().__init__(f\"{reason}: {' -> '.join(str(item) for item in self.chain)}\")"
+        }
+      ]
+    },
+    {
+      "function": "failed_initial_no_cached_branch",
+      "purpose": "Failed first graph leaves current None; repaired graph uses changed earlier branch and first-success generation1.",
+      "predicates": [
+        {
+          "line": 176,
+          "kind": "public_contract",
+          "source": "raise AssertionError('missing dependency accepted')"
+        },
+        {
+          "line": 177,
+          "kind": "public_contract",
+          "source": "assert manager.current is None"
+        },
+        {
+          "line": 181,
+          "kind": "public_contract",
+          "source": "assert snapshot.generation == 1 and snapshot.values == {'mode': 'new', 'ready': True}"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            3,
+            18
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "Every call to Loader.load observes current dependency contents. Atomic file\nreplacement may preserve size and mtime, so metadata alone is not proof of an\nunchanged dependency. Dependencies may be added, removed, missing, or repaired\nbetween calls. There is no promise of an atomic view across unrelated writers;\neach individual file's first read in a load defines its contents for that load.\nAn invocation must not reuse values resolved from an earlier invocation.\n\nConfigManager.reload publishes a new Snapshot only after the entire include\ngraph is valid. A failed reload raises ConfigError and leaves `current` exactly\nas it was. After the bad file is repaired a later reload must succeed; failure\nis not sticky. Failed graphs must never partially alter old settings or the\nlast successful dependency list.\n\nThe first successful snapshot has generation 1. Thereafter increment generation\nonly when the effective merged values change. A dependency-only or formatting\nchange still refreshes the dependency list but keeps the generation. Generation"
+        },
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            25,
+            25
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "`current` is None before the first successful reload. Preserve exported APIs."
+        },
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            7,
+            13
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "A ConfigError identifies the failing canonical path and the root-to-failure\ninclude chain; no arbitrary Python error is part of this API.\n\nEach include is resolved relative to the file that declares it. Canonical\nresolved paths are file identities. Merge includes in list order, then the local\nvalues. When both values at a key are objects, merge recursively; otherwise the\nlater value replaces the earlier one. Lists replace, never concatenate, and"
+        }
+      ]
+    },
+    {
+      "function": "removed_dependency",
+      "purpose": "Deleted dependency must be observed with path/chain, preserve previous current and recover from repair.",
+      "predicates": [
+        {
+          "line": 195,
+          "kind": "public_contract",
+          "source": "assert exc.path == leaf and exc.chain == (app, leaf)"
+        },
+        {
+          "line": 197,
+          "kind": "public_contract",
+          "source": "raise AssertionError('deleted dependency served from cache')"
+        },
+        {
+          "line": 198,
+          "kind": "public_contract",
+          "source": "assert manager.current == before"
+        },
+        {
+          "line": 200,
+          "kind": "public_contract",
+          "source": "assert manager.reload().values == {'mode': 'new'}"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            3,
+            14
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "Every call to Loader.load observes current dependency contents. Atomic file\nreplacement may preserve size and mtime, so metadata alone is not proof of an\nunchanged dependency. Dependencies may be added, removed, missing, or repaired\nbetween calls. There is no promise of an atomic view across unrelated writers;\neach individual file's first read in a load defines its contents for that load.\nAn invocation must not reuse values resolved from an earlier invocation.\n\nConfigManager.reload publishes a new Snapshot only after the entire include\ngraph is valid. A failed reload raises ConfigError and leaves `current` exactly\nas it was. After the bad file is repaired a later reload must succeed; failure\nis not sticky. Failed graphs must never partially alter old settings or the\nlast successful dependency list."
+        },
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            7,
+            8
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "A ConfigError identifies the failing canonical path and the root-to-failure\ninclude chain; no arbitrary Python error is part of this API."
+        },
+        {
+          "file": "visible/beacon/errors.py",
+          "lines": [
+            1,
+            6
+          ],
+          "sha256": "b0435e3b53ce18ad2e5d30a9a8a95c2cb07c22745c0200fbad9b97ac36682ce4",
+          "quote": "class ConfigError(ValueError):\n    def __init__(self, path, chain, reason):\n        self.path = path\n        self.chain = tuple(chain)\n        self.reason = reason\n        super().__init__(f\"{reason}: {' -> '.join(str(item) for item in self.chain)}\")"
+        }
+      ]
+    },
+    {
+      "function": "cycle_after_success",
+      "purpose": "Canonical active-stack recurrence raises ConfigError with public path/chain; preserve current and recover. No diagnostic English word is required.",
+      "predicates": [
+        {
+          "line": 215,
+          "kind": "public_contract",
+          "source": "assert exc.path == app and exc.chain == (app, branch, app)"
+        },
+        {
+          "line": 217,
+          "kind": "public_contract",
+          "source": "raise AssertionError('cycle introduced after success accepted')"
+        },
+        {
+          "line": 218,
+          "kind": "public_contract",
+          "source": "assert manager.current == before"
+        },
+        {
+          "line": 220,
+          "kind": "public_contract",
+          "source": "assert manager.reload().values == {'ok': False}"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            7,
+            8
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "A ConfigError identifies the failing canonical path and the root-to-failure\ninclude chain; no arbitrary Python error is part of this API."
+        },
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            10,
+            11
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "Each include is resolved relative to the file that declares it. Canonical\nresolved paths are file identities. Merge includes in list order, then the local"
+        },
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            18,
+            19
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "A cycle exists only when a canonical file is already on the current include\nstack. The same file included again after its earlier branch completed is legal."
+        },
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            10,
+            14
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "ConfigManager.reload publishes a new Snapshot only after the entire include\ngraph is valid. A failed reload raises ConfigError and leaves `current` exactly\nas it was. After the bad file is repaired a later reload must succeed; failure\nis not sticky. Failed graphs must never partially alter old settings or the\nlast successful dependency list."
+        },
+        {
+          "file": "visible/beacon/errors.py",
+          "lines": [
+            1,
+            6
+          ],
+          "sha256": "b0435e3b53ce18ad2e5d30a9a8a95c2cb07c22745c0200fbad9b97ac36682ce4",
+          "quote": "class ConfigError(ValueError):\n    def __init__(self, path, chain, reason):\n        self.path = path\n        self.chain = tuple(chain)\n        self.reason = reason\n        super().__init__(f\"{reason}: {' -> '.join(str(item) for item in self.chain)}\")"
+        }
+      ]
+    },
+    {
+      "function": "repeated_include_freshness",
+      "purpose": "Repeated canonical alias is legal, dependency list unique/sorted, later call sees changed contents without mutating first result. Does not measure read count or in-load byte stability.",
+      "predicates": [
+        {
+          "line": 231,
+          "kind": "public_contract",
+          "source": "assert first.values == {'nested': {'a': 1}}"
+        },
+        {
+          "line": 232,
+          "kind": "public_contract",
+          "source": "assert first.dependencies == tuple(sorted([app, leaf], key=str))"
+        },
+        {
+          "line": 235,
+          "kind": "public_contract",
+          "source": "assert second.values == {'nested': {'a': 2}}"
+        },
+        {
+          "line": 236,
+          "kind": "public_contract",
+          "source": "assert second.dependencies == first.dependencies"
+        },
+        {
+          "line": 237,
+          "kind": "public_contract",
+          "source": "assert first.values == {'nested': {'a': 1}}"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            18,
+            23
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "A cycle exists only when a canonical file is already on the current include\nstack. The same file included again after its earlier branch completed is legal.\nRead each distinct document no more than once per Loader.load call: shared\nincludes must see the same bytes throughout that load. Dependencies contain\nevery distinct canonical file reached, including the root, sorted by path text.\nSnapshot dependency paths are Path objects, independent of include spelling."
+        },
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            3,
+            8
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "Every call to Loader.load observes current dependency contents. Atomic file\nreplacement may preserve size and mtime, so metadata alone is not proof of an\nunchanged dependency. Dependencies may be added, removed, missing, or repaired\nbetween calls. There is no promise of an atomic view across unrelated writers;\neach individual file's first read in a load defines its contents for that load.\nAn invocation must not reuse values resolved from an earlier invocation."
+        },
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            21,
+            24
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "All returned values are detached: mutating a Loader result, reload result, or\ncurrent Snapshot, including nested dictionaries and lists, cannot affect future\nloads, the manager's stored state, or another caller's snapshot. A frozen\ndataclass alone does not provide this guarantee for its nested JSON values."
+        }
+      ]
+    },
+    {
+      "function": "sibling_dependency_accuracy",
+      "purpose": "A later independent root uses its own complete dependency set and values, not prior graph state.",
+      "predicates": [
+        {
+          "line": 247,
+          "kind": "public_contract",
+          "source": "assert loader.load(app).dependencies == tuple(sorted([app, left, right], key=str))"
+        },
+        {
+          "line": 249,
+          "kind": "public_contract",
+          "source": "assert right_alone.dependencies == (right,)"
+        },
+        {
+          "line": 250,
+          "kind": "public_contract",
+          "source": "assert right_alone.values == {'right': 2}"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            21,
+            23
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "includes must see the same bytes throughout that load. Dependencies contain\nevery distinct canonical file reached, including the root, sorted by path text.\nSnapshot dependency paths are Path objects, independent of include spelling."
+        },
+        {
+          "file": "visible/docs/reload.md",
+          "lines": [
+            3,
+            8
+          ],
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "Every call to Loader.load observes current dependency contents. Atomic file\nreplacement may preserve size and mtime, so metadata alone is not proof of an\nunchanged dependency. Dependencies may be added, removed, missing, or repaired\nbetween calls. There is no promise of an atomic view across unrelated writers;\neach individual file's first read in a load defines its contents for that load.\nAn invocation must not reuse values resolved from an earlier invocation."
+        },
+        {
+          "file": "visible/beacon/model.py",
+          "lines": [
+            4,
+            7
+          ],
+          "sha256": "2859fff316e4d2d4843f09b24d6fe9df2e9ad0f2c1490b81a617a1f649738e5f",
+          "quote": "@dataclass(frozen=True)\nclass Resolved:\n    values: dict\n    dependencies: tuple[Path, ...]"
+        }
+      ]
+    },
+    {
+      "function": "schema_diagnostic_chain",
+      "purpose": "Each documented invalid schema/JSON kind raises ConfigError at leaf with root-to-failure chain; no particular rendered string is required.",
+      "predicates": [
+        {
+          "line": 264,
+          "kind": "public_contract",
+          "source": "assert exc.path == leaf and exc.chain == (app, middle, leaf)"
+        },
+        {
+          "line": 266,
+          "kind": "public_contract",
+          "source": "raise AssertionError('invalid document accepted')"
+        }
+      ],
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "lines": [
+            3,
+            8
+          ],
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "A document is a JSON object with only `include` and `values` keys. Both keys are\noptional. `include` is a list of nonempty path strings and `values` is an object.\nAn empty document means no includes and no local values. Invalid JSON, unknown\ndocument keys, invalid include entries, or non-object values raise ConfigError.\nA ConfigError identifies the failing canonical path and the root-to-failure\ninclude chain; no arbitrary Python error is part of this API."
+        },
+        {
+          "file": "visible/beacon/errors.py",
+          "lines": [
+            1,
+            6
+          ],
+          "sha256": "b0435e3b53ce18ad2e5d30a9a8a95c2cb07c22745c0200fbad9b97ac36682ce4",
+          "quote": "class ConfigError(ValueError):\n    def __init__(self, path, chain, reason):\n        self.path = path\n        self.chain = tuple(chain)\n        self.reason = reason\n        super().__init__(f\"{reason}: {' -> '.join(str(item) for item in self.chain)}\")"
+        }
+      ]
+    }
+  ]
+}

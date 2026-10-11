@@ -1,0 +1,47 @@
+
+[38;5;99m     ██████╗ [38;5;135m███████╗[38;5;213m██╗   ██╗[38;5;99m██╗     [38;5;135m██╗   ██╗[38;5;213m███╗   ██╗[0m
+[38;5;99m     ██╔══██╗[38;5;135m██╔════╝[38;5;213m██║   ██║[38;5;99m██║     [38;5;135m╚██╗ ██╔╝[38;5;213m████╗  ██║[0m
+[38;5;99m     ██║  ██║[38;5;135m█████╗  [38;5;213m██║   ██║[38;5;99m██║      [38;5;135m╚████╔╝ [38;5;213m██╔██╗ ██║[0m
+[38;5;99m     ██║  ██║[38;5;135m██╔══╝  [38;5;213m╚██╗ ██╔╝[38;5;99m██║       [38;5;135m╚██╔╝  [38;5;213m██║╚██╗██║[0m
+[38;5;99m     ██████╔╝[38;5;135m███████╗[38;5;213m ╚████╔╝ [38;5;99m███████╗   [38;5;135m██║   [38;5;213m██║ ╚████║[0m
+[38;5;240m     ╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝   ╚═╝   ╚═╝  ╚═══╝[0m
+
+[2m            AI Agent Config Toolkit[0m
+[38;5;240m                v4.2.5 [2m· [38;5;213m🍩 by Nocodecat @ Donut Studio[0m
+
+[2m────────────────────────────────────────────[0m
+  → Created AGENTS.md
+[32m
+📁 Installing devlyn skills to /work/.agents/skills[0m
+[2m  → devlyn-ideate/SKILL.md[0m
+[2m  → devlyn-ideate/references/elicitation.md[0m
+[2m  → devlyn-ideate/references/loop.md[0m
+[2m  → devlyn-ideate/references/package-format.md[0m
+[2m  → devlyn-ideate/scripts/acceptance.py[0m
+[2m  → devlyn-ideate/scripts/queue.py[0m
+[2m  → devlyn-engines/SKILL.md[0m
+[2m  → _shared/.ruff.toml[0m
+[2m  → _shared/adapters/claude.md[0m
+[2m  → _shared/adapters/codex.md[0m
+[2m  → _shared/adapters/omp.md[0m
+[2m  → _shared/codex-monitored.sh[0m
+[2m  → _shared/engine-doctor.sh[0m
+[2m  → _shared/engine-preflight.md[0m
+[2m  → _shared/expected-contract.py[0m
+[2m  → _shared/expected.schema.json[0m
+[2m  → _shared/invocation-receipt.py[0m
+[2m  → _shared/platform-support.py[0m
+[2m  → _shared/role-config.py[0m
+[2m  → _shared/runtime-principles.md[0m
+[2m  → _shared/task-complete.py[0m
+[2m  → _shared/task-completion.md[0m
+[2m  → .gitignore (added .devlyn/, .agents/skills/.devlyn-install.json)[0m
+[32m
+✅ devlyn 4.2.5 installed[0m
+[2m
+💡 Add optional addons later: run `npx devlyn-cli` without -y[0m
+[2m   CLAUDE.md + .claude/ for Claude Code: add --claude · every project on this machine: add --global[0m
+[0m
+[2m   Enjoying devlyn? Star it on GitHub — it helps others find it:[0m[0m
+[0m   [38;5;135m→ https://github.com/fysoul17/devlyn-cli[0m
+[0m

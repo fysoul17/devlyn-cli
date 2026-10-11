@@ -1,0 +1,13 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0242/results/replay.py"
+  ],
+  "prediction": [
+    "New policy component counts only stdout44fresh and53resume; stdout70acceptance-data countszero, hence two logical receipts reconcile and the component becomesMATCH.",
+    "All original protected stdout/stderr/plan/usage/policy/accounting/manifest/verdict bytes remain unchanged. Original STOP/PARTIAL and native capability failure are not regraded."
+  ],
+  "recorded_at": "2026-10-10T15:54:15.874784+00:00",
+  "script_sha256": "45fad631f6dc246ae5d2ad45b069d14b9bc1773cccbb498317c36c50e71f540d"
+}

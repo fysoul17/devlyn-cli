@@ -356,7 +356,7 @@ PY
 
   incomplete="$tmp_install_marker/incomplete"
   mkdir -p "$incomplete/package" "$incomplete/home/.agents/skills" "$incomplete/project/.agents/skills"
-  cp -R bin config package.json AGENTS.md CLAUDE.md "$incomplete/package/"
+  cp -R bin config node_modules package.json AGENTS.md CLAUDE.md "$incomplete/package/"
   rm -rf "$incomplete/package/config/skills/devlyn-engines"
   printf '{"schemaVersion":1,"package":"devlyn-cli","version":"stale"}\n' > "$incomplete/home/.agents/skills/.devlyn-install.json"
   printf '{"schemaVersion":1,"package":"devlyn-cli","version":"stale"}\n' > "$incomplete/project/.agents/skills/.devlyn-install.json"

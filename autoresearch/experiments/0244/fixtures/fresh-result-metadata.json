@@ -1,0 +1,13 @@
+{
+  "session_id": "1007025c-9afd-4539-8461-53b1571e00e9",
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "models": [
+    "claude-opus-5-5"
+  ],
+  "num_turns": 8,
+  "denied_tools": [],
+  "native_capture": ".devlyn/pair/review1/peer1791650168333261717.json",
+  "source_unchanged": true
+}

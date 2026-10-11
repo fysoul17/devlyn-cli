@@ -1,0 +1,343 @@
+{
+  "at": "2026-10-10T20:50:18.620808+00:00",
+  "attempt_history": [
+    {
+      "at": "2026-10-10T20:49:55.523168+00:00",
+      "failed_checks": [
+        "volume_absent"
+      ],
+      "integrity_status": "FAIL",
+      "report_sha256": "ef7e451d70b7eeb7267a35aa8e640036193fa9601c210ae2034274f34f247f52",
+      "resolution": "The exact raw Docker volume inspection already returned exit 1 and \"no such volume\" for the registered name. Initial classifier incorrectly searched capitalized \"No such\". Final classification checks the exact recorded response; no Docker rerun or cleanup mutation occurred."
+    }
+  ],
+  "catalog_scope": {
+    "expected_catalog_comparison_active": false,
+    "observed_catalogs": {
+      "mcp_servers": [],
+      "plugins": [
+        {
+          "name": "cc-plugin-agents-md",
+          "path": "builtin",
+          "source": "cc-plugin-agents-md@builtin"
+        },
+        {
+          "name": "cc-plugin-plugin-authoring",
+          "path": "builtin",
+          "source": "cc-plugin-plugin-authoring@builtin"
+        },
+        {
+          "name": "cc-plugin-telemetry",
+          "path": "builtin",
+          "source": "cc-plugin-telemetry@builtin"
+        }
+      ],
+      "skills": [
+        "batch",
+        "claude-api",
+        "code-review",
+        "dataviz",
+        "debug",
+        "deep-research",
+        "design",
+        "design-sync",
+        "devlyn-engines",
+        "devlyn-ideate",
+        "doctor",
+        "fewer-permission-prompts",
+        "loop",
+        "plugin-authoring",
+        "run",
+        "run-skill-generator",
+        "schedule",
+        "simplify",
+        "update-config",
+        "verify",
+        "workflow-authoring"
+      ]
+    },
+    "reason": "Registered smoke runtime retains empty boot_catalogs. Actual observed catalogs are recorded; no claim that an absent expected-catalog comparison ran."
+  },
+  "checked_sha256": "de4de46aaf39fa1ef1a72abca5fb21c2acadbf4d0473acf9461eb4e7c371a02b",
+  "checks": {
+    "0246_remaining_five_unrun": true,
+    "actual_image_inspect_matches": true,
+    "all_hashes_match": true,
+    "checked_source_and_delivery_bound": true,
+    "container_absent": true,
+    "control_inventory_exact": true,
+    "cost_matches_original_usage": true,
+    "empty_gaps": true,
+    "evidence_collection_clean": true,
+    "evidence_inventory_exact": true,
+    "evidence_manifest_matches_verdict": true,
+    "exact_frozen_inputs_and_seal": true,
+    "freeze_matches_dispatch_audit": true,
+    "freeze_unchanged": true,
+    "identity_policy_accounting_match": true,
+    "image_resources_config_consistent": true,
+    "no_additional_0247_cell": true,
+    "original_verdict_expected": true,
+    "owner_wall_matches": true,
+    "policy_accounting_equal_verdict": true,
+    "prior_0243_0246_bindings_preserved": true,
+    "runtime_hash_equal_freeze": true,
+    "source_public_product_delivery_pass": true,
+    "teardown_clean": true,
+    "two_retained_custody_sets": true,
+    "usage_counters_sum_once": true,
+    "verdict_unchanged": true,
+    "volume_absent": true
+  },
+  "claude_accounting_status": "MATCH",
+  "completion": "Integrity audit complete; no native owner, model, test, evaluator or authentication operation invoked. Idle.",
+  "container_absent": true,
+  "control_manifest_sha256": "41b9eca8739f0638567f8bd4e927f782f667aa7fa835951128b0322099ffe457",
+  "credential_evidence_handling": "Opaque SHA256 of sealed evidence bytes only; no credential contents parsed or disclosed and no auth operation. Docker inspections request only exact ID/name, never environment.",
+  "custody_evidence_sets": [
+    {
+      "all_files_in_evidence_manifest": true,
+      "attempt_completion_equal_policy": true,
+      "directory": "cell/work/.devlyn/pair/peer-qg8uavxn",
+      "exact_five_retained_files": true,
+      "exit_code": 0,
+      "files": {
+        "cell/work/.devlyn/pair/peer-qg8uavxn/attempt.json": "12f6bc1783f3aef00d63028cb1e6e3e705ebb620c633dde2f36347a0c45ae3b4",
+        "cell/work/.devlyn/pair/peer-qg8uavxn/completion.json": "8c571d6e882d516672b5e34ad63fd93fe77908f7008149c12b10e408fea25fa3",
+        "cell/work/.devlyn/pair/peer-qg8uavxn/finalanswer.txt": "5261546b567b12d7adf3d0fc0d187d3867d4b239d65832bde8d53445dca48837",
+        "cell/work/.devlyn/pair/peer-qg8uavxn/peer1791664936535782469.jsonl": "e69d347720d939de63b81d783e3a1989e1a6b530febf6fb33ed88f35e87ecff2",
+        "cell/work/.devlyn/pair/peer-qg8uavxn/stderr": "f173e3c12e1a06157ecd7ba170d610298dadcdc614750c4d889346252b06c27a"
+      },
+      "resume": null,
+      "session": "01a1278d-56c4-7852-a720-8132bc7afd12",
+      "source_unchanged": true,
+      "status": "EXITED"
+    },
+    {
+      "all_files_in_evidence_manifest": true,
+      "attempt_completion_equal_policy": true,
+      "directory": "cell/work/.devlyn/pair/peer-tfjkhzlt",
+      "exact_five_retained_files": true,
+      "exit_code": 0,
+      "files": {
+        "cell/work/.devlyn/pair/peer-tfjkhzlt/attempt.json": "b447a1bb61e0425e65b78f2da7d73ad55a8afdf549e637b52af04dc929917058",
+        "cell/work/.devlyn/pair/peer-tfjkhzlt/completion.json": "8b019ec369e6409540dc05e60f5ee8bca4fa9f95bb635eda4a49f732c33d1c4c",
+        "cell/work/.devlyn/pair/peer-tfjkhzlt/finalanswer.txt": "9c208154fd1b1aa47d151db24fa85c5ba3f18e6194fa77c7105f61066efa61df",
+        "cell/work/.devlyn/pair/peer-tfjkhzlt/peer1791665038284561419.jsonl": "3f92caca8d578d085ea73133e1367349561812266a7c80e9e9c1fe294a6698c3",
+        "cell/work/.devlyn/pair/peer-tfjkhzlt/stderr": "67f81a13d9af862ed3d4ad7e56f377ed52e023b8b1384dcdcf247e9c38ae676d"
+      },
+      "resume": "01a1278d-56c4-7852-a720-8132bc7afd12",
+      "session": "01a1278d-56c4-7852-a720-8132bc7afd12",
+      "source_unchanged": true,
+      "status": "EXITED"
+    }
+  ],
+  "delivery_commit": "2b4450f914910b4331d65b8ccf0d4413514e1484",
+  "delivery_pass": true,
+  "delivery_sha256": "17bfa46e9be84da3c061bd2aa8dacb54554c40e1da02673ba40977a8b6559015",
+  "evidence_manifest_collection_failures": [],
+  "evidence_manifest_sha256": "84eee9937ad3f3afce7676cf0fe83f7553f17bcc65b80b413d51578eb33ec422",
+  "findings": [],
+  "freeze_sha256_after": "c0c18c85142245c6fd636ccbd7fe178d5c7a577f8cb6b2ca1a67758d561458d9",
+  "freeze_sha256_before": "c0c18c85142245c6fd636ccbd7fe178d5c7a577f8cb6b2ca1a67758d561458d9",
+  "historical_0243_0246": {
+    "0243/d01-f23-claude-s": {
+      "manifest_matches_original": true,
+      "post_STOP_grade_absent": null,
+      "seal_sha256": "2942180c5f0a5e8a401d6955fcbcef6563e513559638b322f8ec60bec757f329",
+      "status": "CHECKS_PASS",
+      "status_and_cost_unchanged": true,
+      "usage": "COMPLETE",
+      "verdict_and_seal_unchanged": true,
+      "verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+    },
+    "0243/d02-f23-codex-p": {
+      "manifest_matches_original": true,
+      "post_STOP_grade_absent": true,
+      "seal_sha256": "503728a34950fab3e4288a2aed1296f311696cf579f88c6ccf6bbe364607a658",
+      "status": "STOP",
+      "status_and_cost_unchanged": true,
+      "usage": "PARTIAL",
+      "verdict_and_seal_unchanged": true,
+      "verdict_sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b"
+    },
+    "0246/d02-f23-codex-p": {
+      "manifest_matches_original": true,
+      "post_STOP_grade_absent": null,
+      "seal_sha256": "9cd88aae37f33159b5ed8514cb5ec5756de81343be15d7ec9484bf794208d732",
+      "status": "PRODUCT_INCOMPLETE",
+      "status_and_cost_unchanged": true,
+      "usage": "COMPLETE",
+      "verdict_and_seal_unchanged": true,
+      "verdict_sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9"
+    },
+    "0246/d03-f23-claude-a": {
+      "manifest_matches_original": true,
+      "post_STOP_grade_absent": null,
+      "seal_sha256": "7685eb1e96163822d57e3d2d113c57e0128519bc3a66458dffa9049e056850ca",
+      "status": "CHECKS_PASS",
+      "status_and_cost_unchanged": true,
+      "usage": "COMPLETE",
+      "verdict_and_seal_unchanged": true,
+      "verdict_sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af"
+    },
+    "0246/d04-f23-codex-h": {
+      "manifest_matches_original": true,
+      "post_STOP_grade_absent": null,
+      "seal_sha256": "5b5e0a948fe9b265ae29abf9ae5038b32bef040005a07d15eb3e264c519908ce",
+      "status": "PRODUCT_INCOMPLETE",
+      "status_and_cost_unchanged": true,
+      "usage": "COMPLETE",
+      "verdict_and_seal_unchanged": true,
+      "verdict_sha256": "662087c33d44095cd708e7060926ec22420ae92580f477669108de8efe32045a"
+    },
+    "0246/d05-f23-claude-p": {
+      "manifest_matches_original": true,
+      "post_STOP_grade_absent": true,
+      "seal_sha256": "192c309732845e54cc79ffccb049206f6d03ef778d74626b3d33820fa385c7e1",
+      "status": "STOP",
+      "status_and_cost_unchanged": true,
+      "usage": "COMPLETE",
+      "verdict_and_seal_unchanged": true,
+      "verdict_sha256": "d7f1de56e6d2f0d7ead917788099c1586848a6ea80506e75256e4318a5ba1c6e"
+    }
+  },
+  "identity_status": "MATCH",
+  "input_tokens": 5238939,
+  "integrity": {
+    "checked_snapshot": {
+      "count": 55,
+      "mismatches": []
+    },
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 856,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 117,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 454,
+      "mismatches": []
+    }
+  },
+  "integrity_status": "PASS",
+  "native_owner_config_identity": {
+    "cell_mount_matches": true,
+    "codex_config_matches": true,
+    "environment_matches_sealed_plan": true,
+    "home_mount_matches": true,
+    "owner_argv_equal_sealed_plan": true,
+    "owner_config_matches": true,
+    "owner_effort": "max",
+    "owner_model": "claude-opus-5-5",
+    "owner_watchdog_matches": true,
+    "owner_watchdog_seconds": 5400,
+    "resources": {
+      "--cpus": "2",
+      "--memory": "4g",
+      "--pids-limit": "256"
+    },
+    "resources_match_registration": true,
+    "runtime_plan_seal_image_equal": true,
+    "source_sha256_bound": true,
+    "started_result_create_argv_equal": true,
+    "started_result_metadata_equal": true,
+    "temporary_volume_mount_matches": true
+  },
+  "oracle_count": 0,
+  "output_tokens": 119409,
+  "owner_seconds": 1169.6533141669934,
+  "owner_session": "3e45936a-058a-4ca7-b927-eddb5eac50cd",
+  "owner_status": "EXITED_0",
+  "peer_activated": true,
+  "peer_policy_status": "MATCH",
+  "peer_session": "01a1278d-56c4-7852-a720-8132bc7afd12",
+  "peer_validation_completion": "COMPLETED",
+  "prediction": {
+    "prediction": "The original CHECKS_PASS/COMPLETE verdict remains immutable; 117 execution inputs and 454 selected artifacts match the freeze; all prepared, retained evidence, control and checked-source hashes match; exact image/resources/config bindings agree; named container and temporary volume are absent; prior 0243/0246 records and five unrun cells remain unchanged. No replay or regrade is performed.",
+    "recorded_at": "2026-10-10T20:47:58.450017+00:00"
+  },
+  "product_check_pass": true,
+  "protocol_audit_scope": "Separate independent native protocol audit covers actual consumption, witness execution, temporary-directory cleanup and observed Unicode/init shapes; this report verifies retained custody and raw integrity without regrading.",
+  "public_checks": 1,
+  "public_pass": true,
+  "public_test_count": 4,
+  "remaining_0246_cells": {
+    "d06-f23-codex-b": "NOT_RUN",
+    "d07-f23-claude-h": "NOT_RUN",
+    "d08-f23-codex-a": "NOT_RUN",
+    "d09-f23-claude-b": "NOT_RUN",
+    "d10-f23-codex-s": "NOT_RUN"
+  },
+  "schema": "0247-independent-native-integrity-audit-v1",
+  "scope": "Bounded read-only integrity audit of completed 0247 s01-p-claude. No native model, authentication, evaluator/test replay or source repair. Already sealed credential entries, if present, are hashed opaquely only; contents never parsed or disclosed.",
+  "seal_sha256": "7762a4bdcd85e86fd30caeff58be70009a9efd27c1fdbfc0030350b5e2f6a0ec",
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "teardown": "CLEAN",
+  "teardown_and_image_observations": [
+    {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "devlyn-0231-3a66cdc49af84f6a97331e748b6164ff"
+      ],
+      "exit_code": 1,
+      "stderr": "Error response from daemon: No such container: devlyn-0231-3a66cdc49af84f6a97331e748b6164ff\n",
+      "stdout": "\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "volume",
+        "inspect",
+        "--format",
+        "{{.Name}}",
+        "devlyn-0234-tmp-1f02d6ef6bfb4a32b506b02fb1dbe8d6"
+      ],
+      "exit_code": 1,
+      "stderr": "Error response from daemon: get devlyn-0234-tmp-1f02d6ef6bfb4a32b506b02fb1dbe8d6: no such volume\n",
+      "stdout": "\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "image",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998\n"
+    }
+  ],
+  "usage": "COMPLETE",
+  "usage_arithmetic": {
+    "accounting_replayed": false,
+    "codex_input_includes_cached_tokens": true,
+    "input_sum": 5238939,
+    "output_sum": 119409,
+    "thinking_reasoning_not_added_to_output": true
+  },
+  "usage_gaps": [],
+  "verdict_sha256": "bbda248a6f880af26ca9cafacea202c261b5cd6936102479d7a34d27fa8af923",
+  "volume_absent": true,
+  "writes": [
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/s01-integrity-audit.json"
+  ]
+}

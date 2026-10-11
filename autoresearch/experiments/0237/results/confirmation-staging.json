@@ -1,0 +1,37 @@
+{
+  "calibration_runtime": "/Users/aipalm/.local/share/nx01/0237-live/confirmation-calibration-v1/runtime.json",
+  "control": "/Users/aipalm/.local/share/nx01/0237-live/confirmation-control-v1",
+  "control_manifest": "/Users/aipalm/.local/share/nx01/0237-live/confirmation-control-v1.manifest.json",
+  "control_manifest_sha256": "bb4e5d99c4d0bded88370a7c6165348099f590538c2c22813cd18b163e64c88a",
+  "created_at": "2026-10-10T04:27:03.620215+00:00",
+  "fixtures_unchanged": true,
+  "hidden_additions": [
+    "eq3/CF-CONFIG",
+    "eq3/CF-LEASE"
+  ],
+  "old_control_unchanged": true,
+  "packages": {
+    "B": {
+      "commit": "2cf5d6ed1c450359c06524e232bbcf51fbd9db82",
+      "sha256": "8c4dcdfa79ba7fed8541418f09475aa9edd5bbaaa010690b26254ed42e34a6e8"
+    },
+    "C": {
+      "commit": "f69346798fdc18d60aa666edf12f4caf8d57b427",
+      "sha256": "0d2732c44d9fea9618db74fcba6562dd90e27fa7c6891883a1cc0a9af5ee1593"
+    }
+  },
+  "participant_source": "visible/ only; exact goal request; empty obligations; no hidden/gold/manifest/research metadata",
+  "pinned_calibration_summary": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/results/confirmation-calibration-pinned/summary.json",
+  "pinned_calibration_summary_sha256": "e6582741997efe154a3448365d7a7a07115b2faade6657a92854f72e920e3c86",
+  "prediction_file": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/results/confirmation-calibration-prediction.json",
+  "public_identical_to_discovery": true,
+  "registration_sha256": "d7c41e3c9054e6db1ed811d039a10deec7cd0d45ac9211e656566787b7e0b059",
+  "root_owned_next": [
+    "measurement runtime and serial fixed-order schedule",
+    "prospective boot catalog checks",
+    "dispatch only after calibration and all registered gates"
+  ],
+  "state": "PINNED_CALIBRATION_PASS_PENDING_ROOT_RUNTIME_AND_DISPATCH_GATES",
+  "tasks_file": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-confirmation-max.json",
+  "tasks_sha256": "6587ce7b69fec2e1148aba5fe39ba7fdb1c5e0a9e11661bcb7e6881377f2fed4"
+}

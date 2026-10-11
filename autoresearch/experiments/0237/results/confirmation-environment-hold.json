@@ -1,0 +1,8 @@
+{
+  "time": "2026-10-10T08:53:11.743186+00:00",
+  "dispatcher_pid": 95669,
+  "process_before": "95669 Sat Oct 10 16:11:43 2026     Ss   /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -B -u autoresearch/experiments/0237/dispatch.py /Users/aipalm/.local/share/nx01/0237-live/runtime-confirmation-max.json /Users/aipalm/.local/share/nx01/0237-live/cells-confirmation-cf-config-resume-v1.tsv /Users/aipalm/.local/share/nx01/0237-live/dispatch-confirmation-cf-config-resume-v1.jsonl",
+  "action": "SIGSTOP dispatcher only; active runner and owner continue unchanged",
+  "active_cell": "f05-CF-CONFIG-codex-C-r1",
+  "reason": "Finished f04 shows sustained adopted zombie/PID exhaustion and a potentially unsupported direct-merge result isolation oracle. Audit before further measured owners; no raw verdict or frozen input changes."
+}

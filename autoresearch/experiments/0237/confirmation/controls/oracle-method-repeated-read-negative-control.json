@@ -1,0 +1,12 @@
+{
+  "id": "repeated-read-negative-control",
+  "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/confirmation/CF-CONFIG/hidden/oracle.py",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/confirmation/controls/scratch/audit-3gtuh8lj/repeated-read-negative-control"
+  ],
+  "returncode": 0,
+  "stdout": "{\"manifestations\": [{\"id\": \"recursive-merge-value-kinds\", \"passed\": true}, {\"id\": \"relative-diamond-layer-order\", \"passed\": true}, {\"id\": \"transitive-change-same-size-and-mtime\", \"passed\": true}, {\"id\": \"nested-caller-isolation\", \"passed\": true}, {\"id\": \"semantic-generation-current-dependencies\", \"passed\": true}, {\"id\": \"failed-reload-preserves-and-recovers\", \"passed\": true}, {\"id\": \"failed-first-load-no-cache-poisoning\", \"passed\": true}, {\"id\": \"deleted-dependency-repair\", \"passed\": true}, {\"id\": \"canonical-cycle-after-success\", \"passed\": true}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/confirmation/CF-CONFIG/hidden/oracle.py\\\", line 10, in check\\n    fn()\\n    ~~^^\\n  File \\\"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/confirmation/CF-CONFIG/hidden/oracle.py\\\", line 217, in duplicate_shared_read_once\\n    assert reads == {app: 1, leaf: 1}, reads\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError: {PosixPath('/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/confirmation/controls/scratch/audit-3gtuh8lj/canonical/tmpe6kdy9eo/app.json'): 1, PosixPath('/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/confirmation/controls/scratch/audit-3gtuh8lj/canonical/tmpe6kdy9eo/leaf.json'): 2}\\n\", \"id\": \"shared-file-once-per-load\", \"passed\": false}, {\"id\": \"independent-root-dependency-accuracy\", \"passed\": true}, {\"id\": \"schema-errors-retain-include-chain\", \"passed\": true}]}\n",
+  "stderr": ""
+}

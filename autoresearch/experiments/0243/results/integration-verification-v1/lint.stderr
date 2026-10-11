@@ -1,0 +1,22 @@
+.......................ss...............................................
+----------------------------------------------------------------------
+Ran 72 tests in 191.230s
+
+OK (skipped=2)
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+devlyn-loop: l.t: waiting for an interrupted execution to stop (active process 4242 uses task files)
+devlyn-loop: l.t: executing; output in /private/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/devlyn-queue ✓ hgpay7g7/work/.devlyn/loop
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 8.513s
+
+OK
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 7.910s
+
+OK

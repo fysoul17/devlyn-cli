@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-10T15:36:29.403240+00:00",
+  "status": "SHIP_FOR_NATIVE_VALIDATION_NOT_ADOPTION",
+  "implementation_base": "results/implementation-v2.json",
+  "final_custody_fix": "Translate absolute retained suffix and normalize root; preserve relative suffix behavior.",
+  "files": {
+    "capture_discovery.py": "a74a17a429a4ac1c256913e264a901bdc255ffbadbf1bd3bac24bed023e7d956",
+    "test_runner.py": "0e269b2dd7907144454878a858b959da370075a17821de8051010b7755195029",
+    "peer.py": "379fd2890b402ba9351d9a922ce0e11dcb33fe986bb095a191fb354e4246c96b",
+    "runner.py": "4cca2cde73b28aa34ded4d347facf76225513990248faa279c3870875d228188"
+  },
+  "manifest": {
+    "path": "results/review-manifest-v3.json",
+    "sha256": "ad714824352b583189b953f7e2646c1a41ad9253d4a0e9fb1cd18e7490c66b65"
+  },
+  "review": {
+    "path": "results/implementation-review-v2.md",
+    "sha256": "ea8d9bd55269b87f896fa49316359661822afcf2b6a8de521fcc4b587582bc57"
+  },
+  "tests": {
+    "count": 41,
+    "result": "results/custody-tests-v2.json",
+    "log": "results/custody-tests-v2.stderr"
+  },
+  "replay": {
+    "result": "results/replay-v2.json",
+    "byte_identical_to_v1": true
+  },
+  "previous_sources": [
+    "results/implementation-v1-source",
+    "results/implementation-v2-source"
+  ]
+}

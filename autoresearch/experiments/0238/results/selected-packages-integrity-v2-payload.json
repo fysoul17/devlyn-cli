@@ -1,0 +1,92 @@
+{
+  "recorded_at": "2026-10-10T12:42:13.193179+00:00",
+  "kind": "Derived independent read-only payload audit, combined with retained baseline and execution records",
+  "reviewer": "/root/entry_audit/cfg_life_contract_review",
+  "packages_metadata_sha256": "85f90c64181bc41b8f071d4017dc97d4e19c19d858477696a552b93ecf7ab8f7",
+  "archive_and_payload_hashes_match": true,
+  "regular_files_checked": 969,
+  "no_extra_missing_duplicate_special_members": true,
+  "arms": {
+    "B": {
+      "archive_sha256": "050bc8d6f3af071461903f0c7efd77ae445828f232152cd4f52b6e81faa967b3",
+      "files": 241
+    },
+    "H": {
+      "archive_sha256": "1731e86ce031172ce87352146887e1ac28abbdf65266ee1cf05a28466ca53d3f",
+      "files": 243
+    },
+    "P": {
+      "archive_sha256": "10a748e9235f614b0c2f8091aa17fec88a6f762d77e5d4f8a830d3dc8ddb5d5e",
+      "files": 243
+    },
+    "S": {
+      "archive_sha256": "c031f7d5e5ea752bf153092e059684f281cfd55a1241c643f57b525b22d334d5",
+      "files": 242
+    }
+  },
+  "arm_differences": {
+    "S": {
+      "changed": [
+        "package/AGENTS.md",
+        "package/CLAUDE.md",
+        "package/bin/instruction-templates.json",
+        "package/config/skills/_shared/runtime-principles.md"
+      ],
+      "added": [
+        "package/config/skills/_shared/pair.md"
+      ],
+      "removed": [],
+      "mode_changes": []
+    },
+    "H": {
+      "changed": [
+        "package/AGENTS.md",
+        "package/CLAUDE.md",
+        "package/bin/instruction-templates.json",
+        "package/config/skills/_shared/runtime-principles.md"
+      ],
+      "added": [
+        "package/config/skills/_shared/pair.md",
+        "package/config/skills/_shared/peer.py"
+      ],
+      "removed": [],
+      "mode_changes": []
+    },
+    "P": {
+      "changed": [
+        "package/AGENTS.md",
+        "package/CLAUDE.md",
+        "package/bin/instruction-templates.json",
+        "package/config/skills/_shared/runtime-principles.md"
+      ],
+      "added": [
+        "package/config/skills/_shared/pair.md",
+        "package/config/skills/_shared/peer.py"
+      ],
+      "removed": [],
+      "mode_changes": []
+    }
+  },
+  "principle_delta": "Only recorded trigger appended to Worldclass; three principle payloads identical across S/H/P",
+  "history_delta": "Fingerprint2107066383516e4444193164a13c478b7c8ddd76e1b7408cd1cdfb075de75b5d added once per host array; no other arm history difference",
+  "guides_and_helpers_match_current_source": true,
+  "source_sha256": {
+    "autoresearch/experiments/0238/guides/S.md": "34287e59aa0e32ba09dacb92115715466e1408de0f0620f92fb6ff2db1e9acc3",
+    "autoresearch/experiments/0238/guides/H.md": "d21f5dc743e9bb9c1bb07cc4d6b143fbd5fd78521d1aa005427bf9fa8c579c13",
+    "autoresearch/experiments/0238/guides/P.md": "e11bc49837dd434b8dbcf5deb099e50d53b29c5f609d7e7a9c72ebce31ce6da2",
+    "autoresearch/experiments/0238/peer.py": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "config/skills/_shared/platform-support.py": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+  },
+  "marked": {
+    "version": "15.0.12",
+    "files": 16,
+    "identical_across_arms": true,
+    "main_and_commonjs_default": "./lib/marked.cjs",
+    "module_exports_present": true,
+    "runtime_optional_peer_dependencies": false,
+    "cjs_require_calls": false
+  },
+  "baseline_audit": "selected-packages-integrity-v2-baseline.json",
+  "successful_offline_test": "selected-packages-integrity-v2-test-config1.json",
+  "preserved_preinstall_failure": "selected-packages-integrity-v2-test.json"
+}

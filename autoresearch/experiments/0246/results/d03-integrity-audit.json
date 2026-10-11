@@ -1,0 +1,303 @@
+{
+  "at": "2026-10-10T19:18:40.758132+00:00",
+  "checks": {
+    "all_hashes_match": true,
+    "checks_delivery_bound": true,
+    "container_absent": true,
+    "control_inventory_exact": true,
+    "cost_matches_original_usage": true,
+    "earlier_0246_d02_preserved": true,
+    "empty_gaps": true,
+    "evidence_collection_clean": true,
+    "evidence_manifest_matches_verdict": true,
+    "four_pass_oracle_rows_preserved": true,
+    "freeze_unchanged": true,
+    "historical_0243_proof_preserved": true,
+    "historical_0245_proof_preserved": true,
+    "historical_eight_cells_unrun": true,
+    "identity_policy_accounting_match": true,
+    "image_resources_config_consistent": true,
+    "local_delivery_commit_preserved": true,
+    "no_peer_preserved": true,
+    "original_verdict_expected": true,
+    "owner_session_and_model_match": true,
+    "owner_wall_matches": true,
+    "policy_accounting_equal_verdict": true,
+    "public_9_pass_preserved": true,
+    "remaining_seven_cells_unrun": true,
+    "runtime_hash_equal_freeze": true,
+    "seal_inputs_equal_freeze": true,
+    "source_public_product_delivery_success": true,
+    "teardown_clean": true,
+    "verdict_unchanged": true,
+    "volume_absent": true
+  },
+  "claude_accounting_status": "MATCH",
+  "container_absent": true,
+  "control_manifest_sha256": "ace8951f2b8d934bfb86a608f8e26011207ef25ff34630bc1b0aa649f901ff1c",
+  "credential_evidence_handling": "Opaque SHA256 of bytes only for any credential file already listed in the evidence manifest; no parsing, disclosure or authentication operation.",
+  "delivery_commit": "3683f82d3bb3731835071fc4b66b6fa0c064beab",
+  "delivery_pass": true,
+  "earlier_0246_d02": {
+    "integrity_audit_matches_original": true,
+    "integrity_audit_sha256": "d9d54a008373bca3e8ed0d298f397dbcbdf656877d039a5cb373703b0f40db31",
+    "status": "PRODUCT_INCOMPLETE",
+    "status_usage_preserved": true,
+    "usage": "COMPLETE",
+    "verdict_matches_original": true,
+    "verdict_sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9"
+  },
+  "evidence_manifest_collection_failures": [],
+  "evidence_manifest_sha256": "a1ac878f245218df0029518181c62ff73bd7891bd46907998a0d1cfff9e046de",
+  "freeze_sha256_after": "fd3dcf7415e580b9c6b243148e61f5e7745cdb44be562458aeb37f003f74adab",
+  "freeze_sha256_before": "fd3dcf7415e580b9c6b243148e61f5e7745cdb44be562458aeb37f003f74adab",
+  "historical_0243": {
+    "d01-f23-claude-s": {
+      "evidence_manifest_sha256": "a3ee9ad87750edbcb1ab5b524a4ac135e82352a3e6bd87c43083a8d33481b50d",
+      "manifest_matches_original_verdict": true,
+      "matches_original": true,
+      "status": "CHECKS_PASS",
+      "status_usage_preserved": true,
+      "usage": "COMPLETE",
+      "verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+    },
+    "d02-f23-codex-p": {
+      "evidence_manifest_sha256": "cc39d330a8078aea680a734a0662e812c18c7bc9ec3acf187bbda8639b60f20a",
+      "known_usage_lower_bound": {
+        "input_tokens": 1796844,
+        "output_tokens": 69638
+      },
+      "manifest_matches_original_verdict": true,
+      "matches_original": true,
+      "source_public_delivery_status": "NOT_GRADED_AFTER_STOP",
+      "status": "STOP",
+      "status_usage_preserved": true,
+      "usage": "PARTIAL",
+      "verdict_sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b",
+      "whole_run_cost": "UNKNOWN"
+    }
+  },
+  "historical_0245": {
+    "both_audits_PASS": true,
+    "custody_audit_sha256": "31adf55e52cb511093b762505b90d29af723d408ab1bd547f72f5fc276450d1f",
+    "integrity_audit_sha256": "a0dcf313d2177bbf296d2dc2d472ef7c79f1daf8b7e926961d2bebab8fd06d9a",
+    "manifest_matches_original": true,
+    "raw_verdict_sha256": "e3f14bf09088422acb42554fe89a746b927eb46341b1ba4e4717001590576dec",
+    "seal_matches_original": true,
+    "verdict_matches_original": true
+  },
+  "historical_remaining_cell_observations": {
+    "d03-f23-claude-a": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d04-f23-codex-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d05-f23-claude-p": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d06-f23-codex-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d07-f23-claude-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d08-f23-codex-a": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d09-f23-claude-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d10-f23-codex-s": {
+      "output_absent": true,
+      "verdict_absent": true
+    }
+  },
+  "identity_status": "MATCH",
+  "input_tokens": 3441785,
+  "integrity": {
+    "checked_snapshot": {
+      "count": 629,
+      "mismatches": []
+    },
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 1958,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 109,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 328,
+      "mismatches": []
+    }
+  },
+  "integrity_status": "PASS",
+  "measurement_eligible_raw_flag": true,
+  "native_owner_config_identity": {
+    "cell_mount_matches": true,
+    "codex_config_matches": true,
+    "docker_image_inspect_matches": true,
+    "expected_image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "home_mount_matches": true,
+    "native_identity_status": "MATCH",
+    "owner_config_matches": true,
+    "owner_watchdog_matches": true,
+    "owner_watchdog_seconds": 5400,
+    "plan_config": "claude",
+    "plan_effort": "max",
+    "plan_engine": "claude",
+    "plan_environment_matches_launch": true,
+    "plan_model": "claude-opus-5-5",
+    "resources": {
+      "cpus": "2",
+      "init": true,
+      "memory": "4g",
+      "pids": "256",
+      "read_only": true,
+      "restart": true
+    },
+    "resources_match_registration": true,
+    "run_and_verdict_identity_equal": true,
+    "run_argv_has_expected_image": true,
+    "run_owner_argv_equal_sealed_plan": true,
+    "runtime_plan_seal_images_match": true,
+    "source_sha256_bound_to_frozen_cell": true,
+    "started_result_create_argv_equal": true,
+    "started_result_metadata_equal": true,
+    "temporary_volume_mount_matches": true
+  },
+  "oracle_rows": [
+    {
+      "id": "priority-rollback",
+      "status": "PASS"
+    },
+    {
+      "id": "single-warehouse-fefo",
+      "status": "PASS"
+    },
+    {
+      "id": "submillisecond-order",
+      "status": "PASS"
+    },
+    {
+      "id": "offset-equivalence",
+      "status": "PASS"
+    }
+  ],
+  "output_tokens": 93953,
+  "owner_seconds": 825.7604531670222,
+  "owner_session": "cd63e32d-6949-458c-8cff-c22aa7432050",
+  "owner_status": "EXITED_0",
+  "peer_activated": false,
+  "peer_policy_status": "MATCH",
+  "peer_validation_completion": "NOT_ACTIVATED",
+  "prediction": {
+    "prediction": "All 109 execution inputs, 328 selected artifacts, five prepared files and every retained evidence/control/snapshot entry match their frozen bindings. Runtime, sealed plan and native started/result image/resources/configs agree; native Claude identity/accounting and original CHECKS_PASS/COMPLETE remain unchanged, with all four oracles, public checks and local delivery passing and no peer. Exact container and temporary volume are absent. Original 0243/0245 proof remains unchanged and remaining d04-d10 cells are unrun. No tests, native calls, auth operations, source repair or regrade; sealed credential bytes are only opaquely hashed.",
+    "recorded_at": "2026-10-10T19:17:37.506813+00:00"
+  },
+  "product_check_pass": true,
+  "public_pass": true,
+  "public_test_count": 9,
+  "remaining_cell_observations": {
+    "d04-f23-codex-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d05-f23-claude-p": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d06-f23-codex-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d07-f23-claude-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d08-f23-codex-a": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d09-f23-claude-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d10-f23-codex-s": {
+      "output_absent": true,
+      "verdict_absent": true
+    }
+  },
+  "remaining_seven_cells_unrun": true,
+  "scope": "Bounded independent integrity audit of retained artifacts only. No tests, native models, auth operations, source repair, accounting replay or regrade. Prior native proof reused through exact immutable bindings.",
+  "seal_sha256": "7685eb1e96163822d57e3d2d113c57e0128519bc3a66458dffa9049e056850ca",
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "teardown": "CLEAN",
+  "teardown_and_image_observations": [
+    {
+      "command": [
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        "name=devlyn-0231-5a588c8e6c3e4c25a0d12c06779bb279",
+        "--format",
+        "{{.Names}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "volume",
+        "ls",
+        "--filter",
+        "name=devlyn-0234-tmp-8bca240bd0c748e9bab845195f808239",
+        "--format",
+        "{{.Name}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+        "--format",
+        "{{.Id}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998\n"
+    }
+  ],
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "verdict_sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af",
+  "verdict_unchanged_after_audit": true,
+  "volume_absent": true
+}

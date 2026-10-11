@@ -1,0 +1,22 @@
+{
+  "started_at": "2026-10-10T10:23:36.013631+00:00",
+  "seconds": 0.1796558750065742,
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/results/test_stage_native_dependencies.py"
+  ],
+  "exit_code": 1,
+  "stdout": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/results/stage-native-dependencies-1.stdout",
+  "stderr": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/results/stage-native-dependencies-1.stderr",
+  "reviewed_files_unchanged": {
+    "peer.py": true,
+    "policy.py": true,
+    "runner.py": true,
+    "test_peer.py": true,
+    "test_runner.py": true,
+    "f23_precision.py": true,
+    "cell-init-v1.py": true
+  },
+  "v4_manifest_unchanged": true
+}

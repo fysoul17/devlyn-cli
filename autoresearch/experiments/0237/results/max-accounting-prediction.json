@@ -1,0 +1,10 @@
+{
+  "status": "PREDICTION_BEFORE_DISPATCH",
+  "reason": "Astra ultra native child responses correlate with two cancelled inferences whose real output lacks terminal usage; original cell remains STOP/PARTIAL",
+  "model": "gpt-6-astra",
+  "effort": "max",
+  "evidence": "Pinned models_cache describes max as maximum reasoning and ultra as maximum reasoning with automatic task delegation",
+  "prediction": "max may avoid the automatic child-response cancellations, permitting complete whole-owner accounting; a remaining cancellation remains STOP, never zeroed",
+  "scope": "Same model, new explicitly registered configuration; no inference about ultra quality or cost; no measured cells have run",
+  "tasks_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+}

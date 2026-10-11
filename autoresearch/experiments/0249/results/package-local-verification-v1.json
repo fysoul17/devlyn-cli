@@ -1,0 +1,127 @@
+{
+  "B_vs_S_exact_differences": [
+    "package/AGENTS.md",
+    "package/CLAUDE.md",
+    "package/bin/instruction-templates.json",
+    "package/config/skills/_shared/pair.md",
+    "package/config/skills/_shared/runtime-principles.md"
+  ],
+  "S_guide_sha256": "34287e59aa0e32ba09dacb92115715466e1408de0f0620f92fb6ff2db1e9acc3",
+  "S_treatment_bytes": "IDENTICAL_TO_0247",
+  "S_trigger": "When a change makes ordering or identity depend on representation, or changes shared-state ownership or recovery, follow `_shared/pair.md` in the skills installation used for delivery before declaring completion.",
+  "S_trigger_sha256": "f59fd333259becb5298bb4a18a7e4db93c0228fdd79a6a1572fde2ccb79abeec",
+  "all_prediction_inputs_unchanged": true,
+  "at": "2026-10-10T23:22:47.782325+00:00",
+  "base": "d1f170ed3bd57441b95ea525156e80644543acb1",
+  "baseline_inputs": {
+    ".agents/skills/_shared/task-complete.py": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59",
+    ".agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "config/skills/_shared/task-complete.py": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59",
+    "config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "package-lock.json": "61bb21fc83191eab9fb5840967aec72338a71747d8a2e12e66ba63e935a3bc60",
+    "package.json": "71fa7e644b9be6c585f6af1b0645edef4323bf37884236e7c9cd7eb539f9c9a0"
+  },
+  "builder_adapter_sha256": "a2b25fe1ac4116ece5480a7efc73a5d31403b6b3a24dc1e4870a7fd2ca9b043e",
+  "builder_sha256": "197d92ae282ba7693d8e6584eba6a3ecd4687b25f5d3d6e36903390db6bb1a51",
+  "fingerprints": "IDENTICAL_TO_0247_PER_ARM",
+  "full_product_suites": "REUSED_425_INTEGRATION_PASS_NOT_RERUN",
+  "instructions": {
+    "AGENTS.md": {
+      "b_sha256": "4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5",
+      "b_words": 597,
+      "s_sha256": "d602c2ca03f0bc4e2ce328fdf8edf3f06248e2f125daf8721fbe21d12b2cc888",
+      "s_words": 625
+    },
+    "CLAUDE.md": {
+      "b_sha256": "4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5",
+      "b_words": 597,
+      "s_sha256": "d602c2ca03f0bc4e2ce328fdf8edf3f06248e2f125daf8721fbe21d12b2cc888",
+      "s_words": 625
+    },
+    "config/skills/_shared/runtime-principles.md": {
+      "b_sha256": "6c615346159ead0473da08bbc9645f3807b7265d91b3671620c79bff3abaa407",
+      "b_words": 450,
+      "s_sha256": "9573704f913a22ce450f9618200e68188d107b6ff7909c6c9f363ea401a8d583",
+      "s_words": 478
+    }
+  },
+  "inventory_sha256": "8d18344c914ec4d258f8732d5961c087edba1d623a568d4636f7ddf0dbb08ee4",
+  "mode_changes": {
+    "B": [],
+    "H": [],
+    "P": [],
+    "S": []
+  },
+  "native_models_auth": "NOT_ACCESSED",
+  "package_metadata_sha256": "b4295fd1460a3560bbf5860969c8a6bc2a4da7d4d41630f60c664104e9ad621c",
+  "packages": {
+    "B": "7157fefccdad21b466ed4bcef3f499795256309578ee052c04aee45181484c24",
+    "H": "92bace58ffc370040dd897aedf3468892b7f4980c231fda1e66b3961e650de98",
+    "P": "27a2fd5991a988bd4cfd5b4cf99cf03b5804d25aa77a7ec888d48e5fdbae44eb",
+    "S": "a9d56edab1d062c0c61558d9b07e71def8360776b7c2d02fd22de80caa8c3bcb"
+  },
+  "payload_differences_from_0247": {
+    "B": [
+      "package/bin/devlyn.js",
+      "package/bin/skill-history.json",
+      "package/config/skills/_shared/role-config.py",
+      "package/config/skills/_shared/task-complete.py",
+      "package/config/skills/devlyn-ideate/SKILL.md",
+      "package/config/skills/devlyn-ideate/references/loop.md",
+      "package/config/skills/devlyn-ideate/scripts/queue.py",
+      "package/package.json"
+    ],
+    "H": [
+      "package/bin/devlyn.js",
+      "package/bin/skill-history.json",
+      "package/config/skills/_shared/role-config.py",
+      "package/config/skills/_shared/task-complete.py",
+      "package/config/skills/devlyn-ideate/SKILL.md",
+      "package/config/skills/devlyn-ideate/references/loop.md",
+      "package/config/skills/devlyn-ideate/scripts/queue.py",
+      "package/package.json"
+    ],
+    "P": [
+      "package/bin/devlyn.js",
+      "package/bin/skill-history.json",
+      "package/config/skills/_shared/role-config.py",
+      "package/config/skills/_shared/task-complete.py",
+      "package/config/skills/devlyn-ideate/SKILL.md",
+      "package/config/skills/devlyn-ideate/references/loop.md",
+      "package/config/skills/devlyn-ideate/scripts/queue.py",
+      "package/package.json"
+    ],
+    "S": [
+      "package/bin/devlyn.js",
+      "package/bin/skill-history.json",
+      "package/config/skills/_shared/role-config.py",
+      "package/config/skills/_shared/task-complete.py",
+      "package/config/skills/devlyn-ideate/SKILL.md",
+      "package/config/skills/devlyn-ideate/references/loop.md",
+      "package/config/skills/devlyn-ideate/scripts/queue.py",
+      "package/package.json"
+    ]
+  },
+  "prediction_sha256": "a93f1128f40458bba71ead6b7033d2c94d09e0a5cc69a93bb158b6973806b366",
+  "regular_payloads": {
+    "B": 241,
+    "H": 243,
+    "P": 243,
+    "S": 242
+  },
+  "selected_native_arms": [
+    "A",
+    "B",
+    "S"
+  ],
+  "source_HEAD_unchanged": true,
+  "source_twelve_inputs_unchanged": true,
+  "status": "PASS",
+  "unused_archive_arms": [
+    "H",
+    "P"
+  ],
+  "verification_script_sha256": "a3a1ca43a5b981493809dbb6925f9ef21760395f879be6a7e31779b0e22bad85",
+  "version": "4.2.5"
+}

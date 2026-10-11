@@ -1,0 +1,6 @@
+{
+  "recorded_before_execution": true,
+  "OR1": "Current shared FileStore.read decodes bytes outside the malformed-data handler; an invalid UTF-8 file is predicted to raise UnicodeDecodeError instead of the documented StorageError. The bytes should remain unchanged.",
+  "OR2": "Current gold close cancels owned tasks on every concurrent call; a second close during asynchronous backend cleanup is predicted to interrupt that cleanup before its public release event. This conflicts with idempotent close awaiting cleanup.",
+  "next_step_if_confirmed": "Include UnicodeError in the public FileStore read error boundary in baseline/gold; make gold issue cancellation once while concurrent close calls all await the outstanding tasks. Recalibrate final trees without overwriting initial evidence."
+}

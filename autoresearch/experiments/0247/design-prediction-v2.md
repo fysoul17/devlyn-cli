@@ -1,0 +1,9 @@
+# 0247 prospective binding refinement v2
+
+Written 2026-10-10T20:17:08.305500+00:00 before candidate tests. Preserve v1 unchanged. Read-only inspection of the actual d05 Codex rollout (SHA256 f2ab7ecea59fa2fc2639a5492a08578217c8614665a1d7466c09f9ffbbd1686f) finds101 valid LF records but103 Unicode splitlines fragments /99 decoded dict rows. Actual event_msg/item_completed and response_item/custom_tool_call_output records72/74 each contain literal U+2028 and are lost by the two live rollout-reader aliases. Neither is a usage/model/reroute event; this does not change old totals or verdicts.
+
+Add only these actual reader bindings to v1: frame.cell_run.legacy.lines (the identity function's module global) and frame.usage.base.events. The old base cell runner/identity are not called; no separate frame.cell_run.base.lines patch is needed. Do not alter0232 trace parsing, accounting algorithms or old module files.
+
+Use one small LF object-decoding routine with three path wrappers preserving the exact filesystem contracts: inventory lines skips non-files; cell lines skips absent paths but raises on existing directories; usage events raises on missing paths/directories. All retain existing errors=replace and tolerant non-dict/malformed-record handling. The strict peer answer decoder remains strict and separate. This avoids accidentally converting a formerly raised missing-usage-file error into an empty successful inventory.
+
+Additional prediction: all101 exact retained rollout records survive at the actual inventory/identity/usage binding entry points; original missing/directory error behavior remains unchanged. Genuine reroute/model/counter handling, unknown-accounting gates and strict answer rejection remain unchanged. These are focused parser fixtures, never a whole-cell replay or regrade of d05.

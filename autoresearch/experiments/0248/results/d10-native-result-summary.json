@@ -1,0 +1,38 @@
+{
+  "cell": "d10-f23-codex-s",
+  "config": "codex",
+  "arm": "S",
+  "status": "STOP",
+  "usage": "PARTIAL",
+  "input_tokens": null,
+  "output_tokens": null,
+  "owner_seconds": 381.6193476660119,
+  "known_usage_lower_bound": {
+    "input_tokens": 564624,
+    "output_tokens": 17725
+  },
+  "owner_status": "EXITED_0",
+  "identity": {
+    "codex_seats": {
+      "01a12810-e397-7633-afc5-13c7882a1eb4": [
+        "owner",
+        "gpt-6-astra",
+        "max"
+      ]
+    },
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "usage_gaps": [
+    "trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4: inference 6d82b8a7-dc63-4201-98b3-dc45b2359694 started without completed usage"
+  ],
+  "teardown": "CLEAN",
+  "reason": "ValueError: whole-run usage PARTIAL",
+  "at": "2026-10-10T23:14:06.367652+00:00",
+  "verdict_sha256": "713324173fd821da277cd776a629473897ef246d9b6a559eae52d82bbddbec7c",
+  "independent_audits": "PENDING",
+  "scope": "Original STOP/PARTIAL retained. Downstream source/public/oracle/delivery not graded. No reroll, favorable reclassification or inferred missing usage."
+}

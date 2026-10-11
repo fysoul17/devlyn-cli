@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-10T16:13:37.913701+00:00",
+  "prediction": "Unchanged reviewed stage verifies exact0242helper/guides/dependencies in new4.2.4 packages and copies exact task/public/oracle controls. Creates undispatched smoke-shaped runtime only; measured runtime/catalog registration still required.",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0242/results/stage.py",
+    "/Users/aipalm/.local/share/nx01/0243-live/staged-v1",
+    "--packs",
+    "/Users/aipalm/.local/share/nx01/0243-live/selected-packs-v1",
+    "--tasks",
+    "autoresearch/experiments/0242/tasks-smoke.json",
+    "--template-runtime",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/runtime-smoke.json",
+    "--review-manifest",
+    "autoresearch/experiments/0242/results/review-manifest-v1.json"
+  ]
+}

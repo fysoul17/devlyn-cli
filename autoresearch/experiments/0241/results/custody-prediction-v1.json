@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-10T15:34:40.053849+00:00",
+  "prediction": "Translating absolute paths to their retained-root-relative suffix finds /home/participant captures and custody copies. Primary-plus-copy and custody-only valid JSON have no missing gap; corrupt custody produces explicit gap. Relative .devlyn custody behavior and outside-read sentinels stay passing.",
+  "source_before": {
+    "capture_discovery.py": "6061c388467f9d20f0be3f46f8ff2da08f397f8e3e30c29a57a0edbeb5aac819",
+    "test_runner.py": "422b20af5e1a7eb0c06f5d72e29c24074da9440c5632904d93ddb08c7742caac"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-10T12:36:19.640582+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0238/build_packages.py",
+    "/Users/aipalm/.local/share/nx01/0238-live/selected-packs-v2",
+    "--toolchain",
+    "/Users/aipalm/.nvm/versions/node/v20.19.0/bin"
+  ],
+  "baseline_decision": "0239/results/import-dedup-decision.md; B includes admitted delivery fixes plus reviewed direct AGENTS import correction.",
+  "prediction": "Four distinct prospective archives build on Node20/npm10. B matches seven accepted copied inputs, adding bundled Marked; S/H/P differ only in root trigger, pair guide, H/P helper and normal generated instruction manifest. No frozen0239 or old0238 preparation archive changes.",
+  "builder_sha256": "197d92ae282ba7693d8e6584eba6a3ecd4687b25f5d3d6e36903390db6bb1a51"
+}

@@ -1,0 +1,152 @@
+{
+  "at": "2026-10-10T15:11:37.571964+00:00",
+  "catalog_gate": "FAIL: collaboration.spawn_agent remains in fresh and resume peer requests despite features.multi_agent=false",
+  "catalogs": [
+    {
+      "payload": "cell/trace/trace-738c1b20-d32a-4aa6-86fe-c99b8de10437-01a12655-325a-7da2-a965-c8842b71b084/payloads/4.json",
+      "role": "owner",
+      "session": "01a12655-325a-7da2-a965-c8842b71b084",
+      "sha256": "b60389f0e84b3de51251246bcbfc65d72d2d726debb5b90f9e11d39159683a95",
+      "tools": {
+        "clock": [
+          "sleep"
+        ],
+        "collaboration": [
+          "followup_task",
+          "interrupt_agent",
+          "list_agents",
+          "send_message",
+          "spawn_agent",
+          "wait_agent"
+        ],
+        "functions": [
+          "exec",
+          "wait",
+          "request_user_input",
+          "request_user_input_async"
+        ]
+      },
+      "trace": "trace-738c1b20-d32a-4aa6-86fe-c99b8de10437-01a12655-325a-7da2-a965-c8842b71b084"
+    },
+    {
+      "payload": "cell/trace/trace-2722469f-c56f-47da-bc9e-7d4bb189d970-01a12657-256e-7581-8c0b-9d27a83616d9/payloads/4.json",
+      "role": "peer",
+      "session": "01a12657-256e-7581-8c0b-9d27a83616d9",
+      "sha256": "12d664312b9f926ec6d980844714001db14a8ae3a3b2053dd13f56aaa9c76575",
+      "tools": {
+        "clock": [
+          "sleep"
+        ],
+        "collaboration": [
+          "followup_task",
+          "interrupt_agent",
+          "list_agents",
+          "send_message",
+          "spawn_agent",
+          "wait_agent"
+        ],
+        "functions": [
+          "exec",
+          "wait",
+          "request_user_input",
+          "request_user_input_async"
+        ]
+      },
+      "trace": "trace-2722469f-c56f-47da-bc9e-7d4bb189d970-01a12657-256e-7581-8c0b-9d27a83616d9"
+    },
+    {
+      "payload": "cell/trace/trace-ea13db5f-eb9f-4669-930c-01d3665a7869-01a12657-256e-7581-8c0b-9d27a83616d9/payloads/4.json",
+      "role": "peer",
+      "session": "01a12657-256e-7581-8c0b-9d27a83616d9",
+      "sha256": "ab03b59added803ee023f474b3d5cd6a678c32d05e787289be3b0f475a7e8b00",
+      "tools": {
+        "clock": [
+          "sleep"
+        ],
+        "collaboration": [
+          "followup_task",
+          "interrupt_agent",
+          "list_agents",
+          "send_message",
+          "spawn_agent",
+          "wait_agent"
+        ],
+        "functions": [
+          "exec",
+          "wait",
+          "request_user_input",
+          "request_user_input_async"
+        ]
+      },
+      "trace": "trace-ea13db5f-eb9f-4669-930c-01d3665a7869-01a12657-256e-7581-8c0b-9d27a83616d9"
+    }
+  ],
+  "codex_roles": {
+    "01a12655-325a-7da2-a965-c8842b71b084": [
+      "owner",
+      "01a12655-325a-7da2-a965-c8842b71b084"
+    ],
+    "01a12657-256e-7581-8c0b-9d27a83616d9": [
+      "peer",
+      "01a12657-256e-7581-8c0b-9d27a83616d9"
+    ]
+  },
+  "counts": {
+    "control_files": 1059,
+    "execution_inputs": 84,
+    "prepared": 5,
+    "sealed_evidence": 1155,
+    "selected_artifacts": 29
+  },
+  "dispatch": "STOP; do not advance to s02/s03",
+  "evidence_manifest_sha256": "6de54619b330dbb7d0ee0ed0d17dcefc350e202b592e6b8771213c5219194692",
+  "integrity": "PASS",
+  "mismatches": {
+    "cell_inputs": [],
+    "controls": [],
+    "evidence": [],
+    "inputs": [],
+    "prepared": [],
+    "selected": []
+  },
+  "old_result_rewritten": false,
+  "peer_turns": [
+    {
+      "exit_code": 0,
+      "resume": null,
+      "seconds": 49.68794173099741,
+      "session": "01a12657-256e-7581-8c0b-9d27a83616d9",
+      "source_unchanged": true,
+      "status": "EXITED"
+    },
+    {
+      "exit_code": 0,
+      "resume": "01a12657-256e-7581-8c0b-9d27a83616d9",
+      "seconds": 10.00316925500374,
+      "session": "01a12657-256e-7581-8c0b-9d27a83616d9",
+      "source_unchanged": true,
+      "status": "EXITED"
+    }
+  ],
+  "raw_verdict": {
+    "known_usage_lower_bound": {
+      "input_tokens": 1175250,
+      "output_tokens": 17382
+    },
+    "owner_seconds": 422.45709574999637,
+    "owner_status": "EXITED_0",
+    "reason": "ValueError: whole-run usage PARTIAL",
+    "status": "STOP",
+    "teardown": "CLEAN",
+    "usage": "PARTIAL",
+    "usage_gaps": [
+      "unreadable Claude result cell/work/.devlyn/pair/peer-check.json",
+      "unreadable Claude result cell/work/.git/devlyn-completion/0bb15e599fb544c2e07a9eee/custody/.devlyn/pair/peer-check.json",
+      "unreadable Claude result cell/work/.devlyn/pair/peer-check.json",
+      "unreadable Claude result cell/work/.git/devlyn-completion/0bb15e599fb544c2e07a9eee/custody/.devlyn/pair/peer-check.json",
+      "Claude accounting: unreadable result cell/work/.devlyn/pair/peer-check.json",
+      "Claude accounting: unreadable result cell/work/.git/devlyn-completion/0bb15e599fb544c2e07a9eee/custody/.devlyn/pair/peer-check.json"
+    ]
+  },
+  "verdict_sha256": "7202d4e01be2132b21b5175e845c10dfe280cb08b0b1336ba586bab1b25114bc"
+}

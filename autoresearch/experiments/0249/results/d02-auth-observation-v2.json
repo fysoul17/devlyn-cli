@@ -1,0 +1,59 @@
+{
+  "at": "2026-10-10T23:59:30.805176+00:00",
+  "d01_credentials": "ZERO_BYTE_TEARDOWN_PLACEHOLDER",
+  "d01_retained_venue": {
+    "account": [
+      "230ea92eea12",
+      "584a8a8f163a"
+    ],
+    "token_seconds_left": 27088
+  },
+  "d02_prepared_directory_exists": false,
+  "d02_verdict_exists": false,
+  "expected": [
+    "230ea92eea12",
+    "584a8a8f163a"
+  ],
+  "host_unchanged_during_probe": true,
+  "mode": "READ_ONLY_NO_LOGIN_REFRESH_RESTORE_OR_MODEL",
+  "not_dispatched_sha256": "c3369e096ca9f0d6c86d5b2131c104b39a6b9b00de866917215a86b9adbf57c9",
+  "sources": {
+    "host_keychain": {
+      "credential_blob_sha256": "f8c6fa7ac79306fec16770e621c5ed3ca90a7092424a2b1b2e330194f7e423ba",
+      "identity": [
+        "cc43a4e02ede",
+        "2905f4abf05b"
+      ],
+      "matches_frozen": false,
+      "profile_status": "PASS",
+      "scopes": [
+        "user:file_upload",
+        "user:inference",
+        "user:mcp_servers",
+        "user:plugins",
+        "user:profile",
+        "user:sessions:claude_code"
+      ],
+      "seconds_left": 27242
+    },
+    "refused_preflight_snapshot": {
+      "credential_blob_sha256": "f8c6fa7ac79306fec16770e621c5ed3ca90a7092424a2b1b2e330194f7e423ba",
+      "identity": [
+        "cc43a4e02ede",
+        "2905f4abf05b"
+      ],
+      "matches_frozen": false,
+      "profile_status": "PASS",
+      "scopes": [
+        "user:file_upload",
+        "user:inference",
+        "user:mcp_servers",
+        "user:plugins",
+        "user:profile",
+        "user:sessions:claude_code"
+      ],
+      "seconds_left": 27242
+    }
+  },
+  "who_changed_host_session": "UNKNOWN_NOT_INFERRED"
+}

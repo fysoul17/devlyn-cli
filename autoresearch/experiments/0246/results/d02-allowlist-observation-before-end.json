@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-10T18:52:43.230902+00:00",
+  "event_sha256": "8ad5bfbb873b83b6921227d612c9c3489f99d5b5ca6d245af64568bab4659db5",
+  "line": 23,
+  "observation": "Owner currently intends to omit helper review and use direct local commit because it interprets ignored records as outside the requested source allowlist.",
+  "original_registration_unchanged": true,
+  "owner_message": "The baseline matched the prediction: all three existing tests passed, and `fulfill-wave` was unrecognized. The rollback design will keep an undo list for each order, including stock taken for a partially filled failing line.\n\nI\u2019ll treat timezone-free submission timestamps as UTC and reject quantities outside JavaScript\u2019s safe integer range to preserve exact stock counts. The repository\u2019s peer-review and delivery helpers write extra files outside the allowlist, so I\u2019ll honor your file restriction and use a direct local commit.\n",
+  "prediction": "No peer may activate unless owner revisits that interpretation; final raw evidence, not this interim statement, decides activation. No intervention, gate change or early product verdict.",
+  "scope": "Reactive before-end protocol observation, not an efficacy prediction or changed gate."
+}

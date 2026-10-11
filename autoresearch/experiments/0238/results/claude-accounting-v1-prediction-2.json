@@ -1,0 +1,38 @@
+{
+  "recorded_at": "2026-10-10T12:28:56.764859+00:00",
+  "prediction": "Nine native accounting tests and all26 runner tests pass. The prior runner failure was fixture contamination: a test switched to a Codex owner but retained its newly complete synthetic Claude-owner transcript. Removing only that obsolete fixture restores the intended native-child-only scenario. Also make terminal_message_count truthfully exclude incomplete messages and assert that metadata in the missing-terminal control. No counting/gating decisions or historic data change.",
+  "files": {
+    "claude-accounting-v1.py": "b1f2d0588e4c85a9ca7f22368d3b04db176a1e3d34646eba9d859ce333bd3eab",
+    "test_claude_accounting.py": "0c8359a6d8af9ec563b1a7ac85d481050ff3b0a55c83ca9f016491efa7210b21",
+    "runner.py": "6dc231c42bd99b8f36b4836864020262435886a88e1184590eafbe9a721a0951",
+    "test_runner.py": "6db017e16cf5822ed3f240834670f1bd357e84bc62210ac59b49bbb9ff013b48"
+  },
+  "commands": [
+    [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "autoresearch/experiments/0238",
+      "-p",
+      "test_claude_accounting.py",
+      "-v"
+    ],
+    [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "autoresearch/experiments/0238",
+      "-p",
+      "test_runner.py",
+      "-v"
+    ]
+  ],
+  "retained_first_run": "claude-accounting-v1-runner-tests-1.json",
+  "reversible_change": "claude-accounting-v1-followup.patch"
+}

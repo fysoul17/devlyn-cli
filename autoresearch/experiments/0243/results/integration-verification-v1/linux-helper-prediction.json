@@ -1,0 +1,32 @@
+{
+  "created_at": "2026-10-10T15:56:04.658635+00:00",
+  "prediction": "The full integrated task-complete helper suite passes on the pinned Linux image as uid0, including both actual unreaped-zombie and live-thread controls; no test skips. Docker init reaps incidental fixture orphans without reaping children deliberately retained by their test parent. No credentials or network are mounted. Existing uid501 probes on the identical cleanup function remain prior evidence, not rerun claims.",
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--init",
+    "--name",
+    "devlyn-integration-helper-0237-v1",
+    "--network",
+    "none",
+    "--user",
+    "0:0",
+    "--pids-limit",
+    "256",
+    "--memory",
+    "4g",
+    "--cpus",
+    "2",
+    "--mount",
+    "type=bind,src=/Users/aipalm/.local/share/nx01/0237-integration/config/skills/_shared,dst=/source,readonly",
+    "--workdir",
+    "/tmp",
+    "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "python3",
+    "-B",
+    "/source/task-complete.py",
+    "--self-test"
+  ],
+  "helper_sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+}

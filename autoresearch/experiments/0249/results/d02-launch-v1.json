@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-10T23:56:51.791781+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/runner.py",
+    "run",
+    "/Users/aipalm/.local/share/nx01/0249-live/staged-v1/runtime-measured.json",
+    "d02-or1-claude-s",
+    "OR1",
+    "S",
+    "claude"
+  ],
+  "freeze_sha256": "ece0fb16b13e13c7dd3b1e3ce925c8a6acbbcb488cdf8d90933ca47f2058e1ed",
+  "audit_sha256": "9f51d208ba96f0eb16fc42f417dfc3fc27a5f27ab4af558afb511f92ad8a2b4e",
+  "prior_root_report_sha256": "3a9b73024a656a529be804363bbe86283de19a1a6468f3af2687d0e8378d74af",
+  "all_621_bindings_match": true,
+  "independent_agents": "ALL_IDLE",
+  "prediction": "Continue fixed OR1 slot2 ClaudeS without using d01 result to change treatment, order, contracts or decision. Preserve complete native usage and all final product/delivery verdicts; STOP closes block without reroll."
+}

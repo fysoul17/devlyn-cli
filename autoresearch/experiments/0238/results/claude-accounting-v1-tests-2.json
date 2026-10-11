@@ -1,0 +1,17 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "autoresearch/experiments/0238",
+    "-p",
+    "test_claude_accounting.py",
+    "-v"
+  ],
+  "started_at": "2026-10-10T12:29:10.366949+00:00",
+  "seconds": 0.29274233398609795,
+  "exit_code": 0
+}

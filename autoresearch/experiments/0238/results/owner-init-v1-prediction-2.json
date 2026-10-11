@@ -1,0 +1,35 @@
+{
+  "time": "2026-10-10T10:21:09.307113+00:00",
+  "prior_result": "13 of14 methods passed; replay method positive passed then noop/deleted hit duplicate-cell guard because the test helper loop variable name overwrote its new cell-name parameter. Actual owner/runner behavior was not changed.",
+  "change": "Rename that test helper loop variable to attribute; exact reversible diff retained in owner-init-v1-test-fix.patch.",
+  "prediction": "All14 targeted tests now pass; source/classifier and usage rules remain identical.",
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/test_runner.py",
+    "-v",
+    "ApparatusTests.test_matched_modules_and_registered_routes",
+    "ApparatusTests.test_init_owner_preserves_exact_0234_lifecycle_and_evidence",
+    "ApparatusTests.test_init_owner_keeps_native_owner_effort_check",
+    "ApparatusTests.test_init_owner_records_actual_argv_and_retains_pair_timing",
+    "ApparatusTests.test_init_runner_retains_recorded_positive_noop_deleted_classification",
+    "ApparatusTests.test_both_cli_defaults_and_trust_seeded_before_seal",
+    "ApparatusTests.test_zero_peer_is_valid_not_forced_activation",
+    "ApparatusTests.test_codex_peer_child_and_resumed_turn_full_accounting",
+    "ApparatusTests.test_wrong_resume_effort_and_missing_effort_are_rejected",
+    "ApparatusTests.test_claude_each_resume_requires_own_native_effort_message",
+    "ApparatusTests.test_failed_peer_then_resumed_recovery_preserves_cost_without_failing_quality",
+    "ApparatusTests.test_deleted_allowed_cli_is_product_failure_through_full_check",
+    "ApparatusTests.test_f23_preserves_old_rows_and_requires_supplement_exit_contract",
+    "ApparatusTests.test_eq3_evaluator_protocol_is_preserved"
+  ],
+  "sources": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/runner.py": "80f14a65f9f0e5af89eaca78cf8170cb5d93ba8e35cd6228f4cdd6be51bd0d48",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/cell-init-v1.py": "daa0e64da8b745746b1abb4445317b965ce1dca5d385e993379a71e20022266f",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/test_runner.py": "7e6b8f21666aff9c7f74a6c75f09116ba7b7dcc8e1289b9348a35b06cec07305",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0234/cell.py": "fabfd55829c2873e06f42abefab598ee8a717e636122a108b03faee0e9e6f0c5",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0234/evidence.py": "595f9018b489034a38c7be61b15e046ec66a393d5ea0c12d9f7e13c8b80de691",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0234/record_usage.py": "7692df70d31e2bbef1cec23f081e0040eeb7f58dd7b08bd99df7ff6bdb32f164"
+  },
+  "scope": "No Docker, native CLI or model invocation. Local Git preparation and synthetic native evidence only."
+}

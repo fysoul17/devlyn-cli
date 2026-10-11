@@ -1,0 +1,421 @@
+{
+  "agent_state_observed": "Root and bounded auditor active; independent custody auditor and final registration reviewer completed. This audit launches no models/tests and returns idle.",
+  "at": "2026-10-10T18:48:52.174689+00:00",
+  "audit_execution_note": "First local audit script stopped at an incorrect peers dictionary key before final report writing. The actual frozen schema uses peer_routes; the read-only audit was corrected. No input, prediction or outcome changed.",
+  "checks": [
+    {
+      "name": "supplied_freeze_identity",
+      "passed": true
+    },
+    {
+      "name": "all_109_execution_hashes",
+      "passed": true
+    },
+    {
+      "name": "all_328_selected_hashes",
+      "passed": true
+    },
+    {
+      "name": "audit_outside_frozen_set",
+      "passed": true
+    },
+    {
+      "name": "runtime_identity",
+      "passed": true
+    },
+    {
+      "detail": {
+        "actual_count": 109,
+        "extra": [],
+        "missing": []
+      },
+      "name": "exact_Runner0245_inputs",
+      "passed": true
+    },
+    {
+      "name": "registered_runner_identity",
+      "passed": true
+    },
+    {
+      "detail": {
+        "added": [
+          "/Users/aipalm/.local/share/nx01/0246-live/runtime-measured.json"
+        ],
+        "common_count": 108,
+        "removed": [
+          "/Users/aipalm/.local/share/nx01/0245-live/staged-v1/runtime-smoke.json"
+        ]
+      },
+      "name": "execution_gates_unchanged_since_0245",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 6
+      },
+      "name": "registration_review_reuse_runtime_tasks_bound",
+      "passed": true
+    },
+    {
+      "name": "final_registration_identity",
+      "passed": true
+    },
+    {
+      "detail": {
+        "sha256": "990577babbcad8fab1773aa1f84d36c85606b3442ce37a52e3983ed14de441ef"
+      },
+      "name": "final_review_SHIP",
+      "passed": true
+    },
+    {
+      "name": "nine_cell_fixed_registration_order",
+      "passed": true
+    },
+    {
+      "name": "historical_d01_single_count",
+      "passed": true
+    },
+    {
+      "name": "combined_historical_new_each_engine_arm_once",
+      "passed": true
+    },
+    {
+      "detail": {
+        "changed_keys": [
+          "auth",
+          "control",
+          "output",
+          "scratch",
+          "tasks_file"
+        ]
+      },
+      "name": "runtime_changes_only_declared_paths",
+      "passed": true
+    },
+    {
+      "name": "phase_measured",
+      "passed": true
+    },
+    {
+      "name": "boot_models_image_account_sources_unchanged",
+      "passed": true
+    },
+    {
+      "name": "reuse_scope_proof_bound_and_consistent",
+      "passed": true
+    },
+    {
+      "name": "ordinary_F23_and_all_nonS2_tasks_unchanged",
+      "passed": true
+    },
+    {
+      "name": "routes_watchdogs_assessors_unchanged",
+      "passed": true
+    },
+    {
+      "name": "model_primary_peer_routes",
+      "passed": true
+    },
+    {
+      "name": "resource_auth_watchdog_gates_registered",
+      "passed": true
+    },
+    {
+      "name": "prediction_matches_diagnostic_scope",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 5
+      },
+      "name": "selected_packages_and_metadata_bound",
+      "passed": true
+    },
+    {
+      "name": "package_prior_audit_PASS_binding",
+      "passed": true
+    },
+    {
+      "name": "B_S_identical_archives_reused",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 7
+      },
+      "name": "seven_baseline_inputs_bound",
+      "passed": true
+    },
+    {
+      "name": "baseline_input_values",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 16
+      },
+      "name": "0245_final_audits_reviews_raw_proof_bound",
+      "passed": true
+    },
+    {
+      "detail": {
+        "integrity_sha256": "a0dcf313d2177bbf296d2dc2d472ef7c79f1daf8b7e926961d2bebab8fd06d9a",
+        "protocol_sha256": "31adf55e52cb511093b762505b90d29af723d408ab1bd547f72f5fc276450d1f"
+      },
+      "name": "both_0245_final_independent_audits_PASS",
+      "passed": true
+    },
+    {
+      "name": "0245_raw_complete_clean_matches_integrity",
+      "passed": true
+    },
+    {
+      "name": "0245_manifest_seal_proof_matches_audit",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 7
+      },
+      "name": "historical_d01_raw_provenance_audit_bound",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 3
+      },
+      "name": "historical_d02_STOP_audits_bound",
+      "passed": true
+    },
+    {
+      "name": "d01_original_PASS_cost_single_counted",
+      "passed": true
+    },
+    {
+      "name": "d02_original_STOP_UNKNOWN_preserved",
+      "passed": true
+    },
+    {
+      "name": "eight_old_cells_remain_unrun",
+      "passed": true
+    },
+    {
+      "name": "public_oracle_control_bindings_unchanged",
+      "passed": true
+    },
+    {
+      "detail": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured"
+      },
+      "name": "measured_output_absent",
+      "passed": true
+    },
+    {
+      "detail": {
+        "command": [
+          "docker",
+          "ps",
+          "--filter",
+          "name=devlyn-0231-",
+          "--format",
+          "{{.Names}}"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "name": "study_native_containers_idle",
+      "passed": true
+    },
+    {
+      "name": "freeze_byte_identical_before_after",
+      "passed": true
+    },
+    {
+      "name": "measured_output_still_absent",
+      "passed": true
+    }
+  ],
+  "execution_inputs": {
+    "count": 109,
+    "mismatches": []
+  },
+  "freeze_sha256_after": "fd3dcf7415e580b9c6b243148e61f5e7745cdb44be562458aeb37f003f74adab",
+  "freeze_sha256_before": "fd3dcf7415e580b9c6b243148e61f5e7745cdb44be562458aeb37f003f74adab",
+  "historical_reused_cell": {
+    "name": "0243/d01-f23-claude-s",
+    "single_count": true,
+    "verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+  },
+  "idle_before_dispatch": true,
+  "limitations": [
+    "Live per-dispatch authentication and startup checks remain required by the unchanged runner; this audit does not execute preflight.",
+    "No 0246 outcome exists. This binds the registered adaptive diagnostic sequence, with no efficacy or adoption claim."
+  ],
+  "model_routes": {
+    "claude": {
+      "owner": {
+        "effort": "max",
+        "engine": "claude",
+        "model": "claude-opus-5-5"
+      },
+      "peer_routes": {
+        "H": {
+          "effort": "max",
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        },
+        "P": {
+          "child_effort": "high",
+          "child_model": "gpt-6-sol",
+          "effort": "max",
+          "engine": "codex",
+          "model": "gpt-6-astra"
+        }
+      },
+      "product_roles": {
+        "pair_judge": {
+          "effort": "max",
+          "engine": "codex",
+          "model": "gpt-6-astra"
+        },
+        "primary_judge": {
+          "effort": "max",
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        },
+        "worker": {
+          "engine": "claude"
+        }
+      },
+      "reviewer": {
+        "effort": "high",
+        "engine": "codex",
+        "model": "gpt-6-astra"
+      }
+    },
+    "codex": {
+      "owner": {
+        "child_effort": "high",
+        "child_model": "gpt-6-sol",
+        "effort": "max",
+        "engine": "codex",
+        "model": "gpt-6-astra"
+      },
+      "peer_routes": {
+        "H": {
+          "child_effort": "high",
+          "child_model": "gpt-6-sol",
+          "effort": "max",
+          "engine": "codex",
+          "model": "gpt-6-astra"
+        },
+        "P": {
+          "effort": "max",
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        }
+      },
+      "product_roles": {
+        "pair_judge": {
+          "effort": "max",
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        },
+        "primary_judge": {
+          "effort": "max",
+          "engine": "codex",
+          "model": "gpt-6-astra"
+        },
+        "worker": {
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-sol"
+        }
+      },
+      "reviewer": {
+        "effort": "high",
+        "engine": "claude",
+        "model": "claude-opus-5-5"
+      }
+    }
+  },
+  "prediction": {
+    "prediction": "All 109 execution inputs and 328 selected artifacts match the final freeze, which exactly matches Runner0245.inputs. Nine new cells preserve the fixed order beginning d02 Codex/P, with historical d01 S counted once and old d02 STOP/PARTIAL unchanged. Both final 0245 audits, raw proof, registration/review, runtime and packages are bound. Measured phase, ordinary F23 request, startup/model/resource/auth gates are unchanged. Output is absent and study owners idle. No broad package/install/test audit, auth operation or model call.",
+    "recorded_at": "2026-10-10T18:46:01.561622+00:00"
+  },
+  "registration_order": [
+    {
+      "arm": "P",
+      "config": "codex",
+      "name": "d02-f23-codex-p",
+      "task": "F23"
+    },
+    {
+      "arm": "A",
+      "config": "claude",
+      "name": "d03-f23-claude-a",
+      "task": "F23"
+    },
+    {
+      "arm": "H",
+      "config": "codex",
+      "name": "d04-f23-codex-h",
+      "task": "F23"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "name": "d05-f23-claude-p",
+      "task": "F23"
+    },
+    {
+      "arm": "B",
+      "config": "codex",
+      "name": "d06-f23-codex-b",
+      "task": "F23"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "name": "d07-f23-claude-h",
+      "task": "F23"
+    },
+    {
+      "arm": "A",
+      "config": "codex",
+      "name": "d08-f23-codex-a",
+      "task": "F23"
+    },
+    {
+      "arm": "B",
+      "config": "claude",
+      "name": "d09-f23-claude-b",
+      "task": "F23"
+    },
+    {
+      "arm": "S",
+      "config": "codex",
+      "name": "d10-f23-codex-s",
+      "task": "F23"
+    }
+  ],
+  "reused_0245_evidence": {
+    "custody_audit_sha256": "31adf55e52cb511093b762505b90d29af723d408ab1bd547f72f5fc276450d1f",
+    "integrity_audit_sha256": "a0dcf313d2177bbf296d2dc2d472ef7c79f1daf8b7e926961d2bebab8fd06d9a",
+    "native_verdict_sha256": "e3f14bf09088422acb42554fe89a746b927eb46341b1ba4e4717001590576dec",
+    "package_audit_sha256": "7d010b18a7856e9e3b92910d83007935763f091256e367cfaecd7957cb1b8309"
+  },
+  "scope": "Bounded independent pre-dispatch freeze audit. Imported unchanged Runner0245 and called inputs only; no prepare/run, model, authentication, install, test, payload or broad native-evidence re-audit. Existing final 0245 integrity/protocol and package reviews reused through immutable bindings.",
+  "selected_artifacts": {
+    "count": 328,
+    "mismatches": []
+  },
+  "status": "PASS"
+}

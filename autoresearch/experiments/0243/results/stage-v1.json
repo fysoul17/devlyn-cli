@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-10T16:13:38.410716+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0242/results/stage.py",
+    "/Users/aipalm/.local/share/nx01/0243-live/staged-v1",
+    "--packs",
+    "/Users/aipalm/.local/share/nx01/0243-live/selected-packs-v1",
+    "--tasks",
+    "autoresearch/experiments/0242/tasks-smoke.json",
+    "--template-runtime",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/runtime-smoke.json",
+    "--review-manifest",
+    "autoresearch/experiments/0242/results/review-manifest-v1.json"
+  ],
+  "exit_code": 0,
+  "seconds": 0.4963887500052806,
+  "stdout": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/runtime-smoke.json\n",
+  "stderr": ""
+}

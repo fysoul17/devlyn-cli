@@ -1,0 +1,11 @@
+{
+  "recorded_at": "2026-10-10T03:11:32.743000+00:00",
+  "before_v2": true,
+  "v1_sha256": "4a15e01ff596e6bef06761c5f492a71714ab416ea44542d6586ab54ea066e4e0",
+  "predictions": [
+    "Permission-only V1 still permits a root-observed zombie leader with a live worker because no PermissionError occurs.",
+    "Applying the same fresh terminal-group evidence when cwd is missing will retain a live worker under uid0 and uid501.",
+    "Single-thread zombies permit attested cleanup under both users, while live cwd holders and nondumpable live processes retain.",
+    "Unknown nonterminal processes lacking cwd will now conservatively retain. Actual process disappearance continues to be tolerated; no broad kernel-thread exemption is introduced."
+  ]
+}

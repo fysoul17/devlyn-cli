@@ -1,0 +1,13 @@
+{
+  "time": "2026-10-10T23:36:44.448198+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/test_runner.py"
+  ],
+  "prediction": "Four focused tests pass: B5 uses exactly the original five 0233 orphan rows and preserves a product failure; E1 still uses0234; complete exit0 OR1 oracle preserves individual false rows; nonzero OR1 oracle raises STOP-bound ValueError with full raw diagnostic and row identifiers. No native model or container calls.",
+  "inputs": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/runner.py": "a2b22bac4e2847580ceb58d337be80f49d9c28d9b45942fee74c2c96638cb41c",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/test_runner.py": "58da814e76abf6b34a6d1226dfaf8e51f618a0616b750e838765d0a82eedf3a7"
+  }
+}

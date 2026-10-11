@@ -1,0 +1,501 @@
+{
+  "at": "2026-10-10T20:23:22.664475+00:00",
+  "base": "85004d8b3424488cb65bd593ea2d7354998ddb87",
+  "baseline_inputs": {
+    ".agents/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    ".agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "config/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    "config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "package-lock.json": "292798067830b59eba153167a45972cf5ab92c136de4119a14a32eb109e7e4a6",
+    "package.json": "688e807e5fa90ac3677c1e88df3bfaeb9a04a18fae72a6e853122440b7c2cddd"
+  },
+  "build": {
+    "argv": [
+      "python3",
+      "-B",
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/build_packages.py",
+      "/Users/aipalm/.local/share/nx01/0247-live/selected-packs-v1",
+      "--toolchain",
+      "/Users/aipalm/.nvm/versions/node/v20.19.0/bin",
+      "--source",
+      "/Users/aipalm/.local/share/nx01/0237-integration"
+    ],
+    "cwd": null,
+    "exit_code": 0,
+    "seconds": 7.61640191701008,
+    "stderr_sha256": "7657976608dd0eaf914c050ec1f2c1779230c59e18d3acf9b2f62e80a03c91c0",
+    "stdout_sha256": "2e1bc37b8591b88560871aeb5fdf29daf0ae903b7ea00810c0461f9a64aead16"
+  },
+  "builder_adapter_sha256": "8dcfbe5a77aee059477e3e1f5cb1c0ddbb2ade10605f017b7a00541d22fdf022",
+  "builder_sha256": "197d92ae282ba7693d8e6584eba6a3ecd4687b25f5d3d6e36903390db6bb1a51",
+  "full_product_suites": "NOT_RERUN",
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+  "image_inspect": {
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+      "--format",
+      "{{.Id}}"
+    ],
+    "cwd": null,
+    "exit_code": 0,
+    "seconds": 0.01774870799272321,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_sha256": "418849033f5bdb43b2ef1526804134eee81b29987d7e25b12064b871599b49e1"
+  },
+  "inputs_before_and_after": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0234/prepare.py": "2aad745ad61b38b65e07c80bb7f6974c756d876b5529a3f7227e1de1484f7294",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/build_packages.py": "197d92ae282ba7693d8e6584eba6a3ecd4687b25f5d3d6e36903390db6bb1a51",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0243/results/controls-v1.json": "7ccbe4b6d04c52834a03f82bef61891c81fba517c69463f8ca2d24ac420b7f13",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/results/package-integrity-v1.json": "7d010b18a7856e9e3b92910d83007935763f091256e367cfaecd7957cb1b8309",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/build_packages.py": "8dcfbe5a77aee059477e3e1f5cb1c0ddbb2ade10605f017b7a00541d22fdf022",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/guides/H.md": "18ccf362d107eca2b8549e0dc51b4459751ae7e22e0e7ded200a5257546582b6",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/guides/P.md": "fa782da81c1da4c310d6dd22d2e2c5e560a30e8b50b3642181b85246fa7757a0",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/guides/S.md": "34287e59aa0e32ba09dacb92115715466e1408de0f0620f92fb6ff2db1e9acc3",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/peer.py": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266",
+    "/Users/aipalm/.local/share/nx01/0237-integration/.agents/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    "/Users/aipalm/.local/share/nx01/0237-integration/.agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "/Users/aipalm/.local/share/nx01/0237-integration/bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "/Users/aipalm/.local/share/nx01/0237-integration/config/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    "/Users/aipalm/.local/share/nx01/0237-integration/config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "/Users/aipalm/.local/share/nx01/0237-integration/package-lock.json": "292798067830b59eba153167a45972cf5ab92c136de4119a14a32eb109e7e4a6",
+    "/Users/aipalm/.local/share/nx01/0237-integration/package.json": "688e807e5fa90ac3677c1e88df3bfaeb9a04a18fae72a6e853122440b7c2cddd",
+    "/Users/aipalm/.local/share/nx01/0245-live/package-verification-v1/verify.py": "74faf9fdf28a5dc11cb582e084e07c5fdcab7f8e4341717a1a35d0fc52d4eef5",
+    "/Users/aipalm/.local/share/nx01/0245-live/selected-packs-v1/B.tgz": "edca612f3873fe154c1855d54788d7c097a9d88e97912bc9b36ba755b71aed53",
+    "/Users/aipalm/.local/share/nx01/0245-live/selected-packs-v1/H.tgz": "d8c91d47f567d0e3074cab7debc5332942d4c0cdba80f1ecc2e0d6994c566089",
+    "/Users/aipalm/.local/share/nx01/0245-live/selected-packs-v1/P.tgz": "cd78e54968f3c2325d2d430a5e8b9d237a52cf3cc803a551516bf7b0bc5a5b23",
+    "/Users/aipalm/.local/share/nx01/0245-live/selected-packs-v1/S.tgz": "e01b32c0b15541fc1d887d13e80e0edd9e83f9b97023948762b13ae5276e2bff",
+    "/Users/aipalm/.local/share/nx01/0245-live/selected-packs-v1/packages.json": "cba1e174cec5c5c9be97c4a7a72b26ac9b5631b1da897b0930d5ce3d1bbccca5",
+    "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/prediction.json": "f6c1418cb7460ac77b6d67ff8b10ace39740f54da7de1f1baa68cc75cf006072",
+    "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/verify.py": "985593a730514a0ab35ae9f514813566845445d1e40732886cec7a55941704a4"
+  },
+  "installations": [
+    {
+      "arm": "H",
+      "custody_gitignored": "PASS",
+      "engine": "claude",
+      "help": {
+        "argv": [
+          "python3",
+          "-B",
+          "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-claude/work/.claude/skills/_shared/peer.py",
+          "--help"
+        ],
+        "cwd": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-claude/work",
+        "exit_code": 0,
+        "seconds": 0.04871308401925489,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "31c8c4b7e85a247296aec84e3b9fd21deb223c642d3b2fda8e268fe29a387a65"
+      },
+      "installed_bindings": [
+        {
+          "path": ".agents/skills/_shared/peer.py",
+          "sha256": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266"
+        },
+        {
+          "path": ".agents/skills/_shared/pair.md",
+          "sha256": "18ccf362d107eca2b8549e0dc51b4459751ae7e22e0e7ded200a5257546582b6"
+        },
+        {
+          "path": ".agents/skills/_shared/platform-support.py",
+          "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+        },
+        {
+          "path": ".agents/skills/_shared/task-complete.py",
+          "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+        },
+        {
+          "path": ".agents/skills/_shared/task-completion.md",
+          "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+        },
+        {
+          "path": ".claude/skills/_shared/peer.py",
+          "sha256": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266"
+        },
+        {
+          "path": ".claude/skills/_shared/pair.md",
+          "sha256": "18ccf362d107eca2b8549e0dc51b4459751ae7e22e0e7ded200a5257546582b6"
+        },
+        {
+          "path": ".claude/skills/_shared/platform-support.py",
+          "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+        },
+        {
+          "path": ".claude/skills/_shared/task-complete.py",
+          "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+        },
+        {
+          "path": ".claude/skills/_shared/task-completion.md",
+          "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+        }
+      ],
+      "installed_core_files_per_root": 24,
+      "installed_payload_modes": "PASS",
+      "installed_roots": [
+        ".agents/skills",
+        ".claude/skills"
+      ],
+      "installer": {
+        "argv": [
+          "docker",
+          "run",
+          "--rm",
+          "--network",
+          "none",
+          "--cap-drop",
+          "ALL",
+          "--security-opt",
+          "no-new-privileges",
+          "--env",
+          "HOME=/home/participant",
+          "-w",
+          "/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-claude/work,dst=/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-claude/home,dst=/home/participant",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/packages/H,dst=/install,readonly",
+          "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+          "node",
+          "/install/package/bin/devlyn.js",
+          "-y",
+          "--claude"
+        ],
+        "cwd": null,
+        "exit_code": 0,
+        "seconds": 0.35028675000648946,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "8cc6d1f2c02f72b1567febea05ef7fe0d1ba73dd2cfa4267a2a3ba4d6bf894e6"
+      },
+      "marker_schema_and_version": "PASS",
+      "models": "NONE",
+      "no_out_cli_and_guide": "PASS",
+      "root_instructions": "PASS",
+      "status": "PASS"
+    },
+    {
+      "arm": "H",
+      "custody_gitignored": "PASS",
+      "engine": "codex",
+      "help": {
+        "argv": [
+          "python3",
+          "-B",
+          "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-codex/work/.agents/skills/_shared/peer.py",
+          "--help"
+        ],
+        "cwd": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-codex/work",
+        "exit_code": 0,
+        "seconds": 0.05423316700034775,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "31c8c4b7e85a247296aec84e3b9fd21deb223c642d3b2fda8e268fe29a387a65"
+      },
+      "installed_bindings": [
+        {
+          "path": ".agents/skills/_shared/peer.py",
+          "sha256": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266"
+        },
+        {
+          "path": ".agents/skills/_shared/pair.md",
+          "sha256": "18ccf362d107eca2b8549e0dc51b4459751ae7e22e0e7ded200a5257546582b6"
+        },
+        {
+          "path": ".agents/skills/_shared/platform-support.py",
+          "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+        },
+        {
+          "path": ".agents/skills/_shared/task-complete.py",
+          "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+        },
+        {
+          "path": ".agents/skills/_shared/task-completion.md",
+          "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+        }
+      ],
+      "installed_core_files_per_root": 24,
+      "installed_payload_modes": "PASS",
+      "installed_roots": [
+        ".agents/skills"
+      ],
+      "installer": {
+        "argv": [
+          "docker",
+          "run",
+          "--rm",
+          "--network",
+          "none",
+          "--cap-drop",
+          "ALL",
+          "--security-opt",
+          "no-new-privileges",
+          "--env",
+          "HOME=/home/participant",
+          "-w",
+          "/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-codex/work,dst=/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-codex/home,dst=/home/participant",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/packages/H,dst=/install,readonly",
+          "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+          "node",
+          "/install/package/bin/devlyn.js",
+          "-y"
+        ],
+        "cwd": null,
+        "exit_code": 0,
+        "seconds": 0.2791313329944387,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "b663f9622cc8a48dcddb55f2eac6cf64a46ccb2267e784ba39f25e7692b03cc7"
+      },
+      "marker_schema_and_version": "PASS",
+      "models": "NONE",
+      "no_out_cli_and_guide": "PASS",
+      "root_instructions": "PASS",
+      "status": "PASS"
+    },
+    {
+      "arm": "P",
+      "custody_gitignored": "PASS",
+      "engine": "claude",
+      "help": {
+        "argv": [
+          "python3",
+          "-B",
+          "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-claude/work/.claude/skills/_shared/peer.py",
+          "--help"
+        ],
+        "cwd": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-claude/work",
+        "exit_code": 0,
+        "seconds": 0.04580274998443201,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "31c8c4b7e85a247296aec84e3b9fd21deb223c642d3b2fda8e268fe29a387a65"
+      },
+      "installed_bindings": [
+        {
+          "path": ".agents/skills/_shared/peer.py",
+          "sha256": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266"
+        },
+        {
+          "path": ".agents/skills/_shared/pair.md",
+          "sha256": "fa782da81c1da4c310d6dd22d2e2c5e560a30e8b50b3642181b85246fa7757a0"
+        },
+        {
+          "path": ".agents/skills/_shared/platform-support.py",
+          "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+        },
+        {
+          "path": ".agents/skills/_shared/task-complete.py",
+          "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+        },
+        {
+          "path": ".agents/skills/_shared/task-completion.md",
+          "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+        },
+        {
+          "path": ".claude/skills/_shared/peer.py",
+          "sha256": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266"
+        },
+        {
+          "path": ".claude/skills/_shared/pair.md",
+          "sha256": "fa782da81c1da4c310d6dd22d2e2c5e560a30e8b50b3642181b85246fa7757a0"
+        },
+        {
+          "path": ".claude/skills/_shared/platform-support.py",
+          "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+        },
+        {
+          "path": ".claude/skills/_shared/task-complete.py",
+          "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+        },
+        {
+          "path": ".claude/skills/_shared/task-completion.md",
+          "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+        }
+      ],
+      "installed_core_files_per_root": 24,
+      "installed_payload_modes": "PASS",
+      "installed_roots": [
+        ".agents/skills",
+        ".claude/skills"
+      ],
+      "installer": {
+        "argv": [
+          "docker",
+          "run",
+          "--rm",
+          "--network",
+          "none",
+          "--cap-drop",
+          "ALL",
+          "--security-opt",
+          "no-new-privileges",
+          "--env",
+          "HOME=/home/participant",
+          "-w",
+          "/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-claude/work,dst=/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-claude/home,dst=/home/participant",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/packages/P,dst=/install,readonly",
+          "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+          "node",
+          "/install/package/bin/devlyn.js",
+          "-y",
+          "--claude"
+        ],
+        "cwd": null,
+        "exit_code": 0,
+        "seconds": 0.37664112501079217,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "8cc6d1f2c02f72b1567febea05ef7fe0d1ba73dd2cfa4267a2a3ba4d6bf894e6"
+      },
+      "marker_schema_and_version": "PASS",
+      "models": "NONE",
+      "no_out_cli_and_guide": "PASS",
+      "root_instructions": "PASS",
+      "status": "PASS"
+    },
+    {
+      "arm": "P",
+      "custody_gitignored": "PASS",
+      "engine": "codex",
+      "help": {
+        "argv": [
+          "python3",
+          "-B",
+          "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-codex/work/.agents/skills/_shared/peer.py",
+          "--help"
+        ],
+        "cwd": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-codex/work",
+        "exit_code": 0,
+        "seconds": 0.05339670801186003,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "31c8c4b7e85a247296aec84e3b9fd21deb223c642d3b2fda8e268fe29a387a65"
+      },
+      "installed_bindings": [
+        {
+          "path": ".agents/skills/_shared/peer.py",
+          "sha256": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266"
+        },
+        {
+          "path": ".agents/skills/_shared/pair.md",
+          "sha256": "fa782da81c1da4c310d6dd22d2e2c5e560a30e8b50b3642181b85246fa7757a0"
+        },
+        {
+          "path": ".agents/skills/_shared/platform-support.py",
+          "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+        },
+        {
+          "path": ".agents/skills/_shared/task-complete.py",
+          "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+        },
+        {
+          "path": ".agents/skills/_shared/task-completion.md",
+          "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+        }
+      ],
+      "installed_core_files_per_root": 24,
+      "installed_payload_modes": "PASS",
+      "installed_roots": [
+        ".agents/skills"
+      ],
+      "installer": {
+        "argv": [
+          "docker",
+          "run",
+          "--rm",
+          "--network",
+          "none",
+          "--cap-drop",
+          "ALL",
+          "--security-opt",
+          "no-new-privileges",
+          "--env",
+          "HOME=/home/participant",
+          "-w",
+          "/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-codex/work,dst=/work",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-codex/home,dst=/home/participant",
+          "--mount",
+          "type=bind,src=/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/packages/P,dst=/install,readonly",
+          "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+          "node",
+          "/install/package/bin/devlyn.js",
+          "-y"
+        ],
+        "cwd": null,
+        "exit_code": 0,
+        "seconds": 0.3161764579999726,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "b663f9622cc8a48dcddb55f2eac6cf64a46ccb2267e784ba39f25e7692b03cc7"
+      },
+      "marker_schema_and_version": "PASS",
+      "models": "NONE",
+      "no_out_cli_and_guide": "PASS",
+      "root_instructions": "PASS",
+      "status": "PASS"
+    }
+  ],
+  "native_models_auth": "NOT_ACCESSED",
+  "package_metadata_sha256": "b1856aa5868ebfd9bb02f0fd9b1439706f1588169ac3d5045572a31ae2f9d391",
+  "packages": {
+    "B": "edca612f3873fe154c1855d54788d7c097a9d88e97912bc9b36ba755b71aed53",
+    "H": "32a8c1cf219565eca41fcb3df9026a3a4d603f1c8143ab4573f84903f9d0cb56",
+    "P": "823b1d0cae53e7134de8308f22026a68ffc530741563a7bfb8977aaace661d35",
+    "S": "e01b32c0b15541fc1d887d13e80e0edd9e83f9b97023948762b13ae5276e2bff"
+  },
+  "payload_differences_from_0245": {
+    "B": [],
+    "H": [
+      "package/config/skills/_shared/peer.py"
+    ],
+    "P": [
+      "package/config/skills/_shared/peer.py"
+    ],
+    "S": []
+  },
+  "payload_inventory": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/payload-inventory.json",
+  "payload_inventory_sha256": "72debaef2fcbd7151daf68e985a0d27287f0ee8e15a43a8642b028ba53b77848",
+  "payload_modes": "ALL_UNCHANGED",
+  "prediction": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/prediction.json",
+  "prediction_sha256": "f6c1418cb7460ac77b6d67ff8b10ace39740f54da7de1f1baa68cc75cf006072",
+  "regular_payloads": {
+    "B": 241,
+    "H": 243,
+    "P": 243,
+    "S": 242
+  },
+  "reused_B_S_evidence": {
+    "original_controls": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0243/results/controls-v1.json",
+    "original_controls_sha256": "7ccbe4b6d04c52834a03f82bef61891c81fba517c69463f8ca2d24ac420b7f13",
+    "original_installations": 8,
+    "reason": "B/S archive bytes, all payloads/modes and seven baseline inputs unchanged from 0245; retain its 0243 install provenance.",
+    "report": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/results/package-integrity-v1.json",
+    "reused_configurations": [
+      "B/claude",
+      "B/codex",
+      "S/claude",
+      "S/codex"
+    ],
+    "sha256": "7d010b18a7856e9e3b92910d83007935763f091256e367cfaecd7957cb1b8309"
+  },
+  "reused_verifier": "/Users/aipalm/.local/share/nx01/0245-live/package-verification-v1/verify.py",
+  "reused_verifier_sha256": "74faf9fdf28a5dc11cb582e084e07c5fdcab7f8e4341717a1a35d0fc52d4eef5",
+  "scope": "0247 machinery package/offline installation integrity only",
+  "seconds": 8.242795791011304,
+  "source_mutations": "NONE",
+  "status": "PASS",
+  "verification_script": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/verify.py",
+  "verification_script_sha256": "985593a730514a0ab35ae9f514813566845445d1e40732886cec7a55941704a4",
+  "version": "4.2.4"
+}

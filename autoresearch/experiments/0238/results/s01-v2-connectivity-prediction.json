@@ -1,0 +1,5 @@
+{
+  "time": "2026-10-10T14:07:06.223140+00:00",
+  "prediction": "If the observed EAI_AGAIN was transient environment DNS failure rather than an authentication or pair-argument failure, fresh unauthenticated getaddrinfo plus HTTPS against api.anthropic.com should now work in the same image/network/security/resources, without changing resolver settings. A pass establishes only present connectivity, not historical cause or model transport success.",
+  "probe": "No credentials or model inference; host and fresh short-lived container. Preserve all stdout, stderr and exit status."
+}

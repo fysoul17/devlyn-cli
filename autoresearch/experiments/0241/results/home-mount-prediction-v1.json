@@ -1,0 +1,30 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "autoresearch/experiments/0241",
+    "-p",
+    "test_*.py",
+    "-v"
+  ],
+  "prediction": [
+    "Mapping /home/participant/capture.json will select out/home/capture.json without a fabricated unreadable out/home/participant/capture.json.",
+    "An absent capture will retain the exact missing out/home/capture.json gap.",
+    "Unsupported /home locations, including normalization of /home/participant/../capture.json, will remain explicit mapping errors.",
+    "A declared capture resolving through a home symlink outside retained evidence will not be read and will produce a gap.",
+    "All existing37 and3new fixture tests pass; frozen0238/0240 sources and v1 report/review bytes remain unchanged."
+  ],
+  "preserved_v1_sha256": {
+    "capture_discovery.py": "f49ea13c95d7f589ab107be245cb05752de58657800abec7650185c29a7ffdd4",
+    "test_runner.py": "3ea2612475804ac1ff3b7e916cf6228464cdb98339f060d9fd7a06b8f0316bb8"
+  },
+  "recorded_at": "2026-10-10T15:31:46.112496+00:00",
+  "source_contract": [
+    "0234/locate.py:17 maps /home/participant to home.",
+    "0234/cell.py:140 and0238/cell-init-v1.py:37 mount retained home at /home/participant."
+  ]
+}

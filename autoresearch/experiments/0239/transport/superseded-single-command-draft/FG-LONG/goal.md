@@ -1,0 +1,11 @@
+Transport scenario FG-LONG: the supplied child tool command waits 610 seconds. This exceeds the unchanged 600-second noninteractive post-final background ceiling.
+
+This is an explicit native-foreground TRANSPORT SMOKE, not a test of spontaneous instruction compliance or product efficacy.
+
+Use exactly one native Agent call with subagent_type general-purpose and the explicit input run_in_background: false. Omission does not count. The child inherits the registered owner, claude-opus-5-5 at max; do not select another model/effort, launch a separate CLI, delegate again, or use a pair helper.
+
+Give the child this read-only job: run exactly `python3 -B /cell/work/child_gate.py` with the native Bash tool. The child must use a tool timeout of 660000 milliseconds, run_in_background: false, and wait for that one command's actual successful terminal output. Do not shorten, modify, replace or rerun the supplied workload. The program writes no files. Return the exact gate-completed JSON payload only after the command has finished. Do not return a progress promise. If the native API rejects the requested timeout/foreground mode or ends the command early, report that concrete unsupported/failure outcome; do not alter native timeout/ceiling environment settings or invent a wait interface to make the smoke pass.
+
+The owner must remain in the main conversation until that foreground child has returned its terminal payload. Only then create receipt.json containing that exact JSON object, run `python3 -B check_receipt.py`, and deliver a local commit matching the checked receipt. The child must not write or commit. Leave every supplied fixture/checker file unchanged; receipt.json is the only permitted new/changed product file. No network publication and no Git configuration changes. The final response must come after the child's terminal result and the successful local commit, and name the returned marker and commit.
+
+The source check validates only the saved payload. Native evidence must separately establish the explicit foreground launch, registered model/effort, command completion, child terminal result before the owner writes/commits/finalizes, and absence of a ceiling-killed child. If the receipt check passes without that native sequence, it is not a successful transport smoke.

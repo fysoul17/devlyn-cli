@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-10T15:30:16.991347+00:00",
+  "prediction": "Model-free staging succeeds with all selected archive/source/native dependency checks; no auth is read or model called. Implementation review is pending; staging alone authorizes no dispatch.",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0241/results/stage.py",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v1",
+    "--packs",
+    "/Users/aipalm/.local/share/nx01/0241-live/selected-packs-v1",
+    "--tasks",
+    "autoresearch/experiments/0241/tasks-smoke.json",
+    "--template-runtime",
+    "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/runtime-smoke.json",
+    "--review-manifest",
+    "autoresearch/experiments/0241/results/review-manifest-v1.json"
+  ]
+}

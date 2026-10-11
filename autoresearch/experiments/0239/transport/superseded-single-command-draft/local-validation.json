@@ -1,0 +1,113 @@
+{
+  "time": "2026-10-10T10:37:04.364109+00:00",
+  "scope": "LOCAL_SYNTHETIC_RECEIPT_VALIDATION_ONLY_NO_GATE_EXECUTED",
+  "syntax": "PASS",
+  "results": [
+    {
+      "task": "FG-SHORT",
+      "case": "missing",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": ""
+    },
+    {
+      "task": "FG-SHORT",
+      "case": "synthetic-valid",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "stdout": "{\"receipt_pass\": true}\n",
+      "stderr": ""
+    },
+    {
+      "task": "FG-SHORT",
+      "case": "wrong-marker",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": ""
+    },
+    {
+      "task": "FG-SHORT",
+      "case": "too-short",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": ""
+    },
+    {
+      "task": "FG-LONG",
+      "case": "missing",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": ""
+    },
+    {
+      "task": "FG-LONG",
+      "case": "synthetic-valid",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "expected_exit": 0,
+      "exit_code": 0,
+      "stdout": "{\"receipt_pass\": true}\n",
+      "stderr": ""
+    },
+    {
+      "task": "FG-LONG",
+      "case": "wrong-marker",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": ""
+    },
+    {
+      "task": "FG-LONG",
+      "case": "too-short",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": ""
+    }
+  ],
+  "passed": true,
+  "source_unchanged": true
+}

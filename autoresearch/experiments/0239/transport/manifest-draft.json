@@ -1,0 +1,42 @@
+{
+  "status": "DRAFT_NOT_REGISTERED_RUNTIME_AND_PACKAGES_UNSELECTED",
+  "scope": "CLAUDE_ONLY_EXPLICIT_FOREGROUND_TRANSPORT_NOT_COMPLIANCE_OR_EFFICACY",
+  "revision": "two-sequential-foreground-commands-v2",
+  "tasks": {
+    "FG-SHORT": {
+      "source_dir": "autoresearch/experiments/0239/transport/FG-SHORT/visible",
+      "source_sha256": {
+        "README.md": "f4f8ebdbd62178b57b2ae6b1e44f246b1d9f4673d467e655648a46e34e4cc991",
+        "check_receipt.py": "f9123620ce1a70988f8fbfd7ad1ddde87ce036be3cc214f68f1326604a0e6e6f",
+        "child_gate.py": "15b9823517d8eb0583cc214d987a691af20c28d87375bdeff7f51ce653d08233",
+        "scenario.json": "04f0333a6167ed6616620e54813afb69e9639dc5bc4574c2853255cd2d2f2c8a"
+      },
+      "request_sha256": "30b75e374b84c8d3ee94629b87e43862ccfc53eac6eabe5648d4b4e390778a9b",
+      "part_wait_seconds": [
+        1
+      ],
+      "total_child_wait_seconds": 1,
+      "bash_timeout_ms": 360000
+    },
+    "FG-LONG": {
+      "source_dir": "autoresearch/experiments/0239/transport/FG-LONG/visible",
+      "source_sha256": {
+        "README.md": "f4f8ebdbd62178b57b2ae6b1e44f246b1d9f4673d467e655648a46e34e4cc991",
+        "check_receipt.py": "f9123620ce1a70988f8fbfd7ad1ddde87ce036be3cc214f68f1326604a0e6e6f",
+        "child_gate.py": "15b9823517d8eb0583cc214d987a691af20c28d87375bdeff7f51ce653d08233",
+        "scenario.json": "0296dc98df81d103377a8c6e482488f99c4ebe3f471c6432da6613e129926e31"
+      },
+      "request_sha256": "b641df9e84352544139416153b10d641c6dd54d269f0f1857dd3d7a91cff60d6",
+      "part_wait_seconds": [
+        305,
+        305
+      ],
+      "total_child_wait_seconds": 610,
+      "bash_timeout_ms": 360000
+    }
+  },
+  "route_source": "autoresearch/experiments/0237/tasks-confirmation-max.json",
+  "runner": "autoresearch/experiments/0237/runner-init-v1.py",
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+  "tasks_sha256": "afc215c2a51de71a0c61cbcf5d6c50164c868cb0c158c8b3b913fc4d4ac58476"
+}

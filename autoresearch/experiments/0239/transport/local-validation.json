@@ -1,0 +1,339 @@
+{
+  "started_at": "2026-10-10T10:42:10.837877+00:00",
+  "finished_at": "2026-10-10T10:42:11.146383+00:00",
+  "scope": "LOCAL_SYNTHETIC_RECEIPT_VALIDATION_ONLY_NO_GATE_EXECUTED",
+  "prediction_sha256": "a3bef3ed229aae5a5f4fd77e815ccd85416ed0dcf497e994d5a7afa044145c49",
+  "manifest_sha256": "a4cacc95d24de8fa9eb53d4f7adaa04b4f5cde7fc6fcd3e5161ba215b99a8491",
+  "compiles": [
+    {
+      "file": "autoresearch/experiments/0239/transport/FG-SHORT/visible/check_receipt.py",
+      "sha256": "f9123620ce1a70988f8fbfd7ad1ddde87ce036be3cc214f68f1326604a0e6e6f",
+      "status": "PASS"
+    },
+    {
+      "file": "autoresearch/experiments/0239/transport/FG-SHORT/visible/child_gate.py",
+      "sha256": "15b9823517d8eb0583cc214d987a691af20c28d87375bdeff7f51ce653d08233",
+      "status": "PASS"
+    },
+    {
+      "file": "autoresearch/experiments/0239/transport/FG-LONG/visible/check_receipt.py",
+      "sha256": "f9123620ce1a70988f8fbfd7ad1ddde87ce036be3cc214f68f1326604a0e6e6f",
+      "status": "PASS"
+    },
+    {
+      "file": "autoresearch/experiments/0239/transport/FG-LONG/visible/child_gate.py",
+      "sha256": "15b9823517d8eb0583cc214d987a691af20c28d87375bdeff7f51ce653d08233",
+      "status": "PASS"
+    }
+  ],
+  "rows": [
+    {
+      "task": "FG-SHORT",
+      "case": "missing",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "cwd": "disposable copy of autoresearch/experiments/0239/transport/FG-SHORT/visible",
+      "receipt": null,
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": "",
+      "matches_prediction": true
+    },
+    {
+      "task": "FG-SHORT",
+      "case": "valid-synthetic",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "cwd": "disposable copy of autoresearch/experiments/0239/transport/FG-SHORT/visible",
+      "receipt": {
+        "parts": [
+          {
+            "event": "gate-completed",
+            "scenario": "FG-SHORT",
+            "part": 1,
+            "marker": "fg-short-part-1-terminal",
+            "elapsed_seconds": 1
+          }
+        ]
+      },
+      "expected_exit": 0,
+      "exit_code": 0,
+      "stdout": "{\"receipt_pass\": true}\n",
+      "stderr": "",
+      "matches_prediction": true
+    },
+    {
+      "task": "FG-SHORT",
+      "case": "wrong-marker",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "cwd": "disposable copy of autoresearch/experiments/0239/transport/FG-SHORT/visible",
+      "receipt": {
+        "parts": [
+          {
+            "event": "gate-completed",
+            "scenario": "FG-SHORT",
+            "part": 1,
+            "marker": "wrong-marker",
+            "elapsed_seconds": 1
+          }
+        ]
+      },
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": "",
+      "matches_prediction": true
+    },
+    {
+      "task": "FG-SHORT",
+      "case": "too-short",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "cwd": "disposable copy of autoresearch/experiments/0239/transport/FG-SHORT/visible",
+      "receipt": {
+        "parts": [
+          {
+            "event": "gate-completed",
+            "scenario": "FG-SHORT",
+            "part": 1,
+            "marker": "fg-short-part-1-terminal",
+            "elapsed_seconds": 0
+          }
+        ]
+      },
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": "",
+      "matches_prediction": true
+    },
+    {
+      "task": "FG-LONG",
+      "case": "missing",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "cwd": "disposable copy of autoresearch/experiments/0239/transport/FG-LONG/visible",
+      "receipt": null,
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": "",
+      "matches_prediction": true
+    },
+    {
+      "task": "FG-LONG",
+      "case": "valid-synthetic",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "cwd": "disposable copy of autoresearch/experiments/0239/transport/FG-LONG/visible",
+      "receipt": {
+        "parts": [
+          {
+            "event": "gate-completed",
+            "scenario": "FG-LONG",
+            "part": 1,
+            "marker": "fg-long-part-1-terminal",
+            "elapsed_seconds": 305
+          },
+          {
+            "event": "gate-completed",
+            "scenario": "FG-LONG",
+            "part": 2,
+            "marker": "fg-long-part-2-terminal",
+            "elapsed_seconds": 305
+          }
+        ]
+      },
+      "expected_exit": 0,
+      "exit_code": 0,
+      "stdout": "{\"receipt_pass\": true}\n",
+      "stderr": "",
+      "matches_prediction": true
+    },
+    {
+      "task": "FG-LONG",
+      "case": "wrong-marker",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "cwd": "disposable copy of autoresearch/experiments/0239/transport/FG-LONG/visible",
+      "receipt": {
+        "parts": [
+          {
+            "event": "gate-completed",
+            "scenario": "FG-LONG",
+            "part": 1,
+            "marker": "wrong-marker",
+            "elapsed_seconds": 305
+          },
+          {
+            "event": "gate-completed",
+            "scenario": "FG-LONG",
+            "part": 2,
+            "marker": "fg-long-part-2-terminal",
+            "elapsed_seconds": 305
+          }
+        ]
+      },
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": "",
+      "matches_prediction": true
+    },
+    {
+      "task": "FG-LONG",
+      "case": "too-short",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "cwd": "disposable copy of autoresearch/experiments/0239/transport/FG-LONG/visible",
+      "receipt": {
+        "parts": [
+          {
+            "event": "gate-completed",
+            "scenario": "FG-LONG",
+            "part": 1,
+            "marker": "fg-long-part-1-terminal",
+            "elapsed_seconds": 304
+          },
+          {
+            "event": "gate-completed",
+            "scenario": "FG-LONG",
+            "part": 2,
+            "marker": "fg-long-part-2-terminal",
+            "elapsed_seconds": 305
+          }
+        ]
+      },
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": "",
+      "matches_prediction": true
+    },
+    {
+      "task": "FG-LONG",
+      "case": "missing-part",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "cwd": "disposable copy of autoresearch/experiments/0239/transport/FG-LONG/visible",
+      "receipt": {
+        "parts": [
+          {
+            "event": "gate-completed",
+            "scenario": "FG-LONG",
+            "part": 1,
+            "marker": "fg-long-part-1-terminal",
+            "elapsed_seconds": 305
+          }
+        ]
+      },
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": "",
+      "matches_prediction": true
+    },
+    {
+      "task": "FG-LONG",
+      "case": "duplicate-part",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "cwd": "disposable copy of autoresearch/experiments/0239/transport/FG-LONG/visible",
+      "receipt": {
+        "parts": [
+          {
+            "event": "gate-completed",
+            "scenario": "FG-LONG",
+            "part": 1,
+            "marker": "fg-long-part-1-terminal",
+            "elapsed_seconds": 305
+          },
+          {
+            "event": "gate-completed",
+            "scenario": "FG-LONG",
+            "part": 1,
+            "marker": "fg-long-part-1-terminal",
+            "elapsed_seconds": 305
+          }
+        ]
+      },
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": "",
+      "matches_prediction": true
+    },
+    {
+      "task": "FG-LONG",
+      "case": "reversed-parts",
+      "command": [
+        "python3",
+        "-B",
+        "check_receipt.py"
+      ],
+      "cwd": "disposable copy of autoresearch/experiments/0239/transport/FG-LONG/visible",
+      "receipt": {
+        "parts": [
+          {
+            "event": "gate-completed",
+            "scenario": "FG-LONG",
+            "part": 2,
+            "marker": "fg-long-part-2-terminal",
+            "elapsed_seconds": 305
+          },
+          {
+            "event": "gate-completed",
+            "scenario": "FG-LONG",
+            "part": 1,
+            "marker": "fg-long-part-1-terminal",
+            "elapsed_seconds": 305
+          }
+        ]
+      },
+      "expected_exit": 1,
+      "exit_code": 1,
+      "stdout": "{\"receipt_pass\": false}\n",
+      "stderr": "",
+      "matches_prediction": true
+    }
+  ],
+  "all_matched": true,
+  "source_hashes_unchanged": true,
+  "literal_request_bindings_match": true,
+  "non_task_routes_watchdogs_assessors_byte_equivalent": true,
+  "native_calls": 0,
+  "docker_calls": 0,
+  "gate_executions": 0
+}

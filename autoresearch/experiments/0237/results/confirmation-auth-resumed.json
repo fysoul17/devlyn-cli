@@ -1,0 +1,13 @@
+{
+  "time": "2026-10-10T07:11:43.553226+00:00",
+  "same_account_preflight": "PASS",
+  "account": [
+    "cc43a4e02ede",
+    "2905f4abf05b"
+  ],
+  "observed_token_seconds_left": 25756,
+  "guard_unchanged": true,
+  "recovery_mapping_sha256": "404c1af2dfd8febbc9abc83fb1e1b923992be60f22d9598890eda739d8966b52",
+  "resume_schedule": "/Users/aipalm/.local/share/nx01/0237-live/cells-confirmation-cf-config-resume-v1.tsv",
+  "completed_f01_preserved": true
+}

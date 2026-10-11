@@ -1,0 +1,57 @@
+{
+  "all_predictions_matched": true,
+  "completed_at": "2026-10-10T04:27:46.828192+00:00",
+  "control_manifest_sha256": "bb4e5d99c4d0bded88370a7c6165348099f590538c2c22813cd18b163e64c88a",
+  "evaluator_sha256": "e69f8a0a3f24163b349ba3175464997d651ef7ed9341aad30c62222393328f2d",
+  "fixtures_unchanged": true,
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+  "model_calls": 0,
+  "network": "none",
+  "new_control_unchanged": true,
+  "old_control_unchanged": true,
+  "prediction_sha256": "cdaa5d700a0d2b2374b9ca6ca7cda53e670a62f01695d835ebbc58ff238a08ca",
+  "results": [
+    {
+      "control": "baseline",
+      "hidden_pass": 1,
+      "hidden_total": 12,
+      "public_pass": true,
+      "raw": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/results/confirmation-calibration-pinned/CF-CONFIG.baseline.json",
+      "rows_match_prediction": true,
+      "seconds": 0.7565257500100415,
+      "task": "CF-CONFIG"
+    },
+    {
+      "control": "gold",
+      "hidden_pass": 12,
+      "hidden_total": 12,
+      "public_pass": true,
+      "raw": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/results/confirmation-calibration-pinned/CF-CONFIG.gold.json",
+      "rows_match_prediction": true,
+      "seconds": 0.5829719589964952,
+      "task": "CF-CONFIG"
+    },
+    {
+      "control": "baseline",
+      "hidden_pass": 4,
+      "hidden_total": 13,
+      "public_pass": true,
+      "raw": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/results/confirmation-calibration-pinned/CF-LEASE.baseline.json",
+      "rows_match_prediction": true,
+      "seconds": 0.8044440420053434,
+      "task": "CF-LEASE"
+    },
+    {
+      "control": "gold",
+      "hidden_pass": 13,
+      "hidden_total": 13,
+      "public_pass": true,
+      "raw": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/results/confirmation-calibration-pinned/CF-LEASE.gold.json",
+      "rows_match_prediction": true,
+      "seconds": 0.7321214589901501,
+      "task": "CF-LEASE"
+    }
+  ],
+  "source_mounts_readonly": true,
+  "tasks_sha256": "6587ce7b69fec2e1148aba5fe39ba7fdb1c5e0a9e11661bcb7e6881377f2fed4"
+}

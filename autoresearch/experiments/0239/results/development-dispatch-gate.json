@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-10T11:14:26.954300+00:00",
+  "decision": "Dispatch the fixed ordinary C then B diagnostic; no instruction admitted.",
+  "development_freeze_sha256": "eb247ba83527ccf73629342b3e889cedc979e23bb1e9b6d686bca0f4b3a069c2",
+  "other_study_model_calls_running": false,
+  "portability_checks": "All complete before this ordinary comparison; no competing study CPU test job remains.",
+  "selected_inputs_and_catalogs": "MATCH",
+  "smoke_audits": {
+    "s01": "c9a3235ef43b46f03de5536af48fc2e0ff14f89a183953da1fcceabfbb3c18ee",
+    "s02": "342ba86380564728e490d99d8abd7c7153275873e583a88e9215f3e08979503b"
+  }
+}

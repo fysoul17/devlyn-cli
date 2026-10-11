@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-10T18:42:18.164686+00:00",
+  "delivery_pass": true,
+  "efficacy": "NOT_ESTABLISHED",
+  "evidence_manifest_sha256": "7e7ea4de72978f0f38fc2c4db655c805fab87cff1a15123bcf285d0ee7219da4",
+  "independent_audits": "PENDING",
+  "input_tokens": 1360918,
+  "output_tokens": 48745,
+  "owner_seconds": 590.173871957988,
+  "product_check_pass": true,
+  "public_pass": true,
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "teardown": "CLEAN",
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "verdict_sha256": "e3f14bf09088422acb42554fe89a746b927eb46341b1ba4e4717001590576dec"
+}

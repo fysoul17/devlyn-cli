@@ -1,0 +1,142 @@
+{
+  "results": [
+    {
+      "assessment_binding": {
+        "original_request_present": true,
+        "selected_source_same": true,
+        "source_names": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "tasks_same": true
+      },
+      "case": "noop",
+      "checks": {
+        "adjudication_needed": false,
+        "changed": [],
+        "oracle": [
+          {
+            "id": "priority-rollback",
+            "status": "FAIL"
+          },
+          {
+            "id": "single-warehouse-fefo",
+            "status": "FAIL"
+          },
+          {
+            "id": "submillisecond-order",
+            "status": "FAIL"
+          },
+          {
+            "id": "offset-equivalence",
+            "status": "FAIL"
+          }
+        ],
+        "product_check_pass": false,
+        "public": [
+          {
+            "argv": [
+              "sh",
+              "-c",
+              "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && node --test tests/cli.test.js"
+            ],
+            "exit_code": 0,
+            "stderr_tail": "",
+            "stdout_tail": "TAP version 13\n# Subtest: hello default\nok 1 - hello default\n  ---\n  duration_ms: 53.833834\n  type: 'test'\n  ...\n# Subtest: hello with --name\nok 2 - hello with --name\n  ---\n  duration_ms: 29.979542\n  type: 'test'\n  ...\n# Subtest: version prints package version\nok 3 - version prints package version\n  ---\n  duration_ms: 43.10925\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 197.145625\n",
+            "timeout": false
+          }
+        ],
+        "public_pass": true,
+        "scope_violations": []
+      },
+      "delivery": {
+        "baseline": "37cb318636322bf74dca78f82b7f8710a290f227",
+        "commit": "37cb318636322bf74dca78f82b7f8710a290f227",
+        "passed": false,
+        "reason": "required edits exist only outside a post-baseline commit"
+      },
+      "out": "/Users/aipalm/.local/share/nx01/0237-live/0238-full-check-xfrh6wt6/out/noop",
+      "selection": {
+        "candidates": [],
+        "changed": [],
+        "kind": "anchor",
+        "path": "cell/work",
+        "rule": "unchanged-anchor"
+      }
+    },
+    {
+      "assessment_binding": {
+        "original_request_present": true,
+        "selected_source_same": true,
+        "source_names": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "tasks_same": true
+      },
+      "case": "positive",
+      "checks": {
+        "adjudication_needed": false,
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "oracle": [
+          {
+            "id": "priority-rollback",
+            "status": "PASS"
+          },
+          {
+            "id": "single-warehouse-fefo",
+            "status": "PASS"
+          },
+          {
+            "id": "submillisecond-order",
+            "status": "PASS"
+          },
+          {
+            "id": "offset-equivalence",
+            "status": "PASS"
+          }
+        ],
+        "product_check_pass": true,
+        "public": [
+          {
+            "argv": [
+              "sh",
+              "-c",
+              "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && node --test tests/cli.test.js"
+            ],
+            "exit_code": 0,
+            "stderr_tail": "",
+            "stdout_tail": "TAP version 13\n# Subtest: hello default\nok 1 - hello default\n  ---\n  duration_ms: 16.649375\n  type: 'test'\n  ...\n# Subtest: hello with --name\nok 2 - hello with --name\n  ---\n  duration_ms: 15.617042\n  type: 'test'\n  ...\n# Subtest: version prints package version\nok 3 - version prints package version\n  ---\n  duration_ms: 14.982792\n  type: 'test'\n  ...\n# Subtest: fulfill-wave success\nok 4 - fulfill-wave success\n  ---\n  duration_ms: 16.111708\n  type: 'test'\n  ...\n# Subtest: fulfill-wave validation or rejection\nok 5 - fulfill-wave validation or rejection\n  ---\n  duration_ms: 16.432625\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 110.025041\n",
+            "timeout": false
+          }
+        ],
+        "public_pass": true,
+        "scope_violations": []
+      },
+      "delivery": {
+        "baseline": "e03f71a29ac2152d66524523240e2222b3f22690",
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "commit": "60da462fa12743cedce38b48aaff3395f5cf440e",
+        "passed": true,
+        "reason": "local commit matches the assessed task source"
+      },
+      "out": "/Users/aipalm/.local/share/nx01/0237-live/0238-full-check-xfrh6wt6/out/positive",
+      "selection": {
+        "candidates": [],
+        "changed": [
+          "cell/work"
+        ],
+        "kind": "anchor",
+        "path": "cell/work",
+        "rule": "changed-product"
+      }
+    }
+  ],
+  "retained_root": "/Users/aipalm/.local/share/nx01/0237-live/0238-full-check-xfrh6wt6"
+}

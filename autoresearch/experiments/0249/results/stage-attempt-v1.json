@@ -1,0 +1,15 @@
+{
+  "status": "STOP_BEFORE_TASK_OR_STAGE_WRITE",
+  "recorded_at": "2026-10-10T23:29:12.059822+00:00",
+  "argv": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0249/results/stage-build-v1.py"
+  ],
+  "script_sha256": "12f2bd53601b52e7f07212e0b61068ce9672e6e7051e5ed458117717df38101b",
+  "exit_code": 1,
+  "stderr": "AssertionError: E1 at source SHA comparison line 57",
+  "inspection": "All 629 registered E1 files match. Naive read_bytes tree additionally followed node_modules/.bin/mime symlink; inherited packet.content excludes symlink records. Next attempt uses the unchanged actual packet.tree/content contract; no source edits.",
+  "destination_created": false,
+  "tasks_created": false
+}

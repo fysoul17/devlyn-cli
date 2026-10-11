@@ -1,0 +1,40 @@
+"""Prospective terminal-candidate discovery over the frozen 0242 runner."""
+from functools import partial
+import importlib.util
+from pathlib import Path
+import sys
+
+HERE = Path(__file__).resolve().parent
+
+
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+legacy = load('runner0242_terminal_candidates', HERE.parent / '0242/runner.py')
+discovery = load('capture0244', HERE / 'capture_discovery.py')
+read, write, digest, delivery = legacy.read, legacy.write, legacy.digest, legacy.delivery
+policy, base_policy, BaseRunner = legacy.policy, legacy.base_policy, legacy.Runner
+
+
+class Runner(BaseRunner):
+    def __init__(self, runtime_path, tasks_path=None):
+        super().__init__(runtime_path, tasks_path)
+        evidence = self.frame.cell_run.evidence
+        if self.frame.usage.evidence is not evidence:
+            raise ValueError('identity and usage must share one evidence inventory')
+        evidence.claude_envelopes = partial(discovery.claude_envelopes, evidence=evidence)
+
+    def inputs(self):
+        result = super().inputs()
+        paths = [HERE / name for name in ('runner.py', 'capture_discovery.py')]
+        result.update({str(path): digest(path) for path in paths})
+        return result
+
+
+if __name__ == '__main__':
+    legacy.legacy.legacy.legacy.Runner = Runner
+    sys.exit(legacy.legacy.legacy.legacy.main())

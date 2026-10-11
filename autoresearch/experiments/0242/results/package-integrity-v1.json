@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-10T15:57:24.623201+00:00",
+  "checks": [
+    {
+      "arm": "B",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 241
+    },
+    {
+      "arm": "H",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 243
+    },
+    {
+      "arm": "P",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 243
+    },
+    {
+      "arm": "S",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 242
+    }
+  ],
+  "changed_payloads": {
+    "B": [],
+    "H": [
+      "package/config/skills/_shared/peer.py"
+    ],
+    "P": [
+      "package/config/skills/_shared/peer.py"
+    ],
+    "S": []
+  },
+  "baseline_inputs_unchanged": true,
+  "packages_metadata_sha256": "1e2f38491d5a8f23e6a650b449a09a92b67f4c3147b65540685df18576c67a66",
+  "archive_sha256": {
+    "B": "050bc8d6f3af071461903f0c7efd77ae445828f232152cd4f52b6e81faa967b3",
+    "H": "7d34056c0b12035d306c3afc64e9e9cfafd2958633a6ae90df8865b1f3d98b07",
+    "P": "7358c47ce382453e77e1f9b52695b40ff1a3499a23c921ef5a76e58374d6c137",
+    "S": "c031f7d5e5ea752bf153092e059684f281cfd55a1241c643f57b525b22d334d5"
+  },
+  "status": "PASS"
+}

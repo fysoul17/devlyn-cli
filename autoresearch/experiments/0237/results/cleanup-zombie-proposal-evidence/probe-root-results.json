@@ -1,0 +1,62 @@
+{
+  "uid": 0,
+  "pid": 1,
+  "kernel": "6.10.14-linuxkit",
+  "cases": [
+    {
+      "case": "unreaped-single-thread-zombie",
+      "pid": 7,
+      "state": "Z (zombie)",
+      "threads": "1",
+      "ppid": "1",
+      "fd": [],
+      "cwd": {
+        "exception": "FileNotFoundError",
+        "errno": 2
+      },
+      "baseline": "RETURNED"
+    },
+    {
+      "case": "zombie-leader-with-live-writing-thread",
+      "pid": 8,
+      "state": "Z (zombie)",
+      "threads": "2",
+      "ppid": "1",
+      "fd": [],
+      "cwd": {
+        "exception": "FileNotFoundError",
+        "errno": 2
+      },
+      "baseline": "RETURNED",
+      "heartbeat_bytes_before": 1,
+      "heartbeat_bytes_after": 6,
+      "thread_statuses": {
+        "8": "Z (zombie)",
+        "9": "S (sleeping)"
+      }
+    },
+    {
+      "case": "live-cwd-holder",
+      "pid": 10,
+      "state": "R (running)",
+      "threads": "1",
+      "ppid": "1",
+      "fd": [
+        "/proc/10/fd/0",
+        "/proc/10/fd/1",
+        "/proc/10/fd/2",
+        "/proc/10/fd/3"
+      ],
+      "cwd": "/tmp/zombie-fixture-jduqeqvh",
+      "baseline": {
+        "exception": "WriterActive",
+        "message": "active process 10 uses task files; stop/yield it before resume"
+      }
+    }
+  ],
+  "pinned_proc_after_reap": {
+    "exception": "ProcessLookupError",
+    "errno": 3
+  },
+  "all_reaped": "RETURNED"
+}

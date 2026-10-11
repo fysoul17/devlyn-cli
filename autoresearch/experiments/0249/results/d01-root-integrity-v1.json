@@ -1,0 +1,92 @@
+{
+  "at": "2026-10-10T23:56:24.257216+00:00",
+  "checks": {
+    "check_delivery_digests_match": true,
+    "control_1061_unchanged": true,
+    "evidence_files_match": true,
+    "evidence_manifest_matches_verdict": true,
+    "frozen_621_unchanged": true,
+    "identity_policy_teardown": true,
+    "no_active_study_containers": true,
+    "no_evidence_failures": true,
+    "prepared_hashes_match": true,
+    "registered_rows_exact": true,
+    "runner_inputs_exact": true,
+    "seal_inputs_exact": true,
+    "snapshot_matches_checked": true,
+    "usage_agrees": true,
+    "whole_usage_agrees": true
+  },
+  "counts": {
+    "evidence": 909,
+    "frozen_unique": 621,
+    "prepared": 5,
+    "snapshot": 34
+  },
+  "scope": "Root mechanical receipt verification; independent block audit remains required before admission gate. No product/oracle re-execution or regrading.",
+  "status": "PASS",
+  "summary": {
+    "arm": "B",
+    "cell": "d01-or1-codex-b",
+    "config": "codex",
+    "delivery_pass": true,
+    "deterministic_seconds": 0.8341088340093847,
+    "input_tokens": 462541,
+    "known_usage_lower_bound": null,
+    "oracle": [
+      {
+        "id": "recursive-ownership-boundaries",
+        "status": "PASS"
+      },
+      {
+        "id": "open-transaction-refresh-isolation",
+        "status": "PASS"
+      },
+      {
+        "id": "optimistic-conflict-preserves-loser",
+        "status": "PASS"
+      },
+      {
+        "id": "disjoint-rebase-preserves-deletions",
+        "status": "PASS"
+      },
+      {
+        "id": "overlap-rebase-is-atomic",
+        "status": "PASS"
+      },
+      {
+        "id": "absent-delete-retains-write-intent",
+        "status": "PASS"
+      },
+      {
+        "id": "failed-save-retry",
+        "status": "PASS"
+      },
+      {
+        "id": "failed-read-rebase-recovery",
+        "status": "PASS"
+      },
+      {
+        "id": "atomic-backend-conflict-boundary",
+        "status": "PASS"
+      },
+      {
+        "id": "closed-lifecycle-and-durable-store",
+        "status": "PASS"
+      }
+    ],
+    "output_tokens": 15515,
+    "owner_seconds": 342.64161958300974,
+    "owner_status": "EXITED_0",
+    "public_pass": true,
+    "reason": null,
+    "scope_violations": [],
+    "source_check_pass": true,
+    "status": "CHECKS_PASS",
+    "task": "OR1",
+    "teardown": "CLEAN",
+    "usage": "COMPLETE",
+    "usage_gaps": []
+  },
+  "verdict_sha256": "fecb0995312c82f180867d68685fc27503f3461c15d0ad93ba6421ea339347df"
+}

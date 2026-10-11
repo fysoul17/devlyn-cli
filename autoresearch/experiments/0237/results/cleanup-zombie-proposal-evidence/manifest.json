@@ -1,0 +1,100 @@
+{
+  "recorded_at": "2026-10-10T03:19:43.256566+00:00",
+  "status": "PROPOSED_ONLY_NOT_APPLIED",
+  "baseline_commit": "975a01e6200750b75ca4b77b4fcbb95521ed1214",
+  "source": "config/skills/_shared/task-complete.py",
+  "baseline_sha256": "bf4301f4e298305d14ec162a68a36ee6430050e3a2eaf7ab55eb99b5ee49f835",
+  "proposed_sha256": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+  "patch_sha256": "58466c7a54046aeb167cf2c34d561713bbd08df47c89e5fdb6b061f8b0b8eeb9",
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+  "kernel": "6.10.14-linuxkit",
+  "source_copy_scratch": "/Users/aipalm/Documents/GitHub/devlyn-cli/.git/devlyn-completion/af297540908da33bb44bcebd/scratch/zombie-proposal",
+  "results": {
+    "focused_before": {
+      "exit_code": 1,
+      "tests": 3,
+      "errors": 1,
+      "expected": true
+    },
+    "focused_permission_only_after": {
+      "exit_code": 0,
+      "tests": 5
+    },
+    "v3_focused_host": {
+      "exit_code": 0,
+      "tests": 6,
+      "seconds": 4.761
+    },
+    "v3_uid501_probe": {
+      "exit_code": 0
+    },
+    "v3_uid0_probe": {
+      "exit_code": 0
+    },
+    "v3_root_cli": {
+      "exit_code": 0,
+      "tests": 3,
+      "seconds": 0.936
+    },
+    "v3_full_linux_without_init": {
+      "exit_code": 1,
+      "tests": 71,
+      "passed_before_resource_failure": 21,
+      "git_setup_failures": 50,
+      "seconds": 13.171,
+      "pids_limit": 128
+    },
+    "v3_full_linux_with_init": {
+      "exit_code": 0,
+      "tests": 71,
+      "seconds": 54.38,
+      "pids_limit": 128
+    },
+    "git_apply_check": {
+      "exit_code": 0
+    }
+  },
+  "files": {
+    "fix-prediction.json": "76ea14631ba467f61a1875255a015bd49c67411086a7325fcd1802fa596d8594",
+    "focused-after.stderr": "7f069500272dab1ed05369eab2280bd5d9443cec65845f29ee2f8f343c567761",
+    "focused-after.stdout": "4fbdf630ae8a7fa2914b088960318633896df986e0b19f05f713643002d8b2dc",
+    "focused-before.stderr": "5a49106b7f7b6feca92a2925db75d18c8a6c9337b9eec3d447455fdc3be0bc5b",
+    "focused-before.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "full-suite-retry-prediction.json": "1a3509c418297a94b5a35fc67474bd4a4505398cf088ef2dfa0fec927126de46",
+    "kernel-observation-prediction.json": "0ea5441bd9431c0ed39c338f38b3dfb0cd05eda08af8f42d7d7226e31f789771",
+    "kernel-observation-ptrace.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "kernel-observation-ptrace.stdout": "d99c48d29d2ad3bca720048b76b3a6369ed83cea226af72b70bf81dfc7943ab2",
+    "kernel-observation.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "kernel-observation.stdout": "8f457b95742857a8b7c174b9244f73a2b35c7a6186a0e678439d76f312be6afb",
+    "kernel-scan.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "kernel-scan.stdout": "d9ed704b7c5359de1364f201c5b9550bbdfe6077fcecb2ff69b9fb7975842c32",
+    "prediction.json": "ed3722d9f6c34e50059d5eb3211edf481d233272496b4d7bbb0409da836f49a1",
+    "probe-proposed-results.json": "bfac7cb40f2767a9c1249f20071d5530ebee16ff0df5ac207b06124edfde5549",
+    "probe-proposed-root-results.json": "9fdb72601f6145cf7cf8db47d6711c94f201d77ebdc6f812e12181b78c047449",
+    "probe-proposed-root.py": "c719f95a095ee6cb92f29d4698088d76f9f1849140d044d041969fcf5026cdc0",
+    "probe-proposed.py": "8eaac64a86112bda9f1f6b26f142f9c403b6d025ef87efe73d3498ad6c04248f",
+    "probe-results.json": "1081b137ca1064756e7bab1f8e7bfd52e13e9e0ed55dd92ca2deee39de19940b",
+    "probe-root-results.json": "452035fde370195a8f84f57ca2e19fd618d1ea58e32e319527811ab5b13bfe71",
+    "probe-root.py": "b3b2cc518792d57a63ccb9b2ef723ee878470043bffb169ab30984820d0d50f4",
+    "probe-root.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "probe-root.stdout": "452035fde370195a8f84f57ca2e19fd618d1ea58e32e319527811ab5b13bfe71",
+    "probe.py": "f622da766e0d619fcb5ec9bb81a9efc1b8c419474a0e24feba6a74d3296c98d7",
+    "probe.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "probe.stdout": "1081b137ca1064756e7bab1f8e7bfd52e13e9e0ed55dd92ca2deee39de19940b",
+    "root-probe-prediction.json": "9451e5ce3d18475be065ad81ec7b9ee81fd7b834d9c42d32949632d1dd8c75f2",
+    "v2-prediction.json": "460fd744c88c65c9d1f4deaa77b0150261299fd6ad28528d843b6492af4dc9a8",
+    "v3-focused-host.stderr": "95a5cae41e4065fef4774dd42b17053947d9dd6f7d90a7d08e4b0d2d42df1800",
+    "v3-focused-host.stdout": "c7e0c95596726377ff3b0321ccafe2fe341b943340c0e8afbbb63116853adac4",
+    "v3-focused-root.stderr": "06fa6b28a806b14ee35bcb5656aeff3f65b2c0625aee311fa923647a1a9d43f8",
+    "v3-focused-root.stdout": "a1ccd4edb9e36e92dfcca016dc556b74400b2d246cd82f2de797bb3164d7c705",
+    "v3-full-linux-init.stderr": "0a348a938b51e59cb29ad3075c9b91d742bcbaea7459a141395ba53d901cbcae",
+    "v3-full-linux-init.stdout": "c84c62ab158776b3162e1b7171bc81d4370f914efb1a32f63e67bc014a882097",
+    "v3-full-linux.stderr": "9ed6bcb20df301f647174bf6e1a28e1a6bb29ee6843be867e0654095ef18a82f",
+    "v3-full-linux.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "v3-prediction.json": "c765f74b000dd1e64ddf9db23d322dce95e41e342695ae6c92d2969eeec50d35",
+    "v3-probe-0.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "v3-probe-0.stdout": "bfac7cb40f2767a9c1249f20071d5530ebee16ff0df5ac207b06124edfde5549",
+    "v3-probe-1.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "v3-probe-1.stdout": "9fdb72601f6145cf7cf8db47d6711c94f201d77ebdc6f812e12181b78c047449"
+  }
+}

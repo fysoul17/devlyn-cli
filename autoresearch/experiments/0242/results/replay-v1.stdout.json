@@ -1,0 +1,60 @@
+{
+  "calls": [
+    {
+      "invocations": 1,
+      "item_id": "item_21",
+      "line": 44
+    },
+    {
+      "invocations": 1,
+      "item_id": "item_27",
+      "line": 53
+    },
+    {
+      "invocations": 0,
+      "item_id": "item_36",
+      "line": 70
+    }
+  ],
+  "original_policy_status": "UNVERIFIED",
+  "original_usage": {
+    "completeness": "PARTIAL",
+    "gaps": [
+      "peer: observed helper launch has no retained attempt receipt"
+    ],
+    "input_tokens": 1040004,
+    "output_tokens": 17807
+  },
+  "prospective_policy": {
+    "activated": true,
+    "claude_roles": {},
+    "codex_roles": {
+      "01a12676-3aef-7851-9c9c-d81351b81b33": [
+        "owner",
+        "01a12676-3aef-7851-9c9c-d81351b81b33"
+      ],
+      "01a12678-aede-7d52-bae3-84b3b6e297c6": [
+        "peer",
+        "01a12678-aede-7d52-bae3-84b3b6e297c6"
+      ]
+    },
+    "failed_attempts": [],
+    "gaps": [],
+    "protocol_violations": [],
+    "recovered": false,
+    "status": "MATCH",
+    "validation_completion": "COMPLETED",
+    "violations": []
+  },
+  "protected_sha256": {
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex/claude-accounting.json": "251defdcd97e0096b076937c41a88cd9dbb728cba3696485cb4bfdc872446df8",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex/peer-policy.json": "66bafa0cdb6d61ffe448125ba954c8d1acebd9a9e063f5b71cfb63e476e15f0e",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex/plan.json": "47e6f789b35f895dc768bf00d2e0574fb17d0750fcc9b8de960b99d47f2b5929",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex/run/stderr": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex/run/stdout": "16543870efa772334e8c3fde66974a3cace7dd009e47d9a1cbcaa1852fb3edcc",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex/usage.json": "1c4d05cabe3775de22bb6d9fd314e0d6b18064a8d799c8e4e7a3cc8d6becf27f",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/verdict-s01-h-codex.json": "86e879e57de68761b8b11393deabe3c6d3f0e46890e3b826d6b328ceea8696e6"
+  },
+  "protected_unchanged": true,
+  "scope": "Policy component only. Original STOP, PARTIAL and native capability failure unchanged."
+}

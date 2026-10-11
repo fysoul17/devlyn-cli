@@ -1,0 +1,53 @@
+{
+  "recorded_at": "2026-10-10T10:38:10.140711+00:00",
+  "before_controls": true,
+  "scope": "New CFG-LIFE development diagnostic only. Original CF artifacts/results remain immutable. These controls do not validate a harness candidate or establish contract provenance.",
+  "expectations": {
+    "baseline": {
+      "public_exit": 0,
+      "oracle_passed": 1,
+      "oracle_total": 12,
+      "fails_include": [
+        "loader-merge-value-kinds",
+        "repeated-include-public-freshness"
+      ]
+    },
+    "gold": {
+      "public_exit": 0,
+      "oracle_passed": 12,
+      "oracle_total": 12
+    },
+    "sharing": {
+      "public_exit": 0,
+      "oracle_passed": 12,
+      "oracle_total": 12,
+      "probe": "Private merge output intentionally aliases an input list; this is permitted, not an oracle requirement."
+    },
+    "metadata-open": {
+      "public_exit": 0,
+      "oracle_passed": 12,
+      "oracle_total": 12,
+      "probe": "One no-read metadata open plus one actual document read remains permitted."
+    },
+    "cycle-wording": {
+      "public_exit": 0,
+      "oracle_passed": 12,
+      "oracle_total": 12,
+      "probe": "Circular include wording remains useful with unchanged ConfigError path/chain."
+    },
+    "negative-shallow": {
+      "public_exit": 0,
+      "must_fail": [
+        "loader-merge-value-kinds",
+        "relative-diamond-layer-order"
+      ]
+    },
+    "negative-reread": {
+      "public_exit": 0,
+      "oracle_passed": 12,
+      "oracle_total": 12,
+      "known_gap": "Intentionally violates single-document-read-per-load while preserving observed values; diagnostic oracle must disclose this false negative."
+    }
+  },
+  "coverage_gap": "format.md:20-21 single document read and same bytes per invocation remain public obligations but are not measured by this bounded value oracle. Open-event count is not an equivalent contract."
+}

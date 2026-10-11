@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-10T15:00:00.583559+00:00",
+  "prediction": "Reviewed source and new packages validate, creating a fresh0240 control/runtime without authentication reads or model calls. Inherited account fingerprints persist. Actual install checks follow; evaluator controls may reuse only byte-identical relevant inputs.",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0240/results/stage.py",
+    "/Users/aipalm/.local/share/nx01/0240-live/staged-v1",
+    "--packs",
+    "/Users/aipalm/.local/share/nx01/0240-live/selected-packs-v1",
+    "--tasks",
+    "autoresearch/experiments/0240/tasks-smoke.json",
+    "--template-runtime",
+    "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/runtime-smoke-v2.json",
+    "--review-manifest",
+    "autoresearch/experiments/0240/results/review-manifest-v1.json"
+  ]
+}

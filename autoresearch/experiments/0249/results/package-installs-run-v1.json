@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-verify-v1.py",
+    "installs"
+  ],
+  "exit_code": 0,
+  "seconds": 0.5749865840189159,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "e88529d1f4252039993f6b6a04cc08e7d4dbebac6774cfa61ee1d5e7900a31ac"
+}

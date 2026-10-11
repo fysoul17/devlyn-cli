@@ -1,0 +1,12 @@
+{
+  "recorded_at": "2026-10-10T01:33:14.007040+00:00",
+  "old_historical_pin": [
+    "9f2f3a391923",
+    "ea65f3b4f086"
+  ],
+  "current_study_pin": [
+    "cc43a4e02ede",
+    "2905f4abf05b"
+  ],
+  "reason": "0235 historical account pin did not match the currently logged-in account; no model was dispatched. New study pins the actual current login prospectively."
+}

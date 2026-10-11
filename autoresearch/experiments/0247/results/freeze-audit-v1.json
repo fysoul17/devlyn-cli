@@ -1,0 +1,445 @@
+{
+  "at": "2026-10-10T20:27:42.447821+00:00",
+  "attempt_history": [
+    {
+      "at": "2026-10-10T20:26:45.855248+00:00",
+      "failed_checks": [
+        "install_log_1",
+        "install_log_2",
+        "install_log_3",
+        "install_log_4",
+        "install_log_5",
+        "install_log_6",
+        "install_log_7",
+        "install_log_8",
+        "install_log_9",
+        "install_log_10",
+        "install_log_11",
+        "install_log_12",
+        "install_log_13",
+        "install_log_14",
+        "install_log_15",
+        "install_log_16",
+        "supported_auth_margin6300_unchanged"
+      ],
+      "report_sha256": "ff78400dbb92887003d19aca7ed42c9572a5a6d0ba9e152e8bdc849053d0f5aa",
+      "resolution": "All 16 raw log bytes already matched their expected hashes; the initial checker unnecessarily required each log to be a direct freeze key. The frozen package-integrity report binds each hash, verified explicitly here. The initial margin checker incorrectly searched the outer preflight method; the actual inherited snapshot_auth guard is frozen and its live imported MIN_TOKEN_SECONDS is 6300. No input or scope relaxation, source edit, auth invocation or native call occurred.",
+      "status": "FAIL"
+    }
+  ],
+  "catalog_scope": {
+    "actual_all_init_identity_catalog_consistency_active": true,
+    "frozen_expectation_requirement": "Inherited required catalogs apply to measured Claude phase. Smoke currently has no expected catalog comparison. Tests prove actual inherited mismatch STOP; future measured registration must freeze expectations.",
+    "native_smoke_expected_catalog_comparison_active": false,
+    "runtime_boot_catalogs": {},
+    "wording_assessment": "Registration preserves the existing gates; it does not add a smoke expected catalog. This audit explicitly bounds that statement and makes no claim that the native smoke exercises an absent comparison."
+  },
+  "checks": {
+    "0243_d01-f23-claude-s_original_verdict_seal": true,
+    "0243_d02-f23-codex-p_no_post_STOP_grade": true,
+    "0243_d02-f23-codex-p_original_verdict_seal": true,
+    "0246_d02-f23-codex-p_original_verdict_seal": true,
+    "0246_d03-f23-claude-a_original_verdict_seal": true,
+    "0246_d04-f23-codex-h_original_verdict_seal": true,
+    "0246_d05-f23-claude-p_no_post_STOP_grade": true,
+    "0246_d05-f23-claude-p_original_verdict_seal": true,
+    "0246_d05_exact_STOP_usage_preserved": true,
+    "0246_remaining_five_unrun": true,
+    "S2_request_hash_valid": true,
+    "account_fingerprints_and_smoke_catalogs_inherited": true,
+    "actual_Runner_inputs_exact": true,
+    "all_frozen_files_and_freeze_unchanged": true,
+    "all_frozen_hashes_match": true,
+    "all_required_registration_review_test_package_bindings_present": true,
+    "archive_B_byte_identical": true,
+    "archive_B_hash_and_payload": true,
+    "archive_B_scope": true,
+    "archive_H_hash_and_payload": true,
+    "archive_H_scope": true,
+    "archive_P_hash_and_payload": true,
+    "archive_P_scope": true,
+    "archive_S_byte_identical": true,
+    "archive_S_hash_and_payload": true,
+    "archive_S_scope": true,
+    "audit_outside_frozen_set": true,
+    "code_registration_review_ship": true,
+    "control_oracle_inventory_exact": true,
+    "control_oracle_unchanged0245": true,
+    "control_packages_inventory_exact": true,
+    "control_public_inventory_exact": true,
+    "control_public_unchanged0245": true,
+    "exact_frozen_counts": true,
+    "exact_single_cell_order": true,
+    "final_tests32_pass_and_snapshots_bound": true,
+    "freeze_matches_announced_sha": true,
+    "install_log_1": true,
+    "install_log_10": true,
+    "install_log_11": true,
+    "install_log_12": true,
+    "install_log_13": true,
+    "install_log_14": true,
+    "install_log_15": true,
+    "install_log_16": true,
+    "install_log_2": true,
+    "install_log_3": true,
+    "install_log_4": true,
+    "install_log_5": true,
+    "install_log_6": true,
+    "install_log_7": true,
+    "install_log_8": true,
+    "install_log_9": true,
+    "installed_H_claude": true,
+    "installed_H_codex": true,
+    "installed_P_claude": true,
+    "installed_P_codex": true,
+    "installed_binding_1": true,
+    "installed_binding_10": true,
+    "installed_binding_11": true,
+    "installed_binding_12": true,
+    "installed_binding_13": true,
+    "installed_binding_14": true,
+    "installed_binding_15": true,
+    "installed_binding_16": true,
+    "installed_binding_17": true,
+    "installed_binding_18": true,
+    "installed_binding_19": true,
+    "installed_binding_2": true,
+    "installed_binding_20": true,
+    "installed_binding_21": true,
+    "installed_binding_22": true,
+    "installed_binding_23": true,
+    "installed_binding_24": true,
+    "installed_binding_25": true,
+    "installed_binding_26": true,
+    "installed_binding_27": true,
+    "installed_binding_28": true,
+    "installed_binding_29": true,
+    "installed_binding_3": true,
+    "installed_binding_30": true,
+    "installed_binding_4": true,
+    "installed_binding_5": true,
+    "installed_binding_6": true,
+    "installed_binding_7": true,
+    "installed_binding_8": true,
+    "installed_binding_9": true,
+    "native_resource_caps_preserved": true,
+    "only_helper_delimiter_and_guides_exact": true,
+    "overlapping_bindings_agree": true,
+    "owner_peer_routes_and_watchdogs_unchanged": true,
+    "package_report_PASS_and_metadata_bound": true,
+    "pinned_image_recorded_inspect_exact": true,
+    "review_manifest_hashes_match": true,
+    "runtime_hash_matches_freeze": true,
+    "seven_baseline_inputs_exact": true,
+    "smoke_expected_catalog_gate_explicitly_absent": true,
+    "smoke_only_no_output_dispatched": true,
+    "supported_auth_margin6300_unchanged": true,
+    "tasks_exact0245_and_staged": true,
+    "test_raw_hashes_match": true,
+    "transitive_logs_unchanged_at_end": true
+  },
+  "completion": "Bounded audit complete; idle before dispatch. Actual native protocol, complete accounting and live supported-auth preflight remain prospective gates.",
+  "constraints": {
+    "accounts_unchanged": true,
+    "auth_guard_binding": {
+      "actual_guard_source": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0222/run_cell.py",
+      "actual_guard_source_sha256": "cb7cabc044430cf19eaf738bbad2b613ec3df56af7a7b18d21e1f2884b6e2a0b",
+      "constant_seconds": 6300,
+      "credential_or_profile_operations": false,
+      "function_called": false,
+      "outer_preflight_source": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/runner.py"
+    },
+    "auth_margin_seconds": 6300,
+    "credential_contents_accessed": false,
+    "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "owner": {
+      "effort": "max",
+      "engine": "claude",
+      "model": "claude-opus-5-5"
+    },
+    "peer": {
+      "effort": "max",
+      "engine": "codex",
+      "model": "gpt-6-astra"
+    },
+    "peer_children": "disabled by unchanged helper argv and policy; inherited route child metadata does not authorize peer descendants",
+    "peer_watchdog_seconds": 540,
+    "resources": "--init, PID256, memory4g, CPU2",
+    "watchdogs": {
+      "assessor": 600,
+      "evaluator": 600,
+      "owner": 5400,
+      "review": 600
+    }
+  },
+  "controls": {
+    "oracle": 26,
+    "packages": 969,
+    "public": 64
+  },
+  "findings": [],
+  "freeze": {
+    "actual_Runner_inputs_exact": true,
+    "execution_inputs": 117,
+    "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/freeze-smoke-v1.json",
+    "runtime_sha256": "74ba310277253c78eeb5379496f8b8ce6fd21964d54d920d4631bb31df7396d0",
+    "selected_artifacts": 454,
+    "sha256_after": "c0c18c85142245c6fd636ccbd7fe178d5c7a577f8cb6b2ca1a67758d561458d9",
+    "sha256_before": "c0c18c85142245c6fd636ccbd7fe178d5c7a577f8cb6b2ca1a67758d561458d9",
+    "unique_bound_files": 541
+  },
+  "inspection_note": "A preliminary metadata read attempted JSON parsing of image.stdout; it contains docker inspect --format plain text. Read-only inspection stopped without writes; final verification uses the recorded format and exact output hash.",
+  "packages": {
+    "B_S_unchanged_install_evidence_reused": true,
+    "baseline_inputs": 7,
+    "installation_raw_log_bindings": [
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "H/claude/installer/stdout_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-claude/installer.stdout",
+        "sha256": "8cc6d1f2c02f72b1567febea05ef7fe0d1ba73dd2cfa4267a2a3ba4d6bf894e6"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "H/claude/installer/stderr_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-claude/installer.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "H/claude/help/stdout_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-claude/peer-help.stdout",
+        "sha256": "31c8c4b7e85a247296aec84e3b9fd21deb223c642d3b2fda8e268fe29a387a65"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "H/claude/help/stderr_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-claude/peer-help.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "H/codex/installer/stdout_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-codex/installer.stdout",
+        "sha256": "b663f9622cc8a48dcddb55f2eac6cf64a46ccb2267e784ba39f25e7692b03cc7"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "H/codex/installer/stderr_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-codex/installer.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "H/codex/help/stdout_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-codex/peer-help.stdout",
+        "sha256": "31c8c4b7e85a247296aec84e3b9fd21deb223c642d3b2fda8e268fe29a387a65"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "H/codex/help/stderr_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-h-codex/peer-help.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "P/claude/installer/stdout_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-claude/installer.stdout",
+        "sha256": "8cc6d1f2c02f72b1567febea05ef7fe0d1ba73dd2cfa4267a2a3ba4d6bf894e6"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "P/claude/installer/stderr_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-claude/installer.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "P/claude/help/stdout_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-claude/peer-help.stdout",
+        "sha256": "31c8c4b7e85a247296aec84e3b9fd21deb223c642d3b2fda8e268fe29a387a65"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "P/claude/help/stderr_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-claude/peer-help.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "P/codex/installer/stdout_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-codex/installer.stdout",
+        "sha256": "b663f9622cc8a48dcddb55f2eac6cf64a46ccb2267e784ba39f25e7692b03cc7"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "P/codex/installer/stderr_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-codex/installer.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "P/codex/help/stdout_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-codex/peer-help.stdout",
+        "sha256": "31c8c4b7e85a247296aec84e3b9fd21deb223c642d3b2fda8e268fe29a387a65"
+      },
+      {
+        "bound_via": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/package-integrity-v1.json",
+        "bound_via_sha256": "398593147dafaf42cd03ef11b33c0c2ba7ec4721c41aec83329e2522a04b7554",
+        "direct_freeze_entry": false,
+        "package_report_record": "P/codex/help/stderr_sha256",
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/package-verification-v1/install-p-codex/peer-help.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "installations": 4,
+    "installed_critical_bindings": 30,
+    "package_archives": {
+      "B": "edca612f3873fe154c1855d54788d7c097a9d88e97912bc9b36ba755b71aed53",
+      "H": "32a8c1cf219565eca41fcb3df9026a3a4d603f1c8143ab4573f84903f9d0cb56",
+      "P": "823b1d0cae53e7134de8308f22026a68ffc530741563a7bfb8977aaace661d35",
+      "S": "e01b32c0b15541fc1d887d13e80e0edd9e83f9b97023948762b13ae5276e2bff"
+    },
+    "payload_differences_from_0245": {
+      "B": [],
+      "H": [
+        "package/config/skills/_shared/peer.py"
+      ],
+      "P": [
+        "package/config/skills/_shared/peer.py"
+      ],
+      "S": []
+    },
+    "raw_install_log_hashes": 16,
+    "regular_payload_counts": {
+      "B": 241,
+      "H": 243,
+      "P": 243,
+      "S": 242
+    }
+  },
+  "prediction": {
+    "prediction": "All 117 execution inputs and 454 selected artifact hashes match, Runner.inputs matches exactly, frozen operational bindings preserve routes/caps/controls and historical outcomes; one prospective Claude/P cell only, no native dispatch. Empty smoke expected-catalog map is reported explicitly rather than claimed active.",
+    "recorded_at": "2026-10-10T20:26:45.621476+00:00"
+  },
+  "prior_evidence": {
+    "0243/d01-f23-claude-s": {
+      "input_tokens": 6020526,
+      "known_usage_lower_bound": null,
+      "output_tokens": 154630,
+      "seal_binding": "direct frozen entry",
+      "seal_sha256": "2942180c5f0a5e8a401d6955fcbcef6563e513559638b322f8ec60bec757f329",
+      "status": "CHECKS_PASS",
+      "usage": "COMPLETE",
+      "verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+    },
+    "0243/d02-f23-codex-p": {
+      "input_tokens": null,
+      "known_usage_lower_bound": {
+        "input_tokens": 1796844,
+        "output_tokens": 69638
+      },
+      "output_tokens": null,
+      "seal_binding": "frozen prior independent integrity report",
+      "seal_sha256": "503728a34950fab3e4288a2aed1296f311696cf579f88c6ccf6bbe364607a658",
+      "status": "STOP",
+      "usage": "PARTIAL",
+      "verdict_sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b"
+    },
+    "0246/d02-f23-codex-p": {
+      "input_tokens": 632441,
+      "known_usage_lower_bound": null,
+      "output_tokens": 19184,
+      "seal_binding": "direct frozen entry",
+      "seal_sha256": "9cd88aae37f33159b5ed8514cb5ec5756de81343be15d7ec9484bf794208d732",
+      "status": "PRODUCT_INCOMPLETE",
+      "usage": "COMPLETE",
+      "verdict_sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9"
+    },
+    "0246/d03-f23-claude-a": {
+      "input_tokens": 3441785,
+      "known_usage_lower_bound": null,
+      "output_tokens": 93953,
+      "seal_binding": "direct frozen entry",
+      "seal_sha256": "7685eb1e96163822d57e3d2d113c57e0128519bc3a66458dffa9049e056850ca",
+      "status": "CHECKS_PASS",
+      "usage": "COMPLETE",
+      "verdict_sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af"
+    },
+    "0246/d04-f23-codex-h": {
+      "input_tokens": 558535,
+      "known_usage_lower_bound": null,
+      "output_tokens": 20603,
+      "seal_binding": "direct frozen entry",
+      "seal_sha256": "5b5e0a948fe9b265ae29abf9ae5038b32bef040005a07d15eb3e264c519908ce",
+      "status": "PRODUCT_INCOMPLETE",
+      "usage": "COMPLETE",
+      "verdict_sha256": "662087c33d44095cd708e7060926ec22420ae92580f477669108de8efe32045a"
+    },
+    "0246/d05-f23-claude-p": {
+      "input_tokens": 12316264,
+      "known_usage_lower_bound": null,
+      "output_tokens": 196529,
+      "seal_binding": "direct frozen entry",
+      "seal_sha256": "192c309732845e54cc79ffccb049206f6d03ef778d74626b3d33820fa385c7e1",
+      "status": "STOP",
+      "usage": "COMPLETE",
+      "verdict_sha256": "d7f1de56e6d2f0d7ead917788099c1586848a6ea80506e75256e4318a5ba1c6e"
+    }
+  },
+  "registration": {
+    "custody_regressions": 11,
+    "phase": "smoke",
+    "review_manifest_entries": 111,
+    "reviews": "SHIP without CRITICAL/HIGH/MEDIUM; tests and package prerequisites verified; native preflight remains prospective",
+    "single_cell": {
+      "arm": "P",
+      "config": "claude",
+      "name": "s01-p-claude",
+      "task": "S2"
+    },
+    "test_count": 32,
+    "tests_replayed": 0
+  },
+  "remaining_0246_cells": "Five NOT RUN; no regrade or retake authorization",
+  "schema": "0247-independent-dispatch-freeze-audit-v1",
+  "scope": "Bounded read-only pre-dispatch hash/binding audit. No auth credentials accessed, native/model/test/install/evaluator execution, product/source edits, or historical regrade. Imports construct Runner and inspect bindings only.",
+  "source_integrity": {
+    "before_after_files": 541,
+    "changed": []
+  },
+  "status": "PASS",
+  "writes": [
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/freeze-audit-v1.json"
+  ]
+}

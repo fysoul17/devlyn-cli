@@ -1,0 +1,11 @@
+--- test_stage_native_dependencies.py.before-path-fix
++++ test_stage_native_dependencies.py
+@@ -19,7 +19,7 @@
+     def setUp(self):
+         temp = tempfile.TemporaryDirectory(prefix='0238-stage-native-')
+         self.addCleanup(temp.cleanup)
+-        self.root = Path(temp.name)
++        self.root = Path(temp.name).resolve()
+         self.repo = self.root / 'repo'
+         self.experiment = self.repo / 'autoresearch/experiments/0238'
+         self.experiment.mkdir(parents=True)

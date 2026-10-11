@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-10T16:12:26.519874+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0243/build_packages.py",
+    "/Users/aipalm/.local/share/nx01/0243-live/selected-packs-v1",
+    "--toolchain",
+    "/Users/aipalm/.nvm/versions/node/v20.19.0/bin",
+    "--source",
+    "/Users/aipalm/.local/share/nx01/0237-integration"
+  ],
+  "prediction": "Four archives use registered4.2.4 base and exact seven integrated baseline inputs. B matches strongest accepted solo; S/H/P differ only by reviewed trigger/guide/helper plus generated fingerprint metadata. Every regular payload and actual installed helper/guide must match; no model or efficacy claim."
+}

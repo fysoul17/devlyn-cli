@@ -1,0 +1,57 @@
+test_old_helper_accepts_retained_unicode_command (__main__.BaselineRegressionTests.test_old_helper_accepts_retained_unicode_command) ... ERROR
+test_old_inventory_keeps_retained_unicode_command (__main__.BaselineRegressionTests.test_old_inventory_keeps_retained_unicode_command) ... FAIL
+test_old_startup_accepts_retained_consistent_pair (__main__.BaselineRegressionTests.test_old_startup_accepts_retained_consistent_pair) ... ERROR
+
+======================================================================
+ERROR: test_old_helper_accepts_retained_unicode_command (__main__.BaselineRegressionTests.test_old_helper_accepts_retained_unicode_command)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/test_machinery.py", line 77, in test_old_helper_accepts_retained_unicode_command
+    self.assertEqual(old.answer('codex', capture), 'valid answer')
+                     ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/peer.py", line 36, in answer
+    rows = [json.loads(line) for line in text.splitlines() if line.strip()]
+            ~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py", line 361, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ~~~~~~~~~~~~~~^^^^^^^^
+json.decoder.JSONDecodeError: Unterminated string starting at: line 1 column 564 (char 563)
+
+======================================================================
+ERROR: test_old_startup_accepts_retained_consistent_pair (__main__.BaselineRegressionTests.test_old_startup_accepts_retained_consistent_pair)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/test_machinery.py", line 90, in test_old_startup_accepts_retained_consistent_pair
+    self.assertEqual(app.boot_catalogs(self.root, 'claude'), canonical(inits[0]))
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/runner.py", line 216, in boot_catalogs
+    raise ValueError('Claude startup catalog missing or ambiguous')
+ValueError: Claude startup catalog missing or ambiguous
+
+======================================================================
+FAIL: test_old_inventory_keeps_retained_unicode_command (__main__.BaselineRegressionTests.test_old_inventory_keeps_retained_unicode_command)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/test_machinery.py", line 81, in test_old_inventory_keeps_retained_unicode_command
+    self.assertEqual(old.lines(FIXTURES / 'd05-unicode-command.jsonl'),
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     rows(FIXTURES / 'd05-unicode-command.jsonl'))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [] != [{'type': 'item.completed', 'item': {'id':[1012 chars]d'}}]
+
+Second list contains 1 additional elements.
+First extra element 0:
+{'type': 'item.completed', 'item': {'id': 'item_22', 'type': 'command_execution', 'command': '/bin/sh -lc "node <<\'NODE\'\nconst values = [\'2026-01-01T00:00:00Z\\\\n\', \'2026-01-01T00:00:00Z\\\\r\', \'2026-01-01T00:00:00Z\\\\u2028\', \'2026-01-01T24:00:00Z\', \'2026-01-01T00:00:00+23:59\', \'0000-01-01T00:00:00+23:59\'];\nconsole.log(\'Prediction: trailing line terminators fail Date.parse; ISO end-of-day 24:00:00Z parses as the next midnight.\');\nfor (const text of values) console.log(JSON.stringify({input:text,time:Date.parse(text)}));\nNODE"', 'aggregated_output': 'Prediction: trailing line terminators fail Date.parse; ISO end-of-day 24:00:00Z parses as the next midnight.\n{"input":"2026-01-01T00:00:00Z\\n","time":null}\n{"input":"2026-01-01T00:00:00Z\\r","time":null}\n{"input":"2026-01-01T00:00:00Z\u2028","time":null}\n{"input":"2026-01-01T24:00:00Z","time":1767312000000}\n{"input":"2026-01-01T00:00:00+23:59","time":1767139260000}\n{"input":"0000-01-01T00:00:00+23:59","time":-62167305540000}\n', 'exit_code': 0, 'status': 'completed'}}
+
+Diff is 1752 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.013s
+
+FAILED (failures=1, errors=2)

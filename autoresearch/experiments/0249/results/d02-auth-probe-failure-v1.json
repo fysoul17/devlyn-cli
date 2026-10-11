@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-10T23:59:29.869611+00:00",
+  "auth_mutation": false,
+  "exception": "JSONDecodeError: Expecting value: line1column1",
+  "native_inferences": 0,
+  "root_cause": "D01 prepared credential files are zero-byte teardown placeholders; probe attempted to JSON-decode one after two profile lookups. No credential body was printed. Initial lookups not retained; repeat read-only observations below.",
+  "status": "DIAGNOSTIC_SCRIPT_ERROR"
+}

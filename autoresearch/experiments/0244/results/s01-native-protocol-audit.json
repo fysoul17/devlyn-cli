@@ -1,0 +1,308 @@
+{
+  "schema": "0244-s01-native-protocol-audit-v1",
+  "evidence_root": "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex",
+  "verdict": "OBSERVED_OPERATIONAL_PROTOCOL_ACCOUNTING_AND_DELIVERY_PASS",
+  "raw_verdict_preserved": {
+    "status": "CHECKS_PASS",
+    "usage": "COMPLETE",
+    "measurement_eligible": false,
+    "assessment": "NOT_REQUESTED",
+    "identity": "MATCH",
+    "peer_policy": "MATCH",
+    "claude_accounting": "MATCH",
+    "local_delivery_passed": true,
+    "teardown": "CLEAN",
+    "input_tokens": 1326755,
+    "output_tokens": 61134,
+    "owner_seconds": 688.6771035840211
+  },
+  "old0242_preserved": {
+    "status": "STOP",
+    "usage": "PARTIAL",
+    "known_usage_lower_bound": {
+      "input_tokens": 1325063,
+      "output_tokens": 45755
+    }
+  },
+  "native_peer": {
+    "session": "0bac0e05-98d8-487a-a11a-26a8df35ef2b",
+    "model": "claude-opus-5-5",
+    "effort": "max",
+    "per_turn_effort": "max",
+    "transcript": "home/.claude/projects/-cell-work/0bac0e05-98d8-487a-a11a-26a8df35ef2b.jsonl",
+    "transcript_sha256": "9f78aa896a257ca2a0640cdbe34cf06860fd07eba2e95863b6cd3a8ac27c6b88",
+    "exact_prompt_rows": {
+      "fresh": 3,
+      "resume": 41
+    },
+    "fresh": {
+      "seconds": 374.50967158700223,
+      "exit_code": 0,
+      "tools": [
+        "Read",
+        "Read",
+        "Glob",
+        "Grep",
+        "Read"
+      ]
+    },
+    "resume": {
+      "seconds": 9.820799588000227,
+      "exit_code": 0,
+      "tools": [
+        "Read"
+      ]
+    },
+    "permission_denials": [],
+    "children_observed": 0,
+    "sidechains_observed": 0,
+    "peer_executed_checks": 0,
+    "claudecode_present": false
+  },
+  "request": {
+    "original_chars": 2386,
+    "literal_multiline_occurrences": 1,
+    "also_embedded_in_verbatim_json_contract": true,
+    "offsets": {
+      "original": 351,
+      "owner_instructions": 2738,
+      "caller_json": 3448,
+      "diff": 6150,
+      "source": 8167,
+      "public_checks": 9912,
+      "review_task": 10140
+    },
+    "both_argv_prompt_hashes_match": true
+  },
+  "source_identity": {
+    "count": 4,
+    "files_each": 29,
+    "all_equal": true,
+    "final_files_match": true,
+    "head": "a2f04a58490e9b956479caf132c037b21f7bd92b",
+    "caller_and_git_config_unchanged": true
+  },
+  "owner": {
+    "session": "01a126d0-2a0e-73d0-92d5-eb29f0daa618",
+    "model": "gpt-6-astra",
+    "effort": "max",
+    "public_tests_passed": 7,
+    "peer_checks_executed": 4,
+    "all_check_exit_codes": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "saved_scripts_match_peer_argv": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "witness": {
+      "input": [
+        15,
+        70,
+        10
+      ],
+      "expected": 6,
+      "actual": 6
+    },
+    "integer_grid_cases": 1030301,
+    "half_percentage_grid_cases": 848421,
+    "total_comparison_cases": 1878722,
+    "grid_mismatches": [
+      0,
+      0
+    ],
+    "checks_line": 53,
+    "complete_answer_read_lines": [
+      46,
+      56
+    ],
+    "final_line": 69
+  },
+  "inventory": {
+    "prediction": "Exactly two genuine terminal envelopes in one Claude session, no extra summary or unreadable carrier.",
+    "envelopes": [
+      {
+        "path": "cell/work/.devlyn/pair/calculate-total-20261010/fresh/peer1791652636410605387.json",
+        "sha256": "991ee752cd9ea5f4c3309d316c8c15a00a62bfa9d3885590d36eec2fe7bf5202"
+      },
+      {
+        "path": "cell/work/.devlyn/pair/calculate-total-20261010/resume/peer1791653044838073215.json",
+        "sha256": "1fd5fe5971a4ae13433e83e73c1abcfbd4890436e4da924ef64baa69024ab79e"
+      }
+    ],
+    "session": "0bac0e05-98d8-487a-a11a-26a8df35ef2b",
+    "unreadable": [],
+    "both_answer_and_usage_payloads_present": true,
+    "both_answers_match_retained_finalanswer": true
+  },
+  "local_delivery": {
+    "commit": "75b691634e30b3a1e03d2b91804f1412427d08e2",
+    "parent": "a2f04a58490e9b956479caf132c037b21f7bd92b",
+    "changed_paths": [
+      "calculate_total.py",
+      "test_calculate_total.py"
+    ],
+    "branch": "main",
+    "clean": true,
+    "temporary_worktree_registration_absent": true,
+    "temporary_branch_absent": true,
+    "container_absent": true,
+    "volume_absent": true,
+    "status": "LOCAL_ONLY"
+  },
+  "sources_before": {
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/verdict-s03-p-codex.json": "2519b8ca17db411ebc46c9a9a12b3b2b636d8be1615944b3cce34c50cdc9355a",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/trace/trace-eab4e320-c84c-4ff0-bb6b-216dec5e82d5-01a126d0-2a0e-73d0-92d5-eb29f0daa618/manifest.json": "ba6dc2dac2483e092bb758930d56535cab5467debed1f222938f0bc2d24a022a",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/trace/trace-eab4e320-c84c-4ff0-bb6b-216dec5e82d5-01a126d0-2a0e-73d0-92d5-eb29f0daa618/payloads/4.json": "8701f6b1df5acfbb40781906351327ce20413c3ceec56a2ef016ece2246d7bf4",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/trace/trace-eab4e320-c84c-4ff0-bb6b-216dec5e82d5-01a126d0-2a0e-73d0-92d5-eb29f0daa618/trace.jsonl": "591184d8a070be35960408a15da4108bcee2181a6cac8257a4dbdd2ecca9d2ed",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/acceptance.json": "7f5f339fb437a19bae5c942aa7fb2eba4f05c88977aa263fe8096f915c52d94c",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/calculate_total.py": "3205bfe0e8a010a4eea754b39614a58f8198ab890a37e7f6911671f613a1c4bc",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/caller-snapshot.json": "d6cf1198ca7d4b3cc9d82fe599e77d916243f6115816c1d09955bd6e83f5a396",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/candidate-apply.log": "bf7cbd83f156e9186f0f02fd3e979f8d071444366473dab54c11dcbf6dea1485",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/candidate-diff-check.log": "5abdeba3666825f380a94d2a96617e228554ce2443396b2068fa65fda55d0173",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/candidate-verification.txt": "7ef8c943db6751ebe8c287ce26bdd26608f935e7d916c8ceb7ecc648e487f0d3",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/candidate.diff": "16c57066b7e0cd5f91321145742f613b61b8de81a7bed90008099e02fbcd28c3",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/commit.log": "930a71a2cbd2a223cf89ec561964b563e2b667623b0f230f2e6a93da64dc1120",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/commit.txt": "7b6f6284a8e7dcf0af7967803ae08055d4ec7fd0909f85adb8ff3481c3673417",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-allocation.json": "3e4832e51b7dd7ab907522a537b338930a78a2f498dcf9c939c0efb32d10fd99",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-allocation.log": "13073d368649602ca748d572cdbd5f260d09bc8b8fb0b9fc260d30e4605feb44",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-baseline.json": "5a2c6389d45dfbabfb50ab9e429be52521c462ff6165463337e52518a0928499",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-candidate.diff": "16c57066b7e0cd5f91321145742f613b61b8de81a7bed90008099e02fbcd28c3",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-completion.json": "e795d9138f22e3e9b95a87e69774642cee66885fc922ade84354fa77d3931190",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-completion.log": "bf9bc9dc4d86f6bda403eb219eafb2ae141ea7bdce5eabd919722ad436de9f5b",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/final-verification.json": "d1be9bbec0a00dd1c9c0766751d31f9c2dde6c10f2fca256abf999ab5c1fc244",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh/attempt.json": "8217433ceb6b6e9f24fdfb2f379dc5439f2002df43234413423d6644deb41631",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh/completion.json": "ce9b88da32361580cb32facc0e5b7f796ed8650cfd76d31a9db92e418a778949",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh/finalanswer.txt": "bab7fe2e886a130be39c9296c5fbc308c8829e28d97de4ce181c6ea70c23ac09",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh/peer1791652636410605387.json": "991ee752cd9ea5f4c3309d316c8c15a00a62bfa9d3885590d36eec2fe7bf5202",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh/stderr": "e067a827e62711b7dbb8b6a1d97ff662a82fe2768538bbf43c667566ab02666f",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh-request.md": "98b922af4f6e55eed6888ba41a6b2511cb52e7e2281cd21b500ee9cc8ba95e25",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/launcher-marker.json": "502672c86bf9eb838dd9a11b0a5c754d3f2da6f9b38da3f2905964d21699b941",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-check-1.py": "54e5d7f4954531a73f4680f9335df869402aa76cc5672caf10a0a74c24dad359",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-check-2.py": "b29215e07485260dace511303ee9a4ce2c39fe272726c3e65423529c89533491",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-check-3.py": "ceb5f7b55d37ec74a6a94948c39dcb39afe3e805a0b359c16fbf8e2c0db9adbe",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-check-4.py": "60da613dbe6cbea929682bd1926147fa44db4febe11f3aeb4a15c9be1ce97b5d",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-checks-predictions.txt": "06f36c97f83276bb4f31a28b1229d387309ea871ce8deac84b3fb44dac151a17",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-checks.log": "3a78491cb49cbd47e598fb29eebe7b6f8f3a61fbdb6355ff3cdf415d3a92a6e1",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-validation.json": "80bd0d19b395d8c052a94e261b5cdc9f3c9dd8038a1d1c5cc37ceeec7c70582a",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/predictions.txt": "2e565678e057143c5578e03f851460559e7dcef91649dd37af99d6f127eabd14",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/public-check.log": "ab92a340b8dd88f97c9ade1de887be939160b269a7dd41ffa456c237b1c973a6",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/reconciliation.log": "68070bf2bc5edb0fd03df0d5c7cca362553f8861705623d37e8caaa308195ef5",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume/attempt.json": "f741268f77244c289c9c33bef48351b35025c43ff988413080711890c4053e03",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume/completion.json": "1fe507346fbfdb018c94484d61c915a35284f1837c34964beb447ad1124a82f4",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume/finalanswer.txt": "17e18ea8661b931095f393f5f0c652694808ff60d1bea2ff809e6c399d933c47",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume/peer1791653044838073215.json": "1fd5fe5971a4ae13433e83e73c1abcfbd4890436e4da924ef64baa69024ab79e",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume/stderr": "d1f242f3a970bc3faf1fd1dad8715f2206aa2688263b47f7833dfca7adbdbaa2",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume-marker.json": "502672c86bf9eb838dd9a11b0a5c754d3f2da6f9b38da3f2905964d21699b941",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume-request.md": "336960d8773bf21d5d6ab573a5e6702d44159be5869d01c0da1dd4920440486b",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/session-identity.json": "06272296e99fa62157aa49bbfb25435b45f5c511a8b078377829156fe2d41d0b",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/source-hashes.json": "3bc71219c53e450ff73ab0c846b5131aabdd54c3f2bebfb5150bc8cb67844148",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/source-status.txt": "551d3b0bf867f193169e9dac06639ce68c2702bfc04f2b7fffe203148f4e2d8a",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/test_calculate_total.py": "ab356d7ffef6d807241ae2fe5628b85359ad54303cb83c434e20b14ae117d195",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.git/config": "521078aa1e06558ed8cf350c443cd94995e4b2ac1f55026b1238454b7e3b3cad",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.git/devlyn-completion/9e729938f32e81614da91255/receipt.json": "8a238ff9833c5f3a170a12aaff2a270f6247822519eddfe40eaece0c602aa006",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/calculate_total.py": "3205bfe0e8a010a4eea754b39614a58f8198ab890a37e7f6911671f613a1c4bc",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/test_calculate_total.py": "ab356d7ffef6d807241ae2fe5628b85359ad54303cb83c434e20b14ae117d195",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/claude-accounting.json": "19e658b714d47f3f22885779e05187a6b57276b720c00cde860478123541bb4d",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/final.txt": "c92d00ef2d8923924c54daecf66253382d05406fb6a6f875f3a102d086714f14",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/harness/caller.json": "d6cf1198ca7d4b3cc9d82fe599e77d916243f6115816c1d09955bd6e83f5a396",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/home/.claude/projects/-cell-work/0bac0e05-98d8-487a-a11a-26a8df35ef2b.jsonl": "9f78aa896a257ca2a0640cdbe34cf06860fd07eba2e95863b6cd3a8ac27c6b88",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/home/.codex/sessions/2026/10/10/rollout-2026-10-10T17-15-39-01a126d0-2a0e-73d0-92d5-eb29f0daa618.jsonl": "4ccd12e34463a02c7608c7fc7294730f68d63b6537d0d0dfe0ccdf130795fb86",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/peer-policy.json": "864daba9178b85ec1ebb6c613f4ccefeb3743e922d0db83b32f32792f404be2f",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/plan.json": "e5380c6e00f4d168abd0de03d53817dba905c30c4a4f495f3a47266222b5027c",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/run/result.json": "5729fb6e8915fd6b053d28ef1c4b246a00ff88195bf875f42c46f2a851a277bc",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/run/stdout": "ed007d0ff3f18481f46c088ee1ebf52463860375476dd67e81b69a4329a3657d",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/usage.json": "f3bcc621a6d48427d0774f84716a7d5889fde41d4ef723ab7eebd6603e900e47",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/verdict-s01-p-codex.json": "8cdb102e66c66fde2c7c9e8ce73386e5fb640c198a5dfc08dcc79eebd5a466e5",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0244/capture_discovery.py": "ed34007176d18f1422d009d0eaed3890548eb9fe88d2690e80776bb204ceea63",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0234/evidence.py": "595f9018b489034a38c7be61b15e046ec66a393d5ea0c12d9f7e13c8b80de691"
+  },
+  "sources_after": {
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/verdict-s03-p-codex.json": "2519b8ca17db411ebc46c9a9a12b3b2b636d8be1615944b3cce34c50cdc9355a",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/trace/trace-eab4e320-c84c-4ff0-bb6b-216dec5e82d5-01a126d0-2a0e-73d0-92d5-eb29f0daa618/manifest.json": "ba6dc2dac2483e092bb758930d56535cab5467debed1f222938f0bc2d24a022a",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/trace/trace-eab4e320-c84c-4ff0-bb6b-216dec5e82d5-01a126d0-2a0e-73d0-92d5-eb29f0daa618/payloads/4.json": "8701f6b1df5acfbb40781906351327ce20413c3ceec56a2ef016ece2246d7bf4",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/trace/trace-eab4e320-c84c-4ff0-bb6b-216dec5e82d5-01a126d0-2a0e-73d0-92d5-eb29f0daa618/trace.jsonl": "591184d8a070be35960408a15da4108bcee2181a6cac8257a4dbdd2ecca9d2ed",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/acceptance.json": "7f5f339fb437a19bae5c942aa7fb2eba4f05c88977aa263fe8096f915c52d94c",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/calculate_total.py": "3205bfe0e8a010a4eea754b39614a58f8198ab890a37e7f6911671f613a1c4bc",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/caller-snapshot.json": "d6cf1198ca7d4b3cc9d82fe599e77d916243f6115816c1d09955bd6e83f5a396",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/candidate-apply.log": "bf7cbd83f156e9186f0f02fd3e979f8d071444366473dab54c11dcbf6dea1485",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/candidate-diff-check.log": "5abdeba3666825f380a94d2a96617e228554ce2443396b2068fa65fda55d0173",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/candidate-verification.txt": "7ef8c943db6751ebe8c287ce26bdd26608f935e7d916c8ceb7ecc648e487f0d3",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/candidate.diff": "16c57066b7e0cd5f91321145742f613b61b8de81a7bed90008099e02fbcd28c3",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/commit.log": "930a71a2cbd2a223cf89ec561964b563e2b667623b0f230f2e6a93da64dc1120",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/commit.txt": "7b6f6284a8e7dcf0af7967803ae08055d4ec7fd0909f85adb8ff3481c3673417",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-allocation.json": "3e4832e51b7dd7ab907522a537b338930a78a2f498dcf9c939c0efb32d10fd99",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-allocation.log": "13073d368649602ca748d572cdbd5f260d09bc8b8fb0b9fc260d30e4605feb44",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-baseline.json": "5a2c6389d45dfbabfb50ab9e429be52521c462ff6165463337e52518a0928499",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-candidate.diff": "16c57066b7e0cd5f91321145742f613b61b8de81a7bed90008099e02fbcd28c3",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-completion.json": "e795d9138f22e3e9b95a87e69774642cee66885fc922ade84354fa77d3931190",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/delivery-completion.log": "bf9bc9dc4d86f6bda403eb219eafb2ae141ea7bdce5eabd919722ad436de9f5b",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/final-verification.json": "d1be9bbec0a00dd1c9c0766751d31f9c2dde6c10f2fca256abf999ab5c1fc244",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh/attempt.json": "8217433ceb6b6e9f24fdfb2f379dc5439f2002df43234413423d6644deb41631",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh/completion.json": "ce9b88da32361580cb32facc0e5b7f796ed8650cfd76d31a9db92e418a778949",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh/finalanswer.txt": "bab7fe2e886a130be39c9296c5fbc308c8829e28d97de4ce181c6ea70c23ac09",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh/peer1791652636410605387.json": "991ee752cd9ea5f4c3309d316c8c15a00a62bfa9d3885590d36eec2fe7bf5202",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh/stderr": "e067a827e62711b7dbb8b6a1d97ff662a82fe2768538bbf43c667566ab02666f",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/fresh-request.md": "98b922af4f6e55eed6888ba41a6b2511cb52e7e2281cd21b500ee9cc8ba95e25",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/launcher-marker.json": "502672c86bf9eb838dd9a11b0a5c754d3f2da6f9b38da3f2905964d21699b941",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-check-1.py": "54e5d7f4954531a73f4680f9335df869402aa76cc5672caf10a0a74c24dad359",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-check-2.py": "b29215e07485260dace511303ee9a4ce2c39fe272726c3e65423529c89533491",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-check-3.py": "ceb5f7b55d37ec74a6a94948c39dcb39afe3e805a0b359c16fbf8e2c0db9adbe",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-check-4.py": "60da613dbe6cbea929682bd1926147fa44db4febe11f3aeb4a15c9be1ce97b5d",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-checks-predictions.txt": "06f36c97f83276bb4f31a28b1229d387309ea871ce8deac84b3fb44dac151a17",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-checks.log": "3a78491cb49cbd47e598fb29eebe7b6f8f3a61fbdb6355ff3cdf415d3a92a6e1",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/peer-validation.json": "80bd0d19b395d8c052a94e261b5cdc9f3c9dd8038a1d1c5cc37ceeec7c70582a",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/predictions.txt": "2e565678e057143c5578e03f851460559e7dcef91649dd37af99d6f127eabd14",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/public-check.log": "ab92a340b8dd88f97c9ade1de887be939160b269a7dd41ffa456c237b1c973a6",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/reconciliation.log": "68070bf2bc5edb0fd03df0d5c7cca362553f8861705623d37e8caaa308195ef5",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume/attempt.json": "f741268f77244c289c9c33bef48351b35025c43ff988413080711890c4053e03",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume/completion.json": "1fe507346fbfdb018c94484d61c915a35284f1837c34964beb447ad1124a82f4",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume/finalanswer.txt": "17e18ea8661b931095f393f5f0c652694808ff60d1bea2ff809e6c399d933c47",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume/peer1791653044838073215.json": "1fd5fe5971a4ae13433e83e73c1abcfbd4890436e4da924ef64baa69024ab79e",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume/stderr": "d1f242f3a970bc3faf1fd1dad8715f2206aa2688263b47f7833dfca7adbdbaa2",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume-marker.json": "502672c86bf9eb838dd9a11b0a5c754d3f2da6f9b38da3f2905964d21699b941",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/resume-request.md": "336960d8773bf21d5d6ab573a5e6702d44159be5869d01c0da1dd4920440486b",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/session-identity.json": "06272296e99fa62157aa49bbfb25435b45f5c511a8b078377829156fe2d41d0b",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/source-hashes.json": "3bc71219c53e450ff73ab0c846b5131aabdd54c3f2bebfb5150bc8cb67844148",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/source-status.txt": "551d3b0bf867f193169e9dac06639ce68c2702bfc04f2b7fffe203148f4e2d8a",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.devlyn/pair/calculate-total-20261010/test_calculate_total.py": "ab356d7ffef6d807241ae2fe5628b85359ad54303cb83c434e20b14ae117d195",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.git/config": "521078aa1e06558ed8cf350c443cd94995e4b2ac1f55026b1238454b7e3b3cad",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/.git/devlyn-completion/9e729938f32e81614da91255/receipt.json": "8a238ff9833c5f3a170a12aaff2a270f6247822519eddfe40eaece0c602aa006",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/calculate_total.py": "3205bfe0e8a010a4eea754b39614a58f8198ab890a37e7f6911671f613a1c4bc",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/cell/work/test_calculate_total.py": "ab356d7ffef6d807241ae2fe5628b85359ad54303cb83c434e20b14ae117d195",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/claude-accounting.json": "19e658b714d47f3f22885779e05187a6b57276b720c00cde860478123541bb4d",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/final.txt": "c92d00ef2d8923924c54daecf66253382d05406fb6a6f875f3a102d086714f14",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/harness/caller.json": "d6cf1198ca7d4b3cc9d82fe599e77d916243f6115816c1d09955bd6e83f5a396",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/home/.claude/projects/-cell-work/0bac0e05-98d8-487a-a11a-26a8df35ef2b.jsonl": "9f78aa896a257ca2a0640cdbe34cf06860fd07eba2e95863b6cd3a8ac27c6b88",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/home/.codex/sessions/2026/10/10/rollout-2026-10-10T17-15-39-01a126d0-2a0e-73d0-92d5-eb29f0daa618.jsonl": "4ccd12e34463a02c7608c7fc7294730f68d63b6537d0d0dfe0ccdf130795fb86",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/peer-policy.json": "864daba9178b85ec1ebb6c613f4ccefeb3743e922d0db83b32f32792f404be2f",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/plan.json": "e5380c6e00f4d168abd0de03d53817dba905c30c4a4f495f3a47266222b5027c",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/run/result.json": "5729fb6e8915fd6b053d28ef1c4b246a00ff88195bf875f42c46f2a851a277bc",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/run/stdout": "ed007d0ff3f18481f46c088ee1ebf52463860375476dd67e81b69a4329a3657d",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/usage.json": "f3bcc621a6d48427d0774f84716a7d5889fde41d4ef723ab7eebd6603e900e47",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/verdict-s01-p-codex.json": "8cdb102e66c66fde2c7c9e8ce73386e5fb640c198a5dfc08dcc79eebd5a466e5",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0244/capture_discovery.py": "ed34007176d18f1422d009d0eaed3890548eb9fe88d2690e80776bb204ceea63",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0234/evidence.py": "595f9018b489034a38c7be61b15e046ec66a393d5ea0c12d9f7e13c8b80de691"
+  },
+  "source_integrity_prediction": "All 65 protected source hashes remain unchanged.",
+  "source_integrity": {
+    "status": "PASS",
+    "count": 65,
+    "changed": []
+  },
+  "limits": [
+    "Forced operational S2, no efficacy",
+    "No hidden semantic oracle",
+    "No rerun of comparison grids",
+    "Native emitted accounting, not provider billing",
+    "No old0242 regrade",
+    "No unrecorded provider catalog/security boundary claim",
+    "Root owns broad frozen-input/evidence-manifest audit"
+  ],
+  "completed_at": "2026-10-10T17:30:47.976435+00:00"
+}

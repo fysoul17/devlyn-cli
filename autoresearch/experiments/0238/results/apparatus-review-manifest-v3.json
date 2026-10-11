@@ -1,0 +1,21 @@
+{
+  "created_at": "2026-10-10T04:27:08.266370+00:00",
+  "files": {
+    "peer.py": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "policy.py": "d02be3a1700c0a78aab0d141580da7eacc97be97a60ea7cfc27e9bd31b154606",
+    "runner.py": "c8d893bc2782d3b2f49d5bb203a471168a897ff80a5291cf0840d9093eba0a5e",
+    "test_peer.py": "c06be9e3fa81275b420f305de76aa686d22bc250d5c165aa0aa959aefff02a27",
+    "test_runner.py": "303fc5abafcd320e4c4636ff49d11a88eb2b6bec718510ef053a23e311fad719",
+    "f23_precision.py": "47124cac8635717d90d22cb5719579e611952e3925ec3ef28a2f678312fe9e89"
+  },
+  "shared_process_dependency": {
+    "path": "config/skills/_shared/platform-support.py",
+    "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+  },
+  "validation": "21 updated runner tests pass in 7.742s; unchanged helper retains 11/11 pass. Pinned-image full-check no-op, positive and deleted-product controls match predictions; missing evaluator interpreter remains STOP.",
+  "log": "results/apparatus-tests-5.log",
+  "supersedes": "apparatus-review-manifest-v2.json",
+  "full_check": "results/full-check-v4/summary.json",
+  "missing_interpreter": "results/full-check-v4/missing-interpreter-raw.json",
+  "repro_script_sha256": "b1a8b2890d285f09a547b866094b5a9ed8716b0efd2c2f3cd0cf43fc84f9caa4"
+}

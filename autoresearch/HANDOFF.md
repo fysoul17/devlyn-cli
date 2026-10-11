@@ -1,4 +1,45 @@
-# 0233 and 0234 measured (2026-10-08): 4.2.0 completes more tasks than bare on Codex and fewer on Claude; neither the failure-paths guide (C) nor pair (H/P) is admitted; next, 0235 tests one sentence appended to the unchanged definition of done
+# Minimal solo harness improvements — final delivery pending (2026-10-11 UTC)
+
+The owner deferred ideate and requested minimal CLAUDE.md/AGENTS.md improvement
+before residual pair work. Actual Opus Max and Grok advice is retained in
+[0237/advice](experiments/0237/advice/). The accepted scope is three observed
+installer/delivery contract fixes, with root instruction wording unchanged:
+actual adjacent AGENTS.md import deduplication, proven Linux zombie cleanup,
+and moving the unchanged local-delivery rule to policy selection. See the
+[final decision](experiments/0237/results/final-product-decision.md).
+
+[0248 is closed](experiments/0248/results/screen-conclusion.md). Claude S/B had
+one exposed resource signal with equal correctness; native A remained cheaper.
+H/P did not earn incremental cost against S. Codex S stopped with one inference's
+usage missing and remains ungraded. [0249 is closed](experiments/0249/results/closure-v1.md)
+after one valid Codex/B success: the next slot was refused before preparation
+because the current host account and organization differed from the frozen
+venue. No S was observed in0249 and no S/B conclusion follows. All remaining27
+slots are NOT_RUN. The actor that changed the host session is unknown; no manual
+login, account substitution, reroll or automatic successor experiment is requested.
+No extra S instruction or pair surface is admitted, and no global optimum or
+general gain over bare is claimed. Earlier outcomes and unknown costs remain.
+
+The final publisher is `~/.local/share/nx01/0237-integration-425`, branch
+`candidate/0237-minimal-solo-425`. It now includes upstream documentation-only
+PR198 at `7e1719b5f08128b72c7d94e062f03f9fd6c7ed31`; the latest historical body
+below is preserved. All12 verified product inputs are unchanged from the tested
+4.2.5 integration: review SHIP; package72/menu15/Linuxhelper73/macOShelper71+2skips,
+lint and fullqueue71 pass. No new affected product check is required for that
+HANDOFF-only fast-forward. Default delivery is PR+merge; no npm publication.
+The original-repository receipt is
+`.git/devlyn-completion/99144b306f9a5d78e0622b56/receipt.json`, task
+`minimal-solo-harness-integration-425`. Final acceptance/commit/PR remain pending.
+
+Preserve `~/.local/share/nx01/0237-harness`, old4.2.4 integration
+`~/.local/share/nx01/0237-integration`, every frozen study input and private raw
+record, and `0249-live/baseline-source-v1` immutable copies. The new publisher's
+later cleanup does not remove those selected baseline bytes. All old observations
+remain version-qualified. Preserve unrelated work in the original checkout.
+The [0237 iteration](iterations/0237-minimal-solo-harness.md) and individual
+experiment STATUS/closure files retain the full history; closed schedules stay closed.
+
+## Historical handoff (superseded work order; retained results)
 
 ## The owner's direction (2026-10-05)
 

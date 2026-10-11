@@ -1,0 +1,324 @@
+{
+  "at": "2026-10-10T16:20:21.312684+00:00",
+  "expectations": {
+    "claude": {
+      "A": {
+        "mcp_servers": [],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          }
+        ],
+        "skills": [
+          "batch",
+          "claude-api",
+          "code-review",
+          "dataviz",
+          "debug",
+          "deep-research",
+          "design",
+          "design-sync",
+          "doctor",
+          "fewer-permission-prompts",
+          "loop",
+          "plugin-authoring",
+          "run",
+          "run-skill-generator",
+          "schedule",
+          "simplify",
+          "update-config",
+          "verify",
+          "workflow-authoring"
+        ]
+      },
+      "B": {
+        "mcp_servers": [],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          }
+        ],
+        "skills": [
+          "batch",
+          "claude-api",
+          "code-review",
+          "dataviz",
+          "debug",
+          "deep-research",
+          "design",
+          "design-sync",
+          "devlyn-engines",
+          "devlyn-ideate",
+          "doctor",
+          "fewer-permission-prompts",
+          "loop",
+          "plugin-authoring",
+          "run",
+          "run-skill-generator",
+          "schedule",
+          "simplify",
+          "update-config",
+          "verify",
+          "workflow-authoring"
+        ]
+      },
+      "H": {
+        "mcp_servers": [],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          }
+        ],
+        "skills": [
+          "batch",
+          "claude-api",
+          "code-review",
+          "dataviz",
+          "debug",
+          "deep-research",
+          "design",
+          "design-sync",
+          "devlyn-engines",
+          "devlyn-ideate",
+          "doctor",
+          "fewer-permission-prompts",
+          "loop",
+          "plugin-authoring",
+          "run",
+          "run-skill-generator",
+          "schedule",
+          "simplify",
+          "update-config",
+          "verify",
+          "workflow-authoring"
+        ]
+      },
+      "P": {
+        "mcp_servers": [],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          }
+        ],
+        "skills": [
+          "batch",
+          "claude-api",
+          "code-review",
+          "dataviz",
+          "debug",
+          "deep-research",
+          "design",
+          "design-sync",
+          "devlyn-engines",
+          "devlyn-ideate",
+          "doctor",
+          "fewer-permission-prompts",
+          "loop",
+          "plugin-authoring",
+          "run",
+          "run-skill-generator",
+          "schedule",
+          "simplify",
+          "update-config",
+          "verify",
+          "workflow-authoring"
+        ]
+      },
+      "S": {
+        "mcp_servers": [],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          }
+        ],
+        "skills": [
+          "batch",
+          "claude-api",
+          "code-review",
+          "dataviz",
+          "debug",
+          "deep-research",
+          "design",
+          "design-sync",
+          "devlyn-engines",
+          "devlyn-ideate",
+          "doctor",
+          "fewer-permission-prompts",
+          "loop",
+          "plugin-authoring",
+          "run",
+          "run-skill-generator",
+          "schedule",
+          "simplify",
+          "update-config",
+          "verify",
+          "workflow-authoring"
+        ]
+      }
+    }
+  },
+  "scope": "Actual native A and current installed P init catalogs in the identical pinned image; B/S/H/P install the same two skill entrypoints, verified from actual offline installations. Current owner remains active; this freezes observed startup metadata only, not outcome or whole-run usage.",
+  "sources": {
+    "A": {
+      "catalogs": {
+        "mcp_servers": [],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          }
+        ],
+        "skills": [
+          "batch",
+          "claude-api",
+          "code-review",
+          "dataviz",
+          "debug",
+          "deep-research",
+          "design",
+          "design-sync",
+          "doctor",
+          "fewer-permission-prompts",
+          "loop",
+          "plugin-authoring",
+          "run",
+          "run-skill-generator",
+          "schedule",
+          "simplify",
+          "update-config",
+          "verify",
+          "workflow-authoring"
+        ]
+      },
+      "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+      "line": 1,
+      "line_sha256": "2106dd414b36d0598f61356e0a0852db10ca46c12d0a9fa5658214ab4eb859dd",
+      "model": "claude-opus-5-5",
+      "seal_sha256": "591a7a1e600d5fd538d3a4f1d87be632f0cd4563c535ed7186c5074e979ff905",
+      "source": "/Users/aipalm/.local/share/nx01/0237-live/out/smoke-E1-A-claude/run/stdout"
+    },
+    "installed": {
+      "catalogs": {
+        "mcp_servers": [],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          }
+        ],
+        "skills": [
+          "batch",
+          "claude-api",
+          "code-review",
+          "dataviz",
+          "debug",
+          "deep-research",
+          "design",
+          "design-sync",
+          "devlyn-engines",
+          "devlyn-ideate",
+          "doctor",
+          "fewer-permission-prompts",
+          "loop",
+          "plugin-authoring",
+          "run",
+          "run-skill-generator",
+          "schedule",
+          "simplify",
+          "update-config",
+          "verify",
+          "workflow-authoring"
+        ]
+      },
+      "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+      "line": 1,
+      "line_sha256": "c67677981c71de1490bcec5b2cf0b4eb4353e1bdf7f7b749870eea8c56a01806",
+      "model": "claude-opus-5-5",
+      "seal_sha256": "ca017570f3cc92ea18a861c3a2565ceaeb424ab9322c7d14fc1a547c9c19f67e",
+      "source": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s02-p-claude/run/stdout"
+    }
+  },
+  "status": "OBSERVED_CATALOG_BINDING_NOT_EXECUTION_VERDICT"
+}

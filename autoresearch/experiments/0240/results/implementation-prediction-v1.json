@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-10T14:57:04.996395+00:00",
+  "scope": "Model-free synthetic fixtures only; no package build, actual runtime staging, auth, Docker or model dispatch",
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "autoresearch/experiments/0240",
+    "-p",
+    "test_*.py",
+    "-v"
+  ],
+  "predictions": [
+    "25 targeted tests pass: 7 peer, 13 runner/gate, 5 adapter/integrity controls",
+    "Codex fresh and resume argv differ only by -c features.multi_agent=false; Claude argv is unchanged",
+    "Observed peer descendants cause product protocol failure while reported costs remain retained; owner descendants remain allowed",
+    "Inherited exact-model, effort, receipt, source-stability, Claude-accounting and Codex-usage gaps retain existing STOP/classification behavior",
+    "Owner CLI preparation and native-child settings remain inherited unchanged; new wrapper/helper/guide dependencies appear in prospective inputs",
+    "Mocked builder/stage retain legacy hash identity and append independent adapter hashes; native dependency drift refuses before destination creation",
+    "All 245 previously recorded inherited input files remain byte-identical; no frozen outcome is rewritten"
+  ]
+}

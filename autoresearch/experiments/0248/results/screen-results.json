@@ -1,0 +1,1544 @@
+{
+  "arms": {
+    "A": "Native comparator",
+    "B": "Strongest integrated solo package; native children permitted and counted",
+    "H": "Fresh same-primary helper review",
+    "P": "Other-primary helper review",
+    "S": "Additional owner-session counterexample check"
+  },
+  "binding_checks": {
+    "additional_prior_operational_or_STOP_cells": 10,
+    "all_bound_references_unchanged_after_assembly": true,
+    "all_integrity_audits_PASS": true,
+    "d10_process_diagnosis_complete": true,
+    "d10_protected_files": 172,
+    "d10_protected_unchanged": true,
+    "historical_reuse_slots": 4,
+    "new_slots": 6,
+    "prior_native_verdicts": 14,
+    "scheduled_slots": 10,
+    "unique_verdicts": 10
+  },
+  "completed_at": "2026-10-10T23:18:33.585885+00:00",
+  "conclusion": {
+    "admission": "NONE",
+    "claude_H_P": "No observed incremental final-quality/resource benefit over S; H/P each pass final frozen gates but cost more than S in wall/input/output. B-relative signal cannot rescue missing S comparison.",
+    "claude_S_vs_B": "OBSERVED_RESOURCE_SCREEN_SIGNAL_EQUAL_REGISTERED_CORRECTNESS_REQUIRES_FRESH_CONFIRMATION",
+    "codex_H_P_current_helper": "NOT_OBSERVED; old0245-helper product negatives remain once with costs, never pooled into current efficacy",
+    "codex_S": "UNKNOWN_UNGRADED_AFTER_STOP; no success/failure inference",
+    "execution": "CLOSED_AT_D10_STOP_PARTIAL",
+    "global_claims": "No production adoption, global ceiling, causal savings estimate, universal correctness or whole-screen null claim.",
+    "native_A": "Cheaper passing native comparator remains visible; no A-relative superiority and no newly invented A-resource veto on B-relative screen signal.",
+    "next": "Root selected preparation of a separate prospective fresh S confirmation0249. Requires its own registration, review, freeze and authorization; this report grants no dispatch. No F23 retakes or0248 resume.",
+    "whole_screen_NO_SIGNAL": "NOT_SUPPORTED"
+  },
+  "conclusion_markdown": {
+    "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/screen-conclusion.md",
+    "sha256": "e05101cceae872c21e0be4678a31e7bdd9f8f3029fe1244748e691f8c7bc63b4"
+  },
+  "descriptive_sums_not_whole_cost": {
+    "all_ten_input_tokens": null,
+    "all_ten_known_usage_lower_bound": {
+      "input_tokens": 39272684,
+      "output_tokens": 949794
+    },
+    "all_ten_output_tokens": null,
+    "all_ten_owner_seconds": 9249.107076749002,
+    "scope": "Descriptive bookkeeping of the ten scheduled observation slots only; not whole study/research cost and not pooled current-treatment efficacy. Historical four counted once.",
+    "valid_complete_observations": 9,
+    "valid_complete_sum": {
+      "input_tokens": 38708060,
+      "output_tokens": 932069,
+      "owner_seconds": 8867.48772908299
+    },
+    "whole_study_total": "UNKNOWN; additional earlier operational/stopped costs and research/review/build expenditure are outside the valid-observation sum."
+  },
+  "earlier_0240_0247_cost_visibility": [
+    {
+      "accounting_disposition": "ADDITIONAL_INCURRED_OPERATIONAL_OR_STOPPED_COST",
+      "cell": "s01-h-codex",
+      "experiment": "0240",
+      "input_tokens": null,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0240/results/s01-integrity-audit.json",
+        "sha256": "a8d0e93f4a7ca649871a4cbd4e93b3a3f2490133f0305fa9560d5dd5055b7710"
+      },
+      "known_usage_lower_bound": {
+        "input_tokens": 1175250,
+        "output_tokens": 17382
+      },
+      "output_tokens": null,
+      "owner_seconds": 422.45709574999637,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/s01-h-codex",
+      "reason": "ValueError: whole-run usage PARTIAL",
+      "source_public_oracle_delivery": "NOT_GRADED_AFTER_STOP",
+      "status": "STOP",
+      "unknown_usage_residual": true,
+      "usage": "PARTIAL",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/verdict-s01-h-codex.json",
+        "sha256": "7202d4e01be2132b21b5175e845c10dfe280cb08b0b1336ba586bab1b25114bc"
+      }
+    },
+    {
+      "accounting_disposition": "ADDITIONAL_INCURRED_OPERATIONAL_OR_STOPPED_COST",
+      "cell": "s01-h-codex",
+      "experiment": "0241",
+      "input_tokens": null,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0241/results/s01-integrity-audit.json",
+        "sha256": "8bad0016cc37a559aaacd1a3b5fbe17abd52f1eec4931eaba8db3559c16b105c"
+      },
+      "known_usage_lower_bound": {
+        "input_tokens": 1040004,
+        "output_tokens": 17807
+      },
+      "output_tokens": null,
+      "owner_seconds": 428.83751491701696,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/s01-h-codex",
+      "reason": "ValueError: peer model identity/evidence UNVERIFIED",
+      "source_public_oracle_delivery": "NOT_GRADED_AFTER_STOP",
+      "status": "STOP",
+      "unknown_usage_residual": true,
+      "usage": "PARTIAL",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/verdict-s01-h-codex.json",
+        "sha256": "86e879e57de68761b8b11393deabe3c6d3f0e46890e3b826d6b328ceea8696e6"
+      }
+    },
+    {
+      "accounting_disposition": "ADDITIONAL_INCURRED_OPERATIONAL_OR_STOPPED_COST",
+      "cell": "s01-h-codex",
+      "experiment": "0242",
+      "input_tokens": 828204,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/results/s01-integrity-audit.json",
+        "sha256": "3633cb6affe55908ca90c0dae21ab867c2a565ba313c6fd1cc05be0e45ab0fd1"
+      },
+      "known_usage_lower_bound": null,
+      "output_tokens": 17165,
+      "owner_seconds": 402.3037222090061,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s01-h-codex",
+      "reason": null,
+      "source_public_oracle_delivery": "ORIGINAL_VERDICT_ONLY",
+      "status": "CHECKS_PASS",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/verdict-s01-h-codex.json",
+        "sha256": "20ac2afa3a9fe999379f2b4c9d7657aaf0d90b7c15d6676bdc3853520a58c2b4"
+      }
+    },
+    {
+      "accounting_disposition": "ADDITIONAL_INCURRED_OPERATIONAL_OR_STOPPED_COST",
+      "cell": "s02-p-claude",
+      "experiment": "0242",
+      "input_tokens": 4526918,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/results/s02-integrity-audit.json",
+        "sha256": "86e0daadef5862fc4241b01cb83c57d63cc80a6de8b36efcc99271d33f986e3d"
+      },
+      "known_usage_lower_bound": null,
+      "output_tokens": 85892,
+      "owner_seconds": 858.5960301250161,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s02-p-claude",
+      "reason": null,
+      "source_public_oracle_delivery": "ORIGINAL_VERDICT_ONLY",
+      "status": "CHECKS_PASS",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/verdict-s02-p-claude.json",
+        "sha256": "d8b3b293fe48112c893aa681c192ff45cef6b4c7092f571de7c8c50538f520b4"
+      }
+    },
+    {
+      "accounting_disposition": "ADDITIONAL_INCURRED_OPERATIONAL_OR_STOPPED_COST",
+      "cell": "s03-p-codex",
+      "experiment": "0242",
+      "input_tokens": null,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/results/s03-integrity-audit.json",
+        "sha256": "aee9a60da9746d6d9f0b88efe3c55af2e6a0b023776ed65dcc070ab7846aa5ec"
+      },
+      "known_usage_lower_bound": {
+        "input_tokens": 1325063,
+        "output_tokens": 45755
+      },
+      "output_tokens": null,
+      "owner_seconds": 644.9293162910035,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex",
+      "reason": "ValueError: whole-run usage PARTIAL",
+      "source_public_oracle_delivery": "NOT_GRADED_AFTER_STOP",
+      "status": "STOP",
+      "unknown_usage_residual": true,
+      "usage": "PARTIAL",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/verdict-s03-p-codex.json",
+        "sha256": "2519b8ca17db411ebc46c9a9a12b3b2b636d8be1615944b3cce34c50cdc9355a"
+      }
+    },
+    {
+      "accounting_disposition": "ALREADY_COUNTED_ONCE_IN_TEN_OBSERVATIONS",
+      "cell": "d01-f23-claude-s",
+      "experiment": "0243",
+      "input_tokens": 6020526,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0243/results/d01-integrity-check.json",
+        "sha256": "dcecdaefe5d30bae7aae4e216412e4ca0631a450dc72cd3a21e8571eef83bd49"
+      },
+      "known_usage_lower_bound": null,
+      "output_tokens": 154630,
+      "owner_seconds": 1360.3888264999841,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/d01-f23-claude-s",
+      "reason": null,
+      "source_public_oracle_delivery": "ORIGINAL_VERDICT_ONLY",
+      "status": "CHECKS_PASS",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d01-f23-claude-s.json",
+        "sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+      }
+    },
+    {
+      "accounting_disposition": "ADDITIONAL_INCURRED_OPERATIONAL_OR_STOPPED_COST",
+      "cell": "d02-f23-codex-p",
+      "experiment": "0243",
+      "input_tokens": null,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0243/results/d02-integrity-audit.json",
+        "sha256": "56ffced5d659635bf0494e7c9542bf7a16260f6fe87c0d11757eb930662d8d84"
+      },
+      "known_usage_lower_bound": {
+        "input_tokens": 1796844,
+        "output_tokens": 69638
+      },
+      "output_tokens": null,
+      "owner_seconds": 807.6238686249999,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/d02-f23-codex-p",
+      "reason": "ValueError: peer model identity/evidence UNVERIFIED",
+      "source_public_oracle_delivery": "NOT_GRADED_AFTER_STOP",
+      "status": "STOP",
+      "unknown_usage_residual": true,
+      "usage": "PARTIAL",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d02-f23-codex-p.json",
+        "sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b"
+      }
+    },
+    {
+      "accounting_disposition": "ADDITIONAL_INCURRED_OPERATIONAL_OR_STOPPED_COST",
+      "cell": "s01-p-codex",
+      "experiment": "0244",
+      "input_tokens": 1326755,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0244/results/s01-integrity-audit.json",
+        "sha256": "be15292cc74336acc37862928aaf14596e36a8d758b0cf8d1ee9629e76391c17"
+      },
+      "known_usage_lower_bound": null,
+      "output_tokens": 61134,
+      "owner_seconds": 688.6771035840211,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex",
+      "reason": null,
+      "source_public_oracle_delivery": "ORIGINAL_VERDICT_ONLY",
+      "status": "CHECKS_PASS",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/verdict-s01-p-codex.json",
+        "sha256": "8cdb102e66c66fde2c7c9e8ce73386e5fb640c198a5dfc08dcc79eebd5a466e5"
+      }
+    },
+    {
+      "accounting_disposition": "ADDITIONAL_INCURRED_OPERATIONAL_OR_STOPPED_COST",
+      "cell": "s01-p-codex",
+      "experiment": "0245",
+      "input_tokens": 1360918,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/results/s01-integrity-audit.json",
+        "sha256": "a0dcf313d2177bbf296d2dc2d472ef7c79f1daf8b7e926961d2bebab8fd06d9a"
+      },
+      "known_usage_lower_bound": null,
+      "output_tokens": 48745,
+      "owner_seconds": 590.173871957988,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0245-live/staged-v1/out-smoke/s01-p-codex",
+      "reason": null,
+      "source_public_oracle_delivery": "ORIGINAL_VERDICT_ONLY",
+      "status": "CHECKS_PASS",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0245-live/staged-v1/out-smoke/verdict-s01-p-codex.json",
+        "sha256": "e3f14bf09088422acb42554fe89a746b927eb46341b1ba4e4717001590576dec"
+      }
+    },
+    {
+      "accounting_disposition": "ALREADY_COUNTED_ONCE_IN_TEN_OBSERVATIONS",
+      "cell": "d02-f23-codex-p",
+      "experiment": "0246",
+      "input_tokens": 632441,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d02-integrity-audit.json",
+        "sha256": "d9d54a008373bca3e8ed0d298f397dbcbdf656877d039a5cb373703b0f40db31"
+      },
+      "known_usage_lower_bound": null,
+      "output_tokens": 19184,
+      "owner_seconds": 404.69662925001467,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d02-f23-codex-p",
+      "reason": null,
+      "source_public_oracle_delivery": "ORIGINAL_VERDICT_ONLY",
+      "status": "PRODUCT_INCOMPLETE",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d02-f23-codex-p.json",
+        "sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9"
+      }
+    },
+    {
+      "accounting_disposition": "ALREADY_COUNTED_ONCE_IN_TEN_OBSERVATIONS",
+      "cell": "d03-f23-claude-a",
+      "experiment": "0246",
+      "input_tokens": 3441785,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d03-integrity-audit.json",
+        "sha256": "3b6ffe91470230862379e35e6f3e8c356817adaab53f41f73e65c84f27017816"
+      },
+      "known_usage_lower_bound": null,
+      "output_tokens": 93953,
+      "owner_seconds": 825.7604531670222,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d03-f23-claude-a",
+      "reason": null,
+      "source_public_oracle_delivery": "ORIGINAL_VERDICT_ONLY",
+      "status": "CHECKS_PASS",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d03-f23-claude-a.json",
+        "sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af"
+      }
+    },
+    {
+      "accounting_disposition": "ALREADY_COUNTED_ONCE_IN_TEN_OBSERVATIONS",
+      "cell": "d04-f23-codex-h",
+      "experiment": "0246",
+      "input_tokens": 558535,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d04-integrity-audit.json",
+        "sha256": "1d62c6975225dc5ab0942b6cc33e0b1455e3bcc3fb511e5b2e1528078d6a779e"
+      },
+      "known_usage_lower_bound": null,
+      "output_tokens": 20603,
+      "owner_seconds": 429.060545040993,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d04-f23-codex-h",
+      "reason": null,
+      "source_public_oracle_delivery": "ORIGINAL_VERDICT_ONLY",
+      "status": "PRODUCT_INCOMPLETE",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d04-f23-codex-h.json",
+        "sha256": "662087c33d44095cd708e7060926ec22420ae92580f477669108de8efe32045a"
+      }
+    },
+    {
+      "accounting_disposition": "ADDITIONAL_INCURRED_OPERATIONAL_OR_STOPPED_COST",
+      "cell": "d05-f23-claude-p",
+      "experiment": "0246",
+      "input_tokens": 12316264,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d05-integrity-audit.json",
+        "sha256": "a4a289e94c6ef75500a279fb10ec63423af4ef18d3bac13873952e917ccba0a4"
+      },
+      "known_usage_lower_bound": null,
+      "output_tokens": 196529,
+      "owner_seconds": 2138.6585267500195,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d05-f23-claude-p",
+      "reason": "ValueError: Claude startup catalog missing or ambiguous",
+      "source_public_oracle_delivery": "NOT_GRADED_AFTER_STOP",
+      "status": "STOP",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d05-f23-claude-p.json",
+        "sha256": "d7f1de56e6d2f0d7ead917788099c1586848a6ea80506e75256e4318a5ba1c6e"
+      }
+    },
+    {
+      "accounting_disposition": "ADDITIONAL_INCURRED_OPERATIONAL_OR_STOPPED_COST",
+      "cell": "s01-p-claude",
+      "experiment": "0247",
+      "input_tokens": 5238939,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/s01-integrity-audit.json",
+        "sha256": "5be1ebaf7d5d7492fd8eb462a05144c1ac8bf63077e10f92efba739c98cc4582"
+      },
+      "known_usage_lower_bound": null,
+      "output_tokens": 119409,
+      "owner_seconds": 1169.6533141669934,
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0247-live/staged-v1/out-smoke/s01-p-claude",
+      "reason": null,
+      "source_public_oracle_delivery": "ORIGINAL_VERDICT_ONLY",
+      "status": "CHECKS_PASS",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0247-live/staged-v1/out-smoke/verdict-s01-p-claude.json",
+        "sha256": "bbda248a6f880af26ca9cafacea202c261b5cd6936102479d7a34d27fa8af923"
+      }
+    }
+  ],
+  "earlier_cost_ledger_scope": "All14 original native verdicts from0240-0247: four already single-counted historical observations plus ten additional operational/stopped cells. Partial residuals stay unknown. This is not an exhaustive ledger of development/reviewer/build expenditure. Existing study status history remains untouched.",
+  "execution_status": "CLOSED_AT_D10_STOP_PARTIAL",
+  "input_bindings_sha256": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0240/results/s01-integrity-audit.json": "a8d0e93f4a7ca649871a4cbd4e93b3a3f2490133f0305fa9560d5dd5055b7710",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0241/results/s01-integrity-audit.json": "8bad0016cc37a559aaacd1a3b5fbe17abd52f1eec4931eaba8db3559c16b105c",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/results/s01-integrity-audit.json": "3633cb6affe55908ca90c0dae21ab867c2a565ba313c6fd1cc05be0e45ab0fd1",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/results/s02-integrity-audit.json": "86e0daadef5862fc4241b01cb83c57d63cc80a6de8b36efcc99271d33f986e3d",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/results/s03-integrity-audit.json": "aee9a60da9746d6d9f0b88efe3c55af2e6a0b023776ed65dcc070ab7846aa5ec",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0243/results/d01-integrity-check.json": "dcecdaefe5d30bae7aae4e216412e4ca0631a450dc72cd3a21e8571eef83bd49",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0243/results/d02-integrity-audit.json": "56ffced5d659635bf0494e7c9542bf7a16260f6fe87c0d11757eb930662d8d84",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0244/results/s01-integrity-audit.json": "be15292cc74336acc37862928aaf14596e36a8d758b0cf8d1ee9629e76391c17",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/results/s01-integrity-audit.json": "a0dcf313d2177bbf296d2dc2d472ef7c79f1daf8b7e926961d2bebab8fd06d9a",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d02-integrity-audit.json": "d9d54a008373bca3e8ed0d298f397dbcbdf656877d039a5cb373703b0f40db31",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d03-integrity-audit.json": "3b6ffe91470230862379e35e6f3e8c356817adaab53f41f73e65c84f27017816",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d03-process-note.md": "4b3781b186bbc7b086642f3d335e0c2ec4020bdfb363fbc864170b3ecbcba77e",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d04-integrity-audit.json": "1d62c6975225dc5ab0942b6cc33e0b1455e3bcc3fb511e5b2e1528078d6a779e",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d05-integrity-audit.json": "a4a289e94c6ef75500a279fb10ec63423af4ef18d3bac13873952e917ccba0a4",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0247/results/s01-integrity-audit.json": "5be1ebaf7d5d7492fd8eb462a05144c1ac8bf63077e10f92efba739c98cc4582",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/registration-v2.md": "866b4384dd32f891b8539ba93a6dd645e2010d85d2fa02966d3203e1fb27e91f",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d05-integrity-audit.json": "70d589094260e949f81c9fa73cf354135d599dcd420e8b02e58c5221d31aaf53",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d05-native-protocol-audit.json": "6b80370225f28c0aadf9026a10fa2d0a9d41d31034c3ac5e3f8cfaecc0cc84a6",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d05-native-protocol-audit.md": "ff84711c19d61a363d55390ad1736142130ded8b8b79ea04e5a95f16bb85d805",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d06-integrity-audit.json": "c2deb94d3a62496e585a8bb184cd5e6c7c579e65d79d5f1aa035f1c6aae4f771",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d06-process-note.md": "e0026a28f040dfbfe3b3a9bdea32b0a329a4e8c1f7fa179279f1b929b4275b7b",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d07-integrity-audit.json": "3c8f4962cbf0a0511feef8f677499c9380a2749660695f873ee7616c01623846",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d07-native-protocol-audit.json": "283f4fa9a67f70ebeafeaf048015ee6ceed9782e9f2e8430fd6e3fa7c27d4461",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d07-native-protocol-audit.md": "88e26acf8b71dbf4e81333a87af8c40339a8a8112a2c9b72a6acf27449a33ea1",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d08-integrity-audit.json": "1af8cbaa017ba69165b8f90350789c31a258676402e87084eebbff00c2245565",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d08-process-note.md": "310c029035df6269d9d192a1d354fa3706b8a7e22bbff80a34a168d61ca133fa",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d09-integrity-audit.json": "bbf47f055469a21c19a0d04c1e8a4419fa2f02bdccec080f42a8d536a2e51e18",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d09-native-process-audit.json": "87ec54b6dd1726e592234d13d5cbcd3b7d146bc63a35d76bc9e1511f1c09ea71",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d09-native-process-audit.md": "ca52bec095cc042e1abd09fa3200b61e925a67051b147cc24a42d2a9e3ced531",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d10-integrity-audit.json": "4a84a43b115a483f43c43f8315d532a47f335fcc2b75c18544a07fc32a152219",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d10-native-process-audit.json": "89303f025c0291adc3a793646127c1bc4f8dd4526e1fcfffac11e734be9e911a",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d10-native-process-audit.md": "3531a8aed0c20a88c72df092751a8d5e392167a07af0e67c4fb99bf058072a55",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/freeze-audit-v2.json": "9ac4aea8649b07b0f2031632557f73835e614abd65fd3e889d8fe10dd6e02bb3",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/freeze-measured-v2.json": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/interim-admission-interpretation.md": "f416f951d5ccef4971cb72f834627810d1c91e6c02c904a3a942b99becaf2403",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/reuse-exposure-observation-v1.json": "59c7551e62323209494b3e0271158d6501274542967174d15738fbda4fe4d207",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/solo-control-admission-interpretation.md": "072a570c048b737270034ab8867ba57e2406a20f45753ca6d8340961412dc6ab",
+    "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/verdict-s01-h-codex.json": "7202d4e01be2132b21b5175e845c10dfe280cb08b0b1336ba586bab1b25114bc",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/out-smoke/verdict-s01-h-codex.json": "86e879e57de68761b8b11393deabe3c6d3f0e46890e3b826d6b328ceea8696e6",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/verdict-s01-h-codex.json": "20ac2afa3a9fe999379f2b4c9d7657aaf0d90b7c15d6676bdc3853520a58c2b4",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/verdict-s02-p-claude.json": "d8b3b293fe48112c893aa681c192ff45cef6b4c7092f571de7c8c50538f520b4",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/verdict-s03-p-codex.json": "2519b8ca17db411ebc46c9a9a12b3b2b636d8be1615944b3cce34c50cdc9355a",
+    "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/d01-f23-claude-s/evidence.manifest.json": "a3ee9ad87750edbcb1ab5b524a4ac135e82352a3e6bd87c43083a8d33481b50d",
+    "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/d01-f23-claude-s/seal.json": "2942180c5f0a5e8a401d6955fcbcef6563e513559638b322f8ec60bec757f329",
+    "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d01-f23-claude-s.json": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89",
+    "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d02-f23-codex-p.json": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/not-dispatched-s01-p-codex.json": "c765dd0cf5e778038e02863fbe46143428c9d250e31e844663b9edc400a12c0f",
+    "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/verdict-s01-p-codex.json": "8cdb102e66c66fde2c7c9e8ce73386e5fb640c198a5dfc08dcc79eebd5a466e5",
+    "/Users/aipalm/.local/share/nx01/0245-live/staged-v1/out-smoke/verdict-s01-p-codex.json": "e3f14bf09088422acb42554fe89a746b927eb46341b1ba4e4717001590576dec",
+    "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d02-f23-codex-p/evidence.manifest.json": "0ebe702941a6db7076fb7cd06719ccd1642a94c31dd8750974158045a3e556b1",
+    "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d02-f23-codex-p/seal.json": "9cd88aae37f33159b5ed8514cb5ec5756de81343be15d7ec9484bf794208d732",
+    "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d03-f23-claude-a/evidence.manifest.json": "a1ac878f245218df0029518181c62ff73bd7891bd46907998a0d1cfff9e046de",
+    "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d03-f23-claude-a/seal.json": "7685eb1e96163822d57e3d2d113c57e0128519bc3a66458dffa9049e056850ca",
+    "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d04-f23-codex-h/evidence.manifest.json": "57ea3297ff8d51f9d122d5c01e682356597fa85ef5948e18c9c7296d43a7748a",
+    "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d04-f23-codex-h/seal.json": "5b5e0a948fe9b265ae29abf9ae5038b32bef040005a07d15eb3e264c519908ce",
+    "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d02-f23-codex-p.json": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9",
+    "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d03-f23-claude-a.json": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af",
+    "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d04-f23-codex-h.json": "662087c33d44095cd708e7060926ec22420ae92580f477669108de8efe32045a",
+    "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d05-f23-claude-p.json": "d7f1de56e6d2f0d7ead917788099c1586848a6ea80506e75256e4318a5ba1c6e",
+    "/Users/aipalm/.local/share/nx01/0247-live/staged-v1/out-smoke/verdict-s01-p-claude.json": "bbda248a6f880af26ca9cafacea202c261b5cd6936102479d7a34d27fa8af923",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d05-f23-claude-p/evidence.manifest.json": "07edc1b96385a50d9ec48475c9918d62e8274570d4eeac54a96919eceba1a9a7",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d05-f23-claude-p/seal.json": "0aaaa19a11d8e58dbb84af43a46260247d413a871644605cb8f9b1a7fff896f4",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d06-f23-codex-b/evidence.manifest.json": "f8cedfbfb42e5ad574adc7548fb892ae294cbd6bb1efe80134fb9864890fd698",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d06-f23-codex-b/seal.json": "8f31760e9adfd019142bc65e3ccb5ea753452077651df286c27f860b33b2bdb1",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d07-f23-claude-h/evidence.manifest.json": "4f9690dcdb1ed391fc77060c7a3b91b8b07ebd5b817368724ce021fb833e52b5",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d07-f23-claude-h/seal.json": "3252d476a731d4c18c2aad58ccd56ecfd77d09ddacb80ccd8d375c1086b88f71",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d08-f23-codex-a/evidence.manifest.json": "425efd263304bceed8a517b53e14eada2971f6ac7a4e6b62ab659aab9ad2dfef",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d08-f23-codex-a/seal.json": "e02518ec33966350213adb326cfaacb17c47150156ce992c6e9f576f85607e12",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/evidence.manifest.json": "5f228988e82d549ed210b26235b4f3707d1817e989dbdc9b94a1467d47a500b4",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/seal.json": "8de8b372c4c9887f3262e511f96e5392febf1d4d25faea94a56bdc4855356968",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d10-f23-codex-s/evidence.manifest.json": "4d7e7c6b5a621d516dc51bceebab349ad8c7b10f506b2446a53b3d49f9d90e9d",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d10-f23-codex-s/seal.json": "a778c29096322ba562af23f4c1e6657e0caa3f8cca2551dff391f6584aa6ec93",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d05-f23-claude-p.json": "7ebc4cbafd44f16c41027becc3c4b3dcb8cb917ce4ab426fbe290ae150ebd028",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d06-f23-codex-b.json": "462530dd619068d80153dc553421d33e283e0534f30698c952b93c3faa6fe5af",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d07-f23-claude-h.json": "7d735bf545596ba71eaead04450db3437fc2265e9e316a087a6e5889c58c035c",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d08-f23-codex-a.json": "ba62d47cffe12936f0689b77b6ae5c7aa5135665baf220a1c7984f71656d66f4",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d09-f23-claude-b.json": "f5af705b2ba959728304a304eee0134183ec51b4f1e0fa33f9d8bf285b20065f",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d10-f23-codex-s.json": "713324173fd821da277cd776a629473897ef246d9b6a559eae52d82bbddbec7c"
+  },
+  "mechanism_observations": {
+    "claude_B": {
+      "limits": "Owner-condensed prompt and interpretation primed the child; no byte-exact original request or helper read-only custody claim. Whole inclusive owner+child cost stays in B; do not subtract child overhead.",
+      "observation": "Registered B automatically used a native general-purpose Agent with Bash/Read; child executed a competing fractional-time witness and owner repaired source/tests. Native child is not H/P helper activation.",
+      "report": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d09-native-process-audit.json",
+        "sha256": "87ec54b6dd1726e592234d13d5cbcd3b7d146bc63a35d76bc9e1511f1c09ea71"
+      }
+    },
+    "claude_H": {
+      "limits": "Credit the concrete counterexample and observed repair, not first discovery of truncation, peer execution, eventual unaided-owner impossibility or general efficacy. Final quality equals S at higher whole-run resources.",
+      "observation": "Fresh same-primary read-only peer contributed a new competing-submillisecond allocation counterexample; owner reproduced wrong order, repaired fractional comparison and observed corrected order. Owner had already observed Date.parse truncation.",
+      "report": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d07-native-protocol-audit.json",
+        "sha256": "283f4fa9a67f70ebeafeaf048015ee6ceed9782e9f2e8430fd6e3fa7c27d4461"
+      }
+    },
+    "claude_P": {
+      "limits": "No repaired allocation defect credited for this specific witness; frozen oracle PASS does not resolve every accepted-input interpretation. No regrade.",
+      "observation": "Peer supplied an exactly representable2^53 allocation witness and challenged the safe-integer cap, already known to owner. Owner kept the predicate/allocation behavior and improved wording/tests.",
+      "report": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d05-native-protocol-audit.json",
+        "sha256": "6b80370225f28c0aadf9026a10fa2d0a9d41d31034c3ac5e3f8cfaecc0cc84a6"
+      }
+    },
+    "codex_S": {
+      "limits": "Process observations only. STOP leaves product/source/public/oracle/delivery ungraded and whole usage unknown; cannot infer success/failure or efficacy.",
+      "observation": "Owner read S guide and executed same-session repeated-lot rollback witness; owner logs show checks and local commit.",
+      "report": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d10-native-process-audit.json",
+        "sha256": "89303f025c0291adc3a793646127c1bc4f8dd4526e1fcfffac11e734be9e911a"
+      }
+    }
+  },
+  "observations": [
+    {
+      "arm": "S",
+      "cell": "d01-f23-claude-s",
+      "counted_once": true,
+      "delivery": {
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "commit": "90c412425a37db979ffca3708bebb314c3794656",
+        "pass": true
+      },
+      "engine": "claude",
+      "evidence_manifest": {
+        "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/d01-f23-claude-s/evidence.manifest.json",
+        "sha256": "a3ee9ad87750edbcb1ab5b524a4ac135e82352a3e6bd87c43083a8d33481b50d"
+      },
+      "experiment": "0243",
+      "identity": "MATCH",
+      "input_tokens": 6020526,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0243/results/d01-integrity-check.json",
+        "sha256": "dcecdaefe5d30bae7aae4e216412e4ca0631a450dc72cd3a21e8571eef83bd49"
+      },
+      "known_usage_lower_bound": null,
+      "oracle": [
+        {
+          "id": "priority-rollback",
+          "status": "PASS"
+        },
+        {
+          "id": "single-warehouse-fefo",
+          "status": "PASS"
+        },
+        {
+          "id": "submillisecond-order",
+          "status": "PASS"
+        },
+        {
+          "id": "offset-equivalence",
+          "status": "PASS"
+        }
+      ],
+      "output_tokens": 154630,
+      "owner_seconds": 1360.3888264999841,
+      "owner_status": "EXITED_0",
+      "peer_helper_activated": false,
+      "peer_policy": "MATCH",
+      "product": true,
+      "public": {
+        "pass": true,
+        "tests": 9
+      },
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/d01-f23-claude-s",
+      "reason": null,
+      "reuse_kind": "UNCHANGED_RELEVANT_TREATMENT_HISTORICAL",
+      "seal": {
+        "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/d01-f23-claude-s/seal.json",
+        "sha256": "2942180c5f0a5e8a401d6955fcbcef6563e513559638b322f8ec60bec757f329"
+      },
+      "slot": 1,
+      "source": true,
+      "status": "CHECKS_PASS",
+      "teardown": "CLEAN",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d01-f23-claude-s.json",
+        "sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+      }
+    },
+    {
+      "arm": "P",
+      "cell": "d02-f23-codex-p",
+      "counted_once": true,
+      "current_0247_treatment_outcome": "NOT_OBSERVED",
+      "current_causal_efficacy_inference": "NOT_ALLOWED",
+      "delivery": {
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "commit": "c1f4e18e303aa7ec0435dde2b28b0224d97bdafc",
+        "pass": true
+      },
+      "engine": "codex",
+      "evidence_manifest": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d02-f23-codex-p/evidence.manifest.json",
+        "sha256": "0ebe702941a6db7076fb7cd06719ccd1642a94c31dd8750974158045a3e556b1"
+      },
+      "experiment": "0246",
+      "helper_version": "0245",
+      "identity": "MATCH",
+      "input_tokens": 632441,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d02-integrity-audit.json",
+        "sha256": "d9d54a008373bca3e8ed0d298f397dbcbdf656877d039a5cb373703b0f40db31"
+      },
+      "known_usage_lower_bound": null,
+      "oracle": [
+        {
+          "id": "priority-rollback",
+          "status": "PASS"
+        },
+        {
+          "id": "single-warehouse-fefo",
+          "status": "PASS"
+        },
+        {
+          "id": "submillisecond-order",
+          "status": "FAIL"
+        },
+        {
+          "id": "offset-equivalence",
+          "status": "FAIL"
+        }
+      ],
+      "output_tokens": 19184,
+      "owner_seconds": 404.69662925001467,
+      "owner_status": "EXITED_0",
+      "owner_visible_helper_changed": true,
+      "peer_helper_activated": false,
+      "peer_policy": "MATCH",
+      "product": false,
+      "public": {
+        "pass": true,
+        "tests": 51
+      },
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d02-f23-codex-p",
+      "reason": null,
+      "reuse_kind": "VERSION_QUALIFIED_HISTORICAL_NEGATIVE",
+      "seal": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d02-f23-codex-p/seal.json",
+        "sha256": "9cd88aae37f33159b5ed8514cb5ec5756de81343be15d7ec9484bf794208d732"
+      },
+      "slot": 2,
+      "source": false,
+      "status": "PRODUCT_INCOMPLETE",
+      "teardown": "CLEAN",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d02-f23-codex-p.json",
+        "sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9"
+      }
+    },
+    {
+      "arm": "A",
+      "cell": "d03-f23-claude-a",
+      "counted_once": true,
+      "delivery": {
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "commit": "3683f82d3bb3731835071fc4b66b6fa0c064beab",
+        "pass": true
+      },
+      "engine": "claude",
+      "evidence_manifest": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d03-f23-claude-a/evidence.manifest.json",
+        "sha256": "a1ac878f245218df0029518181c62ff73bd7891bd46907998a0d1cfff9e046de"
+      },
+      "experiment": "0246",
+      "identity": "MATCH",
+      "input_tokens": 3441785,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d03-integrity-audit.json",
+        "sha256": "3b6ffe91470230862379e35e6f3e8c356817adaab53f41f73e65c84f27017816"
+      },
+      "known_usage_lower_bound": null,
+      "oracle": [
+        {
+          "id": "priority-rollback",
+          "status": "PASS"
+        },
+        {
+          "id": "single-warehouse-fefo",
+          "status": "PASS"
+        },
+        {
+          "id": "submillisecond-order",
+          "status": "PASS"
+        },
+        {
+          "id": "offset-equivalence",
+          "status": "PASS"
+        }
+      ],
+      "output_tokens": 93953,
+      "owner_seconds": 825.7604531670222,
+      "owner_status": "EXITED_0",
+      "peer_helper_activated": false,
+      "peer_policy": "MATCH",
+      "process_audits": [
+        {
+          "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d03-process-note.md",
+          "sha256": "4b3781b186bbc7b086642f3d335e0c2ec4020bdfb363fbc864170b3ecbcba77e"
+        }
+      ],
+      "product": true,
+      "public": {
+        "pass": true,
+        "tests": 9
+      },
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d03-f23-claude-a",
+      "reason": null,
+      "reuse_kind": "UNCHANGED_RELEVANT_TREATMENT_HISTORICAL",
+      "seal": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d03-f23-claude-a/seal.json",
+        "sha256": "7685eb1e96163822d57e3d2d113c57e0128519bc3a66458dffa9049e056850ca"
+      },
+      "slot": 3,
+      "source": true,
+      "status": "CHECKS_PASS",
+      "teardown": "CLEAN",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d03-f23-claude-a.json",
+        "sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af"
+      }
+    },
+    {
+      "arm": "H",
+      "cell": "d04-f23-codex-h",
+      "counted_once": true,
+      "current_0247_treatment_outcome": "NOT_OBSERVED",
+      "current_causal_efficacy_inference": "NOT_ALLOWED",
+      "delivery": {
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "commit": "3bbfaa8896a7a64db47e15e14ee1226fadb95c5e",
+        "pass": true
+      },
+      "engine": "codex",
+      "evidence_manifest": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d04-f23-codex-h/evidence.manifest.json",
+        "sha256": "57ea3297ff8d51f9d122d5c01e682356597fa85ef5948e18c9c7296d43a7748a"
+      },
+      "experiment": "0246",
+      "helper_version": "0245",
+      "identity": "MATCH",
+      "input_tokens": 558535,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0246/results/d04-integrity-audit.json",
+        "sha256": "1d62c6975225dc5ab0942b6cc33e0b1455e3bcc3fb511e5b2e1528078d6a779e"
+      },
+      "known_usage_lower_bound": null,
+      "oracle": [
+        {
+          "id": "priority-rollback",
+          "status": "PASS"
+        },
+        {
+          "id": "single-warehouse-fefo",
+          "status": "PASS"
+        },
+        {
+          "id": "submillisecond-order",
+          "status": "FAIL"
+        },
+        {
+          "id": "offset-equivalence",
+          "status": "FAIL"
+        }
+      ],
+      "output_tokens": 20603,
+      "owner_seconds": 429.060545040993,
+      "owner_status": "EXITED_0",
+      "owner_visible_helper_changed": true,
+      "peer_helper_activated": false,
+      "peer_policy": "MATCH",
+      "product": false,
+      "public": {
+        "pass": true,
+        "tests": 65
+      },
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d04-f23-codex-h",
+      "reason": null,
+      "reuse_kind": "VERSION_QUALIFIED_HISTORICAL_NEGATIVE",
+      "seal": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d04-f23-codex-h/seal.json",
+        "sha256": "5b5e0a948fe9b265ae29abf9ae5038b32bef040005a07d15eb3e264c519908ce"
+      },
+      "slot": 4,
+      "source": false,
+      "status": "PRODUCT_INCOMPLETE",
+      "teardown": "CLEAN",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d04-f23-codex-h.json",
+        "sha256": "662087c33d44095cd708e7060926ec22420ae92580f477669108de8efe32045a"
+      }
+    },
+    {
+      "arm": "P",
+      "cell": "d05-f23-claude-p",
+      "counted_once": true,
+      "delivery": {
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "commit": "42a1ae50f1d543b4018aedd821cce8a63c1f8d6e",
+        "pass": true
+      },
+      "engine": "claude",
+      "evidence_manifest": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d05-f23-claude-p/evidence.manifest.json",
+        "sha256": "07edc1b96385a50d9ec48475c9918d62e8274570d4eeac54a96919eceba1a9a7"
+      },
+      "experiment": "0248",
+      "identity": "MATCH",
+      "input_tokens": 10593254,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d05-integrity-audit.json",
+        "sha256": "70d589094260e949f81c9fa73cf354135d599dcd420e8b02e58c5221d31aaf53"
+      },
+      "known_usage_lower_bound": null,
+      "oracle": [
+        {
+          "id": "priority-rollback",
+          "status": "PASS"
+        },
+        {
+          "id": "single-warehouse-fefo",
+          "status": "PASS"
+        },
+        {
+          "id": "submillisecond-order",
+          "status": "PASS"
+        },
+        {
+          "id": "offset-equivalence",
+          "status": "PASS"
+        }
+      ],
+      "output_tokens": 193245,
+      "owner_seconds": 1751.5711559999909,
+      "owner_status": "EXITED_0",
+      "peer_helper_activated": true,
+      "peer_policy": "MATCH",
+      "process_audits": [
+        {
+          "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d05-native-protocol-audit.json",
+          "sha256": "6b80370225f28c0aadf9026a10fa2d0a9d41d31034c3ac5e3f8cfaecc0cc84a6"
+        }
+      ],
+      "product": true,
+      "public": {
+        "pass": true,
+        "tests": 10
+      },
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d05-f23-claude-p",
+      "reason": null,
+      "reuse_kind": "CURRENT_0247_MACHINERY",
+      "seal": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d05-f23-claude-p/seal.json",
+        "sha256": "0aaaa19a11d8e58dbb84af43a46260247d413a871644605cb8f9b1a7fff896f4"
+      },
+      "slot": 5,
+      "source": true,
+      "status": "CHECKS_PASS",
+      "teardown": "CLEAN",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d05-f23-claude-p.json",
+        "sha256": "7ebc4cbafd44f16c41027becc3c4b3dcb8cb917ce4ab426fbe290ae150ebd028"
+      }
+    },
+    {
+      "arm": "B",
+      "cell": "d06-f23-codex-b",
+      "counted_once": true,
+      "delivery": {
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "commit": "37482de3974effd2fdfb086a2f5f91ccc202192c",
+        "pass": true
+      },
+      "engine": "codex",
+      "evidence_manifest": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d06-f23-codex-b/evidence.manifest.json",
+        "sha256": "f8cedfbfb42e5ad574adc7548fb892ae294cbd6bb1efe80134fb9864890fd698"
+      },
+      "experiment": "0248",
+      "identity": "MATCH",
+      "input_tokens": 473694,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d06-integrity-audit.json",
+        "sha256": "c2deb94d3a62496e585a8bb184cd5e6c7c579e65d79d5f1aa035f1c6aae4f771"
+      },
+      "known_usage_lower_bound": null,
+      "oracle": [
+        {
+          "id": "priority-rollback",
+          "status": "PASS"
+        },
+        {
+          "id": "single-warehouse-fefo",
+          "status": "PASS"
+        },
+        {
+          "id": "submillisecond-order",
+          "status": "FAIL"
+        },
+        {
+          "id": "offset-equivalence",
+          "status": "FAIL"
+        }
+      ],
+      "output_tokens": 18835,
+      "owner_seconds": 343.83193679200485,
+      "owner_status": "EXITED_0",
+      "peer_helper_activated": false,
+      "peer_policy": "MATCH",
+      "process_audits": [
+        {
+          "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d06-process-note.md",
+          "sha256": "e0026a28f040dfbfe3b3a9bdea32b0a329a4e8c1f7fa179279f1b929b4275b7b"
+        }
+      ],
+      "product": false,
+      "public": {
+        "pass": true,
+        "tests": 53
+      },
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d06-f23-codex-b",
+      "reason": null,
+      "reuse_kind": "CURRENT_0247_MACHINERY",
+      "seal": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d06-f23-codex-b/seal.json",
+        "sha256": "8f31760e9adfd019142bc65e3ccb5ea753452077651df286c27f860b33b2bdb1"
+      },
+      "slot": 6,
+      "source": false,
+      "status": "PRODUCT_INCOMPLETE",
+      "teardown": "CLEAN",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d06-f23-codex-b.json",
+        "sha256": "462530dd619068d80153dc553421d33e283e0534f30698c952b93c3faa6fe5af"
+      }
+    },
+    {
+      "arm": "H",
+      "cell": "d07-f23-claude-h",
+      "counted_once": true,
+      "delivery": {
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "commit": "bfe240bef00cb04a4c3ea402ab7bb4df3f40397e",
+        "pass": true
+      },
+      "engine": "claude",
+      "evidence_manifest": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d07-f23-claude-h/evidence.manifest.json",
+        "sha256": "4f9690dcdb1ed391fc77060c7a3b91b8b07ebd5b817368724ce021fb833e52b5"
+      },
+      "experiment": "0248",
+      "identity": "MATCH",
+      "input_tokens": 8690338,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d07-integrity-audit.json",
+        "sha256": "3c8f4962cbf0a0511feef8f677499c9380a2749660695f873ee7616c01623846"
+      },
+      "known_usage_lower_bound": null,
+      "oracle": [
+        {
+          "id": "priority-rollback",
+          "status": "PASS"
+        },
+        {
+          "id": "single-warehouse-fefo",
+          "status": "PASS"
+        },
+        {
+          "id": "submillisecond-order",
+          "status": "PASS"
+        },
+        {
+          "id": "offset-equivalence",
+          "status": "PASS"
+        }
+      ],
+      "output_tokens": 206662,
+      "owner_seconds": 1650.809419874975,
+      "owner_status": "EXITED_0",
+      "peer_helper_activated": true,
+      "peer_policy": "MATCH",
+      "process_audits": [
+        {
+          "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d07-native-protocol-audit.json",
+          "sha256": "283f4fa9a67f70ebeafeaf048015ee6ceed9782e9f2e8430fd6e3fa7c27d4461"
+        }
+      ],
+      "product": true,
+      "public": {
+        "pass": true,
+        "tests": 8
+      },
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d07-f23-claude-h",
+      "reason": null,
+      "reuse_kind": "CURRENT_0247_MACHINERY",
+      "seal": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d07-f23-claude-h/seal.json",
+        "sha256": "3252d476a731d4c18c2aad58ccd56ecfd77d09ddacb80ccd8d375c1086b88f71"
+      },
+      "slot": 7,
+      "source": true,
+      "status": "CHECKS_PASS",
+      "teardown": "CLEAN",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d07-f23-claude-h.json",
+        "sha256": "7d735bf545596ba71eaead04450db3437fc2265e9e316a087a6e5889c58c035c"
+      }
+    },
+    {
+      "arm": "A",
+      "cell": "d08-f23-codex-a",
+      "counted_once": true,
+      "delivery": {
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "commit": "c742af95fccb1eff31962318d1744d2bdc6b4077",
+        "pass": true
+      },
+      "engine": "codex",
+      "evidence_manifest": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d08-f23-codex-a/evidence.manifest.json",
+        "sha256": "425efd263304bceed8a517b53e14eada2971f6ac7a4e6b62ab659aab9ad2dfef"
+      },
+      "experiment": "0248",
+      "identity": "MATCH",
+      "input_tokens": 223364,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d08-integrity-audit.json",
+        "sha256": "1af8cbaa017ba69165b8f90350789c31a258676402e87084eebbff00c2245565"
+      },
+      "known_usage_lower_bound": null,
+      "oracle": [
+        {
+          "id": "priority-rollback",
+          "status": "PASS"
+        },
+        {
+          "id": "single-warehouse-fefo",
+          "status": "PASS"
+        },
+        {
+          "id": "submillisecond-order",
+          "status": "FAIL"
+        },
+        {
+          "id": "offset-equivalence",
+          "status": "FAIL"
+        }
+      ],
+      "output_tokens": 15996,
+      "owner_seconds": 306.79681274999166,
+      "owner_status": "EXITED_0",
+      "peer_helper_activated": false,
+      "peer_policy": "MATCH",
+      "process_audits": [
+        {
+          "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d08-process-note.md",
+          "sha256": "310c029035df6269d9d192a1d354fa3706b8a7e22bbff80a34a168d61ca133fa"
+        }
+      ],
+      "product": false,
+      "public": {
+        "pass": true,
+        "tests": 64
+      },
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d08-f23-codex-a",
+      "reason": null,
+      "reuse_kind": "CURRENT_0247_MACHINERY",
+      "seal": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d08-f23-codex-a/seal.json",
+        "sha256": "e02518ec33966350213adb326cfaacb17c47150156ce992c6e9f576f85607e12"
+      },
+      "slot": 8,
+      "source": false,
+      "status": "PRODUCT_INCOMPLETE",
+      "teardown": "CLEAN",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d08-f23-codex-a.json",
+        "sha256": "ba62d47cffe12936f0689b77b6ae5c7aa5135665baf220a1c7984f71656d66f4"
+      }
+    },
+    {
+      "arm": "B",
+      "cell": "d09-f23-claude-b",
+      "counted_once": true,
+      "delivery": {
+        "changed": [
+          "bin/cli.js",
+          "tests/cli.test.js"
+        ],
+        "commit": "924942c7dec399d4c38ab48a4549c3e5acb33b81",
+        "pass": true
+      },
+      "engine": "claude",
+      "evidence_manifest": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/evidence.manifest.json",
+        "sha256": "5f228988e82d549ed210b26235b4f3707d1817e989dbdc9b94a1467d47a500b4"
+      },
+      "experiment": "0248",
+      "identity": "MATCH",
+      "input_tokens": 8074123,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d09-integrity-audit.json",
+        "sha256": "bbf47f055469a21c19a0d04c1e8a4419fa2f02bdccec080f42a8d536a2e51e18"
+      },
+      "known_usage_lower_bound": null,
+      "oracle": [
+        {
+          "id": "priority-rollback",
+          "status": "PASS"
+        },
+        {
+          "id": "single-warehouse-fefo",
+          "status": "PASS"
+        },
+        {
+          "id": "submillisecond-order",
+          "status": "PASS"
+        },
+        {
+          "id": "offset-equivalence",
+          "status": "PASS"
+        }
+      ],
+      "output_tokens": 208961,
+      "owner_seconds": 1794.5719497080136,
+      "owner_status": "EXITED_0",
+      "peer_helper_activated": false,
+      "peer_policy": "MATCH",
+      "process_audits": [
+        {
+          "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d09-native-process-audit.json",
+          "sha256": "87ec54b6dd1726e592234d13d5cbcd3b7d146bc63a35d76bc9e1511f1c09ea71"
+        }
+      ],
+      "product": true,
+      "public": {
+        "pass": true,
+        "tests": 8
+      },
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b",
+      "reason": null,
+      "reuse_kind": "CURRENT_0247_MACHINERY",
+      "seal": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/seal.json",
+        "sha256": "8de8b372c4c9887f3262e511f96e5392febf1d4d25faea94a56bdc4855356968"
+      },
+      "slot": 9,
+      "source": true,
+      "status": "CHECKS_PASS",
+      "teardown": "CLEAN",
+      "unknown_usage_residual": false,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d09-f23-claude-b.json",
+        "sha256": "f5af705b2ba959728304a304eee0134183ec51b4f1e0fa33f9d8bf285b20065f"
+      }
+    },
+    {
+      "arm": "S",
+      "cell": "d10-f23-codex-s",
+      "counted_once": true,
+      "delivery": "NOT_GRADED_AFTER_STOP",
+      "engine": "codex",
+      "evidence_manifest": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d10-f23-codex-s/evidence.manifest.json",
+        "sha256": "4d7e7c6b5a621d516dc51bceebab349ad8c7b10f506b2446a53b3d49f9d90e9d"
+      },
+      "experiment": "0248",
+      "identity": "MATCH",
+      "input_tokens": null,
+      "integrity_audit": {
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d10-integrity-audit.json",
+        "sha256": "4a84a43b115a483f43c43f8315d532a47f335fcc2b75c18544a07fc32a152219"
+      },
+      "known_usage_lower_bound": {
+        "input_tokens": 564624,
+        "output_tokens": 17725
+      },
+      "local_commit_grade": null,
+      "oracle": "NOT_GRADED_AFTER_STOP",
+      "output_tokens": null,
+      "owner_seconds": 381.6193476660119,
+      "owner_status": "EXITED_0",
+      "peer_helper_activated": false,
+      "peer_policy": "MATCH",
+      "process_audits": [
+        {
+          "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d10-native-process-audit.json",
+          "sha256": "89303f025c0291adc3a793646127c1bc4f8dd4526e1fcfffac11e734be9e911a"
+        }
+      ],
+      "product": "NOT_GRADED_AFTER_STOP",
+      "public": "NOT_GRADED_AFTER_STOP",
+      "raw_directory": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d10-f23-codex-s",
+      "reason": "ValueError: whole-run usage PARTIAL",
+      "reuse_kind": "CURRENT_0247_MACHINERY",
+      "seal": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d10-f23-codex-s/seal.json",
+        "sha256": "a778c29096322ba562af23f4c1e6657e0caa3f8cca2551dff391f6584aa6ec93"
+      },
+      "slot": 10,
+      "source": "NOT_GRADED_AFTER_STOP",
+      "status": "STOP",
+      "teardown": "CLEAN",
+      "unknown_usage_residual": true,
+      "usage": "PARTIAL",
+      "usage_gaps": [
+        "trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4: inference 6d82b8a7-dc63-4201-98b3-dc45b2359694 started without completed usage"
+      ],
+      "verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d10-f23-codex-s.json",
+        "sha256": "713324173fd821da277cd776a629473897ef246d9b6a559eae52d82bbddbec7c"
+      }
+    }
+  ],
+  "prediction": {
+    "prediction": "Ten registered observation slots reconcile once to the frozen four historical and six new original verdicts. Claude S versus B shows equal registered correctness and about24.2/25.4/26.0 percent lower wall/input/output; H/P have no incremental final-quality gain over S and higher cost. d10 remains STOP/PARTIAL with unknown whole usage and lower564624/17725, no post-STOP grades. Version-qualified H/P cannot stand for current-helper outcomes. No admission or whole-screen NO_SIGNAL conclusion follows.",
+    "recorded_at": "2026-10-10T23:16:20.941234+00:00"
+  },
+  "registration": {
+    "0244_not_dispatched": {
+      "path": "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/not-dispatched-s01-p-codex.json",
+      "sha256": "c765dd0cf5e778038e02863fbe46143428c9d250e31e844663b9edc400a12c0f"
+    },
+    "d05-native-protocol-audit.json": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d05-native-protocol-audit.json",
+      "sha256": "6b80370225f28c0aadf9026a10fa2d0a9d41d31034c3ac5e3f8cfaecc0cc84a6"
+    },
+    "d05-native-protocol-audit.md": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d05-native-protocol-audit.md",
+      "sha256": "ff84711c19d61a363d55390ad1736142130ded8b8b79ea04e5a95f16bb85d805"
+    },
+    "d07-native-protocol-audit.json": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d07-native-protocol-audit.json",
+      "sha256": "283f4fa9a67f70ebeafeaf048015ee6ceed9782e9f2e8430fd6e3fa7c27d4461"
+    },
+    "d07-native-protocol-audit.md": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d07-native-protocol-audit.md",
+      "sha256": "88e26acf8b71dbf4e81333a87af8c40339a8a8112a2c9b72a6acf27449a33ea1"
+    },
+    "d09-native-process-audit.json": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d09-native-process-audit.json",
+      "sha256": "87ec54b6dd1726e592234d13d5cbcd3b7d146bc63a35d76bc9e1511f1c09ea71"
+    },
+    "d09-native-process-audit.md": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d09-native-process-audit.md",
+      "sha256": "ca52bec095cc042e1abd09fa3200b61e925a67051b147cc24a42d2a9e3ced531"
+    },
+    "d10-native-process-audit.json": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d10-native-process-audit.json",
+      "sha256": "89303f025c0291adc3a793646127c1bc4f8dd4526e1fcfffac11e734be9e911a"
+    },
+    "d10-native-process-audit.md": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d10-native-process-audit.md",
+      "sha256": "3531a8aed0c20a88c72df092751a8d5e392167a07af0e67c4fb99bf058072a55"
+    },
+    "exposure_observation": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/reuse-exposure-observation-v1.json",
+      "sha256": "59c7551e62323209494b3e0271158d6501274542967174d15738fbda4fe4d207"
+    },
+    "freeze": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/freeze-measured-v2.json",
+      "sha256": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3"
+    },
+    "freeze_audit": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/freeze-audit-v2.json",
+      "sha256": "9ac4aea8649b07b0f2031632557f73835e614abd65fd3e889d8fe10dd6e02bb3"
+    },
+    "prior_interim_interpretation": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/interim-admission-interpretation.md",
+      "sha256": "f416f951d5ccef4971cb72f834627810d1c91e6c02c904a3a942b99becaf2403"
+    },
+    "registration": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/registration-v2.md",
+      "sha256": "866b4384dd32f891b8539ba93a6dd645e2010d85d2fa02966d3203e1fb27e91f"
+    },
+    "solo_interpretation": {
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/solo-control-admission-interpretation.md",
+      "sha256": "072a570c048b737270034ab8867ba57e2406a20f45753ca6d8340961412dc6ab"
+    }
+  },
+  "resource_comparisons": {
+    "H_vs_B": {
+      "candidate": {
+        "input_tokens": 8690338,
+        "output_tokens": 206662,
+        "owner_seconds": 1650.809419874975
+      },
+      "candidate_arm": "H",
+      "candidate_percent_change": {
+        "input_tokens": 7.631974395237728,
+        "output_tokens": -1.1002053014677382,
+        "owner_seconds": -8.010964946623034
+      },
+      "candidate_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d07-f23-claude-h.json",
+        "sha256": "7d735bf545596ba71eaead04450db3437fc2265e9e316a087a6e5889c58c035c"
+      },
+      "comparison": {
+        "input_tokens": 8074123,
+        "output_tokens": 208961,
+        "owner_seconds": 1794.5719497080136
+      },
+      "comparison_arm": "B",
+      "comparison_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d09-f23-claude-b.json",
+        "sha256": "f5af705b2ba959728304a304eee0134183ec51b4f1e0fa33f9d8bf285b20065f"
+      },
+      "engine": "claude",
+      "formula": "100 * (candidate / comparison - 1); negative is lower resource use. One exposed diagnostic observation per arm; no causal estimate.",
+      "same_registered_final_correctness": true
+    },
+    "H_vs_S": {
+      "candidate": {
+        "input_tokens": 8690338,
+        "output_tokens": 206662,
+        "owner_seconds": 1650.809419874975
+      },
+      "candidate_arm": "H",
+      "candidate_percent_change": {
+        "input_tokens": 44.34516186791653,
+        "output_tokens": 33.64935652848735,
+        "owner_seconds": 21.34835186217947
+      },
+      "candidate_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d07-f23-claude-h.json",
+        "sha256": "7d735bf545596ba71eaead04450db3437fc2265e9e316a087a6e5889c58c035c"
+      },
+      "comparison": {
+        "input_tokens": 6020526,
+        "output_tokens": 154630,
+        "owner_seconds": 1360.3888264999841
+      },
+      "comparison_arm": "S",
+      "comparison_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d01-f23-claude-s.json",
+        "sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+      },
+      "engine": "claude",
+      "formula": "100 * (candidate / comparison - 1); negative is lower resource use. One exposed diagnostic observation per arm; no causal estimate.",
+      "same_registered_final_correctness": true
+    },
+    "P_vs_B": {
+      "candidate": {
+        "input_tokens": 10593254,
+        "output_tokens": 193245,
+        "owner_seconds": 1751.5711559999909
+      },
+      "candidate_arm": "P",
+      "candidate_percent_change": {
+        "input_tokens": 31.200057269377734,
+        "output_tokens": -7.521020668928646,
+        "owner_seconds": -2.396158800711179
+      },
+      "candidate_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d05-f23-claude-p.json",
+        "sha256": "7ebc4cbafd44f16c41027becc3c4b3dcb8cb917ce4ab426fbe290ae150ebd028"
+      },
+      "comparison": {
+        "input_tokens": 8074123,
+        "output_tokens": 208961,
+        "owner_seconds": 1794.5719497080136
+      },
+      "comparison_arm": "B",
+      "comparison_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d09-f23-claude-b.json",
+        "sha256": "f5af705b2ba959728304a304eee0134183ec51b4f1e0fa33f9d8bf285b20065f"
+      },
+      "engine": "claude",
+      "formula": "100 * (candidate / comparison - 1); negative is lower resource use. One exposed diagnostic observation per arm; no causal estimate.",
+      "same_registered_final_correctness": true
+    },
+    "P_vs_H": {
+      "candidate": {
+        "input_tokens": 10593254,
+        "output_tokens": 193245,
+        "owner_seconds": 1751.5711559999909
+      },
+      "candidate_arm": "P",
+      "candidate_percent_change": {
+        "input_tokens": 21.89691586219087,
+        "output_tokens": -6.492243373237461,
+        "owner_seconds": 6.103777632468743
+      },
+      "candidate_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d05-f23-claude-p.json",
+        "sha256": "7ebc4cbafd44f16c41027becc3c4b3dcb8cb917ce4ab426fbe290ae150ebd028"
+      },
+      "comparison": {
+        "input_tokens": 8690338,
+        "output_tokens": 206662,
+        "owner_seconds": 1650.809419874975
+      },
+      "comparison_arm": "H",
+      "comparison_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d07-f23-claude-h.json",
+        "sha256": "7d735bf545596ba71eaead04450db3437fc2265e9e316a087a6e5889c58c035c"
+      },
+      "engine": "claude",
+      "formula": "100 * (candidate / comparison - 1); negative is lower resource use. One exposed diagnostic observation per arm; no causal estimate.",
+      "same_registered_final_correctness": true
+    },
+    "P_vs_S": {
+      "candidate": {
+        "input_tokens": 10593254,
+        "output_tokens": 193245,
+        "owner_seconds": 1751.5711559999909
+      },
+      "candidate_arm": "P",
+      "candidate_percent_change": {
+        "input_tokens": 75.95230051327742,
+        "output_tokens": 24.97251503589213,
+        "owner_seconds": 28.755185420512653
+      },
+      "candidate_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d05-f23-claude-p.json",
+        "sha256": "7ebc4cbafd44f16c41027becc3c4b3dcb8cb917ce4ab426fbe290ae150ebd028"
+      },
+      "comparison": {
+        "input_tokens": 6020526,
+        "output_tokens": 154630,
+        "owner_seconds": 1360.3888264999841
+      },
+      "comparison_arm": "S",
+      "comparison_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d01-f23-claude-s.json",
+        "sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+      },
+      "engine": "claude",
+      "formula": "100 * (candidate / comparison - 1); negative is lower resource use. One exposed diagnostic observation per arm; no causal estimate.",
+      "same_registered_final_correctness": true
+    },
+    "S_vs_A": {
+      "candidate": {
+        "input_tokens": 6020526,
+        "output_tokens": 154630,
+        "owner_seconds": 1360.3888264999841
+      },
+      "candidate_arm": "S",
+      "candidate_percent_change": {
+        "input_tokens": 74.92452317620074,
+        "output_tokens": 64.5822911455728,
+        "owner_seconds": 64.74376089125032
+      },
+      "candidate_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d01-f23-claude-s.json",
+        "sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+      },
+      "comparison": {
+        "input_tokens": 3441785,
+        "output_tokens": 93953,
+        "owner_seconds": 825.7604531670222
+      },
+      "comparison_arm": "A",
+      "comparison_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d03-f23-claude-a.json",
+        "sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af"
+      },
+      "engine": "claude",
+      "formula": "100 * (candidate / comparison - 1); negative is lower resource use. One exposed diagnostic observation per arm; no causal estimate.",
+      "same_registered_final_correctness": true
+    },
+    "S_vs_B": {
+      "candidate": {
+        "input_tokens": 6020526,
+        "output_tokens": 154630,
+        "owner_seconds": 1360.3888264999841
+      },
+      "candidate_arm": "S",
+      "candidate_percent_change": {
+        "input_tokens": -25.434304134331363,
+        "output_tokens": -26.00054555634783,
+        "owner_seconds": -24.19424438672817
+      },
+      "candidate_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d01-f23-claude-s.json",
+        "sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+      },
+      "comparison": {
+        "input_tokens": 8074123,
+        "output_tokens": 208961,
+        "owner_seconds": 1794.5719497080136
+      },
+      "comparison_arm": "B",
+      "comparison_verdict": {
+        "path": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d09-f23-claude-b.json",
+        "sha256": "f5af705b2ba959728304a304eee0134183ec51b4f1e0fa33f9d8bf285b20065f"
+      },
+      "engine": "claude",
+      "formula": "100 * (candidate / comparison - 1); negative is lower resource use. One exposed diagnostic observation per arm; no causal estimate.",
+      "same_registered_final_correctness": true
+    }
+  },
+  "schema": "0248-screen-results-v1",
+  "scope": "Read-only assembly and arithmetic from exact original verdicts and completed independent audits; no models/auth/tests/native execution/evaluator replay/regrade. Only this JSON and screen-conclusion.md are written.",
+  "status": "COMPLETE",
+  "writes": [
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/screen-results.json",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/screen-conclusion.md"
+  ]
+}

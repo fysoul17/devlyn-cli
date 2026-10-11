@@ -1,0 +1,14 @@
+[
+  {
+    "source": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/fresh-result-metadata.json",
+    "fixture": "fixtures/fresh-result-metadata.json",
+    "sha256": "3a9f769bfcfaa33d8cc00d3d8f78c074fd2ca1f18d43aca55808ed264f61dbb0",
+    "bytes": 306
+  },
+  {
+    "source": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/peer1791650168333261717.json",
+    "fixture": "fixtures/fresh-native-result.json",
+    "sha256": "401f4c7d6e2feccb4359f058afbcb9caa68db43d2a2c7779b34f17dc81aefe3f",
+    "bytes": 5483
+  }
+]

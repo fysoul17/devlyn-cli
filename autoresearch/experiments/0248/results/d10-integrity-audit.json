@@ -1,0 +1,379 @@
+{
+  "all_six_new_cells_have_ended": true,
+  "at": "2026-10-10T23:15:20.793769+00:00",
+  "checks": {
+    "CLEAN_teardown_preserved": true,
+    "S_no_peer_helper_activation": true,
+    "actual_image_matches": true,
+    "all_hashes_match": true,
+    "caller_prompt_tasks_metadata_bound": true,
+    "completed_trace_usage_matches_lower_bound_once": true,
+    "container_absent": true,
+    "control_inventory_exact": true,
+    "earlier_current_d05_d09_preserved": true,
+    "effective_v2_freeze_and_seal_inputs_exact": true,
+    "evidence_collection_clean": true,
+    "evidence_inventory_exact": true,
+    "evidence_manifest_matches_verdict": true,
+    "exact_six_registered_new_cells_ended": true,
+    "freeze_inputs_selected_unchanged_after": true,
+    "historical_four_unchanged": true,
+    "identity_policy_accounting_MATCH_equal_verdict": true,
+    "image_resources_config_consistent": true,
+    "known_lower_bound_only_not_total": true,
+    "no_identity_policy_claude_gaps_or_violations": true,
+    "old_STOPs_preserved_no_regrade": true,
+    "old_integration_inputs_unchanged_new_publisher_outside_freeze": true,
+    "original_STOP_PARTIAL_UNKNOWN_preserved": true,
+    "owner_wall_and_EXITED_0_preserved": true,
+    "raw_incomplete_inference_bound_and_gap_preserved": true,
+    "runtime_hash_equal_freeze": true,
+    "source_public_oracle_delivery_NOT_GRADED_AFTER_STOP": true,
+    "v2_old_Codex_H_P_limits_preserved": true,
+    "verdict_unchanged_after": true,
+    "volume_absent": true
+  },
+  "claude_accounting_status": "MATCH",
+  "completion": "Bounded integrity audit complete; idle. No model/native/auth/test/evaluator execution or replay.",
+  "container_absent": true,
+  "control_manifest_sha256": "41b9eca8739f0638567f8bd4e927f782f667aa7fa835951128b0322099ffe457",
+  "credential_evidence_handling": "Opaque SHA256 of listed sealed credentials only. No credential parsing/disclosure/auth operation; Docker inspections request exact ID/name only.",
+  "earlier_current": {
+    "d05-f23-claude-p": {
+      "audit_sha256": "70d589094260e949f81c9fa73cf354135d599dcd420e8b02e58c5221d31aaf53",
+      "unchanged": true,
+      "verdict_sha256": "7ebc4cbafd44f16c41027becc3c4b3dcb8cb917ce4ab426fbe290ae150ebd028"
+    },
+    "d06-f23-codex-b": {
+      "audit_sha256": "c2deb94d3a62496e585a8bb184cd5e6c7c579e65d79d5f1aa035f1c6aae4f771",
+      "unchanged": true,
+      "verdict_sha256": "462530dd619068d80153dc553421d33e283e0534f30698c952b93c3faa6fe5af"
+    },
+    "d07-f23-claude-h": {
+      "audit_sha256": "3c8f4962cbf0a0511feef8f677499c9380a2749660695f873ee7616c01623846",
+      "unchanged": true,
+      "verdict_sha256": "7d735bf545596ba71eaead04450db3437fc2265e9e316a087a6e5889c58c035c"
+    },
+    "d08-f23-codex-a": {
+      "audit_sha256": "1af8cbaa017ba69165b8f90350789c31a258676402e87084eebbff00c2245565",
+      "unchanged": true,
+      "verdict_sha256": "ba62d47cffe12936f0689b77b6ae5c7aa5135665baf220a1c7984f71656d66f4"
+    },
+    "d09-f23-claude-b": {
+      "audit_sha256": "bbf47f055469a21c19a0d04c1e8a4419fa2f02bdccec080f42a8d536a2e51e18",
+      "unchanged": true,
+      "verdict_sha256": "f5af705b2ba959728304a304eee0134183ec51b4f1e0fa33f9d8bf285b20065f"
+    }
+  },
+  "evidence_manifest_collection_failures": [],
+  "evidence_manifest_sha256": "4d7e7c6b5a621d516dc51bceebab349ad8c7b10f506b2446a53b3d49f9d90e9d",
+  "findings": [],
+  "freeze_sha256_after": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3",
+  "freeze_sha256_before": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3",
+  "frozen_integration_inputs": {
+    "count": 12,
+    "new_0237_integration_425_is_frozen_input": false,
+    "sha256s": {
+      "/Users/aipalm/.local/share/nx01/0237-integration/.agents/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+      "/Users/aipalm/.local/share/nx01/0237-integration/.agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "/Users/aipalm/.local/share/nx01/0237-integration/.github/workflows/portability.yml": "4f951740c37faff82e4b3470951c5bd300e36a4816de4c79a100b7aa925b3492",
+      "/Users/aipalm/.local/share/nx01/0237-integration/bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+      "/Users/aipalm/.local/share/nx01/0237-integration/config/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+      "/Users/aipalm/.local/share/nx01/0237-integration/config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "/Users/aipalm/.local/share/nx01/0237-integration/package-lock.json": "292798067830b59eba153167a45972cf5ab92c136de4119a14a32eb109e7e4a6",
+      "/Users/aipalm/.local/share/nx01/0237-integration/package.json": "688e807e5fa90ac3677c1e88df3bfaeb9a04a18fae72a6e853122440b7c2cddd",
+      "/Users/aipalm/.local/share/nx01/0237-integration/scripts/lint-skills.sh": "ee64d473c8de16504eb2dbb867b02433c8a15cc5ba9505bc8679a5b14343a892",
+      "/Users/aipalm/.local/share/nx01/0237-integration/scripts/test-ideate-loop.py": "ad353f1780fe616ca32428517c2368f8697fb4d47db98b12a4f1514f2363c08b",
+      "/Users/aipalm/.local/share/nx01/0237-integration/scripts/test-installer-menu.cjs": "d98b4fc6bbbb36e1a1b6d27d4d75a047c6130fe10b69374a9d9d7678ad5e64ad",
+      "/Users/aipalm/.local/share/nx01/0237-integration/scripts/test-windows-portability.py": "425231bc48b31287a2343c5c3986c7a8ced235571730addeb434ed96b1bf11bb"
+    },
+    "unchanged": true
+  },
+  "grading": {
+    "checked_snapshot": "NOT_GRADED_AFTER_STOP",
+    "delivery": "NOT_GRADED_AFTER_STOP",
+    "oracle": "NOT_GRADED_AFTER_STOP",
+    "product": "NOT_GRADED_AFTER_STOP",
+    "public": "NOT_GRADED_AFTER_STOP",
+    "source": "NOT_GRADED_AFTER_STOP"
+  },
+  "historical_four": [
+    {
+      "current_0247_treatment_outcome": null,
+      "experiment": "0243",
+      "name": "d01-f23-claude-s",
+      "reuse_kind": "UNCHANGED_RELEVANT_TREATMENT_HISTORICAL",
+      "unchanged": true,
+      "verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+    },
+    {
+      "current_0247_treatment_outcome": "NOT_OBSERVED",
+      "experiment": "0246",
+      "name": "d02-f23-codex-p",
+      "reuse_kind": "VERSION_QUALIFIED_HISTORICAL_NEGATIVE",
+      "unchanged": true,
+      "verdict_sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9"
+    },
+    {
+      "current_0247_treatment_outcome": null,
+      "experiment": "0246",
+      "name": "d03-f23-claude-a",
+      "reuse_kind": "UNCHANGED_RELEVANT_TREATMENT_HISTORICAL",
+      "unchanged": true,
+      "verdict_sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af"
+    },
+    {
+      "current_0247_treatment_outcome": "NOT_OBSERVED",
+      "experiment": "0246",
+      "name": "d04-f23-codex-h",
+      "reuse_kind": "VERSION_QUALIFIED_HISTORICAL_NEGATIVE",
+      "unchanged": true,
+      "verdict_sha256": "662087c33d44095cd708e7060926ec22420ae92580f477669108de8efe32045a"
+    }
+  ],
+  "identity_status": "MATCH",
+  "inference_limits": "Integrity PASS validates preservation, not product correctness or complete cost. Current d10 remains STOP/PARTIAL with whole usage UNKNOWN and lower bound 564624/17725. No source/public/oracle/delivery grading after STOP. Old Codex H/P remain version-qualified 0245-helper negatives and current H/P NOT_OBSERVED; no imputation, pooled efficacy or adoption claim.",
+  "input_tokens": null,
+  "integrity": {
+    "checked_snapshot": {
+      "count": 0,
+      "mismatches": [],
+      "reason": "No checked.json or snapshot exists; none generated by audit.",
+      "status": "NOT_GRADED_AFTER_STOP"
+    },
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 2232,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 117,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 486,
+      "mismatches": []
+    }
+  },
+  "integrity_status": "PASS",
+  "known_usage_lower_bound": {
+    "input_tokens": 564624,
+    "output_tokens": 17725
+  },
+  "native_owner_config_identity": {
+    "cell_mount": true,
+    "claude_settings": true,
+    "environment_equal_plan": true,
+    "home_mount": true,
+    "image_runtime_plan_seal": true,
+    "owner_argv_equal_plan": true,
+    "owner_model_effort": true,
+    "owner_watchdog": true,
+    "resource_values": {
+      "--cpus": "2",
+      "--memory": "4g",
+      "--pids-limit": "256"
+    },
+    "resources": true,
+    "source_sha_frozen": true,
+    "started_result_equal": true,
+    "tmp_mount": true
+  },
+  "old_STOPs_preserved": [
+    {
+      "experiment": "0243",
+      "name": "d02-f23-codex-p",
+      "preserved_ungraded": true,
+      "verdict_sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b"
+    },
+    {
+      "experiment": "0246",
+      "name": "d05-f23-claude-p",
+      "preserved_ungraded": true,
+      "verdict_sha256": "d7f1de56e6d2f0d7ead917788099c1586848a6ea80506e75256e4318a5ba1c6e"
+    }
+  ],
+  "output_tokens": null,
+  "owner_seconds": 381.6193476660119,
+  "owner_session": "01a12810-e397-7633-afc5-13c7882a1eb4",
+  "owner_status": "EXITED_0",
+  "peer_activated": false,
+  "peer_policy_status": "MATCH",
+  "peer_validation_completion": "NOT_ACTIVATED",
+  "post_STOP_evaluator_artifacts_absent": {
+    "checked.json": true,
+    "checks-raw.json": true,
+    "checks.json": true,
+    "delivery.json": true,
+    "snapshot": true,
+    "snapshot.json": true
+  },
+  "prediction": {
+    "prediction": "Original d10 STOP/PARTIAL remains immutable with whole input/output UNKNOWN, unfinished inference 6d82b8a7-dc63-4201-98b3-dc45b2359694 and no source/public/oracle/delivery grade after STOP. Effective v2 inputs117/selected486 including old0237-integration, prepared/evidence/control entries remain exact; container and tmp volume are absent. Prior current/history outcomes and v2 limitations remain unchanged; all six new cells have now ended.",
+    "recorded_at": "2026-10-10T23:12:51.061595+00:00"
+  },
+  "reason": "ValueError: whole-run usage PARTIAL",
+  "remaining_cells": {},
+  "schema": "0248-d10-independent-native-integrity-audit-v1",
+  "scope": "Bounded read-only integrity audit. No native model/authentication/test/evaluator replay/source repair/regrade. Listed sealed credential evidence is hashed opaquely only. Separate publication checkout is not modified.",
+  "seal_sha256": "a778c29096322ba562af23f4c1e6657e0caa3f8cca2551dff391f6584aa6ec93",
+  "status": "STOP",
+  "teardown": "CLEAN",
+  "teardown_and_image_observations": [
+    {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "devlyn-0231-2072864de09743fc8151ebd7a29696e2"
+      ],
+      "exit_code": 1,
+      "stderr": "Error response from daemon: No such container: devlyn-0231-2072864de09743fc8151ebd7a29696e2\n",
+      "stdout": "\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "volume",
+        "inspect",
+        "--format",
+        "{{.Name}}",
+        "devlyn-0234-tmp-8f867ec365f14a71a8149da7bf7d012f"
+      ],
+      "exit_code": 1,
+      "stderr": "Error response from daemon: get devlyn-0234-tmp-8f867ec365f14a71a8149da7bf7d012f: no such volume\n",
+      "stdout": "\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "image",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998\n"
+    }
+  ],
+  "usage": "PARTIAL",
+  "usage_gaps": [
+    "trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4: inference 6d82b8a7-dc63-4201-98b3-dc45b2359694 started without completed usage"
+  ],
+  "usage_trace_integrity": {
+    "completed_response_bindings": [
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/8.json",
+        "sha256": "d91af7c4cac794b7bd58481259ecccf7f60d8be25028016972e1ce3563954da4"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/24.json",
+        "sha256": "9c9cd26fd636ac98335e4f66979e20e12f48d86271aea513ac98c2fe8649a6ff"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/40.json",
+        "sha256": "183658a3a541ec0619dc12714179f38271455e784a6d9b30b059ec7031d31473"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/57.json",
+        "sha256": "4b6d0aeb827844641092aa7743f80e20ca81b63909417fcb003745477dd8e213"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/63.json",
+        "sha256": "56f967b1cc64d0b0aea0d2de1afa3e3efd1aa48451962e7ffa51e0abe6e27fd6"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/72.json",
+        "sha256": "cda3b00f4e4cca5943bd6b104471e467c1e073383c2084ed22568772bc8b37e4"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/80.json",
+        "sha256": "fdb07f81b063ceec378ef02936f7327e7046dd5f1371b07e871bba70cd01a053"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/93.json",
+        "sha256": "8554e15f68b5321c4c2d0094c047ee123faa82a20628e186ead0eb0ee9c93ed6"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/99.json",
+        "sha256": "fca19bd088eaa0ef97f87a5240fb344e54dd6c8b3f941c5dabbaffaa0d56299c"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/112.json",
+        "sha256": "be08dc1a9c91f3878ead86d6133cec6382bcdfc7a27f575ebd85d5c7f2150bed"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/123.json",
+        "sha256": "164e9fecc15ae8952972d875edc9565cfdaf97ffa753be37e7164306141c3345"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/136.json",
+        "sha256": "bcfa337625e9a8c706d91c48db46c3b09b0206a03a770323f444ad90209ed0f4"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/139.json",
+        "sha256": "e17a8f330599cc9053cf3420cd62ddbad7247dbbb47e671df93a02add723f9e0"
+      },
+      {
+        "manifest_bound": true,
+        "path": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/payloads/146.json",
+        "sha256": "ec7059f73f3cb5bd7b2426fe7648cabccefc85e90419f2fe30a896a720f8fd05"
+      }
+    ],
+    "completed_usage_sum": {
+      "cache_write_input_tokens": 0,
+      "cached_input_tokens": 496512,
+      "input_tokens": 564624,
+      "output_tokens": 17725,
+      "reasoning_output_tokens": 7771
+    },
+    "incomplete_failure": {
+      "error": "stream disconnected before completion: websocket closed by server before response.completed",
+      "line": 41,
+      "partial_response_payload": null
+    },
+    "incomplete_inference": "6d82b8a7-dc63-4201-98b3-dc45b2359694",
+    "incomplete_start": {
+      "line": 40,
+      "model": "gpt-6-astra",
+      "thread": "01a12810-e397-7633-afc5-13c7882a1eb4"
+    },
+    "inference_completed_count": 14,
+    "inference_failed_count": 1,
+    "inference_started_count": 15,
+    "interpretation": "Completed responses are a lower bound only. Failed inference has no completed usage; later successful work cannot fill the missing request. Cache input and reasoning output are already included in input/output totals, never added again. No repaired accounting or regrade.",
+    "owner_session": "01a12810-e397-7633-afc5-13c7882a1eb4",
+    "trace": "cell/trace/trace-0a1c3c5e-475f-4114-8458-c91a821045e2-01a12810-e397-7633-afc5-13c7882a1eb4/trace.jsonl",
+    "trace_sha256": "f12bc6d64bc4762e39c35f957fe243934b43c8bd8a81165c138445f5bf02eea0",
+    "whole_usage": "UNKNOWN"
+  },
+  "verdict_sha256": "713324173fd821da277cd776a629473897ef246d9b6a559eae52d82bbddbec7c",
+  "volume_absent": true,
+  "writes": [
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d10-integrity-audit.json"
+  ]
+}

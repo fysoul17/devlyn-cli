@@ -1,0 +1,476 @@
+{
+  "agent_state_observed": "Root and this bounded audit active; independent protocol auditor and registration reviewer completed. This audit performs no model or test launch and returns idle on completion.",
+  "at": "2026-10-10T17:36:06.560439+00:00",
+  "checks": [
+    {
+      "name": "supplied_freeze_identity",
+      "passed": true
+    },
+    {
+      "name": "all_execution_hashes",
+      "passed": true
+    },
+    {
+      "name": "all_selected_hashes",
+      "passed": true
+    },
+    {
+      "name": "runtime_identity",
+      "passed": true
+    },
+    {
+      "name": "audit_outside_frozen_set",
+      "passed": true
+    },
+    {
+      "detail": {
+        "actual_count": 102,
+        "extra": [],
+        "missing": []
+      },
+      "name": "exact_Runner_inputs",
+      "passed": true
+    },
+    {
+      "name": "registration_identity",
+      "passed": true
+    },
+    {
+      "name": "registration_order",
+      "passed": true
+    },
+    {
+      "name": "each_engine_every_arm_once",
+      "passed": true
+    },
+    {
+      "name": "final_registration_review_SHIP",
+      "passed": true
+    },
+    {
+      "detail": {
+        "judgment": "Same prospective independent-check quality/resource hypothesis, strongest integrated solo baseline, per-engine comparison and preservation of failures/unknown costs. Not a guarantee of improvement."
+      },
+      "name": "prediction_consistent_with_registration",
+      "passed": true
+    },
+    {
+      "name": "claude_primary_route",
+      "passed": true
+    },
+    {
+      "name": "claude_H_peer_route",
+      "passed": true
+    },
+    {
+      "name": "claude_P_peer_route",
+      "passed": true
+    },
+    {
+      "name": "codex_primary_route",
+      "passed": true
+    },
+    {
+      "name": "codex_H_peer_route",
+      "passed": true
+    },
+    {
+      "name": "codex_P_peer_route",
+      "passed": true
+    },
+    {
+      "name": "owner_native_child_route",
+      "passed": true
+    },
+    {
+      "name": "ordinary_F23_unchanged",
+      "passed": true
+    },
+    {
+      "name": "task_file_identity",
+      "passed": true
+    },
+    {
+      "name": "F23_four_oracles",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 5
+      },
+      "name": "package_archives_and_metadata_bound",
+      "passed": true
+    },
+    {
+      "name": "registered_package_identities",
+      "passed": true
+    },
+    {
+      "name": "package_metadata_prior_evidence",
+      "passed": true
+    },
+    {
+      "name": "builder_identities",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 5
+      },
+      "name": "builder_and_product_reviews_bound",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 7
+      },
+      "name": "all_seven_packaged_integration_inputs_bound",
+      "passed": true
+    },
+    {
+      "name": "integrated_input_hashes_match_build",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 12
+      },
+      "name": "all_twelve_verification_inputs_bound",
+      "passed": true
+    },
+    {
+      "name": "verification_input_binding_values",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 27
+      },
+      "name": "integration_verification_records_bound",
+      "passed": true
+    },
+    {
+      "name": "verification_record_hash_chain",
+      "passed": true
+    },
+    {
+      "name": "integrated_tests_prior_PASS",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 2
+      },
+      "name": "startup_A_complete_stdout_and_seal_bound",
+      "passed": true
+    },
+    {
+      "name": "startup_A_final_binding",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 2
+      },
+      "name": "startup_installed_complete_stdout_and_seal_bound",
+      "passed": true
+    },
+    {
+      "name": "startup_installed_final_binding",
+      "passed": true
+    },
+    {
+      "name": "runtime_startup_expectations",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 2
+      },
+      "name": "startup_expectation_reports_bound",
+      "passed": true
+    },
+    {
+      "name": "prior_public_oracle_controls_same",
+      "passed": true
+    },
+    {
+      "name": "controls_prior_PASS_eight_installs",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 3
+      },
+      "name": "controls_and_payload_evidence_bound",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 6
+      },
+      "name": "0242_s01-h-codex_final_audits_raw_bound",
+      "passed": true
+    },
+    {
+      "name": "0242_s01-h-codex_raw_PASS",
+      "passed": true
+    },
+    {
+      "name": "0242_s01-h-codex_manifest_verdict_binding",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 6
+      },
+      "name": "0242_s02-p-claude_final_audits_raw_bound",
+      "passed": true
+    },
+    {
+      "name": "0242_s02-p-claude_raw_PASS",
+      "passed": true
+    },
+    {
+      "name": "0242_s02-p-claude_manifest_verdict_binding",
+      "passed": true
+    },
+    {
+      "detail": {
+        "missing": [],
+        "required_count": 6
+      },
+      "name": "0244_s01-p-codex_final_audits_raw_bound",
+      "passed": true
+    },
+    {
+      "name": "0244_s01-p-codex_raw_PASS",
+      "passed": true
+    },
+    {
+      "name": "0244_s01-p-codex_manifest_verdict_binding",
+      "passed": true
+    },
+    {
+      "name": "0244_protocol_final_PASS",
+      "passed": true
+    },
+    {
+      "detail": {
+        "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured"
+      },
+      "name": "measured_output_absent",
+      "passed": true
+    },
+    {
+      "detail": {
+        "command": [
+          "docker",
+          "ps",
+          "--filter",
+          "name=devlyn-0231-",
+          "--format",
+          "{{.Names}}"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "name": "study_native_containers_idle",
+      "passed": true
+    },
+    {
+      "name": "freeze_byte_identical_before_after",
+      "passed": true
+    },
+    {
+      "name": "measured_output_still_absent",
+      "passed": true
+    }
+  ],
+  "execution_inputs": {
+    "count": 102,
+    "mismatches": []
+  },
+  "freeze_sha256_after": "a86c0b479204bcb54bd7bc53457cd88797a47e18ed1d74cbac231d4789478825",
+  "freeze_sha256_before": "a86c0b479204bcb54bd7bc53457cd88797a47e18ed1d74cbac231d4789478825",
+  "idle_before_dispatch": true,
+  "limitations": [
+    "Startup catalogs remain frozen expectations and will be checked on each actual Claude measured execution.",
+    "No efficacy result exists; this permits only the already registered serial diagnostic sequence after the root applies its remaining per-dispatch preflight."
+  ],
+  "model_routes": {
+    "claude": {
+      "owner": {
+        "effort": "max",
+        "engine": "claude",
+        "model": "claude-opus-5-5"
+      },
+      "peers": {
+        "H": {
+          "effort": "max",
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        },
+        "P": {
+          "child_effort": "high",
+          "child_model": "gpt-6-sol",
+          "effort": "max",
+          "engine": "codex",
+          "model": "gpt-6-astra"
+        }
+      }
+    },
+    "codex": {
+      "owner": {
+        "child_effort": "high",
+        "child_model": "gpt-6-sol",
+        "effort": "max",
+        "engine": "codex",
+        "model": "gpt-6-astra"
+      },
+      "peers": {
+        "H": {
+          "child_effort": "high",
+          "child_model": "gpt-6-sol",
+          "effort": "max",
+          "engine": "codex",
+          "model": "gpt-6-astra"
+        },
+        "P": {
+          "effort": "max",
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        }
+      }
+    }
+  },
+  "prediction": {
+    "prediction": "The supplied final freeze is stable and matches every one of102 Runner execution inputs and171 selected artifacts. Runner0244.inputs exactly equals the frozen execution-input mapping. Final registration, ten-cell order, ordinary F23 task and primary/peer routes agree; required integrated package/build inputs, complete startup stdout, final0244 audits and raw verdict/manifest/seal are bound. Measured output is absent and no study native owner is active. No models, authentication, installs or tests are executed.",
+    "recorded_at": "2026-10-10T17:33:36.509204+00:00"
+  },
+  "registration_order": [
+    {
+      "arm": "S",
+      "config": "claude",
+      "name": "d01-f23-claude-s",
+      "task": "F23"
+    },
+    {
+      "arm": "P",
+      "config": "codex",
+      "name": "d02-f23-codex-p",
+      "task": "F23"
+    },
+    {
+      "arm": "A",
+      "config": "claude",
+      "name": "d03-f23-claude-a",
+      "task": "F23"
+    },
+    {
+      "arm": "H",
+      "config": "codex",
+      "name": "d04-f23-codex-h",
+      "task": "F23"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "name": "d05-f23-claude-p",
+      "task": "F23"
+    },
+    {
+      "arm": "B",
+      "config": "codex",
+      "name": "d06-f23-codex-b",
+      "task": "F23"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "name": "d07-f23-claude-h",
+      "task": "F23"
+    },
+    {
+      "arm": "A",
+      "config": "codex",
+      "name": "d08-f23-codex-a",
+      "task": "F23"
+    },
+    {
+      "arm": "B",
+      "config": "claude",
+      "name": "d09-f23-claude-b",
+      "task": "F23"
+    },
+    {
+      "arm": "S",
+      "config": "codex",
+      "name": "d10-f23-codex-s",
+      "task": "F23"
+    }
+  ],
+  "scope": "Bounded independent read-only pre-dispatch freeze audit. Imported Runner and called inputs only; no prepare/run, native call, auth, install, tests or payload re-review. Existing successful controls and transport evidence are reused through verified immutable bindings.",
+  "selected_artifacts": {
+    "count": 171,
+    "mismatches": []
+  },
+  "startup_full_stdout_bindings": [
+    {
+      "bound_and_matches_final_record": true,
+      "full_stdout_sha256": "3cf334d2e77b6d091747841460e752f68c7a544f4cec6d80bb9428c29bfa9a35",
+      "kind": "A",
+      "seal": "/Users/aipalm/.local/share/nx01/0237-live/out/smoke-E1-A-claude/seal.json",
+      "stdout": "/Users/aipalm/.local/share/nx01/0237-live/out/smoke-E1-A-claude/run/stdout"
+    },
+    {
+      "bound_and_matches_final_record": true,
+      "full_stdout_sha256": "437f9d29e3f96fd77a3c44455b0bf82ecb239af4c8ad324faeabbebc04b68ea0",
+      "kind": "installed",
+      "seal": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s02-p-claude/seal.json",
+      "stdout": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s02-p-claude/run/stdout"
+    }
+  ],
+  "status": "PASS",
+  "transport_provenance": [
+    {
+      "cell": "s01-h-codex",
+      "integrity_audit_sha256": "3633cb6affe55908ca90c0dae21ab867c2a565ba313c6fd1cc05be0e45ab0fd1",
+      "iteration": "0242",
+      "protocol_audit_sha256": "a67cffedd6570d30353db7abcbcb0a7f52985ee1a7d477e7c6e817ac69a60b96",
+      "raw_verdict_sha256": "20ac2afa3a9fe999379f2b4c9d7657aaf0d90b7c15d6676bdc3853520a58c2b4",
+      "usage": "COMPLETE",
+      "verdict": "CHECKS_PASS"
+    },
+    {
+      "cell": "s02-p-claude",
+      "integrity_audit_sha256": "86e0daadef5862fc4241b01cb83c57d63cc80a6de8b36efcc99271d33f986e3d",
+      "iteration": "0242",
+      "protocol_audit_sha256": "1bf98742c5279fcddb27dd949020c4b6f65a4b4e09fee8a0e17136f5d871d391",
+      "raw_verdict_sha256": "d8b3b293fe48112c893aa681c192ff45cef6b4c7092f571de7c8c50538f520b4",
+      "usage": "COMPLETE",
+      "verdict": "CHECKS_PASS"
+    },
+    {
+      "cell": "s01-p-codex",
+      "integrity_audit_sha256": "be15292cc74336acc37862928aaf14596e36a8d758b0cf8d1ee9629e76391c17",
+      "iteration": "0244",
+      "protocol_audit_sha256": "f2a1acee08beab41c31e73169d758f1f3c583640f3ca80897f414d428d2900cf",
+      "raw_verdict_sha256": "8cdb102e66c66fde2c7c9e8ce73386e5fb640c198a5dfc08dcc79eebd5a466e5",
+      "usage": "COMPLETE",
+      "verdict": "CHECKS_PASS"
+    }
+  ]
+}

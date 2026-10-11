@@ -1,0 +1,275 @@
+{
+  "schema": "0248-d09-native-process-audit-v1",
+  "status": "PASS_BOUNDED_PROCESS_ACCOUNTING_AUDIT",
+  "scope": "Read-only audit of retained native process, child contribution, accounting and delivery evidence. No model/auth/test/native launch; no evaluator replay, source modification, oracle expansion or product regrade.",
+  "cell": "d09-f23-claude-b",
+  "raw_root": "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b",
+  "prediction_sha256": "ffac9f84fcd01a3031c68739119832af9b7d0c78cb146511e5a93a5eef2e68e1",
+  "preserved_outcome": {
+    "verdict": "CHECKS_PASS",
+    "usage": "COMPLETE",
+    "input_tokens": 8074123,
+    "output_tokens": 208961,
+    "elapsed_seconds": 1794.5719497080136,
+    "public_tests": 8,
+    "oracle_passes": [
+      "priority-rollback",
+      "single-warehouse-fefo",
+      "submillisecond-order",
+      "offset-equivalence"
+    ],
+    "delivery": "PASS",
+    "cleanup": "CLEAN"
+  },
+  "identity": {
+    "owner_session": "a2ab75c1-dc97-47de-b8ef-72457e779b14",
+    "model": "claude-opus-5-5",
+    "effort": "max",
+    "child_agent_id": "a379a57d34288d96f",
+    "child_shares_parent_session": true,
+    "child_model": "claude-opus-5-5",
+    "child_effort": "max",
+    "native_agent_calls": 1,
+    "native_spawned": 1,
+    "descendants": 0,
+    "completed": 1,
+    "requested_model_override": false,
+    "requested_background_field": false,
+    "actual_started_in_background": 1,
+    "owner_tools": {
+      "Bash": 40,
+      "Edit": 18,
+      "Agent": 1
+    },
+    "child_tools": {
+      "Bash": 16,
+      "Read": 2
+    },
+    "classification": "B retains native Agent capability; automatic native review occurred. This is neither strict solo nor experimental H/P helper activation."
+  },
+  "protocol": {
+    "agent_call_stdout_lf": 875,
+    "launch_result_lf": 878,
+    "owner_waiting_text_lf": 1082,
+    "child_final_stdout_lf": 1151,
+    "child_notification_lf": 1153,
+    "owner_native_notification_lf": 233,
+    "owner_response_lf": 1221,
+    "answer_characters": 4128,
+    "answer_sha256": "50bde5c79e0543d52004b4dd4432a9054e288ae993bcda49e544b54c56876e04",
+    "full_answer_delivered": true,
+    "notification_encoding": "XML &amp; escaping only; html.unescape(result) equals the complete child final text.",
+    "init_stdout_lf": [
+      1,
+      1155
+    ],
+    "init_difference_keys": [
+      "uuid"
+    ],
+    "literal_unicode_counts": {
+      "U+2028": 0,
+      "U+2029": 0,
+      "U+0085": 0
+    },
+    "child_request": "Owner-authored condensed requirements and interpretation choices; not byte-exact full caller prompt despite a verbatim label.",
+    "source_custody": "Retained native transcripts preserve call, commands, outputs and answer. Child writes/probes/mutations are confined to /tmp/fw-review; no observed child source edits or commit. Owner source edits resume after answer. Native Agent has Bash; no experimental read-only-helper capability or canonical five-file snapshot contract is claimed."
+  },
+  "usage": {
+    "basis": "Native emitted terminal accounting; not provider billing. Deduplicate by assistant message id; do not add repeated cumulative modelUsage envelopes or notification token estimates.",
+    "owner": {
+      "terminal_messages": 48,
+      "input": 98,
+      "cache_read": 6995891,
+      "cache_creation": 207183,
+      "normalized_input": 7203172,
+      "output": 154967
+    },
+    "child": {
+      "terminal_messages": 16,
+      "input": 32,
+      "cache_read": 787799,
+      "cache_creation": 83120,
+      "normalized_input": 870951,
+      "output": 53994
+    },
+    "total": {
+      "terminal_messages": 64,
+      "input": 130,
+      "cache_read": 7783690,
+      "cache_creation": 290303,
+      "normalized_input": 8074123,
+      "output": 208961,
+      "thinking_already_in_output": 156236
+    },
+    "accounting_status": "MATCH",
+    "gaps": [],
+    "api_errors": [],
+    "stream_retries": [],
+    "unknown_residual": null,
+    "repeated_cumulative_result_stdout_lf": [
+      1615,
+      1616
+    ]
+  },
+  "novelty": {
+    "pre_review": "Owner Date.parse probe LF320/321 already observes .123456Z becoming .123Z. Existing coarse timestamp ordering, 11 caught owner mutants and 80,000 coarse-reference random waves did not expose competing submillisecond orders.",
+    "child_witness": {
+      "command_lf": 1112,
+      "output_lf": 1114,
+      "input": "one stock unit; equal-priority one-unit orders a at 2026-01-01T10:00:00.000900Z and b at .000100Z",
+      "actual": "exit 0, a accepted and b rejected",
+      "reference": "b accepted and a rejected"
+    },
+    "attribution": "First retained concrete competing-order counterexample is the child's; primitive fractional truncation was previously owner-observed. Child is independent execution/model context but anchored by owner-supplied choices. No causal population or general harness efficacy claim.",
+    "owner_reproduction": "Owner reruns Date.parse fractional probes at LF1222/1223, then repairs source at 1283/1287 and tests at 1312 and 1405. Do not claim a separate owner execution of the exact child JSON before the repair.",
+    "fix": "Compare epoch milliseconds, then remaining fractional digits with trailing zeros removed, then order id; keep existing offset normalization.",
+    "other_findings": "Owner keeps leading-dash-path convention, clarifies accepted ISO subset instead of implementing all suggested forms, and strengthens nearest qualifying warehouse and validation tests. These are recorded choices, not new oracle requirements."
+  },
+  "validation": {
+    "child_random": {
+      "waves": 1000,
+      "stages": [
+        400,
+        600
+      ],
+      "scope": "Separate child reference, generated valid-input corpus; no differences. Exact targeted submillisecond witness still failed."
+    },
+    "owner_random": [
+      {
+        "stage": "pre-fix first",
+        "seeds": [
+          7,
+          12345
+        ],
+        "waves": 40000,
+        "cli_subset": 300,
+        "precision": "coarse timestamps"
+      },
+      {
+        "stage": "pre-fix second",
+        "seeds": [
+          99,
+          4242
+        ],
+        "waves": 40000,
+        "cli_subset": 300,
+        "precision": "same coarse timestamp population; source/test stage changed"
+      },
+      {
+        "stage": "post-fix",
+        "seeds": [
+          31,
+          777
+        ],
+        "waves": 40000,
+        "cli_subset": 300,
+        "precision": "fraction-aware BigInt picosecond reference and expanded fractional/offset timestamp population"
+      }
+    ],
+    "owner_final_80000_claim": "Not a single final-version 80,000-input run. Retained successful batches total 120,000 waves across three stages; only 40,000 are the post-fix fraction-aware population. Most compare exported functions, with first 150 per seed through CLI under Asia/Kolkata.",
+    "differential_positive_control": "LF1455/1456 removes submillisecond comparison from a scratch source copy; the updated reference reports MISMATCH. The copy is restored.",
+    "child_mutations": "Nine targeted mutations survive at LF1134; two positive controls (rollback removal and accepting qty zero) each fail one test at LF1139. Patterns checked before scratch replacement. Surviving mutations do not mean harness-wide failure.",
+    "owner_mutations": "Initial 11 candidates caught before review. Later 25-candidate batch catches 24 with whole-second truncation surviving at LF1359; after strengthening regression, six relevant candidates including whole-second truncation fail at LF1408. Final claim that all 25 caused failure describes combined stages, not one final 25-candidate rerun.",
+    "baseline_directory_failure": "LF922/923 reproduces node --test tests/ MODULE_NOT_FOUND on current tree and archived original HEAD 87d89d2; package npm test delegates to that directory command.",
+    "explicit_full_files": "LF1475/1477 after repairs: node --test tests/cli.test.js tests/server.test.js gives 11 tests, 11 pass, 0 fail. Final delivery public check is 8/8.",
+    "node18": "Not installed/tested; compatibility is source inspection only."
+  },
+  "delivery": {
+    "baseline": "87d89d2ad867b2f39b7df57ae131989c803f0158",
+    "commit": "924942c7dec399d4c38ab48a4549c3e5acb33b81",
+    "changed": [
+      "bin/cli.js",
+      "tests/cli.test.js"
+    ],
+    "recovery_ref": "refs/devlyn/completed/7c4d6cc244fee449f7ebacb0",
+    "local_only": true,
+    "receipt_id": "7c4d6cc244fee449f7ebacb0",
+    "source_and_publish_equal": true,
+    "retained_acceptance": true,
+    "retained_public_log": true,
+    "worktree_cleanup": "CLEAN",
+    "review_readonly_git_status": "clean"
+  },
+  "limitations": [
+    "No claim all requirements or ambiguous task interpretations are proved by four frozen oracle cases.",
+    "No new semantic oracle or product grade.",
+    "No experimental helper protocol claim for the baseline native Agent.",
+    "No broad performance or efficacy inference from this cell.",
+    "Protected set is a bounded 34-file source/evidence binding; separate root integrity audit covers broader inventory."
+  ],
+  "protected_before_sha256": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/registration-v2.md": "866b4384dd32f891b8539ba93a6dd645e2010d85d2fa02966d3203e1fb27e91f",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/freeze-measured-v2.json": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/baseline.json": "f296bc07a2f645f5ca7cec1b492a86ae6c3331b129567b73978ab564cb4690c8",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/custody/.devlyn/acceptance.json": "e4d13020b74ef124393f4f1b97d183369585a6042ff5db9b4d706f446ede91d5",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/custody/.devlyn/checks.log": "130582db0f396add3eeda45a2b3331b0c2f546b4c046b443913ab8b6bdaf6c19",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/manifest.json": "5acc53a5915b2c97820bfcc96b242bea1ccc289b3182edc3163df1f5703ce6ac",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/receipt.json": "84d6ec6258b6ae3aff6fbdfca19fe5723cbcfb397c86a55675fa0a7fde586765",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/bin/cli.js": "820a50be537ccc1c5628a7d03e668a03b1d17125ce90bbc33c32b5cf50c59833",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/package.json": "127f48d4ddeb3adf1c574371024938e5d220823d293a58306f1e8affa64d064c",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/tests/cli.test.js": "25b307f957673276455e3c10581d1c79713f9d4edccade1b21422bf9e0795b87",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/checked.json": "a1a916d8f5b24541bc878c6f84b6cdf1ea9f7a59aa202b99ef7f9c5b767da3d1",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/checks-raw.json": "8797e1e4de425caa851a3dd2ab3e7dd35c314c39678f7f2736094d3bbab26e9d",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/checks.json": "6b8c44701578cac1b6bc990a14b536e3e579f88b0865c7681c82f744c2197f6e",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/claude-accounting.json": "6b04ccd8e09345b57095484c11c6720d39faa1ba4f9a4d9f0fa61c272da4bab6",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/delivery.json": "69c593b73267baf421c55547a06c231af4d1ec84fb61a8a809d7004075518d24",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/evidence.manifest.json": "5f228988e82d549ed210b26235b4f3707d1817e989dbdc9b94a1467d47a500b4",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/final.txt": "16b79840f46e532724a86fe2dd6a3ccd671faff564138e8f1d5d553cab7e8239",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/harness/caller.json": "d73058d020bcae9f5f6d2366dfd656bc30303635204df977bd495494a066a3a8",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/harness/roles.json": "5b440cd818d283aefaaeb384c07cee44c6f2255547488fe8d62a742d2538025f",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/home/.claude/projects/-cell-work/a2ab75c1-dc97-47de-b8ef-72457e779b14/subagents/agent-a379a57d34288d96f.jsonl": "656c5f74fd84a8a3f4d3fe46a95560d649fae9584830ba75afdf29e5be200da4",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/home/.claude/projects/-cell-work/a2ab75c1-dc97-47de-b8ef-72457e779b14/subagents/agent-a379a57d34288d96f.meta.json": "99bf7a7681353e2399b7df71c22bee07ff6d8593e2f396349bc1dbf3d8316d6d",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/home/.claude/projects/-cell-work/a2ab75c1-dc97-47de-b8ef-72457e779b14.jsonl": "d3709363319b2936abc0e1f8fe1abcd4c79f5258656b9c2dd9177880fd470b5f",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/peer-policy.json": "bbad2135016204eb916a2828617fca3f055824435b0358805f98ee0525fd98de",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/plan.json": "ec41d1a83aeb08b0b1e0330bef6657ee9256722ce3e57327b8096535441b49b2",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/prompt.txt": "ed8de03d76c96e82d555bc6037599ceae1c4e9d38798ad55402661298cdb49f0",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/run/result.json": "c072d0bcd1817d48aea7371871d3190bbe7e1981f03090922fdd8f37c8b0f298",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/run/started.json": "18c3011cc8bb6ae5dcd7e7aa9ab9bd621681891e7eca542c10379311317899a4",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/run/stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/run/stdout": "601f202beb929cb47387fe078b01a85850d0b54cce24cdd596e6eefe03f9978b",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/seal.json": "8de8b372c4c9887f3262e511f96e5392febf1d4d25faea94a56bdc4855356968",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/snapshot.json": "8f6c8a8469576a073275fc142eb41127a2d756f5da1ee97492aacc96c4f25b98",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/usage.json": "043b7d9be10c39f8830da32b6ee466d7f47e6ce110e5d076a9bce69f000c0ec9",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d09-f23-claude-b.json": "f5af705b2ba959728304a304eee0134183ec51b4f1e0fa33f9d8bf285b20065f"
+  },
+  "protected_after_sha256": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/registration-v2.md": "866b4384dd32f891b8539ba93a6dd645e2010d85d2fa02966d3203e1fb27e91f",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/freeze-measured-v2.json": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/baseline.json": "f296bc07a2f645f5ca7cec1b492a86ae6c3331b129567b73978ab564cb4690c8",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/custody/.devlyn/acceptance.json": "e4d13020b74ef124393f4f1b97d183369585a6042ff5db9b4d706f446ede91d5",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/custody/.devlyn/checks.log": "130582db0f396add3eeda45a2b3331b0c2f546b4c046b443913ab8b6bdaf6c19",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/manifest.json": "5acc53a5915b2c97820bfcc96b242bea1ccc289b3182edc3163df1f5703ce6ac",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/.git/devlyn-completion/7c4d6cc244fee449f7ebacb0/receipt.json": "84d6ec6258b6ae3aff6fbdfca19fe5723cbcfb397c86a55675fa0a7fde586765",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/bin/cli.js": "820a50be537ccc1c5628a7d03e668a03b1d17125ce90bbc33c32b5cf50c59833",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/package.json": "127f48d4ddeb3adf1c574371024938e5d220823d293a58306f1e8affa64d064c",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/cell/work/tests/cli.test.js": "25b307f957673276455e3c10581d1c79713f9d4edccade1b21422bf9e0795b87",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/checked.json": "a1a916d8f5b24541bc878c6f84b6cdf1ea9f7a59aa202b99ef7f9c5b767da3d1",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/checks-raw.json": "8797e1e4de425caa851a3dd2ab3e7dd35c314c39678f7f2736094d3bbab26e9d",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/checks.json": "6b8c44701578cac1b6bc990a14b536e3e579f88b0865c7681c82f744c2197f6e",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/claude-accounting.json": "6b04ccd8e09345b57095484c11c6720d39faa1ba4f9a4d9f0fa61c272da4bab6",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/delivery.json": "69c593b73267baf421c55547a06c231af4d1ec84fb61a8a809d7004075518d24",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/evidence.manifest.json": "5f228988e82d549ed210b26235b4f3707d1817e989dbdc9b94a1467d47a500b4",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/final.txt": "16b79840f46e532724a86fe2dd6a3ccd671faff564138e8f1d5d553cab7e8239",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/harness/caller.json": "d73058d020bcae9f5f6d2366dfd656bc30303635204df977bd495494a066a3a8",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/harness/roles.json": "5b440cd818d283aefaaeb384c07cee44c6f2255547488fe8d62a742d2538025f",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/home/.claude/projects/-cell-work/a2ab75c1-dc97-47de-b8ef-72457e779b14/subagents/agent-a379a57d34288d96f.jsonl": "656c5f74fd84a8a3f4d3fe46a95560d649fae9584830ba75afdf29e5be200da4",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/home/.claude/projects/-cell-work/a2ab75c1-dc97-47de-b8ef-72457e779b14/subagents/agent-a379a57d34288d96f.meta.json": "99bf7a7681353e2399b7df71c22bee07ff6d8593e2f396349bc1dbf3d8316d6d",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/home/.claude/projects/-cell-work/a2ab75c1-dc97-47de-b8ef-72457e779b14.jsonl": "d3709363319b2936abc0e1f8fe1abcd4c79f5258656b9c2dd9177880fd470b5f",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/peer-policy.json": "bbad2135016204eb916a2828617fca3f055824435b0358805f98ee0525fd98de",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/plan.json": "ec41d1a83aeb08b0b1e0330bef6657ee9256722ce3e57327b8096535441b49b2",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/prompt.txt": "ed8de03d76c96e82d555bc6037599ceae1c4e9d38798ad55402661298cdb49f0",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/run/result.json": "c072d0bcd1817d48aea7371871d3190bbe7e1981f03090922fdd8f37c8b0f298",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/run/started.json": "18c3011cc8bb6ae5dcd7e7aa9ab9bd621681891e7eca542c10379311317899a4",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/run/stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/run/stdout": "601f202beb929cb47387fe078b01a85850d0b54cce24cdd596e6eefe03f9978b",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/seal.json": "8de8b372c4c9887f3262e511f96e5392febf1d4d25faea94a56bdc4855356968",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/snapshot.json": "8f6c8a8469576a073275fc142eb41127a2d756f5da1ee97492aacc96c4f25b98",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d09-f23-claude-b/usage.json": "043b7d9be10c39f8830da32b6ee466d7f47e6ce110e5d076a9bce69f000c0ec9",
+    "/Users/aipalm/.local/share/nx01/0248-live/out-measured/verdict-d09-f23-claude-b.json": "f5af705b2ba959728304a304eee0134183ec51b4f1e0fa33f9d8bf285b20065f"
+  },
+  "protected_count": 34,
+  "protected_unchanged": true,
+  "audit_completed_utc": "2026-10-10T23:05:20.650214+00:00"
+}

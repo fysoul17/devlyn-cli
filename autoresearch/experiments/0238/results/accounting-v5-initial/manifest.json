@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-10-10T12:34:41.218581+00:00",
+  "reason": "Preserve initial v5 review draft before concrete peer fresh/resume stream capture fix; never dispatched.",
+  "files": {
+    "claude-accounting-v1.py": "b1f2d0588e4c85a9ca7f22368d3b04db176a1e3d34646eba9d859ce333bd3eab",
+    "test_claude_accounting.py": "0c8359a6d8af9ec563b1a7ac85d481050ff3b0a55c83ca9f016491efa7210b21",
+    "runner.py": "6dc231c42bd99b8f36b4836864020262435886a88e1184590eafbe9a721a0951",
+    "results/apparatus-review-manifest-v5.json": "04df8aa769131e240bcb1d86a569b62098c0f191602b31b4b02b1e3f69beeac7"
+  }
+}

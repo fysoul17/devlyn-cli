@@ -1,0 +1,10 @@
+{
+  "command": [
+    "bash",
+    "scripts/lint-skills.sh"
+  ],
+  "started_at": "2026-10-10T15:56:29.075504+00:00",
+  "finished_at": "2026-10-10T15:59:59.450644+00:00",
+  "elapsed_seconds": 210.37089287498384,
+  "returncode": 0
+}

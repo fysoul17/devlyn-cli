@@ -1,0 +1,34 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "token": "NaN",
+      "errors": [
+        "StorageError",
+        "StorageError"
+      ],
+      "bytes_preserved": true,
+      "view_preserved": true
+    },
+    {
+      "token": "Infinity",
+      "errors": [
+        "StorageError",
+        "StorageError"
+      ],
+      "bytes_preserved": true,
+      "view_preserved": true
+    },
+    {
+      "token": "-Infinity",
+      "errors": [
+        "StorageError",
+        "StorageError"
+      ],
+      "bytes_preserved": true,
+      "view_preserved": true
+    }
+  ],
+  "valid_values_preserved": true,
+  "repaired_no_edit_commit_revision": 3
+}

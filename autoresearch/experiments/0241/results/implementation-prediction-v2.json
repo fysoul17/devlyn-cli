@@ -1,0 +1,7 @@
+{
+  "changes": "Create the isolated test directories before writing fixtures; no execution source changes.",
+  "prediction": "All 36 targeted tests pass; all preceding semantic expectations unchanged.",
+  "prior_result": "v1: 32 pass, 4 fixture setup FileNotFoundError; inherited write() does not make parent directories. No product assertion failed. Raw v1 retained.",
+  "recorded_at": "2026-10-10T15:20:13.933909+00:00",
+  "test_sha256": "6baf59581bc9e0ba208039500ec208c2672b6238ff308070da75e1d648ff3d58"
+}

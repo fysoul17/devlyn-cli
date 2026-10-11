@@ -1,0 +1,127 @@
+{
+  "assessors": [
+    {
+      "effort": "high",
+      "engine": "claude",
+      "model": "claude-opus-5-5"
+    },
+    {
+      "effort": "high",
+      "engine": "codex",
+      "model": "gpt-6-astra"
+    }
+  ],
+  "routes": {
+    "claude": {
+      "owner": {
+        "effort": "max",
+        "engine": "claude",
+        "model": "claude-opus-5-5"
+      },
+      "product_roles": {
+        "pair_judge": {
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-astra"
+        },
+        "primary_judge": {
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        },
+        "worker": {
+          "engine": "claude"
+        }
+      },
+      "reviewer": {
+        "effort": "high",
+        "engine": "codex",
+        "model": "gpt-6-astra"
+      }
+    },
+    "codex": {
+      "owner": {
+        "child_effort": "high",
+        "child_model": "gpt-6-sol",
+        "effort": "max",
+        "engine": "codex",
+        "model": "gpt-6-astra"
+      },
+      "product_roles": {
+        "pair_judge": {
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        },
+        "primary_judge": {
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-astra"
+        },
+        "worker": {
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-sol"
+        }
+      },
+      "reviewer": {
+        "effort": "high",
+        "engine": "claude",
+        "model": "claude-opus-5-5"
+      }
+    }
+  },
+  "schema": "0237-instruction-study-v1",
+  "tasks": [
+    {
+      "id": "FG-SHORT",
+      "repository": "devlyn-foreground-transport",
+      "stratum": "transport-smoke",
+      "domain": "explicit native foreground child lifetime",
+      "source_dir": "autoresearch/experiments/0239/transport/FG-SHORT/visible",
+      "source_sha256": {
+        "README.md": "f4f8ebdbd62178b57b2ae6b1e44f246b1d9f4673d467e655648a46e34e4cc991",
+        "check_receipt.py": "f9123620ce1a70988f8fbfd7ad1ddde87ce036be3cc214f68f1326604a0e6e6f",
+        "child_gate.py": "15b9823517d8eb0583cc214d987a691af20c28d87375bdeff7f51ce653d08233",
+        "scenario.json": "04f0333a6167ed6616620e54813afb69e9639dc5bc4574c2853255cd2d2f2c8a"
+      },
+      "allowed": [
+        "receipt.json"
+      ],
+      "request": "Transport scenario FG-SHORT: the supplied child workload consists of one 1-second part. This is the short launch/return control.\n\nThis is an explicit native-foreground TRANSPORT SMOKE, not a test of spontaneous instruction compliance or product efficacy.\n\nUse exactly one native Agent call with subagent_type general-purpose and the explicit input run_in_background: false. Omission does not count. The child inherits the registered owner, claude-opus-5-5 at max; do not select another model/effort, launch a separate CLI, delegate again, or use a pair helper.\n\nGive the child this read-only job: run exactly `python3 -B /cell/work/child_gate.py 1`, each as its own native Bash call with timeout: 360000 and run_in_background: false. Wait for each command's actual successful terminal output before starting the next; do not combine commands, run them in parallel, shorten, modify, replace or rerun any part. The program writes no files. After every part has finished, return only one JSON object with the key parts containing the exact gate-completed JSON objects in part order. Do not return a progress promise. If a tool command fails or native execution differs from this requested sequence, report the concrete outcome; do not alter any native timeout/ceiling/environment setting or invent a wait interface. A command failure is not by itself evidence that foreground Agent lifetime is unsupported.\n\nThe owner must remain in the main conversation until that foreground child has returned its terminal payload. Only then create receipt.json containing that exact JSON object, run `python3 -B check_receipt.py`, and deliver a local commit matching the checked receipt. The child must not write or commit. Leave every supplied fixture/checker file unchanged; receipt.json is the only permitted new/changed product file. No network publication and no Git configuration changes. The final response must come after the child's terminal result and the successful local commit, and name the returned marker(s) and commit.\n\nThe source check validates only the saved payload. Native evidence must separately establish the explicit foreground launch, registered model/effort, each command's terminal output in sequence, child terminal result before the owner writes/commits/finalizes, and absence of a ceiling-killed child. If the receipt check passes without that native sequence, it is not a successful transport smoke.\n",
+      "obligations": [],
+      "public_checks": [
+        "python3 -B check_receipt.py"
+      ],
+      "oracle": [],
+      "oracle_commands": []
+    },
+    {
+      "id": "FG-LONG",
+      "repository": "devlyn-foreground-transport",
+      "stratum": "transport-smoke",
+      "domain": "explicit native foreground child lifetime",
+      "source_dir": "autoresearch/experiments/0239/transport/FG-LONG/visible",
+      "source_sha256": {
+        "README.md": "f4f8ebdbd62178b57b2ae6b1e44f246b1d9f4673d467e655648a46e34e4cc991",
+        "check_receipt.py": "f9123620ce1a70988f8fbfd7ad1ddde87ce036be3cc214f68f1326604a0e6e6f",
+        "child_gate.py": "15b9823517d8eb0583cc214d987a691af20c28d87375bdeff7f51ce653d08233",
+        "scenario.json": "0296dc98df81d103377a8c6e482488f99c4ebe3f471c6432da6613e129926e31"
+      },
+      "allowed": [
+        "receipt.json"
+      ],
+      "request": "Transport scenario FG-LONG: the supplied child workload consists of two separate sequential 305-second parts (610 seconds total). The child total lifetime must exceed the unchanged 600-second noninteractive post-final background ceiling, while each Bash command stays below its ordinary 600000ms maximum.\n\nThis is an explicit native-foreground TRANSPORT SMOKE, not a test of spontaneous instruction compliance or product efficacy.\n\nUse exactly one native Agent call with subagent_type general-purpose and the explicit input run_in_background: false. Omission does not count. The child inherits the registered owner, claude-opus-5-5 at max; do not select another model/effort, launch a separate CLI, delegate again, or use a pair helper.\n\nGive the child this read-only job: run exactly `python3 -B /cell/work/child_gate.py 1` then `python3 -B /cell/work/child_gate.py 2`, each as its own native Bash call with timeout: 360000 and run_in_background: false. Wait for each command's actual successful terminal output before starting the next; do not combine commands, run them in parallel, shorten, modify, replace or rerun any part. The program writes no files. After every part has finished, return only one JSON object with the key parts containing the exact gate-completed JSON objects in part order. Do not return a progress promise. If a tool command fails or native execution differs from this requested sequence, report the concrete outcome; do not alter any native timeout/ceiling/environment setting or invent a wait interface. A command failure is not by itself evidence that foreground Agent lifetime is unsupported.\n\nThe owner must remain in the main conversation until that foreground child has returned its terminal payload. Only then create receipt.json containing that exact JSON object, run `python3 -B check_receipt.py`, and deliver a local commit matching the checked receipt. The child must not write or commit. Leave every supplied fixture/checker file unchanged; receipt.json is the only permitted new/changed product file. No network publication and no Git configuration changes. The final response must come after the child's terminal result and the successful local commit, and name the returned marker(s) and commit.\n\nThe source check validates only the saved payload. Native evidence must separately establish the explicit foreground launch, registered model/effort, each command's terminal output in sequence, child terminal result before the owner writes/commits/finalizes, and absence of a ceiling-killed child. If the receipt check passes without that native sequence, it is not a successful transport smoke.\n",
+      "obligations": [],
+      "public_checks": [
+        "python3 -B check_receipt.py"
+      ],
+      "oracle": [],
+      "oracle_commands": []
+    }
+  ],
+  "watchdog_seconds": {
+    "assessor": 600,
+    "evaluator": 600,
+    "owner": 5400,
+    "review": 600
+  }
+}

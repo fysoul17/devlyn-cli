@@ -1,0 +1,11 @@
+# Claude 2.1.296 subscription refresh: bounded static audit
+
+Inspected only embedded JavaScript in `/Users/aipalm/.local/share/claude/versions/2.1.296`; SHA-256 verified `c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937`. Offsets below are zero-based binary byte offsets. No CLI execution, model request, credential/keychain read, auth mutation, or existing login-session interaction occurred.
+
+- At 190097268: `function rH(e,n=Date.now()){if(e===null)return!1;return n+300000>=e}`. Subscription access-token refresh eligibility is within five minutes of expiry.
+- At 190062675, `Kl` skips non-forced refresh when the token exists and `!rH(M.expiresAt)`, returning `"not_needed"`. Additional checks require a refresh token and refreshable account/scopes, and handle locks/races. Eligibility does not guarantee renewal success.
+- At 191099346, normal API client creation calls `Koe({credentials:I,storageV5:C})` without force. At 190062037 `Koe` defaults `force` to false. Thus ordinary execution cannot be relied upon to extend a still-valid token with approximately 5725 seconds left immediately.
+- Exported `authStatus` is `me` (export at 213137011); implementation begins 213134918. It reads auth sources/account metadata, renders status, and exits according to its logged-in classification. It has no direct refresh call. This is a bounded handler inspection, not an exhaustive claim that no shared startup/import side effect can occur.
+- Command registration at 205425905 and following exposes auth login/status/logout, with no explicit refresh command. Internal forced refresh at 190057650 belongs to 401 recovery; it is not a supported public force-refresh command.
+
+Conclusion: the experimental 6300-second minimum is stricter than native automatic refresh eligibility. The reported 5725-second remainder does not itself mean the user must log in again for ordinary Claude use. This audit found no supported explicit immediate subscription refresh route that avoids login while preserving the stated constraints. Automatic native refresh near expiry is a separate possibility, conditional on valid refresh credentials; it was not executed or verified here. Account switching/new login subsequently reported by the user supersedes the immediate operational question. No runtime freeze or account binding was changed by this audit.

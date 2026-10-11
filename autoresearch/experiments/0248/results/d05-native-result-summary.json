@@ -1,0 +1,59 @@
+{
+  "cell": "d05-f23-claude-p",
+  "config": "claude",
+  "arm": "P",
+  "status": "CHECKS_PASS",
+  "usage": "COMPLETE",
+  "input_tokens": 10593254,
+  "output_tokens": 193245,
+  "owner_seconds": 1751.5711559999909,
+  "source_check_pass": true,
+  "public_pass": true,
+  "product_check_pass": true,
+  "delivery_pass": true,
+  "oracle": [
+    {
+      "id": "priority-rollback",
+      "status": "PASS"
+    },
+    {
+      "id": "single-warehouse-fefo",
+      "status": "PASS"
+    },
+    {
+      "id": "submillisecond-order",
+      "status": "PASS"
+    },
+    {
+      "id": "offset-equivalence",
+      "status": "PASS"
+    }
+  ],
+  "identity": {
+    "codex_seats": {
+      "01a127b4-62df-7ba2-a03c-229ea7201b2e": [
+        "owner_launched",
+        "gpt-6-astra",
+        "max"
+      ]
+    },
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [
+      {
+        "effort": "max",
+        "engine": "codex",
+        "model": "gpt-6-astra",
+        "session": "01a127b4-62df-7ba2-a03c-229ea7201b2e"
+      }
+    ],
+    "status": "MATCH",
+    "violations": []
+  },
+  "usage_gaps": [],
+  "teardown": "CLEAN",
+  "at": "2026-10-10T21:32:36.894659+00:00",
+  "verdict_sha256": "7ebc4cbafd44f16c41027becc3c4b3dcb8cb917ce4ab426fbe290ae150ebd028",
+  "independent_audits": "PENDING",
+  "scope": "Observed native result only.0248v2 mixed-version limits and all old outcomes/costs remain; no admission/causal efficacy claim."
+}

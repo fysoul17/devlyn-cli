@@ -1,0 +1,85 @@
+{
+  "at": "2026-10-10T20:25:58.932716+00:00",
+  "evaluator_or_regrade": "NOT_PERFORMED",
+  "historical_files_unchanged": true,
+  "native_calls": 0,
+  "observations": {
+    "0243/d01-f23-claude-s": {
+      "files": [
+        {
+          "legacy_dict_rows": 300,
+          "lf_dict_rows": 300,
+          "lost_records": [],
+          "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/d01-f23-claude-s/home/.claude/projects/-cell-work/f3d05fd0-3188-4f94-b0a1-8d1c1ef078bf.jsonl",
+          "sha256": "c8a21868bce1f1b60ae3434e03bee0ffdecad37815cad70dbecbb330d3856b04"
+        },
+        {
+          "legacy_dict_rows": 1583,
+          "lf_dict_rows": 1583,
+          "lost_records": [],
+          "path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/d01-f23-claude-s/run/stdout",
+          "sha256": "a19dcad0b117399b98312800dc378ff1f5c823575a4aba4b18a942449dd8db2d"
+        }
+      ],
+      "lost_total": 0
+    },
+    "0246/d02-f23-codex-p": {
+      "files": [
+        {
+          "legacy_dict_rows": 152,
+          "lf_dict_rows": 152,
+          "lost_records": [],
+          "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d02-f23-codex-p/home/.codex/sessions/2026/10/10/rollout-2026-10-10T18-49-28-01a12726-0dbf-7171-ad9b-950d449be0b9.jsonl",
+          "sha256": "7f7974f3f9e608d941cb37b3c7e834ad44818eb40ac7bfa2a6933a1cfd14aec2"
+        },
+        {
+          "legacy_dict_rows": 52,
+          "lf_dict_rows": 52,
+          "lost_records": [],
+          "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d02-f23-codex-p/run/stdout",
+          "sha256": "9acd89988b47e306c920c19965841177d15627c96ee120cd1866bd0a6f85e744"
+        }
+      ],
+      "lost_total": 0
+    },
+    "0246/d03-f23-claude-a": {
+      "files": [
+        {
+          "legacy_dict_rows": 242,
+          "lf_dict_rows": 242,
+          "lost_records": [],
+          "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d03-f23-claude-a/home/.claude/projects/-cell-work/cd63e32d-6949-458c-8cff-c22aa7432050.jsonl",
+          "sha256": "8709f598df5cb90b28182dcc8f394953e762669472570d71f4c4f749e85b42d1"
+        },
+        {
+          "legacy_dict_rows": 906,
+          "lf_dict_rows": 906,
+          "lost_records": [],
+          "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d03-f23-claude-a/run/stdout",
+          "sha256": "abe3f074618802d5493ace1b4a899d6bd1a35ec4034da2ad0fb1614d5d18ad45"
+        }
+      ],
+      "lost_total": 0
+    },
+    "0246/d04-f23-codex-h": {
+      "files": [
+        {
+          "legacy_dict_rows": 137,
+          "lf_dict_rows": 137,
+          "lost_records": [],
+          "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d04-f23-codex-h/home/.codex/sessions/2026/10/10/rollout-2026-10-10T19-21-50-01a12743-ae6c-78c0-9ac0-080b6e0001de.jsonl",
+          "sha256": "bb0429481ed1c87fe90e25c19287e0ea46d53e40f362217993e34e366616bd48"
+        },
+        {
+          "legacy_dict_rows": 50,
+          "lf_dict_rows": 50,
+          "lost_records": [],
+          "path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/d04-f23-codex-h/run/stdout",
+          "sha256": "713cef39b5748dae78815eae04c2df594a4153d78640caa675766b20d4ab35ea"
+        }
+      ],
+      "lost_total": 0
+    }
+  },
+  "prediction_sha256": "cd85180ba1a2d4cca17169b3933b5ffb52831df2f82a039f7352c14750746e67"
+}

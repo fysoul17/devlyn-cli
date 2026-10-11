@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "/control/autoresearch/experiments/0238/f23_precision.py",
+    "/cell/work",
+    "--node",
+    "/missing-evaluator-node"
+  ],
+  "exit_code": 2,
+  "stderr": "",
+  "stdout": "{\"schema\": \"0238-f23-precision-v1\", \"source\": \"/cell/work\", \"rows\": [], \"cli_sha256\": \"6eeb61f0d6b68ceed60eed83a03c1844609a8ea4feee67e5af677a41444e8115\", \"status\": \"STOP\", \"error\": \"FileNotFoundError: [Errno 2] No such file or directory: '/missing-evaluator-node'\"}\n",
+  "timeout": false
+}

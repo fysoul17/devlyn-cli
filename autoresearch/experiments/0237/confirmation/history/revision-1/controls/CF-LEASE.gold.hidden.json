@@ -1,0 +1,14 @@
+{
+  "task": "CF-LEASE",
+  "arm": "gold",
+  "phase": "hidden",
+  "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/confirmation/CF-LEASE/hidden/oracle.py",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/confirmation/controls/scratch/CF-LEASE-mhr3arsd/gold"
+  ],
+  "returncode": 0,
+  "stdout": "{\"manifestations\": [{\"id\": \"expiry-boundary\", \"passed\": true}, {\"id\": \"expired-unclaimed-settlement\", \"passed\": true}, {\"id\": \"stale-receipt-reopen\", \"passed\": true}, {\"id\": \"idempotent-producer-every-state\", \"passed\": true}, {\"id\": \"retry-lifecycle-clean-settlement\", \"passed\": true}, {\"id\": \"eligibility-and-stable-order\", \"passed\": true}, {\"id\": \"independent-concurrent-claims\", \"passed\": true}, {\"id\": \"worker-success-after-takeover\", \"passed\": true}, {\"id\": \"worker-failure-after-takeover\", \"passed\": true}, {\"id\": \"retry-uses-settlement-clock\", \"passed\": true}, {\"id\": \"settlement-errors-not-handler-errors\", \"passed\": true}, {\"id\": \"process-interruption-retains-lease\", \"passed\": true}, {\"id\": \"invalid-input-no-mutation\", \"passed\": true}]}\n",
+  "stderr": ""
+}
