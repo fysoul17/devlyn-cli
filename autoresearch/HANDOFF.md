@@ -30,13 +30,24 @@ No automatic successor study, regrade, pair escalation or admission follows.
 The solo ceiling and superiority over bare remain unproven; prior failures,
 unknown costs and version/exposure limits remain evidence.
 
-Current delivery candidate: `~/.local/share/nx01/0250-minimal-solo`, branch
-`candidate/0250-minimal-solo`, task `minimal-solo-continuation-0250`, receipt
-`.git/devlyn-completion/3a87f490267ce0c3cf3f1edc/receipt.json` in the original
-repository. Its final acceptance, custody and delivery state live in that receipt;
-this document is the source snapshot before delivery. Policy is PR+merge, no npm
-release. Retain this worktree at its exact path: the study freezes absolute paths
-to its registration artifacts. Disposable receipt scratch remains cleanable.
+The frozen source is `~/.local/share/nx01/0250-minimal-solo`, branch
+`candidate/0250-minimal-solo`, commit `f29ed437607009dbe8b767c80da01704429c0966`.
+Keep that worktree locked at its exact path: seven registration artifacts are
+frozen there. Its receipt `3a87f490267ce0c3cf3f1edc` remains owned, unaccepted and
+unpublished, with scratch CLEAN. The completion tool refused its lock before
+binding acceptance, so no PR or partially accepted predecessor exists.
+
+Delivery uses a separate `~/.local/share/nx01/0250-publisher`, branch
+`candidate/0250-comment-import`, task `minimal-solo-comment-import-0250`, receipt
+`.git/devlyn-completion/0bb981a269fe51fc8f60f35e/receipt.json` in the original
+repository. Its initial transplanted tree and copied check evidence exactly match
+the verified source at the same base. Only this handoff's delivery metadata is
+subsequently updated. Final local menu15, lint and fullqueue71 also pass; the
+[POSIX record](experiments/0250/results/product/posix-checks.json) retains source
+bindings and the separately reported transient cleanup observation. The publisher
+may be removed after delivery; all actual frozen paths remain in the retained
+source. Final acceptance/custody/delivery state is in the new receipt. Policy is
+PR+merge, no npm release. This is the source snapshot before delivery.
 
 Preserve `0237-harness`, the old `0237-integration` and all frozen/private research
 roots, including `0249-live/baseline-source-v1` and `0250-live`. PR199's publisher
