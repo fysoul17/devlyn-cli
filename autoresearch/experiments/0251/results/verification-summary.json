@@ -1,0 +1,71 @@
+{
+  "always_loaded_instruction_change": false,
+  "at": "2026-10-11T01:40:06.074662+00:00",
+  "efficacy_observations": 0,
+  "limitations": [
+    "Codex retains managed refresh capability and shared grant dependency.",
+    "CLEAN confirmed from sealed launcher records, not a separate live Docker inspection.",
+    "MacOS synthetic checks plus pinned Linux native operational smokes; no new Windows product run."
+  ],
+  "native_audit_sha256": "4bfa1d6569ad6513bc8c5af675eaa1a48bf35994c6c4fb086fbbb71d99915f03",
+  "public_secret_scan": {
+    "at": "2026-10-11T01:37:52.947546+00:00",
+    "files_checked": 4194,
+    "matching_paths": [],
+    "status": "PASS"
+  },
+  "smokes": [
+    {
+      "checks": {
+        "catalog": true,
+        "children": true,
+        "identity": true,
+        "no_tools": true,
+        "owner_exit": true,
+        "quota": true,
+        "response": true,
+        "sealed": true,
+        "teardown": true,
+        "usage": true
+      },
+      "config": "claude",
+      "input_tokens": 18164,
+      "output_tokens": 34,
+      "owner_seconds": 7.1931306250044145,
+      "raw_result": "/Users/aipalm/.local/share/nx01/0251-live/result-smoke-claude-b.json",
+      "raw_result_sha256": "c96420d2a6c5013ac60bb323dc0cc1ad7cc21266ac802455d3827a3444e6f02e",
+      "status": "PASS",
+      "usage": "COMPLETE"
+    },
+    {
+      "checks": {
+        "catalog": true,
+        "children": true,
+        "identity": true,
+        "no_tools": true,
+        "owner_exit": true,
+        "quota": true,
+        "response": true,
+        "sealed": true,
+        "teardown": true,
+        "usage": true
+      },
+      "config": "codex",
+      "input_tokens": 12093,
+      "output_tokens": 6,
+      "owner_seconds": 6.501034249988152,
+      "raw_result": "/Users/aipalm/.local/share/nx01/0251-live/result-smoke-codex-b.json",
+      "raw_result_sha256": "9fc40ba8d4f663bcec90d31179584161feb878968d676e1fb009d56e41830d98",
+      "status": "PASS",
+      "usage": "COMPLETE"
+    }
+  ],
+  "source_reuse": {
+    "changed_inputs": [],
+    "count": 9116,
+    "observed_at": "2026-10-11T01:32:03.239383+00:00",
+    "prior_results": "autoresearch/experiments/0250/results/product/posix-checks.json",
+    "status": "PASS"
+  },
+  "status": "PASS"
+}

@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-11T04:08:24.496628+00:00",
+  "status": "PASS",
+  "product_input_count": 9116,
+  "actual_inventory_count": 9116,
+  "reviewed_0251_files": 7,
+  "reused_synthetic_tests": 22,
+  "prior_product_evidence_files": 11,
+  "earlier_study_unique_bindings": 1092,
+  "prior_product_checks": "autoresearch/experiments/0250/results/product/posix-checks.json",
+  "prior_product_checks_sha256": "d0dee31fe827e31dc3080d1dd05538cc95bad62b6d4a1ecdb9a0c8b8bc2ae8bd",
+  "version": "4.2.5",
+  "new_product_test_runs": 0,
+  "new_synthetic_test_runs": 0,
+  "measured_source_grades": 0,
+  "efficacy_gate_applied": false,
+  "failures": []
+}

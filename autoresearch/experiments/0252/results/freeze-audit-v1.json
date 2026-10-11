@@ -1,0 +1,116 @@
+{
+  "schema": "0252-independent-freeze-audit-v1",
+  "prediction": "The freeze matches the reviewed registration, preserves prior task/evaluation inputs and changes only registered auth transport and runtime/source paths; all hashes, schedule protocol and fresh paths will agree.",
+  "prediction_record": "Stated in reviewer commentary before first audit filesystem check; not edited after results.",
+  "completed_at": "2026-10-11T01:40:48.800788+00:00",
+  "status": "PASS",
+  "high_findings": 0,
+  "checks": [
+    {
+      "name": "frozen_records_and_inventory",
+      "status": "PASS",
+      "unique_files": 773,
+      "execution_files": 123,
+      "selected_artifacts": 653,
+      "mismatches": [],
+      "freeze_sha256": "e157693dea13ec057f19acb205220241a2583590e13243b8168d2f068b6604d8",
+      "bindings_sha256": "e8dfafde4c137db7f082c11243d42c871596a7f43ab35701735b6660c73c2dae"
+    },
+    {
+      "name": "reviewed_registration_and_schedule",
+      "status": "PASS",
+      "registration_sha256": "2e90d1d98a9ecb1f580786881a262c8b18cd97109d1e91cfb5f5411a1c1b1204",
+      "schedule_sha256": "4bd81b5d2e2ccfa8a2d07566c4bd93103ca716472b64423e4e7fb45daee91d2b",
+      "prior_0250_blocks_identical": true,
+      "only_schedule_metadata_changed": [
+        "schema",
+        "registered_at"
+      ],
+      "new_draws_maximum": 24,
+      "historical_draws_reused": 0
+    },
+    {
+      "name": "inherited_execution_equivalence",
+      "status": "PASS",
+      "prior_normalized_execution_inputs_identical": 118,
+      "changed_inherited_bytes": 0,
+      "new_inputs": [
+        "0251/auth.py",
+        "0251/cell.py",
+        "0251/runner.py",
+        "fixed auth manifest",
+        "0252 runtime"
+      ],
+      "runtime_delta_from_successful_smoke": [
+        "output",
+        "phase"
+      ]
+    },
+    {
+      "name": "actual_control_trees",
+      "status": "PASS",
+      "oracle": 28,
+      "packages": 969,
+      "public": 64,
+      "missing": [],
+      "extra": [],
+      "mismatches": []
+    },
+    {
+      "name": "baseline_and_calibration",
+      "status": "PASS",
+      "baseline_commit": "ba76e37b19c88e286ae6fc308a482902fcb519d9",
+      "baseline_git_blobs_verified": 12,
+      "current_product_commit": "5099300f5d1ebd41fed13afeddca24c747ab9b9b",
+      "calibration": {
+        "cases": 10,
+        "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/evaluator-report-v2.json",
+        "preparation_failures_preserved": true,
+        "rows": {
+          "FAIL": 25,
+          "PASS": 57,
+          "total": 82
+        },
+        "sha256": "f8a830fc485e918a852e289ba9b1152ab581843456bca2a9d4214df352ee2a3c"
+      },
+      "qualification": "PR199 B instruction payload retained; PR200 comment-import installer correction outside both arms. Both hard tasks partially exposed."
+    },
+    {
+      "name": "adapter_review_and_operational_evidence",
+      "status": "PASS",
+      "synthetic_tests": 22,
+      "review_verdict": "SHIP",
+      "high_findings": 0,
+      "independent_smoke_audit_checks": 23,
+      "smoke_audit_path": "/Users/aipalm/.local/share/nx01/0251-live/verification/0251-smoke-native-audit.json",
+      "smoke_audit_sha256": "4bfa1d6569ad6513bc8c5af675eaa1a48bf35994c6c4fb086fbbb71d99915f03",
+      "smoke_efficacy_draws": 0,
+      "auth_manifest_sha256": "43980e45bef2ad26a7f11d994fda5ac5909d421dfa46fc9dad45516780e32b4d"
+    },
+    {
+      "name": "fresh_namespace_and_permanent_paths",
+      "status": "PASS",
+      "output": "/Users/aipalm/.local/share/nx01/0252-live/out-measured",
+      "output_empty": true,
+      "disposable_0251_publication_input_paths": [],
+      "permanent_runner": "/Users/aipalm/.local/share/nx01/0251-live/source/autoresearch/experiments/0251/runner.py",
+      "permanent_registration": "/Users/aipalm/.local/share/nx01/0252-live/registration",
+      "scratch_exists": true
+    },
+    {
+      "name": "enforcement_boundary",
+      "status": "PASS",
+      "mechanical": "Inherited runner rejects an existing cell/verdict; validates controls; seals prepared bytes and checks inputs; auth adapter preflights before preparation and launch; native identity, accounting, quota and teardown faults stop before grading. Fixed auth cannot adopt mutable host credentials.",
+      "protocol": "The orchestrator enforces frozen slot order, global binding checks before/after each slot, terminal study STOP, independent block/STOP audit and strict gate. The runner CLI is not a schedule dispatcher; no claim of mechanical schedule/gate enforcement is made.",
+      "gate": "Per-engine/per-hard-task correctness nonregression plus all three resources per correct completion nonregression and one strict gain; failed attempts included; controls separately nonregressing; unknown or zero-denominator resource cases do not advance."
+    }
+  ],
+  "findings": [],
+  "limitations": [
+    "Static predispatch audit only. No native engine, Docker, profile/provider calls, tests or evaluator executions. No credential contents read; only the explicitly permitted nonsecret auth manifest was hashed, without parsing it.",
+    "Prior immutable calibration and independent native smoke audit reused after their bound bytes were rechecked; this audit does not claim new calibration or repeat smoke observations.",
+    "The fixed snapshot promises stable selected credentials, not independent Codex grants or immunity to provider revocation. Per-slot actual lifetime/account checks remain mandatory.",
+    "Old studies remain closed. This approval makes no efficacy claim and does not promise that every conditional cell fits the fixed credential lifetime.",
+    "Schedule and study-level stopping are registered orchestrator obligations, not enforced by the inherited single-cell CLI."
+  ]
+}
