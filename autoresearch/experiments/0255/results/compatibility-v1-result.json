@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-11T11:34:56.436893+00:00",
+  "status": "FAIL",
+  "source_sha256": "6d7c013949c1f36524c700fd0d070ec83ea033c765c5cf2a5f648aee3b301576",
+  "error": "AttributeError: str object has no attribute get at0234diagnostics.py122, invoked by0255account diagnostics.calls(rows,claude)",
+  "cause": "Native transcript user.message.content may be a string, unlike the stdout tool-result block list expected by the old diagnostic helper. Launch scope only needs assistant tool inputs.",
+  "native_calls": 0,
+  "old_grading_calls": 0,
+  "original_writes": 0
+}

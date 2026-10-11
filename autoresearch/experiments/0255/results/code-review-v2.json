@@ -1,0 +1,84 @@
+{
+  "at": "2026-10-11T11:41:09.586244+00:00",
+  "diff_domain": "Concatenation in listed source path order of git diff --no-index --binary /dev/null <path>. Both files untracked; excludes publication docs and evidence.",
+  "diff_sha256": "8c5dabbb03fd1c5e1e3dfd83df54b908cdaeee09d9f26a083f607eda7f5219f1",
+  "earlier_failures_preserved": [
+    "Initial6d7c source native user-string/malformed terminal body scan failure and lost receipt observations remain recorded. Explicit assistant-content validation and narrow fixed-diagnostic scope refusal retain receipt report; scope-error regressions pass.",
+    "V1review65d1 wrong COMPLETE/grading counterexamples remain unchanged in v1 scope probe artifacts; no native or old study reinterpretation."
+  ],
+  "evidence_sha256": {
+    "code-review-v1-prediction.json": "bc3e7a923385243bff4f0d01f46f3853ac84ea4754b6d0615edf7338ee7e6613",
+    "code-review-v1-probes.json": "34abefd0fab7e7bc400591a3bd4389dd0c016caf4de1ad1cf1ccc54525fdd1ae",
+    "code-review-v1-scope-prediction.json": "9b5e792d6750096580b73195bf2ed61cf56919e0fc4332b84a7e9347d3193f6a",
+    "code-review-v1-scope-probes.json": "3e00909de3cd4cc8245ab511c6b33edb63aade527a5dee0c84eb40dece437cd3",
+    "code-review-v1.json": "a04e19bcd1023fa481197c054d8654349b74bec22c569ed42ae684eaa227c898",
+    "code-review-v1.md": "f0b21a018a37ce7fd358a3c6b5c6bb673d5407146b289ce82a2252d4a97d16b1",
+    "code-review-v2-prediction.json": "75d928c614fcef091140b7ee92648c7c6ad576b2fe39af9a880a269971940c0c",
+    "compatibility-v1/result.json": "e5101a69de4eaf2da18696a1a80cb0927f2dc50fac7690fba212e35577d5ec34",
+    "compatibility-v2/result.json": "e6c50906a6fc235687827b7d4a1bedf28da3841ea8f92acf9e78695ecbbf1b3a",
+    "compatibility-v3/result.json": "fa231d1cbc9fc7120705b402d04b4febf01fd2e265d37eb96462a772ff3c952c",
+    "design-r0.json": "f7eecc8cb7f9bfd1b4dde218e3a7cba7f10b55a2e8507092c33f7055211d252b",
+    "design-r0.md": "3992d5c8f725f4f934e28d643cea35e567bd04848105cb9e014355b3d52fdee2",
+    "tests-v1/result.json": "e5270dacab3d09e466f1766b8b979b649b7d0e2e2a372d894009ce84128b3d16",
+    "tests-v2/result.json": "6ccdac41f511f4c9791f4800ecd6716a38551b074121f96b9718d2e9b9279a76",
+    "tests-v2/stderr": "48ddb543cd9d7b19b27e3cafc828cdbd854ae94fd2257eb8f49bf75624a137c6"
+  },
+  "findings": [],
+  "gate_preservation": [
+    "Native execution/fixed auth/watchdog/resource/teardown inherited0251/0253.",
+    "Effective policy and delivery selected read-only from inherited run globals; no global assignment or constant MATCH.",
+    "Claude H/P refused before dispatch; unsupported evidence has no old-accounting fallback.",
+    "Exact route/account expectations and returned seal passed to0254;0254source plus0255runner bound in inputs.",
+    "Identity/catalog/quota/input gates remain before grading; scope/peer coverage/seal/teardown failures null whole cost; valid independently established cost retained for separate product/admission failures.",
+    "Codex direct delegation, inherited protocol/product/delivery/adjudication and checked snapshot behavior retained."
+  ],
+  "high_count": 0,
+  "limitations": [
+    "No native execution, auth renewal, failure-path capture guarantee, arbitrary hidden-shell completeness, billing or efficacy admission.",
+    "0254success/foreground/same-model/first-level scope remains unchanged.",
+    "Public README/HANDOFF/NORTH-STAR not included in this source review; root performs publication verification."
+  ],
+  "resolved": [
+    {
+      "evidence": "Read-only binding of effective0242helper_invocations and use on the same stdout/transcript/terminal-body assistant command stream. Exact body-only helper, child-only helper and quoted-example regressions pass.",
+      "id": "H1",
+      "status": "FIXED"
+    },
+    {
+      "evidence": "Actual file/symlink and sealed-path census for home/.codex/sessions and cell/trace precedes parsing. Missing-session-meta, corrupt/noncanonical and deleted-after-seal carriers reject with UNKNOWN before grading.",
+      "id": "H2",
+      "status": "FIXED"
+    }
+  ],
+  "schema": "0255-code-review-v2",
+  "scope": "Bounded second-round source review of0255 runner and independent tests; H1/H2 repair plus retained gate/failure handling. Publication prose excluded.",
+  "source_sha256": {
+    "autoresearch/experiments/0255/runner.py": "becb3b4b05a9536860e91ad464c50bc1985bded25696335b1d8c637cfd69b9c2",
+    "autoresearch/experiments/0255/test_runner.py": "1d62304f12f9ab52edb7e7146d944eb813903b911c6a238d38a8495d3c238ca5"
+  },
+  "stop": "First SHIP with zeroHIGH; review and writes complete.",
+  "validation": {
+    "codex": "Direct inherited run delegation and synthetic inherited orchestration checked; receipt/accounting/policy outputs explicitly injected for that orchestration test, so it is not a new Codex trace-parser validation.",
+    "compatibility": {
+      "accounting": "MATCH",
+      "claim": "Reused unchanged0253accounting/scope control, not a new native observation or old-source regrade.",
+      "native_calls": 0,
+      "old_grading_calls": 0,
+      "output": 468,
+      "processed_input": 49313,
+      "status": "PASS",
+      "strict_sources_unchanged": true,
+      "thinking_included": 274,
+      "usage": "COMPLETE"
+    },
+    "reviewer_v2_test_reruns": 0,
+    "tests": {
+      "methods": 46,
+      "native_calls": 0,
+      "seconds": 7.906,
+      "source_bound": true,
+      "status": "PASS"
+    }
+  },
+  "verdict": "SHIP"
+}

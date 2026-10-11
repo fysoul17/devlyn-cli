@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-11T11:37:23.264695+00:00",
+  "prediction": "New0255account on unchanged0253capture returns COMPLETE49313input468output with0254MATCH andexactpreviouscounters; strictreceiptsourcesunchanged. Constructor/account only, no run/preflight/grading.",
+  "source_sha256": {
+    "autoresearch/experiments/0255/runner.py": "65d1ac5c2f68ffda13eafaaf78161cbdee077b38a32efa87a68462fce8c24e33",
+    "autoresearch/experiments/0255/test_runner.py": "041b4aee7405055b91e85d42e29420e31bf9ed97dd35bd6538e0db01069341d6"
+  }
+}

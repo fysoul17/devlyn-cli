@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-11T11:39:45.025558+00:00",
+  "prediction": "All synthetic0255integration methods pass: complete native receipts admitonce; supported-scope/oldgate failures refuse grading with appropriate unknownorretainedcost; Codex preserves inherited orchestration. No native calls.",
+  "argv": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "autoresearch/experiments/0255",
+    "-p",
+    "test_runner.py",
+    "-v"
+  ],
+  "source_sha256": {
+    "autoresearch/experiments/0255/runner.py": "becb3b4b05a9536860e91ad464c50bc1985bded25696335b1d8c637cfd69b9c2",
+    "autoresearch/experiments/0255/test_runner.py": "1d62304f12f9ab52edb7e7146d944eb813903b911c6a238d38a8495d3c238ca5"
+  }
+}

@@ -1,4 +1,33 @@
-# Minimal solo harness — 0254 offline receipt audit (2026-10-11 UTC)
+# Minimal solo harness — 0255 receipt runner (2026-10-11 UTC)
+
+[0255](experiments/0255/README.md) connects unchanged 0254 receipt accounting to
+a prospective Claude solo A/B/S execution boundary, preserving the inherited
+identity, peer policy, teardown/seal, startup catalog, quota, input and product
+checks. Codex delegates to the inherited execution path. Unsupported accounting
+or extra invocation evidence stops before grading with UNKNOWN whole cost.
+See [verification](experiments/0255/results/verification.json) for exact source,
+synthetic checks, independent review and unchanged 0253 compatibility evidence.
+No live owner, auth renewal, old regrade, product wording/version change or npm
+release occurred. The next boundary is a separately registered operational
+probe; this offline integration establishes no efficacy or pair admission.
+
+Current publication receipt: `23285171a4dcb879807b6eaf`; preserve acceptance,
+custody and `.devlyn` records after delivery cleanup. Private design/delivery
+records are in `~/.local/share/nx01/0255-live`; original native bodies remain in
+`0253-live`. Scratch fixtures are receipt-owned. Main at allocation was
+`0259a23e` (4.2.9), preserving installer PR209/210. User authorization for commit,
+push, main merge and verified unnecessary resource cleanup continues.
+
+Fresh cleanup inventory retains locked0250 and active4210/drain work. The old
+0237-harness/integration paths are now absent; separate `.branch`, `.tracked.diff`
+and `.untracked.tgz` artifacts exist under
+`~/.local/share/nx01/archive/worktrees-2026-10-11/`. Their creator and completeness
+were not established by this task. Do not adopt/delete old receipts, restore
+archives automatically, or attribute concurrent cleanup to this delivery.
+Historical presence statements below are superseded by this observation.
+Minimal solo remains first, pair only earned, ideate deferred.
+
+## Previous delivered boundary — 0254 offline receipt audit
 
 [0254](experiments/0254/README.md) adds a standalone read-only accounting auditor
 with exact request/transcript/terminal-body binding and explicit UNKNOWN failures.

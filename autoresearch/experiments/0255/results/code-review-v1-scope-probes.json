@@ -1,0 +1,46 @@
+{
+  "at": "2026-10-11T11:36:35.132748+00:00",
+  "runner_sha256": "65d1ac5c2f68ffda13eafaaf78161cbdee077b38a32efa87a68462fce8c24e33",
+  "runner_unchanged_during_probe": true,
+  "test_harness_sha256": "041b4aee7405055b91e85d42e29420e31bf9ed97dd35bd6538e0db01069341d6",
+  "synthetic_only": true,
+  "native_calls": 0,
+  "results": [
+    {
+      "case": "body_only_peer_helper",
+      "code": 0,
+      "status": "CHECKS_PASS",
+      "usage": "COMPLETE",
+      "cost": [
+        63,
+        139
+      ],
+      "receipt_status": "MATCH",
+      "peer_status": "MATCH",
+      "calls": [
+        "native",
+        "seal",
+        "oracle",
+        "delivery"
+      ]
+    },
+    {
+      "case": "codex_carrier_without_session_meta",
+      "code": 0,
+      "status": "CHECKS_PASS",
+      "usage": "COMPLETE",
+      "cost": [
+        63,
+        139
+      ],
+      "receipt_status": "MATCH",
+      "peer_status": "MATCH",
+      "calls": [
+        "native",
+        "seal",
+        "oracle",
+        "delivery"
+      ]
+    }
+  ]
+}

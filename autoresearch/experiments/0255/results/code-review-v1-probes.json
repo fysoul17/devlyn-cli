@@ -1,0 +1,46 @@
+{
+  "at": "2026-10-11T11:34:41.321539+00:00",
+  "runner_sha256": "6d7c013949c1f36524c700fd0d070ec83ea033c765c5cf2a5f648aee3b301576",
+  "test_harness_sha256": "5e096d860b72750efcc718f660f926cd499361cdf2991cdc8ff7c11366be18fe",
+  "synthetic_only": true,
+  "native_calls": 0,
+  "results": [
+    {
+      "case": "healthy_baseline",
+      "audit_status": "MATCH",
+      "audit_messages": 3,
+      "code": 0,
+      "status": "CHECKS_PASS",
+      "receipt_report_present": true,
+      "usage": "COMPLETE",
+      "calls": [
+        "native",
+        "seal",
+        "oracle",
+        "delivery"
+      ]
+    },
+    {
+      "case": "malformed_terminal_body_content",
+      "audit_status": "MATCH",
+      "audit_messages": 3,
+      "raised": "AttributeError",
+      "verdict_exists": false,
+      "receipt_report_exists": false,
+      "checks_exists": false
+    },
+    {
+      "case": "scope_inventory_read_error",
+      "audit_status": "MATCH",
+      "audit_messages": 3,
+      "code": 2,
+      "status": "STOP",
+      "receipt_report_present": false,
+      "usage": "UNKNOWN",
+      "calls": [
+        "native",
+        "seal"
+      ]
+    }
+  ]
+}
