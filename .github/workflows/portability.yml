@@ -114,7 +114,7 @@ jobs:
     needs: posix
     if: ${{ !cancelled() }}
     runs-on: windows-2025
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       # The checkout is the test: Git for Windows refuses any tracked path Windows cannot
       # hold. The workspace root keeps the longest tracked path under MAX_PATH; the steps
@@ -222,9 +222,10 @@ jobs:
               ('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)], 240),
               ('engines-self-test', [sys.executable, '-X', 'utf8=0',
                   str(package / 'config/skills/_shared/role-config.py'), '--self-test'], 240),
-              # The loop fixture creates real git worktrees per test; on native Windows it outlasted 240 s (run 37450856991).
+              # The loop fixture creates real git worktrees per test; on native Windows it outlasted 240 s (run 37450856991),
+              # and 71 tests took 594 s of 600 (run 38073614251), so the 4.2.6 suite gets 1200 s.
               ('ideate-loop', [sys.executable, '-X', 'utf8=0', str(driver.parent / 'test-ideate-loop.py'),
-                  '--package-root', str(package)], 600),
+                  '--package-root', str(package)], 1200),
           ):
               try:
                   checked(label, command, timeout)
