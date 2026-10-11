@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-11T06:56:42.515025+00:00",
+  "prediction": "30 independent synthetic test methods pass: exact bodies complete matching nonterminal anchors; all ambiguous/incomplete/conflicting evidence stays UNKNOWN with null whole totals. No native calls.",
+  "argv": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "autoresearch/experiments/0254",
+    "-p",
+    "test_audit.py",
+    "-v"
+  ],
+  "source_sha256": {
+    "autoresearch/experiments/0254/audit.py": "5bc5d6124cbed94b3c59019edd2783185fe57b4c0d743873457ad23459be130f",
+    "autoresearch/experiments/0254/test_audit.py": "a2fdfa1c3b7d6dd0c41915479beb209e98b73cedb8888c72f0289d8eb4e6fef0"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-11T07:03:15.455260+00:00",
+  "status": "PASS",
+  "source_sha256": "115619928aad24fc37280117863c06cbfd72bc4035e84de694e3bd8140a43fef",
+  "report_sha256": "2bfbdfa99d0e20da5c2d33482e5e5cc614f4bf68ca734d9d7c1c35a0104058c6",
+  "native_result": "MATCH",
+  "gaps": [],
+  "read_sources_unchanged": true,
+  "native_calls": 0
+}

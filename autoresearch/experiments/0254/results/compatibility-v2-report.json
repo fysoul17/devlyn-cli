@@ -1,0 +1,93 @@
+{
+  "schema": "0254-native-receipts-v1",
+  "status": "MATCH",
+  "gaps": [],
+  "totals": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 31118,
+    "cache_read_input_tokens": 18189,
+    "output_tokens": 468,
+    "thinking_tokens": 274
+  },
+  "input_tokens": 49313,
+  "output_tokens": 468,
+  "messages": [
+    {
+      "message_id": "msg_011CfurzKW71Vc3UcuEzL38A",
+      "request_id": "req_011CfurzKHhVhPtAvLZ6ydK8",
+      "message_uuid": "5ab6346f-cd9a-4271-b585-288b7fdeef98",
+      "agent_id": null,
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 18189,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 394,
+        "thinking_tokens": 230
+      },
+      "stop_reason": "tool_use",
+      "source": "native_terminal_body",
+      "transcript_terminal": true
+    },
+    {
+      "message_id": "msg_011Cfurzf6pnTzHSEbg2CcHp",
+      "request_id": "req_011CfurzesgM8TjeEoxtL4KQ",
+      "message_uuid": "87aa4681-4c94-4837-901a-73ac53334b1d",
+      "agent_id": "a34001825d913953b",
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 12264,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 59,
+        "thinking_tokens": 44
+      },
+      "stop_reason": "end_turn",
+      "source": "native_terminal_body",
+      "transcript_terminal": true
+    },
+    {
+      "message_id": "msg_011Cfurzo81iReRGsyNZybUQ",
+      "request_id": "req_011CfurznsdsWqXySYsBJ4pF",
+      "message_uuid": "4f7ac7c9-932a-4ed4-a7a7-fbba521c698b",
+      "agent_id": null,
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 665,
+        "cache_read_input_tokens": 18189,
+        "output_tokens": 15,
+        "thinking_tokens": 0
+      },
+      "stop_reason": "end_turn",
+      "source": "native_terminal_body",
+      "transcript_terminal": true
+    }
+  ],
+  "reported_aggregate": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 31118,
+    "cache_read_input_tokens": 18189,
+    "output_tokens": 468,
+    "thinking_tokens": 274
+  },
+  "reported_owner_usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 18854,
+    "cache_read_input_tokens": 18189,
+    "output_tokens": 409,
+    "thinking_tokens": 230
+  },
+  "sources": {
+    "evidence.manifest.json": "3b9c1a8bf178ec5d1f004f84f874f951f5eb6906ceb397f08b9e190951eabf86",
+    "run/stdout": "0a1650e4bb96663a2fbf8ef58e65c7d06274f7139af146b8d0eba08c5a7222fc",
+    "home/.claude/projects/-cell-work/1a15a231-001b-4e17-b632-55fbe49dc7d1/subagents/agent-a34001825d913953b.jsonl": "ad895784be446958d8721c5922cf832eb07d749b88f1f84fe70a69d80895cfbb",
+    "home/.claude/projects/-cell-work/1a15a231-001b-4e17-b632-55fbe49dc7d1.jsonl": "f90fed1840da17805ce4bbc036a3858dcde7ffbd512df358d51c92477c93b4d7",
+    "home/.claude/api-bodies/index.jsonl": "11b8e081b181054ce89537aa9e866a32bf8b7053163a2d0d2f60ed2ea7b7b9ef",
+    "home/.claude/api-bodies/4af9d64d-11cf-464c-8287-eeff035ad13f.request.json": "eb3ef129abb6e7553be9e8d4c33aab03bc20c2532b3004187360145251e8e12c",
+    "home/.claude/api-bodies/req_011CfurzKHhVhPtAvLZ6ydK8.response.json": "2d6c8c3495ac94475020b7c718007f047a88d8783cd59d70b2464b5a8cfedf23",
+    "home/.claude/api-bodies/a033e401-1851-41e4-935c-dc104742e4bc.request.json": "f8b4d17a93fb2a5a6a39394364e58422ad1e2a74c01f0d0f863f54d45ada75cc",
+    "home/.claude/api-bodies/req_011CfurzesgM8TjeEoxtL4KQ.response.json": "d0f2a99b2fc2f5b4491b42bb539265fbe576c9b2ec7ff906937db6d809f10630",
+    "home/.claude/projects/-cell-work/1a15a231-001b-4e17-b632-55fbe49dc7d1/subagents/agent-a34001825d913953b.meta.json": "3a477114fca1d650ee68036cc1008c2484c5dd3b884aa8db1e6dc6a4bf363f1a",
+    "home/.claude/api-bodies/e3fd086a-0952-4b50-a72f-70c70b2af863.request.json": "ecbac037992ad6a8811818aeb39dde134f9d0ff3790805c52f7dd6732c45bcf2",
+    "home/.claude/api-bodies/req_011CfurznsdsWqXySYsBJ4pF.response.json": "8578abc61b0d1c6b145bbb207ce6722ab5de3bcc81214217beee28e07b4ae3d6"
+  },
+  "scope": "One successful native owner and linked foreground children; observations on UNKNOWN are not whole-run totals; not provider billing or product acceptance."
+}

@@ -1,0 +1,45 @@
+{
+  "at": "2026-10-11T06:58:46.447186+00:00",
+  "source_sha256": {
+    "autoresearch/experiments/0254/audit.py": "5bc5d6124cbed94b3c59019edd2783185fe57b4c0d743873457ad23459be130f",
+    "autoresearch/experiments/0254/test_audit.py": "a2fdfa1c3b7d6dd0c41915479beb209e98b73cedb8888c72f0289d8eb4e6fef0"
+  },
+  "scope": "Bounded synthetic counterexamples only, no native/raw-original changes",
+  "predictions": [
+    {
+      "case": "healthy_control",
+      "contract": "MATCH",
+      "predicted_actual": "MATCH"
+    },
+    {
+      "case": "sealed_unindexed_attempt_deleted",
+      "contract": "UNKNOWN",
+      "predicted_actual": "MATCH: manifest inventory is not compared"
+    },
+    {
+      "case": "conflicting_stdout_request_id",
+      "contract": "UNKNOWN",
+      "predicted_actual": "MATCH: stdout request id is ignored"
+    },
+    {
+      "case": "conflicting_stdout_uuid",
+      "contract": "UNKNOWN",
+      "predicted_actual": "MATCH: stdout uuid is ignored"
+    },
+    {
+      "case": "body_directory_symlink_inside_root",
+      "contract": "UNKNOWN",
+      "predicted_actual": "MATCH: only leaf symlink rejected"
+    },
+    {
+      "case": "unsupported_pause_turn_terminal",
+      "contract": "UNKNOWN under initial observed-success schema",
+      "predicted_actual": "MATCH: unobserved stop semantics allowed"
+    },
+    {
+      "case": "aggregate_mismatch_retained_known_usage",
+      "contract": "UNKNOWN with separately retained valid receipt and reported aggregate counters",
+      "predicted_actual": "UNKNOWN but valid partial counters/messages are dropped"
+    }
+  ]
+}

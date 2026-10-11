@@ -1,0 +1,70 @@
+{
+  "schema": "0254-bounded-code-review-v2",
+  "at": "2026-10-11T07:05:34.021681+00:00",
+  "reviewer": "Astra independent cross-model reviewer",
+  "verdict": "SHIP",
+  "high_count": 0,
+  "findings": [],
+  "resolved": [
+    {
+      "id": "H1",
+      "status": "FIXED",
+      "detail": "The relevant BODY/PROJECTS sealed inventory is compared with the actual inventory before inference reconstruction. Missing sealed orphan attempts/transcripts/metadata and unexpected native files reject; every relative path component is checked for symlinks. Exact child metadata inventory must match carriers."
+    },
+    {
+      "id": "H2",
+      "status": "FIXED",
+      "detail": "Stdout assistant request_id, UUID, agent and parent-tool identity now agree with exact transcript anchors. Lifecycle events and returned child results bind to the owner session. Returned child usage and totalTokens must equal that child receipt subset. Synthetic stdout now includes the observed request_id field."
+    },
+    {
+      "id": "H3",
+      "status": "FIXED",
+      "detail": "Only observed end_turn/tool_use stops are accepted. The native interruption text-block list is rejected, as are observed system/api_error, system/api_retry and isApiErrorMessage signals. Unproven system/stream_retry and type/api_error test inventions were corrected; no native recovery behavior is claimed."
+    },
+    {
+      "id": "M1",
+      "status": "FIXED",
+      "detail": "UNKNOWN keeps already-observed receipt metadata, reported_aggregate and reported_owner_usage separately while whole totals/input/output remain null; values are explicitly observations, not certified whole-run totals or residual allocations."
+    }
+  ],
+  "candidate": "/Users/aipalm/.local/share/nx01/0254-native-reconciliation",
+  "head": "186bbd84e004dd1ff458fb714b2872d9c7ef47bc",
+  "sources": {
+    "autoresearch/experiments/0254/audit.py": "115619928aad24fc37280117863c06cbfd72bc4035e84de694e3bd8140a43fef",
+    "autoresearch/experiments/0254/test_audit.py": "3a449693de6a1c1f053e2215da347cc2d84f5a8d540e46271a78d9d03047f957"
+  },
+  "diff_sha256": "1a71ecc5fa647f2dd7263f789026182e142b597045873e8f77aa89c78747341c",
+  "diff_domain": "Concatenation, sorted relative paths, of git diff --no-index --binary /dev/null <path>; two new files are currently untracked. This binds reviewed code/tests, not future publication docs.",
+  "diff_bytes": 46890,
+  "verification": {
+    "targeted_tests": "38 methods PASS against both exact source hashes; root execution reused, not rerun by reviewer",
+    "real0253": "Read-only unchanged capture MATCH:3messages49313input468output; compatibility source hash matches reviewed code",
+    "v1_preserved": [
+      "code-review-v1.md",
+      "code-review-v1.json",
+      "code-review-v1-prediction.json",
+      "code-review-v1-probes.json"
+    ]
+  },
+  "evidence_sha256": {
+    ".devlyn/tests-v2/result.json": "6489d30af65621ba8d135b5612c1eb8c12cb4aa14fb5f68b55c37d26239f4442",
+    ".devlyn/tests-v2/stderr": "380123f5f1857266d97c642a20921e12abb0be57a88031ee28a58e117345fedf",
+    ".devlyn/tests-v2/prediction.json": "6f96b669ccb67945d33241a92f9f972102f612d4713fae66b789e7eff7b932fb",
+    ".devlyn/compatibility-v2/result.json": "f1755527f79ba992ff51d226045738f032dc7058ba36c39b6a24688387692953",
+    ".devlyn/compatibility-v2/prediction.json": "5e7aa5a11141e4554835318b667bd723aa77234a8445aaef97913d4930f798db",
+    ".devlyn/code-review-v1.json": "9193778381a693c46dfeec10dd2b52865f94d29395226532ce8a00fa5223de43",
+    ".devlyn/code-review-v1.md": "1128f718dffd1b72928b3c7876025124cdb9e679a282ee2f4dde5ccf4c2f4c34",
+    ".devlyn/code-review-v1-prediction.json": "7f2fbac50c409b0b38e4bfb716ad1a1e374d8973c21c3c6a11fda99eb7d87ecf",
+    ".devlyn/code-review-v1-probes.json": "0e82f07ef77af5d47847bf6eecd097830b3f28146e5f36455f4810587c6087d1"
+  },
+  "review_scope": "Bounded second review of v1 findings and directly corresponding repair/regression tests; no wider feature expansion.",
+  "clarification": "V1 referred to the initial string-content interruption test as native-shaped while explicitly asking root to verify its exact shape. The author/root verified the actual native marker is a one-element text-block list; v2 code/tests now use that observed shape. Original v1 observations remain preserved, and neither removed invented error label is evidence of a native emission.",
+  "limits": [
+    "SHIP accepts this standalone prospective offline successful-path accounting auditor; it does not integrate with any prior runner, change old0252/0253 verdicts, or authorize a live study.",
+    "MATCH requires the stated sealed-input/caller-expectation contract. Identity/lifecycle/product gates outside this accounting API remain independently required.",
+    "Synthetic negative cases prove refusal and source-selection behavior, not native file-export survival during real cancellation/retry/loss.",
+    "Real0253 compatibility is reused captured evidence, not a fresh native observation or efficacy result.",
+    "No native/provider calls, credential reads, original raw writes, product grading, tracked edits or repeated tests by reviewer in this round."
+  ],
+  "stop": "First SHIP with no HIGH after one bounded repair round; review stops."
+}

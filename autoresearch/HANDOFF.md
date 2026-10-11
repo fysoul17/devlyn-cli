@@ -1,4 +1,30 @@
-# Minimal solo harness — 0253 native capture (2026-10-11 UTC)
+# Minimal solo harness — 0254 offline receipt audit (2026-10-11 UTC)
+
+[0254](experiments/0254/README.md) adds a standalone read-only accounting auditor
+with exact request/transcript/terminal-body binding and explicit UNKNOWN failures.
+Its independent synthetic suite and unchanged 0253 compatibility control are
+recorded in [verification](experiments/0254/results/verification.json). Native
+terminal bodies supply counters; every terminal transcript copy must agree.
+Whole `modelUsage`, owner-only `usage` and child-return counters are checked in
+their separate scopes. No new native invocation, runner integration, product
+instruction change, release or efficacy draw occurred. 0252 remains closed with
+UNKNOWN whole cost. The next frontier is prospective runner admission; this
+offline boundary does not itself authorize a comparison or old-result regrade.
+
+Current publication receipt: `c6a53d68776b5c2e52fae216`; preserve its acceptance,
+custody and `.devlyn` records after merged workspace/branch cleanup. Private 0254
+design records are in `~/.local/share/nx01/0254-live`; original native bodies stay
+in `0253-live`. Disposable fixtures use receipt-owned scratch. Keep frozen and
+active roots; remove only proven merged unused resources. Original main includes
+PR206/207 (4.2.7 installer and handoff changes), which this task preserves.
+Minimal solo remains first, pair only when earned, ideate deferred. The user's
+commit, push, main merge and unnecessary worktree/branch cleanup authorization
+continues. Fresh cleanup inventory confirms PR199's old publisher and refs are
+now removed (receipt COMPLETE, scratch CLEAN). The old 0237 scratch remains in
+use; frozen roots and active 4.2.8 work are retained. Historical entries below
+do not restart closed studies or supersede this cleanup state.
+
+## Previous delivered boundary — 0253 native capture
 
 The user requested continued improvement after 0252 closed, then explicitly
 requested commit, push, main merge and cleanup of unnecessary worktrees and

@@ -1,0 +1,121 @@
+{
+  "at": "2026-10-11T06:59:03.187627+00:00",
+  "source_sha256": {
+    "autoresearch/experiments/0254/audit.py": "5bc5d6124cbed94b3c59019edd2783185fe57b4c0d743873457ad23459be130f",
+    "autoresearch/experiments/0254/test_audit.py": "a2fdfa1c3b7d6dd0c41915479beb209e98b73cedb8888c72f0289d8eb4e6fef0"
+  },
+  "rows": [
+    {
+      "case": "healthy_control",
+      "expected": "MATCH",
+      "actual_status": "MATCH",
+      "gaps": [],
+      "message_count": 3,
+      "totals": {
+        "input_tokens": 6,
+        "cache_creation_input_tokens": 50,
+        "cache_read_input_tokens": 7,
+        "output_tokens": 139,
+        "thinking_tokens": 64
+      },
+      "reported_aggregate_present": false,
+      "receipt_usage_present": false
+    },
+    {
+      "case": "sealed_unindexed_attempt_deleted",
+      "expected": "UNKNOWN",
+      "actual_status": "MATCH",
+      "gaps": [],
+      "message_count": 3,
+      "totals": {
+        "input_tokens": 6,
+        "cache_creation_input_tokens": 50,
+        "cache_read_input_tokens": 7,
+        "output_tokens": 139,
+        "thinking_tokens": 64
+      },
+      "reported_aggregate_present": false,
+      "receipt_usage_present": false
+    },
+    {
+      "case": "conflicting_stdout_request_id",
+      "expected": "UNKNOWN",
+      "actual_status": "MATCH",
+      "gaps": [],
+      "message_count": 3,
+      "totals": {
+        "input_tokens": 6,
+        "cache_creation_input_tokens": 50,
+        "cache_read_input_tokens": 7,
+        "output_tokens": 139,
+        "thinking_tokens": 64
+      },
+      "reported_aggregate_present": false,
+      "receipt_usage_present": false
+    },
+    {
+      "case": "conflicting_stdout_uuid",
+      "expected": "UNKNOWN",
+      "actual_status": "MATCH",
+      "gaps": [],
+      "message_count": 3,
+      "totals": {
+        "input_tokens": 6,
+        "cache_creation_input_tokens": 50,
+        "cache_read_input_tokens": 7,
+        "output_tokens": 139,
+        "thinking_tokens": 64
+      },
+      "reported_aggregate_present": false,
+      "receipt_usage_present": false
+    },
+    {
+      "case": "body_directory_symlink_inside_root",
+      "expected": "UNKNOWN",
+      "actual_status": "MATCH",
+      "gaps": [],
+      "message_count": 3,
+      "totals": {
+        "input_tokens": 6,
+        "cache_creation_input_tokens": 50,
+        "cache_read_input_tokens": 7,
+        "output_tokens": 139,
+        "thinking_tokens": 64
+      },
+      "reported_aggregate_present": false,
+      "receipt_usage_present": false
+    },
+    {
+      "case": "unsupported_pause_turn_terminal",
+      "expected": "UNKNOWN under initial observed-success schema",
+      "actual_status": "MATCH",
+      "gaps": [],
+      "message_count": 3,
+      "totals": {
+        "input_tokens": 6,
+        "cache_creation_input_tokens": 50,
+        "cache_read_input_tokens": 7,
+        "output_tokens": 139,
+        "thinking_tokens": 64
+      },
+      "reported_aggregate_present": false,
+      "receipt_usage_present": false
+    },
+    {
+      "case": "aggregate_mismatch_retained_known_usage",
+      "expected": "UNKNOWN with separately retained valid receipt and reported aggregate counters",
+      "actual_status": "UNKNOWN",
+      "gaps": [
+        "whole native aggregate mismatch"
+      ],
+      "message_count": 0,
+      "totals": null,
+      "reported_aggregate_present": false,
+      "receipt_usage_present": false
+    }
+  ],
+  "native_calls": 0,
+  "original_capture_reads": 0,
+  "tracked_edits": 0,
+  "fixtures": "Disposable synthetic fixtures under candidate .devlyn; removed by TemporaryDirectory"
+}
